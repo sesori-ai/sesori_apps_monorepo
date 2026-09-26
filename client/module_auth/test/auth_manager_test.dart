@@ -10,6 +10,7 @@ import "package:sesori_auth/src/models/auth_secret_key.dart";
 import "package:sesori_auth/src/models/auth_state.dart";
 import "package:sesori_auth/src/models/oauth_flow_errors.dart";
 import "package:sesori_auth/src/platform/oauth_device_descriptor_provider.dart";
+import "package:sesori_auth/src/storage/last_sign_in_storage.dart";
 import "package:sesori_auth/src/storage/oauth_storage_service.dart";
 import "package:sesori_auth/src/storage/token_storage_service.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
@@ -43,6 +44,7 @@ void main() {
   late MockHttpClient mockHttpClient;
   late MockTokenStorageService mockTokenStorage;
   late MockOAuthStorageService mockOAuthStorage;
+  late LastSignInStorage lastSignInStorage;
   late AuthManager authManager;
 
   const user = AuthUser(
@@ -56,7 +58,14 @@ void main() {
     mockHttpClient = MockHttpClient();
     mockTokenStorage = MockTokenStorageService();
     mockOAuthStorage = MockOAuthStorageService();
-    authManager = AuthManager(mockHttpClient, mockTokenStorage, mockOAuthStorage, FakeOAuthDeviceDescriptorProvider());
+    lastSignInStorage = LastSignInStorage(storage: _MemorySecrets());
+    authManager = AuthManager(
+      mockHttpClient,
+      mockTokenStorage,
+      mockOAuthStorage,
+      FakeOAuthDeviceDescriptorProvider(),
+      lastSignInStorage: lastSignInStorage,
+    );
     when(
       () => mockOAuthStorage.saveOAuthSession(
         sessionToken: any(named: "sessionToken"),
@@ -433,6 +442,7 @@ void main() {
         tokenStorage,
         oauthStorage,
         FakeOAuthDeviceDescriptorProvider(),
+        lastSignInStorage: lastSignInStorage,
       );
       expect(await firstManager.getFreshAccessToken(forceRefresh: true), isNull);
       expect(await storage.read(key: AuthSecretKey.accessToken), isNull);
@@ -444,6 +454,7 @@ void main() {
         TokenStorageService(storage: storage),
         OAuthStorageService(storage: storage),
         FakeOAuthDeviceDescriptorProvider(),
+        lastSignInStorage: lastSignInStorage,
       );
       expect(await relaunchedManager.hasLocallyValidSession(), isFalse);
       expect(await relaunchedManager.restoreLocalSession(), isFalse);
@@ -682,6 +693,7 @@ void main() {
         mockTokenStorage,
         mockOAuthStorage,
         FakeOAuthDeviceDescriptorProvider(),
+        lastSignInStorage: lastSignInStorage,
         pollInterval: Duration.zero,
         delay: (_) async {},
       );
@@ -801,6 +813,7 @@ void main() {
         mockTokenStorage,
         mockOAuthStorage,
         FakeOAuthDeviceDescriptorProvider(),
+        lastSignInStorage: lastSignInStorage,
         pollInterval: Duration.zero,
         delay: (_) async {},
       );
@@ -898,6 +911,71 @@ void main() {
         ),
       ).called(2);
       await expectLater(authManager.pollForResult(), throwsA(isA<StateError>()));
+      expect(await authManager.lastSignedInProvider(), AuthProvider.google);
+    });
+
+    test("a poll interrupted in the background still records the provider when it resumes", () async {
+      authManager = AuthManager(
+        mockHttpClient,
+        mockTokenStorage,
+        OAuthStorageService(storage: _MemorySecrets()),
+        FakeOAuthDeviceDescriptorProvider(),
+        lastSignInStorage: lastSignInStorage,
+        pollInterval: Duration.zero,
+        delay: (_) async {},
+      );
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/github/init"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer(
+        (_) async => http.Response(
+          jsonEncode({"authUrl": "https://auth.example.com/github", "state": "s", "expiresIn": 300}),
+          200,
+        ),
+      );
+      var statusCalls = 0;
+      when(
+        () => mockHttpClient.get(
+          Uri.parse("$authBaseUrl/auth/session/status"),
+          headers: any(named: "headers"),
+        ),
+      ).thenAnswer((_) async {
+        statusCalls += 1;
+        if (statusCalls == 1) {
+          throw http.ClientException("Connection aborted in the background");
+        }
+        return http.Response(
+          jsonEncode({
+            "status": "complete",
+            "accessToken": "resumed-access-token",
+            "refreshToken": "resumed-refresh-token",
+            "accountStatus": "existing",
+            "user": {
+              "id": user.id,
+              "provider": user.provider.key,
+              "providerUserId": user.providerUserId,
+              "providerUsername": user.providerUsername,
+            },
+          }),
+          200,
+        );
+      });
+      when(
+        () => mockTokenStorage.saveTokens(
+          accessToken: "resumed-access-token",
+          refreshToken: "resumed-refresh-token",
+        ),
+      ).thenAnswer((_) async {});
+
+      await authManager.startOAuthFlow(provider: AuthProvider.github);
+      await expectLater(authManager.pollForResult(), throwsA(isA<http.ClientException>()));
+      final result = await authManager.resumeOAuthFlow();
+
+      expect(result.user, user);
+      expect(await authManager.lastSignedInProvider(), AuthProvider.github);
     });
 
     test("pollForResult completes login (clears state, emits authenticated) when saving the user fails", () async {
@@ -906,6 +984,7 @@ void main() {
         mockTokenStorage,
         mockOAuthStorage,
         FakeOAuthDeviceDescriptorProvider(),
+        lastSignInStorage: lastSignInStorage,
         pollInterval: Duration.zero,
         delay: (_) async {},
       );
@@ -978,6 +1057,7 @@ void main() {
         mockTokenStorage,
         mockOAuthStorage,
         FakeOAuthDeviceDescriptorProvider(),
+        lastSignInStorage: lastSignInStorage,
         pollInterval: Duration.zero,
         delay: (_) async {},
       );
@@ -1046,6 +1126,7 @@ void main() {
         mockTokenStorage,
         mockOAuthStorage,
         FakeOAuthDeviceDescriptorProvider(),
+        lastSignInStorage: lastSignInStorage,
         pollInterval: Duration.zero,
         delay: (_) async {},
       );
@@ -1257,6 +1338,7 @@ void main() {
         mockTokenStorage,
         mockOAuthStorage,
         FakeOAuthDeviceDescriptorProvider(),
+        lastSignInStorage: lastSignInStorage,
         pollInterval: Duration.zero,
         delay: (_) async {},
       );
@@ -1340,6 +1422,7 @@ void main() {
           mockTokenStorage,
           mockOAuthStorage,
           FakeOAuthDeviceDescriptorProvider(),
+          lastSignInStorage: lastSignInStorage,
         );
         await arrangeStartedFlow(statusResponse: statusResponse);
 
@@ -1355,6 +1438,7 @@ void main() {
         mockTokenStorage,
         mockOAuthStorage,
         FakeOAuthDeviceDescriptorProvider(),
+        lastSignInStorage: lastSignInStorage,
         pollInterval: Duration.zero,
         pollTimeout: Duration.zero,
         delay: (_) async {},
@@ -1407,6 +1491,7 @@ void main() {
         mockTokenStorage,
         mockOAuthStorage,
         FakeOAuthDeviceDescriptorProvider(),
+        lastSignInStorage: lastSignInStorage,
         pollInterval: Duration.zero,
         delay: (_) async {},
       );
@@ -1656,6 +1741,7 @@ void main() {
       when(mockOAuthStorage.clearPkceVerifier).thenAnswer((_) async {});
       when(mockOAuthStorage.clearAuthProvider).thenAnswer((_) async {});
       when(mockOAuthStorage.clearOAuthSession).thenAnswer((_) async {});
+      await lastSignInStorage.save(provider: AuthProvider.github);
 
       final states = <AuthState>[];
       final sub = authManager.authStateStream.listen(states.add);
@@ -1678,6 +1764,8 @@ void main() {
       );
       expect(authManager.currentState, const AuthState.unauthenticated());
       expect(states.last, const AuthState.unauthenticated());
+      // The login screen still marks the method signed in with last.
+      expect(await authManager.lastSignedInProvider(), AuthProvider.github);
     });
   });
 
@@ -1751,6 +1839,7 @@ void main() {
       final savedAppleUser = verify(() => mockTokenStorage.saveUser(captureAny())).captured.single as AuthUser;
       expect(savedAppleUser.providerUsername, "testuser");
       verify(mockOAuthStorage.clearOAuthSession).called(1);
+      expect(await authManager.lastSignedInProvider(), AuthProvider.apple);
     });
 
     test("throws when server returns non-2xx", () async {
@@ -1821,6 +1910,7 @@ void main() {
       await logout;
       verifyNever(() => mockTokenStorage.saveUser(any()));
       expect(authManager.currentState, const AuthState.unauthenticated());
+      expect(await authManager.lastSignedInProvider(), isNull);
     });
 
     test("posts to /auth/email and stores tokens and username on success", () async {
@@ -1872,6 +1962,7 @@ void main() {
       ).called(1);
       final savedEmailUser = verify(() => mockTokenStorage.saveUser(captureAny())).captured.single as AuthUser;
       expect(savedEmailUser.providerUsername, "testuser");
+      expect(await authManager.lastSignedInProvider(), AuthProvider.email);
     });
 
     test("rejects a malformed success body without persisting tokens", () async {

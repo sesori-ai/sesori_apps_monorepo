@@ -45,6 +45,11 @@ participates.
   stored credentials or preferences; existing namespaces and encodings remain intact.
 - Log out asks first on both apps; only its confirmation starts logout, and
   Cancel or dismissal leaves the session untouched.
+- The desktop marks the method this device last signed in with: a "Last used"
+  chip on that provider's button, or a quiet marker on the email link. Only the
+  provider key is stored, on this device, and it survives logout. Signing in
+  brings the desktop window forward; a startup restore never does, so a
+  `--hidden` launch with a restored session stays hidden.
 - Auth-server URLs behave identically with or without trailing slashes, and
   deadline expiry actively aborts registration and token-refresh transport,
   including response-body consumption.
@@ -106,6 +111,9 @@ the prompt and a reused one when testing suppression.
 - Relay availability or key exchange waiting on push registration or the check.
 - The bridge-offline banner alarming an account with no registered bridge.
 - One tap on Log out signing the user out without the confirmation.
+- The "Last used" marker on a method other than this device's last sign-in or
+  gone after logout, a desktop sign-in leaving the window behind, or a startup
+  restore showing a `--hidden` launch.
 
 ## Known Limitations
 

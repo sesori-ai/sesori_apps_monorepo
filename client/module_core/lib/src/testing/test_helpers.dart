@@ -860,6 +860,9 @@ class FakeAuthSession({required AuthState initialState}) implements AuthSession 
   Future<bool> hasLocallyValidSession() async => false;
 
   @override
+  Future<AuthProvider?> lastSignedInProvider() async => null;
+
+  @override
   Future<void> invalidateAllSessions() async {}
 
   @override

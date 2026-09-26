@@ -50,6 +50,7 @@ lib/src/
 ├── platform/
 │   └── oauth_device_descriptor_provider.dart
 └── storage/
+    ├── last_sign_in_storage.dart    (NOT exported; survives logout)
     ├── oauth_storage_service.dart   (NOT exported)
     └── token_storage_service.dart   (NOT exported)
 ```

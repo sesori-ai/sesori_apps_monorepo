@@ -6,6 +6,7 @@ import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart" show OAuthProvider;
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
@@ -30,14 +31,19 @@ const Duration _logoDuration = Duration(milliseconds: 200);
 class const LoginScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<LoginCubit>(
-      create: (_) => LoginCubit(
-        oAuthFlowProvider: getIt(),
-        urlLauncher: getIt(),
-        authSession: getIt(),
-        lifecycleSource: getIt(),
-        installationAnalyticsService: getIt(),
-      ),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<LoginCubit>(
+          create: (_) => LoginCubit(
+            oAuthFlowProvider: getIt(),
+            urlLauncher: getIt(),
+            authSession: getIt(),
+            lifecycleSource: getIt(),
+            installationAnalyticsService: getIt(),
+          ),
+        ),
+        BlocProvider<LastSignInProviderCubit>(create: (_) => LastSignInProviderCubit(authSession: getIt())),
+      ],
       child: const LoginView(openExternalLink: openDesktopExternalLink),
     );
   }
@@ -195,6 +201,7 @@ class const _ProviderSignIn({required final VoidCallback onShowEmailForm}) exten
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
+    final lastUsed = context.watch<LastSignInProviderCubit>().state;
 
     return BlocBuilder<LoginCubit, LoginState>(
       builder: (context, state) {
@@ -208,6 +215,7 @@ class const _ProviderSignIn({required final VoidCallback onShowEmailForm}) exten
               hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
               size: PregoButtonsSolidSize.xl,
               leadingIcon: icon,
+              labelTrailing: provider == lastUsed ? _LastUsedChip(isEnabled: !isBusy) : null,
               fullWidth: true,
               onPressed: isBusy ? null : () => unawaited(context.read<LoginCubit>().loginWithProvider(provider)),
             );
@@ -226,6 +234,7 @@ class const _ProviderSignIn({required final VoidCallback onShowEmailForm}) exten
               label: loc.signInWithEmail,
               hierarchy: PregoButtonsSolidHierarchy.tertiary,
               size: PregoButtonsSolidSize.xl,
+              labelTrailing: lastUsed == AuthProvider.email ? PregoTag(label: loc.desktopLoginLastUsed) : null,
               fullWidth: true,
               onPressed: isBusy ? null : onShowEmailForm,
             ),
@@ -233,6 +242,29 @@ class const _ProviderSignIn({required final VoidCallback onShowEmailForm}) exten
           ],
         );
       },
+    );
+  }
+}
+
+/// "Last used" on a provider button, tinted like the button's own label.
+class const _LastUsedChip({required final bool isEnabled}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: prego.colors.alphaWhite10,
+        borderRadius: BorderRadius.circular(PregoRadius.full),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md, vertical: PregoSpacing.xxs),
+        child: Text(
+          context.loc.desktopLoginLastUsed,
+          style: prego.textTheme.textXs.medium.copyWith(
+            color: isEnabled ? prego.colors.textPrimaryOnWhite : prego.colors.fgDisabled,
+          ),
+        ),
+      ),
     );
   }
 }
