@@ -60,7 +60,6 @@ void main() {
     expect(info.variant, "high");
     expect(info.time!.completed, 2);
     final tool = result.parts.last.asTool;
-    expect(tool.kind, PluginToolKind.command);
     expect(tool.state.title, "Fixture command");
     expect(tool.state.shellCommand, "printf fixture");
     expect(tool.state.output!.length, maxToolOutputLength);

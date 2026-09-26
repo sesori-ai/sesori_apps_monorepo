@@ -204,7 +204,6 @@ class CursorEventMapper({
     sessionID: genericPart.sessionID,
     messageID: genericPart.messageID,
     tool: genericPart.tool,
-    kind: genericPart.kind,
     state: PluginToolState(
       status: status,
       title: genericPart.state.title,

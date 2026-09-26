@@ -138,10 +138,6 @@ sealed class const MessagePart._() with _$MessagePart {
       ),
     )
     ToolState state,
-    // COMPATIBILITY 2026-09-25 (v1.9.1): Released bridges omit the tool kind, and a newer bridge may send
-    // a kind this app does not know; both read as unknown and count as a plain step. Remove @Default when the
-    // minimum supported bridge always sends a kind; keep unknownEnumValue for newer kinds.
-    @JsonKey(unknownEnumValue: ToolKind.unknown) @Default(ToolKind.unknown) ToolKind kind,
   }) = MessagePartTool;
 
   @FreezedUnionValue("subtask")
@@ -318,28 +314,6 @@ enum ToolStatus() {
   error,
   @JsonValue("cancelled")
   cancelled,
-  @JsonValue("unknown")
-  unknown,
-}
-
-/// What a tool call does, as the bridge's plugin classified it. The client
-/// never classifies a raw tool name.
-@JsonEnum()
-enum ToolKind() {
-  @JsonValue("read")
-  read,
-  @JsonValue("edit")
-  edit,
-  @JsonValue("command")
-  command,
-  @JsonValue("search")
-  search,
-
-  /// A call the plugin classified as none of the kinds above.
-  @JsonValue("other")
-  other,
-
-  /// A kind this app does not know, or none sent by an older bridge.
   @JsonValue("unknown")
   unknown,
 }

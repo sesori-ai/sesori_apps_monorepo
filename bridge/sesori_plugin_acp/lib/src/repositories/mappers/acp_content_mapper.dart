@@ -104,16 +104,6 @@ final class const AcpContentMapper() {
     return "tool";
   }
 
-  /// Classifies a [toolName]. It is the ACP tool `kind` whenever the agent sent
-  /// one; a title fallback is other.
-  PluginToolKind toolKind({required String tool}) => switch (tool) {
-    "read" => PluginToolKind.read,
-    "edit" || "delete" || "move" => PluginToolKind.edit,
-    "execute" => PluginToolKind.command,
-    "search" => PluginToolKind.search,
-    _ => PluginToolKind.other,
-  };
-
   /// The agent's display title, or null when [toolName] fell back to that same
   /// title (no `kind`): the card would otherwise read `Read file Read file`.
   String? toolTitle({required String tool, required String? title}) => title == tool ? null : title;
