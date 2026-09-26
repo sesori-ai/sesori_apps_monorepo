@@ -175,7 +175,7 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
     _cancelProgress.value = 0;
   }
 
-  void _handleVoiceState(BuildContext context, VoiceInputState state) {
+  void _handleVoiceState({required BuildContext context, required VoiceInputState state}) {
     final loc = context.loc;
     switch (state) {
       case VoiceInputTranscribing(limitReached: true):
@@ -253,7 +253,7 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
   @override
   Widget build(BuildContext context) {
     return BlocListener<VoiceInputCubit, VoiceInputState>(
-      listener: _handleVoiceState,
+      listener: (context, state) => _handleVoiceState(context: context, state: state),
       child: _buildContent(context: context),
     );
   }
@@ -434,7 +434,7 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
               children: [
                 Expanded(
                   child: FeedbackContentTransition(
-                    layoutBuilder: _leadingSlotLayout,
+                    layoutBuilder: (current, previous) => _leadingSlotLayout(current: current, previous: previous),
                     child: switch (voice) {
                       _VoicePresentation.idle => _buildCounter(context: context),
                       _VoicePresentation.recording => Row(
@@ -562,7 +562,7 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
 }
 
 /// Pins every leading-slot state to the row's start edge.
-Widget _leadingSlotLayout(Widget? current, List<Widget> previous) =>
+Widget _leadingSlotLayout({required Widget? current, required List<Widget> previous}) =>
     Stack(alignment: AlignmentDirectional.centerStart, children: [...previous, ?current]);
 
 class const _IssuePill({
