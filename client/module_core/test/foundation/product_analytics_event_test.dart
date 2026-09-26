@@ -108,6 +108,28 @@ void main() {
         "transcript_turns_folded",
         const {},
       ),
+      for (final (answer, wireValue) in [
+        (AnalyticsFeedbackAnswer.loveReviewRequested, "love_review_requested"),
+        (AnalyticsFeedbackAnswer.loveNoReview, "love_no_review"),
+        (AnalyticsFeedbackAnswer.couldBeBetter, "could_be_better"),
+        (AnalyticsFeedbackAnswer.dismissed, "dismissed"),
+      ])
+        (
+          ProductAnalyticsEvent.feedbackPromptAnswered(answer: answer, source: AnalyticsFeedbackSource.automatic),
+          "feedback_prompt_answered",
+          {"answer": wireValue, "source": "automatic"},
+        ),
+      for (final (input, wireValue) in [
+        (AnalyticsFeedbackInput.typed, "typed"),
+        (AnalyticsFeedbackInput.voiceAssisted, "voice_assisted"),
+        (AnalyticsFeedbackInput.issuesOnly, "issues_only"),
+        (AnalyticsFeedbackInput.empty, "empty"),
+      ])
+        (
+          ProductAnalyticsEvent.privateFeedbackSent(input: input, source: AnalyticsFeedbackSource.settings),
+          "private_feedback_sent",
+          {"input": wireValue, "source": "settings"},
+        ),
       (
         const ProductAnalyticsEvent.needHelpMenuOpened(surface: OnboardingSurface.connectSetup),
         "onboarding_need_help_opened",
