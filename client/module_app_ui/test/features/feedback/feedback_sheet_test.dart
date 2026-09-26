@@ -107,7 +107,7 @@ void main() {
       expect(find.byType(BottomSheet, skipOffstage: false), findsOneWidget);
 
       await tester.pumpAndSettle();
-      expect(outcomes.single, isA<FeedbackSheetOutcomeLove>().having((o) => o.leaveReview, "leaveReview", isTrue));
+      expect(outcomes.single, isA<FeedbackSheetOutcomeLoveLeaveReview>());
       expect(sheetsAtOutcome, [false]);
       expect(tester.takeException(), isNull);
     },
@@ -127,8 +127,8 @@ void main() {
     await tapAndSettle(tester: tester, finder: close);
 
     expect(outcomes, [
-      isA<FeedbackSheetOutcomeLove>().having((o) => o.leaveReview, "leaveReview", isFalse),
-      isA<FeedbackSheetOutcomeLove>().having((o) => o.leaveReview, "leaveReview", isFalse),
+      isA<FeedbackSheetOutcomeLoveNotNow>(),
+      isA<FeedbackSheetOutcomeLoveNotNow>(),
     ]);
     expect(find.byType(BottomSheet, skipOffstage: false), findsNothing);
     expect(tester.takeException(), isNull);

@@ -70,7 +70,12 @@ class const _MobileSettingsView() extends StatelessWidget {
 Future<void> _openRateSesori({required BuildContext context}) async {
   final cubit = context.read<FeedbackSheetCubit>();
   final outcome = await showFeedbackSheet(context: context, cubit: cubit);
-  if (outcome case FeedbackSheetOutcomeLove(leaveReview: true)) await cubit.requestStoreReview();
+  switch (outcome) {
+    case FeedbackSheetOutcomeLoveLeaveReview():
+      await cubit.requestStoreReview();
+    case FeedbackSheetOutcomeLoveNotNow() || FeedbackSheetOutcomeCouldBeBetter() || FeedbackSheetOutcomeDismissed():
+      break;
+  }
 }
 
 Future<AppVersionInfo?> _loadAppVersionInfo() async {

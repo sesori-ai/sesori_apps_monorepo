@@ -35,8 +35,8 @@ class FeedbackSheetCubit({required final AppReviewClient _appReviewClient}) exte
   FeedbackSheetOutcome get outcome => switch (state) {
     FeedbackSheetRating() => const FeedbackSheetOutcomeDismissed(),
     FeedbackSheetCelebrating() ||
-    FeedbackSheetReviewConfirmation() => const FeedbackSheetOutcomeLove(leaveReview: false),
-    FeedbackSheetReviewAccepted() => const FeedbackSheetOutcomeLove(leaveReview: true),
+    FeedbackSheetReviewConfirmation() => const FeedbackSheetOutcomeLoveNotNow(),
+    FeedbackSheetReviewAccepted() => const FeedbackSheetOutcomeLoveLeaveReview(),
     FeedbackSheetCouldBeBetter() => const FeedbackSheetOutcomeCouldBeBetter(),
   };
 
