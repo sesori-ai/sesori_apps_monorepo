@@ -1078,6 +1078,23 @@
   "@loginCancel": {
     "description": "Link that abandons a browser sign-in that is waiting for the user."
   },
+  "loginOtherWaysToSignIn": "Other ways to sign in",
+  "@loginOtherWaysToSignIn": {
+    "description": "Link under the email sign-in form that returns to the provider buttons."
+  },
+  "desktopLoginTagline": "Watch and steer your coding sessions from your desk or your phone.",
+  "@desktopLoginTagline": {
+    "description": "One-line pitch on the desktop sign-in window's brand panel."
+  },
+  "desktopLoginTitle": "Sign in",
+  "desktopLoginSubtitle": "Use the same account as on your phone.",
+  "desktopLoginContinueWithGithub": "Continue with GitHub",
+  "desktopLoginContinueWithApple": "Continue with Apple",
+  "desktopLoginContinueWithGoogle": "Continue with Google",
+  "desktopLoginEmailSubtitle": "For accounts created with an email and password.",
+  "@desktopLoginEmailSubtitle": {
+    "description": "Subtitle above the desktop email sign-in form."
+  },
   "sessionListRunning": "Running",
   "@sessionListRunning": {
     "description": "Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle"

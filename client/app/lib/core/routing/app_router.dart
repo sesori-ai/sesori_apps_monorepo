@@ -19,8 +19,6 @@ import "../../features/settings/profile_screen.dart";
 import "../../features/settings/settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
 import "../di/injection.dart";
-import "../widgets/sesori_background_widget.dart";
-import "../widgets/sesori_logo.dart";
 import "imperative_pane_route.dart";
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();

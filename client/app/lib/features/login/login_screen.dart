@@ -17,8 +17,6 @@ import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/legal_document_sheet.dart";
-import "../../core/widgets/sesori_background_widget.dart";
-import "../../core/widgets/sesori_logo.dart";
 import "email_login_sheet.dart";
 import "login_provider_buttons.dart";
 import "login_waiting_line.dart";

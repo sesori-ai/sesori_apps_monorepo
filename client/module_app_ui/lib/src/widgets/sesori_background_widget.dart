@@ -1,7 +1,9 @@
-import 'package:material_ui/material_ui.dart';
+import "package:material_ui/material_ui.dart";
 
-import "package:sesori_app_ui/sesori_app_ui.dart";
+import "../extensions/build_context_x.dart";
 
+/// The Sesori aurora artwork, filling its box, in the current theme and
+/// orientation.
 class const SesoriBackgroundWidget({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -16,6 +18,7 @@ class const SesoriBackgroundWidget({super.key}) extends StatelessWidget {
 
     return Image.asset(
       imageFile,
+      package: "sesori_app_ui",
       fit: .cover,
     );
   }

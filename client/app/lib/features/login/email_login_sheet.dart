@@ -41,6 +41,8 @@ Future<void> showEmailLoginSheet({
           onSignedIn: () {
             if (ModalRoute.of(sheetContext)?.isCurrent ?? false) sheetContext.pop();
           },
+          // The sheet's own close control leads back to the other options.
+          onBack: null,
         ),
       ),
     ),

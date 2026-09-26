@@ -21,6 +21,13 @@ participates.
   validates before submitting, shows a failure inline next to the fields, and
   marks no field with a required asterisk. Every shell shows the same message
   for each login failure reason.
+- The desktop offers GitHub, Apple and Google through the browser and email
+  inline, with the Terms and Privacy sentence opening in the browser. From 820
+  points wide a brand panel sits beside the sign-in column; narrower, it folds
+  away and the logo tops the column, which keeps what was typed across the
+  change and scrolls at the 560×480 minimum. Switching between the providers
+  and the email form clears a pending failure, so a provider failure never shows
+  inside the form and an email failure never outlives it.
 - Startup routing uses local session state only, with no network work at splash.
 - Tokens live in secure storage with one writer, refresh before expiry, and are
   cleared on logout; the connection follows logout. Startup reads stored tokens

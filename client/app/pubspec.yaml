@@ -78,7 +78,6 @@ dependencies:
   flutter_svg: ^2.3.0
   sign_in_with_apple: ^8.2.0
   crypto: ^3.0.7
-  vector_graphics: ^1.2.3
   image_picker: ^1.2.3
   flutter_keyboard_visibility: ^7.0.1
   flutter_web_auth_2: 5.1.0

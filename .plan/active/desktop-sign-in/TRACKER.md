@@ -17,7 +17,8 @@ step 38 for the plan PR). Evidence for a finished step lives in
 
 ## Guardrails
 
-- The Apple button ships only after the live Apple check in step 4 passes.
+- The Apple button ships only after the Apple check in step 4 passes (narrowed
+  to an init probe; the full sign-in is pending the user, see step 4).
 - No server change, loopback server, deep link or native Apple path.
 - Startup restore never brings the window forward; only signed-out →
   signed-in does.
