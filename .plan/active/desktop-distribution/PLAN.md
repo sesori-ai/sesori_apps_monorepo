@@ -4,19 +4,15 @@
 
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
-- **Status:** Active — steps 1–5 and the private portions of steps 6, 7 and 9
-  merged. The macOS signing-secret migration is complete. Main-only runs
-  `35573213361` (authenticated helper-On/Keychain) and `35575012582` (helper-Off)
-  accepted private signed `1.8.4+24 → 1.9.0+122` replacement on native x64 and arm64.
-  Read-only preparation `35575015316` also passed for build `122`; no product rebuild
-  was needed after the QA signing-partition fix. Existing shutdown-failure coverage passed
-  82 focused tests; packaged fault injection is separate. The user reports the desktop
-  checklist passing on M4 Pro/macOS 27.0 (26A428), without identifying the app build.
-  Interactive/cross-device, minimum-OS and public gates remain open. Public
-  macOS/Windows/Linux publication and step-8 winget assets remain gated. Step 10 onboarding waits for genuine shipped
-  releases. The independently executable private portion of step 11 is in progress;
-  its public-release reconciliation and final plan retirement remain blocked. Shipping
-  order remains macOS, Windows, Linux. No blocked publication step is claimed completed.
+- **Status:** Active — steps 1–5 and private Windows/Linux packaging are merged.
+  The user retired Gate C and the listed remaining macOS QA prerequisites on
+  2026-09-26, accepting their coverage gaps. MacOS publication is admitted;
+  signed/notarized **internal `1.9.1+987`** packages are publicly verified on both CPUs.
+  Website wiring and ordinary production-release follow-through remain; stable macOS
+  publication has not occurred. Stable build 981's authenticated/Off acceptance and
+  the 82-test shutdown audit retain their recorded scope, not fresh build-987 claims.
+  Windows signing/winget, Linux signed repositories, six-target onboarding and final
+  reconciliation/retirement remain open. Shipping order stays macOS, Windows, Linux.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
@@ -32,21 +28,20 @@ ships. A working CLI target or an emulated run does not prove native desktop sup
 
 This succeeds [desktop-app](../desktop-app/PLAN.md), whose step 22 explicitly named
 this work. The user requested distribution planning before that plan's retirement.
-Its tracker still lists MT Gate C, regression reconciliation, and retirement as
-pending. Do not mark them passed, retire the parent, or claim inherited evidence
-that has not been recorded. Planning and non-public packaging can proceed; the first
-public desktop gate requires the parent closeout or an explicit user-accepted change
-to that prerequisite. The parent keeps its own step numbering and ownership.
+On 2026-09-26 the user explicitly retired MT Gate C and directed continuation after
+its remaining QA was enumerated. That acceptance removes Gate C and parent closeout
+as prerequisites for macOS publication; it does not report unexecuted tests as passes
+or retire the entire parent. Regression reconciliation and parent retirement keep
+their own numbering and ownership.
 
 [Desktop UX](../../completed/desktop-ux/PLAN.md) is a parallel workstream, merged into `main`
 during this plan's review. It owns cockpit/navigation, autostart defaults, permission
 UX and app logging; distribution owns signing/Keychain identity, packaging and
 updates. Keep those responsibilities separate and integrate against its current
 startup/control surfaces before steps 3–5, rather than restoring superseded UI or
-first-run behavior. Follow the parent's updated Gate C routing: shell/navigation
-C2/C5 move to the UX step-12 checklist; the other parent sections remain applicable
-on a build after UX step 7. A merged UX plan is not passing coverage evidence.
-Its 2026-09-19 retirement accepts remaining QA gaps; it does not qualify these distribution gates.
+first-run behavior. The earlier Gate C shell/navigation routing is now optional
+regression reference, not a release prerequisite. UX retired with accepted QA gaps on
+2026-09-19; the separate Gate C/macOS QA retirement below was explicitly accepted later.
 
 ### Unattended execution direction — 2026-09-15
 
@@ -73,6 +68,20 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 | D6 | Trust, maturity, broad adoption, and simple integration outrank automation (user clarification 2026-09-15). The explicitly approved manual fallback is selected for macOS in step 5; Sparkle background preparation/install-on-quit is not part of the implementation. No custom updater, security layer, or shutdown machinery just to preserve automation. Windows uses manual signed-installer updates; Linux remains package-manager-owned. Ordinary Quit never unexpectedly reopens the app. |
 | D7 | GitHub Releases hosts downloadable installers; static GCS hosts signed Linux repositories. No new backend release service. Linux repositories also host their package payloads, rather than relying on cross-origin package-manager redirects. |
 | D8 | Selected 2026-09-25: share the bridge/mobile release cycle; retain platform gates and macOS-first delivery. |
+| D9 | 2026-09-26: retire Gate C with accepted QA gaps; admit macOS publication through the shared cycle. |
+
+### User-retired QA gate and macOS admission — 2026-09-26
+
+After being given the missing macOS 12, phone/live-harness and manual-build-attribution
+checks, the user directed **“retire this gate and continue”**. Accept those limitations;
+do not recreate the gate, ask for blanket repeated tests or claim a full fresh-build
+L3 sweep. Keep the configured macOS 12 minimum without claiming it was executed.
+
+Enable the existing `DESKTOP_MACOS_PUBLICATION_ENABLED` admission and continue
+macOS public distribution. Existing `store-production`, native signing/notarization,
+immutable asset/public-hash verification and private-evidence exclusion remain intact.
+Windows/Linux publication and their distinct trust requirements are not admitted.
+No additional credentials, scheduler, mutable owner or application state is needed.
 
 ### Proposed implementation defaults
 
@@ -428,8 +437,23 @@ state, credentials, write authority or cleanup is needed.
 `🌱 [desktop-distribution] Record shared-cycle and candidate acceptance [step 8.l/14]`.
 Record the successful shared internal cycle and read-only preparation separately from
 stable build 981's fresh authenticated/Bridge-Off replacement on both CPUs. Docs-only;
-no new state or cleanup. Public admission, production attachment, minimum-OS and
-remaining parent Gate C coverage are still open; do not retire the plan.
+no new state or cleanup. Merged as #1741, squash
+`55a6624c9b2eccd9f6b17bec5118de48de4f9522`, with 9/9 terminal checks.
+
+**Step 6 macOS admission and gate retirement:**
+`🌿 [desktop-distribution] Retire accepted QA gate and publish macOS previews [step 8.m/14]`.
+Record the user's accepted limitations, retire Gate C as a prerequisite, enable the
+existing repository admission and attach build 987 to its already-public shared
+internal release using the unchanged publisher. Verify anonymous hashes, signatures,
+stapled tickets, Gatekeeper and unchanged bridge/Latest state. PR #1761 also fixes the
+reachable partial-cycle failure: existing internal cleanup retains the newest preview
+with the publisher's completion manifest, retiring older previews only after a newer
+completion. Stable npm cleanup preserves those channel-specific previews regardless of
+stable desktop availability. Two transient shell values; no new persistent pointer,
+owner or core build dependency. Verify both cleanup shells with offline GitHub fixtures.
+No app/database change.
+Website wiring follows; stable production retains its existing approval. Do not retire
+the six-platform plan.
 
 **Step 6 continuation PR:**
 `🚧 [desktop-distribution] Qualify signed macOS manual replacement [step 8/14]`.
@@ -746,10 +770,11 @@ every desktop environment: representative selection is justified per invariant.
    without authentication. winget discovery is verified through its actual external
    manifest/install path; record an unapproved manifest as blocked, not passing.
 
-Use current native N and N+1 test builds before the first public desktop release;
-there is no obligation to migrate unpublished desktop builds. Once a public version
-ships, include it as the upgrade baseline. Same-version metadata corruption does not
-justify silently replacing immutable public artifacts.
+For unwaived platform gates, use current native N and N+1 test builds before first
+public desktop publication. Only public production releases establish compatibility
+baselines; internal previews do not impose migration promises. The macOS acceptance and explicit
+coverage reduction above remain authoritative, not a renewed Gate C prerequisite.
+Same-version metadata corruption does not justify replacing immutable public artifacts.
 
 Per-platform ship gates can release ready platforms while later ones remain blocked.
 Private qualification now covers signed/notarized macOS packages and unsigned Windows

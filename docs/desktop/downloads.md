@@ -7,10 +7,11 @@ plus `linux-package-managers`, and its contract checks fail when one is renamed 
 removed. Publishing a row means registering the verified public artifact in that
 repository's `src/lib/desktop-downloads.ts` and updating the matching section here.
 
-Desktop packages are undergoing private qualification. **No public desktop release
-is available yet.** Private CI artifacts are not supported public downloads. This
-index lists only verified public artifacts after the relevant release gate passes;
-it never substitutes a mobile/CLI release or a private artifact.
+**Internal macOS installers are public for both CPUs.** Stable macOS and Windows/Linux
+are not published yet. The first shared internal publication was `1.9.1+987`; the
+website's download wiring follows separately. Private CI artifacts are not public
+links. This index never substitutes a mobile/CLI release or private evidence for a
+desktop installer.
 
 ## Updating safely
 
@@ -31,9 +32,13 @@ release. Private unsigned per-user installers have passed isolated native packag
 fixtures, but they are not downloads and do not establish SmartScreen, interactive
 GUI/account behavior or a signed N→N+1 update.
 
-Internal is an explicit test channel, not an automatic promotion to stable. The
-sections below do not imply a release exists. Do not use GitHub's generic Latest
-release to choose a desktop installer.
+Internal is an explicit test channel, not an automatic promotion to stable.
+Internal build 987 uses the older per-value native storage format. Before replacing
+that build with a shared-store preview, sign out in the old app, Quit, install the
+new package, then sign in again. Internal format changes do not carry a production
+migration promise; old-format replacement proof does not qualify the new format.
+The sections below do not imply every platform/channel has a release. Do not use
+GitHub's generic Latest release to choose a desktop installer.
 
 ## Stable macOS x64
 
@@ -45,11 +50,26 @@ No public download is available.
 
 ## Internal macOS x64
 
-No public download is available.
+Available in the newest internal [shared release][shared-releases] with a desktop completion manifest:
+`Sesori-macos-x64.dmg` or `Sesori-macos-x64.zip`. Verify against its
+`desktop-checksums.txt` and `desktop-release.json`, not bridge `checksums.txt`.
 
 ## Internal macOS arm64
 
-No public download is available.
+Available in the newest internal [shared release][shared-releases] with a desktop completion manifest:
+`Sesori-macos-arm64.dmg` or `Sesori-macos-arm64.zip`. Verify against its
+`desktop-checksums.txt` and `desktop-release.json`, not bridge `checksums.txt`.
+
+Desktop previews advance only when `desktop-release.json` completes publication.
+The shared cycle retains the newest desktop-completed internal release while newer
+core-only releases build or desktop fails. Older completed previews can roll away
+after a newer one is available. The website must select that newest completed desktop
+preview, not merely the newest core release. Stable bridge/npm publication preserves
+completed internal previews too; it does not replace their channel with stable.
+Do not pin a permanent website link to the first internal tag or use Latest stable
+as a substitute.
+
+[shared-releases]: https://github.com/sesori-ai/sesori_apps_monorepo/releases
 
 ## Stable Windows x64
 

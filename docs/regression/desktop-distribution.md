@@ -32,9 +32,10 @@ master item. Replacement must preserve both; file sentinels alone do not prove
 that secrets decrypt or local auth restores. Plaintext preference operations must
 not acquire native authorization. See [client persistence](client-persistence.md).
 
-Desktop remains unpublished. An old per-value-native build requires explicit
-sign-out before replacement and one new sign-in, not a migration/compatibility
-promise. New-format N→N+1 preservation needs two shared-store builds.
+No production desktop release exists yet. Published internal build 987 predates this
+cutover. An old per-value-native build requires explicit sign-out before replacement
+and one new sign-in, not a migration/compatibility promise for internal previews.
+New-format N→N+1 preservation needs two shared-store builds.
 
 ## Private Windows installer qualification
 
@@ -108,10 +109,17 @@ the nested upgrade jobs' PR-provenance permission even when those jobs are skipp
 A missing scope rejects the entire caller before its release gate can execute.
 
 Desktop attachment follows the existing shared release finalizer; production already
-passed `store-production`. Desktop failure does not change bridge/mobile finalization.
-`DESKTOP_MACOS_PUBLICATION_ENABLED` is default-off until the owner accepts platform
-ship gates. While disabled, internal desktop outputs stay in Actions artifacts. This
-implementation does not enable publication or expose Windows/Linux downloads.
+passed `store-production`. Desktop failure does not change bridge/mobile success conditions.
+Internal rollover retains the newest public prerelease with `desktop-release.json`
+alongside the current core release; older completed previews retire only once a newer
+completion exists. A failed desktop build or attachment therefore preserves the last
+downloadable preview without holding back core releases. The marker reuses the publisher's
+existing last-uploaded completion signal, not a second pointer or release owner.
+Stable bridge/npm cleanup skips completed desktop previews even when stable desktop
+assets exist: an internal channel must not be forced onto stable. This also preserves
+previews during bridge-only production or pending/failed stable desktop attachment.
+`DESKTOP_MACOS_PUBLICATION_ENABLED` defaults off; the user admitted macOS on 2026-09-26
+and it is now `true`. Windows/Linux remain unadmitted.
 
 Admitted publication attaches four installers, `desktop-checksums.txt` and
 `desktop-release.json` to existing product tags. It never creates/promotes a release,
@@ -241,18 +249,27 @@ Private package mechanics are qualified for both native CPUs on all three deskto
 platforms: signed/notarized/stapled DMGs and ZIPs containing the signed/notarized/stapled
 app on macOS (the ZIP itself is not signed or stapled), unsigned per-user EXE
 construction and isolated fixtures on Windows, and unsigned DEB/RPM construction plus
-six native package-manager fixtures on Linux. This is repository-shipped preparation,
-not public release support. Exact accepted sources, runs, hashes and proof limits stay
-in the active distribution plan's [macOS](../../.plan/active/desktop-distribution/steps/step-04.md),
+six native package-manager fixtures on Linux. macOS internal installers are now public;
+stable macOS and Windows/Linux public availability are not implied.
+Exact accepted sources, runs, hashes and proof limits stay
+in the active distribution plan's [macOS](../../.plan/active/desktop-distribution/steps/step-06.md),
 [Windows](../../.plan/active/desktop-distribution/steps/step-07.md), and
 [Linux](../../.plan/active/desktop-distribution/steps/step-09.md) evidence.
 
-Still unproved: public retrieval and trust, interactive account login/browser/TCC,
-declared minimum OS, the remaining GUI/keyring/tray/login scenarios, failed-stop macOS
-replacement, signed Windows N→N+1 manual replacement, and signed-repository Linux N→N+1
-updates. The passing private On/Off replacement probes, silent fixtures or same-version
-reinstalls cannot close those gates. Shared-store native roundtrip, cold reopen,
-replacement and authorization remain unproved by pre-cutover package evidence.
+On 2026-09-26 the user retired the remaining macOS/parent Gate C QA requirements with
+coverage gaps accepted. Minimum-OS execution, remaining phone/live-harness scenarios
+and candidate-specific manual attribution are not newly passing evidence and do not
+block macOS publication. Existing shutdown tests are not native fault injection.
+
+Internal `1.9.1+987` installers were published from a successful shared producer. All
+four payloads, desktop checksums and the last-uploaded manifest passed anonymous public
+hash verification. Both CPUs' apps/DMGs passed independent Developer ID, stapled-ticket
+and Gatekeeper checks without local app execution. Bridge assets and Latest stable
+were unchanged. Website wiring and stable production attachment remain separate.
+Windows signed N→N+1 and Linux signed-repository N→N+1 requirements remain open.
+Shared-store native roundtrip, cold reopen, replacement and authorization remain
+unproved by pre-cutover package evidence; the retired gate does not relabel that
+historical evidence as shared-store qualification.
 
 ## Coverage
 
@@ -260,6 +277,11 @@ replacement and authorization remain unproved by pre-cutover package evidence.
   widget tests exercise external-link dispatch without claiming release availability.
 - **L2:** Offline preparation fixtures cover both CPUs, channel/source mismatches,
   altered payload/evidence, missing packages, deterministic output and no overwrite.
+  The actual internal-rollover shell runs with a fake GitHub boundary to verify repeated
+  desktop failures retain the last completed preview, newer completion retires older
+  previews, pre-desktop cleanup stays intact and current-release retries remain valid.
+  The npm-cleanup shell separately preserves desktop previews with or without stable
+  desktop assets while still deleting same-version core-only internal releases.
   Windows fixtures cover identity/CPU refusal, complete native inventory, pinned
   compiler arguments, bounded installer directives and no-overwrite diagnostics.
   Linux fixtures cover identity/CPU refusal, payload layout and symlink preservation,
@@ -279,7 +301,8 @@ replacement and authorization remain unproved by pre-cutover package evidence.
   plan, downloaded artifacts, trust checks and public links.
 
 L1/L2 do not establish installation, native trust, real-account restoration, minimum
-OS or publication. Public downloads remain gated; a merged index is not a release.
+OS or publication. Published internal macOS assets have their own recorded trust proof;
+unshipped platforms/channels remain unavailable. A merged index alone is not a release.
 See [packaging](desktop-macos-packaging.md), [supervision](desktop-bridge-supervision.md)
 and [download instructions](../desktop/downloads.md).
 
