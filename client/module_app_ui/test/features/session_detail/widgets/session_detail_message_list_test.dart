@@ -1842,7 +1842,7 @@ void main() {
     );
     await tester.pump();
 
-    harnessKey.currentState!.setTranscriptFolded(folded: true);
+    harnessKey.currentState?.setTranscriptFolded(folded: true);
     await _pumpListUpdate(tester);
 
     // Oldest first: the leading segment's stub, then each prompt and its stub.
@@ -1867,7 +1867,7 @@ void main() {
     expect(tester.getTopLeft(find.byType(RetryErrorMessageCard)).dy, greaterThanOrEqualTo(lastStubBottom));
     expect(tester.getTopLeft(find.text("Queued behind the turn")).dy, greaterThan(lastStubBottom));
 
-    harnessKey.currentState!.setTranscriptFolded(folded: false);
+    harnessKey.currentState?.setTranscriptFolded(folded: false);
     await _pumpListUpdate(tester);
 
     for (final shown in ["setup", "u1", "a1", "session-detail-prompt-p2", "a2"]) {
@@ -1897,7 +1897,7 @@ void main() {
         .where((state) => state.contains("tracking 1 ticker"));
 
     for (final folded in [true, false]) {
-      harnessKey.currentState!.setTranscriptFolded(folded: folded);
+      harnessKey.currentState?.setTranscriptFolded(folded: folded);
       await tester.pump();
       expect(moving(), isEmpty);
       expect(_messageKey("session-detail-turn-u1"), folded ? findsOneWidget : findsNothing);
