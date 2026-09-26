@@ -99,6 +99,11 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// `BridgeSettingsService`. See [SessionDetailLoadedX.approvalControl].
     @Default(YoloSettingsResponse(enabled: false)) YoloSettingsResponse bridgeYolo,
 
+    /// Whether the bridge reports the main agent mid-turn, as last known by
+    /// `SseEventTracker`. Its root status alone cannot tell, since some
+    /// harnesses hold it busy while only sub-agents work.
+    @Default(false) bool mainAgentRunning,
+
     /// Whether a change to the session's approval mode awaits the bridge.
     @Default(false) bool isUpdatingApproval,
   }) = SessionDetailLoaded;

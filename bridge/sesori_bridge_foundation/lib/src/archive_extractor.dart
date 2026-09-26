@@ -8,8 +8,8 @@ import "command_executor.dart";
 
 /// The on-disk container format of a runtime archive. Selected explicitly by the
 /// caller rather than inferred from the host OS, because publishers ship
-/// different formats per platform (e.g. OpenCode ships `.zip` on macOS but
-/// `.tar.gz` on Linux).
+/// different formats per platform, while npm-distributed binaries can use
+/// `.tgz` on every platform.
 enum ArchiveFormat() {
   tarGz,
   zip,

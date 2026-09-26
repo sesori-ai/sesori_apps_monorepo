@@ -1,5 +1,5 @@
 {
-  "_comment": "Minimum supported OpenCode tag: v2.0.11; models target v2.0.16. This allowlist is the v2 API surface used by the Sesori bridge. Most v2 success responses wrap their payload inline as {data} or {location, data}, so the wrapped payload types are listed in extraSchemas; the v2 Api unwraps them. Request bodies are mostly inline objects and are hand-written like v1's. The v2 event union is opaque in the spec, so events come from tool/opencode_events_v2.json alone and eventManifest is omitted.",
+  "_comment": "Minimum supported OpenCode tag: v2.0.11; models target v2.0.18. This allowlist is the v2 API surface used by the Sesori bridge. Most v2 success responses wrap their payload inline as {data} or {location, data}, so the wrapped payload types are listed in extraSchemas; the v2 Api unwraps them. Request bodies are mostly inline objects and are hand-written like v1's. The v2 event union is opaque in the spec, so events come from tool/opencode_events_v2.json alone and eventManifest is omitted.",
   "specPath": "packages/protocol/openapi.json",
   "hoistSchemas": {
     "Session.Message.Assistant.Content": "Session.Message.Assistant#/properties/content/items",

@@ -111,6 +111,29 @@ enum AnalyticsChangeState({required final String wireValue}) {
   nonEmpty(wireValue: "non_empty");
 }
 
+enum AnalyticsFeedbackSource({required final String wireValue}) {
+  automatic(wireValue: "automatic"),
+  settings(wireValue: "settings");
+}
+
+/// How one rating sheet ended. Both love values are a positive answer; they
+/// differ in whether a store review was requested afterwards.
+enum AnalyticsFeedbackAnswer({required final String wireValue}) {
+  loveReviewRequested(wireValue: "love_review_requested"),
+  loveNoReview(wireValue: "love_no_review"),
+  couldBeBetter(wireValue: "could_be_better"),
+  dismissed(wireValue: "dismissed");
+}
+
+/// What private feedback carried: a message, typed or with a dictated
+/// transcript inserted, else only ticked issues, else nothing.
+enum AnalyticsFeedbackInput({required final String wireValue}) {
+  typed(wireValue: "typed"),
+  voiceAssisted(wireValue: "voice_assisted"),
+  issuesOnly(wireValue: "issues_only"),
+  empty(wireValue: "empty");
+}
+
 @immutable
 sealed class const ProductAnalyticsEvent() {
   const factory analyticsSchemaReady() = AnalyticsSchemaReadyEvent;
@@ -146,6 +169,14 @@ sealed class const ProductAnalyticsEvent() {
     required AnalyticsChangeState changeState,
   }) = SessionDiffViewedEvent;
   const factory transcriptTurnsFolded() = TranscriptTurnsFoldedEvent;
+  const factory feedbackPromptAnswered({
+    required AnalyticsFeedbackAnswer answer,
+    required AnalyticsFeedbackSource source,
+  }) = FeedbackPromptAnsweredEvent;
+  const factory privateFeedbackSent({
+    required AnalyticsFeedbackInput input,
+    required AnalyticsFeedbackSource source,
+  }) = PrivateFeedbackSentEvent;
   const factory needHelpMenuOpened({required OnboardingSurface surface}) = NeedHelpMenuOpenedEvent;
   const factory supportLinkOpened({
     required SupportChannel channel,
@@ -335,6 +366,32 @@ final class const TranscriptTurnsFoldedEvent() extends ProductAnalyticsEvent {
 
   @override
   Map<String, String> get parameters => const {};
+}
+
+/// A rating sheet closed: reported once per presentation, after its route has
+/// closed, with the answer it ended with.
+final class const FeedbackPromptAnsweredEvent({
+  required final AnalyticsFeedbackAnswer answer,
+  required final AnalyticsFeedbackSource source,
+}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "feedback_prompt_answered";
+
+  @override
+  Map<String, String> get parameters => {"answer": answer.wireValue, "source": source.wireValue};
+}
+
+/// The auth server accepted private feedback. Its text and issues stay off
+/// the wire.
+final class const PrivateFeedbackSentEvent({
+  required final AnalyticsFeedbackInput input,
+  required final AnalyticsFeedbackSource source,
+}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "private_feedback_sent";
+
+  @override
+  Map<String, String> get parameters => {"input": input.wireValue, "source": source.wireValue};
 }
 
 final class const NeedHelpMenuOpenedEvent({required final OnboardingSurface surface}) extends ProductAnalyticsEvent {

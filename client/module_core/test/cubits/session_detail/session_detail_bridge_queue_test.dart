@@ -130,9 +130,11 @@ void main() {
     late StreamController<SseEvent> globalEvents;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
     late List<MessageWithParts> reloadSnapshotMessages;
+    late FakeFeedbackPromptService feedbackPromptService;
 
     setUp(() {
       reloadSnapshotMessages = const <MessageWithParts>[];
+      feedbackPromptService = FakeFeedbackPromptService();
       mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
       sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
@@ -238,11 +240,13 @@ void main() {
         lifecycleSource: FakeLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: stubbedProductAnalyticsService(),
+        feedbackPromptService: feedbackPromptService,
         sessionId: _sessionId,
         projectId: "project-1",
         notificationCanceller: MockNotificationCanceller(),
         failureReporter: MockFailureReporter(),
         bridgeSettingsService: stubbedBridgeSettingsService(),
+        sseEventTracker: MockSseEventTracker(),
       );
       addTearDown(cubit.close);
       await cubit.stream.firstWhere((state) => state is SessionDetailLoaded);
@@ -885,6 +889,8 @@ void main() {
         notices,
         [const SessionDetailPromptOptionsUpdated(), const SessionDetailPromptOptionsRecoveryFailed()],
       );
+      // Only the final give-up counts as a failed send for the rating prompt.
+      expect(feedbackPromptService.failures, 1);
     });
 
     test("does not restart stale-options recovery after forced refresh fails", () async {

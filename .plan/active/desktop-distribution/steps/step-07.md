@@ -1,8 +1,8 @@
 # Step 7 — Private Windows installer qualification
 
-Ordinal 9/14. Step 6 preparation merged in #1511, but macOS/public publication
-remains blocked. This step can develop unsigned private Windows installers without
-shipping either platform. No Windows signing access has been established.
+Ordinal 9/14. Private Windows qualification is merged; its signing/public gate remains
+open. macOS internal publication and website downloads are now live through step 6.
+That admission does not authorize Windows publication or establish Windows signing access.
 
 ## Concrete implementation plan
 
@@ -67,7 +67,8 @@ implementation review. No local Flutter/bridge process may be launched or stoppe
 Update `docs/regression/desktop-distribution.md` with actual supported behavior.
 
 Signing, timestamp/publisher verification, SmartScreen observation, actual-account
-restoration, interactive ARM64 QA and the prior macOS ship gate remain blocked.
+restoration and interactive ARM64 QA remain blocked. macOS admission does not waive
+these independent Windows requirements.
 Do not label private unsigned EXEs as signed installers or publish download links.
 
 ## Local implementation checkpoint

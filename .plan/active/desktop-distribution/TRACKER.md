@@ -14,7 +14,7 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 4.a | 5 | Package and notarize native macOS builds | done |
 | 4.b | 6 | Keep desktop startup independent of native notifications | done |
 | 5 | 7 | Offer manual macOS updates through official downloads | done |
-| 6 | 8 | macOS internal packages public; website and production follow-through | in-progress |
+| 6 | 8 | macOS internal packages and website live; stable production pending | in-progress |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
 | 9 | 11 | Private native DEB/RPM packages merged; signing/publication gated | blocked |
@@ -26,7 +26,7 @@ Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
 Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
 remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 
-## Current continuation — macOS admission (2026-09-26)
+## Current continuation — live macOS downloads (2026-09-26)
 
 The user directed **“retire this gate and continue”** after the missing QA was
 itemized. Gate C, macOS 12 execution, remaining phone/live-harness checks and unknown
@@ -43,13 +43,35 @@ bridge assets and unchanged Latest stable release were verified. No stable promo
 new store upload, private-evidence publication, installation or app launch occurred.
 
 Continuation `🌿 [desktop-distribution] Retire accepted QA gate and publish macOS previews [step 8.m/14]`
-is open as #1761. It records this decision/evidence and fixes the review-identified
-rollover loss: retain the newest desktop-completed internal preview while core releases
-advance, without new state owners or blocking core success. Stable npm cleanup also
-preserves completed previews, leaving their retirement to internal rollover. Five
-real-shell regressions and all 17 publisher/workflow tests pass; native failure injection is not
-claimed. The website still needs its internal macOS links; stable production attachment
-remains subject to existing `store-production` approval.
+merged as #1761, squash `d72c9ae976a690569593eb925340d8d1e21c7d2b`. It fixes the
+review-identified rollover loss: retain the newest desktop-completed internal preview
+while core releases advance, without new state owners or blocking core success. Stable
+npm cleanup also preserves completed previews, leaving retirement to internal rollover.
+Five real-shell regressions and all 17 publisher/workflow tests passed; native failure
+injection is not claimed. Its terminal CI finished 22/22.
+
+Ordinary shared run `36230719108` succeeded on main source
+`67bcc32ed3cdbdb00295c6572cd208cc78df6c68`, publishing `1.9.1+991` with automatic
+macOS attachment after mobile, six bridge targets and both native desktop packages.
+This is the admitted shared path, not a scheduler no-op or another local bootstrap.
+No store release was dispatched merely to obtain this evidence.
+
+Website continuation `8.n/14` merged as
+[landingpage#111](https://github.com/sesori-ai/landingpage/pull/111), squash
+`d3ab0da1ac001c86e83089daf9a3937fc3c9ef6e`. All 22 local tests, lint and SSR contracts
+passed; the merged-main Site contracts CI also passed. The existing base-branch
+push/merge automatically deploys the website, normally within 1–3 minutes.
+At `2026-09-26T11:59:40Z`, the production page selected internal `1.9.1+993` on both
+CPUs. Anonymous DMG HEADs returned 200 with matching sizes; displayed/index digests
+matched public checksums/manifest. All nine anchors, preview navigation, stable schema
+separation and mobile width passed browser checks with zero exceptions. This is live
+website/link verification, not new package hashing, native execution or auth acceptance.
+
+Continuation `🌱 [desktop-distribution] Record live macOS downloads and automatic publication [step 8.o/14]`
+reconciles these results in this repository. Details live in
+[step 6](steps/step-06.md#automatic-publication-and-deployed-website-2026-09-26).
+Stable production attachment remains subject to existing `store-production` approval;
+Windows/Linux signing/publication and parent closeout are still separate.
 
 ## Shared release-cycle history (2026-09-25)
 
@@ -108,7 +130,8 @@ Evidence reconciliation:
   user checks or relabel automated fixtures as physical-device acceptance.
 - At this historical checkpoint publication was not admitted. On 2026-09-26 the user
   accepted the listed QA limitations and public internal macOS publication proceeded
-  as recorded above; website wiring and ordinary stable production still follow.
+  as recorded above. Website deployment is now verified; ordinary stable production
+  remains pending.
 
 ## Merged implementation history
 
@@ -449,10 +472,10 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Gate | State | Evidence still required |
 |---|---|---|
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
-| macOS update | On/Off to build 122 accepted on both CPUs | Failed-stop, interactive, minimum-OS and public gates. |
+| macOS update | On/Off to stable build 981 accepted on both CPUs; 82 shutdown tests passed | Evidence predates shared-store cutover; accepted QA gaps remain limitations, not renewed prerequisites. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
-| Signing and static hosting | Migration complete | Public hosting gates pending. |
-| macOS public gate | Pending | See checkpoint above. |
+| Signing and static hosting | macOS signing migration and internal GitHub hosting complete | Windows signing and Linux signed hosting remain pending. |
+| macOS public gate | Admitted; internal assets and deployed website verified | Ordinary stable submission retains `store-production`; no reopening of retired QA. |
 | Windows public gate | Pending; ARM64 interactive host unavailable | Both CPUs, per-user install/remove, actual signed manual N→N+1 upgrade, safe Quit, signing/SmartScreen observation and winget external path. Native CI build success alone does not close this gate. |
 | Linux public gate | Pending; private mechanics passed on both CPUs | Public and interactive checks below. |
 | Retirement | Blocked | Steps 10/11 closeout and the complete recorded matrix remain required. |

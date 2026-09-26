@@ -128,8 +128,15 @@ void main() {
       spawnChild(root: sessionId, childId: "c1");
       spawnChild(root: sessionId, childId: "c2");
 
+      await pump();
+      final invalidationsBeforeTurnEnd = emitted.whereType<BridgeSseProjectUpdated>().length;
       await respond("session/prompt", {"stopReason": "end_turn"});
       expect(rootIdles(sessionId), isEmpty, reason: "children still run");
+      expect(
+        emitted.whereType<BridgeSseProjectUpdated>().length,
+        greaterThan(invalidationsBeforeTurnEnd),
+        reason: "the summary's main agent stopped running",
+      );
       expect(await plugin.getSessionStatuses(), {
         sessionId: const PluginSessionStatus.busy(),
         "c1": const PluginSessionStatus.busy(),

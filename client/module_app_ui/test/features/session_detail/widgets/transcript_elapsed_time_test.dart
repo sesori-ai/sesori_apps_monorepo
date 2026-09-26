@@ -133,4 +133,57 @@ void main() {
       await tester.pumpWidget(_harness(child: const SizedBox()));
     });
   });
+
+  group("TranscriptSubAgentsRow", () {
+    _clockTestWidgets("leads with a spinner and reads two lines, the time once to screen readers", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        _harness(
+          child: TranscriptSubAgentsRow(count: 2, sinceMs: _nowMs(tester: tester) - 185000),
+        ),
+      );
+      expect(find.byType(PregoActivityIndicator), findsOneWidget);
+      expect(find.byType(PregoAiLoader), findsNothing);
+      expect(find.byType(PregoShimmer), findsNothing);
+      expect(find.text("2 sub-agents running in the background · "), findsOneWidget);
+      expect(find.text("3m 05s"), findsOneWidget);
+      expect(find.text("You can keep chatting meanwhile."), findsOneWidget);
+      expect(
+        find.bySemanticsLabel("2 sub-agents running in the background · 3m 05s\nYou can keep chatting meanwhile."),
+        findsOneWidget,
+      );
+
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text("3m 06s"), findsOneWidget);
+
+      await tester.pumpWidget(_harness(child: const SizedBox()));
+      semantics.dispose();
+    });
+
+    _clockTestWidgets("shows no time when no start is known, at the same height", (tester) async {
+      await tester.pumpWidget(
+        _harness(
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: TranscriptSubAgentsRow(count: 1, sinceMs: _nowMs(tester: tester) - 5000),
+          ),
+        ),
+      );
+      final timedHeight = tester.getSize(find.byType(TranscriptSubAgentsRow)).height;
+
+      await tester.pumpWidget(
+        _harness(
+          child: const Align(
+            alignment: Alignment.topLeft,
+            child: TranscriptSubAgentsRow(count: 1, sinceMs: null),
+          ),
+        ),
+      );
+      expect(find.text("1 sub-agent running in the background"), findsOneWidget);
+      expect(find.byType(TranscriptElapsedTime), findsNothing);
+      expect(tester.getSize(find.byType(TranscriptSubAgentsRow)).height, timedHeight);
+
+      await tester.pumpWidget(_harness(child: const SizedBox()));
+    });
+  });
 }

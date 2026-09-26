@@ -166,6 +166,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Desktop macOS packaging](desktop-macos-packaging.md)
 - [Desktop distribution and manual updates](desktop-distribution.md)
 - [Diffs and source control](diffs-and-source-control.md)
+- [Feedback flow](feedback-flow.md)
 - [Glass presentation](glass-presentation.md)
 - [Native activity indicators](native-activity-indicators.md)
 - [Navigation transitions](navigation-transitions.md)

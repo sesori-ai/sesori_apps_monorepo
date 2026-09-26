@@ -15,6 +15,7 @@ import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/bridge_settings_service.dart";
 import "../services/catalog_rescan_service.dart";
+import "../services/feedback_prompt_service.dart";
 import "../services/new_session_options_service.dart";
 import "../services/new_session_plugin_service.dart";
 import "../services/new_session_selection_tracker.dart";
@@ -61,11 +62,13 @@ SessionDetailCubit createSessionDetailCubit({
     lifecycleSource: locator<LifecycleSource>(),
     composerDraftRepository: locator<ComposerDraftRepository>(),
     productAnalyticsService: locator<ProductAnalyticsService>(),
+    feedbackPromptService: locator<FeedbackPromptService>(),
     sessionId: sessionId,
     projectId: projectId,
     notificationCanceller: locator<NotificationCanceller>(),
     failureReporter: locator<FailureReporter>(),
     bridgeSettingsService: locator<BridgeSettingsService>(),
+    sseEventTracker: locator<SseEventTracker>(),
   );
 }
 
@@ -101,6 +104,7 @@ NewSessionCubit createNewSessionCubit({required GetIt locator, required String p
     selectionTracker: locator<NewSessionSelectionTracker>(),
     composerDraftRepository: locator<ComposerDraftRepository>(),
     productAnalyticsService: locator<ProductAnalyticsService>(),
+    feedbackPromptService: locator<FeedbackPromptService>(),
     projectId: projectId,
   );
 }

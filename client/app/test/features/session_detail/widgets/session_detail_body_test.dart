@@ -54,7 +54,6 @@ Widget _buildApp({
   bool startAtPreviousScreen = false,
   VoidCallback? onOpenHarnessSettings,
   VoidCallback? onOpenBridgeSettings,
-  VoidCallback? onClose,
   SessionDetailMenuEntriesBuilder? menuEntriesBuilder,
   DiffSummaryState diffSummary = const DiffSummaryState.unknown(),
   bool readOnly = false,
@@ -89,7 +88,6 @@ Widget _buildApp({
             openExternalLink: ({required url, required mode}) async => false,
             openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
             child: SessionDetailBody(
-              onClose: onClose,
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Session",
@@ -302,16 +300,15 @@ void main() {
     const SessionDetailState.loading(),
     const SessionDetailState.failed(reason: RemoteFailureReason.unknown),
   ]) {
-    testWidgets("audit Back and Close remain available in $auditState", (tester) async {
+    testWidgets("an audit page keeps Back as its only way out in $auditState", (tester) async {
       when(() => cubit.state).thenReturn(auditState);
       whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: auditState);
-      var closed = false;
-      await tester.pumpWidget(_buildApp(cubit: cubit, onClose: () => closed = true));
+      await tester.pumpWidget(_buildApp(cubit: cubit));
       await tester.pump();
       expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
-      expect(find.bySemanticsLabel("Close archived sessions"), findsOneWidget);
-      await tester.tap(find.bySemanticsLabel("Close archived sessions"));
-      expect(closed, isTrue);
+      // Back reaches the archived list, whose own bar closes the flow.
+      expect(find.bySemanticsLabel("Close archived sessions"), findsNothing);
+      expect(find.byIcon(TablerRegular.x), findsNothing);
     });
   }
 
@@ -988,25 +985,70 @@ void main() {
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 
-  testWidgets("diff button carries the session's line totals, leaving out a zero side", (tester) async {
+  testWidgets("the bar carries only fold and the menu, and the menu holds Changes", (tester) async {
+    when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // Nothing else may share the row with the centred title: back, fold, menu.
+    final barButtons = find.descendant(
+      of: find.byType(PregoTopNavigation),
+      matching: find.byType(PregoButtonsIconGlass),
+    );
+    expect(barButtons, findsNWidgets(3));
+    expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
+    expect(find.byIcon(TablerRegular.fold), findsOneWidget);
+    expect(find.byKey(const Key("session-detail-more")), findsOneWidget);
+    expect(find.byIcon(TablerRegular.git_compare), findsNothing);
+    expect(find.byIcon(TablerRegular.x), findsNothing);
+    expect(find.byType(PregoActivityIndicator), findsNothing);
+
+    await tester.tap(find.byKey(const Key("session-detail-more")));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("session-detail-changes")), findsOneWidget);
+    expect(find.text("Changes"), findsOneWidget);
+  });
+
+  testWidgets("a working session puts no spinner in the bar", (tester) async {
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      sessionStatus: const SessionStatus.busy(),
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+
+    expect(
+      find.descendant(of: find.byType(PregoTopNavigation), matching: find.byType(PregoActivityIndicator)),
+      findsNothing,
+    );
+  });
+
+  testWidgets("the Changes menu row carries the session's line totals, leaving out a zero side", (tester) async {
     when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
     await tester.pumpWidget(
       _buildApp(cubit: cubit, diffSummary: const DiffSummaryState.counts(additions: 12, deletions: 0)),
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("session-detail-more")));
     await tester.pumpAndSettle();
 
     expect(find.text("+12"), findsOneWidget);
     expect(find.textContaining("−"), findsNothing);
   });
 
-  testWidgets("diff button navigates to diffs with the typed route", (tester) async {
+  testWidgets("the Changes menu row navigates to diffs with the typed route", (tester) async {
     final notices = StreamController<SessionDetailNotice>.broadcast();
     addTearDown(notices.close);
     when(() => cubit.noticeStream).thenAnswer((_) => notices.stream);
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(TablerRegular.git_compare));
+    await tester.tap(find.byKey(const Key("session-detail-more")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("session-detail-changes")));
     await tester.pumpAndSettle();
 
     expect(find.text("Diffs"), findsOneWidget);
@@ -1042,7 +1084,7 @@ void main() {
     verify(() => cubit.setTranscriptFolded(folded: false)).called(1);
   });
 
-  testWidgets("hides the diff button for archived sessions", (tester) async {
+  testWidgets("offers no Changes entry for archived sessions", (tester) async {
     final state = _loadedState(
       pendingQuestions: const [],
       pendingPermissions: const [],
@@ -1052,6 +1094,8 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
+    // An archived page has nothing to offer, so it grows no menu to hold it.
+    expect(find.byKey(const Key("session-detail-more")), findsNothing);
     expect(find.byIcon(TablerRegular.git_compare), findsNothing);
   });
 
@@ -1168,7 +1212,9 @@ void main() {
         await tester.tap(find.byKey(const Key("session-detail-more")));
         await tester.pumpAndSettle();
         final menu = tester.widget<PregoAnchorMenu>(find.byType(PregoAnchorMenu).first);
-        final entry = menu.entriesBuilder().whereType<PregoMenuItem>().single;
+        final entry = menu.entriesBuilder().whereType<PregoMenuItem>().singleWhere(
+          (item) => item.key == const Key("session-auto-continuation-toggle"),
+        );
         expect(entry.isEnabled, enabled);
         await tester.pumpWidget(const SizedBox.shrink());
       }
@@ -2483,7 +2529,7 @@ void main() {
     expect(feedback, ["HapticFeedbackType.lightImpact"]);
     await tester.pump(const Duration(milliseconds: 250));
 
-    final cancelCenter = tester.getCenter(find.byType(VoiceCancelButton));
+    final cancelCenter = tester.getCenter(find.byType(PregoVoiceCancelButton));
     await gesture.moveTo(cancelCenter);
     expect(feedback, ["HapticFeedbackType.lightImpact", "HapticFeedbackType.selectionClick"]);
 
@@ -2548,7 +2594,7 @@ void main() {
     final holdCenter = tester.getCenter(find.text("Hold to talk"));
     final gesture = await tester.startGesture(holdCenter);
     await tester.pump(const Duration(milliseconds: 250));
-    await gesture.moveTo(tester.getCenter(find.byType(VoiceCancelButton)));
+    await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceCancelButton)));
     await gesture.moveTo(holdCenter);
     await gesture.up();
     await tester.pump();
@@ -2636,7 +2682,7 @@ void main() {
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump();
 
-    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
     expect(find.byType(PregoVoiceWaveform), findsOneWidget);
     expect(find.text("Release to transcribe"), findsOneWidget);
     expect(find.byIcon(TablerRegular.keyboard), findsNothing);
@@ -2650,14 +2696,14 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 110));
     final recordingFades = tester.widgetList<FadeTransition>(
-      find.ancestor(of: find.byType(VoiceCancelButton), matching: find.byType(FadeTransition)),
+      find.ancestor(of: find.byType(PregoVoiceCancelButton), matching: find.byType(FadeTransition)),
     );
     expect(
       recordingFades.any((transition) => transition.opacity.value > 0 && transition.opacity.value < 1),
       isTrue,
     );
 
-    await tester.tap(find.byType(VoiceCancelButton));
+    await tester.tap(find.byType(PregoVoiceCancelButton));
     await tester.pump();
     verifyNever(() => voiceTranscriptionService.cancel(session: voiceSession));
 
@@ -2901,13 +2947,13 @@ void main() {
     // The eager morph runs while native startup is pending.
     final first = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump();
-    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
 
     // A later platform/filesystem failure reverts the optimistic presentation,
     // surfaces the error, and releases the startup guard.
     firstStartCompleter.completeError(StateError("recorder unavailable"));
     await tester.pumpAndSettle();
-    expect(find.byType(VoiceCancelButton), findsNothing);
+    expect(find.byType(PregoVoiceCancelButton), findsNothing);
     expect(find.text("Hold to talk"), findsOneWidget);
     expect(find.text("Recording failed. Please try again."), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -3030,10 +3076,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(tester.getSize(find.byType(PromptInput)).height, closeTo(restingComposerHeight, 0.01));
-    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
     // The cancel target must keep the full 44pt footprint (a CustomPaint with
     // a child would otherwise shrink to its icon).
-    expect(tester.getSize(find.byType(VoiceCancelButton)), const Size(44, 44));
+    expect(tester.getSize(find.byType(PregoVoiceCancelButton)), const Size(44, 44));
     expect(find.byType(PregoVoiceWaveform), findsOneWidget);
     expect(find.text("Release to transcribe"), findsOneWidget);
     // The keyboard button leaves the pill while the waveform needs its width.
@@ -3059,7 +3105,7 @@ void main() {
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
 
-    await gesture.moveTo(tester.getCenter(find.byType(VoiceCancelButton)));
+    await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceCancelButton)));
     await tester.pump();
     expect(find.text("Release to cancel"), findsOneWidget);
 
@@ -3118,7 +3164,7 @@ void main() {
     // Record, then discard by releasing on the cancel target.
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
-    await gesture.moveTo(tester.getCenter(find.byType(VoiceCancelButton)));
+    await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceCancelButton)));
     await tester.pump();
     await gesture.up();
     await tester.pump();
@@ -3210,7 +3256,7 @@ void main() {
     stopCompleters.first.complete("stale words");
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
     expect(find.text("Release to transcribe"), findsOneWidget);
 
     // The new interaction still completes normally.
@@ -3299,7 +3345,7 @@ void main() {
     // The field (and its text) stay while the bottom pill hosts the chrome.
     expect(find.byType(EditableText), findsOneWidget);
     expect(find.text("draft"), findsOneWidget);
-    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
     expect(find.byType(PregoVoiceWaveform), findsOneWidget);
     expect(find.text("Release to transcribe"), findsOneWidget);
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);

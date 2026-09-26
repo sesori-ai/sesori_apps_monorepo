@@ -16,13 +16,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Sesori Mobile';
 
   @override
-  String get persistenceStartupFailureTitle => 'Storage upgrade paused';
-
-  @override
-  String get persistenceStartupFailureDescription =>
-      'Sesori couldn’t finish upgrading your local storage. Close and reopen Sesori to try again.';
-
-  @override
   String get connectErrorUnexpectedFormat => 'Unexpected response format';
 
   @override
@@ -139,7 +132,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionHeading => 'What should we work on?';
 
   @override
-  String get desktopSessionPageChanges => 'Changes';
+  String get sessionChangesLabel => 'Changes';
 
   @override
   String get desktopSessionParentBreadcrumb => 'Main session';
@@ -987,6 +980,80 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSupportX => 'DM on X';
 
   @override
+  String get settingsRateSesori => 'Rate Sesori';
+
+  @override
+  String get feedbackRatingTitle => 'Are you enjoying Sesori?';
+
+  @override
+  String get feedbackLove => 'Yes, love it!';
+
+  @override
+  String get feedbackCouldBeBetter => 'Could be better';
+
+  @override
+  String get feedbackClose => 'Close feedback';
+
+  @override
+  String get feedbackReviewTitle => 'Thanks! Leave a review?';
+
+  @override
+  String get feedbackReviewBody => 'It takes a minute and helps other developers find Sesori.';
+
+  @override
+  String get feedbackLeaveReview => 'Leave a review';
+
+  @override
+  String get feedbackNotNow => 'Not now';
+
+  @override
+  String get feedbackPrivateTitle => 'What should we improve?';
+
+  @override
+  String get feedbackIssueHardToNavigate => 'Hard to navigate';
+
+  @override
+  String get feedbackIssueConnectionDrops => 'Connection drops';
+
+  @override
+  String get feedbackIssueNotificationsMissing => 'Notifications don’t arrive';
+
+  @override
+  String get feedbackIssueAppSlow => 'App feels slow';
+
+  @override
+  String get feedbackMessageHint => 'Example: Hard to navigate';
+
+  @override
+  String get feedbackRecipient => 'Sent privately to the Sesori team.';
+
+  @override
+  String get feedbackSend => 'Send feedback';
+
+  @override
+  String get feedbackSendFailed => 'Couldn’t send feedback. Your draft is still here.';
+
+  @override
+  String get feedbackRetry => 'Retry';
+
+  @override
+  String get feedbackCancel => 'Cancel';
+
+  @override
+  String get feedbackSent => 'Feedback sent. Thank you!';
+
+  @override
+  String feedbackCharactersLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count characters left',
+      one: '1 character left',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get settingsSectionLegal => 'Legal';
 
   @override
@@ -1391,6 +1458,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String transcriptTurnHours(int hours, String minutes, String seconds) {
     return '${hours}h ${minutes}m ${seconds}s';
   }
+
+  @override
+  String transcriptSubAgentsRunning(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sub-agents running in the background',
+      one: '1 sub-agent running in the background',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get transcriptSubAgentsKeepChatting => 'You can keep chatting meanwhile.';
 
   @override
   String get transcriptFoldAll => 'Fold all turns';
@@ -2313,9 +2394,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commandSourceCustom => 'Custom';
-
-  @override
-  String get sessionDetailFileChangesTooltip => 'File changes';
 
   @override
   String get diffBinaryFileChanged => 'Binary file changed';

@@ -217,7 +217,7 @@ The main pane hosts one full-width routed page.
   undone, refused or fails. Archiving the open session leaves its page. See
   `session-archiving-and-deletion.md`.
 - The new session page uses the same toolbar, titled New session under the project breadcrumb, above one
-  centred column no wider than the session page's: the shared heading and project selector (see
+  centred column no wider than the session page's composer: the shared heading and project selector (see
   session-creation-and-options.md), the harness chooser, the input, then Dedicated workspace and
   Refresh options. The column is centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
   Choosing another project builds a fresh cubit for it.
@@ -235,8 +235,13 @@ The main pane hosts one full-width routed page.
   directly. Mark unread always sends unread,
   whatever local state says, defers the session like a row's Mark unread, and returns to the project's
   all-sessions page; Shift+Cmd/Ctrl+U does the same while focus is in the session page and is inert
-  elsewhere. The transcript and composer sit in a centred column about 760 pt wide while the wheel and
-  scrollbar keep the whole pane. The phone keeps its floating glass bar and full-width transcript.
+  elsewhere. The transcript and the composer sit in two separately sized centred columns, the transcript
+  about 960 pt wide and the composer, its pills and the needs-you cards about 760 pt, both centred in the
+  same pane while the wheel and scrollbar keep the whole pane. A window too narrow for a column collapses
+  that column's margin instead of clipping it. The transcript column stays narrow enough that a revealed
+  timestamp gutter still fits inside the designed window; past that width the peek degrades to the phone's
+  behaviour during the drag rather than breaking, and a settled label is never cut. The phone keeps its
+  floating glass bar and one full-width transcript and composer.
 - With projects, home starts work: the new-session composer for a picked project (the first listed until the
   user picks another, each pick with its own draft), then Needs you, Running and Recent sections across projects.
   Recent holds the five newest sessions that are neither running nor waiting; empty sections are left out. A row
@@ -349,7 +354,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   or the last row leaves.
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
   sidebar recovery/actions/locks.
-- The session page toolbar above a centred transcript column: the breadcrumb, status slot and title styles
+- The session page toolbar above a centred transcript column wider than the centred composer's: the breadcrumb, status slot and title styles
   and order, the breadcrumb opening the project or, for a subtask, "Main session" returning to its parent
   (popping to the kept parent when opened from it, opening the parent otherwise), the sparkle leading
   the title only while the session runs, session actions disabled until the session is hydrated,

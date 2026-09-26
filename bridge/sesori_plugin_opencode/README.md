@@ -8,7 +8,8 @@ The descriptor selects `OpenCodePlugin` for v1 or `OpenCodeV2Plugin` for v2 (min
 Both share the raw HTTP client and `SseConnection`, not business state. The v2 stack lives under
 `src/v2/`: facade → service → repository → API, with stateless mappers and an activity tracker.
 Its complete cold-start/reconnect snapshot establishes baseline trust; failed refresh preserves
-useful state but reports unknown work. Managed downloads remain on 1.18.32 until the runtime refresh.
+useful state but reports unknown work. Managed downloads target 2.0.18 through six integrity-pinned npm
+archives; the PATH minimum remains 1.14.0. First launch on v2 migrates the native database one-way.
 
 The v1 stack below remains layered. Each layer has a single responsibility:
 
@@ -24,7 +25,7 @@ OpenCodeApi             HTTP client — raw requests to the OpenCode REST API
 
 `SseConnection` runs alongside this stack, maintaining a persistent SSE connection to `GET /global/event` and feeding raw event strings to `OpenCodePlugin`. `SseEventParser` translates those strings into typed `SseEventData` objects. `ActiveSessionTracker` watches session status events to maintain a live count of busy sessions per project.
 
-Compatibility note: the plugin keeps bridge-facing SSE behavior intentionally narrow. Parser failures are reported as categorized outcomes instead of exceptions, dropped SSE frames are logged with stable category tags plus `directory` context when available, and cold-start hydration of pending questions/permissions is best-effort only. Shell routes such as `GET /session/{id}/shell` remain outside the bridge router and are expected to 404.
+V1 compatibility note: the v1 adapter keeps bridge-facing SSE behavior intentionally narrow. Parser failures are reported as categorized outcomes instead of exceptions, dropped SSE frames are logged with stable category tags plus `directory` context when available, and cold-start hydration of pending questions/permissions is best-effort only. Shell routes such as `GET /session/{id}/shell` remain outside the bridge router and are expected to 404.
 
 ## Key Components
 

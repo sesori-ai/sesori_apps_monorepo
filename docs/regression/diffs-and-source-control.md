@@ -49,10 +49,12 @@ that baseline, and the branch and worktree facts a session carries.
   edge; both run the full height of a wrapped line. A file's status is a plain
   coloured letter (A, D, M). Change counts leave out a zero side and use the
   "−" sign, both on file headers and in the page subtitle.
-- The session page's Changes button carries the session's line totals, as
-  "Changes +12 −2" on the desktop toolbar and "+12 −2" beside the phone's
-  file-changes icon, with a zero side left out and no counts when both are
-  zero. A separate `/session/diff-summary` request returns only the totals:
+- The session page's Changes control carries the session's line totals, as
+  "Changes +12 −2" on the desktop toolbar and at the trailing end of the
+  "Changes" row in the phone bar's menu, with a zero side left out and no
+  counts when both are zero. The phone bar keeps no Changes button of its own:
+  its centred title needs the width, and the menu row is the phone's way into
+  the diff screen. A separate `/session/diff-summary` request returns only the totals:
   the bridge runs the same git steps as the diff but reads only untracked
   files, which numstat does not count. Only a page whose Changes button
   shows asks, once on open and then on the file-change signal at most every

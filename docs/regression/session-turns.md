@@ -548,13 +548,15 @@ defaults and queued client sends coherent.
 - When a plugin rejects a send before acceptance because its agent, model,
   variant, or command is no longer offered, the bridge deletes that
   options-cache row and returns the typed `staleSessionOptions` rejection.
-  OpenCode checks a prompt's or slash command's selected agent against fresh
+  OpenCode v1 checks a prompt's or slash command's selected agent against fresh
   project options before dispatch, because its asynchronous prompt endpoint
   reports a removed agent only after acceptance and a slow command can outlive
-  its fast-fail window. When a slash command or manual-compaction reservation
+  its fast-fail window. When a v1 slash command or manual-compaction reservation
   collapses a rejection into a generic 500, the plugin checks fresh project
   options and classifies the failure as stale only when the requested selection
-  is absent or unavailable. The client force-refreshes the
+  is absent or unavailable. V2 validates explicit agent/model/variant selections
+  and rechecks the native command catalog before dispatch; omitted selections
+  preserve native defaults. The client force-refreshes the
   options, replaces only unsupported queued selections without changing FIFO
   order or prompt ids, warns the user, and retries once. If a refreshed catalog
   no longer includes a rejected command, that command remains in its FIFO
@@ -569,14 +571,18 @@ defaults and queued client sends coherent.
 - Each plugin stamps that prompt id onto the user-message echo of its own
   dispatch, using the link its backend exposes — Claude's queue entry, ACP's
   accepted send, Pi's dispatcher, Codex's client-supplied identifier, and
-  OpenCode's bridge-generated ordered message identifier (manual compaction
-  reuses a server-reserved one). OpenCode's own TUI must show a Sesori-sent
+  OpenCode's bridge-generated ordered message identifier. V1 manual compaction
+  reuses a server-reserved identifier; v2 prompts and fallback compaction carry
+  a bridge suffix on a native sortable ID, recoverable from live events and
+  history without an in-memory correlation map. OpenCode's own TUI must show a Sesori-sent
   prompt once. Claude matches an image echo by its text and block order
   only, including an image echo that omits the usual replay marker, because
   the CLI adds metadata and re-encodes large images (a large PNG echoes as a
   different JPEG); a large image prompt must not stay "Sending" once its
-  message is visible. OpenCode applies the same
-  correlation to prompts, slash commands, and manual compaction.
+  message is visible. OpenCode v1 also correlates slash commands; v2 custom
+  commands have the native limitation recorded below. V2 compaction settles
+  only from a completed or failed native snapshot, never its running row or
+  enqueue acknowledgement. Native commands take precedence over the fallback.
   Compaction renders only the user-entered command arguments; bridge-authored
   guidance remains backend-only. A message authored in the backend's own UI
   carries no prompt id and renders as an ordinary transcript message. A harness
@@ -602,13 +608,18 @@ defaults and queued client sends coherent.
   Markdown emphasis, selection, attachments and queued-state cues stay usable.
 - Markdown looks the same on phone and desktop in both themes. A fenced code
   block is one quiet box (the raised inset tool output uses, with no border)
-  holding its language label, copy button and code. Inline code sits on a soft tertiary
-  background. Tables show hairline row lines under a bold, left-aligned header
+  holding its language label, copy button and code. Inline code sits on a soft
+  translucent chip that contrasts with whichever surface carries it, so a
+  selection highlight painted under the text still reads through it.
+  Tables show hairline row lines under a bold, left-aligned header
   with no outer grid, and a horizontal rule is one hairline. None of these fall
   back to the SDK's purple-grey Material palette.
 - User and assistant message text containing a raw HTML block renders that
   markup as a literal code block, so a pasted page or error body stays visible
   and copyable instead of being swallowed by the Markdown renderer.
+- A selection crossing inline code stays visibly continuous in user bubbles and
+  assistant responses alike: the highlight covers the code run instead of
+  leaving an unhighlighted gap in the middle of the sentence.
 - Selecting across user, assistant, or reasoning text copies the rendered
   content with readable structure: each transition between vertically stacked
   Markdown blocks contributes exactly one line break regardless of their visual
@@ -639,9 +650,14 @@ defaults and queued client sends coherent.
   streaming, working, and settled rows keep stable identities and transitions.
 - A leftward touch, stylus, or trackpad drag across the transcript reveals all
   message timestamps together without changing vertical scroll or follow state,
-  then settles closed on release. System-back edges remain reserved on iOS and
-  Android gesture navigation, mouse drags remain available for text selection,
-  and a horizontal drag inside a fenced code block scrolls only that block.
+  then settles closed on release. Every revealed label shares one alignment line
+  at the reading column's right edge — the same line for a user bubble, an
+  assistant paragraph, a tool or thought group and a code block, whatever width
+  the row's own content takes — and a fully revealed label is never clipped at
+  any window width. Closed, no label is painted, so none lingers in a wide
+  pane's side margin. System-back edges remain reserved on iOS and Android
+  gesture navigation, mouse drags remain available for text selection, and a
+  horizontal drag inside a fenced code block scrolls only that block.
 - A fenced code block sits on the same raised inset as tool output, visible
   against the page in both themes, with its language label and Copy. A block
   longer than 12 lines shows its first 12 under a fade and an “Open all N lines”
@@ -727,9 +743,9 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   its error, a harness replaces backend-provided terminal or retry error text,
   a plugin status serializes with a private discriminator and is dropped at the
   shared SSE boundary, the error disappears after refresh or reopen, or a live update
-  removes a backend-provided message timestamp. An OpenCode prompt, slash
-  command, or bare `/compact` leaves both its local bubble and backend echo in
-  the transcript.
+  removes a backend-provided message timestamp. An OpenCode v1 prompt, slash
+  command, or manual compaction—or a v2 prompt or fallback compaction—leaves
+  both its local bubble and backend echo in the transcript.
 - Internal backend command records or synthetic model attribution appear in
   the conversation or replayed history. A visible Pi custom message or Claude
   peer-origin message renders as user/agent output, loses its automation
@@ -843,6 +859,8 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 - A timestamp peek responds from a reserved system-back edge, detaches or
   vertically scrolls the transcript, captures a mouse selection drag, or moves
   while a fenced code block is handling the horizontal drag.
+- Revealed timestamps step between rows, follow each message's own right edge
+  instead of the reading column's, or a fully revealed label is cut short.
 
 ## Known Limitations
 
@@ -889,6 +907,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   background sub-agents along with a running main turn, so a main-agent-only
   stop exists only while the main agent is idle; interrupting a live main turn
   always stops its sub-agents.
+- OpenCode v2 custom commands accept no caller message ID and return no result
+  ID, so dispatch can confirm acceptance but cannot correlate a transcript echo
+  or fabricate prompt settlement. This includes a native `compact` command if
+  advertised; the bridge's fallback compaction has the ID seam described above.
 - OpenCode aborts a foreground task child together with its root (the task
   tool cancels it), while background children outlive a root abort; `stop`
   therefore aborts each running child explicitly, and the tracker cannot tell
@@ -910,6 +932,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   (running tasks, scoped abort) and
   `bridge/sesori_plugin_claude/test/claude_session_service_test.dart`;
   `client/module_app_ui/lib/src/features/session_detail/widgets/session_abort_scope_dialog.dart`
+- OpenCode v2: `bridge/sesori_plugin_opencode/lib/src/v2/services/opencode_v2_service.dart`,
+  `bridge/sesori_plugin_opencode/lib/src/v2/repositories/v2_message_mapper.dart`,
+  `bridge/sesori_plugin_opencode/lib/src/v2/sse/v2_event_mapper.dart`, and the
+  write, event-mapper and composed-plugin suites under `bridge/sesori_plugin_opencode/test/v2/`
 - Hermes: `bridge/sesori_plugin_hermes/` and the shared ACP plugin implementation
 - DeepSeek: `bridge/sesori_plugin_deepseek/` and the shared ACP plugin implementation
 - Copilot: `bridge/sesori_plugin_copilot/` and the shared ACP plugin implementation

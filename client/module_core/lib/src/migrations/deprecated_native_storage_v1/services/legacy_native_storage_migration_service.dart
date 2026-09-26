@@ -1,13 +1,14 @@
 import "package:injectable/injectable.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
 
+import "../../../logging/logging.dart";
 import "../foundation/keys/legacy_migration_key.dart";
 import "../foundation/models/legacy_persistence_value.dart";
 import "../foundation/models/legacy_storage_migration_exception.dart";
 import "../repositories/legacy_native_storage_migration_repository.dart";
 
-/// Temporary, awaited production-mobile startup work. No normal consumers may
-/// start until it succeeds. Restart is the retry boundary; this owns no cache.
+/// Temporary, awaited production-mobile startup work. Consumers start after
+/// import or its destructive recovery attempt; this service owns no cache.
 @lazySingleton
 class LegacyNativeStorageMigrationService({
   required final LegacyNativeStorageMigrationRepository source,
@@ -22,7 +23,12 @@ class LegacyNativeStorageMigrationService({
   Future<void> migrate() async {
     var operation = LegacyStorageMigrationOperation.readCompletion;
     try {
-      if (await persister.readBool(key: LegacyMigrationKey.completed) ?? false) return;
+      final completed = await persister.readBool(key: LegacyMigrationKey.completed);
+      if (completed ?? false) return;
+      if (completed == false) {
+        await _resetPendingMigration();
+        return;
+      }
 
       operation = LegacyStorageMigrationOperation.readSource;
       final values = await source.readValues();
@@ -47,10 +53,74 @@ class LegacyNativeStorageMigrationService({
       operation = LegacyStorageMigrationOperation.writeCompletion;
       await persister.writeBool(key: LegacyMigrationKey.completed, value: true);
     } on Object catch (error, stackTrace) {
-      Error.throwWithStackTrace(
-        LegacyStorageMigrationException(operation: operation, innerError: error, innerStackTrace: stackTrace),
-        stackTrace,
+      _logFailure(operation: operation, error: error, stackTrace: stackTrace);
+      // An unreadable marker cannot safely authorize new destruction.
+      if (operation == LegacyStorageMigrationOperation.readCompletion) {
+        secrets.blockAccess(error: error, stackTrace: stackTrace);
+        return;
+      }
+      // False is durable reset intent, not an ordinary import retry. Record it
+      // before modifying either store so partial native cleanup cannot restore
+      // the old account after a cold launch.
+      final admitted = await _recover(
+        operation: LegacyStorageMigrationOperation.writeRecovery,
+        blockSecretsOnFailure: true,
+        action: () => persister.writeBool(key: LegacyMigrationKey.completed, value: false),
       );
+      if (admitted) await _resetPendingMigration();
     }
+  }
+
+  Future<void> _resetPendingMigration() async {
+    final secretsReset = await _recover(
+      operation: LegacyStorageMigrationOperation.resetSecrets,
+      blockSecretsOnFailure: true,
+      action: secrets.reset,
+    );
+    final preferencesCleared = await _recover(
+      operation: LegacyStorageMigrationOperation.clearPreferences,
+      blockSecretsOnFailure: true,
+      action: () => persister.clearAndWriteBool(key: LegacyMigrationKey.completed, value: false),
+    );
+    if (!secretsReset || !preferencesCleared) return;
+    await _recover(
+      operation: LegacyStorageMigrationOperation.clearSource,
+      blockSecretsOnFailure: false,
+      action: source.clear,
+    );
+    // A durable true is required even if source clearing succeeded: otherwise a
+    // pending recovery would erase credentials from a fresh login on relaunch.
+    await _recover(
+      operation: LegacyStorageMigrationOperation.markReset,
+      blockSecretsOnFailure: true,
+      action: () => persister.writeBool(key: LegacyMigrationKey.completed, value: true),
+    );
+  }
+
+  Future<bool> _recover({
+    required LegacyStorageMigrationOperation operation,
+    required bool blockSecretsOnFailure,
+    required Future<void> Function() action,
+  }) async {
+    try {
+      await action();
+      return true;
+    } on Object catch (error, stackTrace) {
+      _logFailure(operation: operation, error: error, stackTrace: stackTrace);
+      if (blockSecretsOnFailure) secrets.blockAccess(error: error, stackTrace: stackTrace);
+      return false;
+    }
+  }
+
+  void _logFailure({
+    required LegacyStorageMigrationOperation operation,
+    required Object error,
+    required StackTrace stackTrace,
+  }) {
+    loge(
+      "Local storage migration/recovery failed",
+      LegacyStorageMigrationException(operation: operation, innerError: error, innerStackTrace: stackTrace),
+      stackTrace,
+    );
   }
 }

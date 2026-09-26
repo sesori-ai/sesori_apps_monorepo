@@ -61,6 +61,20 @@ extension SessionDetailRunResolvers on SessionDetailLoaded {
   }
 }
 
+/// Whether a sub-agent with [status] works now: busy or retrying. The one rule
+/// for a running sub-agent, shared by the composer pill, the session's active
+/// work and the transcript's sub-agent row.
+bool isChildRunning({required SessionStatus? status}) => status is SessionStatusBusy || status is SessionStatusRetry;
+
+/// The sub-agents among [children] that work now, by [isChildRunning].
+List<Session> runningChildren({
+  required List<Session> children,
+  required Map<String, SessionStatus> childStatuses,
+}) => [
+  for (final child in children)
+    if (isChildRunning(status: childStatuses[child.id])) child,
+];
+
 /// Pure-data resolvers for [SessionDetailState].
 ///
 /// Keeps data-derivation logic in module_core rather than in

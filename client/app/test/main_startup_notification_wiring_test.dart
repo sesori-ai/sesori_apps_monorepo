@@ -82,12 +82,12 @@ void main() {
     await bootstrapSesoriApp(
       shouldInitializeFirebase: true,
       configureDependenciesFn: configureDependencies,
-      disposeDependenciesFn: () async => fail("Successful startup must keep its graph"),
       prepareSingularAttributionFn: prepareSingularAttribution,
       applySingularCrawlGateFn: applySingularCrawlGate,
       initializeDeepLinks: initializeDeepLinks,
       startAttributionFn: startAttribution,
       startProductAnalyticsFn: startProductAnalytics,
+      startFeedbackPromptFn: () {},
       startAnalyticsRouteListenerFn: startAnalyticsRouteListener,
       startNotificationStartupFn: startNotificationStartup,
       readAppearanceFn: readAppearance,
@@ -173,7 +173,6 @@ void main() {
           crawlGate: Future.value(AnalyticsStoreCrawlGate.allow),
         );
       },
-      disposeDependenciesFn: () async => fail("Successful startup must keep its graph"),
       prepareSingularAttributionFn: () => events.add("singularAttribution.prepare"),
       applySingularCrawlGateFn: ({required crawlGate}) {
         events.add("singularAttribution.${crawlGate.name}");
@@ -183,6 +182,7 @@ void main() {
       initializeDeepLinks: () => events.add("deepLinks"),
       startAttributionFn: () => events.add("attribution"),
       startProductAnalyticsFn: () async => events.add("productAnalytics"),
+      startFeedbackPromptFn: () {},
       startAnalyticsRouteListenerFn: () async => events.add("analyticsRoutes"),
       startNotificationStartupFn: () async => events.add("notificationStartup"),
       readAppearanceFn: () async => AppearanceMode.system,

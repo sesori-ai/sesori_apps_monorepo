@@ -25,20 +25,22 @@ its password UX, CBC fallback and unrelated application models are not adopted.
 
 ## Current behavior and compatibility boundary
 
-- Both apps currently use per-value `FlutterSecureStorage` through auth's
-  string-key `SecureStorage`. Desktop uses classic Keychain service
-  `com.sesori.desktop`; mobile preserves its existing plugin options/keyspace.
+- Both clients use shared Drift repositories after #1751. Only their scoped
+  master item remains in native storage. The old desktop per-value service
+  `com.sesori.desktop` is untouched; production mobile imports its old keyspace.
 - Auth owns token/user/OAuth serialization and mutation/logout fencing. Core owns
   relay keys, theme/input preferences, bridge/plugin preferences, device identity
   and account-scoped analytics preferences.
 - Shared contracts/cipher/SQL/secrets merged in #1708/#1715/#1726/#1729/#1734
-  and live in `module_persistence`, still unwired in apps. The old desktop
-  checkpoint `4a27888` remains in closed/superseded #1717. The shared backend
-  passes 46 tests; the isolated deprecated importer now passes 11 recovery tests.
-  No app database/native credential cutover has occurred.
+  and live in `module_persistence`. The old desktop checkpoint `4a27888` remains
+  in closed/superseded #1717. Both-client cutover #1751 and regression docs #1758
+  merged; required native qualification remains partial.
 - Public mobile production releases create a real migration obligation: preserve
   credentials, room keys, preferences and pending analytics opt-out, not merely
-  enough data to present a logged-in screen. Do not clear/re-key failed data.
+  enough data to present a logged-in screen on successful import. The user
+  explicitly changed failure policy on 2026-09-26: attempt scoped local reset and
+  continue to normal logged-out startup. Normal account/server analytics rules
+  apply; pending local-only opt-out may be lost on this destructive path.
 - Desktop remains unpublished. Existing internal data does not create a migration
   obligation: sign out in the old desktop build before cutover, then sign in once.
   No desktop legacy reads, dual writes or automatic old-Keychain cleanup are added.
@@ -50,11 +52,9 @@ its password UX, CBC fallback and unrelated application models are not adopted.
   release currently share `com.sesori.app`; development must not consume/delete
   the production legacy namespace. The deprecated mobile import is admitted for
   the production scope only. Debug/profile use fresh development databases.
-- Android's manifest now excludes only the unused new database directory, not
-  still-active credential preferences. Pinned `flutter_secure_storage` 11.2.0
-  warns that restoring its preferences without Keystore keys can fail. #1726
-  disabled destructive reset on the active adapter; new master/source adapters
-  retain it. Native credential exclusions still wait for import/cutover.
+- Android excludes the persistence directory and exact old/new plugin credential
+  files from backup after #1751. Plugin-level `resetOnError` stays disabled;
+  destructive migration recovery is owned explicitly by the migration service.
 - Desktop analytics remains disabled by `unsupportedPlatform`. This work does
   not activate it or add telemetry to migration.
 
@@ -63,12 +63,12 @@ its password UX, CBC fallback and unrelated application models are not adopted.
 Included: iOS/Android mobile and macOS/Windows/Linux desktop; one shared Drift,
 crypto and repository implementation; typed consumers; isolated deprecated
 mobile import; native directory/key capabilities and mobile backup boundaries;
-fixture qualification, failure presentation and affected regression documents.
+fixture qualification, failed-import reset and affected regression documents.
 
 Excluded: bridge/plugin/relay/server database changes; web storage; new user
 preferences; unrelated caches/files/window state; SQLCipher; whole-database
 ciphertext; private desktop migration; broader Keychain ACLs; unattended
-passwords; key rotation/escrow; public distribution or touching real user state.
+passwords; routine key rotation/escrow; public distribution or touching real user state.
 
 ## Package and layer ownership
 
@@ -225,7 +225,8 @@ itself make retained public upgrade compatibility safe to delete.
 ### Ownership and algorithm
 
 - The temporary native-source capability enumerates/reads existing values and
-  deletes named imported items in the old mobile keyspace. Disable Android
+  deletes named imported items on success, or clears its namespace after a caught
+  migration failure. Disable Android
   `resetOnError`; preserve native algorithms, item names and access protection.
   For iOS enumeration, omit the accessibility query filter (`IOSOptions` with
   `accessibility: null`) while preserving the old account/group: the pinned
@@ -235,7 +236,8 @@ itself make retained public upgrade compatibility safe to delete.
   native failure must not become an empty snapshot.
 - The migration API wraps that raw native capability. Its repository classifies
   the closed inventory and scoped prefixes into typed values. Unknown native
-  items, including the new master item, are neither imported nor deleted.
+  items are neither imported nor deleted on successful import. Failed-import
+  cleanup clears the old namespace; the new master uses a separate namespace.
 - The migration service orchestrates that repository plus the public shared
   `PersisterRepository` and `SecureStorageRepository`. It runs once, awaited by
   bootstrap; normal repositories know nothing about legacy data.
@@ -248,30 +250,35 @@ itself make retained public upgrade compatibility safe to delete.
 - Each SQL write commits before proceeding. After **all copies succeed**, delete
   only the copied legacy items, then write the completion marker. This avoids
   leaving a second usable auth source after local logout, which currently does
-  not revoke the remote session. Do not use `deleteAll`.
-- No consumers run before completion. A copy failure leaves all native items
-  intact. An interruption/cleanup failure can leave already committed SQL rows
-  and only some native source items. On relaunch, merge remaining source entries
-  into existing SQL rows; never clear/replace the destination snapshot or delete
-  rows merely because a source item is now absent. A crash after cleanup but
-  before the marker safely completes on the next run with the retained SQL data.
+  not revoke the remote session.
+- No consumers run before import or its reset attempt finishes. Process
+  interruption can leave committed SQL rows and remaining native source items.
+  On relaunch, merge remaining source into existing rows; absence never deletes
+  a committed row. Caught failures instead follow the explicit reset policy.
 - This is idempotent restart recovery, not a resumable job framework: one final
   marker, no per-key progress records, native mirror, fallback reads, dual
   writes, timers or background retries. No SQL transaction spans native access.
-- Failure preserves data and throws `LegacyStorageMigrationException` with its
-  original cause/stack. In `app/lib/main.dart`, `bootstrapSesoriApp` catches that
-  typed failure around `configureDependenciesFn`, logs it without payloads, and
-  awaits an injected `disposeDependenciesFn` (production: `getIt.reset`). Log a
-  cleanup failure separately without masking the migration failure or stopping
-  rendering. Database disposal remains the registered shared GetIt disposer.
-- The catch calls `runAppFn` with `PersistenceStartupFailureApp`, owned by
-  `module_app_ui/lib/src/widgets/persistence_startup_failure_app.dart`, then
-  returns before deep links/auth/analytics/theme reads. This stateless root uses
-  ordinary shared localization/theme primitives, with no DI/service access.
-  Copy is fixed and privacy-safe: the upgrade could not finish; close and reopen
-  Sesori to retry. No raw exception text, reinstall/data-clear advice, automatic
-  retry, process-termination API or in-process graph-restart controller. Closing
-  via the OS and relaunching is the explicit action; migration remains pure Dart.
+- Install the mobile file log sink before migration. Its typed diagnostic wrapper
+  retains native/SQL messages and both reset stacks, omitting only parser source
+  buffers. Attempt ciphertext clearing and replacement-master save independently;
+  then attempt atomic primitive clearing. Log every failure.
+- Before destructive recovery, persist false in the existing completion key.
+  Absence means ordinary import; false means recovery-only; true means handled.
+  Atomically clear primitives and retain false through `clearAndWriteBool`, without
+  a generic transaction callback. Failed marker admission authorizes no destruction.
+- Every incomplete recovery blocks secret access synchronously through the existing
+  cached-future owner. After secret reset and primitive clearing succeed, attempt
+  source clearing and true completion. Until true commits, no new credentials can
+  persist. Cold launch retries reset rather than importing stale source values.
+- No new table, native item, cache or mapper. No compatibility repair for ambiguous
+  unpublished #1779 stores (absent marker, residual source and fresh credentials);
+  document that limit rather than claiming those stores are safe.
+- Continue normal logged-out startup after recovery. Successful reset permits
+  fresh login and normal account/server analytics preferences; no new consent
+  flag or alternate store. Persistent native/SQL denial can still fail ordinary
+  operations. Do not claim denied cleanup succeeded or that storage is writable.
+- Remove the obsolete bootstrap catch/disposal-only seam, blocking recovery root,
+  localization/export and its tests. Shared database disposal remains unchanged.
 
 Deletion checklist in the migration README: remove the startup call, deprecated
 folder/native source adapter, migration-specific DI/exports/models/tests and
@@ -300,8 +307,8 @@ before `createAnalyticsRuntimeBootstrap`, check the already registered
 branch resolve `LegacyNativeStorageMigrationService` and await `migrate()`.
 Development never resolves the importer/native source or calls enumeration or
 cleanup. Test the guard with a legacy source that fails if even constructed.
-The `bootstrapSesoriApp` typed catch/disposal/render path above owns presentation;
-normal consumers never start on failure. Desktop's primary gate, helper
+The migration service finishes import or reset attempts before normal consumers
+start. Desktop's primary gate, helper
 supervision and rendering sequence are not reordered by storage. Shell scope
 values are explicitly registered before platform DI from `kReleaseMode` (release
 production; debug/profile development): Injectable module providers reject enum
@@ -363,8 +370,9 @@ under the existing single startup sequence, without another coordinator.
 - **Observed:** desktop authorization fan-out; replace per-value native accesses.
 - **Ordinary:** overlapping auth/preferences writes; use SQL and existing auth
   ordering, not whole-map writes or another mutation lock.
-- **Ordinary:** app termination, disk/native failures or device lock during an
-  upgrade; preserve source/destination, retry on relaunch and gate consumers.
+- **Ordinary:** termination during import resumes from retained values. Caught
+  import failures attempt scoped reset before consumers; failed cleanup remains
+  observable, without pretending unavailable persistence has recovered.
 - **Ordinary:** Android backup restore without Keystore keys; targeted exclusions
   prevent an unusable copied database/native credential envelope.
 - **Observed code boundary:** iOS build modes share a bundle ID; do not let a
@@ -383,13 +391,14 @@ Update behavior-specific regression documents with each behavior-changing PR,
 not only in the final documentation step. A new `client-persistence.md` owns the
 shared contract; align account/onboarding, analytics, desktop packaging and
 distribution documentation. No new analytics event is needed for this storage
-implementation change; consent restoration must precede existing analytics.
+implementation change. Successful import preserves consent before analytics;
+failed-import reset uses the explicitly approved normal-account policy.
 
 ## PR series and current delivery
 
 Keep this worktree only, one open PR and at most one local successor. The stable
 slug remains `desktop-master-key-storage`; the approved scope is now all native
-clients. Current total: **12 PRs**. #1717 is closed as superseded, not merged.
+clients. Current total: **14 PRs**, including the requested reset follow-up. #1717 is closed as superseded, not merged.
 Its published branch/review evidence stays intact; never force-push it to fake a
 smaller history. Carry applicable feedback into shared-backend PRs 5/6.
 
@@ -408,18 +417,20 @@ qualification still precedes plan retirement.
 
 | Milestone | Exact PR title | Scope / expected result | Estimate |
 |---|---|---|---|
-| 1 | 🌿 [desktop-master-key-storage] Plan typed Drift desktop persistence [step 1/12] | #1698 merged; original reviewed plan. | Completed |
-| 2 | ⚙️ [desktop-master-key-storage] Add typed client persistence contracts [step 2/12] | #1708 merged; unwired shared contracts. | Completed |
-| 3.a | ⚙️ [desktop-master-key-storage] Add scoped desktop secret encryption [step 3/12] | #1715 merged; unwired cipher foundation. | Completed |
-| 3.b | ⚙️ [desktop-master-key-storage] Share client storage foundations [step 4/12] | #1726 merged; shared cipher/capabilities and Android reset safety; no database cutover. | Completed: 1,260 lines including 13 generated |
-| 3.c | ⚙️ [desktop-master-key-storage] Add shared Drift persistence [step 5/12] | #1729 merged; schema/direct primitives, lazy lifecycle and tests; no shell cutover. | Completed: 1,194 lines (517 authored, 621 generated, 56 lockfile) |
-| 3.d | 🚧 [desktop-master-key-storage] Add cached shared secret storage [step 6/12] | #1734 merged; cached-key repository, encryption/recovery/concurrency tests and docs; no shell cutover. | Completed: 672 lines (655 authored, 17 generated) |
-| 4.a | 🚧 [desktop-master-key-storage] Prepare deprecated mobile storage migration [step 7/12] | #1739 merged; domain keys and deprecated importer with recovery tests; not invoked yet. | Completed: 946 lines (773 authored, 173 generated) |
-| 4.b | 🚧 [desktop-master-key-storage] Provide native client persistence capabilities [step 8/12] | #1744 merged; lazy master/directory/source ports and DB-only Android backup exclusion; no shell cutover. | Completed: 590 lines (565 authored, 25 generated) |
-| 4.c | ⚙️ [desktop-master-key-storage] Prepare storage-upgrade recovery [step 9/12] | #1749 merged; localized recovery root and typed bootstrap catch/disposal; no storage cutover. | Completed: 280 lines (261 authored, 19 generated) |
-| 4.d | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 10/12] | #1751 merged; coherent consumers/admission, backup rules and obsolete-adapter removal. Native qualification remains. | Completed: 1,634 lines (1,548 authored, 86 generated) |
-| 5 | 🌿 [desktop-master-key-storage] Complete shared persistence regression documentation [step 11/12] | Reconcile storage, account, analytics and package contracts; distinguish automated proof from required native migration/restore/replacement evidence. No runtime/database change. | 100–250 authored |
-| 6 | ⚙️ [desktop-master-key-storage] Qualify and retire shared client persistence [step 12/12] | Required full recorded matrix and bounded evidence; retire plan only on pass, not the still-required deprecated importer. | 100–250 authored |
+| 1 | 🌿 [desktop-master-key-storage] Plan typed Drift desktop persistence [step 1/14] | #1698 merged; original reviewed plan. | Completed |
+| 2 | ⚙️ [desktop-master-key-storage] Add typed client persistence contracts [step 2/14] | #1708 merged; unwired shared contracts. | Completed |
+| 3.a | ⚙️ [desktop-master-key-storage] Add scoped desktop secret encryption [step 3/14] | #1715 merged; unwired cipher foundation. | Completed |
+| 3.b | ⚙️ [desktop-master-key-storage] Share client storage foundations [step 4/14] | #1726 merged; shared cipher/capabilities and Android reset safety; no database cutover. | Completed: 1,260 lines including 13 generated |
+| 3.c | ⚙️ [desktop-master-key-storage] Add shared Drift persistence [step 5/14] | #1729 merged; schema/direct primitives, lazy lifecycle and tests; no shell cutover. | Completed: 1,194 lines (517 authored, 621 generated, 56 lockfile) |
+| 3.d | 🚧 [desktop-master-key-storage] Add cached shared secret storage [step 6/14] | #1734 merged; cached-key repository, encryption/recovery/concurrency tests and docs; no shell cutover. | Completed: 672 lines (655 authored, 17 generated) |
+| 4.a | 🚧 [desktop-master-key-storage] Prepare deprecated mobile storage migration [step 7/14] | #1739 merged; domain keys and deprecated importer with recovery tests; not invoked yet. | Completed: 946 lines (773 authored, 173 generated) |
+| 4.b | 🚧 [desktop-master-key-storage] Provide native client persistence capabilities [step 8/14] | #1744 merged; lazy master/directory/source ports and DB-only Android backup exclusion; no shell cutover. | Completed: 590 lines (565 authored, 25 generated) |
+| 4.c | ⚙️ [desktop-master-key-storage] Prepare storage-upgrade recovery [step 9/14] | #1749 merged; localized recovery root and typed bootstrap catch/disposal; no storage cutover. | Completed: 280 lines (261 authored, 19 generated) |
+| 4.d | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 10/14] | #1751 merged; coherent consumers/admission, backup rules and obsolete-adapter removal. Native qualification remains. | Completed: 1,634 lines (1,548 authored, 86 generated) |
+| 5 | 🌿 [desktop-master-key-storage] Complete shared persistence regression documentation [step 11/14] | #1758 merged; explicit three-desktop replacement coverage. | Completed: 139 authored |
+| 5.a | ⚙️ [desktop-master-key-storage] Recover failed mobile migrations to login [step 12/14] | User-requested scoped reset, normal login/analytics, focused tests and reconciled regression/DI guidance. Remove blocking recovery UI. | 900–1,400 including generated deletions |
+| 5.b | 🚧 [desktop-master-key-storage] Preserve recovery intent across client restarts [step 13/14] | User rejected stale-session restoration/overwrite exceptions merged in #1779. Persist recovery-only intent, fail secret use until completion, replace obsolete bypass tests/docs. | 400–800 authored |
+| 6 | ⚙️ [desktop-master-key-storage] Qualify and retire shared client persistence [step 14/14] | Required full recorded matrix and bounded evidence; retire plan only after qualification passes or precisely named gaps are accepted, not the still-required deprecated importer. | Partial evidence retained; final delivery blocked |
 
 Dependencies follow row order. Generated schema stays with source. No temporary
 schemas, compatibility adapters or incomplete mobile cutover to manufacture a
@@ -441,7 +452,7 @@ unrelated account/provider or plugin regression catalog.
 | L2 | Both shell DI/bootstrap suites plus shared migration tests | Same repository/database implementation; no primitive unlock after migration; one cached native master load; unchanged auth fencing; pending opt-out imported before analytics/deep links/auth; no legacy calls after completion. |
 | L3 mobile | Actual iOS and Android fixture builds | Native legacy-format seeding, real one-time import, restart/local auth restoration, exact preferences/opt-out, original item cleanup and new-format subsequent writes; actual SQLite/native assets. Test production scope and development isolation without using the real app/account. |
 | L3 desktop | Developer ID macOS arm64 and native Windows/Linux fixtures | Packaged SQLite/native master roundtrip, reopen and new-format replacement; unchanged relaunch and same-identity macOS replacement preserve state. Observe actual authorization separately from adapter call counts. |
-| L4 | Shared tests on macOS/Windows/Linux; iOS/Android adverse-state fixtures; macOS native denied-access fixture | Interrupted copy and cleanup, restart without resetting partial destination, failed final marker, key loss/denial/corruption, SQL rollback, tampered/swapped frames, failed migration blocks consumers and presents useful failure, DB disposal and plaintext independence. Verify paired iOS encrypted-backup/restore eligibility and behavior, Android cloud/device-transfer exclusions, and explicit failure for a copied DB without its master. |
+| L4 | Shared tests on macOS/Windows/Linux; iOS/Android adverse-state fixtures; macOS native denied-access fixture | Process-interrupted copy/cleanup restart, caught source/copy/cleanup/marker failures followed by scoped reset and normal login, cleanup-denial diagnostics, key loss/denial/corruption, SQL rollback, tampered/swapped frames, DB disposal and plaintext independence. Verify paired iOS encrypted-backup/restore eligibility and behavior, Android cloud/device-transfer exclusions, and explicit failure for a copied DB without its master. |
 
 Use existing-format native fixtures, not only values written by the new adapter.
 Check native read completeness/error behavior on that boundary; an empty result

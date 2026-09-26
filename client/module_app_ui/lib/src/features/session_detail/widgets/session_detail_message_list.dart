@@ -7,7 +7,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "../../../l10n/app_localizations.dart";
 
 import "assistant_message_card.dart";
 import "error_message_card.dart";
@@ -18,7 +17,6 @@ import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "system_message_card.dart";
-import "tool_part_widget.dart";
 import "transcript_live_row.dart";
 import "transcript_motion.dart";
 import "transcript_pinch_detector.dart";
@@ -63,6 +61,10 @@ class const SessionDetailMessageList({
   /// Whether the session works, by `hasActiveWork`. With no live step and
   /// no text streaming, a "Working…" row closes the transcript.
   required final bool isBusy,
+
+  /// Whether the bridge reports the main agent mid-turn. Only while it is
+  /// not does the sub-agent row take over from "Working…".
+  required final bool mainAgentRunning,
 
   /// Requests the page of messages before the ones shown, or null when the
   /// start of the transcript is already loaded.
@@ -114,6 +116,7 @@ typedef _DetachedSnapshot = ({
   Map<String, SessionStatus> childStatuses,
   String? retryErrorMessage,
   bool isBusy,
+  bool mainAgentRunning,
 });
 
 enum _TransientStage() {
@@ -335,6 +338,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         childStatuses: frozen.childStatuses,
         retryErrorMessage: frozen.retryErrorMessage,
         isBusy: frozen.isBusy,
+        mainAgentRunning: frozen.mainAgentRunning,
       );
     });
     // The prepended rows render against the frozen `streamingText` and
@@ -372,6 +376,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           childStatuses: Map<String, SessionStatus>.unmodifiable(widget.childStatuses),
           retryErrorMessage: widget.retryErrorMessage,
           isBusy: widget.isBusy,
+          mainAgentRunning: widget.mainAgentRunning,
         );
       }
     });
@@ -673,6 +678,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final childStatuses = snap?.childStatuses ?? widget.childStatuses;
     final retryErrorMessage = snap?.retryErrorMessage ?? widget.retryErrorMessage;
     final isBusy = snap?.isBusy ?? widget.isBusy;
+    final mainAgentRunning = snap?.mainAgentRunning ?? widget.mainAgentRunning;
 
     final indexById = _indexByIdFor(messages: messages);
     final transcript = const TranscriptBuilder().build(
@@ -690,9 +696,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final activity = const TranscriptActivityBuilder().build(
       transcript: transcript,
       turns: turns,
+      messages: messages,
       isBusy: isBusy,
+      mainAgentRunning: mainAgentRunning,
       retryErrorMessage: retryErrorMessage,
       hasStreamingText: streamingText.isNotEmpty,
+      children: children,
+      childStatuses: childStatuses,
     );
     // The message rows in order, each with its turn: folded, a prompt turn's
     // prompt and one stub for the rest; unfolded, every rendered message.
@@ -707,18 +717,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           if (turns.turnIndexByMessageId[message.info.id] case final index?)
             _entryIdForMessage(info: message.info): turns.turns[index],
     };
-    // The rows hold still while the reader is scrolled away, but the jump
-    // button names the step running now.
-    final liveStep = snap == null
-        ? transcript.liveStep
-        : const TranscriptBuilder()
-              .build(
-                messages: widget.messages,
-                streamingText: widget.streamingText,
-                children: widget.children,
-                childStatuses: widget.childStatuses,
-              )
-              .liveStep;
     final transientSubmissions = <String, _TransientSubmission>{
       for (final submission in widget.awaitingBridgeSubmissions)
         "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: _TransientStage.awaitingBridge),
@@ -760,8 +758,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       tracker: _follow,
       detachedOverlayBuilder: (ctx) => JumpToEdgePill(
         tapTargetKey: _kJumpToLatestKey,
-        label: liveStep == null ? loc.sessionDetailJumpToLatest : _liveStepLabel(loc: loc, step: liveStep),
-        live: liveStep != null,
+        label: loc.sessionDetailJumpToLatest,
         onTap: () => _follow.animateToEdge(),
         // Lift the pill clear of the floating composer overlaid below.
         bottomInset: widget.bottomInset,
@@ -862,21 +859,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       ),
     );
   }
-
-  static String _liveStepLabel({required AppLocalizations loc, required TranscriptStep step}) => switch (step) {
-    TranscriptThinkingStep() => loc.sessionDetailThinking,
-    TranscriptToolStep(:final part) => switch (part.state.shellCommand) {
-      // A live tool is pending or running; the row names which.
-      final command? =>
-        "${part.state.status == ToolStatus.pending ? loc.sessionDetailToolPending : loc.sessionDetailToolRunning} \$ $command",
-      null => [ToolPartWidget.toolName(loc: loc, part: part), ?part.state.title].join(" "),
-    },
-    TranscriptSubAgentStep(:final part) => [
-      part.description,
-      part.prompt,
-      loc.sessionDetailSubtaskUnnamed,
-    ].firstWhere((label) => label.isNotEmpty),
-  };
 
   Widget _buildRow({
     required String entryId,
@@ -1039,11 +1021,22 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }
 
   /// The working row eases in when work starts or a step ends, and away when
-  /// a step starts or work ends.
+  /// a step starts or work ends. The sub-agent row takes over, easing, while
+  /// only sub-agents work.
   Widget _workingRow({required TranscriptActivity activity}) => TranscriptPresenceColumn(
     children: [
-      if (activity case TranscriptActivityWorking(:final sinceMs))
-        TranscriptWorkingRow(key: const ValueKey("session-detail-working"), sinceMs: sinceMs),
+      ?switch (activity) {
+        TranscriptActivityWorking(:final sinceMs) => TranscriptWorkingRow(
+          key: const ValueKey("session-detail-working"),
+          sinceMs: sinceMs,
+        ),
+        TranscriptActivitySubAgents(:final count, :final sinceMs) => TranscriptSubAgentsRow(
+          key: const ValueKey("session-detail-sub-agents"),
+          count: count,
+          sinceMs: sinceMs,
+        ),
+        TranscriptActivityIdle() => null,
+      },
     ],
   );
 

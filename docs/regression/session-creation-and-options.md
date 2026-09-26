@@ -56,6 +56,11 @@ variant, and worktree mode, and creating the session with its first input.
 - Claude's catalog drops the CLI's own `default` model entry and names the
   selection instead: Opus is the default model and `high` the default effort, so
   every picker entry states what will actually run.
+- Claude's picker offers only each family's newest model per context window
+  (Fable, Opus, Sonnet, Haiku), strongest first. The CLI also lists pinned older
+  versions (`claude-opus-4-8`); those are not offered, even through search. A
+  family alias (`opus`) ranks by the model it resolves to, so it never sorts
+  below a pinned older version.
 - Claude stamps assistant and error messages with the catalog picker id and
   effort the turn ran with, so a reopened session keeps its model and variants
   selected. Replayed transcripts and live turns without an explicit selection
@@ -220,9 +225,9 @@ variant, and worktree mode, and creating the session with its first input.
 - A plugin may declare start warm-up work that makes later requests faster.
   The bridge runs it once a generation becomes routable and never waits on it,
   so a slow or failing warm-up neither delays the request that triggered the
-  start nor retires a healthy generation. OpenCode uses it to force its command
-  catalog to index, because `GET /command` alone blocks on MCP server startup
-  and is given a longer read timeout for the same reason.
+  start nor retires a healthy generation. OpenCode warms its command catalog.
+  V1's `GET /command` can block on MCP startup and has a longer read timeout;
+  v2 warms the native `/api/command` catalog without a directory override.
 - Failure with a valid cache still serves it; failure without one is an explicit
   error, never an empty option set. Automatic refresh never starts a stopped
   backend and no-ops for a superseded generation. A backend started only to
@@ -233,6 +238,12 @@ variant, and worktree mode, and creating the session with its first input.
   durable binding, first-input acceptance, and slash-command acceptance remain
   synchronous. Metadata starts only after those gates and does not delay the
   canonical, immediately queryable session response.
+- OpenCode v2 creates standalone sessions. An explicit parent-linked creation
+  request fails before mutation rather than silently creating an unrelated root.
+  Existing native subagents remain discoverable and controllable. Explicit agent,
+  model and variant choices are validated before prompt dispatch; omitted choices
+  preserve native defaults. Agent names reaching clients are display names, with
+  native identifiers resolved only inside the plugin.
 - Dedicated mode creates a branch and worktree from the resolved base branch
   using a bridge-generated lowercase `color-animal` name; the branch is
   `sesori/color-animal` and the worktree directory is the bare slug. Generated
@@ -498,6 +509,9 @@ highlight, Enter and Esc.
 - Live client end-to-end coverage remains phone-only. The desktop shell can
   create through the shared view and has automated capability/routing coverage,
   but still needs a live desktop release exercise.
+- OpenCode v2 has no public parent-linked creation API. Forks are standalone
+  sessions, not a substitute for child creation; experimental transcript import
+  is not used to bypass that limitation.
 - Prompt attachments are capability-gated, so absence is expected, not failure.
 - Only plugins registered in the build under test count.
 - Antigravity intentionally retains one Google-owned empty `.db`/`.meta` discovery artifact because the pinned runtime
@@ -515,6 +529,10 @@ highlight, Enter and Esc.
   `bridge/app/lib/src/repositories/session_metadata_repository.dart`,
   `bridge/app/lib/src/services/` (session creation, mutation, events,
   options, worktree), the create-session and options handlers, and their tests
+- OpenCode v2: `bridge/sesori_plugin_opencode/lib/src/v2/services/opencode_v2_service.dart`,
+  `bridge/sesori_plugin_opencode/lib/src/v2/repositories/v2_model_mapper.dart`,
+  `bridge/sesori_plugin_opencode/test/v2/v2_service_writes_test.dart`, and
+  `bridge/sesori_plugin_opencode/test/v2/v2_model_mapper_test.dart`
 - OMP: `bridge/sesori_plugin_omp/lib/src/services/` and package tests
 - DeepSeek: `bridge/sesori_plugin_deepseek/lib/src/repositories/` and
   `bridge/sesori_plugin_deepseek/lib/src/services/`, and package tests

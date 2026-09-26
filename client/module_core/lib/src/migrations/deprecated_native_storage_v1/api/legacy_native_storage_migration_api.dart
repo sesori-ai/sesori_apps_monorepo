@@ -7,4 +7,6 @@ class LegacyNativeStorageMigrationApi({required final LegacyNativeStorage storag
   Future<Map<String, String>> readAll() => storage.readAll();
 
   Future<void> delete({required String key}) => storage.delete(key: key);
+
+  Future<void> clear() => storage.clear();
 }

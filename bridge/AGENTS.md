@@ -68,10 +68,11 @@ no-op for remote/attach plugins.
 
 The managed runtime is pinned in `sesori_plugin_opencode/lib/src/runtime/open_code_runtime_manifest.dart`:
 
-1. Pick the new `vX.Y.Z` release of `anomalyco/opencode`.
-2. Update `targetVersion`; `bundledVersion` derives the exact managed pin from it.
-3. Replace all six per-platform `sha256` values from that release's asset digests — GitHub's release API exposes each asset's `digest: "sha256:…"` (`opencode-darwin-{arm64,x64}.zip`, `opencode-linux-{arm64,x64}.tar.gz`, `opencode-windows-{arm64,x64}.zip`).
-4. Preserve `minPathVersion` for target refreshes. Raise it only for a separate explicit requirement where new bridge code needs a newer OpenCode API than older PATH installs provide (keep it conservative — prefer the user's own install, and never force a download that would migrate a newer OpenCode's local DB).
+1. Resolve the stable `@opencode/cli` npm version and its `anomalyco/opencode` source tag. The legacy `opencode-ai` package and GitHub latest release can remain on v1.
+2. Download all six `@opencode/cli-{darwin,linux,windows}-{arm64,x64}` versioned `.tgz` archives; verify npm integrity and independently compute SHA-256.
+3. Update `targetVersion` and the six manifest hashes. Preserve `ArchiveFormat.tarGz`, `package/bin/opencode[.exe]` and the single-binary layout; verify actual archive members.
+4. Regenerate v2 REST models, audit/regenerate its SSE manifest, and run focused model/API/event tests. Keep v1 outputs separate.
+5. Preserve `minPathVersion` for target refreshes. Raise it only for a separately approved compatibility requirement; a PATH runtime remains authoritative. Managed v1 users undergo OpenCode's one-way database migration on their first v2 launch.
 
 ## Testing
 

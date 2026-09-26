@@ -2304,4 +2304,11 @@ class _MemorySecrets() implements SecureStorageRepository {
   Future<void> delete({required SecretStorageKey key}) async {
     _values.remove(key);
   }
+
+  @override
+  Future<void> reset() async => _values.clear();
+
+  @override
+  void blockAccess({required Object error, required StackTrace stackTrace}) =>
+      throw UnsupportedError("Auth-manager fixtures do not run startup recovery");
 }

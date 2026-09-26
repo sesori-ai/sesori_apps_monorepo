@@ -125,7 +125,6 @@ extension on AppRoute {
         SessionDetailScreen(
           auditView: false,
           onBack: null,
-          onClose: null,
           projectId: projectId,
           projectName: projectName,
           sessionId: sessionId,
@@ -351,7 +350,6 @@ List<RouteBase> _buildAppRoutes({
                       child: SessionDetailScreen(
                         auditView: false,
                         onBack: null,
-                        onClose: null,
                         key: ValueKey("session-detail-${route.sessionId}"),
                         projectId: route.projectId,
                         projectName: route.projectName,
@@ -618,8 +616,9 @@ ShellRoute buildArchivedSessionsRoute() {
                 sessionTitle: route.sessionTitle,
                 readOnly: true,
                 auditView: true,
+                // Back returns to the archived list, whose own bar closes the
+                // whole flow; a second close control here only crowds the title.
                 onBack: context.pop,
-                onClose: () => close(context: context),
               );
             },
           ),

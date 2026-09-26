@@ -49,9 +49,15 @@ isolated and explicitly deprecated in core, never inside normal repositories.
 Auth/core consume its typed repositories on both clients. Shells register the
 build-mode scope and lazy native master/directory capabilities before shared
 persistence. Production mobile awaits the deprecated importer before consumers;
-development and desktop never resolve it. An import failure disposes the partial
-graph and renders a standalone localized recovery root, without starting normal
-consumers or analytics.
+development and desktop never resolve it. Failed import attempts a scoped reset
+before normal startup: clear destination data, replace its master, clear the old
+namespace and mark migration handled after reset succeeds. The existing completion
+key uses absence for import, false for pending destructive recovery and true for
+handled. Persist false before destruction and preserve it atomically during
+preference clearing. Incomplete recovery blocks secret use in the cache owner;
+cold launch retries reset, never legacy import. Recovery failures reach the app
+log. Normal account analytics rules
+apply after login; there is no separate recovery-consent state.
 
 `module_app_ui` owns shared Flutter localization, context, route-presentation,
 settings/harness-management screens, and adaptive-screen foundations above
