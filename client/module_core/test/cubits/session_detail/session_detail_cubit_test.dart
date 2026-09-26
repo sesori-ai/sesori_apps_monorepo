@@ -155,6 +155,7 @@ void main() {
       PluginManagementService? pluginManagementService,
       BridgeSettingsService? bridgeSettingsService,
       ClockProvider clock = const ClockProvider(),
+      String pageSessionId = sessionId,
     }) => SessionDetailCubit(
       mockConnectionService,
       claimProjectView: claimProjectView,
@@ -171,7 +172,7 @@ void main() {
       lifecycleSource: lifecycleSource ?? MockLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: mockProductAnalyticsService,
-      sessionId: sessionId,
+      sessionId: pageSessionId,
       projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: mockFailureReporter,
@@ -335,6 +336,57 @@ void main() {
           isA<SessionApprovalPerSession>().having((c) => c.effective, "effective", SessionApprovalMode.ask),
         );
         expect((cubit.state as SessionDetailLoaded).isUpdatingApproval, isFalse);
+      });
+    });
+
+    group("transcript fold", () {
+      Future<SessionDetailCubit> loadedCubit({required String pageSessionId}) async {
+        final cubit = buildCubit(pageSessionId: pageSessionId);
+        addTearDown(cubit.close);
+        await awaitState(cubit: cubit, predicate: (state) => state is SessionDetailLoaded, description: "loaded");
+        await pumpEventQueue();
+        return cubit;
+      }
+
+      bool foldedOf(SessionDetailCubit cubit) => (cubit.state as SessionDetailLoaded).transcriptFolded;
+
+      test("switches the fold, and a request that changes nothing emits nothing", () async {
+        final cubit = await loadedCubit(pageSessionId: sessionId);
+        expect(foldedOf(cubit), isFalse);
+        final emitted = <SessionDetailState>[];
+        final subscription = cubit.stream.listen(emitted.add);
+        addTearDown(subscription.cancel);
+
+        cubit.setTranscriptFolded(folded: false);
+        await pumpEventQueue();
+        expect(emitted, isEmpty);
+
+        cubit.setTranscriptFolded(folded: true);
+        cubit.setTranscriptFolded(folded: true);
+        await pumpEventQueue();
+        expect(emitted.map((state) => (state as SessionDetailLoaded).transcriptFolded), [true]);
+
+        cubit.setTranscriptFolded(folded: false);
+        await pumpEventQueue();
+        expect(emitted.map((state) => (state as SessionDetailLoaded).transcriptFolded), [true, false]);
+      });
+
+      test("keeps the fold through a full reload, while another session starts unfolded", () async {
+        final cubit = await loadedCubit(pageSessionId: sessionId);
+        cubit.setTranscriptFolded(folded: true);
+        final emitted = <SessionDetailState>[];
+        final subscription = cubit.stream.listen(emitted.add);
+        addTearDown(subscription.cancel);
+
+        await cubit.reload();
+
+        expect(emitted.first, isA<SessionDetailLoading>());
+        expect(foldedOf(cubit), isTrue);
+
+        const otherSessionId = "session-2";
+        stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: otherSessionId);
+        when(() => mockConnectionService.sessionEvents(otherSessionId)).thenAnswer((_) => const Stream.empty());
+        expect(foldedOf(await loadedCubit(pageSessionId: otherSessionId)), isFalse);
       });
     });
 

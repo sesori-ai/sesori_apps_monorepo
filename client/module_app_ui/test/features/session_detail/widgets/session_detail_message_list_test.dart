@@ -5,6 +5,8 @@ import "package:flutter/gestures.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_turn_stub.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -37,6 +39,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late String? _retryErrorMessage;
   bool _isBusy = false;
   bool _isLoadingOlderMessages = false;
+  bool _transcriptFolded = false;
   int? lastCancelledQueuedMessageIndex;
 
   @override
@@ -86,6 +89,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
 
   void setRetryErrorMessage(String? message) {
     setState(() => _retryErrorMessage = message);
+  }
+
+  void setTranscriptFolded({required bool folded}) {
+    setState(() => _transcriptFolded = folded);
   }
 
   void cancelQueuedMessage(int index) {
@@ -196,6 +203,8 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           awaitingBridgeSubmissions: _awaitingBridgeSubmissions,
           queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
+          transcriptFolded: _transcriptFolded,
+          onTranscriptFoldedChanged: setTranscriptFolded,
           streamingText: _streamingText,
           children: const <Session>[],
           childStatuses: const <String, SessionStatus>{},
@@ -1799,6 +1808,101 @@ void main() {
 
     expect(find.byType(RetryErrorMessageCard), findsNothing);
     expect(_messageKey("user-2"), findsOneWidget);
+  });
+
+  testWidgets("folded, each turn shows its prompt and one stub while the synthetic rows stay", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    // RetryErrorMessageCard shimmers forever, so this test never settles.
+    const queued = QueuedSessionSubmission.text(
+      promptId: "queued-1",
+      text: "Queued behind the turn",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+      fastMode: false,
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _automatedMessage(messageId: "setup", text: "Automation report", sender: MessageSender.system),
+          _message(messageId: "u1", role: "user", text: "First prompt"),
+          _message(messageId: "a1", role: "assistant", text: "First answer"),
+          _message(messageId: "u2", role: "user", text: "Second prompt", promptId: "p2"),
+          _message(messageId: "a2", role: "assistant", text: "Second answer"),
+        ],
+        initialStreamingText: const {},
+        initialQueuedMessages: const [queued],
+        initialRetryErrorMessage: "Provider is overloaded",
+      ),
+    );
+    await tester.pump();
+
+    harnessKey.currentState!.setTranscriptFolded(folded: true);
+    await _pumpListUpdate(tester);
+
+    // Oldest first: the leading segment's stub, then each prompt and its stub.
+    final tops = [
+      for (final row in [
+        "session-detail-turn-head",
+        "u1",
+        "session-detail-turn-u1",
+        "session-detail-prompt-p2",
+        "session-detail-turn-u2",
+      ])
+        tester.getTopLeft(_messageKey(row)).dy,
+    ];
+    expect(tops, [...tops]..sort());
+    expect(find.text("Before the first prompt · No steps"), findsOneWidget);
+    expect(find.text("No steps — First answer"), findsOneWidget);
+    expect(find.text("No steps — Second answer"), findsOneWidget);
+    for (final hidden in ["setup", "a1", "a2"]) {
+      expect(_messageKey(hidden), findsNothing);
+    }
+    final lastStubBottom = tester.getBottomLeft(_messageKey("session-detail-turn-u2")).dy;
+    expect(tester.getTopLeft(find.byType(RetryErrorMessageCard)).dy, greaterThanOrEqualTo(lastStubBottom));
+    expect(tester.getTopLeft(find.text("Queued behind the turn")).dy, greaterThan(lastStubBottom));
+
+    harnessKey.currentState!.setTranscriptFolded(folded: false);
+    await _pumpListUpdate(tester);
+
+    for (final shown in ["setup", "u1", "a1", "session-detail-prompt-p2", "a2"]) {
+      expect(_messageKey(shown), findsOneWidget);
+    }
+    expect(find.byType(TranscriptTurnStub), findsNothing);
+    expect(find.byType(RetryErrorMessageCard), findsOneWidget);
+    expect(find.text("Queued behind the turn"), findsOneWidget);
+  });
+
+  testWidgets("a fold switch eases no row in", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _message(messageId: "u1", role: "user", text: "First prompt"),
+          _message(messageId: "a1", role: "assistant", text: "First answer"),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    Iterable<String> moving() => tester
+        .stateList(find.byType(TranscriptPresence, skipOffstage: false))
+        .map((state) => "$state")
+        .where((state) => state.contains("tracking 1 ticker"));
+
+    for (final folded in [true, false]) {
+      harnessKey.currentState!.setTranscriptFolded(folded: folded);
+      await tester.pump();
+      expect(moving(), isEmpty);
+      expect(_messageKey("session-detail-turn-u1"), folded ? findsOneWidget : findsNothing);
+      expect(_messageKey("a1"), folded ? findsNothing : findsOneWidget);
+    }
   });
 
   testWidgets("removing a message while following drops its row and stays pinned", (tester) async {

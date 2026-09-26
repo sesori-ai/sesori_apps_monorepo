@@ -410,13 +410,17 @@ for users until place-keeping (step 5) exists. Step 6 adds the controls.
 
 - **Fold state (step 4).** It is session page state, so `SessionDetailCubit`
   owns it.
-  - `SessionDetailLoaded` gains `@Default(false) bool transcriptFolded`.
+  - `SessionDetailLoaded` gains `required bool transcriptFolded`, with no
+    default, so the compiler flags any construction site that would reset the
+    fold by leaving it out.
   - The cubit keeps a private `_transcriptFolded` field and seeds every loaded
     state it builds with it in `_buildLoadedState`
     (`session_detail_cubit.dart:2939`), as it already does for
     `isUpdatingAutoContinuation`. A full reload emits
     `SessionDetailState.loading()` first, so the field carries the state
-    across it. Copies of a loaded state keep it on their own.
+    across it. Copies of a loaded state keep it on their own. The two load
+    failures that re-emit the state from before the load seed it again too,
+    as they do `isUpdatingAutoContinuation`.
   - One intent, `setTranscriptFolded({required bool folded})`, is the single
     entry point for every control. It updates the field and, while loaded,
     emits the switched state. A request that changes nothing emits nothing.

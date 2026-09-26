@@ -885,6 +885,73 @@
       }
     }
   },
+  "transcriptTurnSteps": "{count, plural, =0{No steps} =1{1 step} other{{count} steps}}",
+  "@transcriptTurnSteps": {
+    "description": "Part of the one line a folded turn of a session transcript shows: how many steps the agent took in it, e.g. '3 steps · 1m 02s — Fixed the failing test'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptTurnRunning": "Running",
+  "@transcriptTurnRunning": {
+    "description": "The line a folded turn of a session transcript shows while the agent works on it and has taken no step yet."
+  },
+  "transcriptTurnRunningStep": "Running · step {step}",
+  "@transcriptTurnRunningStep": {
+    "description": "The line a folded turn of a session transcript shows while the agent works on it: how many steps it has taken so far, e.g. 'Running · step 3'.",
+    "placeholders": {
+      "step": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptTurnFailed": "Ended with an error",
+  "@transcriptTurnFailed": {
+    "description": "Start of the line a folded turn of a session transcript shows when the turn ended in an error, followed by the error's first line when there is one, e.g. 'Ended with an error · Rate limit reached'."
+  },
+  "transcriptTurnPartlyLoaded": "Earlier turn, partly loaded",
+  "@transcriptTurnPartlyLoaded": {
+    "description": "Start of the line a folded session transcript shows for the messages before the first loaded prompt, whose own prompt may be on an older page that has not loaded, followed by the step count, e.g. 'Earlier turn, partly loaded · 3 steps'."
+  },
+  "transcriptTurnBeforeFirstPrompt": "Before the first prompt",
+  "@transcriptTurnBeforeFirstPrompt": {
+    "description": "Start of the line a folded session transcript shows for the messages before the user's first prompt, such as automation, followed by the step count, e.g. 'Before the first prompt · 2 steps'."
+  },
+  "transcriptTurnSeconds": "{seconds}s",
+  "@transcriptTurnSeconds": {
+    "description": "How long a folded turn of a session transcript took, under a minute, e.g. '42s'.",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptTurnMinutes": "{minutes}m {seconds}s",
+  "@transcriptTurnMinutes": {
+    "description": "How long a folded turn of a session transcript took, under an hour. The seconds always have two digits, e.g. '1m 02s'.",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "transcriptTurnHours": "{hours}h {minutes}m",
+  "@transcriptTurnHours": {
+    "description": "How long a folded turn of a session transcript took, an hour or more. The minutes always have two digits, e.g. '1h 05m'.",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
   "sessionDetailJumpToLatest": "Jump to latest",
   "@sessionDetailJumpToLatest": {
     "description": "Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages."

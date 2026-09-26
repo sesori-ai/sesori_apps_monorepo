@@ -21,6 +21,7 @@ import "system_message_card.dart";
 import "tool_part_widget.dart";
 import "transcript_live_row.dart";
 import "transcript_motion.dart";
+import "transcript_turn_stub.dart";
 import "user_message_card.dart";
 
 /// Chat-style message list for the session detail screen.
@@ -64,6 +65,12 @@ class const SessionDetailMessageList({
   required final Future<void> Function()? onLoadOlderMessages,
   required final ValueChanged<int>? onCancelQueuedMessage,
   required final bool isLoadingOlderMessages,
+
+  /// Whether each turn shows folded: its prompt, then one line for the rest.
+  required final bool transcriptFolded,
+
+  /// Folds or unfolds every turn; the session's one fold intent.
+  required final void Function({required bool folded}) onTranscriptFoldedChanged,
   final String? retryErrorMessage,
 
   /// Height of the floating composer overlaying the list's bottom edge. Used
@@ -143,6 +150,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   static const _kWorkingRowId = "session-detail-working-row";
   static const _kPromptRowPrefix = "session-detail-prompt-";
 
+  /// Folded, a prompt turn's stub row follows its prompt row, keyed by the
+  /// prompt's message id; the messages before the first prompt share one.
+  static const _kTurnRowPrefix = "session-detail-turn-";
+  static const _kLeadingTurnRowId = "session-detail-turn-head";
+
   /// Distance from the oldest edge at which the next older page starts
   /// loading — about one phone viewport, so scrolling back through history
   /// has its page ready instead of stopping dead at the edge.
@@ -210,6 +222,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   @override
   void didUpdateWidget(SessionDetailMessageList oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // The rows a fold switch brings in are not new, so they must not ease in.
+    if (oldWidget.transcriptFolded != widget.transcriptFolded) _knownRowIds = null;
     final olderPageRequestCompleted = oldWidget.isLoadingOlderMessages && !widget.isLoadingOlderMessages;
     // While detached the snapshot keeps the list structure from shifting
     // under the reader; `_onFollowChanged` restores live inputs on reattach.
@@ -325,6 +339,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   List<String> _rowIdsFor({
     required List<MessageWithParts> messages,
+    required TranscriptTurns? foldedTurns,
     required QueuedSessionSubmission? localSendSubmission,
     required List<QueuedSessionSubmission> queuedMessages,
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
@@ -335,9 +350,20 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         if (message.hasRenderableUserContent)
           if (message.info case MessageUser(promptId: final promptId?)) promptId,
     };
+    final messageRows = switch (foldedTurns) {
+      null => [
+        for (final message in messages)
+          if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
+      ],
+      TranscriptTurns(:final turns) => [
+        for (final turn in turns) ...[
+          if (turn case TranscriptPromptTurn(:final opener)) _entryIdForMessage(info: opener.info),
+          _stubRowIdFor(turn: turn),
+        ],
+      ],
+    };
     final entries = <String>[
-      for (final message in messages)
-        if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
+      ...messageRows,
       _kRetryErrorRowId,
       _kWorkingRowId,
       for (final prompt in bridgeQueuedPrompts)
@@ -365,6 +391,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   String _entryIdForMessage({required Message info}) => switch (info) {
     MessageUser(promptId: final promptId?) => "$_kPromptRowPrefix$promptId",
     MessageUser() || MessageAssistant() || MessageError() => info.id,
+  };
+
+  static String _stubRowIdFor({required TranscriptTurn turn}) => switch (turn) {
+    TranscriptPromptTurn(:final opener) => "$_kTurnRowPrefix${opener.info.id}",
+    TranscriptPartialTurn() || TranscriptPreamble() => _kLeadingTurnRowId,
   };
 
   /// Whether [rowId] shows the user's side: a prompt or a user message.
@@ -405,6 +436,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       children: children,
       childStatuses: childStatuses,
     );
+    final foldedTurns = widget.transcriptFolded
+        ? const TranscriptTurnBuilder().build(
+            messages: messages,
+            transcript: transcript,
+            isBusy: isBusy,
+            hasOlderMessages: widget.onLoadOlderMessages != null,
+          )
+        : null;
+    final turnStubs = {
+      for (final turn in foldedTurns?.turns ?? const <TranscriptTurn>[]) _stubRowIdFor(turn: turn): turn,
+    };
     // The rows hold still while the reader is scrolled away, but the jump
     // button names the step running now.
     final liveStep = snap == null
@@ -428,6 +470,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
     final rowIds = _rowIdsFor(
       messages: messages,
+      foldedTurns: foldedTurns,
       localSendSubmission: localSendRow?.submission,
       queuedMessages: queuedMessages,
       bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
@@ -520,6 +563,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                     entryId: entryId,
                     messages: messages,
                     indexById: indexById,
+                    turnStubs: turnStubs,
                     transientSubmissions: transientSubmissions,
                     transcript: transcript,
                     streamingText: streamingText,
@@ -554,12 +598,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required String entryId,
     required List<MessageWithParts> messages,
     required Map<String, int> indexById,
+    required Map<String, TranscriptTurn> turnStubs,
     required Map<String, _TransientSubmission> transientSubmissions,
     required Transcript transcript,
     required Map<String, String> streamingText,
     required String? retryErrorMessage,
     required bool isBusy,
   }) {
+    if (turnStubs[entryId] case final turn?) {
+      return _revealable(createdAtMs: null, child: TranscriptTurnStub(turn: turn));
+    }
     if (entryId == _kRetryErrorRowId) {
       // Synthetic row: no timestamp, but it still slides with the rest.
       return _revealable(

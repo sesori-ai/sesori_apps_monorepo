@@ -29,6 +29,11 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// Whether a load-older request is in flight, so the action is not
     /// re-issued while it runs.
     @Default(false) bool isLoadingOlderMessages,
+
+    /// Whether the transcript shows each turn folded to its prompt and a
+    /// one-line summary. Required, so no construction site can reset the
+    /// fold by omission; it lasts for the cubit, through full reloads.
+    required bool transcriptFolded,
     required Map<String, String> streamingText,
     required SessionStatus sessionStatus,
     required List<SesoriQuestionAsked> pendingQuestions,
