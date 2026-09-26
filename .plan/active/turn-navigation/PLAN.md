@@ -334,8 +334,8 @@ this plan implements them and does not reopen them.
   more left padding/etc for the spine to paint more of a 'child' perspective."
 - **D27 Tapping a row returns to the transcript at that prompt's place.** A
   follow-up row returns to that follow-up's own message where the transcript can
-  address it. It can: the transcript's anchor search is keyed on row ids, and a
-  rendered message row's id is its message id, so no fallback to the turn opener
+  address it. It can: the transcript's anchor search is keyed on row ids, and
+  every rendered message has its own row, so no fallback to the turn opener
   is needed. See [Architecture 11](#11-returning-to-the-transcript-step-11).
 - **D28 Phone entry: a button in the session app bar,** besides the pinch. It
   will be the only visible button left in that bar. The separate in-flight
@@ -974,7 +974,6 @@ Open Question for the user, since it came from D6. Nothing else depends on it.
 Turns are recomputed from the rendered messages on every build, so no turn
 state can go stale. What outlives a build is small and global:
 
-- the fold flag, held by the cubit;
 - one pending anchor;
 - the sticky value (step 8) and the current top-edge opener id (step 11), both
   republished after every frame that scrolled or laid out;
@@ -984,15 +983,14 @@ How each kind of re-sync behaves:
 
 - **Full reload.**
   - The list is torn down and rebuilt at the latest turn, following, as today.
-  - The fold state survives in the cubit, which seeds the new loaded state
-    with it.
-  - The registry refills as rows mount. The sticky header and index recompute
-    after the first frame.
+  - The registry refills as rows mount. The sticky header and the top-edge
+    opener id recompute after the first frame.
 - **Silent refresh or re-import with new ids.**
   - While following, the next build re-derives everything.
   - While detached, the snapshot holds until reattach, as today.
   - A pending anchor whose row id disappeared is dropped.
-  - The index and sticky header follow the new rows after the next frame.
+  - The sticky header and the top-edge opener id follow the new rows after the
+    next frame.
 - **Older page.**
   - A partial leading segment joins its opener when that page arrives.
   - A first-loaded user message that followed an unloaded tool step becomes a
@@ -1004,7 +1002,9 @@ How each kind of re-sync behaves:
   it opened with and the open flag. A row whose message id disappears simply stops
   being listed; if it was the row the reader tapped, the jump ends with no move
   (section 11), and if it was the anchored row, the highlight goes with it and
-  nothing scrolls.
+  nothing scrolls. While the transcript is detached, a prompt that arrived after
+  its snapshot (sent from another surface) is listed but not yet rendered, so its
+  tap likewise ends with no move. Accepted: the jump-to-latest pill reaches it.
 
 ### 9. Removing the in-place fold (step 14)
 
@@ -1115,6 +1115,9 @@ So the Prompts screen is a full-bleed layer inside the session page, owned by
 - The transcript keeps its exact scroll offset, follow state and built rows
   while covered. This is what makes the guardrail true by construction rather
   than by tuning.
+- While the layer is open, the covered scaffold sits in `ExcludeFocus` and
+  `ExcludeSemantics`, so keyboard input and VoiceOver reach only the layer, never
+  the composer or bar behind it.
 - Desktop uses the same `SessionDetailBody`, so the layer covers the desktop
   detail pane and nothing else. One implementation, both shells (D33).
 
@@ -1138,8 +1141,8 @@ runs over what the list renders.
     `turns`. `TranscriptTurnBuilder` also drops non-renderable user messages
     outright (`if (!message.hasRenderableUserContent) continue;`), so the
     messages D36 says still consume a number are not in `turns` either.
-  - The caller is the same widget that already runs `TranscriptTurnBuilder` over
-    the rendered messages, so `messages` is in hand and nothing new is fetched.
+  - The caller is the Prompts view, which runs `TranscriptTurnBuilder` over the
+    cubit's loaded messages, so `messages` is in hand and nothing new is fetched.
   - `turns` supplies only the classification: which user message opened a turn
     and, for a follow-up, which opener it belongs to
     (`turnIndexByMessageId` and each turn's ids).
@@ -1148,9 +1151,13 @@ runs over what the list renders.
   last entry, and a follow-up sits directly below the opener it belongs to.
 - A sealed `TranscriptPromptEntry` with two variants, so a child row cannot
   carry opener-only data and vice versa:
-  - `TranscriptPromptOpener(messageId, text, createdAt?, dayKey?, number?)`;
-  - `TranscriptPromptFollowUp(messageId, text, createdAt?, dayKey?, number?,
-    openerMessageId)`.
+  - `TranscriptPromptOpener(messageId, text, fullText, createdAt?, dayKey?,
+    number?)`;
+  - `TranscriptPromptFollowUp(messageId, text, fullText, createdAt?, dayKey?,
+    number?, openerMessageId)`.
+
+  `fullText` is the message's whole text, which step 16 searches and excerpts;
+  `text` stays the one-line display value below.
 - The builder walks `messages` **oldest first**, so numbering and the list order
   are the same single pass:
   - every role-`user` message advances the number, renderable or not;
@@ -1180,11 +1187,12 @@ runs over what the list renders.
     that turn;
   - an untimed opener gets `null`.
 
-  The view groups by `dayKey` in list order and puts the `null` group **first**,
-  at the top, under the "No date" header (D38, D39). It sits at the top because
-  undated prompts are the older ones — they were read back from the harness's own
-  history, before Sesori was attached — and in chronological order older means
-  higher. So a long session on one of the six harnesses reads: "No date" at the
+  The view groups contiguous runs of equal `dayKey` in list order and never
+  reorders entries (D39); a `null` run gets the "No date" header (D38). That run
+  normally comes **first**, at the top, because undated prompts are normally the
+  older ones — they were read back from the harness's own history, before Sesori
+  was attached — and in chronological order older means higher. An undated prompt
+  later in the list stays in place under its own "No date" header. So a long session on one of the six harnesses reads: "No date" at the
   top, then the earliest dated day, down to "Today" at the bottom. That is the
   expected shape, not a defect.
 - `number` is null unless `userMessagesBefore` is non-null
@@ -1215,9 +1223,8 @@ exists and none is added. Files:
   - from step 16, "Load earlier prompts" as the **first** scrolling sliver: it
     extends the older end of the list, which is now the top, so it must sit
     there or it points the wrong way (D39);
-  - the `null`-`dayKey` group first when one exists, under the "No date" header
-    (D38);
-  - then one `SliverMainAxisGroup` per day, **oldest day first**, each with a
+  - one `SliverMainAxisGroup` per run of one `dayKey`, in list order, so normally
+    "No date" first (D38) and then **oldest day first**, each with a
     pinned `SliverPersistentHeader` day header and a `SliverList` of rows,
     modelled on `session_diffs_view.dart:189-208` and `DiffFileHeaderDelegate`;
   - when `hasTimes` is false, one flat `SliverList` and no day headers;
@@ -1251,13 +1258,15 @@ Entry points:
   open flag deliberately does not, so the shared typedef must carry the callback:
   `SessionDetailHeaderBuilder`
   (`session_detail_body.dart:21-31`, today `context`, `title`, `isBusy`,
-  `onShowDiffs`, `session`) gains `required VoidCallback? onShowPrompts`,
-  mirroring `onShowDiffs` exactly. `_SessionDetailBodyState` supplies it when it
+  `onShowDiffs`, `session`) gains `required void Function({required Offset
+  origin})? onShowPrompts`: like `onShowDiffs`, plus the global centre of the
+  pressed button, which the transition grows from (D35). `_SessionDetailBodyState` supplies it when it
   calls the builder; `DesktopSessionDetailScreen._buildToolbar` consumes it. Both
   change in step 11, in lockstep, as an internal contract with no external
   consumers.
 - The phone button, the desktop button and (from step 13) the pinch all call the
-  one open method on `_SessionDetailBodyState`.
+  one open method on `_SessionDetailBodyState`, each with its origin: a button's
+  centre or the pinch's focal point.
 
 Analytics: `transcript_prompts_opened` with `entry: session_bar` here, and
 `entry: pinch` from step 13. See [Analytics](#analytics).
@@ -1298,9 +1307,13 @@ all reusing what already exists:
 
 Tapping a row closes the layer and scrolls the transcript to that message.
 
-- The transcript's anchor machinery is keyed on **row ids**, and a rendered
-  message row's id is its message id (`_holdRow({required String rowId, required
-  double top})` and `_stepAnchor` in `session_detail_message_list.dart`). So a
+- The transcript's anchor machinery is keyed on **row ids** (`_holdRow({required
+  String rowId, required double top})` and `_stepAnchor` in
+  `session_detail_message_list.dart`), and every rendered message has its own
+  row. Its id comes from `_entryIdForMessage`: the message id, except a user
+  message carrying a `promptId`, whose row is `session-detail-prompt-<promptId>`.
+  `_jumpToMessage` therefore resolves the message through `_entryIdForMessage`
+  before holding, as `_jumpToTurn` already does through `_firstRowOf`. So a
   follow-up row addresses its own message exactly; no fallback to the turn
   opener is needed, and D27's "if it can only address the turn" branch does not
   arise. Step 11 confirms this against the code before building on it.
@@ -1448,8 +1461,8 @@ depends on it.
 - One `String` of state in the view. `ListSearchField` reports every edit with no
   debounce, which is its documented contract, and the filter is a substring pass
   over the already-built entry list — no index, no async, no bridge call.
-- Matching is case-insensitive over the user message's **full** text, not the
-  one-line excerpt, which is why a match can fall past the cut.
+- Matching is case-insensitive over the entry's `fullText`, not the one-line
+  `text`, which is why a match can fall past the cut.
 - A matching row **grows**: under the ellipsised opening words it shows a short
   window of the full text around the first match, with the match highlighted.
   The window is a fixed number of characters either side, clipped at the text's
@@ -1466,7 +1479,8 @@ depends on it.
   chronological order the older boundary is the top, so a control that loads
   earlier prompts belongs there; putting it under the newest prompt would point
   the wrong way.
-- Newly loaded prompts are **prepended** above it, so without a correction the
+- Newly loaded prompts are **inserted** below it, above the rows already there, so
+  the control stays first and without a correction the
   reader's rows would move down by the added extent. Every added row and header has
   the same fixed extent as the ones already there, so the view adds that extent to
   its offset in the same frame and what the reader is looking at stays put. This is
@@ -1505,7 +1519,9 @@ replaces it with a backend time when it has one.
   precisely why history-read prompts stay undated (D38).
 
 **What the stamp means, exactly.** The instant the bridge dispatched the prompt,
-not the instant the user pressed send; for a prompt that waited behind a running
+not the instant the user pressed send. A new session's first prompt carries the
+session's creation instant instead, taken just before that prompt is queued on the
+session's empty chain, so the two differ only by the in-turn option selection. For a prompt that waited behind a running
 turn those differ by however long the queue held it. Accepted: no reader can see
 the difference in a day header or a time column, and threading
 `AcceptedPromptsRepository`'s own `acceptedAt`
@@ -1516,7 +1532,7 @@ queue into the plugin is real machinery for an invisible gain.
 against retained live ones and "the imported row remains authoritative for replay
 metadata" (`bridge/app/lib/src/repositories/chat_history_repository.dart:445-462`),
 so a stamped prompt the harness also reports in its own history can come back
-undated and join the "No date" group — the shape D38 already accepts. Nothing is
+undated and show under a "No date" header in place — the shape D38 already accepts. Nothing is
 added to prevent it: a correct row losing its time is cosmetic, and defending it
 means changing the history merge.
 
@@ -1879,8 +1895,10 @@ Automated coverage in the steps:
 - **Order.** Steps run in order, with the parallelism below.
   - Steps 1–8 have merged. Their order rules are history.
   - Step 10 is pure and may run beside step 9's review.
-  - Steps 12, 13 and 15 all need step 11 and may run in parallel: the
-    transition, the pinch and the numbers touch different files.
+  - Steps 12 and 15 need step 11 and may run in parallel: the transition and
+    the numbers touch different files. Step 13 needs step 12, because the pinch
+    hands its focal point to the transition, so a pinch never opens the screen
+    without it.
   - **Step 14 must follow step 13.** The pinch must have its new destination
     before its old one is deleted, so no PR ships a gesture that does nothing.
   - Step 16 needs step 15, because a matching row shows its number in the grown
@@ -2038,8 +2056,9 @@ No user-visible change.
 [Architecture 10](#10-the-prompts-screen-steps-10-and-11) and
 [Architecture 11](#11-returning-to-the-transcript-step-11). Verify:
 
-- Confirm first, and record, that a rendered follow-up row's id is its message
-  id and that `_holdRow` reaches it, so D27 needs no turn fallback.
+- Confirm first, and record, that a rendered follow-up row's id is
+  `_entryIdForMessage` of its message and that `_holdRow` reaches it, so D27
+  needs no turn fallback.
 - Widget tests: the row shapes and the child indentation; the transcript's order,
   with each follow-up below its opener; sticky day headers, oldest day first, with
   the "No date" group above them; the fully untimed case with no time column and no
@@ -2131,7 +2150,7 @@ tests:
 - day headers keep only the days that still have rows;
 - the match count names the loaded range, and "Load earlier prompts", at the top
   of the list, calls the cubit's loader and is disabled while it runs;
-- newly loaded prompts join the current filter, arrive above the control, and
+- newly loaded prompts join the current filter, arrive below the control, and
   leave a row that was on screen at the same offset.
 
 Also screenshots and the regression document.

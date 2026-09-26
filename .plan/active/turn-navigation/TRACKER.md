@@ -81,7 +81,7 @@ phase, and the original step 10 (retirement) is renumbered to step 18, as
 | 10 | `turn-navigation/prompt-list-model` | [10](#fixed-pr-titles) | ≤ 450 | 9 |
 | 11 | `turn-navigation/prompts-screen` | [11](#fixed-pr-titles) | ≤ 1,100 | 10 |
 | 12 | `turn-navigation/prompts-transition` | [12](#fixed-pr-titles) | ≤ 350 | 11 |
-| 13 | `turn-navigation/prompts-pinch` | [13](#fixed-pr-titles) | ≤ 400 | 11 |
+| 13 | `turn-navigation/prompts-pinch` | [13](#fixed-pr-titles) | ≤ 400 | 12 |
 | 14 | `turn-navigation/remove-fold` | [14](#fixed-pr-titles) | ≤ 1,300 | 13 |
 | 15 | `turn-navigation/prompt-numbers` | [15](#fixed-pr-titles) | ≤ 900 | 11 |
 | 16 | `turn-navigation/prompts-search` | [16](#fixed-pr-titles) | ≤ 900 | 15 |
@@ -101,7 +101,8 @@ diffs of steps 4–7 (~285 production, ~580 test, ~105 localization, ~85
 documentation). If the turn-model trim it also enables pushes it past target, the
 trim lands as step 14.b and the series total becomes 19.
 
-Steps 12, 13 and 15 may run in parallel once step 11 has merged. Step 14 must
+Steps 12 and 15 may run in parallel once step 11 has merged; step 13 follows
+step 12, whose transition its focal point feeds. Step 14 must
 follow step 13, so no PR leaves the pinch without a destination.
 
 ## Fixed PR Titles
