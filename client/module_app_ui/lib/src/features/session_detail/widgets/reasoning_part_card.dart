@@ -1,10 +1,10 @@
 import "dart:math";
 
-import "package:markdown/markdown.dart" as md;
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../utils/markdown_plain_text.dart";
 import "../session_detail_presentation_scope.dart";
 import "reasoning_modal.dart";
 import "transcript_live_row.dart";
@@ -129,41 +129,13 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
     return '';
   }
 
-  /// Extracts the first non-empty block from [markdown] and returns its
-  /// plain text by walking the markdown AST. Only the first physical line
-  /// is parsed, avoiding unnecessary work for long documents.
+  /// The plain text of the first non-empty block of [markdown]. Only the first
+  /// physical line is parsed, avoiding unnecessary work for long documents.
   static String _firstLinePlainText(String markdown) {
     final firstLine = _extractFirstLine(markdown);
     if (firstLine.isEmpty) return markdown.trim();
-
-    // The AST is rendered directly into a Text widget rather than serialized
-    // to HTML, so decode Markdown character references instead of re-escaping them.
-    final document = md.Document(encodeHtml: false);
-    final nodes = document.parse(firstLine);
-
-    for (final node in nodes) {
-      final buffer = StringBuffer();
-      _extractText(node, buffer: buffer);
-      final text = buffer.toString().trim();
-      if (text.isNotEmpty) {
-        return text;
-      }
-    }
-
-    return firstLine.trim();
-  }
-
-  static void _extractText(md.Node node, {required StringBuffer buffer}) {
-    if (node is md.Text) {
-      buffer.write(node.text);
-    } else if (node is md.Element) {
-      // Skip images entirely — they have no text content to display.
-      if (node.tag == 'img') return;
-
-      for (final child in node.children ?? const <md.Node>[]) {
-        _extractText(child, buffer: buffer);
-      }
-    }
+    final plain = markdownPlainText(markdown: firstLine);
+    return plain.isEmpty ? firstLine.trim() : plain;
   }
 }
 

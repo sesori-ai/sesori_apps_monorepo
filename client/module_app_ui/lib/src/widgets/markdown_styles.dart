@@ -129,6 +129,15 @@ Map<String, MarkdownElementBuilder> buildSessionMarkdownBuilders({
   };
 }
 
+/// The chat bubble's typography for a preview of a message, such as the pinned
+/// prompt: the same as [buildChatMessageMarkdownStyleSheet], except that a link
+/// reads as ordinary text. A preview is a still picture whose own tap belongs to
+/// what it previews, so nothing in it may look pressable.
+MarkdownStyleSheet buildChatMessagePreviewMarkdownStyleSheet({required PregoDesignSystem prego}) {
+  final base = buildChatMessageMarkdownStyleSheet(prego: prego);
+  return base.copyWith(a: base.p);
+}
+
 /// Custom [MarkdownBody.builders] for a preview of session chat markdown, such
 /// as the pinned prompt. A fenced block renders as a still [CodeBlockPreview]:
 /// a preview has no room for a copy or open-all control, its own tap belongs to

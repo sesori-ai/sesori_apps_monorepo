@@ -363,6 +363,31 @@ void main() {}
 ```
 ''';
 
+/// A prompt whose words carry Markdown syntax around them.
+const _decoratedPrompt = "Fix **bold** and `code` in [the spec](https://example.com/spec)";
+
+/// A prompt reaching every block and inline element the chat renderer builds.
+const _everyBlockPrompt = '''
+# Heading with [a link](https://example.com/spec)
+
+> quoted
+
+- [ ] a task
+- item with `code`
+
+| field | type |
+|---|---|
+| id | String |
+
+```dart
+void main() {}
+```
+
+![diagram](https://example.com/diagram.png)
+
+---
+''';
+
 const _listViewKey = Key("session-detail-message-list-view");
 const _jumpToLatestKey = Key("session-detail-jump-to-latest");
 
@@ -2581,6 +2606,20 @@ void main() {
     RenderParagraph pinnedParagraph(WidgetTester tester) =>
         tester.renderObject(find.descendant(of: overlay, matching: find.byType(RichText)).first);
 
+    /// Every style the pinned row paints text with.
+    List<TextStyle?> pinnedTextStyles(WidgetTester tester) {
+      final styles = <TextStyle?>[];
+      for (final element in find.descendant(of: overlay, matching: find.byType(RichText)).evaluate()) {
+        final paragraph = element.renderObject;
+        if (paragraph is! RenderParagraph) continue;
+        paragraph.text.visitChildren((span) {
+          if (span is TextSpan) styles.add(span.style);
+          return true;
+        });
+      }
+      return styles;
+    }
+
     testWidgets("pins the turn's prompt once it leaves the top edge", (tester) async {
       await _pumpTurns(tester, messages: shortTurns, folded: false);
       await _scrollRowTo(tester, rowId: "u8", top: 200);
@@ -2732,6 +2771,73 @@ void main() {
       final built = pinnedParagraph(tester).text.toPlainText();
       expect(built, startsWith("Pasted line 0\nPasted line 1\n"));
       expect(built, isNot(contains("Pasted line 500")));
+    });
+
+    testWidgets("pins a link as ordinary text, not as something to press", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: _decoratedPrompt),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // The row's own tap jumps to the prompt, so link-looking text here would
+      // promise an open that never comes.
+      expect(pinned("Fix bold and code in the spec"), findsOneWidget);
+      expect(
+        pinnedTextStyles(tester).map((style) => style?.decoration),
+        everyElement(isNot(TextDecoration.underline)),
+      );
+    });
+
+    testWidgets("labels the pinned bubble with the prompt's words, not its Markdown", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: _decoratedPrompt),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // The rendered row is hidden from semantics, so this label is all a
+      // screen reader gets; it must not read out markers, backticks and URLs.
+      expect(
+        tester.getSemantics(bubble),
+        isSemantics(
+          label: "Fix bold and code in the spec",
+          hint: "Jump to this prompt",
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+
+      semantics.dispose();
+    });
+
+    testWidgets("pins every block with nothing pressable and nothing scrollable", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: _everyBlockPrompt),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // A still picture: every element the renderer can build for a prompt, and
+      // not one control or scroll view among them.
+      expect(find.descendant(of: overlay, matching: find.byType(Table)), findsOneWidget);
+      expect(find.descendant(of: overlay, matching: find.byType(Scrollable)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(Scrollbar)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(TextButton)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(IconButton)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(InkWell)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(PregoCopyIconButton)), findsNothing);
+      expect(
+        pinnedTextStyles(tester).map((style) => style?.decoration),
+        everyElement(isNot(TextDecoration.underline)),
+      );
     });
 
     testWidgets("pins a code block as a still preview, with nothing to press", (tester) async {

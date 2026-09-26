@@ -10,6 +10,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
+import "../../../utils/markdown_plain_text.dart";
 import "../../../widgets/markdown_styles.dart";
 import "transcript_sticky_position.dart";
 import "user_prompt_markdown_image.dart";
@@ -46,8 +47,11 @@ class const TranscriptStickyPromptOverlay({
   Widget _band({required BuildContext context, required TranscriptPromptTurn turn}) {
     final prego = context.prego;
     final markdown = _markdownOf(opener: turn.opener);
-    final label = markdown ?? _attachmentLabelOf(loc: context.loc, opener: turn.opener);
-    final styleSheet = buildChatMessageMarkdownStyleSheet(prego: prego);
+    final source = markdown == null ? null : _boundedSource(markdown: markdown);
+    final label = source == null
+        ? _attachmentLabelOf(loc: context.loc, opener: turn.opener)
+        : _spokenLabelOf(source: source);
+    final styleSheet = buildChatMessagePreviewMarkdownStyleSheet(prego: prego);
     final background = Theme.of(context).scaffoldBackgroundColor;
     void jump() => onJumpToTurn(openerMessageId: turn.opener.info.id);
     return GestureDetector(
@@ -107,7 +111,7 @@ class const TranscriptStickyPromptOverlay({
                           color: prego.colors.bgSurface2,
                           borderRadius: BorderRadius.circular(PregoRadius.xl),
                         ),
-                        child: markdown == null
+                        child: source == null
                             ? Text(
                                 label,
                                 maxLines: 3,
@@ -116,7 +120,7 @@ class const TranscriptStickyPromptOverlay({
                               )
                             : _cutMarkdown(
                                 context: context,
-                                markdown: markdown,
+                                markdown: source,
                                 maxHeight: _threeLineHeight(context: context, styleSheet: styleSheet, prego: prego),
                                 styleSheet: styleSheet,
                               ),
@@ -132,9 +136,9 @@ class const TranscriptStickyPromptOverlay({
     );
   }
 
-  /// The start of the prompt's Markdown, rendered as the user bubble renders
-  /// it, cut off at the bubble's height so no code fence, table or image can
-  /// make the pinned row grow.
+  /// The already-cut [markdown], rendered as the user bubble renders it but as
+  /// a still picture, cut off at the bubble's height so no code fence, table or
+  /// image can make the pinned row grow.
   Widget _cutMarkdown({
     required BuildContext context,
     required String markdown,
@@ -144,7 +148,7 @@ class const TranscriptStickyPromptOverlay({
     return _CutToHeight(
       maxHeight: maxHeight,
       child: MarkdownBody(
-        data: _boundedSource(markdown: markdown),
+        data: markdown,
         selectable: false,
         softLineBreak: true,
         styleSheet: styleSheet,
@@ -179,6 +183,19 @@ class const TranscriptStickyPromptOverlay({
   /// Around twenty-five lines of prose at the bubble's width, so the three
   /// painted lines are unaffected at any text scale the cut can face.
   static const _sourceCharacterBudget = 2000;
+
+  /// What the row shows, as a screen reader hears it. The rendered Markdown is
+  /// hidden from semantics, so this label is all a reader gets: it must be the
+  /// prompt's words, not `**markers**`, backticks and whole URLs. Read from the
+  /// same cut source the row renders, so the label agrees with the row and does
+  /// not grow with the prompt; the reader reaches the rest by activating the
+  /// button, which puts the real bubble at the top edge.
+  static String _spokenLabelOf({required String source}) {
+    final plain = markdownPlainText(markdown: source);
+    // An image or a rule on its own renders no words at all, and a button with
+    // no label is worse than one that reads out the source.
+    return plain.isEmpty ? source : plain;
+  }
 
   /// About three lines of the bubble's body text at the reader's text scale.
   /// Markdown blocks have their own metrics, so the cut is approximate; what
