@@ -1484,7 +1484,7 @@ void main() {
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
   });
 
-  testWidgets("the jump button names the step running now while the rows hold still", (tester) async {
+  testWidgets("the jump button keeps its constant label whatever the session runs", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -1523,13 +1523,13 @@ void main() {
     harnessKey.currentState!.appendNewestMessage(toolMessage(id: "run-1", status: ToolStatus.running));
     await _pumpListUpdate(tester);
     final pill = find.byKey(_jumpToLatestKey);
-    expect(find.descendant(of: pill, matching: find.text(r"Running $ make check")), findsOneWidget);
-    expect(find.descendant(of: pill, matching: find.byType(PregoShimmer)), findsOneWidget);
+    expect(find.descendant(of: pill, matching: find.text("Jump to latest")), findsOneWidget);
+    expect(find.descendant(of: pill, matching: find.byType(PregoShimmer)), findsNothing);
 
     harnessKey.currentState!.removeMessage("run-1");
     harnessKey.currentState!.appendNewestMessage(toolMessage(id: "queued", status: ToolStatus.pending));
     await _pumpListUpdate(tester);
-    expect(find.descendant(of: pill, matching: find.text(r"Pending $ make check")), findsOneWidget);
+    expect(find.descendant(of: pill, matching: find.text("Jump to latest")), findsOneWidget);
 
     harnessKey.currentState!.removeMessage("queued");
     harnessKey.currentState!.appendNewestMessage(toolMessage(id: "run-2", status: ToolStatus.completed));

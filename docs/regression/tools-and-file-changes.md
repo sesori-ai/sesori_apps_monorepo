@@ -93,8 +93,8 @@ sub-agent parts, plus the signal that a tool changed files.
   line of its
   latest words below, the older start fading out; a finished thought is one row,
   “Thought” and its first line, that opens the full text. While the reader is
-  scrolled away, the jump button names the newest running step, shimmering,
-  even though the rows hold still, and says “Jump to latest” when nothing runs.
+  scrolled away, the jump button reads “Jump to latest”, whatever the session
+  is doing.
 - Tapping or keyboard-activating a command opens a Shell panel, on the same
   raised inset as other tool output and code blocks, with the
   full available command, output and error in a two-axis scroll viewport that
@@ -315,8 +315,8 @@ edge (see `transcript-turn-navigation.md`).
   modal's entry transition, or leaves the spinner in place; the Claude summary
   appears live but not after reload, or the reverse.
 - A live row spins or shimmers under reduced motion, a thinking tail hides the
-  newest words or wraps past one line, or the jump button keeps naming a step
-  that has finished.
+  newest words or wraps past one line, or the jump button names a step, shimmers
+  or changes width instead of reading “Jump to latest”.
 - A working session shows no live row between steps, “Working…” stays beside a
   live step or streaming text or after the session goes idle, or a live label's band is invisible
   in either theme.

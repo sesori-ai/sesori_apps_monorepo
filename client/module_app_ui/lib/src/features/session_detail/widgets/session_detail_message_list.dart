@@ -7,7 +7,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "../../../l10n/app_localizations.dart";
 
 import "assistant_message_card.dart";
 import "error_message_card.dart";
@@ -18,7 +17,6 @@ import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "system_message_card.dart";
-import "tool_part_widget.dart";
 import "transcript_live_row.dart";
 import "transcript_motion.dart";
 import "transcript_pinch_detector.dart";
@@ -707,18 +705,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           if (turns.turnIndexByMessageId[message.info.id] case final index?)
             _entryIdForMessage(info: message.info): turns.turns[index],
     };
-    // The rows hold still while the reader is scrolled away, but the jump
-    // button names the step running now.
-    final liveStep = snap == null
-        ? transcript.liveStep
-        : const TranscriptBuilder()
-              .build(
-                messages: widget.messages,
-                streamingText: widget.streamingText,
-                children: widget.children,
-                childStatuses: widget.childStatuses,
-              )
-              .liveStep;
     final transientSubmissions = <String, _TransientSubmission>{
       for (final submission in widget.awaitingBridgeSubmissions)
         "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: _TransientStage.awaitingBridge),
@@ -760,8 +746,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       tracker: _follow,
       detachedOverlayBuilder: (ctx) => JumpToEdgePill(
         tapTargetKey: _kJumpToLatestKey,
-        label: liveStep == null ? loc.sessionDetailJumpToLatest : _liveStepLabel(loc: loc, step: liveStep),
-        live: liveStep != null,
+        label: loc.sessionDetailJumpToLatest,
         onTap: () => _follow.animateToEdge(),
         // Lift the pill clear of the floating composer overlaid below.
         bottomInset: widget.bottomInset,
@@ -862,21 +847,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       ),
     );
   }
-
-  static String _liveStepLabel({required AppLocalizations loc, required TranscriptStep step}) => switch (step) {
-    TranscriptThinkingStep() => loc.sessionDetailThinking,
-    TranscriptToolStep(:final part) => switch (part.state.shellCommand) {
-      // A live tool is pending or running; the row names which.
-      final command? =>
-        "${part.state.status == ToolStatus.pending ? loc.sessionDetailToolPending : loc.sessionDetailToolRunning} \$ $command",
-      null => [ToolPartWidget.toolName(loc: loc, part: part), ?part.state.title].join(" "),
-    },
-    TranscriptSubAgentStep(:final part) => [
-      part.description,
-      part.prompt,
-      loc.sessionDetailSubtaskUnnamed,
-    ].firstWhere((label) => label.isNotEmpty),
-  };
 
   Widget _buildRow({
     required String entryId,
