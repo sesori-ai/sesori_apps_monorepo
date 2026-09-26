@@ -1153,9 +1153,9 @@ runs over what the list renders.
   last entry, and a follow-up sits directly below the opener it belongs to.
 - A sealed `TranscriptPromptEntry` with two variants, so a child row cannot
   carry opener-only data and vice versa:
-  - `TranscriptPromptOpener(messageId, text, fullText, createdAt?, dayKey?,
+  - `TranscriptPromptOpener(messageId, text?, fullText?, createdAt?, dayKey?,
     number?)`;
-  - `TranscriptPromptFollowUp(messageId, text, fullText, createdAt?, dayKey?,
+  - `TranscriptPromptFollowUp(messageId, text?, fullText?, createdAt?, dayKey?,
     number?, openerMessageId)`.
 
   `fullText` is what step 16 searches and excerpts; `text` is the one-line
@@ -1168,13 +1168,16 @@ runs over what the list renders.
   - nothing is reversed at the end: the walk order **is** the list order (D39).
   Messages before the first opener become openers, because before the first
   opener there is no turn to be a child of.
-- `fullText` is the resolution the sticky overlay already does: the user
-  message's whole text, or the first attachment's name, or the existing
-  "Attachment" string. `text` is `fullText`'s first non-empty line. Step 11
-  extracts that shared resolver rather than writing a third copy;
-  `transcript_sticky_prompt_overlay.dart`'s `_textOf` is the second copy and
-  step 8's review already noted it waits for a third caller. The overlay keeps
-  the whole value and its three-line clamp, unchanged.
+- `fullText` is the resolution the sticky overlay already does, minus its
+  localized part: the user message's whole text, or the first attachment's name,
+  or `null` when neither exists. `text` is `fullText`'s first non-empty line, or
+  `null` with it. `module_core` has no localizations, so the view shows the
+  existing localized "Attachment" string for `null`, as the overlay does. Step 10
+  writes that resolver in `module_core` and step 11 points the overlay at it
+  rather than keeping a second copy;
+  `transcript_sticky_prompt_overlay.dart`'s `_textOf` is that copy and step 8's
+  review already noted it waits for a third caller. The overlay keeps the whole
+  value and its three-line clamp, unchanged.
 - `hasTimes` is false only when **no** listed entry has a `createdAt`. Then the
   screen shows no time column and no day headers: that is a session nothing ever
   timed, such as an ACP session Sesori never sent a prompt to (D38).
@@ -1293,10 +1296,11 @@ all reusing what already exists:
   method, so all three anchor alike. The focal point keeps only its transition job
   (D35), so `_turnAt` still loses its last caller in step 13.
 - **Where the list starts.** The view's `ScrollController` gets an
-  `initialScrollOffset` computed from the entries above the anchor — their fixed
-  row extent plus each day header's fixed extent — clamped to the scroll range and
+  `initialScrollOffset` computed from everything above the anchor — the entries'
+  fixed row extent, each day header's fixed extent and, from step 16, the fixed
+  extent of "Load earlier prompts" when it shows — clamped to the scroll range and
   offset so the row sits just below the pinned header. The arithmetic is exact
-  because both extents are fixed and the query is always empty on open, so step
+  because these extents are fixed and the query is always empty on open, so step
   16's grown rows cannot be in play. No `ensureVisible`, no lazy-row search, no
   animation: the list is already there on the first frame, which is also what keeps
   the opening transition from sliding content under the reader.
@@ -1323,6 +1327,9 @@ Tapping a row closes the layer and scrolls the transcript to that message.
 - Step 8's `_jumpToTurn({required String openerMessageId})` becomes
   `_jumpToMessage({required String messageId})`, which the sticky overlay also
   calls with its opener id. One helper, two callers, no widening of behavior.
+  Until step 14 it keeps `_jumpToTurn`'s folded branch: while folded, it unfolds
+  holding the message's turn, so steps 11–13 never tap into a folded transcript
+  and land nowhere.
 - **The seam.** `_SessionDetailBodyState` owns a `TranscriptJumpNotifier`
   (`transcript_jump_notifier.dart`, `module_app_ui`), a `ChangeNotifier` holding
   one nullable pending message id. It is passed through
