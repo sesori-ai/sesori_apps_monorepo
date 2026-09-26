@@ -480,6 +480,16 @@ and assistant-header updates do not replay unrelated text ahead of later deltas.
 Source checks cover the minimum 2.0.11 message-query and interruption shapes;
 mapper/parser fixtures are not evidence of a native event sequence.
 
+Inactive v2 activity/service coverage seeds global session metadata and active IDs,
+with pending inputs read once per observed directory. Root/direct-child summaries
+include input-only work and retain canonical project identity across worktrees.
+Failed refreshes preserve useful state but report unknown work state until a complete
+baseline succeeds. Deletion uses retained metadata without reading a deleted row.
+Metadata/snapshot failures remain logged and do not suppress native status/input
+signals or later events. Native creation retains a project-activity refresh signal
+when its full session metadata cannot be read; it does not fabricate a session row.
+This is fake-repository coverage, not live reconnect proof.
+
 ## Exploration Guidance
 
 Vary which harness runs first and which stays disabled, and the configuration: default
