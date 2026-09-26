@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feedback flow, round 2</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, system-ui, sans-serif; background: #f4f4f5; color: #161616; line-height: 1.45; }
+main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 120px; }
+h1 { font-size: 26px; margin: 0 0 6px; }
+h2 { font-size: 20px; margin: 44px 0 6px; padding-top: 16px; border-top: 1px solid #ddd; }
+p.lead { color: #444; margin: 0 0 14px; font-size: 16px; }
+.box { background: #fff; border-radius: 14px; padding: 14px 18px; margin: 14px 0; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.box.settled { border-left: 4px solid #12a150; }
+.box.how { border-left: 4px solid #1a6dff; }
+.box h3 { margin: 0 0 6px; font-size: 16px; }
+ul { margin: 6px 0; padding-left: 20px; } li { margin: 3px 0; }
+
+.bar { position: sticky; top: 0; z-index: 10; background: rgba(244,244,245,.95); backdrop-filter: blur(8px); border-bottom: 1px solid #e0e0e0; }
+.bar .in { max-width: 1100px; margin: 0 auto; padding: 8px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.bar .prog { font-weight: 700; font-size: 14px; }
+#copy { margin-left: auto; background: #1a6dff; color: #fff; border: 0; border-radius: 10px; padding: 9px 16px; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+#toast { font-size: 14px; color: #12813f; font-weight: 700; }
+#fallback { width: 100%; height: 160px; font: 13px ui-monospace, monospace; }
+
+.q { background: #fff; border-radius: 16px; padding: 16px 16px 14px; margin: 18px 0; box-shadow: 0 1px 3px rgba(0,0,0,.08); border: 1.5px solid transparent; }
+.q.answered { border-color: #cfe0ff; }
+.qh { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
+.qid { flex: none; font-size: 13px; font-weight: 700; color: #fff; background: #161616; border-radius: 8px; padding: 2px 8px; }
+.qt { font-size: 17px; font-weight: 700; }
+.qsub { color: #444; margin: 0 0 12px; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.opt { display: block; border: 1.5px solid #ddd; border-radius: 12px; padding: 12px; cursor: pointer; background: #fff; }
+.opt.on { border-color: #1a6dff; background: #f2f6ff; box-shadow: 0 0 0 3px rgba(26,109,255,.12); }
+.oh { display: flex; align-items: center; gap: 8px; font-size: 15px; margin-bottom: 8px; flex-wrap: wrap; }
+.oh input { width: 18px; height: 18px; margin: 0; accent-color: #1a6dff; flex: none; }
+.oh .letter { font-weight: 700; }
+.sug { font-size: 12px; font-weight: 700; color: #0f7a3d; background: #dcf5e6; border-radius: 99px; padding: 2px 8px; margin-left: auto; white-space: nowrap; }
+.why { font-size: 14px; color: #444; margin: 8px 0 0; }
+.note-in { display: block; margin-top: 12px; width: 100%; border: 1.5px solid #e2e2e2; border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 14px; resize: vertical; min-height: 40px; }
+#other { min-height: 110px; }
+
+.cap { font-size: 12px; color: #666; text-align: center; margin-top: 6px; }
+.shot { width: 100%; max-width: 260px; display: block; margin: 0 auto; border-radius: 16px; border: 1px solid #ddd; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; align-items: start; }
+.shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; align-items: start; }
+.shots figure { margin: 0; }
+.shots .shot { max-width: 220px; }
+.crop { width: 100%; max-width: 300px; height: 130px; margin: 0 auto; border-radius: 12px; overflow: hidden; border: 1px solid #ddd; }
+.crop img { width: 100%; display: block; transform: translateY(var(--y)); }
+.art { position: relative; height: 90px; border-radius: 12px; background: linear-gradient(160deg, #8fb9e8, #cfe3c4 70%, #6f9a5a); overflow: hidden; }
+.art .heart { position: absolute; right: 18px; top: 8px; font-size: 44px; color: #fff; line-height: 1; }
+.art .x { position: absolute; right: 8px; top: 8px; width: 26px; height: 26px; display: grid; place-items: center; font-size: 17px; color: #777; }
+.art .x.disc { background: rgba(0,0,0,.55); color: #fff; border-radius: 99px; }
+.sheetm { border-radius: 16px; padding: 10px; }
+.sheetm.light { background: #fff; border: 1px solid #e4e4e4; color: #161616; }
+.sheetm .row { display: flex; justify-content: flex-end; height: 26px; align-items: center; }
+.sheetm .row .x { width: 26px; height: 26px; display: grid; place-items: center; color: #777; font-size: 17px; }
+.mb { display: block; text-align: center; border-radius: 99px; padding: 9px; font-weight: 700; margin-top: 8px; font-size: 14px; }
+.mb.dark { background: #1e1e1e; color: #fff; }
+.mb.out { background: #fff; color: #444; border: 1px solid #ddd; }
+.mb.grey { background: #ececef; color: #444; border: 1px solid #e2e2e2; }
+.pill { display: inline-flex; gap: 6px; align-items: center; border-radius: 99px; padding: 6px 12px; font-size: 14px; margin: 4px 4px 0 0; border: 1px solid #ddd; background: #fff; }
+.pill .cb { width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid #999; display: inline-grid; place-items: center; font-size: 11px; color: #fff; }
+.pill.sel-grey { background: #ececef; }
+.pill.sel-blue { background: #e3edff; border-color: #1a6dff; color: #0b3f99; }
+.pill .cb.on { background: #1a6dff; border-color: #1a6dff; }
+.copyline { font-size: 14px; text-align: center; color: #444; background: #fafafa; border: 1px solid #eee; border-radius: 10px; padding: 10px; }
+</style>
+</head>
+<body>
+
+<div class="bar"><div class="in">
+  <span class="prog" id="prog">0 of 5 picked</span>
+  <span id="toast"></span>
+  <button id="copy" type="button">Copy answers</button>
+</div>
+<div class="in" style="padding-top:0"><textarea id="fallback" hidden></textarea></div>
+</div>
+
+<main>
+<h1>Feedback flow, round 2: the real sheet</h1>
+<p class="lead">The rating sheet now lives in the app, opened from <b>Settings → Rate Sesori</b> (PRs #1791 and #1792). Below are simulator screenshots in dark and light mode, followed by 5 small choices. Pick one option per question, add notes if you like, then press <b>Copy answers</b> and paste the result back to me. Round 1 (the trigger rules) is <a href="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/feedback-flow/round1/index.html">here</a>.</p>
+
+<h2>Settings</h2>
+<div class="shots">
+  <figure><img class="shot" src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/sesori/feedback-sheet/settings-before.jpg" alt="Settings before"><div class="cap">Before</div></figure>
+  <figure><img class="shot" src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/sesori/feedback-sheet/settings-after.jpg" alt="Settings after"><div class="cap">After: new <b>Rate Sesori</b> row (phones only)</div></figure>
+</div>
+
+<h2>The sheet, dark and light</h2>
+<div class="shots">
+  <figure><img class="shot" src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/sesori/feedback-sheet/sheet-rating.jpg" alt=""><div class="cap">1. Rating (dark)</div></figure>
+  <figure><img class="shot" src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/sesori/feedback-sheet/light-rating.jpg" alt=""><div class="cap">1. Rating (light)</div></figure>
+  <figure><img class="shot" src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/sesori/feedback-sheet/sheet-review.jpg" alt=""><div class="cap">2. After "Yes": asks before opening the store (dark)</div></figure>
+  <figure><img class="shot" src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/sesori/feedback-sheet/light-review.jpg" alt=""><div class="cap">2. Review step (light)</div></figure>
+  <figure><img class="shot" src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/sesori/feedback-private/private-typing.jpg" alt=""><div class="cap">3. "Could be better" → private feedback (dark, typing)</div></figure>
+  <figure><img class="shot" src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/sesori/feedback-sheet/light-private.jpg" alt=""><div class="cap">3. Private feedback (light)</div></figure>
+  <figure><img class="shot" src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/sesori/feedback-private/private-failed.jpg" alt=""><div class="cap">4. Send failed: draft kept, Retry (dark)</div></figure>
+  <figure><img class="shot" src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/sesori/feedback-sheet/light-failed.jpg" alt=""><div class="cap">4. Send failed (light)</div></figure>
+</div>
+<p class="lead" style="margin-top:12px">After a successful send, the sheet closes and a short "Thanks" toast appears. "Leave a review" opens the App Store / Google Play page only after the sheet has finished closing.</p>
+
+<!-- Q1 -->
+<h2>1. The close button over the artwork</h2>
+<div class="q" data-id="Q1" data-title="Close button over the artwork">
+  <div class="qh"><span class="qid">Q1</span><span class="qt">After "Yes", the rising heart doodle lands right on the grey ✕ and hides it. How should the ✕ look?</span></div>
+  <p class="qsub">Close-up of the review step, dark then light:</p>
+  <div class="two" style="margin-bottom:12px">
+    <div class="crop" style="--y:-250px"><img src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/sesori/feedback-sheet/sheet-review.jpg" alt=""></div>
+    <div class="crop" style="--y:-250px"><img src="https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/pr-media/sesori/feedback-sheet/light-review.jpg" alt=""></div>
+  </div>
+  <div class="opts">
+    <label class="opt" data-label="Small dark round backdrop behind the X"><span class="oh"><input type="radio" name="Q1" value="a"><span class="letter">A</span> Small dark disc behind the ✕ <span class="sug">Suggested</span></span>
+      <div class="art"><span class="heart">♡</span><span class="x disc">✕</span></div>
+      <p class="why">Readable over any part of the artwork, and the artwork stays as designed. A common pattern for close buttons on photos.</p></label>
+    <label class="opt" data-label="Move the X above the artwork"><span class="oh"><input type="radio" name="Q1" value="b"><span class="letter">B</span> Move the ✕ into the sheet, above the artwork</span>
+      <div class="sheetm light"><div class="row"><span class="x">✕</span></div><div class="art"><span class="heart">♡</span></div></div>
+      <p class="why">Always clear, but pushes the artwork down by about 30 pt, so the sheet gets taller.</p></label>
+    <label class="opt" data-label="Keep as is"><span class="oh"><input type="radio" name="Q1" value="c"><span class="letter">C</span> Keep as is</span>
+      <div class="art"><span class="heart">♡</span><span class="x">✕</span></div>
+      <p class="why">Swipe down and tapping outside the sheet also close it, so the ✕ is not the only way out.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<!-- Q2 -->
+<h2>2. Secondary buttons in light mode</h2>
+<div class="q" data-id="Q2" data-title="Secondary buttons in light mode">
+  <div class="qh"><span class="qid">Q2</span><span class="qt">"Could be better" and "Not now" are white with a thin border on the white sheet. OK?</span></div>
+  <div class="opts">
+    <label class="opt" data-label="Keep white with border"><span class="oh"><input type="radio" name="Q2" value="a"><span class="letter">A</span> Keep white with a border <span class="sug">Suggested</span></span>
+      <div class="sheetm light"><span class="mb dark">Yes, love it!</span><span class="mb out">Could be better</span></div>
+      <p class="why">The theme's secondary colours in light mode; readable, and it keeps "Yes" as the clear first choice.</p></label>
+    <label class="opt" data-label="Light grey fill"><span class="oh"><input type="radio" name="Q2" value="b"><span class="letter">B</span> Light grey fill</span>
+      <div class="sheetm light"><span class="mb dark">Yes, love it!</span><span class="mb grey">Could be better</span></div>
+      <p class="why">Stands out more as a button, and mirrors dark mode's grey fill. Would differ from other light-mode secondary buttons.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<!-- Q3 -->
+<h2>3. A selected issue</h2>
+<div class="q" data-id="Q3" data-title="Selected issue pill">
+  <div class="qh"><span class="qid">Q3</span><span class="qt">A selected issue only gets a grey fill and a blue checkbox. Enough?</span></div>
+  <div class="opts">
+    <label class="opt" data-label="Keep grey fill with blue checkbox"><span class="oh"><input type="radio" name="Q3" value="a"><span class="letter">A</span> Keep grey fill + blue checkbox <span class="sug">Suggested</span></span>
+      <div><span class="pill"><span class="cb"></span>Hard to navigate</span><span class="pill sel-grey"><span class="cb on">✓</span>Connection drops</span></div>
+      <p class="why">Matches the approved design (#1361); the checkbox already makes it unambiguous.</p></label>
+    <label class="opt" data-label="Blue tint for selected"><span class="oh"><input type="radio" name="Q3" value="b"><span class="letter">B</span> Blue tint for the selected pill</span>
+      <div><span class="pill"><span class="cb"></span>Hard to navigate</span><span class="pill sel-blue"><span class="cb on">✓</span>Connection drops</span></div>
+      <p class="why">Easier to scan at a glance; a small departure from the approved design.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<!-- Q4 -->
+<h2>4. Naming the store</h2>
+<div class="q" data-id="Q4" data-title="Store name in the review step">
+  <div class="qh"><span class="qid">Q4</span><span class="qt">Should the review step name the store?</span></div>
+  <div class="opts">
+    <label class="opt" data-label="Name the store per platform"><span class="oh"><input type="radio" name="Q4" value="a"><span class="letter">A</span> Name it: "App Store" / "Google Play" <span class="sug">Suggested</span></span>
+      <div class="copyline">It takes a minute on the App Store and helps other developers find Sesori.</div>
+      <p class="why">Tells the user exactly where the button goes, so leaving the app is no surprise (your D10 concern).</p></label>
+    <label class="opt" data-label="Generic wording"><span class="oh"><input type="radio" name="Q4" value="b"><span class="letter">B</span> Generic wording</span>
+      <div class="copyline">It takes a minute and helps other developers find Sesori.</div>
+      <p class="why">Shorter, and one string for both platforms.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<!-- Q5 -->
+<h2>5. Account deletion (found while building the endpoint)</h2>
+<div class="q" data-id="Q5" data-title="Missing in-app account deletion">
+  <div class="qh"><span class="qid">Q5</span><span class="qt">There is no way to delete an account in the app, yet <code>docs/SECURITY.md</code> says "You can delete your account from the Sesori mobile app". What should we do?</span></div>
+  <p class="qsub">Today deletion is manual, when someone emails us. Apple requires apps that let people create an account to also let them delete it in the app (guideline 5.1.1(v)), so an App Review could flag it.</p>
+  <div class="opts">
+    <label class="opt" data-label="Plan an in-app Delete account task"><span class="oh"><input type="radio" name="Q5" value="a"><span class="letter">A</span> Plan a separate "Delete account" task <span class="sug">Suggested</span></span>
+      <p class="why">Settings → Delete account, with confirmation; the auth server deletes the account and all its data (feedback included). Its own plan, separate from the feedback work. Until it ships, I also correct the doc.</p></label>
+    <label class="opt" data-label="Only correct SECURITY.md for now"><span class="oh"><input type="radio" name="Q5" value="b"><span class="letter">B</span> Only correct the doc for now</span>
+      <p class="why">Change the sentence to "email hello@sesori.com to delete your account". Honest, but still an Apple review risk.</p></label>
+    <label class="opt" data-label="Leave it"><span class="oh"><input type="radio" name="Q5" value="c"><span class="letter">C</span> Leave it for now</span>
+      <p class="why">No change; the doc stays inaccurate.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" style="border-color:#ddd">
+  <div class="qh"><span class="qt">Anything else?</span></div>
+  <textarea id="other" placeholder="Free text (optional)"></textarea>
+</div>
+
+<div class="box settled">
+  <h3>Already decided (no choice needed)</h3>
+  <ul>
+    <li>The auth-server feedback endpoint is merged (sesori_auth_server#94). Sending works once that server version is deployed.</li>
+    <li>The architecture review approved both PRs. I'll apply its three small tidy-ups together with your answers here, in one push.</li>
+    <li>The voice button in the private step comes in step 4. The native preview hooks left over from #1361 are removed in step 5.</li>
+    <li>The sheet does not appear on its own yet. That is step 6, using the round 1 rules (10 good actions, 14-day wait).</li>
+  </ul>
+</div>
+</main>
+
+<script>
+const KEY = "sesori-feedback-flow-round2";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { state = {}; }
+const save = () => localStorage.setItem(KEY, JSON.stringify(state));
+const questions = [...document.querySelectorAll(".q[data-id]")];
+function refresh() {
+  let picked = 0;
+  for (const q of questions) {
+    const s = state[q.dataset.id] || {};
+    if (s.v) picked++;
+    q.classList.toggle("answered", Boolean(s.v));
+    q.querySelectorAll("input[type=radio]").forEach((r) => {
+      r.checked = r.value === s.v;
+      r.closest(".opt").classList.toggle("on", r.checked);
+    });
+  }
+  document.getElementById("prog").textContent = `${picked} of ${questions.length} picked`;
+}
+for (const q of questions) {
+  const id = q.dataset.id;
+  q.querySelectorAll("input[type=radio]").forEach((r) => r.addEventListener("change", () => {
+    (state[id] ||= {}).v = r.value; save(); refresh();
+  }));
+  const note = q.querySelector(".note-in");
+  note.value = (state[id] || {}).n || "";
+  note.addEventListener("input", () => { (state[id] ||= {}).n = note.value; save(); });
+}
+const other = document.getElementById("other");
+other.value = state.other || "";
+other.addEventListener("input", () => { state.other = other.value; save(); });
+
+function response() {
+  const lines = ["Feedback flow round 2 (#1791/#1792): answers on the real rating sheet", ""];
+  for (const q of questions) {
+    const s = state[q.dataset.id] || {};
+    const opt = s.v ? q.querySelector(`input[value="${s.v}"]`).closest(".opt") : null;
+    const pick = opt ? `${s.v.toUpperCase()}. ${opt.dataset.label}${opt.querySelector(".sug") ? " (suggested)" : ""}` : "no answer";
+    lines.push(`${q.dataset.id} ${q.dataset.title}: ${pick}`);
+    if (s.n && s.n.trim()) lines.push(`    Note: ${s.n.trim()}`);
+  }
+  if (state.other && state.other.trim()) lines.push("", `Anything else: ${state.other.trim()}`);
+  return lines.join("\n") + "\n";
+}
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = response();
+  const toast = document.getElementById("toast");
+  const fallback = document.getElementById("fallback");
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.textContent = "Copied";
+  } catch (e) {
+    fallback.hidden = false; fallback.value = text; fallback.focus(); fallback.select();
+    toast.textContent = "Copy the selected text";
+  }
+  setTimeout(() => { toast.textContent = ""; }, 2500);
+});
+refresh();
+</script>
+</body>
+</html>
