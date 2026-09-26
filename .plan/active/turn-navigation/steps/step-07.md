@@ -73,6 +73,14 @@ These existing tests now also run on iOS, Android and macOS:
 - a code block's touch and trackpad horizontal scroll;
 - a folded-line tap.
 
+Size: about 580 changed lines against the 600-line target. About 60 of them
+are re-indentation, because the list gained one more wrapper.
+
+## Review
+
+`architecture-implementation-review` over `origin/main...HEAD` approved with no
+findings.
+
 ## Manual
 
 - **Pending, for the user:** the real-iPhone pinch and the real macOS trackpad
