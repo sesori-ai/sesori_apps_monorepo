@@ -241,7 +241,7 @@ Planning decisions, from code evidence:
   requires it.
 - **P10 One owner of "running child".** The pill's private `_isRunning`
   (`SessionStatusBusy || SessionStatusRetry`, `background_tasks_bar.dart`)
-  moves into `module_core` as a `runningChildCount` helper beside
+  moves into `module_core` as a `runningChildren` helper beside
   `session_detail_resolvers.dart`. The pill and `TranscriptActivityBuilder`
   both use it, and the pill's copy is deleted (step 5).
 
@@ -311,7 +311,7 @@ a classification for its own behavior keeps a private one:
 ### 4. Sub-agent row (step 5)
 
 - `module_core`: the builder gains `SubAgents` (P3, P4), and
-  `runningChildCount` moves here from the pill (P10).
+  `runningChildren` moves here from the pill (P10).
 - `module_app_ui`: `TranscriptSubAgentsRow({required int count, required
   int? sinceMs})`, in the same slot and presence column, so the handover with
   "Working…" eases as today. Leading slot: a `PregoActivityIndicator` sized to
@@ -346,7 +346,7 @@ parts:
 
 New immutable pieces: the `TranscriptActivity` sealed type and
 `TranscriptActivityBuilder`, `TranscriptDurationFormatter`, the
-`runningChildCount` helper moved from the pill, and two row widgets. Deliberately not added: a cubit clock or
+`runningChildren` helper moved from the pill, and two row widgets. Deliberately not added: a cubit clock or
 ticking state, a stored "first seen" time, a per-harness client flag, a
 capability field for the second line (P9 only if a probe demands it).
 
@@ -481,7 +481,7 @@ analyze every touched package. No user-visible change.
 - builder rule table: sub-agent steps alone versus an own running step,
   streaming text, a retry row, `isBusy` false, zero running children, and the
   start precedence of P4;
-- the pill still counts running children through `runningChildCount`;
+- the pill still counts running children through `runningChildren`;
 - widget tests: spinner not sparkle, two lines, no timer when no start is
   known, and the eased handover with "Working…";
 - live probes with the headless bridge for Codex and DeepSeek (and Grok): with

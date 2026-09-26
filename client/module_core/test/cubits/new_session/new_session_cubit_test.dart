@@ -41,6 +41,7 @@ void main() {
     late MockProjectRepository mockProjectRepository;
     late NewSessionSelectionTracker selectionTracker;
     late MockProductAnalyticsService mockProductAnalyticsService;
+    late FakeFeedbackPromptService feedbackPromptService;
 
     const defaultPlugin = PluginMetadata(
       id: "plugin-1",
@@ -70,6 +71,7 @@ void main() {
         transition: selectionTracker.backendScope.transitionToDiscovered(bridgeId: "bridge-1"),
       );
       mockProductAnalyticsService = stubbedProductAnalyticsService();
+      feedbackPromptService = FakeFeedbackPromptService();
 
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus.stream);
       when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
@@ -153,6 +155,7 @@ void main() {
       selectionTracker: selectionTracker,
       composerDraftRepository: composerDraftRepository ?? inMemoryComposerDraftRepository(),
       productAnalyticsService: mockProductAnalyticsService,
+      feedbackPromptService: feedbackPromptService,
       projectId: "project-1",
     );
 
@@ -546,6 +549,7 @@ void main() {
           selectionTracker: selectionTracker,
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: stubbedProductAnalyticsService(),
+          feedbackPromptService: FakeFeedbackPromptService(),
           projectId: "project-1",
         );
       },
@@ -620,6 +624,7 @@ void main() {
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       ).called(1);
+      expect(feedbackPromptService.positiveInteractions, 1);
     });
 
     test("failed creation reports only a bounded failure outcome", () async {
@@ -661,6 +666,8 @@ void main() {
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       ).called(1);
+      expect(feedbackPromptService.failures, 1);
+      expect(feedbackPromptService.positiveInteractions, 0);
       verifyNever(
         () => mockProductAnalyticsService.logEvent(
           event: any(named: "event", that: isA<SessionCreatedWithMessageEvent>()),

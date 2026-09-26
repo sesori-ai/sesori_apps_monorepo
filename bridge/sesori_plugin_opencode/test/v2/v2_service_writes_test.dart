@@ -117,6 +117,7 @@ void main() {
   test("explicit selections are checked and switched before prompt acceptance", () async {
     await service.sendPrompt(
       sessionId: root.id,
+      promptId: "fixture-prompt",
       parts: parts,
       agent: "Build",
       model: (providerID: "p", modelID: "m"),
@@ -128,6 +129,7 @@ void main() {
     await expectLater(
       service.sendPrompt(
         sessionId: root.id,
+        promptId: "fixture-prompt",
         parts: parts,
         agent: "Build",
         model: (providerID: "p", modelID: "gone"),
@@ -141,6 +143,7 @@ void main() {
   test("variant-only selection uses the effective native model; omission makes no catalog queries", () async {
     await service.sendPrompt(
       sessionId: root.id,
+      promptId: "fixture-prompt",
       parts: parts,
       agent: null,
       model: null,
@@ -148,7 +151,14 @@ void main() {
     );
     expect(repository.calls, ["current-model", "providers", "model", "prompt"]);
     repository.calls.clear();
-    await service.sendPrompt(sessionId: root.id, parts: parts, agent: null, model: null, variant: null);
+    await service.sendPrompt(
+      sessionId: root.id,
+      promptId: "fixture-prompt",
+      parts: parts,
+      agent: null,
+      model: null,
+      variant: null,
+    );
     expect(repository.calls, ["prompt"]);
   });
 
@@ -157,6 +167,7 @@ void main() {
     repository.calls.clear();
     await service.sendCommand(
       sessionId: root.id,
+      promptId: "fixture-prompt",
       command: "compact",
       arguments: "Internal fixture context",
       userVisibleArguments: null,
@@ -174,6 +185,7 @@ void main() {
     repository.calls.clear();
     await service.sendCommand(
       sessionId: root.id,
+      promptId: "fixture-prompt",
       command: "compact",
       arguments: "Custom arguments",
       userVisibleArguments: "Custom arguments",
@@ -188,6 +200,7 @@ void main() {
     await expectLater(
       service.sendCommand(
         sessionId: root.id,
+        promptId: "fixture-prompt",
         command: "gone",
         arguments: "Fixture",
         userVisibleArguments: "Fixture",
@@ -320,7 +333,11 @@ class WritableRepository() implements OpenCodeV2Repository {
   }
 
   @override
-  Future<void> sendPrompt({required String sessionId, required List<PluginPromptPart> parts}) async {
+  Future<void> sendPrompt({
+    required String sessionId,
+    required String? promptId,
+    required List<PluginPromptPart> parts,
+  }) async {
     calls.add("prompt");
     this.parts = parts;
     if (!promptEntered.isCompleted) promptEntered.complete();
@@ -380,7 +397,7 @@ class WritableRepository() implements OpenCodeV2Repository {
   }
 
   @override
-  Future<void> compact({required String sessionId}) async {
+  Future<void> compact({required String sessionId, required String? promptId}) async {
     calls.add("compact");
   }
 

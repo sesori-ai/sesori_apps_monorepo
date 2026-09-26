@@ -138,7 +138,6 @@ void main() {
     );
     final step = stored.parts.single as PluginMessagePartTool;
     expect(step.tool, "Synthetic task finished");
-    expect(step.kind, PluginToolKind.other);
     expect(step.state.status, PluginToolStatus.completed);
     expect(step.state.title, isNull);
     expect(step.state.output, "Synthetic result");

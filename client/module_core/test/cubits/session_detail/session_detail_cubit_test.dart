@@ -32,6 +32,7 @@ import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/bridge_settings_service.dart";
 import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
+import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
@@ -41,6 +42,7 @@ import "package:sesori_dart_core/src/services/session_auto_continuation_service.
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
+import "package:sesori_dart_core/src/services/sse_event_tracker.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -70,6 +72,7 @@ void main() {
     late MockPermissionRepository mockPermissionRepository;
     late MockFailureReporter mockFailureReporter;
     late MockProductAnalyticsService mockProductAnalyticsService;
+    late FakeFeedbackPromptService feedbackPromptService;
     late SessionDetailLoadService loadService;
     late SessionRepository promptDispatcher;
     late BehaviorSubject<SesoriSessionEvent> sessionEvents;
@@ -86,6 +89,7 @@ void main() {
       mockPermissionRepository = MockPermissionRepository();
       mockFailureReporter = MockFailureReporter();
       mockProductAnalyticsService = MockProductAnalyticsService();
+      feedbackPromptService = FakeFeedbackPromptService();
       stubProductAnalyticsService(service: mockProductAnalyticsService);
       _stubPromptAttachmentCapability(
         repository: mockPluginRepository,
@@ -154,6 +158,7 @@ void main() {
       LifecycleSource? lifecycleSource,
       PluginManagementService? pluginManagementService,
       BridgeSettingsService? bridgeSettingsService,
+      SseEventTracker? sseEventTracker,
       ClockProvider clock = const ClockProvider(),
       String pageSessionId = sessionId,
     }) => SessionDetailCubit(
@@ -172,11 +177,13 @@ void main() {
       lifecycleSource: lifecycleSource ?? MockLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: mockProductAnalyticsService,
+      feedbackPromptService: feedbackPromptService,
       sessionId: pageSessionId,
       projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: mockFailureReporter,
       bridgeSettingsService: bridgeSettingsService ?? stubbedBridgeSettingsService(),
+      sseEventTracker: sseEventTracker ?? MockSseEventTracker(),
       clock: clock,
     );
 
@@ -205,6 +212,34 @@ void main() {
         cubit: cubit,
         predicate: (state) => state is SessionDetailLoaded && state.approvalControl is SessionApprovalHidden,
         description: "YOLO off on an older bridge",
+      );
+    });
+
+    test("carries whether the bridge reports the main agent mid-turn and follows it", () async {
+      final tracker = MockSseEventTracker();
+      tracker.emitSessionActivity(const {
+        "project-1": {
+          sessionId: SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+        },
+      });
+      final cubit = buildCubit(sseEventTracker: tracker);
+      addTearDown(cubit.close);
+
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.mainAgentRunning,
+        description: "loaded with the main agent running",
+      );
+
+      tracker.emitSessionActivity(const {
+        "project-1": {
+          sessionId: SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: null, updatedAt: null),
+        },
+      });
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && !state.mainAgentRunning,
+        description: "only sub-agents running",
       );
     });
 
@@ -1382,6 +1417,7 @@ void main() {
             occurredAtUtc: any(named: "occurredAtUtc"),
           ),
         ).called(1);
+        expect(feedbackPromptService.positiveInteractions, 1);
       },
     );
 
@@ -2051,11 +2087,13 @@ void main() {
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
+        feedbackPromptService: FakeFeedbackPromptService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: null,
         failureReporter: mockFailureReporter,
         bridgeSettingsService: stubbedBridgeSettingsService(),
+        sseEventTracker: MockSseEventTracker(),
       );
       addTearDown(cubit.close);
       await _awaitLoaded(cubit);
@@ -2581,6 +2619,8 @@ void main() {
 
         final localSend = (cubit.state as SessionDetailLoaded).localSend;
         expect(localSend, isA<LocalSendFailed>().having((phase) => phase.failure, "failure", failure));
+        expect(feedbackPromptService.failures, 1);
+        expect(feedbackPromptService.positiveInteractions, 0);
       });
     }
 

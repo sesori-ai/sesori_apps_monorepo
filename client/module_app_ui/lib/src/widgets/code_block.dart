@@ -36,26 +36,88 @@ class CodeBlockMarkdownBuilder({
       isFullView: false,
     );
   }
+}
 
-  /// Raw block text with the single trailing newline a fence carries removed.
-  String _extractCode(md.Element element) {
-    final raw = element.textContent;
-    return raw.endsWith("\n") ? raw.substring(0, raw.length - 1) : raw;
+/// [MarkdownBody.builders] entry for fenced code blocks inside a preview of a
+/// message, such as the pinned prompt: a still [CodeBlockPreview] instead of
+/// the interactive [CodeBlock].
+class CodeBlockPreviewMarkdownBuilder() extends MarkdownElementBuilder {
+  @override
+  Widget? visitElementAfterWithContext(
+    BuildContext context,
+    md.Element element,
+    TextStyle? preferredStyle,
+    TextStyle? parentStyle,
+  ) {
+    return CodeBlockPreview(code: _extractCode(element), language: _extractLanguage(element));
   }
+}
 
-  /// Reads the language from the inner `<code class="language-xxx">` element.
-  /// Indented (4-space) blocks and language-less fences return null.
-  String? _extractLanguage(md.Element element) {
-    for (final child in element.children ?? const <md.Node>[]) {
-      if (child is md.Element && child.tag == "code") {
-        const prefix = "language-";
-        final cls = child.attributes["class"];
-        if (cls != null && cls.startsWith(prefix)) {
-          return cls.substring(prefix.length);
-        }
+/// Raw block text with the single trailing newline a fence carries removed.
+String _extractCode(md.Element element) {
+  final raw = element.textContent;
+  return raw.endsWith("\n") ? raw.substring(0, raw.length - 1) : raw;
+}
+
+/// Reads the language from the inner `<code class="language-xxx">` element.
+/// Indented (4-space) blocks and language-less fences return null.
+String? _extractLanguage(md.Element element) {
+  for (final child in element.children ?? const <md.Node>[]) {
+    if (child is md.Element && child.tag == "code") {
+      const prefix = "language-";
+      final cls = child.attributes["class"];
+      if (cls != null && cls.startsWith(prefix)) {
+        return cls.substring(prefix.length);
       }
     }
-    return null;
+  }
+  return null;
+}
+
+/// The label a block's header shows for [language].
+String _languageLabelOf({required String? language}) => (language == null || language.isEmpty) ? "code" : language;
+
+/// A still picture of a fenced code block: the language label over the first
+/// lines of the code, with nothing to press and nothing to scroll.
+///
+/// [CodeBlock] cannot serve a preview. Its copy and open-all controls sit under
+/// a surface whose own tap does something else, so they would look pressable
+/// and do the wrong thing; and its horizontal scroll view reports its metrics
+/// to whatever listens above it, which for the pinned prompt is the
+/// transcript's list, reading them as its own scroll.
+class const CodeBlockPreview({super.key, required final String code, required final String? language})
+    extends StatelessWidget {
+  /// More than the few lines a preview can show, so the surrounding cut, not
+  /// this, is what ends it.
+  static const _previewLines = 4;
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final lines = code.split("\n");
+    final shownCode = lines.length > _previewLines ? lines.take(_previewLines).join("\n") : code;
+
+    // The markdown style sheet's code block decoration draws the box around this.
+    return Column(
+      crossAxisAlignment: .start,
+      children: [
+        Padding(
+          padding: const EdgeInsetsDirectional.only(start: 8, end: 4, top: 4),
+          child: Text(
+            _languageLabelOf(language: language),
+            style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textSecondary),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsetsDirectional.fromSTEB(8, 4, 8, 8),
+          child: Text(
+            shownCode,
+            softWrap: false,
+            style: prego.textTheme.code.copyWith(color: prego.colors.textPrimary),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -103,10 +165,7 @@ class _CodeBlockState() extends State<CodeBlock> {
     );
   }
 
-  String get _languageLabel {
-    final language = widget.language;
-    return (language == null || language.isEmpty) ? "code" : language;
-  }
+  String get _languageLabel => _languageLabelOf(language: widget.language);
 
   void _openAll() {
     showPregoModal<void>(

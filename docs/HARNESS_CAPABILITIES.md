@@ -208,29 +208,54 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 | Codex | ✅ Argument-derived title (`cmd`, `command`, `path`, `filePath`, `query`, else bounded raw arguments). |
 | Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ Agent-supplied ACP `tool_call` title, when the agent sends one; Sesori does not derive titles from ACP inputs. A call without `kind` uses its title as the tool name and drops the title, so the card does not say it twice. |
 
-## Tool kinds
+## Live timers
 
-Each plugin classifies its own tool names into read, edit, command, search or
-other, and the transcript summary names calls by kind (“read 2 files · ran 1
-command”). Other calls count as plain steps.
+"Working…" ticks the time since the running turn's prompt was sent, from the
+prompt message's `time.created`. Without that time it reads plain "Working…";
+the client never starts its own clock.
 
-| Harness | Status and kind source |
+| Harness | Prompt sent time |
 |---|---|
-| Claude | ✅ Built-in names: `Read`/`NotebookRead`; `Edit`/`MultiEdit`/`NotebookEdit`/`Write`; `Bash`; `Grep`/`Glob`/`LS`/`WebSearch`. MCP and other tools are other. |
-| OpenCode | ✅ Built-in names: `read`; `edit`/`multiedit`/`write`/`patch`/`apply_patch`; `bash`; `grep`/`glob`/`list`/`codesearch`/`websearch`. |
-| Pi | ✅ Built-in names: `read`; `edit`/`write`; `bash`; `grep`/`find`/`ls`. Extension tools are other. |
-| Codex | ✅ Partial: shell calls are commands, file changes are edits and web searches are searches. Codex reads and searches files through shell commands, so those count as commands, not reads. |
-| Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ The ACP tool `kind`: `read`; `edit`/`delete`/`move`; `execute`; `search`. A call without a `kind`, or with `fetch`, `think` or `other`, counts as a plain step. |
+| OpenCode, Codex, Pi, DeepSeek | ✅ Live and after reload. |
+| Claude | ✅ Live from the `--replay-user-messages` echo's `timestamp` (verified 2026-09-26 on CLI 2.1.281), and after reload from the transcript record. A slash command's synthetic bubble is stamped at dispatch. |
+| Grok, Antigravity, Copilot, Cursor, Hermes, OMP | ❌ Not implemented: the ACP prompt carries no time, so "Working…" shows no timer. A bridge-side prompt stamp is planned. |
 
-## OpenCode v2 adapter (not yet active)
+While only sub-agents run (the bridge reports the main agent's turn over, and
+it streams nothing and runs no step of its own), the transcript shows "N sub-agents running in the background · time"
+and "You can keep chatting meanwhile." The time counts from the earliest
+running sub-agent's start: the `time.created` of the message holding its
+sub-agent step, else the child session's own `time.created`. With neither, the
+row shows no timer. The second line claims that a prompt sent now reaches the
+main agent at once; no harness where the row shows queues it behind the
+sub-agents. A main agent blocked on a foreground sub-agent is still mid-turn
+(`mainAgentRunning`), so the row stays hidden and the running sub-agent step
+shows instead: a prompt sent then waits for the sub-agent to return. Claude
+and the ACP harnesses republish the activity summary when the main turn ends
+with sub-agents still running; a bridge released before this does not, so the
+flag stays set there and "Working…" shows in place of the row until the
+sub-agents finish.
 
-The staged adapter targets the public 2.0.11–2.0.16 API; active v1 behavior is unchanged.
+| Harness | Sub-agent start | Prompt while sub-agents run |
+|---|---|---|
+| Claude | ✅ The sub-agent step's message time. | ✅ For background `Agent` calls (`run_in_background`): the turn ends at launch, and a prompt is written to the CLI at once and starts a turn. A foreground `Agent` call keeps the turn running, so the row does not show; verified live 2026-09-26 on the Claude CLI (stream-json): a prompt sent 8 s into a foreground call was taken up only when the call returned 11 s later. |
+| Codex | ✅ The sub-agent step's message time. | ✅ `turn/start` at once. Verified live 2026-09-26 on codex-cli 0.156.1 (app-server): the parent's turn ended with its sub-agent still running `sleep 90`, and a new prompt started a parent turn answered in 2 s. |
+| OpenCode | ✅ The child session's `time.created`. | ✅ For background children the parent is idle and `prompt_async` starts a turn. A foreground Task is the parent's own running step, so the row does not show. |
+| DeepSeek | ✅ The sub-agent step's message time. | ✅ By code, not probed live (the adapter is not installed on the probe machine): the parent idles while a background child runs, and the shared ACP path sends `session/prompt` at once. A foreground child keeps the parent's turn running, so the row does not show. A prompt that meets DeepSeek's own follow-up turn after a child settles is unconfirmed. |
+| Grok | ❌ No time: no message or child session carries one, so the row shows no timer. | ✅ `session/prompt` at once while the root is idle. A prompt sent during the wake turn that follows a finished sub-agent cancels that turn and is then answered. |
+| Cursor, Antigravity, Copilot, Hermes, OMP, Pi | Not applicable: no running sub-agent lifecycle reaches the client, so the row never shows. | Not applicable. |
+
+## OpenCode v2 adapter
+
+Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.0.18.
+V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the native database one-way.
 
 | Capability | Status |
 |---|---|
 | Explicit parent-linked creation | Not supported by the native create API; refused before mutation. Native forks remain standalone roots, never children of their source. |
 | Conditional/external form rendering | Not implemented; native-only. Visible replies preserve native keys/types and numeric bounds; native validation remains authoritative. |
 | Native archival | Not supported; archival stays in the bridge database. |
+| Prompt/compaction correlation | Implemented with caller-supplied native IDs and stateless projection. |
+| Custom-command correlation | Not supported by the native command route: no caller ID or result ID is exposed. Command dispatch still waits for native acceptance. |
 
 ## Managed runtime
 
@@ -543,7 +568,8 @@ row, which opens the carried-forward summary when the harness exposes it.
 | Harness | Compaction row | Summary |
 |---|---|---|
 | Claude | ✅ | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.281). |
-| OpenCode | ✅ | ✅ The text of the `summary: true` assistant message. |
+| OpenCode v1 | ✅ | ✅ The text of the `summary: true` assistant message. |
+| OpenCode v2 | ✅ | ✅ The completed native compaction message's `summary`; a running snapshot is not a completed marker. |
 | Pi | ✅ | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |
 | Codex | ✅ | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
 | DeepSeek | ⬜ | ⬜ The runtime reports a live `compaction_completed` status without message identity or a replayable history record, so Sesori maps it only to a session-compacted event; a live-only row would vanish on reload. |
@@ -568,7 +594,9 @@ end with `session.prompt-settled` so clients can remove its optimistic row.
 | Harness | Status and settlement source |
 |---|---|
 | Claude | ✅ Command dispatch publishes a correlated synthetic user message. |
-| OpenCode | ✅ Reserved message identity correlates the backend user echo. |
+| OpenCode v1 | ✅ Correlated backend user echoes cover prompts, commands and manual compaction. |
+| OpenCode v2 prompts / fallback compaction | ✅ Caller-supplied native IDs correlate prompt echoes; completed or failed compaction snapshots emit explicit prompt settlement. |
+| OpenCode v2 native commands | 🚫 The 2.0.18 command route exposes neither caller nor result message identity. There is no correlated echo or explicit settlement; an optimistic command row can remain after acceptance. |
 | Codex | ✅ Turn-backed commands correlate their user echo; native `compact` emits explicit prompt settlement because it returns no turn identity. |
 | Pi | ✅ User echoes and agent-running fallback synthesis remain transcript-backed; an accepted slash command with no agent work emits explicit prompt settlement after its state barrier. |
 | Antigravity, Copilot, Cursor, Hermes, OMP, DeepSeek, Grok | ✅ Shared ACP dispatch publishes a correlated user message; no silent accepted-command path is exposed. |

@@ -77,7 +77,7 @@ The main pane hosts one full-width routed page.
   live state updates also clear stale unread marks.
 - Recent-session rows remain non-archived even when pinning the selected session.
   A live archive update removes that row without a refetch or navigation change;
-  selected non-archived sessions outside the three recent rows remain pinned.
+  selected non-archived sessions outside the visible recent rows remain pinned.
 - A selected project follows route identity, not the displayed name. Each
   signed-in cockpit owns one project-list cubit, including the home pane;
   leaving the signed-in shell releases it.
@@ -93,9 +93,10 @@ The main pane hosts one full-width routed page.
   changes or the user sets it aside by marking it unread. The keyed header remains structurally stable at zero
   height when Activity is empty, and keyed Prego reconciliation honors reduced motion as rows enter, leave or
   reorder.
-- Expanded projects show the first three active visible sessions in the shared list's order, plus the open session
-  when present outside that head. While the project has more, "Show N more" (12 pt tertiary) reveals up to ten more in place; folding the
-  project starts over at three. The project name is the one door to the sessions page. Compact/project collapse
+- Expanded projects show every running session (the same running rule as the project's running count) and the first
+  two other active visible sessions, plus the open session when present outside them, all in the shared list's order.
+  While the project has more, "Show N more" (12 pt tertiary) reveals up to ten more in place; it is absent when nothing
+  is hidden, and folding the project starts over at two. The project name is the one door to the sessions page. Compact/project collapse
   hides ordinary rows without clearing cached data or hiding that project's Activity rows; per-project collapse
   preferences survive layout restore.
 - “Activity · N” and “Projects” are labelled section headers. Clicking one folds its rows; both choices
@@ -245,7 +246,7 @@ The main pane hosts one full-width routed page.
   Shared Prego text styles and Material themes resolve the bundled package font.
 - Connection status floats over the main pane without changing its bounds.
   Reconnecting appears after the shared grace period; connection lost retains
-  Reconnect. Local desired Off, including cold-start/default Off before a user
+  Reconnect until a reconnect starts, which clears it. Local desired Off, including cold-start/default Off before a user
   starts the bridge, suppresses bridge-offline copy—not relay recovery for
   clients using another bridge. Recovery hides the pill with a
   short fade; reduced motion disables it. Departing content neither intercepts
@@ -372,8 +373,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
   new-session replacement, Changes breadcrumb and file selection, home states, package-font resolution.
 - Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
-  project-collapse and section-fold persistence, Show more paging and its reset, a row's compact time with its
-  spoken form and its drop under larger text, shared menu/route callbacks. All-project admission happens once per
+  project-collapse and section-fold persistence, every running row beside two others, Show more paging and its
+  reset, a row's compact time with its spoken form and its drop under larger text, shared menu/route callbacks. All-project admission happens once per
   entering ID, including collapsed/offscreen projects; Activity keeps project context, selection/navigation/actions,
   leaves project rows in place, honors set-aside and just-opened sessions, and reconciles keyed entry/exit under
   reduced motion. Empty/loading/failed entries preserve the stable header and project-local retry. Keep loaded rows

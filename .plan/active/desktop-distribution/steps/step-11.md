@@ -13,13 +13,15 @@ do not change.
 
 Current source and private evidence support these narrow claims:
 
-- macOS x64 and arm64 staging produces private signed/notarized/stapled DMGs and
-  ZIPs containing the Developer ID signed, notarized/stapled app. The ZIP itself is
-  neither signed nor stapled. Nested code, complete helper payload, Gatekeeper assessment,
-  extracted inventories and helper execution are qualified. User guidance requires
-  normal Quit before manual replacement; this is not enforced by the downloads action
-  and signed N→N+1 safe-Quit qualification remains open. No updater service or automatic
-  relaunch exists.
+- macOS x64 and arm64 staging produces signed/notarized/stapled DMGs and ZIPs
+  containing the Developer ID signed, notarized/stapled app. The ZIP itself is neither
+  signed nor stapled. Internal packages and website downloads are now public; stable
+  production remains pending. Nested code, complete helper payload, Gatekeeper,
+  extracted inventories and helper execution have source-specific qualification.
+  Signed On/Off replacement to stable build 981 passed before the shared-store cutover;
+  it is not new-format preservation proof. User guidance requires normal Quit before
+  manual replacement; the downloads action does not enforce it. No updater service
+  or automatic relaunch exists.
 - Windows x64 and arm64 staging produces private unsigned per-user Inno Setup
   packages. Installer fixtures verify complete native payloads, current-user mutex
   refusal, bounded uninstall and shared-state preservation without launching Sesori.
@@ -63,9 +65,10 @@ Reconciled documents:
 - `docs/desktop/downloads.md`
 - this plan, tracker and step evidence
 
-`docs/regression/account-and-onboarding.md` remains unchanged because no shipped
-installer link exists. Adding onboarding now would fabricate availability and bypass
-step 10.
+`docs/regression/account-and-onboarding.md` remains unchanged: step 10's six-target
+shipped-download onboarding is still incomplete. The now-public macOS internal preview
+is not a stable recommendation or Windows/Linux availability; its opt-in website
+entry points and proof boundary are recorded in [step 6](step-06.md).
 
 ## Still blocked
 
@@ -73,15 +76,17 @@ Private package qualification is not release closeout. The owner-approved macOS
 signing migration is complete, including shared callers, native post-deletion proof
 and removal of all five repository copies. Remaining gates include:
 
-- immutable public macOS/Windows assets, signed APT/RPM repositories and verified
-  `https://sesori.com/desktop/` links; winget approval remains external;
-- real-account restoration and browser return; declared minimum OS checks; interactive
-  GUI, Keychain/Secret Service, tray, login-launch, TCC/filesystem and standard-user
-  behavior on the recorded native host matrix;
-- authentic signed macOS/Windows N→N+1 manual replacement and Linux repository-owned
-  N→N+1 updates, including safe Quit, failed-stop refusal and shared-state retention;
-- public retrieval, publisher/repository trust and tamper/failure-path checks.
+- ordinary stable macOS submission through `store-production`; internal publication
+  and deployed website links are already verified, not pending prerequisites;
+- Windows signed/public assets and winget approval; Linux signed APT/RPM repositories;
+- unwaived Windows/Linux real-account restoration, browser return, minimum OS,
+  interactive GUI, Secret Service, tray, login-launch and standard-user coverage;
+- Windows signed N→N+1 manual replacement and Linux repository-owned N→N+1 updates,
+  including safe Quit, failed-stop refusal, shared-state retention and trust/failure paths.
 
-No link, asset, credential, account or publication is invented. Step 10 and final step
+Gate C and the enumerated remaining macOS QA were explicitly retired on 2026-09-26.
+Do not reinstate those prerequisites. Accepted gaps, old-format replacement proof and
+unproved shared-store behavior remain distinct; parent reconciliation retains its own
+scope and numbering. No link, asset, credential, account or publication is invented. Step 10 and final step
 11 closeout are not complete. Step 12 remains blocked; plan stays active until full L5
 matrix passes or an explicit user-approved reduction is recorded.

@@ -73,11 +73,10 @@ void main() {
       ),
     ];
     final projects = await repository.getProjects();
-    expect(projects.first.project.id, directory);
-    expect(projects.first.sandboxes, [worktree]);
-    expect(projects.first.project.activity!.createdAt, 5);
-    expect(projects.first.project.activity!.updatedAt, 40);
-    expect(projects.last.project.activity, isNull);
+    expect(projects.first.id, directory);
+    expect(projects.first.activity!.createdAt, 5);
+    expect(projects.first.activity!.updatedAt, 40);
+    expect(projects.last.activity, isNull);
     expect(api.rootQueries, <String?>[null]);
   });
 
@@ -200,6 +199,7 @@ void main() {
   test("serializes text and supported file parts without adding inbox behavior", () async {
     await repository.sendPrompt(
       sessionId: "session-fixture",
+      promptId: null,
       parts: const [
         PluginPromptPart.text(text: "First"),
         PluginPromptPart.text(text: "Second"),
@@ -242,7 +242,7 @@ void main() {
     expect(api.syntheticBody!.text, "Internal fixture");
     expect(api.syntheticBody!.description, "Visible fixture");
     expect(api.syntheticBody!.resume, isFalse);
-    await repository.compact(sessionId: "session-fixture");
+    await repository.compact(sessionId: "session-fixture", promptId: null);
     for (final reply in PluginPermissionReply.values) {
       await repository.replyToPermission(sessionId: "session-fixture", requestId: "permission", reply: reply);
     }

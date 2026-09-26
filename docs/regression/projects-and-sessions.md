@@ -102,6 +102,11 @@ state.
   non-overridden OpenCode installs use the public-channel `opencode.db`; an explicit
   custom binary does not guess that default or a channel-specific filename. OpenCode
   attach/no-auto-start mode always retains its existing server path.
+- OpenCode v2 live import follows every cursor page and requests roots separately
+  from children. Bridge project identity stays the canonical project directory;
+  a session's actual worktree location is not replaced by that directory. Only
+  the native session parent establishes hierarchy: fork provenance must never
+  turn a standalone fork into a child of its source.
 - One scan is one row above the list, however many harnesses take part. The
   service chooses the first unfinished harness in the operation's fixed
   membership order, including members with no progress event yet, and keeps
@@ -209,6 +214,9 @@ state.
   the session's updated time whenever one exists. A row opens its session directly, and pulling to refresh also
   retries each project's session read. Finished unseen sessions stay in their project lists, and the group and
   its Projects heading are left out when nothing is in motion.
+- However a phone session is reached, from Activity or from its project's list, Android back (edge gesture or
+  button) first closes the topmost sheet over it, one sheet at a time, and only then leaves the session. The same
+  holds for sheets over harness settings and archived sessions.
 - On the phone, only the top-level Projects and Settings pages show a large 36 bold title. Under the Projects
   title, a status row names the paired machine, holds a skeleton while the name loads, and says what onboarding
   waits for before any bridge is registered. The row is left out when the lookup finds no machine to name.
@@ -502,6 +510,8 @@ started one. Restore harness eligibility afterwards.
   instead of "No matches".
 - Phone Activity lists an idle session, orders a running session before a waiting one, keeps a finished
   session after it stops, or a row opens the project instead of its session.
+- Android back with a sheet open (steps, reasoning, tool detail) over a session opened from Activity returns to
+  Projects instead of closing the sheet, or closes stacked sheets together.
 - A catalog read starts a backend, hangs on import, returns a partial list, or an
   older response overwrites a post-commit snapshot.
 - An already-satisfied automatic hydration emits a misleading zero-count
@@ -645,6 +655,10 @@ started one. Restore harness eligibility afterwards.
   `client/module_core/lib/src/cubits/project_inventory/project_list_cubit.dart`,
   `client/module_core/lib/src/utils/title_matcher.dart`, and
   `client/module_prego/lib/components/navigation/prego_sliver_refresh_control.dart`
+- OpenCode catalog: `bridge/sesori_plugin_opencode/lib/src/api/open_code_catalog_database_api.dart`,
+  `bridge/sesori_plugin_opencode/lib/src/v2/repositories/opencode_v2_repository.dart`,
+  `bridge/sesori_plugin_opencode/test/v2/opencode_v2_repository_test.dart`, and
+  `bridge/sesori_plugin_opencode/test/v2/v2_model_mapper_test.dart`
 - Pi metadata catalog: `bridge/sesori_plugin_pi/lib/src/api/pi_session_storage_api.dart`,
   `bridge/sesori_plugin_pi/lib/src/repositories/pi_session_catalog_repository.dart`
 - DeepSeek catalog: `bridge/sesori_plugin_deepseek/lib/src/repositories/`

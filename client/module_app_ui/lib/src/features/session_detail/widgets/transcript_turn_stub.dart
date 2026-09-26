@@ -4,6 +4,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
+import "transcript_duration_formatter.dart";
 import "transcript_live_row.dart";
 
 /// A folded turn's one line, in a step group summary's style: a glyph, then
@@ -78,19 +79,10 @@ class const TranscriptTurnStub({
         TranscriptTurnRunning() => loc.transcriptTurnRunningStep(summary.steps),
         TranscriptTurnFailed(:final errorLine) => [loc.transcriptTurnFailed, ?errorLine].join(" · "),
         TranscriptTurnDone(:final answerLine) => [
-          [steps, if (duration != null) _duration(loc: loc, duration: duration)].join(" · "),
+          [steps, if (duration != null) TranscriptDurationFormatter.format(loc: loc, duration: duration)].join(" · "),
           ?answerLine,
         ].join(" — "),
       },
     };
-  }
-
-  /// Reads like "42s", "1m 02s" or "1h 05m".
-  static String _duration({required AppLocalizations loc, required Duration duration}) {
-    if (duration.inMinutes < 1) return loc.transcriptTurnSeconds(duration.inSeconds);
-    if (duration.inHours < 1) {
-      return loc.transcriptTurnMinutes(duration.inMinutes, "${duration.inSeconds % 60}".padLeft(2, "0"));
-    }
-    return loc.transcriptTurnHours(duration.inHours, "${duration.inMinutes % 60}".padLeft(2, "0"));
   }
 }

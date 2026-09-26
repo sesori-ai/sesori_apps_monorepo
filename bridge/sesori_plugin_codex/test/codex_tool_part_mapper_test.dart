@@ -23,7 +23,6 @@ void main() {
         ),
       ) as PluginMessagePartTool;
 
-      expect(part.kind, PluginToolKind.command);
       expect(part.state.shellCommand, command);
       expect(part.state.output, "hello");
     });

@@ -219,13 +219,14 @@ void main() {
         child,
       ) as CupertinoPage<void>;
       expect(modal.fullscreenDialog, isTrue);
-      expect(modal.child, isA<HarnessesSettingsScreen>());
+      expect((modal.child as NavigatorPopHandler<void>).child, isA<HarnessesSettingsScreen>());
       final pushed = harnessShell.pageBuilder!(
         _FakeBuildContext(),
         _FakeGoRouterState(queryParameters: {harnessSettingsPresentationQueryParam: "pushed"}),
         child,
       ) as MaterialPage<void>;
-      expect((pushed.child as HarnessesSettingsScreen).child, same(child));
+      final pushedScreen = (pushed.child as NavigatorPopHandler<void>).child as HarnessesSettingsScreen;
+      expect(pushedScreen.child, same(child));
     });
 
     test("newSession route builds NewSessionScreen", () {
@@ -314,8 +315,9 @@ void main() {
         const SizedBox(),
       );
 
-      expect(widget, isA<SessionListCubitProvider>());
-      final provider = widget as SessionListCubitProvider;
+      // System back reaches the shell's own navigator before the shell page.
+      expect(widget, isA<NavigatorPopHandler<void>>());
+      final provider = (widget as NavigatorPopHandler<void>).child as SessionListCubitProvider;
       expect(provider.key, const ValueKey("session-list-cubit-proj-42"));
       expect(provider.projectId, "proj-42");
       expect(provider.child, isA<SessionSplitShell>());

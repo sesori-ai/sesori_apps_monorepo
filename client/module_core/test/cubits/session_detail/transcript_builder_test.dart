@@ -43,15 +43,13 @@ MessageWithParts _error(String id) => MessageWithParts(
 MessagePart _text(String id, {String text = "words"}) =>
     MessagePart.text(id: id, sessionID: "s", messageID: "m", text: text);
 
-MessagePart _tool(String id, {ToolStatus status = ToolStatus.completed, ToolKind kind = ToolKind.unknown}) =>
-    MessagePart.tool(
-      id: id,
-      sessionID: "s",
-      messageID: "m",
-      tool: "read",
-      state: ToolState(status: status, title: null, shellCommand: null, output: null, error: null),
-      kind: kind,
-    );
+MessagePart _tool(String id, {ToolStatus status = ToolStatus.completed}) => MessagePart.tool(
+  id: id,
+  sessionID: "s",
+  messageID: "m",
+  tool: "read",
+  state: ToolState(status: status, title: null, shellCommand: null, output: null, error: null),
+);
 
 MessagePart _thought(String id, {String text = "hmm"}) =>
     MessagePart.reasoning(id: id, sessionID: "s", messageID: "m", text: text);
@@ -338,7 +336,7 @@ void main() {
   });
 
   group("TranscriptBuilder summary", () {
-    test("counts finished steps by kind in order of first appearance, plus failures", () {
+    test("every finished thinking block, tool call and sub-agent counts as one step, failed ones included", () {
       final transcript = _build(
         [
           _assistant("m1", [
@@ -347,46 +345,20 @@ void main() {
             _tool("t2", status: ToolStatus.error),
             _subtask("k1", taskState: _taskState(ToolStatus.completed), childSessionID: null),
             _thought("r2"),
-            _subtask("k2", taskState: _taskState(ToolStatus.completed), childSessionID: null),
+            _tool("t3", status: ToolStatus.cancelled),
           ]),
         ],
       );
 
-      final summary = _onlyGroup(transcript, "m1").summary;
-      expect(summary.counts, [
-        (kind: TranscriptStepKind.tool, count: 2),
-        (kind: TranscriptStepKind.thinking, count: 2),
-        (kind: TranscriptStepKind.subAgent, count: 2),
-      ]);
-      expect(summary.failedCount, 1);
-      expect(summary.isEmpty, isFalse);
+      expect(_onlyGroup(transcript, "m1").finishedSteps.map((step) => step.id), ["t1", "r1", "t2", "k1", "r2", "t3"]);
     });
 
-    test("counts tool calls by their reported kind; other and unknown kinds are plain steps", () {
-      final transcript = _build(
-        [
-          _assistant("m1", [
-            _tool("t1", kind: ToolKind.read),
-            _tool("t2", kind: ToolKind.command),
-            _tool("t3", kind: ToolKind.read),
-            _tool("t4", kind: ToolKind.edit),
-            _tool("t5", kind: ToolKind.search),
-            _tool("t6", kind: ToolKind.other),
-            _tool("t7"),
-            _tool("t8", kind: ToolKind.edit, status: ToolStatus.error),
-          ]),
-        ],
-      );
-
-      final summary = _onlyGroup(transcript, "m1").summary;
-      expect(summary.counts, [
-        (kind: TranscriptStepKind.read, count: 2),
-        (kind: TranscriptStepKind.command, count: 1),
-        (kind: TranscriptStepKind.edit, count: 2),
-        (kind: TranscriptStepKind.search, count: 1),
-        (kind: TranscriptStepKind.tool, count: 2),
+    test("a lone finished step counts as one step", () {
+      final transcript = _build([
+        _assistant("m1", [_tool("t1")]),
       ]);
-      expect(summary.failedCount, 1);
+
+      expect(_onlyGroup(transcript, "m1").finishedSteps, hasLength(1));
     });
 
     test("running steps are not counted until they finish", () {
@@ -397,10 +369,7 @@ void main() {
         streamingText: {"r1": "still"},
       );
 
-      final summary = _onlyGroup(transcript, "m1").summary;
-      expect(summary.counts, isEmpty);
-      expect(summary.failedCount, 0);
-      expect(summary.isEmpty, isTrue);
+      expect(_onlyGroup(transcript, "m1").finishedSteps, isEmpty);
     });
   });
 

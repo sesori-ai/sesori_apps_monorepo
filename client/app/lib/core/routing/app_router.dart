@@ -210,6 +210,20 @@ Page<void> _loginTransitionPage({
 // Type-safe navigation extensions
 // ---------------------------------------------------------------------------
 
+/// Keeps system back inside [navigatorKey]'s shell while that navigator can pop.
+///
+/// go_router only blocks popping a shell's outer page while the shell holds
+/// more than one page, so a sheet over a shell's only page left that page
+/// poppable. Android's predictive back then popped the whole shell, sheet and
+/// screen together. [NavigatorPopHandler] tracks every route on the shell's
+/// navigator, pageless sheets included, and hands back to it instead.
+Widget _shellBackHandler({required GlobalKey<NavigatorState> navigatorKey, required Widget child}) {
+  return NavigatorPopHandler<void>(
+    onPopWithResult: (_) => navigatorKey.currentState?.maybePop(),
+    child: child,
+  );
+}
+
 extension BuildContextNavigation on BuildContext {
   void goRoute(AppRoute route) {
     // ignore: no_slop_linter/avoid_raw_go_router, typed wrapper implementation
@@ -252,18 +266,21 @@ List<RouteBase> _buildAppRoutes({
             final selectedSessionId = state.pathParameters[sessionIdPathParam];
             final projectViewingService = getIt<ProjectViewingService>();
 
-            return SessionListCubitProvider(
-              filter: SessionListFilter.active,
-              key: ValueKey("session-list-cubit-$projectId"),
-              projectId: projectId,
-              child: SessionSplitShell(
-                projectViewingService: projectViewingService,
-                list: _SessionListPane(
-                  projectId: projectId,
-                  projectName: projectName,
-                  selectedSessionId: selectedSessionId,
+            return _shellBackHandler(
+              navigatorKey: sessionShellNavigatorKey,
+              child: SessionListCubitProvider(
+                filter: SessionListFilter.active,
+                key: ValueKey("session-list-cubit-$projectId"),
+                projectId: projectId,
+                child: SessionSplitShell(
+                  projectViewingService: projectViewingService,
+                  list: _SessionListPane(
+                    projectId: projectId,
+                    projectName: projectName,
+                    selectedSessionId: selectedSessionId,
+                  ),
+                  child: child,
                 ),
-                child: child,
               ),
             );
           },
@@ -478,7 +495,10 @@ ShellRoute buildHarnessSettingsRoute() {
     navigatorKey: navigatorKey,
     pageBuilder: (context, state, child) {
       final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters).presentation;
-      final content = HarnessesSettingsScreen(child: child);
+      final content = _shellBackHandler(
+        navigatorKey: navigatorKey,
+        child: HarnessesSettingsScreen(child: child),
+      );
       return presentation == HarnessSettingsPresentation.modal
           ? CupertinoPage<void>(key: state.pageKey, fullscreenDialog: true, child: content)
           : MaterialPage<void>(key: state.pageKey, child: content);
@@ -543,12 +563,15 @@ ShellRoute buildArchivedSessionsRoute() {
     pageBuilder: (context, state, child) => CupertinoPage<void>(
       key: state.pageKey,
       fullscreenDialog: true,
-      child: SessionListCubitProvider(
-        key: ValueKey("archive-list-${state.pathParameters[projectIdPathParam]}"),
-        projectId:
-            state.pathParameters[projectIdPathParam] ?? (throw StateError("Archive flow requires project identity")),
-        filter: SessionListFilter.archived,
-        child: child,
+      child: _shellBackHandler(
+        navigatorKey: navigatorKey,
+        child: SessionListCubitProvider(
+          key: ValueKey("archive-list-${state.pathParameters[projectIdPathParam]}"),
+          projectId:
+              state.pathParameters[projectIdPathParam] ?? (throw StateError("Archive flow requires project identity")),
+          filter: SessionListFilter.archived,
+          child: child,
+        ),
       ),
     ),
     routes: [
