@@ -96,11 +96,14 @@ class const TranscriptStickyPromptOverlay({
                       // glyphs of the row its edge cuts through crowding it.
                       // Those glyphs sit within about 20 logical pixels of the
                       // edge, so the spread carries the halo's body that far
-                      // and the short blur ends it before the next line of
-                      // prose, which stays as dark as if there were no halo.
-                      // A wider blur without the spread covers the glyphs far
-                      // less and greys whole rows the bubble never touches.
-                      boxShadow: [BoxShadow(color: background, blurRadius: 18, spreadRadius: 8)],
+                      // and the blur ends it softly. It reaches into the next
+                      // line of prose, which is the cost of erasing the sliced
+                      // row most completely; a narrower halo leaves more of
+                      // those glyphs showing. Judge any change to these values
+                      // on a render with shadows enabled: `flutter_test` sets
+                      // `debugDisableShadows`, which drops the blur entirely
+                      // and paints this as a hard-edged plate.
+                      boxShadow: [BoxShadow(color: background, blurRadius: 28, spreadRadius: 14)],
                     ),
                     child: source == null
                         ? Text(
