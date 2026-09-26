@@ -34,8 +34,8 @@ entirely along with its transcript and its dedicated worktree.
 - Neither shell ever asks whether the worktree survives, and no menu, checkbox or button offers to keep it.
   Archive and Delete both request removal of a dedicated worktree, and send no worktree request for a session
   that has none. The bridge's cleanup refusal is the only thing that protects unfinished work.
-- When the bridge refuses the cleanup over work the user owns — uncommitted changes, or a branch other than
-  the expected one — a modal (a sheet on touch, a dialog on pointer) names those issues and offers exactly
+- When the bridge refuses the cleanup over work the user owns — uncommitted changes in the worktree — a modal
+  (a sheet on touch, a dialog on pointer) names those issues and offers exactly
   two ways out: Cancel, which is also what dismissing it or Escape gives and which leaves the session in its
   lists, or a destructive Delete anyway that retries the same operation with force, so the worktree and the
   work inside it are really removed. That modal is the confirmation; nothing asks again. A forced archive
@@ -43,8 +43,8 @@ entirely along with its transcript and its dedicated worktree.
 - When a live session sharing the worktree is the only issue, nothing is asked. The app retries at once
   without worktree cleanup, so the session is archived or deleted while the other session keeps its
   worktree, and says so once through the ordinary alert surface rather than a modal. A shared worktree
-  reported together with uncommitted changes or a branch mismatch is treated as the refusal above, because
-  forcing there would remove a worktree another session is still using.
+  reported together with uncommitted changes is treated as the refusal above, because forcing there would
+  remove a worktree another session is still using.
 - Desktop Delete asks in a dialog titled with the session's name; Esc cancels and no button is a keyboard
   default, so Return never deletes. The phone keeps its delete sheet. Either confirmation states plainly
   that a dedicated worktree will be deleted and its branch kept.
@@ -221,8 +221,6 @@ restart before explicit re-import.
   combination as a refusal to ask about, because forcing it would remove a
   worktree another live session uses — the bridge's force bypasses every check,
   including the shared one, and always removes the worktree.
-- `branchMismatch` is part of the cleanup-rejection wire contract and is
-  rendered by the client, but no current bridge path produces it.
 - Hermes exposes no ACP close or delete operation. Sesori purges its own row and
   transcript and retains a plugin-scoped tombstone, but the corresponding ACP
   row can remain in Hermes storage until upstream provides a supported deletion

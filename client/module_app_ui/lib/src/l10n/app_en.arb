@@ -1371,17 +1371,6 @@
   "sessionListForceMessage": "The following issues were found:",
   "sessionListCleanupIssueUnstagedChanges": "Worktree has unstaged changes",
   "sessionListCleanupIssueSharedWorktree": "Another active session uses this worktree",
-  "sessionListCleanupIssueBranchMismatch": "Worktree is on branch '{actual}' instead of expected '{expected}'",
-  "@sessionListCleanupIssueBranchMismatch": {
-    "placeholders": {
-      "actual": {
-        "type": "String"
-      },
-      "expected": {
-        "type": "String"
-      }
-    }
-  },
   "sessionListDeleteFailed": "Failed to delete session",
   "sessionListArchiveFailed": "Failed to archive session",
   "prLabel": "PR #{number}",

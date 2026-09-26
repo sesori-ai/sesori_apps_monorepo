@@ -587,9 +587,7 @@ void main() {
             deleteWorktree: any(named: "deleteWorktree"),
             force: any(named: "force"),
           ),
-        ).thenThrow(
-          _cleanupRejected(const CleanupIssue.branchMismatch(expected: "feat/session-1", actual: "main")),
-        );
+        ).thenThrow(_cleanupRejected(const CleanupIssue.unstagedChanges()));
         return buildCubit();
       },
       act: (cubit) async {
@@ -600,10 +598,7 @@ void main() {
           force: false,
         );
         expect(result, isFalse);
-        expect(
-          cubit.lastCleanupRejection?.issues.first,
-          const CleanupIssue.branchMismatch(expected: "feat/session-1", actual: "main"),
-        );
+        expect(cubit.lastCleanupRejection?.issues.first, const CleanupIssue.unstagedChanges());
       },
       skip: 1,
       expect: () => [

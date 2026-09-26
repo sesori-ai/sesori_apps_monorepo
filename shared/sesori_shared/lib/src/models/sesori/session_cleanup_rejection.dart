@@ -18,12 +18,6 @@ sealed class CleanupIssue with _$CleanupIssue {
   @FreezedUnionValue("unstaged_changes")
   const factory unstagedChanges() = CleanupIssueUnstagedChanges;
 
-  @FreezedUnionValue("branch_mismatch")
-  const factory branchMismatch({
-    required String expected,
-    required String actual,
-  }) = CleanupIssueBranchMismatch;
-
   @FreezedUnionValue("shared_worktree")
   const factory sharedWorktree() = CleanupIssueSharedWorktree;
 

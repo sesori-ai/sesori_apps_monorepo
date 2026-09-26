@@ -8,8 +8,8 @@ part of "session_list_action_dispatcher.dart";
 ///
 /// This dialog is itself the confirmation, so it asks once: Cancel, the safe
 /// default that dismissing or Escape also gives, or a destructive Delete
-/// anyway. Keeping the worktree is not on offer — the only refusals that reach
-/// here are the user's own uncommitted work or an unexpected branch.
+/// anyway. Keeping the worktree is not on offer — the refusals that reach here
+/// are the user's own uncommitted work.
 Future<void> _showForceDialog({
   required BuildContext context,
   required SessionListCubit cubit,
@@ -90,9 +90,5 @@ Future<void> _showForceDialog({
 
 String _describeCleanupIssue({required AppLocalizations loc, required CleanupIssue issue}) => switch (issue) {
   CleanupIssueUnstagedChanges() => loc.sessionListCleanupIssueUnstagedChanges,
-  CleanupIssueBranchMismatch(:final expected, :final actual) => loc.sessionListCleanupIssueBranchMismatch(
-    actual,
-    expected,
-  ),
   CleanupIssueSharedWorktree() => loc.sessionListCleanupIssueSharedWorktree,
 };

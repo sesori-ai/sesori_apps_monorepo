@@ -2203,11 +2203,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListCleanupIssueSharedWorktree => 'Another active session uses this worktree';
 
   @override
-  String sessionListCleanupIssueBranchMismatch(String actual, String expected) {
-    return 'Worktree is on branch \'$actual\' instead of expected \'$expected\'';
-  }
-
-  @override
   String get sessionListDeleteFailed => 'Failed to delete session';
 
   @override

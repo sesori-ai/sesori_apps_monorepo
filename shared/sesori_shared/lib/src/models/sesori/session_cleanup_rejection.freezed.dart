@@ -167,10 +167,6 @@ CleanupIssue _$CleanupIssueFromJson(
           return CleanupIssueUnstagedChanges.fromJson(
             json
           );
-                case 'branch_mismatch':
-          return CleanupIssueBranchMismatch.fromJson(
-            json
-          );
                 case 'shared_worktree':
           return CleanupIssueSharedWorktree.fromJson(
             json
@@ -258,83 +254,6 @@ String toString() {
 
 
 
-
-/// @nodoc
-@JsonSerializable()
-
-class CleanupIssueBranchMismatch implements CleanupIssue {
-  const CleanupIssueBranchMismatch({required this.expected, required this.actual,  String? $type}): $type = $type ?? 'branch_mismatch';
-  factory CleanupIssueBranchMismatch.fromJson(Map<String, dynamic> json) => _$CleanupIssueBranchMismatchFromJson(json);
-
- final  String expected;
- final  String actual;
-
-@JsonKey(name: 'type')
-final String $type;
-
-
-/// Create a copy of CleanupIssue
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$CleanupIssueBranchMismatchCopyWith<CleanupIssueBranchMismatch> get copyWith => _$CleanupIssueBranchMismatchCopyWithImpl<CleanupIssueBranchMismatch>(this, _$identity);
-
-@override
-Map<String, dynamic> toJson() {
-  return _$CleanupIssueBranchMismatchToJson(this, );
-}
-
-@override
-bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CleanupIssueBranchMismatch&&(identical(other.expected, expected) || other.expected == expected)&&(identical(other.actual, actual) || other.actual == actual));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode {
-    return Object.hash(runtimeType,expected,actual);
-}
-
-@override
-String toString() {
-    return 'CleanupIssue.branchMismatch(expected: $expected, actual: $actual)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $CleanupIssueBranchMismatchCopyWith<$Res> implements $CleanupIssueCopyWith<$Res> {
-  factory $CleanupIssueBranchMismatchCopyWith(CleanupIssueBranchMismatch value, $Res Function(CleanupIssueBranchMismatch) _then) = _$CleanupIssueBranchMismatchCopyWithImpl;
-@useResult
-$Res call({
- String expected, String actual
-});
-
-
-
-
-}
-/// @nodoc
-class _$CleanupIssueBranchMismatchCopyWithImpl<$Res>
-    implements $CleanupIssueBranchMismatchCopyWith<$Res> {
-  _$CleanupIssueBranchMismatchCopyWithImpl(this._self, this._then);
-
-  final CleanupIssueBranchMismatch _self;
-  final $Res Function(CleanupIssueBranchMismatch) _then;
-
-/// Create a copy of CleanupIssue
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? expected = null,Object? actual = null,}) {
-  return _then(CleanupIssueBranchMismatch(
-expected: null == expected ? _self.expected : expected // ignore: cast_nullable_to_non_nullable
-as String,actual: null == actual ? _self.actual : actual // ignore: cast_nullable_to_non_nullable
-as String,
-  ));
-}
-
-
-}
 
 /// @nodoc
 @JsonSerializable()
