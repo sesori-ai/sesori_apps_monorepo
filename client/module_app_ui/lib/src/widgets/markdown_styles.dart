@@ -95,7 +95,11 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
       decorationColor: foreground,
     ),
     // Chat renders fenced blocks as a [CodeBlock], so this only reaches inline code.
-    code: base.code?.copyWith(color: foreground, backgroundColor: prego.colors.bgTertiary),
+    //
+    // The chip must stay translucent: a paragraph paints its selection
+    // highlight before its glyphs, so an opaque run background covers the
+    // highlight and a selection crossing inline code looks like it skipped it.
+    code: base.code?.copyWith(color: foreground, backgroundColor: prego.colors.alphaBlack10),
     h1: prego.textTheme.textXl.bold.copyWith(color: foreground),
     h2: prego.textTheme.textLg.bold.copyWith(color: foreground),
     h3: prego.textTheme.textMd.bold.copyWith(color: foreground),

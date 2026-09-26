@@ -608,13 +608,18 @@ defaults and queued client sends coherent.
   Markdown emphasis, selection, attachments and queued-state cues stay usable.
 - Markdown looks the same on phone and desktop in both themes. A fenced code
   block is one quiet box (the raised inset tool output uses, with no border)
-  holding its language label, copy button and code. Inline code sits on a soft tertiary
-  background. Tables show hairline row lines under a bold, left-aligned header
+  holding its language label, copy button and code. Inline code sits on a soft
+  translucent chip that contrasts with whichever surface carries it, so a
+  selection highlight painted under the text still reads through it.
+  Tables show hairline row lines under a bold, left-aligned header
   with no outer grid, and a horizontal rule is one hairline. None of these fall
   back to the SDK's purple-grey Material palette.
 - User and assistant message text containing a raw HTML block renders that
   markup as a literal code block, so a pasted page or error body stays visible
   and copyable instead of being swallowed by the Markdown renderer.
+- A selection crossing inline code stays visibly continuous in user bubbles and
+  assistant responses alike: the highlight covers the code run instead of
+  leaving an unhighlighted gap in the middle of the sentence.
 - Selecting across user, assistant, or reasoning text copies the rendered
   content with readable structure: each transition between vertically stacked
   Markdown blocks contributes exactly one line break regardless of their visual
