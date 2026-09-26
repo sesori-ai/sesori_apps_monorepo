@@ -256,10 +256,9 @@ Per D10:
   `AppDelegate.swift`.
 - Android has no review channel: `AppReviewClient.requestReview()` opens the
   Play Store listing on Android (after the D10 confirmation).
-- Delete `FeedbackPreviewActivity`, the `mainActivityName` placeholder, the
-  `debugImplementation` Play Review dependency and the debug-only iOS block.
-  Microphone permission comes from the real voice stack, so
-  `requestMicrophoneAccess` goes away.
+- The debug-only preview hooks (`FeedbackPreviewActivity`, the
+  `mainActivityName` placeholder, the `debugImplementation` Play Review
+  dependency and the iOS `#if DEBUG` block) were already removed in step 3.a.
 
 ## Steps
 
@@ -279,8 +278,9 @@ Fixed titles live in [TRACKER](TRACKER.md#fixed-pr-titles).
      mobile `SettingsView`. Yes → celebration → store write-review page. Could be
      better → private step (typing only; the voice button arrives in step 4)
      → submit to `/feedback` → top toast. Errors keep the draft.
-   - Delete the preview launcher, simulated states, `FEEDBACK_PREVIEW.md` and
-     tests the production tests replace.
+   - Delete the preview launcher, simulated states, `FEEDBACK_PREVIEW.md`,
+     tests the production tests replace, and the debug-only native preview
+     hooks.
    - Add `docs/regression/feedback-flow.md`.
    - Size: expected near the cap. Use `git mv` for the motion file and assets;
      if the authored diff exceeds ~1,500 lines, split into 3.a (sheet + Settings
