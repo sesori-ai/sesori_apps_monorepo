@@ -201,7 +201,9 @@
   series entries, retained native coverage requirements and whitespace. Only
   Markdown changes; no runtime suites or architecture review are required.
   Automated admission/recovery sits at L2; native L3/L4 requirements match the
-  existing plan and are not reduced or represented as passing.
+  existing plan and are not reduced or represented as passing. Codex identified
+  omitted Windows/Linux replacement wording; L3 now explicitly preserves the
+  database/master pairing through new-format replacement on all three desktops.
 - None of this evidence establishes released-mobile migration, mobile
   backup/restore, real credential behavior, packaged replacement or actual
   prompt counts. Those gates remain.
