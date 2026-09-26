@@ -92,6 +92,20 @@ final class const ClaudeContentMapper() {
         _internalCommandMarkers.any((marker) => block.text.trimLeft().startsWith(marker)),
   );
 
+  /// Whether a `user` frame or record the CLI generated itself must not render
+  /// as a user turn: an injected skill body, an image caption, a continuation
+  /// nudge or sub-agent plumbing is the harness talking to the model, not the
+  /// user typing.
+  ///
+  /// Sesori's own peer injections carry the same flag and are real content, so
+  /// peer provenance keeps them visible. The live dispatcher and the history
+  /// mapper both ask here; they diverged while each tested its own copy of this
+  /// rule.
+  bool hidesHarnessGeneratedUserTurn({
+    required bool isHarnessGenerated,
+    required ClaudeMessageOriginKind originKind,
+  }) => isHarnessGenerated && originKind != ClaudeMessageOriginKind.peer;
+
   /// Strips the bridge-owned worktree context envelope from user [content], so
   /// both the live replay echo and the persisted transcript render only the
   /// user-authored text.

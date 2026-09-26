@@ -453,7 +453,7 @@ final class ClaudeEventDispatcher({
     // replayed rows share one message id.
     if (message.originKind != ClaudeMessageOriginKind.peer &&
         _awaitingCompactionSummary.remove(sessionId) &&
-        message.isSynthetic) {
+        message.isHarnessGenerated) {
       if (_nonEmptyString(message.uuid) case final messageId?) {
         final compaction = _content.compactionMessage(
           sessionId: sessionId,
@@ -525,6 +525,15 @@ final class ClaudeEventDispatcher({
     }
 
     if (messageId == null) return const [];
+    // Whatever the compaction, tool-result and task-notification branches above
+    // did not claim is an ordinary user message — so this is where a frame the
+    // CLI wrote itself, such as an injected skill body, stops.
+    if (_content.hidesHarnessGeneratedUserTurn(
+      isHarnessGenerated: message.isHarnessGenerated,
+      originKind: message.originKind,
+    )) {
+      return const [];
+    }
     final user = _content.userMessage(
       content: message.message["content"],
       sessionId: sessionId,

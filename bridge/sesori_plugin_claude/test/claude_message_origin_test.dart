@@ -177,8 +177,11 @@ Map<String, Object?> _user({required Object? content, required Object? origin, b
   "sessionId": _sessionId,
   "uuid": "fixture-user",
   "timestamp": _timestamp,
+  // One meaning, two spellings: the transcript flags a frame the CLI generated
+  // as `isMeta` and the live stream flags the same frame as `isSynthetic`, so a
+  // fixture cannot claim one without the other.
   "isMeta": isMeta,
-  "isSynthetic": true,
+  "isSynthetic": isMeta,
   "isSidechain": false,
   "userType": "external",
   "origin": origin,
