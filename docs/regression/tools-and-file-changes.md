@@ -270,7 +270,9 @@ one permission-gated mutation, one repeated terminal update, and a verified
 shell command with long output. Reload a root with completed/cancelled children
 and each child transcript; verify prompt provenance, tile order, and both
 lifecycle extension methods. Denial remains unverified and carries no replay
-guarantee.
+guarantee. Fold every turn over the same mixes: a folded turn counts its step
+groups' steps on one line, and the jump button still returns to the latest
+edge (see `transcript-turn-navigation.md`).
 
 ## Failure Signals
 

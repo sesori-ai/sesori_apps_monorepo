@@ -58,6 +58,21 @@ sender and parts, at the point the model received it. Verified on
 **2026-09-26** with native Claude Code **2.1.281** captures and live rows the
 bridge stored from CLIs 2.1.237 to 2.1.281.
 
+## Transcript turn boundaries
+
+The client groups a transcript into turns from its messages alone, so a
+follow-up sent while a turn runs stays inside that turn only where the harness
+delivers it into the running turn. See
+`docs/regression/transcript-turn-navigation.md`.
+
+| Harness | Follow-up sent while a turn runs | Stays in the running turn |
+|---|---|---|
+| Claude Code | Taken at the next tool boundary; history replays it where the model received it | ✅ |
+| Codex | `turn/start` steers the active turn | ✅ |
+| Pi | Sent with the `steer` streaming behavior | ✅ |
+| OpenCode | Sent at once into the running turn | ✅ |
+| ACP family: Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes, OMP | Stop-and-send: the bridge cancels the turn, then sends | 🚫 Opens a new turn: ACP v1 has no steering operation, and no ACP plugin overrides the shared stop-and-send (checked in code on 2026-09-26). |
+
 ## Quota-reset auto continuation
 
 Claude/Pi also implement named-session readiness for idle, retry, queued work

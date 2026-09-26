@@ -290,7 +290,8 @@ bridge restart, and forced ACP process replacement for the same imported
 session. For Grok, also vary a changed loaded model/effort and confirm replay
 uses the loaded tuple without replacing live defaults. Vary root versus child
 sessions and content types, since tool and image parts converge by their own
-rules where supported.
+rules where supported. Page back and re-import with turns folded too:
+`transcript-turn-navigation.md` owns how turn boundaries react to both.
 
 ## Failure Signals
 

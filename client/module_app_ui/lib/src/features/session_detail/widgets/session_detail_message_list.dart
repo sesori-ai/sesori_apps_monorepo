@@ -254,9 +254,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       // The rows a fold switch brings in are not new, so they must not ease in.
       _knownRowIds = null;
       // Unless a control in the list already chose the turn, hold the one at
-      // the top edge, measured in the last frame's layout. Following keeps the
-      // newest turn in view by itself.
-      if (_anchor == null && !_follow.following) {
+      // the top edge, measured in the last frame's layout. That holds while
+      // following too: the hold's first jump detaches the list, as a stub tap's
+      // does, so a round trip returns to the same turn.
+      if (_anchor == null) {
         if (_topEdgeTurn() case final turn?) _holdTurn(turn: turn, folded: widget.transcriptFolded);
       }
     }

@@ -1378,11 +1378,13 @@ class SessionDetailCubit(
   }
 
   /// Folds or unfolds every turn of the transcript: the one intent behind
-  /// every fold control. A request that changes nothing emits nothing.
+  /// every fold control. A request that changes nothing emits and reports
+  /// nothing.
   void setTranscriptFolded({required bool folded}) {
     if (isClosed || folded == _transcriptFolded) return;
     _transcriptFolded = folded;
     if (state case final SessionDetailLoaded current) emit(current.copyWith(transcriptFolded: folded));
+    if (folded) _reportProductEvent(event: const ProductAnalyticsEvent.transcriptTurnsFolded());
   }
 
   Future<void> setAutoContinuation({required bool enabled}) async {
