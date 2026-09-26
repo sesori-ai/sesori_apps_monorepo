@@ -4,8 +4,8 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 6.b (PR 9/13) — activity/service integration under review in [#1762](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1762).
-  Branch: `sesori/opencode-v2-step-6b-activity-service`.
+- Current step: 7.a (PR 10/14) — writes/forms implemented and verified; architecture review pending.
+  Branch: `sesori/opencode-v2-step-7a-writes`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
   Step 3 [#1716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1716),
@@ -13,8 +13,9 @@
   Step 5.a [#1733](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1733),
   Step 5.b [#1743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1743),
   Step 5.c [#1748](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1748),
-  Step 6.a [#1755](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1755).
-- One-step-ahead successor: Step 7 writes/activation (PR 10/13); keep local until Step 6.b merges.
+  Step 6.a [#1755](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1755),
+  Step 6.b [#1762](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1762).
+- One-step-ahead successor: Step 7.b production activation (PR 11/14); keep local until Step 7.a merges.
 - Takeover: continue from `aqua-hummingbird`; preserve the existing published Step 2/3 history.
 - Plan architecture review: first pass rejected 9 layering points; all applied (see PLAN.md Status)
 
@@ -26,15 +27,16 @@
 | 2. Detect v2 and refuse it honestly | 🌿 | 800 (557 authored + 170 generated at review) |
 | 3. Generate v2 models | ⚙️ | 1,500 authored + generated |
 | 4. v2 API and event stream | ⚙️ | 1,200 authored + generated |
-| 5.a. v2 catalog normalization (PR 5/13) | ⚙️ | 1,000 total, including generated output |
-| 5.b. v2 transcript mapping (PR 6/13) | 🚧 | 1,200 total, including generated output |
-| 5.c. v2 repository integration (PR 7/13) | 🚧 | 1,200 |
-| 6.a. v2 live-event projection (PR 8/13) | 🚧 | 1,400 including generated output |
-| 6.b. v2 activity and service integration (PR 9/13) | 🚧 | 1,200 |
-| 7. v2 writes and activation (PR 10/13) | 🚧 | 1,500 |
-| 8. Managed runtime on v2 (PR 11/13) | 🌿 | 500 |
-| 9. Reconcile docs (PR 12/13) | 🌱 | 400 |
-| 10. Run coverage and retire (PR 13/13) | 🌱 | 300 |
+| 5.a. v2 catalog normalization (PR 5/14) | ⚙️ | 1,000 total, including generated output |
+| 5.b. v2 transcript mapping (PR 6/14) | 🚧 | 1,200 total, including generated output |
+| 5.c. v2 repository integration (PR 7/14) | 🚧 | 1,200 |
+| 6.a. v2 live-event projection (PR 8/14) | 🚧 | 1,400 including generated output |
+| 6.b. v2 activity and service integration (PR 9/14) | 🚧 | 1,200 |
+| 7.a. v2 write coordination and form replies (PR 10/14) | 🚧 | 1,250 |
+| 7.b. v2 production activation (PR 11/14) | 🚧 | 1,500 |
+| 8. Managed runtime on v2 (PR 12/14) | 🌿 | 500 |
+| 9. Reconcile docs (PR 13/14) | 🌱 | 400 |
+| 10. Run coverage and retire (PR 14/14) | 🌱 | 300 |
 
 ## Step 3 Evidence And Handoff
 
@@ -117,8 +119,8 @@
 - Twenty-eight focused repository/API cases and owning-package analysis pass.
   Architecture review approved `7f4977e` with no findings (866 authored lines; no generated churn).
   No generated source changed, so generation was not rerun. Evidence is fixture/fake/HTTP-boundary only.
-- Step 7 must verify parent-linked creation: plain native creation has no parent field, while fork/import routes
-  exist. Inspect their semantics before satisfying `parentSessionId`; never silently create an unrelated root.
+- Parent-linked creation is deliberately unsupported under D10; forks are standalone roots, never child-creation
+  substitutes. Native subagent discovery/control remains supported.
 
 ## Step 6 Evidence And Handoff
 
@@ -168,6 +170,24 @@
 - Declined the tracker/status-converter coupling finding: the static pure function defines native busy/retry/idle
   semantics once for tracking and emission, including shutdown/unknown non-settlement. The tracker has no mapper
   instance, subscription or I/O dependency; duplicating or relocating that policy adds no demonstrated benefit.
+
+## Step 7.a Evidence And Handoff
+
+- #1762 merged at accepted head `02a283b`, with CI 21/21 and no new current-head Codex findings.
+  Final scope: 1,037 authored changed lines, no generated churn. The first completed architecture review approved
+  the tracker/service owner boundaries; the follow-up was a localized refresh-signal fix.
+- Step 7.a starts from `main` at `b30dcf8557`. Write/form handling and production activation are separate PRs
+  so their combined service, adapter and lifecycle verification does not exceed the review ceiling.
+  Preserve v1, keep managed downloads unchanged, and use the existing transport for serialized v2 enrichment.
+- Native 2.0.11/2.0.16 create has no parent field; fork projection explicitly uses `parent_id: null`. Experimental
+  import accepts a complete projected transcript but is not a child-create API. User selected an explicit refusal
+  for parent-linked creation rather than an import workaround (D10). Existing bridge creation callers pass null.
+  User clarified that forks must always be standalone sessions; a fork source is not a parent/child relationship.
+- Service writes reuse the repository, tracker and pure form converters; no mutable owner or transport is added.
+  Native events own activity: an acceptance arriving after a terminal event must not resurrect busy state.
+- 74 focused form/write/activity/repository/API cases and package analysis pass. No generator inputs changed;
+  v1, the managed target and the v2 refusal stay unchanged. Native execution/reconnect remain later gates.
+  Measured scope is approximately 1,210 authored lines, no generated churn; the ceiling is adjusted to 1,250.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.

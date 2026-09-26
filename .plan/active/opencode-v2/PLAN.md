@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `opencode-v2`
-- **Status:** Active; through Step 6.a merged, Step 6.b activity/service architecture-approved for PR 9/13.
+- **Status:** Active; through Step 6.b merged, Step 7.a writes/forms verified; architecture review pending for PR 10/14.
 - **Plan date:** 2026-09-25
 - **Implementation base:** `main` at `fed841c2f9`
 - **Trigger:** issue #1677 — OpenCode 2.0.11 on PATH fails cold start with `FormatException ... <!doctype html>`.
@@ -88,8 +88,15 @@ Verified against source tags `v2.0.11` / `v2.0.16` and a sandboxed live `opencod
   - **One-way migration:** existing managed-runtime users are upgraded through the existing
     `needsManagedRuntimeUpgrade` path. Their first v2 launch migrates `opencode.db` in place, and there is no way back.
     Users whose own `opencode` 1.x is on PATH are unaffected, because PATH wins.
-  - **Ordering:** this lands only after the v2 adapter is active (Step 7). Otherwise the bridge would install a runtime it
+  - **Ordering:** this lands only after the v2 adapter is active (Step 7.b). Otherwise the bridge would install a runtime it
     cannot drive.
+- **D10 — Explicit child-creation limitation (user decision, 2026-09-26).** The regular v2 create API has no parent
+  field in both 2.0.11 and 2.0.16. Experimental transcript import is not used to synthesize children. Reject a non-null
+  `parentSessionId` clearly before mutation. Current bridge creation flows pass null, and native subagent listing/control
+  remains supported. Record this gap alongside D7.
+  - **Forks are separate:** the user explicitly confirmed that a fork must always be a standalone session, never a
+    parent-linked child. Native `parent_id: null` is correct fork behavior, not a capability gap. Adding fork remains
+    outside this plan's scope.
 
 ## Scope
 
@@ -132,11 +139,13 @@ All v2 code lives under `bridge/sesori_plugin_opencode/lib/src/v2/`, one directo
 
 ## Steps
 
-Series titles: `<emoji> [opencode-v2] <description> [step x/13]`.
+Series titles: `<emoji> [opencode-v2] <description> [step x/14]`.
 
 Step 5 is split into 5.a catalog normalization (PR 5), 5.b transcript mapping (PR 6), and
 5.c repository integration (PR 7). Step 6 splits into 6.a event projection (PR 8) and
-6.b activity/service integration (PR 9); durable Steps 7–10 correspond to PRs 10–13.
+6.b activity/service integration (PR 9). Step 7 splits into 7.a write/form handling (PR 10)
+and 7.b production activation (PR 11); durable Steps 8–10 correspond to PRs 12–14.
+Keep write/validation semantics separate from transport/lifecycle activation to stay below the PR cap.
 The stateless event boundary and stateful refresh/summary owner are separate reviewable changes.
 Review feedback exposed independent catalog/identity and transcript seams near the soft cap. The transcript
 implementation through `ef5015416a` remains in #1733's published history and moves into the immediate successor;
@@ -223,17 +232,19 @@ no history rewrite, compatibility shim or new mutable owner is needed. Count all
      directories and active IDs globally. Keep useful state on refresh failure, but preserve unknown work state until
      a complete baseline. Reuse the existing shared session value; do not copy v1's instance/alias registries.
    - Tests: event-sequence tests for tracker state, and service tests over a fake repository.
-7. **🚧 v2 writes and activation.**
+7.a. **🚧 v2 write coordination and form replies.**
    - `OpenCodeV2Service` gains the write flows:
      - create + first prompt; prompt with files; command;
-     - resolve the existing `parentSessionId` creation contract before activation: native `POST /api/session` has
-       no parent field; inspect fork/import semantics rather than silently creating an unrelated root session;
+     - reject explicit parent-linked creation before mutation under D10; never silently create an unrelated root;
      - interrupt of the root plus active children;
      - rename, delete, worktree delete;
      - compaction (guidance `synthetic` message first, then `compact`);
      - session options from agents, models and commands;
      - permission reply; form reply/cancel via `V2FormAnswerMapper` and `V2FormAnswerValidator`;
      - archive as a no-op (D7).
+   - Verify form conversion/validation and service writes with focused native-shape/fake-repository tests.
+     V2 remains inactive; no new mutable owner, transport, lifecycle, or persistence is introduced.
+7.b. **🚧 v2 production activation.**
    - `OpenCodeV2Plugin` implements `OpenCodeManagedApi` and delegates every operation to `OpenCodeV2Service`. It
      composes `SseConnection → V2EventParser → OpenCodeV2Service → V2EventMapper → event buffer` and holds no business
      logic. Extend the existing SSE callback to await enrichment before the next frame/reconnect refresh; keep one
@@ -304,4 +315,4 @@ requires the user's explicit acceptance recorded here.
 ## Cleanup Assessment
 
 No v1 code becomes obsolete, because v1 stays supported on PATH and through explicit binaries. Step 2's refusal branch
-is removed by Step 7. The v1.18.32 GitHub asset pins are replaced in Step 8. No other cleanup was found.
+is removed by Step 7.b. The v1.18.32 GitHub asset pins are replaced in Step 8. No other cleanup was found.

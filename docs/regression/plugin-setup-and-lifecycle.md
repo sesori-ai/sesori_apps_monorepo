@@ -490,6 +490,13 @@ signals or later events. Native creation retains a project-activity refresh sign
 when its full session metadata cannot be read; it does not fabricate a session row.
 This is fake-repository coverage, not live reconnect proof.
 
+Inactive v2 write tests cover pre-mutation child-creation refusal, standalone creation
+and first-prompt acceptance, explicit/stale selections, inherited defaults, commands,
+private compaction guidance and scoped stop without premature settlement. Form fixtures
+cover ordered label/value conversion, numeric bounds, native-only conditions and retaining
+requests after failed replies. No activation, native write execution or provider parity
+is claimed by these fake-repository and HTTP-boundary tests.
+
 ## Exploration Guidance
 
 Vary which harness runs first and which stays disabled, and the configuration: default

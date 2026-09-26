@@ -254,7 +254,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   Future<List<ProviderInfo>> listProviders({required String directory}) =>
       _getList(path: "/api/provider", directory: directory, fromJson: ProviderInfo.fromJson);
 
-  Future<List<CommandInfo>> listCommands({required String directory}) =>
+  Future<List<CommandInfo>> listCommands({required String? directory}) =>
       _getList(path: "/api/command", directory: directory, fromJson: CommandInfo.fromJson);
 
   Future<List<PermissionRequest>> listPermissions({required String directory}) =>
@@ -293,7 +293,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
 
   Future<List<T>> _getList<T>({
     required String path,
-    required String directory,
+    required String? directory,
     required T Function(Map<String, dynamic>) fromJson,
   }) => _getData(
     path: path,
