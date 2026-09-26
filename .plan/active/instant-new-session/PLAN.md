@@ -596,7 +596,7 @@ which must not be lost in the move — otherwise a deliberately chosen agent,
 model, variant or fast-mode value would be reapplied the next time this
 project's composer opens. `SessionLaunchFailedWhileComposing` becomes the existing
 `restoringSubmission` phase, using the phase's own `submission` plus the outcome's
-`followUps` (**D1**). Before emitting `created`, it hands the composer's unsent
+`followUps` and the composer's unsent content (**D1**, step 4). Before emitting `created`, it hands the composer's unsent
 content to the launch with `handOverComposer` (step 4), so the handoff the
 session screen takes is complete by the time the route is replaced.
 `SessionLaunchFailedAfterLeaving` is never seen by a cubit,
@@ -1025,9 +1025,8 @@ the first spinner with no new state at all.
   with the random source private to that file. Both cubits then mint the same
   `prm_` shape from one implementation, and the cubit's private copies are
   deleted.
-- **View.** Both sending branches keep the composer mounted in the same
-  `Column` slot they use when idle, so `PromptInput` is never disposed and
-  keeps its staged attachments, its text and its focus:
+- **View.** Neither sending branch disposes `PromptInput`, so it keeps its
+  staged attachments, its text and its focus:
   - Glass/phone (`:492-544`): the sending branch becomes the same
     `Column[Expanded(pane), composer]` as the idle branch, with the pane being
     `SessionLaunchSubmissionView` instead of the options scroll.
@@ -1037,7 +1036,11 @@ the first spinner with no new state at all.
     composer's pane (the home pane's `DesktopFileAccessCard` and home sections, a
     project page's catalog header) becomes session-shaped instead of a home page
     with a bubble in it. The composer therefore moves from the centred column to
-    the bottom edge at Send. **D8**, settled: that move is animated **once**, at
+    the bottom edge at Send. That changes its ancestors (today it sits under
+    `Expanded → Center → SingleChildScrollView → … → Column`, `:274-295`), so the
+    view gives the composer one `GlobalKey` held in its state, and Flutter
+    reparents the same `PromptInput` state into the new slot (and back on a
+    failure restore) instead of disposing it. **D8**, settled: that move is animated **once**, at
     240 ms, and is instant under reduced motion — the transition that explains
     "this is now a session".
   - `canSend` changes from `cubit.canCreateSession && !isSending` (`:416`) to
@@ -1161,7 +1164,11 @@ the first spinner with no new state at all.
   appended as its literal `/cmd args` text, because the composer holds one command
   intent and that one belongs to the restored first submission; and the turns the
   user had separated arrive merged, which the user accepted as the cost of having
-  everything in one editable draft. The restoration consumes the launch's
+  everything in one editable draft. Whatever the user had typed but not yet sent
+  when the failure lands — the text, command and attachments `NewSessionCubit`
+  already keeps for the success handoff — is appended last under the same rules,
+  because the restoration replaces the composer's content and clears its strip
+  (`prompt_input.dart:492-499`). The restoration consumes the launch's
   follow-up list, so pressing Send again is an ordinary single submission. If the
   composing route is already gone there is nothing to restore into, and the
   follow-ups go with the launch while **D5** reports the failure.

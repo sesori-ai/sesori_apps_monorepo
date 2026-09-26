@@ -4,7 +4,7 @@
 
 | Step | PR title | Status | Notes |
 |---|---|---|---|
-| 1/7 | 🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7] | In review | Removes the superseded `instant-session-launch` plan. Reworked for Q3 and Q4, then for the settled D1–D9, then for three code-review waves |
+| 1/7 | 🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7] | In review | Removes the superseded `instant-session-launch` plan. Reworked for Q3 and Q4, then for the settled D1–D9, then for four code-review waves |
 | 2/7 | ⚙️ [instant-new-session] Show the first message while a new session is created [step 2/7] | Planned | Instant screen only; composer still replaced while sending |
 | 3/7 | 🚧 [instant-new-session] Hand the first message off to the session screen [step 3/7] | Planned | Introduces the launch owner, including the typed outcome stream |
 | 4/7 | 🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 4/7] | Planned | Q3. Delivery is owned by `SessionLaunchService`, not the session screen |
@@ -144,3 +144,16 @@ the rest are local.
 | 6 | Unsent composer content (text, staged command, attachments) was lost at the route replacement, and the text reappeared in a later new session | Accepted. The handoff carries an `UnsentComposer`; `NewSessionCubit` hands it over before emitting `created` and clears the new-session draft key, and the detail composer starts from it |
 | 7 | Sidebar Activity gates ignored pending-only launches | Accepted. The rail trigger, expanded header and popout-close gates, and the group list, count pending rows; the phone home's Activity gate does too |
 | 8 | Service-owned follow-up send failures lost the detail cubit's `logw` with the original error and stack | Accepted. The service logs both failure paths with the original error, stack trace and launch/prompt/session context |
+
+## Code Review, fourth wave (2026-09-26)
+
+Six findings; two accepted, three declined, one raised with the maintainer.
+
+| # | Finding | Verdict |
+|---|---|---|
+| 1 | A failure restore replaced the composer's live unsent draft | Accepted. The unsent text, command and attachments are appended last under D1's rules |
+| 2 | Launch transitions belong in the service, not the repository | Declined. The repository transitions its own store; the service owns the operation, delivery and retry (`client/AGENTS.md` Feature Checklist) |
+| 3 | Budget-checked restoration from `initState` would read `context` too early | Declined. Over-budget merges reach the live composer through `didUpdateWidget`; `initState` restores only single, already-checked sets |
+| 4 | Launch follow-ups lack stale-option recovery | Declined. They carry the options the bridge just accepted on create; a failed bubble can be removed |
+| 5 | The desktop composer changed ancestors at Send and was disposed | Accepted. One `GlobalKey` reparents the same `PromptInput` state |
+| 6 | `session.created` can arrive before the create response, before any association exists | Raised with the maintainer; plan unchanged pending a decision |
