@@ -96,6 +96,13 @@ Implementation decisions (2026-09-26, step 3 review):
   never resolves it.
 - The private draft text lives in the composer's `TextEditingController`, not
   in the cubit.
+- Step 5: `AppReviewClient.requestReviewOpensStore` tells `FeedbackSheetCubit`
+  whether the automatic sheet needs the D10 confirmation. When it does not
+  (iOS), the celebration ends in `reviewPromptPending`, and the sheet closes
+  itself on that state. `requestStoreReview()` calls `requestReview()` for the
+  automatic source and `openStoreReviewPage()` for Settings. The OS prompt is
+  not gated by build mode: StoreKit shows it in debug builds and applies its
+  quota in release.
 
 ## Current Behavior (origin/main after #1361, 2026-09-26)
 

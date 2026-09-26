@@ -1,8 +1,9 @@
 /// How the user left one rating sheet.
 sealed class const FeedbackSheetOutcome();
 
-/// **Yes, love it!**, then **Leave a review**: a positive answer, and the
-/// shell opens the store review page.
+/// **Yes, love it!**, then **Leave a review** or, on an automatic prompt with
+/// an in-app OS review prompt, the end of the celebration: a positive answer,
+/// and the shell asks for a review.
 final class const FeedbackSheetOutcomeLoveLeaveReview() extends FeedbackSheetOutcome;
 
 /// **Yes, love it!**, then **Not now**, the close button or a swipe down: a

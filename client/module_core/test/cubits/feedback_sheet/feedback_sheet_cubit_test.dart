@@ -83,10 +83,53 @@ void main() {
     expect(cubit.outcome, isA<FeedbackSheetOutcomeDismissed>());
   });
 
-  test("requestStoreReview opens the store review page", () async {
+  test("requestStoreReview from Settings opens the store review page", () async {
     await cubit.requestStoreReview();
 
     verify(appReviewClient.openStoreReviewPage).called(1);
+    verifyNoMoreInteractions(appReviewClient);
+  });
+
+  group("automatic sheet", () {
+    late FeedbackSheetCubit automatic;
+
+    setUp(() {
+      when(appReviewClient.requestReview).thenAnswer((_) async {});
+      automatic = FeedbackSheetCubit(
+        appReviewClient: appReviewClient,
+        feedbackRepository: feedbackRepository,
+        source: FeedbackSource.automatic,
+      );
+    });
+
+    tearDown(() => automatic.close());
+
+    test("with an in-app OS prompt, the celebration ends without a confirmation and asks the OS", () async {
+      when(() => appReviewClient.requestReviewOpensStore).thenReturn(false);
+      automatic.chooseLove();
+      automatic.finishCelebration();
+
+      expect(automatic.state, const FeedbackSheetState.reviewPromptPending());
+      expect(automatic.outcome, isA<FeedbackSheetOutcomeLoveLeaveReview>());
+
+      await automatic.requestStoreReview();
+      verify(appReviewClient.requestReview).called(1);
+      verifyNever(appReviewClient.openStoreReviewPage);
+    });
+
+    test("when the review opens the store, the user confirms first", () async {
+      when(() => appReviewClient.requestReviewOpensStore).thenReturn(true);
+      automatic.chooseLove();
+      automatic.finishCelebration();
+
+      expect(automatic.state, const FeedbackSheetState.reviewConfirmation());
+      automatic.chooseLeaveReview();
+      expect(automatic.outcome, isA<FeedbackSheetOutcomeLoveLeaveReview>());
+
+      await automatic.requestStoreReview();
+      verify(appReviewClient.requestReview).called(1);
+      verifyNever(appReviewClient.openStoreReviewPage);
+    });
   });
 
   test("issues toggle, and Send submits them with the message and source", () async {

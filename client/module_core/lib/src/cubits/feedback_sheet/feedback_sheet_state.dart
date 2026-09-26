@@ -19,6 +19,10 @@ sealed class FeedbackSheetState with _$FeedbackSheetState {
   /// The user chose **Leave a review**; the sheet is closing.
   const factory reviewAccepted() = FeedbackSheetReviewAccepted;
 
+  /// The celebration finished on an automatic prompt whose OS review prompt
+  /// stays in the app, so no confirmation is asked; the sheet is closing.
+  const factory reviewPromptPending() = FeedbackSheetReviewPromptPending;
+
   /// The user answered **Could be better** and is writing private feedback.
   /// The draft text lives in the composer, which keeps it across failures.
   const factory privateFeedback({
