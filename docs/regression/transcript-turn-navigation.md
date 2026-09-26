@@ -88,6 +88,9 @@ and a line tap, and repeat the same control twice.
   follow-ups only on their next re-import.
 - A folded running turn shows its "Running · step {n}" line with the "Working…"
   row below it, so two sparkles turn at once.
+- Folding from one of the last few turns can clamp the list at the latest
+  edge. The list then follows, so the next unfold lands at the end of the
+  latest turn instead of the reader's turn.
 - A far target is reached one cache-extended viewport a frame, so a long hold
   shows brief motion. Folded, older pages load after less scrolling, because
   the prefetch threshold is in pixels.
