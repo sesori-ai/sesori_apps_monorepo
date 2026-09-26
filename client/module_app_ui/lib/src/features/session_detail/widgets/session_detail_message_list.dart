@@ -208,9 +208,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// the rows already there, or caught up at once, do not animate.
   Set<String>? _knownRowIds;
 
-  /// The last build's turns, its rows in order, and each message row's turn,
-  /// so a fold switch can read the turn the reader was on.
-  TranscriptTurns? _turns;
+  /// The last build's rows in order, and each message row's turn, so a fold
+  /// switch can read the turn the reader was on.
   List<String> _rowIds = const [];
   Map<String, TranscriptTurn> _rowTurns = const {};
 
@@ -368,10 +367,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final span = _spanOf(rowId: shownRowId);
     final top = span == null || span.bottom <= widget.topInset ? 0.0 : span.top - widget.topInset;
     final rowId = _firstRowOf(turn: turn, folded: folded);
-    _setAnchor(rowId: rowId, top: top);
-  }
-
-  void _setAnchor({required String rowId, required double top}) {
     final anchor = _anchor = _TurnAnchor(rowId: rowId, top: top);
     WidgetsBinding.instance.addPostFrameCallback((_) => _stepAnchor(anchor: anchor, first: true));
     WidgetsBinding.instance.ensureVisualUpdate();
@@ -422,15 +417,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   void _unfoldAt({required TranscriptTurn turn}) {
     _holdTurn(turn: turn, folded: false);
     widget.onTranscriptFoldedChanged(folded: false);
-  }
-
-  /// Folded, unfolds every turn and holds the one [openerMessageId] opened in
-  /// place; unfolded, scrolls its prompt to the top edge.
-  void _onJumpToTurn({required String openerMessageId}) {
-    final turn = _turns?.promptTurnFor(openerMessageId: openerMessageId);
-    if (turn == null) return;
-    if (widget.transcriptFolded) return _unfoldAt(turn: turn);
-    _setAnchor(rowId: _entryIdForMessage(info: turn.opener.info), top: 0);
   }
 
   bool _transientSubmissionsMatch({required SessionDetailMessageList oldWidget}) {
@@ -609,7 +595,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     );
     final knownRowIds = _knownRowIds;
     _knownRowIds = rowIds.toSet();
-    _turns = turns;
     _rowIds = rowIds;
     _rowTurns = rowTurns;
     // Rows held still while scrolled away never animate, and a prompt shows
@@ -747,10 +732,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: null,
         child: TranscriptTurnStub(
           turn: turn,
-          onTap: switch (turn) {
-            TranscriptPromptTurn(:final opener) => () => _onJumpToTurn(openerMessageId: opener.info.id),
-            TranscriptPartialTurn() || TranscriptPreamble() => () => _unfoldAt(turn: turn),
-          },
+          onTap: () => _unfoldAt(turn: turn),
         ),
       );
     }

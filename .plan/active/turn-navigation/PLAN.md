@@ -547,11 +547,6 @@ merged, so the controls need no interim follow rule.
 - **Pending anchor.** One nullable target. It clears once its row settles, or
   when its row id disappears.
 - **Stub tap.** Unfolds every turn and anchors on the tapped turn (D9).
-- **`onJumpToTurn`.** The list builds one private callback,
-  `onJumpToTurn({required String openerMessageId})`, and later hands it to the
-  sticky overlay and the index.
-  - Folded: unfold, anchored on that turn.
-  - Unfolded: scroll the opener to the top edge.
 
 ### 5. Pinch (step 7)
 
@@ -652,6 +647,12 @@ merged, so the controls need no interim follow rule.
     never excluded, because in a long turn the opener row is not built, and
     the overlay is then the only place the prompt and its jump exist.
   - A tap calls `onJumpToTurn`, which puts the opener at the top edge.
+- **`onJumpToTurn`.** The overlay is its first caller, so this step adds the
+  list's one private callback,
+  `onJumpToTurn({required String openerMessageId})`, which step 9 also hands
+  to the index.
+  - Folded: unfold, anchored on that turn.
+  - Unfolded: scroll the opener to the top edge.
 - A one-frame lag is accepted. Move to a render object only if a device shows
   the lag.
 

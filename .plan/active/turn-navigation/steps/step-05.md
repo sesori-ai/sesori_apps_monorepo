@@ -30,8 +30,7 @@ Branch `turn-navigation/keep-place`. Architecture 4.
   each frame, one jump a frame.
 - `TranscriptTurnStub` is a `TextButton`. Its tap unfolds through
   `onTranscriptFoldedChanged`, which `SessionDetailLoadedView` binds to
-  `setTranscriptFolded`. The unfolded branch of `_onJumpToTurn` has no caller
-  until steps 8 and 9.
+  `setTranscriptFolded`.
 - No control, analytics event or regression document: users see no change.
 
 ## Deviation
@@ -39,9 +38,12 @@ Branch `turn-navigation/keep-place`. Architecture 4.
 - The helper does not call `detach()`: removing it failed no test. A landing
   within 20 px of the latest edge follows again and ends the anchor, as a
   manual scroll ending there would. PLAN.md's Architecture 4 says so.
+- `onJumpToTurn` moves to step 8, whose overlay is its first caller. Here only
+  a stub could call it, and a stub already holds its turn and shows only while
+  folded. PLAN.md moves the bullet from Architecture 4 to 6.
 
-Size: under the 500-line target. Production code is 267 lines, tests 160, and
-docs the rest.
+Size: 496 changed lines against the 500-line target. Production code is 249
+lines, tests 160, and docs the rest.
 
 ## Automated Evidence
 
@@ -56,7 +58,11 @@ clean in `module_app_ui`. `dart format -l 120` changes no touched file.
 
 ## Review
 
-Pending.
+`architecture-implementation-review` over `origin/main...HEAD` rejected on one
+low finding: `onJumpToTurn` had no caller of its own, so it moved to step 8
+as proposed. Everything else conformed: the reporter, the list-private
+registry and anchor, one anchor path for both triggers, the fold state left
+in the cubit, and dropping `detach()`.
 
 ## Manual
 
