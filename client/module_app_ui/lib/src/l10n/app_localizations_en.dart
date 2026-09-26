@@ -1388,8 +1388,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String transcriptTurnHours(int hours, String minutes) {
-    return '${hours}h ${minutes}m';
+  String transcriptTurnHours(int hours, String minutes, String seconds) {
+    return '${hours}h ${minutes}m ${seconds}s';
   }
 
   @override
@@ -1397,6 +1397,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get transcriptUnfoldAll => 'Unfold all turns';
+
+  @override
+  String get transcriptStickyPromptJumpHint => 'Jump to this prompt';
+
+  @override
+  String get transcriptStickyPromptAttachment => 'Attachment';
 
   @override
   String get sessionDetailJumpToLatest => 'Jump to latest';

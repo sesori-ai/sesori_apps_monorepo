@@ -863,7 +863,7 @@
   },
   "transcriptTurnSeconds": "{seconds}s",
   "@transcriptTurnSeconds": {
-    "description": "How long a folded turn of a session transcript took, under a minute, e.g. '42s'.",
+    "description": "A session transcript duration under a minute, such as how long a folded turn took or how long the agent has been working, e.g. '42s'.",
     "placeholders": {
       "seconds": {
         "type": "int"
@@ -872,7 +872,7 @@
   },
   "transcriptTurnMinutes": "{minutes}m {seconds}s",
   "@transcriptTurnMinutes": {
-    "description": "How long a folded turn of a session transcript took, under an hour. The seconds always have two digits, e.g. '1m 02s'.",
+    "description": "A session transcript duration under an hour, such as how long a folded turn took or how long the agent has been working. The seconds always have two digits, e.g. '1m 02s'.",
     "placeholders": {
       "minutes": {
         "type": "int"
@@ -882,14 +882,17 @@
       }
     }
   },
-  "transcriptTurnHours": "{hours}h {minutes}m",
+  "transcriptTurnHours": "{hours}h {minutes}m {seconds}s",
   "@transcriptTurnHours": {
-    "description": "How long a folded turn of a session transcript took, an hour or more. The minutes always have two digits, e.g. '1h 05m'.",
+    "description": "A session transcript duration of an hour or more, such as how long a folded turn took or how long the agent has been working. The minutes and seconds always have two digits, e.g. '1h 05m 12s'.",
     "placeholders": {
       "hours": {
         "type": "int"
       },
       "minutes": {
+        "type": "String"
+      },
+      "seconds": {
         "type": "String"
       }
     }
@@ -901,6 +904,14 @@
   "transcriptUnfoldAll": "Unfold all turns",
   "@transcriptUnfoldAll": {
     "description": "Label of the session toolbar button that unfolds every folded turn of the transcript."
+  },
+  "transcriptStickyPromptJumpHint": "Jump to this prompt",
+  "@transcriptStickyPromptJumpHint": {
+    "description": "Screen reader hint of the prompt pinned at the top of a session transcript while the user reads that prompt's turn. Activating it scrolls the transcript to the prompt."
+  },
+  "transcriptStickyPromptAttachment": "Attachment",
+  "@transcriptStickyPromptAttachment": {
+    "description": "What the prompt pinned at the top of a session transcript shows when the prompt has no text and its first attachment has no file name."
   },
   "sessionDetailJumpToLatest": "Jump to latest",
   "@sessionDetailJumpToLatest": {

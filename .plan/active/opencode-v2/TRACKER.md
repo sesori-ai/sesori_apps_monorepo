@@ -229,6 +229,8 @@
 - Declined unconditional initial-prompt rollback: response loss can follow accepted/completed native work, so
   deleting the created session could destroy valid history. A residual empty native session is lower damage;
   current creation validates explicit model/variant before mutation, and failures remain observable.
+- Merged `main` at `568fe891c7`, preserving its live-timer documentation alongside the active v2 section.
+  Only capability documentation conflicted; no OpenCode source, dependencies or toolchain changed in this merge.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.

@@ -8,7 +8,28 @@ through a relay and a plugin boundary.
 
 This is security-sensitive developer tooling. Source-code privacy,
 authentication, encryption, and persisted session integrity are high-stakes;
-ordinary UI polish should not receive the same verification cost.
+ordinary cosmetic styling should not receive the same verification cost.
+
+## Primary Goal: How The Product Feels
+
+A successful product is defined not by its functionality but by how it makes
+the person using it feel. Correct behavior is required, but an app that works
+while feeling bad to use has failed its purpose.
+
+- Feel is the sum of every sense the app touches: gestures, animations,
+  transitions, scroll behavior, and visual and haptic feedback.
+- Content under the user's fingers or eyes must never jump, snap, or scroll
+  unexpectedly. State changes get transitions that explain them; gestures
+  respond continuously and predictably.
+- Prefer designs that leave what the user is reading untouched, such as a
+  separate layer with a transition, over in-place relayouts that must fight to
+  restore the position.
+- Judge every user-facing change by how it feels first, and check it for jumps
+  and missing transitions (ideally with a recording on a real device) before
+  calling it done. Design reviews describe the motion and feel of each option,
+  not only its static layout.
+- Do not add sound. Users rarely want audio from these apps, and unexpected
+  noise makes them feel bad.
 
 ## North Star
 

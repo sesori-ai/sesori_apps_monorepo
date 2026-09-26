@@ -208,6 +208,18 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 | Codex | ✅ Argument-derived title (`cmd`, `command`, `path`, `filePath`, `query`, else bounded raw arguments). |
 | Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ Agent-supplied ACP `tool_call` title, when the agent sends one; Sesori does not derive titles from ACP inputs. A call without `kind` uses its title as the tool name and drops the title, so the card does not say it twice. |
 
+## Live timers
+
+"Working…" ticks the time since the running turn's prompt was sent, from the
+prompt message's `time.created`. Without that time it reads plain "Working…";
+the client never starts its own clock.
+
+| Harness | Prompt sent time |
+|---|---|
+| OpenCode, Codex, Pi, DeepSeek | ✅ Live and after reload. |
+| Claude | ✅ Live from the `--replay-user-messages` echo's `timestamp` (verified 2026-09-26 on CLI 2.1.281), and after reload from the transcript record. A slash command's synthetic bubble is stamped at dispatch. |
+| Grok, Antigravity, Copilot, Cursor, Hermes, OMP | ❌ Not implemented: the ACP prompt carries no time, so "Working…" shows no timer. A bridge-side prompt stamp is planned. |
+
 ## OpenCode v2 adapter
 
 Startup selects the v2 adapter for 2.0.11 or newer; the generated surface targets 2.0.16.

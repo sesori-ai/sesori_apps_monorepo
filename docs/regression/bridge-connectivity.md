@@ -69,6 +69,10 @@ explicit restart, and the connection states the app presents.
   timeouts or relay-side reaping.
 - A reconnect that outlasts the overlay grace window surfaces the mobile banner or desktop pill;
   reconnects that resolve within the window (foreground resume, bridge handover) stay quiet.
+  A relay drop observed while the phone is backgrounded (common on Android) parks in connection lost; the
+  resume reconnect clears that banner before the first foreground frame, so a normal resume shows nothing,
+  while a relay that stays unreachable shows Reconnecting after the window and a terminal failure shows
+  connection lost again. A still-offline bridge keeps its banner through the resume reconnect.
   Desktop recovery, intentional-Off behavior and local-control scope follow the
   [cockpit contract](desktop-cockpit-shell.md).
 - The desktop root constructs `ConnectionOverlayCubit` and `SseToastCubit` outside
