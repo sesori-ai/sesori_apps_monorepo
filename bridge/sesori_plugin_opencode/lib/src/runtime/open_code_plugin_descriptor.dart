@@ -13,6 +13,7 @@ import "../message_part_mapper.dart";
 import "../opencode_plugin_impl.dart";
 import "../plugin_model_mapper.dart";
 import "../repositories/open_code_catalog_repository.dart";
+import "../v2/opencode_v2_plugin.dart";
 import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
 import "open_code_protocol.dart";
@@ -21,6 +22,7 @@ import "open_code_runtime_manifest.dart";
 import "open_code_runtime_policy.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
+final _minimumV2Version = SemanticVersion.parse(value: "2.0.11");
 
 abstract final class _OpenCodeConfigKey() {
   static const String port = "port";
@@ -34,6 +36,7 @@ abstract final class _OpenCodeConfigKey() {
 /// Builds the [OpenCodeManagedApi] for a resolved server. The descriptor awaits
 /// [OpenCodeManagedApi.initialize] explicitly; tests inject a fake.
 typedef OpenCodeManagedApiFactory = OpenCodeManagedApi Function({
+  required OpenCodeProtocol protocol,
   required String serverUrl,
   required String? password,
   required void Function() onConnected,
@@ -47,18 +50,25 @@ typedef OpenCodeCatalogSnapshotReader = Future<PluginCatalogSnapshotResult> Func
 });
 
 OpenCodeManagedApi _defaultBuildApi({
+  required OpenCodeProtocol protocol,
   required String serverUrl,
   required String? password,
   required void Function() onConnected,
   required void Function() onDisconnected,
-}) {
-  return OpenCodePlugin(
+}) => switch (protocol) {
+  OpenCodeProtocolV1() => OpenCodePlugin(
     serverUrl: serverUrl,
     password: password,
     onConnected: onConnected,
     onDisconnected: onDisconnected,
-  );
-}
+  ),
+  OpenCodeProtocolV2() => OpenCodeV2Plugin(
+    serverUrl: serverUrl,
+    password: password,
+    onConnected: onConnected,
+    onDisconnected: onDisconnected,
+  ),
+};
 
 /// The real, const OpenCode plugin descriptor: it owns the full OpenCode runtime
 /// lifecycle (stale cleanup, start-or-attach, health, ownership persistence,
@@ -716,8 +726,9 @@ class const OpenCodePluginDescriptor({
     }
 
     // Probe before the late-abort check so an abort during the probe is honored.
+    // With no server yet, keep v1 recovery; a late v2 attach requires restart.
     final protocol = handle == null
-        ? null
+        ? const OpenCodeProtocolV1()
         : await probeOpenCodeProtocol(
             port: port,
             password: apiPassword,
@@ -735,17 +746,14 @@ class const OpenCodePluginDescriptor({
       throw const PluginStartAbortedException();
     }
 
-    // OpenCode 2.x speaks an HTTP protocol this plugin cannot drive yet. Refuse
-    // it now, releasing an owned child, instead of failing later on every call.
-    // 2.x has already migrated the OpenCode database in place, so the message
-    // must not suggest going back to 1.x.
-    if (protocol case OpenCodeProtocolV2(:final version)) {
+    // Older v2 releases have already migrated the database: never suggest v1.
+    if (protocol case OpenCodeProtocolV2(:final version) when version.version.compareTo(_minimumV2Version) < 0) {
       if (handle case ManagedRuntimeHandle(isOwned: true, :final record?)) {
         await service.stopOwnedRuntime(record: record);
       }
       throw PluginStartException(
-        "OpenCode ${version.raw} is not supported by this Sesori bridge yet; "
-        "do not downgrade OpenCode, update the Sesori bridge once 2.x support ships",
+        "OpenCode ${version.raw} requires an update to $_minimumV2Version or newer; "
+        "do not downgrade OpenCode because its database has already migrated",
         cause: null,
       );
     }
@@ -775,6 +783,7 @@ class const OpenCodePluginDescriptor({
     }
 
     final api = (_buildApi ?? _defaultBuildApi)(
+      protocol: protocol,
       serverUrl: serverUrl,
       password: apiPassword,
       onConnected: reporter.markConnected,
