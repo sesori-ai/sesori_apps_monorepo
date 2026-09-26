@@ -1,4 +1,5 @@
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -381,10 +382,14 @@ void main() {
       required Session session,
       bool readOnly = false,
       SessionPromptDefaults? promptDefaults,
+      bool transcriptFolded = false,
     }) async {
       cubit = _MockSessionDetailCubit();
       when(() => cubit.isRouteVisible).thenReturn(true);
-      final state = _loadedState(session: session).copyWith(promptDefaults: promptDefaults);
+      when(() => cubit.setTranscriptFolded(folded: any(named: "folded"))).thenReturn(null);
+      final state = _loadedState(
+        session: session,
+      ).copyWith(promptDefaults: promptDefaults, transcriptFolded: transcriptFolded);
       when(() => cubit.state).thenReturn(state);
       whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
       when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
@@ -588,6 +593,55 @@ void main() {
       verify(() => listCubit.markSessionSeen(sessionId: "session-1", read: false)).called(1);
       expect(leftPage, 1);
     });
+
+    testWidgets("the fold button sits between Changes and More, shows the fold with its shortcut and switches it", (
+      tester,
+    ) async {
+      await pumpPage(tester, session: _session);
+      final fold = find.byKey(const Key("desktop-session-page-fold"));
+      expect(tester.getCenter(fold).dx, greaterThan(tester.getCenter(find.text("Changes")).dx));
+      expect(
+        tester.getCenter(fold).dx,
+        lessThan(tester.getCenter(find.byKey(const Key("desktop-session-page-more"))).dx),
+      );
+      expect(tester.widget<IconButton>(fold).tooltip, "Fold all turns (Ctrl+-)");
+      await tester.tap(fold);
+      verify(() => cubit.setTranscriptFolded(folded: true)).called(1);
+
+      await pumpPage(tester, session: _session, transcriptFolded: true);
+      expect(tester.widget<IconButton>(fold).tooltip, "Unfold all turns (Ctrl+=)");
+      await tester.tap(fold);
+      verify(() => cubit.setTranscriptFolded(folded: false)).called(1);
+    });
+
+    testWidgets(
+      "Cmd/Ctrl+- folds every turn and Cmd/Ctrl+= unfolds them while focus is in the page",
+      (tester) async {
+        await pumpPage(tester, session: _session);
+        await tester.tap(find.text("Follow up..."));
+        await tester.pumpAndSettle();
+        final isMacOS = defaultTargetPlatform == TargetPlatform.macOS;
+        final modifier = isMacOS ? LogicalKeyboardKey.metaLeft : LogicalKeyboardKey.controlLeft;
+        final otherModifier = isMacOS ? LogicalKeyboardKey.controlLeft : LogicalKeyboardKey.metaLeft;
+        Future<void> press({required LogicalKeyboardKey modifier, required LogicalKeyboardKey key}) async {
+          await tester.sendKeyDownEvent(modifier);
+          await tester.sendKeyEvent(key);
+          await tester.sendKeyUpEvent(modifier);
+        }
+
+        await press(modifier: otherModifier, key: LogicalKeyboardKey.minus);
+        verifyNever(() => cubit.setTranscriptFolded(folded: any(named: "folded")));
+        await press(modifier: modifier, key: LogicalKeyboardKey.minus);
+        verify(() => cubit.setTranscriptFolded(folded: true)).called(1);
+        await press(modifier: modifier, key: LogicalKeyboardKey.equal);
+        verify(() => cubit.setTranscriptFolded(folded: false)).called(1);
+        expect(
+          tester.widget<IconButton>(find.byKey(const Key("desktop-session-page-fold"))).tooltip,
+          isMacOS ? "Fold all turns (⌘-)" : "Fold all turns (Ctrl+-)",
+        );
+      },
+      variant: const TargetPlatformVariant({TargetPlatform.macOS, TargetPlatform.linux}),
+    );
 
     testWidgets("offers the session's actions with Mark as unread, never Mark as read", (tester) async {
       await pumpPage(tester, session: _session);

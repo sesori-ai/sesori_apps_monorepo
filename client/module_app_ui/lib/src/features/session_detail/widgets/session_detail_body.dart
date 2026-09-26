@@ -41,6 +41,11 @@ typedef SessionDetailMenuEntriesBuilder = List<PregoMenuEntry> Function({
 class const SessionDetailPageChrome({
   required final SessionDetailHeaderBuilder headerBuilder,
   required final double maxContentWidth,
+
+  /// Fold and unfold every turn while focus is in the page. The shell picks
+  /// the platform's modifier keys.
+  required final SingleActivator foldActivator,
+  required final SingleActivator unfoldActivator,
 });
 
 class const SessionDetailBody({
@@ -195,6 +200,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
             trailing: sessionChangesCounts(state: summary, style: context.prego.textTheme.textSm.medium),
           ),
         ),
+      if (state case SessionDetailLoaded(:final transcriptFolded))
+        PregoButtonsIconGlass(
+          icon: transcriptFolded ? TablerRegular.separator_horizontal : TablerRegular.fold,
+          semanticLabel: transcriptFolded ? loc.transcriptUnfoldAll : loc.transcriptFoldAll,
+          onPressed: () => context.read<SessionDetailCubit>().setTranscriptFolded(folded: !transcriptFolded),
+        ),
       // Root sessions only: the actions run on the project's session list,
       // which holds no sub-agent sessions and must not gain one.
       if (session != null && ((menuEntriesBuilder != null && session.parentID == null) || canConfigureContinuation))
@@ -252,27 +263,34 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     final pageChrome = widget.pageChrome;
     final content = _buildContent(context: context, state: state, maxContentWidth: pageChrome?.maxContentWidth);
     if (pageChrome != null) {
-      return Scaffold(
-        body: Column(
-          children: [
-            pageChrome.headerBuilder(
-              context: context,
-              title: title,
-              isBusy: isBusy,
-              onShowDiffs: canShowDiffs ? onShowDiffs : null,
-              session: state.hydratedSession,
-            ),
-            ?banner,
-            // The header sits above the transcript, so nothing scrolls behind a
-            // bar and the transcript needs no top inset for one.
-            Expanded(
-              child: PregoTopBarInsetScope(
-                baseInset: 0,
-                bannerHeight: const AlwaysStoppedAnimation<double>(0),
-                child: content,
+      final cubit = context.read<SessionDetailCubit>();
+      return CallbackShortcuts(
+        bindings: {
+          pageChrome.foldActivator: () => cubit.setTranscriptFolded(folded: true),
+          pageChrome.unfoldActivator: () => cubit.setTranscriptFolded(folded: false),
+        },
+        child: Scaffold(
+          body: Column(
+            children: [
+              pageChrome.headerBuilder(
+                context: context,
+                title: title,
+                isBusy: isBusy,
+                onShowDiffs: canShowDiffs ? onShowDiffs : null,
+                session: state.hydratedSession,
               ),
-            ),
-          ],
+              ?banner,
+              // The header sits above the transcript, so nothing scrolls behind a
+              // bar and the transcript needs no top inset for one.
+              Expanded(
+                child: PregoTopBarInsetScope(
+                  baseInset: 0,
+                  bannerHeight: const AlwaysStoppedAnimation<double>(0),
+                  child: content,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }

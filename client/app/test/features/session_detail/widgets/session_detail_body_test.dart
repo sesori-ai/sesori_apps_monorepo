@@ -1021,6 +1021,27 @@ void main() {
     );
   });
 
+  testWidgets("the fold button shows whether every turn is folded and switches it", (tester) async {
+    final unfolded = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    final states = StreamController<SessionDetailState>();
+    addTearDown(states.close);
+    whenListen(cubit, states.stream, initialState: unfolded);
+    when(() => cubit.setTranscriptFolded(folded: any(named: "folded"))).thenReturn(null);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(TablerRegular.fold), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel("Fold all turns"));
+    verify(() => cubit.setTranscriptFolded(folded: true)).called(1);
+
+    states.add(unfolded.copyWith(transcriptFolded: true));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel("Fold all turns"), findsNothing);
+    expect(find.byIcon(TablerRegular.separator_horizontal), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel("Unfold all turns"));
+    verify(() => cubit.setTranscriptFolded(folded: false)).called(1);
+  });
+
   testWidgets("hides the diff button for archived sessions", (tester) async {
     final state = _loadedState(
       pendingQuestions: const [],
