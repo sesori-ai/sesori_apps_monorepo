@@ -281,6 +281,9 @@
 - #1795 review found that the aggregate accepted-prompt table still generalized v1 correlation to native v2 commands.
   Split that table by adapter/path and state the unsettled optimistic-row gap. The adjacent compaction-summary table
   now distinguishes v1 assistant summaries from v2 completed native compaction messages. No runtime behavior changed.
+- The later form-text finding narrows the documentation guarantee: string/multiselect answers matching an option
+  label use its native value; unmatched custom text is preserved. The flat reply contract and existing mapper remain
+  unchanged; no input-origin tracking or speculative producer handling is added.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.

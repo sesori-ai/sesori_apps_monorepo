@@ -49,8 +49,9 @@ reaches the backend so the turn continues.
   it without a reply.
 - OpenCode v2 forms keep visible supported fields in native order. Replies use
   each field's native key and typed value: string/choice, string list, boolean,
-  number or integer. Selected labels map back to native option values; custom
-  text is preserved, and an unanswered field is omitted rather than invented.
+  number or integer. String and multiselect answers matching an option label
+  map to its native value; unmatched custom text is preserved. An unanswered
+  field is omitted rather than invented.
   Numeric replies must be finite, integral for integer fields, and within native
   inclusive bounds. An invalid local conversion makes no reply request.
   A child form may display under its root, but the reply targets its native
