@@ -51,6 +51,9 @@ class OpenCodeV2ActivityTracker() {
 
   void invalidateBaseline() => _baselineTrusted = false;
 
+  void removeForm({required String formId}) => _forms.remove(formId);
+  void removePermission({required String requestId}) => _permissions.remove(requestId);
+
   void seed({
     required List<shared.Session> sessions,
     required Set<String> activeSessionIds,

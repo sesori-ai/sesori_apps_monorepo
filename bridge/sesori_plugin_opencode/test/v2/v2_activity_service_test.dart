@@ -1,3 +1,5 @@
+import "package:opencode_plugin/src/v2/mappers/v2_form_answer_mapper.dart";
+import "package:opencode_plugin/src/v2/mappers/v2_form_answer_validator.dart";
 import "package:opencode_plugin/src/v2/models/openapi/form_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_request.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_info.g.dart";
@@ -86,6 +88,9 @@ void main() {
       repository: repository,
       tracker: tracker,
       mapper: const V2EventMapper(modelMapper: models, messageMapper: messages),
+      modelMapper: models,
+      formAnswerMapper: const V2FormAnswerMapper(),
+      formAnswerValidator: const V2FormAnswerValidator(),
     );
   });
 

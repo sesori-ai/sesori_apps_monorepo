@@ -244,6 +244,17 @@ void main() {
     });
   }
 
+  test("global command warmup leaves the native location unspecified", () async {
+    final api = makeApi(
+      handler: (request) async {
+        expect(request.url.path, "/api/command");
+        expect(request.url.queryParameters, isEmpty);
+        return http.Response('{"data":[]}', 200);
+      },
+    );
+    expect(await api.listCommands(directory: null), isEmpty);
+  });
+
   test("writes typed creation bodies and unwraps the result", () async {
     final api = makeApi(
       handler: (request) async {
