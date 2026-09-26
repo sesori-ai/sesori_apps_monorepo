@@ -1418,6 +1418,50 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String transcriptTurnSteps(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count steps',
+      one: '1 step',
+      zero: 'No steps',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get transcriptTurnRunning => 'Running';
+
+  @override
+  String transcriptTurnRunningStep(int step) {
+    return 'Running · step $step';
+  }
+
+  @override
+  String get transcriptTurnFailed => 'Ended with an error';
+
+  @override
+  String get transcriptTurnPartlyLoaded => 'Earlier turn, partly loaded';
+
+  @override
+  String get transcriptTurnBeforeFirstPrompt => 'Before the first prompt';
+
+  @override
+  String transcriptTurnSeconds(int seconds) {
+    return '${seconds}s';
+  }
+
+  @override
+  String transcriptTurnMinutes(int minutes, String seconds) {
+    return '${minutes}m ${seconds}s';
+  }
+
+  @override
+  String transcriptTurnHours(int hours, String minutes) {
+    return '${hours}h ${minutes}m';
+  }
+
+  @override
   String get sessionDetailJumpToLatest => 'Jump to latest';
 
   @override

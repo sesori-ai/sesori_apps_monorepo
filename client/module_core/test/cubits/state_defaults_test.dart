@@ -13,6 +13,7 @@ void main() {
       interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
       messages: [],
       olderMessagesCursor: null,
+      transcriptFolded: false,
       streamingText: {},
       sessionStatus: SessionStatus.idle(),
       pendingQuestions: [],

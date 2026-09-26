@@ -2533,6 +2533,60 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 failed} other{{count} failed}}'**
   String transcriptSummaryFailed(int count);
 
+  /// Part of the one line a folded turn of a session transcript shows: how many steps the agent took in it, e.g. '3 steps · 1m 02s — Fixed the failing test'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No steps} =1{1 step} other{{count} steps}}'**
+  String transcriptTurnSteps(int count);
+
+  /// The line a folded turn of a session transcript shows while the agent works on it and has taken no step yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get transcriptTurnRunning;
+
+  /// The line a folded turn of a session transcript shows while the agent works on it: how many steps it has taken so far, e.g. 'Running · step 3'.
+  ///
+  /// In en, this message translates to:
+  /// **'Running · step {step}'**
+  String transcriptTurnRunningStep(int step);
+
+  /// Start of the line a folded turn of a session transcript shows when the turn ended in an error, followed by the error's first line when there is one, e.g. 'Ended with an error · Rate limit reached'.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended with an error'**
+  String get transcriptTurnFailed;
+
+  /// Start of the line a folded session transcript shows for the messages before the first loaded prompt, whose own prompt may be on an older page that has not loaded, followed by the step count, e.g. 'Earlier turn, partly loaded · 3 steps'.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier turn, partly loaded'**
+  String get transcriptTurnPartlyLoaded;
+
+  /// Start of the line a folded session transcript shows for the messages before the user's first prompt, such as automation, followed by the step count, e.g. 'Before the first prompt · 2 steps'.
+  ///
+  /// In en, this message translates to:
+  /// **'Before the first prompt'**
+  String get transcriptTurnBeforeFirstPrompt;
+
+  /// How long a folded turn of a session transcript took, under a minute, e.g. '42s'.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds}s'**
+  String transcriptTurnSeconds(int seconds);
+
+  /// How long a folded turn of a session transcript took, under an hour. The seconds always have two digits, e.g. '1m 02s'.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m {seconds}s'**
+  String transcriptTurnMinutes(int minutes, String seconds);
+
+  /// How long a folded turn of a session transcript took, an hour or more. The minutes always have two digits, e.g. '1h 05m'.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h {minutes}m'**
+  String transcriptTurnHours(int hours, String minutes);
+
   /// Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages.
   ///
   /// In en, this message translates to:

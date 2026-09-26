@@ -410,22 +410,27 @@ for users until place-keeping (step 5) exists. Step 6 adds the controls.
 
 - **Fold state (step 4).** It is session page state, so `SessionDetailCubit`
   owns it.
-  - `SessionDetailLoaded` gains `@Default(false) bool transcriptFolded`.
+  - `SessionDetailLoaded` gains `required bool transcriptFolded`, with no
+    default, so the compiler flags any construction site that would reset the
+    fold by leaving it out.
   - The cubit keeps a private `_transcriptFolded` field and seeds every loaded
     state it builds with it in `_buildLoadedState`
     (`session_detail_cubit.dart:2939`), as it already does for
     `isUpdatingAutoContinuation`. A full reload emits
     `SessionDetailState.loading()` first, so the field carries the state
-    across it. Copies of a loaded state keep it on their own.
+    across it. Copies of a loaded state keep it on their own. The two load
+    failures that re-emit the state from before the load seed it again too,
+    as they do `isUpdatingAutoContinuation`.
   - One intent, `setTranscriptFolded({required bool folded})`, is the single
     entry point for every control. It updates the field and, while loaded,
     emits the switched state. A request that changes nothing emits nothing.
     From step 6 it also reports the analytics event.
   - Widgets observe the state and dispatch the intent directly. The bars
-    already read `SessionDetailCubit`, and `SessionDetailLoadedView` passes
-    `state.transcriptFolded` and the intent to `SessionDetailMessageList`, as
-    it passes `loadOlderMessages` today. No notifier or setter is forwarded,
-    and `SessionDetailHeaderBuilder` is unchanged.
+    already read `SessionDetailCubit`. In step 4 `SessionDetailLoadedView`
+    passes only `state.transcriptFolded` to `SessionDetailMessageList`. Step 5
+    adds the intent as the list's fold callback, passed as `loadOlderMessages`
+    is today, together with the stub tap that first calls it. No notifier or
+    setter is forwarded, and `SessionDetailHeaderBuilder` is unchanged.
   - Only render-derived layout signals stay widget-local: the row registry,
     the pending anchor, and the sticky and current-turn values.
   - Each session page creates its own cubit, so the state resets with the page
@@ -531,6 +536,8 @@ merged, so the controls need no interim follow rule.
   - Triggers inside the list (stub tap here, then pinch and index click) set
     the pending anchor for their turn, then dispatch the intent through the
     list's callback. They do this only when the fold state actually changes.
+    This step adds that callback, `onTranscriptFoldedChanged`, which
+    `SessionDetailLoadedView` binds to `setTranscriptFolded`.
   - The list sees the switch in `didUpdateWidget`, when `transcriptFolded`
     changes. That runs before the new layout, so when no anchor is pending it
     captures the top-edge turn from the last frame's layout. That covers the

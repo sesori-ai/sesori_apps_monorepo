@@ -177,6 +177,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                                   context.read<SessionDetailCubit>().cancelBridgeQueuedPrompt(promptId: promptId),
                                 ),
                           isLoadingOlderMessages: state.isLoadingOlderMessages,
+                          transcriptFolded: state.transcriptFolded,
                           streamingText: state.streamingText,
                           children: state.children,
                           childStatuses: state.childStatuses,
