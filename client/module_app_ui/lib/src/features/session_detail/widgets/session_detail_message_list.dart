@@ -252,6 +252,18 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         if (_topEdgeTurn() case final turn?) _holdTurn(turn: turn, folded: widget.transcriptFolded);
       }
     }
+    // A page that leaves the transcript shorter than the viewport moves no
+    // scroll extent, so no metrics notification follows it. Check the oldest
+    // edge once the page is laid out, to keep paging until the viewport fills.
+    // A failed page keeps the oldest message, so a failing bridge is not asked
+    // again until the list scrolls or its layout changes.
+    if (widget.messages.firstOrNull?.info.id != oldWidget.messages.firstOrNull?.info.id) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final position = _follow.scrollController.position;
+        if (position.hasContentDimensions && position.extentAfter < _kOlderPagePrefetchExtent) _requestOlderPage();
+      });
+    }
     final olderPageRequestCompleted = oldWidget.isLoadingOlderMessages && !widget.isLoadingOlderMessages;
     // While detached the snapshot keeps the list structure from shifting
     // under the reader; `_onFollowChanged` restores live inputs on reattach.
@@ -637,7 +649,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       //   path ignores the mouse kind) so it keeps selecting message
       //   text; hijacking it for the peek would make selection impossible.
       //
-      child: NotificationListener<ScrollNotification>(
+      child: NotificationListener<Notification>(
         onNotification: _onScrollNotification,
         child: PregoHorizontalDragGestureDetector(
           behavior: HitTestBehavior.translucent,
@@ -925,26 +937,32 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _endReveal();
   }
 
-  bool _onScrollNotification(ScrollNotification notification) {
-    final loadOlderMessages = widget.onLoadOlderMessages;
-    // Prefetch on scroll updates nearing the oldest edge, so paging back
-    // through history feels continuous. The scroll-end check is the fallback
-    // for a transcript too short to scroll: clamping physics emits no update
-    // at zero extent, only the end notification.
+  bool _onScrollNotification(Notification notification) {
+    // The list's metrics notification follows every layout that moves its
+    // extents: each scroll frame, the first page, a fold or a taller window.
+    // Nearing the oldest edge on any of them prefetches the older page, so
+    // paging back through history feels continuous and a transcript shorter
+    // than the viewport pages without a scroll. The scroll-end check is the
+    // fallback for a transcript too short to scroll: clamping physics moves
+    // nothing at zero extent, so only the end notification reports the
+    // attempt. A nested scrollable's notifications (depth above 0) do not
+    // count.
     final nearingOldestEdge = switch (notification) {
-      ScrollUpdateNotification(:final metrics) => metrics.extentAfter < _kOlderPagePrefetchExtent,
-      ScrollEndNotification(:final metrics) => metrics.extentAfter == 0,
+      ScrollMetricsNotification(depth: 0, :final metrics) => metrics.extentAfter < _kOlderPagePrefetchExtent,
+      ScrollEndNotification(depth: 0, :final metrics) => metrics.extentAfter == 0,
       _ => false,
     };
-    if (nearingOldestEdge &&
-        notification.metrics.axis == Axis.vertical &&
-        !_loadOlderCallbackInFlight &&
-        !widget.isLoadingOlderMessages &&
-        loadOlderMessages != null) {
-      _loadOlderCallbackInFlight = true;
-      unawaited(_loadOlderMessages(loadOlderMessages));
-    }
-    return _onNestedScrollNotification(notification);
+    if (nearingOldestEdge) _requestOlderPage();
+    return notification is ScrollNotification && _onNestedScrollNotification(notification);
+  }
+
+  /// Asks for the page before the oldest message, unless the start of the
+  /// transcript is loaded or a page is already on its way.
+  void _requestOlderPage() {
+    final loadOlderMessages = widget.onLoadOlderMessages;
+    if (loadOlderMessages == null || _loadOlderCallbackInFlight || widget.isLoadingOlderMessages) return;
+    _loadOlderCallbackInFlight = true;
+    unawaited(_loadOlderMessages(loadOlderMessages));
   }
 
   Future<void> _loadOlderMessages(Future<void> Function() loadOlderMessages) async {

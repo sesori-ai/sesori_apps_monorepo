@@ -41,6 +41,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   bool _isBusy = false;
   bool _isLoadingOlderMessages = false;
   bool _transcriptFolded = false;
+  bool _hasOlderMessages = true;
   int? lastCancelledQueuedMessageIndex;
 
   @override
@@ -61,10 +62,11 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     setState(() => _isLoadingOlderMessages = false);
   }
 
-  void prependOlderMessages({required List<MessageWithParts> older}) {
+  void prependOlderMessages({required List<MessageWithParts> older, required bool hasOlderMessages}) {
     setState(() {
       _messages = [...older, ..._messages];
       _isLoadingOlderMessages = false;
+      _hasOlderMessages = hasOlderMessages;
     });
   }
 
@@ -192,7 +194,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
             );
           },
           projectId: null,
-          onLoadOlderMessages: widget.onLoadOlderMessages,
+          onLoadOlderMessages: _hasOlderMessages ? widget.onLoadOlderMessages : null,
           messages: _messages,
           localSend: _localSend,
           harnessName: "OpenCode",
@@ -304,6 +306,12 @@ List<MessageWithParts> _userMessages({required int count}) {
     ),
   );
 }
+
+/// [count] one-line user messages, ids prefixed by [prefix].
+List<MessageWithParts> _page({required String prefix, required int count}) => [
+  for (var index = 0; index < count; index++)
+    _message(messageId: "$prefix-$index", role: "user", text: "$prefix message $index"),
+];
 
 String _multilineText({required String label, required int lines}) {
   return List.generate(lines, (index) => "$label line $index").join("\n");
@@ -936,6 +944,7 @@ void main() {
       older: [
         for (var index = 0; index < 10; index++) _message(messageId: "m$index", role: "user", text: "message $index"),
       ],
+      hasOlderMessages: true,
     );
     await tester.pumpAndSettle();
 
@@ -977,6 +986,7 @@ void main() {
       older: [
         for (var index = 0; index < 10; index++) _message(messageId: "m$index", role: "user", text: "message $index"),
       ],
+      hasOlderMessages: true,
     );
     await tester.pumpAndSettle();
 
@@ -1119,6 +1129,175 @@ void main() {
     await tester.pump();
     await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 100));
     await tester.pump();
+    expect(requested, 1);
+  });
+
+  group("a transcript shorter than the screen", () {
+    testWidgets("pages back without a scroll until it fills the screen", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      var requested = 0;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () async {
+            requested++;
+            key.currentState?.prependOlderMessages(
+              older: _page(prefix: "page$requested", count: 2),
+              hasOlderMessages: true,
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(requested, greaterThan(1), reason: "each page still too short must ask for the next one");
+      expect(requested, lessThan(20), reason: "paging must stop once the screen is filled");
+      expect(_position(tester).maxScrollExtent, greaterThan(0));
+    });
+
+    testWidgets("stops when no older page remains, even if pages add no visible rows", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      var requested = 0;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () async {
+            requested++;
+            key.currentState?.prependOlderMessages(
+              older: [
+                MessageWithParts(
+                  info: Message.user(
+                    promptId: null,
+                    id: "hidden-$requested",
+                    sessionID: "session-1",
+                    agent: null,
+                    time: null,
+                  ),
+                  parts: const [],
+                ),
+              ],
+              hasOlderMessages: requested < 3,
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(requested, 3);
+    });
+
+    testWidgets("asks for no older page while one is on its way", (tester) async {
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      final pages = <Completer<void>>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () {
+            final page = Completer<void>();
+            pages.add(page);
+            return page.future;
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      // A taller window and a new oldest message would each ask again.
+      await tester.binding.setSurfaceSize(const Size(800, 700));
+      key.currentState?.replaceMessages([
+        _message(messageId: "earlier", role: "user", text: "earlier"),
+        ..._page(prefix: "newest", count: 2),
+      ]);
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      // The page lands with its load, still too short, so the next one follows.
+      key.currentState?.prependOlderMessages(older: _page(prefix: "older", count: 2), hasOlderMessages: true);
+      pages.single.complete();
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(2));
+    });
+
+    testWidgets("asks for a failed page again on the next scroll, not in a loop", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      final pages = <Completer<void>>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () {
+            key.currentState?.startLoadingOlderMessages();
+            final page = Completer<void>();
+            pages.add(page);
+            return page.future;
+          },
+        ),
+      );
+      await tester.pump();
+      expect(pages, hasLength(1));
+
+      // The bridge fails the page: the cursor stays and loading stops.
+      key.currentState?.finishLoadingOlderMessages();
+      pages.single.complete();
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      await tester.drag(find.byType(SessionDetailMessageList), const Offset(0, 300));
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(2));
+      expect(tester.takeException(), isNull);
+    });
+  });
+
+  testWidgets("folding a transcript shorter than the screen loads the older page", (tester) async {
+    final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: key,
+        initialMessages: _turns(count: 3, promptLines: 1, answers: 4, paragraphs: 4),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () {
+          requested++;
+          return Completer<void>().future;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(requested, 0);
+
+    key.currentState?.setTranscriptFolded(folded: true);
+    await tester.pumpAndSettle();
+    expect(requested, 1);
+  });
+
+  testWidgets("a taller window loads the older page", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(800, 400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    var requested = 0;
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: _userMessages(count: 6),
+        initialStreamingText: const {},
+        onLoadOlderMessages: () {
+          requested++;
+          return Completer<void>().future;
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(requested, 0);
+
+    await tester.binding.setSurfaceSize(const Size(800, 1200));
+    await tester.pumpAndSettle();
     expect(requested, 1);
   });
 
