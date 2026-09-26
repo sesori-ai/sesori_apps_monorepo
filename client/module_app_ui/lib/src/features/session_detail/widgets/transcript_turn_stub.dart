@@ -8,7 +8,12 @@ import "transcript_live_row.dart";
 
 /// A folded turn's one line, in a step group summary's style: a glyph, then
 /// what the turn did and how it ended. Screen readers read the same [label].
-class const TranscriptTurnStub({super.key, required final TranscriptTurn turn}) extends StatelessWidget {
+/// A tap unfolds the transcript at this turn.
+class const TranscriptTurnStub({
+  super.key,
+  required final TranscriptTurn turn,
+  required final VoidCallback onTap,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -27,12 +32,19 @@ class const TranscriptTurnStub({super.key, required final TranscriptTurn turn}) 
         color: style.color,
       ),
     };
-    // As tall as a step group's summary, which is a button at the theme's
-    // density.
+    // The step group summary's button, so as tall at the theme's density.
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: 44 + Theme.of(context).visualDensity.baseSizeAdjustment.dy),
+      child: TextButton(
+        onPressed: onTap,
+        style: TextButton.styleFrom(
+          foregroundColor: style.color,
+          padding: EdgeInsets.zero,
+          minimumSize: const Size(44, 44),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          alignment: AlignmentDirectional.centerStart,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xs)),
+        ),
         child: Row(
           children: [
             SizedBox.square(

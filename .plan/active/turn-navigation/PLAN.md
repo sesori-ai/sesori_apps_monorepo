@@ -521,9 +521,10 @@ merged, so the controls need no interim follow rule.
     freezes the newest end, where synthetic rows shift every index alike. So
     the search ends with the target built, or earlier when its row id
     disappears. It needs no attempt cap.
-  - The helper calls `detach()` before moving away from the latest edge.
-    Otherwise `scheduleJumpToEdge()`, which runs on every build while
-    following, would pull the list back.
+  - The helper needs no `detach()`. Each `jumpTo` ends a scroll, and the
+    tracker then detaches the list, or follows again within its 20 px
+    tolerance of the latest edge. A step that finds the list following ends
+    the anchor, except the first, so a tap while following still anchors.
 - **Anchor rules.**
   - While following, a switch keeps following.
   - Otherwise the anchor is the top-edge turn (button or shortcut) or the

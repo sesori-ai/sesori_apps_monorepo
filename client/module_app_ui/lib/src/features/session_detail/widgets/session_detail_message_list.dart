@@ -21,6 +21,7 @@ import "system_message_card.dart";
 import "tool_part_widget.dart";
 import "transcript_live_row.dart";
 import "transcript_motion.dart";
+import "transcript_row_reporter.dart";
 import "transcript_turn_stub.dart";
 import "user_message_card.dart";
 
@@ -68,6 +69,11 @@ class const SessionDetailMessageList({
 
   /// Whether each turn shows folded: its prompt, then one line for the rest.
   required final bool transcriptFolded,
+
+  /// Switches [transcriptFolded] from a control inside the list, such as a
+  /// folded turn's tap. The list holds the reader's turn in place across
+  /// every switch, wherever it comes from.
+  required final void Function({required bool folded}) onTranscriptFoldedChanged,
   final String? retryErrorMessage,
 
   /// Height of the floating composer overlaying the list's bottom edge. Used
@@ -111,6 +117,11 @@ enum _TransientStage() {
 }
 
 typedef _TransientSubmission = ({QueuedSessionSubmission submission, _TransientStage stage});
+
+/// A turn held in place across a fold switch: its first row, which should
+/// rest [top] px below the top edge. Compared by identity, so a newer anchor
+/// stops the steps of the one it replaced.
+final class _TurnAnchor({required final String rowId, required final double top});
 
 class _SessionDetailMessageListState() extends State<SessionDetailMessageList> with SingleTickerProviderStateMixin {
   static const _kListViewKey = Key("session-detail-message-list-view");
@@ -197,6 +208,19 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// the rows already there, or caught up at once, do not animate.
   Set<String>? _knownRowIds;
 
+  /// The last build's turns, its rows in order, and each message row's turn,
+  /// so a fold switch can read the turn the reader was on.
+  TranscriptTurns? _turns;
+  List<String> _rowIds = const [];
+  Map<String, TranscriptTurn> _rowTurns = const {};
+
+  /// The built rows by id. Only built rows are here, so every scan stays
+  /// bounded by the viewport and its cache extent.
+  final Map<String, BuildContext> _rowContexts = {};
+
+  /// The one turn being held in place, until its row settles or goes.
+  _TurnAnchor? _anchor;
+
   @override
   void initState() {
     super.initState();
@@ -219,8 +243,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   @override
   void didUpdateWidget(SessionDetailMessageList oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // The rows a fold switch brings in are not new, so they must not ease in.
-    if (oldWidget.transcriptFolded != widget.transcriptFolded) _knownRowIds = null;
+    if (oldWidget.transcriptFolded != widget.transcriptFolded) {
+      // The rows a fold switch brings in are not new, so they must not ease in.
+      _knownRowIds = null;
+      // Unless a control in the list already chose the turn, hold the one at
+      // the top edge, measured in the last frame's layout. Following keeps the
+      // newest turn in view by itself.
+      if (_anchor == null && !_follow.following) {
+        if (_topEdgeTurn() case final turn?) _holdTurn(turn: turn, folded: widget.transcriptFolded);
+      }
+    }
     final olderPageRequestCompleted = oldWidget.isLoadingOlderMessages && !widget.isLoadingOlderMessages;
     // While detached the snapshot keeps the list structure from shifting
     // under the reader; `_onFollowChanged` restores live inputs on reattach.
@@ -302,6 +334,105 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     });
   }
 
+  void _onRowMount({required String rowId, required BuildContext context}) => _rowContexts[rowId] = context;
+
+  void _onRowUnmount({required String rowId}) => _rowContexts.remove(rowId);
+
+  /// Where row [rowId] sits in the list's box, or null while it is not built.
+  ({double top, double bottom})? _spanOf({required String rowId}) {
+    final list = context.findRenderObject();
+    final row = _rowContexts[rowId]?.findRenderObject();
+    if (list is! RenderBox || row is! RenderBox || !row.hasSize) return null;
+    final top = row.localToGlobal(Offset.zero, ancestor: list).dy;
+    return (top: top, bottom: top + row.size.height);
+  }
+
+  /// The turn of the first row that reaches below the top edge.
+  TranscriptTurn? _topEdgeTurn() {
+    TranscriptTurn? edgeTurn;
+    var edgeTop = double.infinity;
+    for (final rowId in _rowContexts.keys) {
+      final turn = _rowTurns[rowId];
+      final span = _spanOf(rowId: rowId);
+      if (turn == null || span == null || span.bottom <= widget.topInset || span.top >= edgeTop) continue;
+      (edgeTurn, edgeTop) = (turn, span.top);
+    }
+    return edgeTurn;
+  }
+
+  /// Holds [turn] across a switch to [folded]. While any of its first row
+  /// shows below the top edge, that row keeps its distance from the edge;
+  /// from mid-turn, it lands at the edge.
+  void _holdTurn({required TranscriptTurn turn, required bool folded}) {
+    final shownRowId = _firstRowOf(turn: turn, folded: !folded);
+    final span = _spanOf(rowId: shownRowId);
+    final top = span == null || span.bottom <= widget.topInset ? 0.0 : span.top - widget.topInset;
+    final rowId = _firstRowOf(turn: turn, folded: folded);
+    _setAnchor(rowId: rowId, top: top);
+  }
+
+  void _setAnchor({required String rowId, required double top}) {
+    final anchor = _anchor = _TurnAnchor(rowId: rowId, top: top);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _stepAnchor(anchor: anchor, first: true));
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  /// One step toward [anchor], once a frame has laid out the rows it
+  /// measures, so at most one jump a frame. A built row jumps into place and
+  /// is checked again, as lazy extents are estimates. An unbuilt row is
+  /// searched for from the built rows. The anchor ends once its row settles
+  /// or the list can move no closer, when the row goes, or when the list
+  /// follows the latest edge again.
+  void _stepAnchor({required _TurnAnchor anchor, required bool first}) {
+    if (!mounted || !identical(anchor, _anchor)) return;
+    _anchor = null;
+    final list = context.findRenderObject();
+    final rowIndex = {for (final (index, rowId) in _rowIds.indexed) rowId: index};
+    final target = rowIndex[anchor.rowId];
+    if (list is! RenderBox || target == null || (_follow.following && !first)) return;
+    final double delta;
+    if (_spanOf(rowId: anchor.rowId) case final span?) {
+      delta = widget.topInset + anchor.top - span.top;
+    } else {
+      // Move the built row nearest the target just out of the viewport on the
+      // far side. The rows toward the target then fill the viewport in order
+      // from that row, so no jump passes over it.
+      final built = [
+        for (final rowId in _rowContexts.keys)
+          if (rowIndex[rowId] case final index?) (rowId: rowId, index: index),
+      ];
+      if (built.isEmpty) return;
+      final nearest = built.reduce((a, b) => (a.index - target).abs() <= (b.index - target).abs() ? a : b);
+      final span = _spanOf(rowId: nearest.rowId);
+      if (span == null) return;
+      // Older rows sit above.
+      delta = target < nearest.index ? list.size.height - span.top : -span.bottom;
+    }
+    final position = _follow.scrollController.position;
+    final pixels = (position.pixels + delta).clamp(position.minScrollExtent, position.maxScrollExtent);
+    if ((pixels - position.pixels).abs() <= 0.5) return;
+    _anchor = anchor;
+    // The jump ends a scroll, so the tracker detaches the list, or follows
+    // again when it lands within the latest edge's tolerance.
+    position.jumpTo(pixels);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _stepAnchor(anchor: anchor, first: false));
+  }
+
+  /// Unfolds every turn and holds [turn] in place.
+  void _unfoldAt({required TranscriptTurn turn}) {
+    _holdTurn(turn: turn, folded: false);
+    widget.onTranscriptFoldedChanged(folded: false);
+  }
+
+  /// Folded, unfolds every turn and holds the one [openerMessageId] opened in
+  /// place; unfolded, scrolls its prompt to the top edge.
+  void _onJumpToTurn({required String openerMessageId}) {
+    final turn = _turns?.promptTurnFor(openerMessageId: openerMessageId);
+    if (turn == null) return;
+    if (widget.transcriptFolded) return _unfoldAt(turn: turn);
+    _setAnchor(rowId: _entryIdForMessage(info: turn.opener.info), top: 0);
+  }
+
   bool _transientSubmissionsMatch({required SessionDetailMessageList oldWidget}) {
     if (oldWidget.localSend != widget.localSend) return false;
     if (oldWidget.queuedMessages.length != widget.queuedMessages.length) return false;
@@ -336,7 +467,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   List<String> _rowIdsFor({
     required List<MessageWithParts> messages,
-    required TranscriptTurns? foldedTurns,
+    required Iterable<String> messageRows,
     required QueuedSessionSubmission? localSendSubmission,
     required List<QueuedSessionSubmission> queuedMessages,
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
@@ -346,18 +477,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       for (final message in messages)
         if (message.hasRenderableUserContent)
           if (message.info case MessageUser(promptId: final promptId?)) promptId,
-    };
-    final messageRows = switch (foldedTurns) {
-      null => [
-        for (final message in messages)
-          if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
-      ],
-      TranscriptTurns(:final turns) => [
-        for (final turn in turns) ...[
-          if (turn case TranscriptPromptTurn(:final opener)) _entryIdForMessage(info: opener.info),
-          _stubRowIdFor(turn: turn),
-        ],
-      ],
     };
     final entries = <String>[
       ...messageRows,
@@ -393,6 +512,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   static String _stubRowIdFor({required TranscriptTurn turn}) => switch (turn) {
     TranscriptPromptTurn(:final opener) => "$_kTurnRowPrefix${opener.info.id}",
     TranscriptPartialTurn() || TranscriptPreamble() => _kLeadingTurnRowId,
+  };
+
+  /// The first row [turn] shows [folded] or unfolded. Unfolded, a leading
+  /// segment starts with agent or automation output, whose row is its message.
+  String _firstRowOf({required TranscriptTurn turn, required bool folded}) => switch (turn) {
+    TranscriptPromptTurn(:final opener) => _entryIdForMessage(info: opener.info),
+    TranscriptPartialTurn() || TranscriptPreamble() => folded ? _kLeadingTurnRowId : turn.messageIds.first,
   };
 
   /// Whether [rowId] shows the user's side: a prompt or a user message.
@@ -433,16 +559,24 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       children: children,
       childStatuses: childStatuses,
     );
-    final foldedTurns = widget.transcriptFolded
-        ? const TranscriptTurnBuilder().build(
-            messages: messages,
-            transcript: transcript,
-            isBusy: isBusy,
-            hasOlderMessages: widget.onLoadOlderMessages != null,
-          )
-        : null;
-    final turnStubs = {
-      for (final turn in foldedTurns?.turns ?? const <TranscriptTurn>[]) _stubRowIdFor(turn: turn): turn,
+    final turns = const TranscriptTurnBuilder().build(
+      messages: messages,
+      transcript: transcript,
+      isBusy: isBusy,
+      hasOlderMessages: widget.onLoadOlderMessages != null,
+    );
+    // The message rows in order, each with its turn: folded, a prompt turn's
+    // prompt and one stub for the rest; unfolded, every rendered message.
+    final rowTurns = <String, TranscriptTurn>{
+      if (widget.transcriptFolded)
+        for (final turn in turns.turns) ...{
+          if (turn case TranscriptPromptTurn(:final opener)) _entryIdForMessage(info: opener.info): turn,
+          _stubRowIdFor(turn: turn): turn,
+        }
+      else
+        for (final message in messages)
+          if (turns.turnIndexByMessageId[message.info.id] case final index?)
+            _entryIdForMessage(info: message.info): turns.turns[index],
     };
     // The rows hold still while the reader is scrolled away, but the jump
     // button names the step running now.
@@ -467,7 +601,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
     final rowIds = _rowIdsFor(
       messages: messages,
-      foldedTurns: foldedTurns,
+      messageRows: rowTurns.keys,
       localSendSubmission: localSendRow?.submission,
       queuedMessages: queuedMessages,
       bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
@@ -475,6 +609,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     );
     final knownRowIds = _knownRowIds;
     _knownRowIds = rowIds.toSet();
+    _turns = turns;
+    _rowIds = rowIds;
+    _rowTurns = rowTurns;
     // Rows held still while scrolled away never animate, and a prompt shows
     // at once: only the agent's side of the transcript eases in.
     final enteringRowIds = knownRowIds == null || snap != null || context.isReducedMotion
@@ -550,8 +687,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             },
             itemBuilder: (context, index) {
               final entryId = rowIds[rowIds.length - index - 1];
-              return KeyedSubtree(
+              return TranscriptRowReporter(
                 key: ValueKey(entryId),
+                rowId: entryId,
+                onMount: _onRowMount,
+                onUnmount: _onRowUnmount,
                 child: TranscriptPresence(
                   entering: enteringRowIds.contains(entryId),
                   exiting: false,
@@ -560,7 +700,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                     entryId: entryId,
                     messages: messages,
                     indexById: indexById,
-                    turnStubs: turnStubs,
+                    rowTurns: rowTurns,
                     transientSubmissions: transientSubmissions,
                     transcript: transcript,
                     streamingText: streamingText,
@@ -595,15 +735,24 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required String entryId,
     required List<MessageWithParts> messages,
     required Map<String, int> indexById,
-    required Map<String, TranscriptTurn> turnStubs,
+    required Map<String, TranscriptTurn> rowTurns,
     required Map<String, _TransientSubmission> transientSubmissions,
     required Transcript transcript,
     required Map<String, String> streamingText,
     required String? retryErrorMessage,
     required bool isBusy,
   }) {
-    if (turnStubs[entryId] case final turn?) {
-      return _revealable(createdAtMs: null, child: TranscriptTurnStub(turn: turn));
+    if (rowTurns[entryId] case final turn? when entryId.startsWith(_kTurnRowPrefix)) {
+      return _revealable(
+        createdAtMs: null,
+        child: TranscriptTurnStub(
+          turn: turn,
+          onTap: switch (turn) {
+            TranscriptPromptTurn(:final opener) => () => _onJumpToTurn(openerMessageId: opener.info.id),
+            TranscriptPartialTurn() || TranscriptPreamble() => () => _unfoldAt(turn: turn),
+          },
+        ),
+      );
     }
     if (entryId == _kRetryErrorRowId) {
       // Synthetic row: no timestamp, but it still slides with the rest.

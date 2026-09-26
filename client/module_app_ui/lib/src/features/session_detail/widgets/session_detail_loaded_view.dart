@@ -178,6 +178,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                                 ),
                           isLoadingOlderMessages: state.isLoadingOlderMessages,
                           transcriptFolded: state.transcriptFolded,
+                          onTranscriptFoldedChanged: context.read<SessionDetailCubit>().setTranscriptFolded,
                           streamingText: state.streamingText,
                           children: state.children,
                           childStatuses: state.childStatuses,

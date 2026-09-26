@@ -71,7 +71,7 @@ void main() {
           body: Column(
             children: [
               for (final MapEntry(key: label, value: turn) in cases.entries)
-                if (shown.contains(label)) TranscriptTurnStub(turn: turn),
+                if (shown.contains(label)) TranscriptTurnStub(turn: turn, onTap: () {}),
             ],
           ),
         ),
