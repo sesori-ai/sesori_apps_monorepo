@@ -137,6 +137,22 @@ void main() {
     expect(cubit.state.hiddenIds, {"s1"});
   });
 
+  testWidgets("an older bridge's branch mismatch refusal still offers Delete anyway", (tester) async {
+    await pumpAlerts(tester);
+    refuseCleanupWith(const [shared.CleanupIssue.branchMismatch(expected: "feat/x", actual: "main")]);
+    when(
+      () => repository.archiveSession(sessionId: "s1", deleteWorktree: true, force: true),
+    ).thenAnswer((_) async => ApiResponse.success(session));
+    await commitArchive(tester);
+
+    expect(find.text("Worktree is on branch 'main' instead of expected 'feat/x'"), findsOneWidget);
+    await tester.tap(find.widgetWithText(PregoButtonsSolid, "Delete anyway"));
+    await tester.pumpAndSettle();
+
+    verify(() => repository.archiveSession(sessionId: "s1", deleteWorktree: true, force: true)).called(1);
+    expect(cubit.state.hiddenIds, {"s1"});
+  });
+
   testWidgets("Cancel on that refusal sends nothing more and returns the session", (tester) async {
     await pumpAlerts(tester);
     refuseCleanupWith(const [shared.CleanupIssue.unstagedChanges()]);

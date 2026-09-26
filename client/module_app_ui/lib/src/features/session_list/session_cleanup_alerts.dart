@@ -102,7 +102,8 @@ class const _DeleteConfirmation({required final Session session}) extends Statel
 /// This alert is itself the confirmation, so it asks once: Cancel, the safe
 /// default that dismissing or Escape also gives, or a destructive Delete
 /// anyway. Keeping the worktree is not on offer — the refusals that reach here
-/// are the user's own uncommitted work.
+/// are the user's own uncommitted work, or an unexpected branch, which only
+/// older bridges report.
 Future<bool> showSessionArchiveRefusedAlert({
   required BuildContext context,
   required SessionCleanupRejection rejection,

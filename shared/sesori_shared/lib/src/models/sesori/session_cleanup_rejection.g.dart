@@ -28,6 +28,21 @@ Map<String, dynamic> _$CleanupIssueUnstagedChangesToJson(
   CleanupIssueUnstagedChanges instance,
 ) => <String, dynamic>{'type': instance.$type};
 
+CleanupIssueBranchMismatch _$CleanupIssueBranchMismatchFromJson(Map json) =>
+    CleanupIssueBranchMismatch(
+      expected: json['expected'] as String,
+      actual: json['actual'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$CleanupIssueBranchMismatchToJson(
+  CleanupIssueBranchMismatch instance,
+) => <String, dynamic>{
+  'expected': instance.expected,
+  'actual': instance.actual,
+  'type': instance.$type,
+};
+
 CleanupIssueSharedWorktree _$CleanupIssueSharedWorktreeFromJson(Map json) =>
     CleanupIssueSharedWorktree($type: json['type'] as String?);
 

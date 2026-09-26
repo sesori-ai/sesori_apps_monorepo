@@ -272,6 +272,25 @@ void main() {
       verify(() => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, force: true)).called(1);
     });
 
+    testWidgets("an older bridge's branch mismatch refusal still offers Delete anyway", (tester) async {
+      await pumpDeleteButton(
+        tester: tester,
+        target: worktreeSession,
+        deleteConfirmation: SessionDeleteConfirmation.alert,
+        rejections: const [
+          SessionCleanupRejection(
+            issues: [shared.CleanupIssue.branchMismatch(expected: "feat/x", actual: "main")],
+          ),
+        ],
+      );
+      await confirmDelete(tester);
+
+      expect(find.text("Worktree is on branch 'main' instead of expected 'feat/x'"), findsOneWidget);
+      await tester.tap(find.widgetWithText(PregoButtonsSolid, "Delete anyway"));
+      await tester.pumpAndSettle();
+      verify(() => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, force: true)).called(1);
+    });
+
     testWidgets("Cancel on that refusal deletes nothing more", (tester) async {
       await pumpDeleteButton(
         tester: tester,

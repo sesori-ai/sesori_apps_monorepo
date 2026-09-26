@@ -4135,6 +4135,12 @@ abstract class AppLocalizations {
   /// **'Another active session uses this worktree'**
   String get sessionListCleanupIssueSharedWorktree;
 
+  /// No description provided for @sessionListCleanupIssueBranchMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Worktree is on branch \'{actual}\' instead of expected \'{expected}\''**
+  String sessionListCleanupIssueBranchMismatch(String actual, String expected);
+
   /// No description provided for @sessionListDeleteFailed.
   ///
   /// In en, this message translates to:
