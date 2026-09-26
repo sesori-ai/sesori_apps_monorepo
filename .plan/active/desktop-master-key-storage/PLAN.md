@@ -23,6 +23,23 @@ It is temporary upgrade compatibility, never a second runtime persistence path.
 The read-only wallet reference informed selective encryption/typed primitives;
 its password UX, CBC fallback and unrelated application models are not adopted.
 
+## Requested recovery policy revision — 2026-09-26
+
+The user superseded the merged blocking recovery policy: failed mobile migration
+must reset scoped local storage and continue to the normal logged-out screen.
+They explicitly chose normal account/server analytics behavior afterward,
+accepting that a pending local-only opt-out can be lost; no additional recovery
+consent state is wanted. Successful migration still preserves existing data.
+
+Implementation design/review is in progress. Preserve-and-retry failure clauses
+below describe the old reviewed baseline until replaced in the implementation
+step; they do not override this new user decision. Add the recovery change before
+final regression reconciliation/retirement, rather than merging an incomplete
+final qualification PR. No coverage waiver has been given.
+
+Native happy-path evidence now includes [production-scope mobile fixtures](MOBILE_MIGRATION.md).
+Those observations do not qualify this requested failure-policy revision.
+
 ## Current behavior and compatibility boundary
 
 - Both apps currently use per-value `FlutterSecureStorage` through auth's

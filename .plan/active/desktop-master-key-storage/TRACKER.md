@@ -2,9 +2,16 @@
 
 ## Execution
 
-- Status: #1758 merged. Native qualification is partial: real mobile development
-  flows and signed macOS shared-store roundtrip/reopen pass; required production
-  migration, replacement and adverse/restore gates remain. Plan stays active.
+- Status: #1758 merged. Native qualification is partial: mobile development flows,
+  production-scope native import/reopen fixtures and signed macOS shared-store
+  roundtrip/reopen have evidence. See [MOBILE_MIGRATION.md](MOBILE_MIGRATION.md) for
+  exact proof limits and the repaired iOS runner-uninstall incident. Desktop
+  replacement and native adverse/restore gates remain. Plan stays active.
+- New user direction (2026-09-26): replace blocking failed-migration recovery with
+  scoped local reset and normal logged-out startup. Normal account/server analytics
+  rules apply; user explicitly accepted loss of pending local-only opt-out. Design
+  review is pending; production code has not changed. Existing preserve/retry
+  failure entries below record the merged baseline, not the new target policy.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,

@@ -74,6 +74,17 @@ under ignored `.dart_tool/desktop-master-key-storage/local-slot-1-*`. No tokens,
 passwords, account details, raw app logs or native databases are published here.
 No production source was changed to obtain this evidence.
 
+## Production-scope native mobile migration
+
+The subsequent [native migration fixture report](MOBILE_MIGRATION.md) records
+released-format seeding, real production-scope import, exact value/cleanup
+verification and cold reopen on both owned platforms. Android's three phases
+passed. iOS combines successful import assertions with a corrected, passing
+cold-reopen phase; its initial invocation had a fixture assertion failure.
+The report also records the Flutter default-uninstall incident and slot repair.
+This is debug-fixture evidence, not a store-distributed upgrade or native adverse
+state/restore qualification.
+
 ## Existing signed macOS native evidence
 
 An already completed shared release was inspected read-only; no release or
@@ -110,9 +121,16 @@ baseline, not replacement evidence themselves.
 
 ## Remaining required coverage
 
-- **Not run:** iOS/Android production-scope released-format import, complete native
-  inventory/error behavior, interruption/copy/cleanup/marker recovery, pending
-  opt-out admission, and native migration-failure presentation.
+- **Partial:** production-scope released-format iOS/Android import and cold reopen
+  now have native fixture evidence, including pending-disable JSON before analytics
+  bootstrap. Actual store-distributed upgrade, complete historical native envelope/
+  error behavior, interruption/copy/cleanup/marker failure handling, server opt-out
+  synchronization and native failure UI remain unqualified.
+- **Requested policy change, not yet implemented:** reset local storage and continue
+  logged out after migration failure instead of the blocking recovery root. The
+  user chose normal account/server analytics rules after reset, accepting loss of
+  pending local-only opt-out. Prior preserve-and-retry failure expectations must
+  be replaced and requalified; happy-path evidence above does not cover that change.
 - **Not run:** native Windows/Linux master-store roundtrip/cold reopen and
   new-format replacement on all three desktop platforms. Existing six-platform
   native build passes are not native storage execution.
