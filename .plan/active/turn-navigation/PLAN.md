@@ -1111,7 +1111,9 @@ So the Prompts screen is a full-bleed layer inside the session page, owned by
 - Open state is one `bool` in `_SessionDetailBodyState`. It is deliberately not
   cubit state: only this widget reads it, and it must not survive the page.
 - A `PopScope` closes the layer on the system back gesture before the route
-  pops, so back means "back to the transcript".
+  pops, so back means "back to the transcript". On iOS the same `PopScope`
+  disables the route's edge swipe while the layer is open, so there the exit is a
+  row tap or the header's close affordance.
 - The transcript keeps its exact scroll offset, follow state and built rows
   while covered. This is what makes the guardrail true by construction rather
   than by tuning.
@@ -1156,8 +1158,8 @@ runs over what the list renders.
   - `TranscriptPromptFollowUp(messageId, text, fullText, createdAt?, dayKey?,
     number?, openerMessageId)`.
 
-  `fullText` is the message's whole text, which step 16 searches and excerpts;
-  `text` stays the one-line display value below.
+  `fullText` is what step 16 searches and excerpts; `text` is the one-line
+  display value. Both come from one resolver, below.
 - The builder walks `messages` **oldest first**, so numbering and the list order
   are the same single pass:
   - every role-`user` message advances the number, renderable or not;
@@ -1166,12 +1168,13 @@ runs over what the list renders.
   - nothing is reversed at the end: the walk order **is** the list order (D39).
   Messages before the first opener become openers, because before the first
   opener there is no turn to be a child of.
-- `text` is the first non-empty line of the user message's text, or the first
-  attachment's name, or the existing "Attachment" string — the same resolution
-  the sticky overlay already does. Step 11 extracts that shared resolver rather
-  than writing a third copy; `transcript_sticky_prompt_overlay.dart`'s `_textOf`
-  is the second copy and step 8's review already noted it waits for a third
-  caller.
+- `fullText` is the resolution the sticky overlay already does: the user
+  message's whole text, or the first attachment's name, or the existing
+  "Attachment" string. `text` is `fullText`'s first non-empty line. Step 11
+  extracts that shared resolver rather than writing a third copy;
+  `transcript_sticky_prompt_overlay.dart`'s `_textOf` is the second copy and
+  step 8's review already noted it waits for a third caller. The overlay keeps
+  the whole value and its three-line clamp, unchanged.
 - `hasTimes` is false only when **no** listed entry has a `createdAt`. Then the
   screen shows no time column and no day headers: that is a session nothing ever
   timed, such as an ACP session Sesori never sent a prompt to (D38).
@@ -1588,7 +1591,7 @@ Planning copy, not from a mock. Review may polish the wording, not the meaning.
 | Match count, last row while searching | "{n} matches in the prompts loaded so far". Use "1 match in the prompts loaded so far", and "No matches in the prompts loaded so far". |
 | Load earlier | "Load earlier prompts", at the top of the list (D39). |
 | Day header | The date, in `formatMessageTimestamp`'s conventions: "Today", "Yesterday", then the date. Oldest day at the top. |
-| Undated day header | "No date", above every dated day (D38). |
+| Undated day header | "No date", heading each run of undated prompts; normally the first group (D38). |
 | Follow-up row, screen readers | The row's text, prefixed "Follow-up:" so a child row is not read as a peer. |
 | Row, screen readers | The number where there is one, the text, and the time where there is one, as one button labelled with them; the tap hint is the existing "Jump to this prompt". |
 | No prompts yet | "No prompts in this session yet" |
@@ -1837,8 +1840,8 @@ Failure signals, each added by the step that ships the behavior:
   screen opens or closes**; a follow-up is listed as a peer instead of a child, or
   above its parent; a tap lands on the wrong prompt or on nothing; the screen opens
   at the end of the list instead of at the prompt that was being read; a
-  fully untimed session shows a day header or an empty time column; the "No date"
-  group appears below a dated day;
+  fully untimed session shows a day header or an empty time column; undated
+  prompts are moved out of the transcript's order into one group;
 - step 13: a pinch scrolls the transcript, opens the screen twice, or a
   one-finger scroll or peek opens it;
 - step 15: a number changes when an older page loads; numbers appear against a
