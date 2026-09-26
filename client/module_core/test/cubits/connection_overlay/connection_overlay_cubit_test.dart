@@ -1,4 +1,7 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
+import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
@@ -68,10 +71,111 @@ void main() {
       },
       expect: () => const [
         ConnectionOverlayState.connectionLost(),
+        // A running reconnect clears the stale connection-lost banner at once.
+        ConnectionOverlayState.hidden(connected: false),
         ConnectionOverlayState.reconnecting(),
         ConnectionOverlayState.hidden(connected: true),
       ],
     );
+
+    group("resume after a relay drop observed in the background", () {
+      // While backgrounded, a relay drop parks the service in connection lost;
+      // on resume the service starts a reconnect. These drive that sequence.
+      List<ConnectionOverlayState> resume({required List<(Duration, ConnectionStatus)> afterResume}) {
+        final emitted = <ConnectionOverlayState>[];
+        fakeAsync((async) {
+          final cubit = buildCubit();
+          final subscription = cubit.stream.listen(emitted.add);
+          statusStream.add(connected);
+          async.flushMicrotasks();
+          statusStream.add(connectionLost);
+          async.elapse(const Duration(minutes: 5));
+          emitted.clear();
+
+          statusStream.add(reconnecting);
+          async.flushMicrotasks();
+          for (final (delay, status) in afterResume) {
+            async.elapse(delay);
+            statusStream.add(status);
+            async.flushMicrotasks();
+          }
+          async.elapse(const Duration(minutes: 1));
+          unawaited(subscription.cancel());
+          unawaited(cubit.close());
+          async.flushMicrotasks();
+        });
+        return emitted;
+      }
+
+      test("a quick reconnect never shows a banner", () {
+        final emitted = resume(afterResume: [(const Duration(seconds: 2), connected)]);
+
+        expect(emitted, const [
+          ConnectionOverlayState.hidden(connected: false),
+          ConnectionOverlayState.hidden(connected: true),
+        ]);
+      });
+
+      test("a reconnect that persists shows the reconnecting banner only after the grace window", () {
+        final emitted = <ConnectionOverlayState>[];
+        fakeAsync((async) {
+          final cubit = buildCubit();
+          cubit.stream.listen(emitted.add);
+          statusStream.add(connectionLost);
+          async.flushMicrotasks();
+          emitted.clear();
+
+          statusStream.add(reconnecting);
+          async.flushMicrotasks();
+          expect(cubit.state, const ConnectionOverlayState.hidden(connected: false));
+
+          async.elapse(ConnectionOverlayCubit.defaultReconnectingGrace - const Duration(milliseconds: 1));
+          expect(cubit.state, const ConnectionOverlayState.hidden(connected: false));
+
+          async.elapse(const Duration(milliseconds: 1));
+          expect(cubit.state, const ConnectionOverlayState.reconnecting());
+
+          // Recovery hides the banner immediately.
+          statusStream.add(connected);
+          async.flushMicrotasks();
+          expect(cubit.state, const ConnectionOverlayState.hidden(connected: true));
+          unawaited(cubit.close());
+          async.flushMicrotasks();
+        });
+        expect(emitted, const [
+          ConnectionOverlayState.hidden(connected: false),
+          ConnectionOverlayState.reconnecting(),
+          ConnectionOverlayState.hidden(connected: true),
+        ]);
+      });
+
+      test("a reconnect that stops again shows connection lost immediately", () {
+        final emitted = resume(afterResume: [(const Duration(seconds: 1), connectionLost)]);
+
+        expect(emitted, const [
+          ConnectionOverlayState.hidden(connected: false),
+          ConnectionOverlayState.connectionLost(),
+        ]);
+      });
+
+      test("a still-offline bridge keeps its banner through the resume reconnect", () {
+        final emitted = <ConnectionOverlayState>[];
+        fakeAsync((async) {
+          registeredStream.add(true);
+          final cubit = buildCubit();
+          cubit.stream.listen(emitted.add);
+          statusStream.add(bridgeOffline);
+          async.flushMicrotasks();
+          statusStream.add(reconnecting);
+          async.elapse(const Duration(seconds: 1));
+          statusStream.add(bridgeOffline);
+          async.elapse(const Duration(minutes: 1));
+          unawaited(cubit.close());
+          async.flushMicrotasks();
+        });
+        expect(emitted, const [ConnectionOverlayState.bridgeOffline()]);
+      });
+    });
 
     blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
       "a reconnect that resolves within the grace window never surfaces the banner",

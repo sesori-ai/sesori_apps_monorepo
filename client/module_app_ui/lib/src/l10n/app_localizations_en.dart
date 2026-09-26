@@ -1399,6 +1399,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptUnfoldAll => 'Unfold all turns';
 
   @override
+  String get transcriptStickyPromptJumpHint => 'Jump to this prompt';
+
+  @override
+  String get transcriptStickyPromptAttachment => 'Attachment';
+
+  @override
   String get sessionDetailJumpToLatest => 'Jump to latest';
 
   @override

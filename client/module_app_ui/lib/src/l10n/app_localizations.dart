@@ -2557,6 +2557,18 @@ abstract class AppLocalizations {
   /// **'Unfold all turns'**
   String get transcriptUnfoldAll;
 
+  /// Screen reader hint of the prompt pinned at the top of a session transcript while the user reads that prompt's turn. Activating it scrolls the transcript to the prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Jump to this prompt'**
+  String get transcriptStickyPromptJumpHint;
+
+  /// What the prompt pinned at the top of a session transcript shows when the prompt has no text and its first attachment has no file name.
+  ///
+  /// In en, this message translates to:
+  /// **'Attachment'**
+  String get transcriptStickyPromptAttachment;
+
   /// Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages.
   ///
   /// In en, this message translates to:

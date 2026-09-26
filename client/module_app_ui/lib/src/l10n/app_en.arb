@@ -905,6 +905,14 @@
   "@transcriptUnfoldAll": {
     "description": "Label of the session toolbar button that unfolds every folded turn of the transcript."
   },
+  "transcriptStickyPromptJumpHint": "Jump to this prompt",
+  "@transcriptStickyPromptJumpHint": {
+    "description": "Screen reader hint of the prompt pinned at the top of a session transcript while the user reads that prompt's turn. Activating it scrolls the transcript to the prompt."
+  },
+  "transcriptStickyPromptAttachment": "Attachment",
+  "@transcriptStickyPromptAttachment": {
+    "description": "What the prompt pinned at the top of a session transcript shows when the prompt has no text and its first attachment has no file name."
+  },
   "sessionDetailJumpToLatest": "Jump to latest",
   "@sessionDetailJumpToLatest": {
     "description": "Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages."

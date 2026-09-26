@@ -23,6 +23,8 @@ import "transcript_live_row.dart";
 import "transcript_motion.dart";
 import "transcript_pinch_detector.dart";
 import "transcript_row_reporter.dart";
+import "transcript_sticky_position.dart";
+import "transcript_sticky_prompt_overlay.dart";
 import "transcript_turn_stub.dart";
 import "user_message_card.dart";
 
@@ -221,6 +223,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// switch can read the turn the reader was on.
   List<String> _rowIds = const [];
   Map<String, TranscriptTurn> _rowTurns = const {};
+  TranscriptTurns _turns = const TranscriptTurns(turns: [], turnIndexByMessageId: {});
+
+  /// The prompt pinned at the top edge, measured after each frame that built
+  /// or scrolled the list. Only the sticky prompt overlay reads it.
+  final ValueNotifier<TranscriptStickyPosition?> _sticky = ValueNotifier(null);
+  bool _stickyUpdateScheduled = false;
 
   /// The built rows by id. Only built rows are here, so every scan stays
   /// bounded by the viewport and its cache extent.
@@ -251,6 +259,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _follow.removeListener(_onFollowChanged);
     _follow.dispose();
     _revealController.dispose();
+    _sticky.dispose();
     super.dispose();
   }
 
@@ -401,7 +410,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final shownRowId = _firstRowOf(turn: turn, folded: !folded);
     final span = _spanOf(rowId: shownRowId);
     final top = span == null || span.bottom <= widget.topInset ? 0.0 : span.top - widget.topInset;
-    final rowId = _firstRowOf(turn: turn, folded: folded);
+    _holdRow(
+      rowId: _firstRowOf(turn: turn, folded: folded),
+      top: top,
+    );
+  }
+
+  /// Moves row [rowId] to rest [top] px below the top edge, from the next frame.
+  void _holdRow({required String rowId, required double top}) {
     final anchor = _anchor = _TurnAnchor(rowId: rowId, top: top);
     WidgetsBinding.instance.addPostFrameCallback((_) => _stepAnchor(anchor: anchor, first: true));
     WidgetsBinding.instance.ensureVisualUpdate();
@@ -454,6 +470,44 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   void _unfoldAt({required TranscriptTurn turn}) {
     _holdTurn(turn: turn, folded: false);
     widget.onTranscriptFoldedChanged(folded: false);
+  }
+
+  /// Puts the prompt of turn [openerMessageId] at the top edge. Folded, it
+  /// unfolds every turn and holds that one in place instead. Like any hold,
+  /// the jump stops following.
+  void _jumpToTurn({required String openerMessageId}) {
+    final turn = _turns.promptTurnFor(openerMessageId: openerMessageId);
+    if (turn == null) return;
+    if (widget.transcriptFolded) return _unfoldAt(turn: turn);
+    _holdRow(rowId: _firstRowOf(turn: turn, folded: false), top: 0);
+  }
+
+  void _scheduleStickyUpdate() {
+    if (_stickyUpdateScheduled) return;
+    _stickyUpdateScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _stickyUpdateScheduled = false;
+      if (mounted) _sticky.value = _stickyPosition();
+    });
+  }
+
+  /// The prompt to pin: unfolded, the top-edge turn's opener while that
+  /// opener is above the edge or not built. Segments without a prompt pin
+  /// nothing.
+  TranscriptStickyPosition? _stickyPosition() {
+    if (widget.transcriptFolded) return null;
+    if (_topEdgeTurn() case final TranscriptPromptTurn turn) {
+      final opener = _spanOf(rowId: _firstRowOf(turn: turn, folded: false));
+      if (opener != null && opener.bottom > widget.topInset) return null;
+      final index = _turns.turnIndexByMessageId[turn.opener.info.id];
+      final next = index == null ? null : _turns.turns.elementAtOrNull(index + 1);
+      final nextOpener = next == null ? null : _spanOf(rowId: _firstRowOf(turn: next, folded: false));
+      return TranscriptStickyPosition(
+        openerMessageId: turn.opener.info.id,
+        nextOpenerTop: nextOpener == null ? null : nextOpener.top - widget.topInset,
+      );
+    }
+    return null;
   }
 
   /// The turn of the built row under [globalPosition].
@@ -686,6 +740,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _knownRowIds = rowIds.toSet();
     _rowIds = rowIds;
     _rowTurns = rowTurns;
+    _turns = turns;
+    _scheduleStickyUpdate();
     // Rows held still while scrolled away never animate, and a prompt shows
     // at once: only the agent's side of the transcript eases in.
     final enteringRowIds = knownRowIds == null || snap != null || context.isReducedMotion
@@ -744,51 +800,62 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             pendingRejectionSlop: _kRevealPendingRejectionSlop,
             direction: PregoHorizontalDragDirection.left,
             dragStartBehavior: DragStartBehavior.down,
-            child: ListView.builder(
-              key: _kListViewKey,
-              reverse: true,
-              controller: _follow.scrollController,
-              padding: EdgeInsetsDirectional.only(
-                start: widget.horizontalInset,
-                end: widget.horizontalInset,
-                top: 8 + widget.topInset,
-                bottom: 8 + widget.bottomInset,
-              ),
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: rowIds.length,
-              findChildIndexCallback: (key) {
-                if (key case ValueKey<String>(value: final rowId)) {
-                  final domainIndex = rowIds.indexOf(rowId);
-                  return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
-                }
-                return null;
-              },
-              itemBuilder: (context, index) {
-                final entryId = rowIds[rowIds.length - index - 1];
-                return TranscriptRowReporter(
-                  key: ValueKey(entryId),
-                  rowId: entryId,
-                  onMount: _onRowMount,
-                  onUnmount: _onRowUnmount,
-                  child: TranscriptPresence(
-                    entering: enteringRowIds.contains(entryId),
-                    exiting: false,
-                    onExited: null,
-                    child: _buildRow(
-                      entryId: entryId,
-                      messages: messages,
-                      indexById: indexById,
-                      rowTurns: rowTurns,
-                      transientSubmissions: transientSubmissions,
-                      transcript: transcript,
-                      streamingText: streamingText,
-                      retryErrorMessage: retryErrorMessage,
-                      activity: activity,
-                    ),
+            child: Stack(
+              children: [
+                ListView.builder(
+                  key: _kListViewKey,
+                  reverse: true,
+                  controller: _follow.scrollController,
+                  padding: EdgeInsetsDirectional.only(
+                    start: widget.horizontalInset,
+                    end: widget.horizontalInset,
+                    top: 8 + widget.topInset,
+                    bottom: 8 + widget.bottomInset,
                   ),
-                );
-              },
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: rowIds.length,
+                  findChildIndexCallback: (key) {
+                    if (key case ValueKey<String>(value: final rowId)) {
+                      final domainIndex = rowIds.indexOf(rowId);
+                      return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
+                    }
+                    return null;
+                  },
+                  itemBuilder: (context, index) {
+                    final entryId = rowIds[rowIds.length - index - 1];
+                    return TranscriptRowReporter(
+                      key: ValueKey(entryId),
+                      rowId: entryId,
+                      onMount: _onRowMount,
+                      onUnmount: _onRowUnmount,
+                      child: TranscriptPresence(
+                        entering: enteringRowIds.contains(entryId),
+                        exiting: false,
+                        onExited: null,
+                        child: _buildRow(
+                          entryId: entryId,
+                          messages: messages,
+                          indexById: indexById,
+                          rowTurns: rowTurns,
+                          transientSubmissions: transientSubmissions,
+                          transcript: transcript,
+                          streamingText: streamingText,
+                          retryErrorMessage: retryErrorMessage,
+                          activity: activity,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                Positioned(
+                  top: widget.topInset,
+                  left: widget.horizontalInset,
+                  right: widget.horizontalInset,
+                  bottom: 0,
+                  child: TranscriptStickyPromptOverlay(position: _sticky, turns: turns, onJumpToTurn: _jumpToTurn),
+                ),
+              ],
             ),
           ),
         ),
@@ -1036,6 +1103,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       _ => false,
     };
     if (nearingOldestEdge) _requestOlderPage();
+    if (notification case ScrollUpdateNotification(depth: 0) || ScrollMetricsNotification(depth: 0)) {
+      _scheduleStickyUpdate();
+    }
     return notification is ScrollNotification && _onNestedScrollNotification(notification);
   }
 
