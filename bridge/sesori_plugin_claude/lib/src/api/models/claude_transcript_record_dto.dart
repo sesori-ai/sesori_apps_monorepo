@@ -46,9 +46,33 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
     /// Host-stamped provenance, independent of the record's `user` role.
     /// Unknown provenance never promotes ordinary user input to automation.
     @JsonKey(name: "origin", fromJson: _originKind) required ClaudeMessageOriginKind originKind,
+
+    /// The payload of an `attachment` record.
+    @JsonKey(fromJson: _attachmentOrNull) required ClaudeTranscriptAttachmentDto? attachment,
   }) = _ClaudeTranscriptRecordDto;
 
   factory fromJson(Map<String, dynamic> json) => _$ClaudeTranscriptRecordDtoFromJson(json);
+}
+
+/// The payload of an `attachment` record. Only the fields of a
+/// `queued_command`, a command Claude queued while a turn was running, are
+/// modelled.
+@Freezed(fromJson: true, toJson: false, toStringOverride: false)
+sealed class ClaudeTranscriptAttachmentDto with _$ClaudeTranscriptAttachmentDto {
+  const factory({
+    @JsonKey(fromJson: _stringOrNull) required String? type,
+
+    /// The queued content: a string or content blocks, like a user message's.
+    required Object? prompt,
+    @JsonKey(fromJson: _stringOrNull) required String? commandMode,
+
+    /// The id the live stream gave the command; older CLIs omit it.
+    @JsonKey(name: "source_uuid", fromJson: _stringOrNull) required String? sourceUuid,
+    @JsonKey(fromJson: _boolOrNull) required bool? isMeta,
+    @JsonKey(name: "origin", fromJson: _originKind) required ClaudeMessageOriginKind originKind,
+  }) = _ClaudeTranscriptAttachmentDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$ClaudeTranscriptAttachmentDtoFromJson(json);
 }
 
 /// The nested Anthropic message persisted by `user` and `assistant` records.
@@ -74,5 +98,8 @@ ClaudeMessageOriginKind _originKind(Object? value) =>
 
 ClaudeTranscriptMessageDto? _messageOrNull(Object? value) =>
     value is Map ? ClaudeTranscriptMessageDto.fromJson(value.cast<String, dynamic>()) : null;
+
+ClaudeTranscriptAttachmentDto? _attachmentOrNull(Object? value) =>
+    value is Map ? ClaudeTranscriptAttachmentDto.fromJson(value.cast<String, dynamic>()) : null;
 
 DateTime? _timestampOrNull(Object? value) => value is String ? DateTime.tryParse(value)?.toUtc() : null;
