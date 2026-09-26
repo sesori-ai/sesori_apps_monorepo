@@ -17,7 +17,6 @@ class const SessionDetailScreen({
   required final String projectId,
   required final bool auditView,
   required final VoidCallback? onBack,
-  required final VoidCallback? onClose,
   required final String? projectName,
   required final String sessionId,
   final String? sessionTitle,
@@ -53,7 +52,6 @@ class const SessionDetailScreen({
         child: _MobileSessionDetailBody(
           auditView: auditView,
           onBack: onBack,
-          onClose: onClose,
           projectId: projectId,
           projectName: projectName,
           sessionId: sessionId,
@@ -81,7 +79,6 @@ class const _MobileSessionDetailBody({
   required final String projectId,
   required final bool auditView,
   required final VoidCallback? onBack,
-  required final VoidCallback? onClose,
   required final String? projectName,
   required final String sessionId,
   required final String? sessionTitle,
@@ -126,7 +123,6 @@ class const _MobileSessionDetailBody({
                   ),
           ),
       child: SessionDetailBody(
-        onClose: onClose,
         projectId: projectId,
         sessionId: sessionId,
         sessionTitle: sessionTitle,

@@ -148,7 +148,6 @@ class const DesktopSessionDetailView({
           if (session != null) _markUnread(context: context, session: session);
         },
         child: SessionDetailBody(
-          onClose: null,
           projectId: projectId,
           sessionId: sessionId,
           sessionTitle: sessionTitle,
@@ -241,7 +240,7 @@ class const DesktopSessionDetailView({
           BlocBuilder<DiffSummaryCubit, DiffSummaryState>(
             builder: (context, summary) => PregoButtonsSolid(
               key: const Key("desktop-session-page-changes"),
-              label: loc.desktopSessionPageChanges,
+              label: loc.sessionChangesLabel,
               leadingIcon: TablerRegular.git_compare,
               labelTrailing: sessionChangesCounts(state: summary, style: context.prego.textTheme.textSm.medium),
               hierarchy: PregoButtonsSolidHierarchy.secondary,

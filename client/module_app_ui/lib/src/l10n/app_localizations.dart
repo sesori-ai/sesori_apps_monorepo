@@ -301,11 +301,11 @@ abstract class AppLocalizations {
   /// **'What should we work on?'**
   String get newSessionHeading;
 
-  /// Desktop session page toolbar button that opens the session's file changes.
+  /// Control that opens the session's file changes: the desktop toolbar button and the phone's menu row.
   ///
   /// In en, this message translates to:
   /// **'Changes'**
-  String get desktopSessionPageChanges;
+  String get sessionChangesLabel;
 
   /// Desktop subtask toolbar breadcrumb that returns to the session that started the subtask.
   ///
@@ -4350,12 +4350,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Custom'**
   String get commandSourceCustom;
-
-  /// No description provided for @sessionDetailFileChangesTooltip.
-  ///
-  /// In en, this message translates to:
-  /// **'File changes'**
-  String get sessionDetailFileChangesTooltip;
 
   /// No description provided for @diffBinaryFileChanged.
   ///

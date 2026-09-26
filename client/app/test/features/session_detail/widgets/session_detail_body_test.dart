@@ -54,7 +54,6 @@ Widget _buildApp({
   bool startAtPreviousScreen = false,
   VoidCallback? onOpenHarnessSettings,
   VoidCallback? onOpenBridgeSettings,
-  VoidCallback? onClose,
   SessionDetailMenuEntriesBuilder? menuEntriesBuilder,
   DiffSummaryState diffSummary = const DiffSummaryState.unknown(),
   bool readOnly = false,
@@ -89,7 +88,6 @@ Widget _buildApp({
             openExternalLink: ({required url, required mode}) async => false,
             openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
             child: SessionDetailBody(
-              onClose: onClose,
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Session",
@@ -302,16 +300,15 @@ void main() {
     const SessionDetailState.loading(),
     const SessionDetailState.failed(reason: RemoteFailureReason.unknown),
   ]) {
-    testWidgets("audit Back and Close remain available in $auditState", (tester) async {
+    testWidgets("an audit page keeps Back as its only way out in $auditState", (tester) async {
       when(() => cubit.state).thenReturn(auditState);
       whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: auditState);
-      var closed = false;
-      await tester.pumpWidget(_buildApp(cubit: cubit, onClose: () => closed = true));
+      await tester.pumpWidget(_buildApp(cubit: cubit));
       await tester.pump();
       expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
-      expect(find.bySemanticsLabel("Close archived sessions"), findsOneWidget);
-      await tester.tap(find.bySemanticsLabel("Close archived sessions"));
-      expect(closed, isTrue);
+      // Back reaches the archived list, whose own bar closes the flow.
+      expect(find.bySemanticsLabel("Close archived sessions"), findsNothing);
+      expect(find.byIcon(TablerRegular.x), findsNothing);
     });
   }
 
@@ -988,25 +985,70 @@ void main() {
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 
-  testWidgets("diff button carries the session's line totals, leaving out a zero side", (tester) async {
+  testWidgets("the bar carries only fold and the menu, and the menu holds Changes", (tester) async {
+    when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    // Nothing else may share the row with the centred title: back, fold, menu.
+    final barButtons = find.descendant(
+      of: find.byType(PregoTopNavigation),
+      matching: find.byType(PregoButtonsIconGlass),
+    );
+    expect(barButtons, findsNWidgets(3));
+    expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
+    expect(find.byIcon(TablerRegular.fold), findsOneWidget);
+    expect(find.byKey(const Key("session-detail-more")), findsOneWidget);
+    expect(find.byIcon(TablerRegular.git_compare), findsNothing);
+    expect(find.byIcon(TablerRegular.x), findsNothing);
+    expect(find.byType(PregoActivityIndicator), findsNothing);
+
+    await tester.tap(find.byKey(const Key("session-detail-more")));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("session-detail-changes")), findsOneWidget);
+    expect(find.text("Changes"), findsOneWidget);
+  });
+
+  testWidgets("a working session puts no spinner in the bar", (tester) async {
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      sessionStatus: const SessionStatus.busy(),
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+
+    expect(
+      find.descendant(of: find.byType(PregoTopNavigation), matching: find.byType(PregoActivityIndicator)),
+      findsNothing,
+    );
+  });
+
+  testWidgets("the Changes menu row carries the session's line totals, leaving out a zero side", (tester) async {
     when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
     await tester.pumpWidget(
       _buildApp(cubit: cubit, diffSummary: const DiffSummaryState.counts(additions: 12, deletions: 0)),
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("session-detail-more")));
     await tester.pumpAndSettle();
 
     expect(find.text("+12"), findsOneWidget);
     expect(find.textContaining("−"), findsNothing);
   });
 
-  testWidgets("diff button navigates to diffs with the typed route", (tester) async {
+  testWidgets("the Changes menu row navigates to diffs with the typed route", (tester) async {
     final notices = StreamController<SessionDetailNotice>.broadcast();
     addTearDown(notices.close);
     when(() => cubit.noticeStream).thenAnswer((_) => notices.stream);
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(TablerRegular.git_compare));
+    await tester.tap(find.byKey(const Key("session-detail-more")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("session-detail-changes")));
     await tester.pumpAndSettle();
 
     expect(find.text("Diffs"), findsOneWidget);
@@ -1042,7 +1084,7 @@ void main() {
     verify(() => cubit.setTranscriptFolded(folded: false)).called(1);
   });
 
-  testWidgets("hides the diff button for archived sessions", (tester) async {
+  testWidgets("offers no Changes entry for archived sessions", (tester) async {
     final state = _loadedState(
       pendingQuestions: const [],
       pendingPermissions: const [],
@@ -1052,6 +1094,8 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
+    // An archived page has nothing to offer, so it grows no menu to hold it.
+    expect(find.byKey(const Key("session-detail-more")), findsNothing);
     expect(find.byIcon(TablerRegular.git_compare), findsNothing);
   });
 
@@ -1168,7 +1212,9 @@ void main() {
         await tester.tap(find.byKey(const Key("session-detail-more")));
         await tester.pumpAndSettle();
         final menu = tester.widget<PregoAnchorMenu>(find.byType(PregoAnchorMenu).first);
-        final entry = menu.entriesBuilder().whereType<PregoMenuItem>().single;
+        final entry = menu.entriesBuilder().whereType<PregoMenuItem>().singleWhere(
+          (item) => item.key == const Key("session-auto-continuation-toggle"),
+        );
         expect(entry.isEnabled, enabled);
         await tester.pumpWidget(const SizedBox.shrink());
       }
