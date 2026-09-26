@@ -92,11 +92,15 @@ class const TranscriptStickyPromptOverlay({
                       color: prego.colors.bgSurface2,
                       borderRadius: BorderRadius.circular(PregoRadius.xl),
                       // A halo of the page's own background, so the bubble
-                      // lifts off the rows it covers without a row's
-                      // half-clipped glyphs crowding its edge. It fades
-                      // within a bubble's width, leaving the rest of every
-                      // row untouched.
-                      boxShadow: [BoxShadow(color: background, blurRadius: 28, spreadRadius: 14)],
+                      // lifts off the rows it covers without the half-clipped
+                      // glyphs of the row its edge cuts through crowding it.
+                      // Those glyphs sit within about 20 logical pixels of the
+                      // edge, so the spread carries the halo's body that far
+                      // and the short blur ends it before the next line of
+                      // prose, which stays as dark as if there were no halo.
+                      // A wider blur without the spread covers the glyphs far
+                      // less and greys whole rows the bubble never touches.
+                      boxShadow: [BoxShadow(color: background, blurRadius: 18, spreadRadius: 8)],
                     ),
                     child: source == null
                         ? Text(
