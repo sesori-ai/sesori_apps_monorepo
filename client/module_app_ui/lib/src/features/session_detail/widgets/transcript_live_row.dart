@@ -1,7 +1,11 @@
+import "package:clock/clock.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../l10n/app_localizations.dart";
+import "transcript_duration_formatter.dart";
+import "transcript_elapsed_time.dart";
 
 /// The turning sparkle that leads every live row of the transcript. Reduced
 /// motion keeps it still.
@@ -115,12 +119,16 @@ class const TranscriptStepRow({
 }
 
 /// The live row at the newest end of the transcript while the session works
-/// and no step is live: before the first token and between steps.
-class const TranscriptWorkingRow({super.key}) extends StatelessWidget {
+/// and no step is live: before the first token and between steps. With a
+/// known [sinceMs], the prompt's sent time, it ticks the time since.
+class const TranscriptWorkingRow({super.key, required final int? sinceMs}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final label = context.loc.sessionDetailWorking;
+    final loc = context.loc;
+    final working = loc.sessionDetailWorking;
+    final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
+    final sinceMs = this.sinceMs;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -128,13 +136,34 @@ class const TranscriptWorkingRow({super.key}) extends StatelessWidget {
           const TranscriptLiveSparkle(),
           SizedBox(width: prego.spacing.md),
           Expanded(
-            child: TranscriptLiveLabel(
-              label: Text(label, style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary)),
-              semanticLabel: label,
-            ),
+            // The label replaces the ticking text for screen readers, so the
+            // time is read as of this build instead of every second.
+            child: sinceMs == null
+                ? TranscriptLiveLabel(
+                    label: Text(working, style: style),
+                    semanticLabel: working,
+                  )
+                : TranscriptLiveLabel(
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      // In a narrow row "Working…" gives way and the time stays whole.
+                      children: [
+                        Flexible(
+                          child: Text("$working · ", style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ),
+                        TranscriptElapsedTime(sinceMs: sinceMs, style: style),
+                      ],
+                    ),
+                    semanticLabel: "$working · ${_elapsed(loc: loc, sinceMs: sinceMs)}",
+                  ),
           ),
         ],
       ),
     );
   }
+
+  static String _elapsed({required AppLocalizations loc, required int sinceMs}) => TranscriptDurationFormatter.format(
+    loc: loc,
+    duration: Duration(milliseconds: clock.now().millisecondsSinceEpoch - sinceMs),
+  );
 }

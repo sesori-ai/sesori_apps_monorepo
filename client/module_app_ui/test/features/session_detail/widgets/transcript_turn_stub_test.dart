@@ -33,7 +33,7 @@ void main() {
       outcome: done,
     ),
     "1 step · 42s": _promptTurn(steps: 1, duration: const Duration(seconds: 42), outcome: doneQuietly),
-    "2 steps · 1h 05m": _promptTurn(steps: 2, duration: const Duration(minutes: 65, seconds: 30), outcome: doneQuietly),
+    "2 steps · 1h 05m 30s": _promptTurn(steps: 2, duration: const Duration(minutes: 65, seconds: 30), outcome: doneQuietly),
     "No steps — Fixed the build": _promptTurn(steps: 0, duration: null, outcome: done),
     "3 steps": _promptTurn(steps: 3, duration: null, outcome: doneQuietly),
     "Running": _promptTurn(steps: 0, duration: null, outcome: running),

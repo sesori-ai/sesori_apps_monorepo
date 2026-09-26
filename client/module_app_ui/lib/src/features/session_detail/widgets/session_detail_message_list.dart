@@ -687,6 +687,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       isBusy: isBusy,
       hasOlderMessages: widget.onLoadOlderMessages != null,
     );
+    final activity = const TranscriptActivityBuilder().build(
+      transcript: transcript,
+      turns: turns,
+      isBusy: isBusy,
+      retryErrorMessage: retryErrorMessage,
+      hasStreamingText: streamingText.isNotEmpty,
+    );
     // The message rows in order, each with its turn: folded, a prompt turn's
     // prompt and one stub for the rest; unfolded, every rendered message.
     final rowTurns = <String, TranscriptTurn>{
@@ -835,7 +842,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                           transcript: transcript,
                           streamingText: streamingText,
                           retryErrorMessage: retryErrorMessage,
-                          isBusy: isBusy,
+                          activity: activity,
                         ),
                       ),
                     );
@@ -880,7 +887,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required Transcript transcript,
     required Map<String, String> streamingText,
     required String? retryErrorMessage,
-    required bool isBusy,
+    required TranscriptActivity activity,
   }) {
     if (rowTurns[entryId] case final turn? when entryId.startsWith(_kTurnRowPrefix)) {
       return _revealable(
@@ -904,10 +911,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       );
     }
     if (entryId == _kWorkingRowId) {
-      // Streaming text, a live step or the retry row already shows progress;
-      // the row fills only the gaps: before the first token and between steps.
-      final show = isBusy && retryErrorMessage == null && transcript.liveStep == null && streamingText.isEmpty;
-      return _revealable(createdAtMs: null, child: _workingRow(show: show));
+      return _revealable(createdAtMs: null, child: _workingRow(activity: activity));
     }
     if (entryId.startsWith(_kPromptRowPrefix)) {
       // One row serves the prompt's whole lifecycle. Resolve the most settled
@@ -1036,8 +1040,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// The working row eases in when work starts or a step ends, and away when
   /// a step starts or work ends.
-  Widget _workingRow({required bool show}) => TranscriptPresenceColumn(
-    children: [if (show) const TranscriptWorkingRow(key: ValueKey("session-detail-working"))],
+  Widget _workingRow({required TranscriptActivity activity}) => TranscriptPresenceColumn(
+    children: [
+      if (activity case TranscriptActivityWorking(:final sinceMs))
+        TranscriptWorkingRow(key: const ValueKey("session-detail-working"), sinceMs: sinceMs),
+    ],
   );
 
   /// Wraps a row so the shared horizontal drag reveals its timestamp.
