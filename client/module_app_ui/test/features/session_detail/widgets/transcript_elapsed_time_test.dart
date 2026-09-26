@@ -102,6 +102,28 @@ void main() {
       semantics.dispose();
     });
 
+    _clockTestWidgets("fits a narrow row at a large text scale by shortening Working…", (tester) async {
+      await tester.pumpWidget(
+        _harness(
+          child: MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 300,
+                child: TranscriptWorkingRow(sinceMs: _nowMs(tester: tester) - 3905000),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.text("1h 05m 05s"), findsOneWidget);
+
+      await tester.pumpWidget(_harness(child: const SizedBox()));
+    });
+
     _clockTestWidgets("reads plain Working… when the prompt time is unknown", (tester) async {
       await tester.pumpWidget(_harness(child: const TranscriptWorkingRow(sinceMs: null)));
 

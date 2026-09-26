@@ -146,8 +146,11 @@ class const TranscriptWorkingRow({super.key, required final int? sinceMs}) exten
                 : TranscriptLiveLabel(
                     label: Row(
                       mainAxisSize: MainAxisSize.min,
+                      // In a narrow row "Working…" gives way and the time stays whole.
                       children: [
-                        Text("$working · ", style: style),
+                        Flexible(
+                          child: Text("$working · ", style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ),
                         TranscriptElapsedTime(sinceMs: sinceMs, style: style),
                       ],
                     ),
