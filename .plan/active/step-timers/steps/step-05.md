@@ -36,7 +36,13 @@
 - P10 named the helper `runningChildCount`. It returns the running children
   (`runningChildren`) instead, because the pill also splits its list into
   running and idle and the builder needs each running child's start. The count
-  is its length.
+  is its length. PLAN and TRACKER now use the new name.
+
+## Architecture review
+
+`architecture-implementation-review` of this branch against `origin/main`:
+approved, no blocking findings. Its one note, the helper's old name in
+PLAN.md, is applied.
 
 ## Keep-chatting probes (P9)
 
