@@ -2356,8 +2356,10 @@ void main() {
 
       harness.setTranscriptFolded(folded: true);
       await tester.pumpAndSettle();
-      // Too little is folded below turn 18 to lift its prompt to the edge.
+      // Too little is folded below turn 18 to lift its prompt to the edge, yet
+      // the list stays detached, so new output does not pull the reader on.
       expect(_position(tester).pixels, lessThan(1));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
       final held = topEdgePrompt(tester, folded: true);
 
       harness.setTranscriptFolded(folded: false);
@@ -2477,6 +2479,20 @@ void main() {
       expect(_messageKey("session-detail-turn-u8"), findsOneWidget);
       expect(_topOf(tester, "u8"), moreOrLessEquals(300, epsilon: 1));
       expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    }, variant: _pinchPlatforms);
+
+    testWidgets("while reading history stays detached when its hold clamps at the latest edge", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a18-0", top: _topInset - 100);
+
+      await _touchPinch(tester, center: tester.getCenter(_messageKey("a18-0")), from: 300, to: 40);
+      expect(_position(tester).pixels, lessThan(1));
+
+      harness.appendNewestMessage(_message(messageId: "late", role: "assistant", text: "Late output"));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+      expect(_messageKey("late"), findsNothing);
     }, variant: _pinchPlatforms);
   });
 

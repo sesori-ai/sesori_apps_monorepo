@@ -44,6 +44,16 @@ Branch `turn-navigation/pinch`. Architecture 5.
   never counts as a pinch. Trackpad acceptance still uses the stock
   scale-factor check.
 
+- Codex review (P2) found a gap. A hold whose jump lands within the 20 px
+  latest-edge tolerance let the tracker follow again, so later output pulled
+  the reader away. This affected a pinch begun while reading history, and
+  the step 6 button and shortcut path after a clamp at the latest edge.
+  - The fix: every hold's jump now detaches explicitly.
+  - A switching pinch lifts its detach suppression before it holds, so the
+    detach takes effect.
+  - The step 6 clamp test now asserts that the list stays detached, and a new
+    pinch clamp test covers the gap. Both fail without the fix.
+
 ## Automated Evidence
 
 Toolchain: Dart 3.13.4 from Flutter 3.47.5. `dart analyze --fatal-infos` is

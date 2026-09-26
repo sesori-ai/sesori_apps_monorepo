@@ -442,9 +442,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final pixels = (position.pixels + delta).clamp(position.minScrollExtent, position.maxScrollExtent);
     if ((pixels - position.pixels).abs() <= 0.5) return;
     _anchor = anchor;
-    // The jump ends a scroll, so the tracker detaches the list, or follows
-    // again when it lands within the latest edge's tolerance.
+    // A held turn stops following, even where the jump ends within the latest
+    // edge's tolerance and the tracker would follow again, so later output
+    // never pulls the reader away from it.
     position.jumpTo(pixels);
+    _follow.detach();
     WidgetsBinding.instance.addPostFrameCallback((_) => _stepAnchor(anchor: anchor, first: false));
   }
 
@@ -480,6 +482,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// holds the top-edge turn. The hold's jump stops following, as theirs does.
   void _onPinchFoldRequested({required bool folded, required Offset focalPoint}) {
     if (folded == widget.transcriptFolded) return;
+    // A switching pinch stops following, so the hold's jump must detach.
+    _releasePinchDetachSuppression();
     if (_turnAt(globalPosition: focalPoint) ?? _topEdgeTurn() case final turn?) {
       _holdTurn(turn: turn, folded: folded);
     }
@@ -488,6 +492,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   void _onPinchGestureEnd() {
     _pinchStartedFollowing = false;
+    _releasePinchDetachSuppression();
+  }
+
+  void _releasePinchDetachSuppression() {
     if (!_pinchDetachSuppressed) return;
     _pinchDetachSuppressed = false;
     _follow.releaseDetachSuppression();
