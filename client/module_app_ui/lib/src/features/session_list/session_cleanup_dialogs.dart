@@ -1,40 +1,20 @@
 part of "session_list_action_dispatcher.dart";
 
+/// The confirm button of both shells' delete confirmation, so a test can commit
+/// a delete without depending on which shell rendered the question.
+const Key sessionDeleteConfirmKey = Key("session-delete-confirm");
+
+/// The phone's delete question: what deleting means, the worktree notice when
+/// the session has one, then Cancel and a destructive Delete. Deleting always
+/// removes a dedicated worktree, so the sheet states it rather than asking.
 class const _DeleteSessionSheet({
   required final Session session,
-  required final void Function({required bool deleteWorktree}) onConfirm,
+  required final VoidCallback onConfirm,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    return _CleanupConfirmSheet(
-      session: session,
-      message: loc.sessionListDeleteConfirmMessage,
-      confirmLabel: loc.sessionListDeleteConfirmAction,
-      destructive: true,
-      onConfirm: onConfirm,
-    );
-  }
-}
-
-class const _CleanupConfirmSheet({
-  required final Session session,
-  required final String message,
-  required final String confirmLabel,
-  required final bool destructive,
-  required final void Function({required bool deleteWorktree}) onConfirm,
-}) extends StatefulWidget {
-  @override
-  State<_CleanupConfirmSheet> createState() => _CleanupConfirmSheetState();
-}
-
-class _CleanupConfirmSheetState() extends State<_CleanupConfirmSheet> {
-  bool _deleteWorktree = true;
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = context.loc;
-    final hasWorktree = widget.session.hasWorktree;
+    final bodyStyle = context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary);
     return Material(
       type: MaterialType.transparency,
       child: Padding(
@@ -43,36 +23,25 @@ class _CleanupConfirmSheetState() extends State<_CleanupConfirmSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              widget.message,
-              style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
-            ),
-            const SizedBox(height: 12),
-            if (hasWorktree) ...[
-              CheckboxListTile(
-                value: _deleteWorktree,
-                onChanged: (value) => setState(() => _deleteWorktree = value ?? false),
-                title: Text(loc.sessionListDeleteWorktreeCheckbox),
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-              ),
+            Text(loc.sessionListDeleteConfirmMessage, style: bodyStyle),
+            if (session.hasWorktree) ...[
               const SizedBox(height: 12),
+              Text(loc.sessionListDeleteWorktreeNotice, style: bodyStyle),
             ],
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(onPressed: () => context.pop(), child: Text(loc.sessionListDeleteConfirmCancel)),
                 const SizedBox(width: 8),
                 FilledButton(
-                  style: widget.destructive
-                      ? FilledButton.styleFrom(backgroundColor: context.prego.colors.fgErrorPrimary)
-                      : null,
+                  key: sessionDeleteConfirmKey,
+                  style: FilledButton.styleFrom(backgroundColor: context.prego.colors.fgErrorPrimary),
                   onPressed: () {
                     context.pop();
-                    widget.onConfirm(deleteWorktree: hasWorktree && _deleteWorktree);
+                    onConfirm();
                   },
-                  child: Text(widget.confirmLabel),
+                  child: Text(loc.sessionListDeleteConfirmAction),
                 ),
               ],
             ),

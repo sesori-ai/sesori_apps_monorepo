@@ -77,6 +77,15 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
     );
   }
 
+  /// Tells the user the archive kept a worktree another session still uses.
+  /// Informational: there was nothing to decide, and the Undo window is over.
+  void _showWorktreeKept() {
+    _presenter?.show(
+      title: context.loc.sessionListArchived,
+      content: PregoPopupAlertContent(message: context.loc.sessionListCleanupWorktreeKept),
+    );
+  }
+
   void _onWindowChanged(PendingArchiveWindow window) {
     switch (window) {
       case PendingArchiveOpen():
@@ -95,6 +104,8 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
     switch (outcome) {
       case PendingSessionArchiveCommitted():
         return;
+      case PendingSessionArchiveWorktreeKept():
+        _showWorktreeKept();
       case PendingSessionArchiveFailed():
         if (context.read<PendingSessionArchiveCubit>().state.window is PendingArchiveOpen) {
           _failureHeld = true;
@@ -106,11 +117,9 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
         final navigatorKey = widget.navigatorKey;
         final dialogContext = navigatorKey == null ? context : navigatorKey.currentContext;
         if (dialogContext == null) return;
-        final choice = await showSessionArchiveRefusedAlert(context: dialogContext, rejection: rejection);
-        if (choice == null) return;
-        // The user has already decided twice; no second Undo window.
-        final deleteAnyway = choice == SessionArchiveRefusedChoice.deleteAnyway;
-        unawaited(cubit.commitNow(session: session, deleteWorktree: deleteAnyway, force: deleteAnyway));
+        if (!await showSessionArchiveRefusedAlert(context: dialogContext, rejection: rejection)) return;
+        // The alert was the confirmation; no second Undo window.
+        unawaited(cubit.commitForced(session: session));
     }
   }
 

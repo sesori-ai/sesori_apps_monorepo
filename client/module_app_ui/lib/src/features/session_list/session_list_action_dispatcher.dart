@@ -117,16 +117,7 @@ class const SessionListActionDispatcher({
           subtitle: null,
           isSelected: false,
           shortcutLabel: null,
-          onTap: () => _archive(context: context, cubit: cubit, session: session, deleteWorktree: true),
-        ),
-      if (!isArchived && session.hasWorktree)
-        PregoMenuItem(
-          leadingIcon: TablerRegular.archive,
-          title: loc.sessionListArchiveKeepWorktree,
-          subtitle: null,
-          isSelected: false,
-          shortcutLabel: null,
-          onTap: () => _archive(context: context, cubit: cubit, session: session, deleteWorktree: false),
+          onTap: () => _archive(context: context, cubit: cubit, session: session),
         ),
       // Delete is the only entry here that also destroys the work itself —
       // archiving is permanent but keeps the session readable — so it is set
@@ -147,7 +138,7 @@ class const SessionListActionDispatcher({
   /// Archives [session], from the row's trailing swipe pill or its full-swipe
   /// commit.
   void handleSessionArchive({required BuildContext context, required Session session}) {
-    _archive(context: context, cubit: context.read<SessionListCubit>(), session: session, deleteWorktree: true);
+    _archive(context: context, cubit: context.read<SessionListCubit>(), session: session);
   }
 
   /// Deletes [session] behind the same confirmation flow as the menu entry,
@@ -156,21 +147,16 @@ class const SessionListActionDispatcher({
     _delete(context: context, cubit: context.read<SessionListCubit>(), session: session);
   }
 
-  void _archive({
-    required BuildContext context,
-    required SessionListCubit cubit,
-    required Session session,
-    required bool deleteWorktree,
-  }) {
+  /// Archiving always asks the bridge to remove a dedicated worktree. The user
+  /// never chooses otherwise: the bridge's cleanup refusal is what protects
+  /// unfinished work.
+  void _archive({required BuildContext context, required SessionListCubit cubit, required Session session}) {
     final state = cubit.state;
     final isRunning = state is SessionListLoaded && state.isSessionRunning(session: session);
     unawaited(() async {
       if (isRunning && !await _confirmArchiveRunning(context: context, session: session)) return;
       if (!context.mounted) return;
-      context.read<PendingSessionArchiveCubit>().archive(
-        session: session,
-        deleteWorktree: deleteWorktree && session.hasWorktree,
-      );
+      context.read<PendingSessionArchiveCubit>().archive(session: session, deleteWorktree: session.hasWorktree);
       onSessionArchived?.call(context: context, sessionId: session.id);
     }());
   }
@@ -183,13 +169,12 @@ class const SessionListActionDispatcher({
         _showRetainedActionDialog(
           cubit: cubit,
           show: () async {
-            final deleteWorktree = await _confirmDelete(context: context, session: session);
-            if (deleteWorktree == null || !context.mounted) return;
+            if (!await _confirmDelete(context: context, session: session) || !context.mounted) return;
             await _deleteSession(
               context: context,
               cubit: cubit,
               sessionId: session.id,
-              deleteWorktree: deleteWorktree,
+              deleteWorktree: session.hasWorktree,
               onSessionDeleted: onSessionDeleted,
             );
           },

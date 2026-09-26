@@ -42,49 +42,36 @@ Future<bool> _confirmArchiveRunning({required BuildContext context, required Ses
   return confirmed ?? false;
 }
 
-/// Whether to delete the worktree too, or null when the user cancelled.
-Future<bool?> _confirmDelete({required BuildContext context, required Session session}) {
+/// Whether the user confirmed deleting [session]. Deleting always removes a
+/// dedicated worktree, so the dialog says so rather than asking.
+Future<bool> _confirmDelete({required BuildContext context, required Session session}) async {
   final loc = context.loc;
-  return showPregoModal<bool>(
+  final confirmed = await showPregoModal<bool>(
     context: context,
     title: loc.sessionListDeleteNamedTitle(_sessionName(loc: loc, session: session)),
     builder: (_) => _DeleteConfirmation(session: session),
   );
+  return confirmed ?? false;
 }
 
-/// The delete question's body: what deleting means, a worktree checkbox when
+/// The delete question's body: what deleting means, the worktree notice when
 /// the session has one, then Cancel and a destructive Delete.
-class const _DeleteConfirmation({required final Session session}) extends StatefulWidget {
-  @override
-  State<_DeleteConfirmation> createState() => _DeleteConfirmationState();
-}
-
-class _DeleteConfirmationState() extends State<_DeleteConfirmation> {
-  bool _deleteWorktree = true;
-
+class const _DeleteConfirmation({required final Session session}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final hasWorktree = widget.session.hasWorktree;
+    final bodyStyle = context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary);
     return Padding(
       padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            loc.sessionListDeleteConfirmMessage,
-            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
-          ),
-          if (hasWorktree)
-            CheckboxListTile(
-              value: _deleteWorktree,
-              onChanged: (value) => setState(() => _deleteWorktree = value ?? false),
-              title: Text(loc.sessionListDeleteWorktreeKeepsBranch),
-              dense: true,
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: EdgeInsets.zero,
-            ),
+          Text(loc.sessionListDeleteConfirmMessage, style: bodyStyle),
+          if (session.hasWorktree) ...[
+            const SizedBox(height: PregoSpacing.md),
+            Text(loc.sessionListDeleteWorktreeNotice, style: bodyStyle),
+          ],
           const SizedBox(height: PregoSpacing.x2l),
           PregoSheetActions(
             secondary: PregoButtonsSolid(
@@ -95,13 +82,13 @@ class _DeleteConfirmationState() extends State<_DeleteConfirmation> {
               onPressed: () => context.pop(),
             ),
             primary: PregoButtonsSolid(
-              key: const Key("session-delete-alert-confirm"),
+              key: sessionDeleteConfirmKey,
               label: loc.sessionListDeleteConfirmAction,
               hierarchy: PregoButtonsSolidHierarchy.primary,
               type: PregoButtonsSolidType.destructive,
               size: PregoButtonsSolidSize.lg,
               fullWidth: true,
-              onPressed: () => context.pop(hasWorktree && _deleteWorktree),
+              onPressed: () => context.pop(true),
             ),
           ),
         ],
@@ -110,20 +97,19 @@ class _DeleteConfirmationState() extends State<_DeleteConfirmation> {
   }
 }
 
-/// What the user chose after the bridge refused to clean up a worktree.
-enum SessionArchiveRefusedChoice() {
-  keepWorktree,
-  deleteAnyway,
-}
-
-/// Names the refusal's issues and offers keeping the worktree as the default.
-/// Null when the user cancelled.
-Future<SessionArchiveRefusedChoice?> showSessionArchiveRefusedAlert({
+/// Names what the refusal would cost and offers to force the cleanup anyway.
+///
+/// This alert is itself the confirmation, so it asks once: Cancel, the safe
+/// default that dismissing or Escape also gives, or a destructive Delete
+/// anyway. Keeping the worktree is not on offer — the refusals that reach here
+/// are the user's own uncommitted work, or an unexpected branch, which only
+/// older bridges report.
+Future<bool> showSessionArchiveRefusedAlert({
   required BuildContext context,
   required SessionCleanupRejection rejection,
-}) {
+}) async {
   final loc = context.loc;
-  return showPregoModal<SessionArchiveRefusedChoice>(
+  final forced = await showPregoModal<bool>(
     context: context,
     title: loc.sessionListArchiveRefusedTitle,
     builder: (sheetContext) => Padding(
@@ -138,32 +124,26 @@ Future<SessionArchiveRefusedChoice?> showSessionArchiveRefusedAlert({
               style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
             ),
           const SizedBox(height: PregoSpacing.x2l),
-          PregoButtonsSolid(
-            label: loc.sessionListArchiveKeepWorktree,
-            hierarchy: PregoButtonsSolidHierarchy.primary,
-            size: PregoButtonsSolidSize.lg,
-            fullWidth: true,
-            onPressed: () => sheetContext.pop(SessionArchiveRefusedChoice.keepWorktree),
-          ),
-          const SizedBox(height: PregoSpacing.md),
-          PregoButtonsSolid(
-            label: loc.sessionListArchiveDeleteAnyway,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            type: PregoButtonsSolidType.destructive,
-            size: PregoButtonsSolidSize.lg,
-            fullWidth: true,
-            onPressed: () => sheetContext.pop(SessionArchiveRefusedChoice.deleteAnyway),
-          ),
-          const SizedBox(height: PregoSpacing.md),
-          PregoButtonsSolid(
-            label: loc.sessionListDeleteConfirmCancel,
-            hierarchy: PregoButtonsSolidHierarchy.tertiary,
-            size: PregoButtonsSolidSize.lg,
-            fullWidth: true,
-            onPressed: () => sheetContext.pop(),
+          PregoSheetActions(
+            secondary: PregoButtonsSolid(
+              label: loc.sessionListDeleteConfirmCancel,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => sheetContext.pop(),
+            ),
+            primary: PregoButtonsSolid(
+              label: loc.sessionListCleanupDeleteAnyway,
+              hierarchy: PregoButtonsSolidHierarchy.primary,
+              type: PregoButtonsSolidType.destructive,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => sheetContext.pop(true),
+            ),
           ),
         ],
       ),
     ),
   );
+  return forced ?? false;
 }

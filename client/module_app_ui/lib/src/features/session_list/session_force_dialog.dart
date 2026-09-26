@@ -4,12 +4,18 @@ part of "session_list_action_dispatcher.dart";
 // Force delete dialog (409 rejection)
 // ---------------------------------------------------------------------------
 
+/// Names what the refusal would cost and offers to force the cleanup anyway.
+///
+/// This dialog is itself the confirmation, so it asks once: Cancel, the safe
+/// default that dismissing or Escape also gives, or a destructive Delete
+/// anyway. Keeping the worktree is not on offer — the refusals that reach here
+/// are the user's own uncommitted work, or an unexpected branch, which only
+/// older bridges report.
 Future<void> _showForceDialog({
   required BuildContext context,
   required SessionListCubit cubit,
   required String sessionId,
   required SessionCleanupRejection rejection,
-  required bool deleteWorktree,
   required SessionDeletedRouteHandler? onSessionDeleted,
 }) {
   final loc = context.loc;
@@ -56,7 +62,7 @@ Future<void> _showForceDialog({
               onPressed: () => sheetContext.pop(),
             ),
             primary: PregoButtonsSolid(
-              label: loc.sessionListForceDeleteAction,
+              label: loc.sessionListCleanupDeleteAnyway,
               hierarchy: PregoButtonsSolidHierarchy.primary,
               type: PregoButtonsSolidType.destructive,
               size: PregoButtonsSolidSize.lg,
@@ -69,7 +75,7 @@ Future<void> _showForceDialog({
                     context: context,
                     cubit: cubit,
                     sessionId: sessionId,
-                    deleteWorktree: deleteWorktree,
+                    deleteWorktree: true,
                     force: true,
                     onSessionDeleted: onSessionDeleted,
                   ).whenComplete(release),

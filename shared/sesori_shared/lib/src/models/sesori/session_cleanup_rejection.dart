@@ -18,6 +18,7 @@ sealed class CleanupIssue with _$CleanupIssue {
   @FreezedUnionValue("unstaged_changes")
   const factory unstagedChanges() = CleanupIssueUnstagedChanges;
 
+  // COMPATIBILITY 2026-09-26 (v1.9.1): v1.7.1 and older bridges send branch_mismatch cleanup issues. Remove when v1.7.1 bridges are unsupported.
   @FreezedUnionValue("branch_mismatch")
   const factory branchMismatch({
     required String expected,

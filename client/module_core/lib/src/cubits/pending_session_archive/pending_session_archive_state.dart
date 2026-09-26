@@ -33,7 +33,12 @@ sealed class const PendingSessionArchiveOutcome({required final Session session}
 
 final class const PendingSessionArchiveCommitted({required super.session}) extends PendingSessionArchiveOutcome;
 
-/// The bridge refused to clean up the worktree.
+/// Archived, but the worktree was left in place because another live session
+/// still uses it. The user is told this happened; they are never asked.
+final class const PendingSessionArchiveWorktreeKept({required super.session}) extends PendingSessionArchiveOutcome;
+
+/// The bridge refused to clean up the worktree over something the user owns,
+/// such as uncommitted work.
 final class const PendingSessionArchiveRefused({
   required super.session,
   required final SessionCleanupRejection rejection,

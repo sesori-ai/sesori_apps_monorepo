@@ -49,7 +49,11 @@ void main() {
           body: MultiBlocProvider(
             providers: [
               BlocProvider<SessionListCubit>.value(value: cubit),
-              BlocProvider(create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository())),
+              BlocProvider(
+                create: (_) => PendingSessionArchiveCubit(
+                  cleanupService: SessionCleanupService(repository: MockSessionRepository()),
+                ),
+              ),
             ],
             child: Align(
               alignment: Alignment.topLeft,

@@ -133,6 +133,11 @@ void _registerListServices({
     ),
   );
   getIt.registerSingleton<ProductAnalyticsService>(analyticsService);
+  if (getIt.isRegistered<SessionCleanupService>()) {
+    getIt.unregister<SessionCleanupService>();
+  }
+  // Lazy: callers register their SessionRepository after the list services.
+  getIt.registerFactory<SessionCleanupService>(() => SessionCleanupService(repository: getIt<SessionRepository>()));
   // The session cubits count good interactions toward the rating sheet.
   if (getIt.isRegistered<FeedbackPromptService>()) {
     getIt.unregister<FeedbackPromptService>();

@@ -40,7 +40,7 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
           ),
           BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
           // Outlives every page and the sidebar, so an Undo window survives navigation.
-          BlocProvider(create: (_) => PendingSessionArchiveCubit(repository: getIt())),
+          BlocProvider(create: (_) => PendingSessionArchiveCubit(cleanupService: getIt())),
           BlocProvider(
             create: (context) => DesktopSidebarRefreshCubit(
               service: getIt<DesktopSidebarRefreshService>(

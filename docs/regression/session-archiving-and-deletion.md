@@ -3,7 +3,7 @@
 ## Capability
 
 A session can be retired permanently as a read-only audit record, or removed
-entirely along with its transcript and, optionally, its worktree.
+entirely along with its transcript and its dedicated worktree.
 
 ## Required Behavior
 
@@ -29,21 +29,32 @@ entirely along with its transcript and, optionally, its worktree.
   the bridge until that window closes, so Undo simply brings the session back. Archiving another session, or
   the window ending, sends the archive; quitting inside the window sends nothing. The window belongs to the
   app shell, not to a page, so leaving the project or the session list neither cancels nor loses the
-  archive. Only a running session is confirmed first, and a session with a worktree also offers Archive,
-  keep worktree. The phone's swipe pill, full swipe and row menu all archive this way.
-- When the bridge refuses the archive because its worktree is not safe to delete, the session
-  returns to the lists and a modal (a sheet on touch, a dialog on pointer) names the issues and offers Archive
-  and keep the worktree, the primary choice, or Delete it anyway. That second choice archives at once with no further Undo. Any other failure
-  returns the session and shows an error alert. A failure that arrives while another archive's Undo alert is
-  showing waits until that alert's window ends or Undo is pressed, so it never hides a pending Undo.
+  archive. Only a running session is confirmed first. The phone's swipe pill, full swipe and row menu all
+  archive this way.
+- Neither shell ever asks whether the worktree survives, and no menu, checkbox or button offers to keep it.
+  Archive and Delete both request removal of a dedicated worktree, and send no worktree request for a session
+  that has none. The bridge's cleanup refusal is the only thing that protects unfinished work.
+- When the bridge refuses the cleanup over work the user owns — uncommitted changes in the worktree, or, from
+  v1.7.1 and older bridges only, a branch other than the expected one — a modal
+  (a sheet on touch, a dialog on pointer) names those issues and offers exactly
+  two ways out: Cancel, which is also what dismissing it or Escape gives and which leaves the session in its
+  lists, or a destructive Delete anyway that retries the same operation with force, so the worktree and the
+  work inside it are really removed. That modal is the confirmation; nothing asks again. A forced archive
+  commits at once with no further Undo.
+- When a live session sharing the worktree is the only issue, nothing is asked. The app retries at once
+  without worktree cleanup, so the session is archived or deleted while the other session keeps its
+  worktree, and says so once through the ordinary alert surface rather than a modal. A shared worktree
+  reported together with uncommitted changes or a branch mismatch is treated as the refusal above, because
+  forcing there would remove a worktree another session is still using.
 - Desktop Delete asks in a dialog titled with the session's name; Esc cancels and no button is a keyboard
-  default, so Return never deletes. The phone keeps its delete sheet.
+  default, so Return never deletes. The phone keeps its delete sheet. Either confirmation states plainly
+  that a dedicated worktree will be deleted and its branch kept.
 - Deletion removes the session record immediately and is destructive and not
   recoverable. History, spilled content, and the archive record are purged
   best-effort after row deletion; a logged failure leaves residue for startup
-  reconciliation. Worktree cleanup happens only when requested; unsafe cleanup
-  (unstaged changes or a shared worktree) is refused with its issues and proceeds
-  only on a forced retry. Session retirement never deletes a Git branch.
+  reconciliation. Worktree cleanup happens whenever the session has one; unsafe
+  cleanup is refused with its issues and proceeds only on a forced retry.
+  Session retirement never deletes a Git branch.
 - Deletion never depends on a reachable backend. A session whose plugin is
   uninstalled, disabled, or unstartable still deletes: worktree cleanup is Git
   only, the unreachable backend delete is logged and skipped, and the plugin
@@ -120,8 +131,8 @@ entirely along with its transcript and, optionally, its worktree.
 - Deletion completed in the archive flow returns to its archive list only when
   the currently open audit record matches both project and session. Stale or
   unrelated completions leave navigation unchanged; X still restores the opener.
-- The phone's delete confirmation sheet identifies the action, defaults worktree
-  cleanup on only when a dedicated worktree exists, and keeps its confirm action
+- The phone's delete confirmation sheet identifies the action, names the worktree
+  loss only when a dedicated worktree exists, and keeps its confirm action
   visually destructive. Cancelling deletes nothing.
 - After successful deletion, mobile and desktop leave the deleted session's
   current detail or diffs route for its project list, preserving the project
@@ -135,7 +146,7 @@ entirely along with its transcript and, optionally, its worktree.
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later non-deletion mutation. |
 | L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. Copilot and Grok additionally retain upstream history but their exhausted explicit re-import honors the local tombstone. |
-| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete with and without worktree cleanup, refusals presented to the user, branch retained. |
+| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete of a session with and without a dedicated worktree, a dirty-worktree refusal forced through from the modal, a shared-worktree refusal retried silently, branch retained. |
 | L4 Extended | Relay integration, every supporting production plugin: archive or delete with a live turn, pending requests, or a stopped plugin; competing archive/delete/mutation on one family; a second client observing retirement; shared worktree and forced retry; bridge restart between export and flip. |
 | L5 Full | Headless bridge for unreadable or version-mismatched audit records, failed export, startup reconciliation, missing worktrees, and dirty or diverged repositories; packaged or external for released-client unarchive intent. Every supporting production plugin where backend export participates. |
 
@@ -144,8 +155,7 @@ entirely along with its transcript and, optionally, its worktree.
 Vary session shape: plain, with a dedicated worktree and branch, sharing a
 worktree with another active session, and a family with children. Vary state at
 retirement: idle, mid-turn, awaiting a request, or with its plugin stopped. Vary
-the entry surface and worktree-cleanup choice, and alternate archive-then-delete
-with direct deletion. Delete disposable sessions and remove any test worktrees
+the entry surface, and alternate archive-then-delete with direct deletion. Delete disposable sessions and remove any test worktrees
 and branches that remain after the asserted cleanup behavior. For Antigravity,
 compare idle and active local deletion, retained isolated-profile metadata,
 bridge restart and an explicit import that honors the tombstone without touching
@@ -174,6 +184,10 @@ restart before explicit re-import.
   retains live prompt defaults.
 - Deletion residue survives startup reconciliation without an observable failure
   and later retry, or cleanup removes a worktree or branch that was not requested.
+- Any archive or delete surface offers to keep the worktree, or a refusal modal
+  presents a third way out beyond Cancel and the destructive force.
+- A shared-worktree-only refusal reaches the user as a question, or a refusal that
+  also names uncommitted work is retried silently without asking.
 - Antigravity deletion mutates Google-owned profile/history files, invents a close capability, omits the local
   tombstone, or lets retained metadata recreate the deleted local session.
 - Copilot or Grok deletion removes private upstream files, omits the local
@@ -202,6 +216,15 @@ restart before explicit re-import.
 - A history purge failing after session-row deletion is logged and leaves storage
   residue for startup reconciliation rather than failing the deletion.
 - Attachment behavior here will change with unfinished lazy stored-image work.
+- The bridge returns one cleanup issue per refusal: the shared-worktree check
+  short-circuits before the git safety check, so a shared worktree never arrives
+  together with uncommitted changes. The client still treats that mixed
+  combination as a refusal to ask about, because forcing it would remove a
+  worktree another live session uses — the bridge's force bypasses every check,
+  including the shared one, and always removes the worktree.
+- `branchMismatch` stays in the cleanup-rejection wire contract and is rendered
+  by the client because v1.7.1 and older bridges still send it; current bridges
+  never produce it.
 - Hermes exposes no ACP close or delete operation. Sesori purges its own row and
   transcript and retains a plugin-scoped tombstone, but the corresponding ACP
   row can remain in Hermes storage until upstream provides a supported deletion
@@ -230,4 +253,6 @@ tests; client list/detail surfaces; shared `session_detail_activity_owner_test`,
 mobile `session_detail_activity_navigation_test` and
 `archived_sessions_navigation_test`, desktop `desktop_session_detail_screen_test`, shared
 `pending_archive_alerts_test`, `pending_session_archive_cubit_test` and
-`session_cleanup_flow_test`.
+`session_cleanup_flow_test`, which covers the row menu, both shells' delete
+confirmations, the forced refusal and the kept-worktree notice; and
+`session_cleanup_service_test`, the one owner of the shared-worktree retry.

@@ -317,7 +317,8 @@ void main() {
         BlocProvider<ConnectionOverlayCubit>.value(
           value: cubit,
           child: BlocProvider(
-            create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+            create: (_) =>
+                PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
             child: MaterialApp(
               theme: ThemeData(extensions: [PregoDesignSystem.light]),
               localizationsDelegates: AppLocalizations.localizationsDelegates,

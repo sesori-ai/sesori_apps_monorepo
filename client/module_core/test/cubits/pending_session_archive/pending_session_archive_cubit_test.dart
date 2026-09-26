@@ -28,7 +28,7 @@ void main() {
 
   setUp(() {
     repository = _MockSessionRepository();
-    cubit = PendingSessionArchiveCubit(repository: repository);
+    cubit = PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: repository));
     outcomes = [];
     cubit.outcomes.listen(outcomes.add);
   });
@@ -90,6 +90,68 @@ void main() {
       expect(outcomes.single, isA<PendingSessionArchiveRefused>().having((o) => o.session.id, "session", "first"));
       expect(cubit.state.window, isA<PendingArchiveOpen>().having((w) => w.session.id, "session", "second"));
       expect(cubit.state.hiddenIds, {"second"});
+    });
+  });
+
+  /// The refusal the bridge answers a cleanup request with.
+  SessionCleanupRejectedException refusal(List<shared.CleanupIssue> issues) {
+    final rejection = shared.SessionCleanupRejection(issues: issues);
+    return SessionCleanupRejectedException(
+      rejection: SessionCleanupRejection(issues: rejection.issues),
+      innerError: SessionCleanupApiRejectedException(rejection: rejection),
+    );
+  }
+
+  test("a worktree another live session shares is retried without cleanup rather than put to the user", () {
+    fakeAsync((async) {
+      when(
+        () => repository.archiveSession(
+          sessionId: "first",
+          deleteWorktree: true,
+          force: any(named: "force"),
+        ),
+      ).thenThrow(refusal(const [shared.CleanupIssue.sharedWorktree()]));
+      when(
+        () => repository.archiveSession(sessionId: "first", deleteWorktree: false, force: false),
+      ).thenAnswer((_) async => ApiResponse.success(first));
+
+      cubit.archive(session: first, deleteWorktree: true);
+      async.elapse(PendingSessionArchiveCubit.undoWindow);
+
+      verify(() => repository.archiveSession(sessionId: "first", deleteWorktree: false, force: false)).called(1);
+      verifyNever(() => repository.archiveSession(sessionId: "first", deleteWorktree: true, force: true));
+      expect(outcomes.single, isA<PendingSessionArchiveWorktreeKept>());
+      expect(cubit.state.hiddenIds, {"first"});
+    });
+  });
+
+  test("a shared worktree alongside the user's own work is refused to the user instead", () {
+    fakeAsync((async) {
+      when(
+        () => repository.archiveSession(sessionId: "first", deleteWorktree: true, force: false),
+      ).thenThrow(refusal(const [shared.CleanupIssue.sharedWorktree(), shared.CleanupIssue.unstagedChanges()]));
+
+      cubit.archive(session: first, deleteWorktree: true);
+      async.elapse(PendingSessionArchiveCubit.undoWindow);
+
+      verifyNever(() => repository.archiveSession(sessionId: "first", deleteWorktree: false, force: false));
+      expect(outcomes.single, isA<PendingSessionArchiveRefused>());
+      expect(cubit.state.hiddenIds, isEmpty);
+    });
+  });
+
+  test("commitForced retries the refused archive with force, removing the worktree", () {
+    fakeAsync((async) {
+      when(
+        () => repository.archiveSession(sessionId: "first", deleteWorktree: true, force: true),
+      ).thenAnswer((_) async => ApiResponse.success(first));
+
+      unawaited(cubit.commitForced(session: first));
+      async.flushMicrotasks();
+
+      verify(() => repository.archiveSession(sessionId: "first", deleteWorktree: true, force: true)).called(1);
+      expect(outcomes.single, isA<PendingSessionArchiveCommitted>());
+      expect(cubit.state.hiddenIds, {"first"});
     });
   });
 

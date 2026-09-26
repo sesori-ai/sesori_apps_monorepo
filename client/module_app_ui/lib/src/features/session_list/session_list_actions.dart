@@ -6,7 +6,7 @@ part of "session_list_action_dispatcher.dart";
 
 /// Deleting destroys the session outright, so every session confirms it —
 /// including one without a dedicated worktree, where the sheet simply has no
-/// cleanup checkboxes to offer. An archived row's full swipe commits delete,
+/// worktree to warn about. An archived row's full swipe commits delete,
 /// so this path must never destroy anything unconfirmed.
 void _showDeleteSheet({
   required BuildContext context,
@@ -20,14 +20,14 @@ void _showDeleteSheet({
     title: context.loc.sessionListDeleteConfirmTitle,
     builder: (_) => _DeleteSessionSheet(
       session: session,
-      onConfirm: ({required bool deleteWorktree}) {
+      onConfirm: () {
         final release = cubit.retainActionScope();
         unawaited(
           _deleteSession(
             context: context,
             cubit: cubit,
             sessionId: session.id,
-            deleteWorktree: deleteWorktree,
+            deleteWorktree: session.hasWorktree,
             onSessionDeleted: onSessionDeleted,
           ).whenComplete(release),
         );
@@ -41,22 +41,28 @@ Future<void> _deleteSession({
   required BuildContext context,
   required SessionListCubit cubit,
   required String sessionId,
-  bool deleteWorktree = true,
+  required bool deleteWorktree,
   bool force = false,
   required SessionDeletedRouteHandler? onSessionDeleted,
 }) async {
   final loc = context.loc;
-  final success = await cubit.deleteSession(
+  final outcome = await cubit.deleteSession(
     sessionId: sessionId,
     deleteWorktree: deleteWorktree,
     force: force,
   );
   if (!context.mounted) return;
 
-  if (success) {
+  if (outcome != null) {
     PregoPopupAlertPresenter.of(context).show(
       title: loc.sessionListDeleted,
       variant: PregoPopupAlertsNotificationsVariant.success,
+      content: switch (outcome) {
+        SessionCleanupOutcome.completed => const PregoPopupAlertContent(),
+        SessionCleanupOutcome.sharedWorktreeKept => PregoPopupAlertContent(
+          message: loc.sessionListCleanupWorktreeKept,
+        ),
+      },
     );
     onSessionDeleted?.call(context: context, sessionId: sessionId);
     return;
@@ -70,7 +76,6 @@ Future<void> _deleteSession({
       cubit: cubit,
       sessionId: sessionId,
       rejection: rejection,
-      deleteWorktree: deleteWorktree,
       onSessionDeleted: onSessionDeleted,
     );
   } else {
