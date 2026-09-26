@@ -1,6 +1,5 @@
 import "dart:math" as math;
 
-import "package:flutter/foundation.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -197,11 +196,20 @@ class const _RatingStep({
               child: IconButton(
                 key: const ValueKey("feedback-close"),
                 constraints: const BoxConstraints.tightFor(width: 52, height: 52),
-                icon: Icon(
-                  TablerRegular.x,
-                  size: 20,
-                  color: context.prego.colors.textTertiary,
-                  semanticLabel: context.loc.feedbackClose,
+                // The celebration artwork can land behind the close button, so
+                // a dark disc keeps it legible in both themes. Prego's alpha
+                // black tokens invert to white in dark mode, hence raw black.
+                icon: DecoratedBox(
+                  decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.45), shape: BoxShape.circle),
+                  child: SizedBox.square(
+                    dimension: 30,
+                    child: Icon(
+                      TablerRegular.x,
+                      size: 18,
+                      color: context.prego.colors.fgWhite,
+                      semanticLabel: context.loc.feedbackClose,
+                    ),
+                  ),
                 ),
                 onPressed: onClose,
               ),
@@ -289,14 +297,13 @@ class const _ReviewConfirmation({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final store = defaultTargetPlatform == TargetPlatform.iOS ? loc.feedbackStoreAppStore : loc.feedbackStoreGooglePlay;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(loc.feedbackReviewTitle, textAlign: TextAlign.center, style: prego.textTheme.textXl.medium),
         const SizedBox(height: PregoSpacing.md),
         Text(
-          loc.feedbackReviewBody(store),
+          loc.feedbackReviewBody,
           textAlign: TextAlign.center,
           style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
         ),

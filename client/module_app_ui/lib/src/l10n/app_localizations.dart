@@ -1885,7 +1885,7 @@ abstract class AppLocalizations {
   /// **'DM on X'**
   String get settingsSupportX;
 
-  /// Settings support row that opens the rating sheet
+  /// Settings account row that opens the rating sheet
   ///
   /// In en, this message translates to:
   /// **'Rate Sesori'**
@@ -1924,20 +1924,8 @@ abstract class AppLocalizations {
   /// Body of the review confirmation step
   ///
   /// In en, this message translates to:
-  /// **'It takes a minute on {store} and helps other developers find Sesori.'**
-  String feedbackReviewBody(String store);
-
-  /// Store name inserted into feedbackReviewBody on iOS. Brand name; do not translate.
-  ///
-  /// In en, this message translates to:
-  /// **'the App Store'**
-  String get feedbackStoreAppStore;
-
-  /// Store name inserted into feedbackReviewBody on Android. Brand name; do not translate.
-  ///
-  /// In en, this message translates to:
-  /// **'Google Play'**
-  String get feedbackStoreGooglePlay;
+  /// **'It takes a minute and helps other developers find Sesori.'**
+  String get feedbackReviewBody;
 
   /// Confirms opening the store review page
   ///

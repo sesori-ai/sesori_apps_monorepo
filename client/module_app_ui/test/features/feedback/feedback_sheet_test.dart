@@ -10,6 +10,7 @@ class _MockAppReviewClient() extends Mock implements AppReviewClient;
 
 const _ratingTitle = "Are you enjoying Sesori?";
 const _reviewTitle = "Thanks! Leave a review?";
+const _reviewBody = "It takes a minute and helps other developers find Sesori.";
 
 void main() {
   late FeedbackSheetCubit cubit;
@@ -84,7 +85,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(_ratingTitle), findsNothing);
     expect(find.text(_reviewTitle), findsOneWidget);
-    expect(find.text("It takes a minute on Google Play and helps other developers find Sesori."), findsOneWidget);
+    expect(find.text(_reviewBody), findsOneWidget);
     // The hero stays in place: only the answers hand over to the question.
     expect(tester.widget<FeedbackRatingHero>(find.byType(FeedbackRatingHero)).animation, same(heroAnimation));
     expect(outcomes, isEmpty);
@@ -92,12 +93,11 @@ void main() {
   });
 
   testWidgets(
-    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
     "Leave a review resolves only after the sheet has fully closed",
     (tester) async {
       await open(tester: tester);
       await tapAndSettle(tester: tester, finder: love);
-      expect(find.text("It takes a minute on the App Store and helps other developers find Sesori."), findsOneWidget);
+      expect(find.text(_reviewBody), findsOneWidget);
 
       await tester.tap(leaveReview);
       for (var frame = 0; frame < 6; frame++) {
