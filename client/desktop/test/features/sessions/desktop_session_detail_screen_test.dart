@@ -507,14 +507,24 @@ void main() {
       expect(find.descendant(of: find.byType(ReadOnlyAgentModelPills), matching: find.byType(InkWell)), findsNothing);
     });
 
-    testWidgets("sits above a centred transcript column", (tester) async {
+    testWidgets("sits above a transcript column centred wider than its own", (tester) async {
       await pumpPage(tester, session: _session);
 
       final toolbar = tester.getRect(find.byType(DesktopPageToolbar));
       final list = tester.widget<SessionDetailMessageList>(find.byType(SessionDetailMessageList));
       expect(tester.getRect(find.byType(SessionDetailLoadedView)).top, toolbar.bottom);
       expect(list.topInset, 0);
-      expect(list.horizontalInset, (1400 - DesktopSessionDetailView.maxContentWidth) / 2);
+      // The transcript reads in its own, wider column; the composer keeps the
+      // narrower one, both centred in the same pane.
+      expect(list.horizontalInset, (1400 - DesktopSessionDetailView.maxTranscriptWidth) / 2);
+      expect(
+        tester.getSize(find.byType(SessionDetailComposerControls)).width,
+        DesktopSessionDetailView.maxComposerWidth,
+      );
+      expect(
+        DesktopSessionDetailView.maxTranscriptWidth,
+        greaterThan(DesktopSessionDetailView.maxComposerWidth),
+      );
     });
 
     testWidgets("a long draft scrolls in place so a minimum-size window keeps the selectors", (tester) async {
