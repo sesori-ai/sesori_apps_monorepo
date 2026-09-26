@@ -102,6 +102,11 @@ state.
   non-overridden OpenCode installs use the public-channel `opencode.db`; an explicit
   custom binary does not guess that default or a channel-specific filename. OpenCode
   attach/no-auto-start mode always retains its existing server path.
+- OpenCode v2 live import follows every cursor page and requests roots separately
+  from children. Bridge project identity stays the canonical project directory;
+  a session's actual worktree location is not replaced by that directory. Only
+  the native session parent establishes hierarchy: fork provenance must never
+  turn a standalone fork into a child of its source.
 - One scan is one row above the list, however many harnesses take part. The
   service chooses the first unfinished harness in the operation's fixed
   membership order, including members with no progress event yet, and keeps
@@ -650,6 +655,10 @@ started one. Restore harness eligibility afterwards.
   `client/module_core/lib/src/cubits/project_inventory/project_list_cubit.dart`,
   `client/module_core/lib/src/utils/title_matcher.dart`, and
   `client/module_prego/lib/components/navigation/prego_sliver_refresh_control.dart`
+- OpenCode catalog: `bridge/sesori_plugin_opencode/lib/src/api/open_code_catalog_database_api.dart`,
+  `bridge/sesori_plugin_opencode/lib/src/v2/repositories/opencode_v2_repository.dart`,
+  `bridge/sesori_plugin_opencode/test/v2/opencode_v2_repository_test.dart`, and
+  `bridge/sesori_plugin_opencode/test/v2/v2_model_mapper_test.dart`
 - Pi metadata catalog: `bridge/sesori_plugin_pi/lib/src/api/pi_session_storage_api.dart`,
   `bridge/sesori_plugin_pi/lib/src/repositories/pi_session_catalog_repository.dart`
 - DeepSeek catalog: `bridge/sesori_plugin_deepseek/lib/src/repositories/`

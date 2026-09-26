@@ -25,7 +25,7 @@ OpenCodeApi             HTTP client — raw requests to the OpenCode REST API
 
 `SseConnection` runs alongside this stack, maintaining a persistent SSE connection to `GET /global/event` and feeding raw event strings to `OpenCodePlugin`. `SseEventParser` translates those strings into typed `SseEventData` objects. `ActiveSessionTracker` watches session status events to maintain a live count of busy sessions per project.
 
-Compatibility note: the plugin keeps bridge-facing SSE behavior intentionally narrow. Parser failures are reported as categorized outcomes instead of exceptions, dropped SSE frames are logged with stable category tags plus `directory` context when available, and cold-start hydration of pending questions/permissions is best-effort only. Shell routes such as `GET /session/{id}/shell` remain outside the bridge router and are expected to 404.
+V1 compatibility note: the v1 adapter keeps bridge-facing SSE behavior intentionally narrow. Parser failures are reported as categorized outcomes instead of exceptions, dropped SSE frames are logged with stable category tags plus `directory` context when available, and cold-start hydration of pending questions/permissions is best-effort only. Shell routes such as `GET /session/{id}/shell` remain outside the bridge router and are expected to 404.
 
 ## Key Components
 

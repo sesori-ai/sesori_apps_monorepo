@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `opencode-v2`
-- **Status:** Active; through Step 7.b merged (#1780). Step 8 prepares managed 2.0.18 for PR 12/14.
+- **Status:** Active; through Step 8 merged (#1794). Step 9 reconciles docs for PR 13/14; final L3 coverage remains required.
 - **Plan date:** 2026-09-25
 - **Implementation base:** `main` at `fed841c2f9`
 - **Trigger:** issue #1677 — OpenCode 2.0.11 on PATH fails cold start with `FormatException ... <!doctype html>`.
@@ -280,9 +280,11 @@ no history rewrite, compatibility shim or new mutable owner is needed. Count all
    - `docs/HARNESS_CAPABILITIES.md`: v2 row, D7 gaps and the managed v2 runtime.
    - `docs/regression/plugin-setup-and-lifecycle.md`: v2 detection, bounds, health and the managed target.
    - `docs/regression/plugin-runtime-installation.md`: npm asset source.
-   - `docs/regression/projects-and-sessions.md`: catalog guard.
-   - Touch `session-turns.md`, `session-history-and-recovery.md` and `session-creation-and-options.md` only where v2
-     behavior differs.
+   - `docs/regression/projects-and-sessions.md`: catalog guard, canonical/worktree identity and standalone forks.
+   - Reconcile `session-turns.md`, `session-history-and-recovery.md`, `session-creation-and-options.md` and
+     `questions-and-permissions.md` only where v2 differs: correlation and native-command gaps, replay/readback,
+     explicit parent refusal, typed form replies and native-only conditional/external rendering.
+   - Preserve the matrix below; documentation and startup-only probes do not satisfy native L3 coverage.
 10. **🌱 Run coverage and retire.** Run the matrix below, record the results, and move the plan to
     `.plan/completed/`.
 
@@ -316,11 +318,14 @@ requires the user's explicit acceptance recorded here.
 - **Flat-content → part mapping fidelity** for tool metadata and diffs. Accepted: tool output and state are mapped;
   rare metadata-only fields may not render.
 - **Managed users migrate one-way** to a v2 database (D9, user-accepted).
-- **Evidence level:** protocol facts include a live sandbox probe and Step 5 native catalog/session REST fixtures.
-  Transcript/form examples and streaming event order remain source-derived; native turn/event parity still requires
-  the later native-fixture and L3 gates.
+- **Evidence level:** protocol facts include Step 5 native catalog/session REST fixtures and Step 8's sandboxed
+  production install/version validation and authenticated REST/SSE startup. Transcript/form examples and streaming
+  event order remain source/fixture-derived; real-provider turn/history/write parity and native reconnect still
+  require the final L3 matrix.
 
 ## Cleanup Assessment
 
 No v1 code becomes obsolete, because v1 stays supported on PATH and through explicit binaries. Step 2's refusal branch
-is removed by Step 7.b. The v1.18.32 GitHub asset pins are replaced in Step 8. No other cleanup was found.
+was removed in Step 7.b. The v1.18.32 GitHub asset pins were replaced in Step 8. Step 9 scopes the old v1-only command,
+compaction-correlation and best-effort hydration documentation rather than applying those claims to v2. No other
+cleanup was found.

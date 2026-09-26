@@ -47,6 +47,15 @@ reaches the backend so the turn continues.
   Keyboard and safe-area insets keep the floating surface clear of system UI.
   Scrim, swipe, or Escape dismissal leaves the request pending; external settlement closes
   it without a reply.
+- OpenCode v2 forms keep visible supported fields in native order. Replies use
+  each field's native key and typed value: string/choice, string list, boolean,
+  number or integer. Selected labels map back to native option values; custom
+  text is preserved, and an unanswered field is omitted rather than invented.
+  Numeric replies must be finite, integral for integer fields, and within native
+  inclusive bounds. An invalid local conversion makes no reply request.
+  A child form may display under its root, but the reply targets its native
+  owner. Only successful replies consume pending constraints; a failure remains
+  observable and is reconciled by native events or a full refresh.
 - A plugin advertising ACP form elicitation maps supported string, string-enum,
   boolean, and finite string-choice array properties to questions and returns
   typed content under the backend's original property keys. An array whose
@@ -61,7 +70,7 @@ reaches the backend so the turn continues.
   shared mapping never interprets that naming convention or combines their
   answer lists. The existing shared question/reply contract carries these slots
   without new wire fields.
-- In a multi-question form, declining an optional question submits an empty
+- In a multi-question ACP form, declining an optional question submits an empty
   answer slot and omits only that property. Each property's required flag is
   enforced independently: omitting a required property declines the form.
   A single-question decline still rejects the whole request. Reject returns
@@ -297,6 +306,12 @@ the prompt write is held, proving cancellation does not remove the later request
 - "Always" scope is backend defined; some backends persist it only for the
   current session, and some expose it only when the backend offers it.
 - No bridge policy auto-answers questions; only permissions can be auto-approved.
+- OpenCode v2 hidden/external fields are not rendered, and conditional `when`
+  rules are not evaluated by the shared question UI. Numeric fields use text
+  entry, not specialized controls. Native required/conditional/external
+  validation remains authoritative; a form needing those native interactions
+  may need to be completed in OpenCode's own interface. A form with no supported
+  visible fields is logged and not presented as an empty answerable card.
 - OMP multi-select has automated mapper/plugin/bridge/widget coverage, but no
   live `18.1.19` `askDialog`/ACP/client roundtrip has been run. That check remains
   required before claiming complete L2 coverage; it does not hold delivery of
@@ -328,6 +343,11 @@ the prompt write is held, proving cancellation does not remove the later request
   `client/module_app_ui/lib/src/features/session_detail/`, composed by
   `client/app/lib/features/session_detail/` and
   `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`.
+- OpenCode v2: `bridge/sesori_plugin_opencode/lib/src/v2/mappers/v2_form_answer_mapper.dart`,
+  `bridge/sesori_plugin_opencode/lib/src/v2/mappers/v2_form_answer_validator.dart`,
+  `bridge/sesori_plugin_opencode/lib/src/v2/repositories/v2_model_mapper.dart`,
+  `bridge/sesori_plugin_opencode/test/v2/v2_form_answer_test.dart`, and
+  `bridge/sesori_plugin_opencode/test/v2/v2_service_writes_test.dart`.
 - `bridge/sesori_plugin_antigravity/lib/src/services/antigravity_interaction_service.dart`, its mapper/registry tests,
   and the shared ACP pending registry.
 - `bridge/sesori_plugin_copilot/lib/src/copilot_plugin_impl.dart`,
