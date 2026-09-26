@@ -23,6 +23,9 @@ class _InMemorySecrets() implements SecureStorageRepository {
 
   @override
   Future<void> delete({required SecretStorageKey key}) async => _values.remove(key);
+
+  @override
+  Future<void> reset() async => _values.clear();
 }
 
 class _MockPersister() extends Mock implements PersisterRepository;

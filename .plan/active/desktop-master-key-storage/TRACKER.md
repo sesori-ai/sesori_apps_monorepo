@@ -3,8 +3,8 @@
 ## Execution
 
 - Status: #1751 and regression reconciliation #1758 merged. Native qualification
-  is partial. The user-requested failed-import reset follow-up is verified and
-  architecture-approved, ready for PR delivery.
+  is partial. The user-requested failed-import reset follow-up is open in #1779,
+  with architecture approval; current-head CI/review still gates readiness.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
@@ -33,7 +33,7 @@
 | 4.c — Startup recovery | Merged | #1749; eight tests, three analyses, architecture approval and 22 passing checks; no storage cutover. |
 | 4.d — Both-client cutover | Merged | #1751; architecture approved, 24 reconciled shell cases plus retained auth/core evidence, README feedback fixed and 34 passing checks. |
 | 5 — Regression reconciliation | Merged | #1758; explicit replacement on all three desktops, 139 authored lines, 7 checks passed at readiness. |
-| 5.a — Failed-import reset follow-up | Verified / approved | PR 12; 77 focused cases, four analyses, generated localization, fixture visuals and architecture approval. |
+| 5.a — Failed-import reset follow-up | In review | #1779 (PR 12); 131 focused cases across local suites, six analyses, generated localization, fixture visuals and architecture approval. |
 | 6 — Required qualification/retirement | Partial / blocked | PR 13; checkpoint `975e286` retains mobile/signed-macOS evidence. Missing native matrix still blocks retirement. |
 
 ## Decisions and code-informed constraints
@@ -243,3 +243,8 @@
 - Before resuming qualification, update its retained native fixture's
   `_NoLegacyReads` for the new `clear()` capability without reseeding or erasing
   retained slot data. Required new reset/native adverse-state coverage remains.
+- #1779 initial CI found two omitted in-memory test implementations of the new
+  `SecureStorageRepository.reset()` contract, in auth-manager and desktop smoke
+  fixtures. Both now clear their in-memory maps. Their 53/1 cases and owning
+  analyses pass; production code is unchanged from the approved implementation.
+  This adds 54 focused cases to the previous 77, not a fresh full-matrix run.
