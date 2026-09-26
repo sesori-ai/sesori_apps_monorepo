@@ -2,10 +2,12 @@ import "dart:async";
 import "dart:convert";
 
 import "package:flutter/gestures.dart";
+import "package:flutter/rendering.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_prompt_overlay.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_turn_stub.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -2494,6 +2496,118 @@ void main() {
       expect(find.byKey(_jumpToLatestKey), findsOneWidget);
       expect(_messageKey("late"), findsNothing);
     }, variant: _pinchPlatforms);
+  });
+
+  group("the sticky prompt", () {
+    final shortTurns = _turns(count: 20, promptLines: 1, answers: 1, paragraphs: 12);
+    // Every prompt and answer is taller than the viewport.
+    final tallTurns = _turns(count: 16, promptLines: 40, answers: 4, paragraphs: 24);
+    final overlay = find.byType(TranscriptStickyPromptOverlay);
+    final band = find.descendant(of: overlay, matching: find.byType(GestureDetector));
+    Finder pinned(String text) => find.descendant(of: overlay, matching: find.text(text));
+
+    testWidgets("pins the turn's prompt once it leaves the top edge", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "u8", top: 200);
+      // The earlier turn is the one at the top edge.
+      expect(pinned("Prompt 7 line 0"), findsOneWidget);
+
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+
+      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+      expect(tester.getTopLeft(band).dy, moreOrLessEquals(_topInset, epsilon: 0.5));
+    });
+
+    testWidgets("is pushed out by the next turn's prompt", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "u9", top: _topInset + 300);
+      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+      expect(tester.getTopLeft(band).dy, moreOrLessEquals(_topInset, epsilon: 0.5));
+      final height = tester.getSize(band).height;
+
+      await _scrollRowTo(tester, rowId: "u9", top: _topInset + height / 2);
+
+      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+      expect(tester.getTopLeft(band).dy, moreOrLessEquals(_topInset - height / 2, epsilon: 0.5));
+      expect(tester.getBottomLeft(band).dy, moreOrLessEquals(_topOf(tester, "u9"), epsilon: 0.5));
+    });
+
+    testWidgets("hides while folded", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+
+      harness.setTranscriptFolded(folded: true);
+      await tester.pumpAndSettle();
+
+      expect(find.descendant(of: overlay, matching: find.byType(Text)), findsNothing);
+    });
+
+    testWidgets("pins nothing over the messages before the first prompt", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: [
+          _automatedMessage(
+            messageId: "setup",
+            text: List.generate(40, (index) => "Automation paragraph $index").join("\n\n"),
+            sender: MessageSender.system,
+          ),
+          ...shortTurns,
+        ],
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "setup", top: _topInset - 300);
+
+      expect(find.descendant(of: overlay, matching: find.byType(Text)), findsNothing);
+    });
+
+    testWidgets("clamps a long prompt to three lines", (tester) async {
+      await _pumpTurns(tester, messages: tallTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a6-1", top: _topInset - 100);
+
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.descendant(of: overlay, matching: find.byType(RichText)),
+      );
+      expect(paragraph.text.toPlainText(), _multilineText(label: "Prompt 6", lines: 40));
+      expect(paragraph.maxLines, 3);
+      expect(paragraph.didExceedMaxLines, isTrue);
+    });
+
+    testWidgets("a tap puts its prompt at the top edge and stops following", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+
+      await tester.tap(band);
+      await tester.pumpAndSettle();
+
+      expect(_topOf(tester, "u8"), moreOrLessEquals(_topInset, epsilon: 1));
+      expect(pinned("Prompt 8 line 0"), findsNothing);
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    });
+
+    testWidgets("while pinned is a labelled button that jumps to its unbuilt prompt", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpTurns(tester, messages: tallTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a6-2", top: _topInset - 100);
+      expect(find.byKey(const ValueKey("u6"), skipOffstage: false), findsNothing);
+
+      final node = tester.getSemantics(band);
+      expect(
+        node,
+        isSemantics(
+          label: _multilineText(label: "Prompt 6", lines: 40),
+          hint: "Jump to this prompt",
+          isButton: true,
+          hasTapAction: true,
+        ),
+      );
+      node.owner?.performAction(node.id, SemanticsAction.tap);
+      await tester.pumpAndSettle();
+
+      expect(_topOf(tester, "u6"), moreOrLessEquals(_topInset, epsilon: 1));
+      semantics.dispose();
+    });
   });
 
   testWidgets("removing a message while following drops its row and stays pinned", (tester) async {
