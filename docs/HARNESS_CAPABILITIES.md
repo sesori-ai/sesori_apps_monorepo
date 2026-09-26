@@ -220,15 +220,18 @@ the client never starts its own clock.
 | Claude | ✅ Live from the `--replay-user-messages` echo's `timestamp` (verified 2026-09-26 on CLI 2.1.281), and after reload from the transcript record. A slash command's synthetic bubble is stamped at dispatch. |
 | Grok, Antigravity, Copilot, Cursor, Hermes, OMP | ❌ Not implemented: the ACP prompt carries no time, so "Working…" shows no timer. A bridge-side prompt stamp is planned. |
 
-## OpenCode v2 adapter (not yet active)
+## OpenCode v2 adapter
 
-The staged adapter targets the public 2.0.11–2.0.16 API; active v1 behavior is unchanged.
+Startup selects the v2 adapter for 2.0.11 or newer; the generated surface targets 2.0.16.
+V1 behavior is unchanged. Managed downloads remain on 1.18.32 until the runtime refresh.
 
 | Capability | Status |
 |---|---|
 | Explicit parent-linked creation | Not supported by the native create API; refused before mutation. Native forks remain standalone roots, never children of their source. |
 | Conditional/external form rendering | Not implemented; native-only. Visible replies preserve native keys/types and numeric bounds; native validation remains authoritative. |
 | Native archival | Not supported; archival stays in the bridge database. |
+| Prompt/compaction correlation | Implemented with caller-supplied native IDs and stateless projection. |
+| Custom-command correlation | Not supported by the native command route: no caller ID or result ID is exposed. Command dispatch still waits for native acceptance. |
 
 ## Managed runtime
 

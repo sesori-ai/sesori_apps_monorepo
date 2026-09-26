@@ -159,14 +159,13 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   at most 64 KiB; oversized bodies are rejected without consuming the remaining
   stream. A large v2 web UI response still permits the `/api/info` fallback.
   HTML-only endpoints and a booting `/api/info` 503 remain unhealthy.
-- Until the v2 adapter lands, a reachable OpenCode 2.x server is detected through
-  `/api/info` and startup fails with its version and a warning not to downgrade
-  its already-migrated database. An owned runtime is stopped before refusal;
-  an attached server is never stopped. Cancellation during the probe wins over
-  refusal and releases any owned runtime. Managed v1 remains pinned to `1.18.32`.
-  If attach mode starts without a server, its existing degraded recovery is
-  v1-only; connecting to a later-started v2 server requires restarting the bridge
-  to obtain the explicit refusal. This does not yet claim usable v2 sessions.
+- A reachable OpenCode 2.x server is detected through `/api/info` and selects the
+  v2 adapter at 2.0.11 or newer; v1 retains its existing adapter. Below-minimum v2
+  fails with an upgrade hint, never a downgrade recommendation. An owned runtime
+  is stopped before refusal; an attached server is never stopped. Cancellation
+  during the probe wins over refusal. Managed downloads remain on `1.18.32`.
+  Attach mode without a server retains degraded v1 recovery; a later-started v2
+  server requires a bridge restart to select its adapter.
 - A managed harness whose first handshake stalls does not hang bridge startup.
   Codex and OpenCode wait a bounded 15 seconds for that cold start: succeeding
   within it reports connected, failing within it reports degraded, and exceeding
@@ -440,39 +439,39 @@ credentials; a completed helper must not hide failed load, replay or teardown.
 OpenCode probe and descriptor automation additionally covers v1 JSON, v2 info
 behind HTML (including an oversized web UI page), HTML-only endpoints, a booting
 503, the 64 KiB boundary, streamed overflow cancellation, and a stalled body.
-Descriptor fixtures cover owned versus attached v2 refusal and cancellation
-while protocol detection is in flight. These checks do not prove live v2 session
-support or native process teardown.
+Descriptor fixtures cover version bounds, owned versus attached cleanup, cancellation
+while protocol detection is in flight, and production factory selection against a
+loopback v2 server. These checks do not prove native process teardown.
 
-The inactive OpenCode v2 transport also has fixture coverage for authenticated
+The OpenCode v2 transport also has fixture coverage for authenticated
 REST requests, typed data envelopes and request bodies, location scoping,
 session/message cursor paging, active-session maps, and malformed response causes.
 Both `/global/event` and `/api/event` SSE paths are exercised against a loopback
 server, including authentication, heartbeat comments and multiline data. V2 event
 envelopes preserve frame identity/location; unknown or malformed events are logged
-and dropped without terminating later decoding. These tests do not claim an active
-v2 adapter or authenticated native-session parity.
+and dropped without terminating later decoding. These tests do not claim authenticated
+native-session parity.
 
-Inactive v2 catalog mapping adds sanitized native 2.0.16 catalog/session responses,
+V2 catalog mapping covers sanitized native 2.0.16 catalog/session responses,
 display-ready agent names with plugin-local native-ID lookup, plugin-neutral session
 JSON, model/variant defaults and form field ordering. The form examples are
 source-derived; this coverage does not prove native turn or form execution.
 
-Inactive v2 transcript coverage retains ordinal text/reasoning IDs, native tool IDs,
+V2 transcript coverage retains ordinal text/reasoning IDs, native tool IDs,
 stable retry IDs, agent-switch notices and display-ready attribution. It verifies
 terminal tool/compaction/shell states, shell-only command projection, preserved error
 text, Unicode-scalar output truncation, inline-image byte limits and combined inline/remote
 candidate limits. Budget overflow logs once per collection. File and credentialed URLs
 remain metadata-only. These cases are source-derived, not native turns.
 
-Inactive v2 repository coverage composes the API and mappers: project-scoped root
+V2 repository coverage composes the API and mappers: project-scoped root
 paging across worktrees, canonical identity versus opened directory, session-derived
 activity, directory-specific agent names, global active IDs and retained native form
 constraints. It checks stale-selection refusal, native defaults, typed write bodies,
 permission decisions and unchanged propagation of history failures. Fake-API and
 HTTP-boundary tests do not prove native write, turn or reconnect behavior.
 
-Inactive live-event projection keeps REST/stream part identities aligned, including
+V2 live-event projection keeps REST/stream part identities aligned, including
 retry and agent-switch notices. Typed interruption reasons distinguish shutdown
 from a settled run. Enqueue does not invent a delivered user message. Targeted
 message reads hydrate missing tool context and native compaction identity; tool
@@ -480,7 +479,7 @@ and assistant-header updates do not replay unrelated text ahead of later deltas.
 Source checks cover the minimum 2.0.11 message-query and interruption shapes;
 mapper/parser fixtures are not evidence of a native event sequence.
 
-Inactive v2 activity/service coverage seeds global session metadata and active IDs,
+V2 activity/service coverage seeds global session metadata and active IDs,
 with pending inputs read once per observed directory. Root/direct-child summaries
 include input-only work and retain canonical project identity across worktrees.
 Failed refreshes preserve useful state but report unknown work state until a complete
@@ -490,12 +489,24 @@ signals or later events. Native creation retains a project-activity refresh sign
 when its full session metadata cannot be read; it does not fabricate a session row.
 This is fake-repository coverage, not live reconnect proof.
 
-Inactive v2 write tests cover pre-mutation child-creation refusal, standalone creation
+V2 write tests cover pre-mutation child-creation refusal, standalone creation
 and first-prompt acceptance, explicit/stale selections, inherited defaults, commands,
 private compaction guidance and scoped stop without premature settlement. Form fixtures
 cover ordered label/value conversion, numeric bounds, native-only conditions and retaining
-requests after failed replies. No activation, native write execution or provider parity
-is claimed by these fake-repository and HTTP-boundary tests.
+requests after failed replies. Native write execution and provider parity are not
+claimed by these fake-repository and HTTP-boundary tests.
+
+V2 facade/loopback coverage exercises authenticated production composition, shared
+initialization, first-listener buffering, cold-start failure recovery, serialized
+reconnect refresh/enrichment, malformed-frame recovery, and disposal during a read.
+Native-shaped prompt echoes and history retain bridge prompt IDs without a mutable
+correlation cache; named compaction settles only on a terminal snapshot. A late ACK
+never restores busy after native settlement. Successful input replies update pending
+work, failed replies retain constraints, and managed interruption awaits native idle.
+Connection failures surface as cause-preserving upstream errors, not generic internal
+500s. Local logs retain native HTTP/transport diagnostics while remote errors omit
+response bodies and transport details. Decode failures still omit response payloads.
+This is transport-boundary automation, not a real-provider turn or reconnect claim.
 
 ## Exploration Guidance
 

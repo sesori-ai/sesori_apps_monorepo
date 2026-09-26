@@ -8,7 +8,9 @@ import "package:http/testing.dart";
 import "package:opencode_plugin/src/runtime/open_code_managed_api.dart";
 import "package:opencode_plugin/src/runtime/open_code_ownership_record.dart";
 import "package:opencode_plugin/src/runtime/open_code_plugin_descriptor.dart";
+import "package:opencode_plugin/src/runtime/open_code_protocol.dart";
 import "package:opencode_plugin/src/runtime/open_code_runtime_manifest.dart";
+import "package:opencode_plugin/src/v2/opencode_v2_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -775,12 +777,12 @@ void main() {
       expect(host.ownershipRecord("owner-current"), isNull);
     });
 
-    test("refuses an OpenCode 2.x server and stops the owned runtime", () async {
+    test("refuses a below-minimum v2 server and stops the owned runtime", () async {
       host.ports.defaultBindable = true;
       final descriptor = OpenCodePluginDescriptor(
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
-        probeClientFactory: () => _v2ServerClient(version: "2.0.11"),
+        probeClientFactory: () => _v2ServerClient(version: "2.0.10"),
         candidatePorts: const <int>[51000],
         random: Random(1),
       );
@@ -788,7 +790,7 @@ void main() {
       await expectLater(
         descriptor.start(host),
         throwsA(
-          isA<PluginStartException>().having((error) => error.message, "message", contains("OpenCode 2.0.11")),
+          isA<PluginStartException>().having((error) => error.message, "message", contains("2.0.11 or newer")),
         ),
       );
       // The owned runtime was spawned and then stopped: its record is gone.
@@ -797,7 +799,25 @@ void main() {
       expect(apiRecorder.last, isNull);
     });
 
-    test("an abort raised during the protocol probe wins over the v2 refusal", () async {
+    for (final version in ["2.0.11", "2.0.16"]) {
+      test("selects the v2 adapter for owned $version", () async {
+        host.ports.defaultBindable = true;
+        final descriptor = OpenCodePluginDescriptor(
+          catalogSnapshotReader: _unavailableCatalogSnapshot,
+          buildApi: apiRecorder.build,
+          probeClientFactory: () => _v2ServerClient(version: version),
+          candidatePorts: const [51000],
+          random: Random(1),
+        );
+        final plugin = await descriptor.start(host);
+        expect(apiRecorder.protocol, isA<OpenCodeProtocolV2>());
+        expect(plugin.currentStatus, isA<PluginReady>());
+        expect(host.ownershipRecord("owner-current"), isNotNull);
+        await plugin.shutdown(budget: null);
+      });
+    }
+
+    test("an abort raised during the protocol probe wins over the v2 minimum", () async {
       host.ports.defaultBindable = true;
       var infoRequests = 0;
       final descriptor = OpenCodePluginDescriptor(
@@ -807,7 +827,7 @@ void main() {
         probeClientFactory: () => MockClient((request) async {
           if (request.url.path != "/api/info") return http.Response("<!doctype html>", 200);
           if (++infoRequests == 2) host.abort.abort();
-          return http.Response(jsonEncode({"version": "2.0.16"}), 200);
+          return http.Response(jsonEncode({"version": "2.0.10"}), 200);
         }),
         candidatePorts: const <int>[51000],
         random: Random(1),
@@ -857,17 +877,70 @@ void main() {
       await plugin.shutdown(budget: null);
     });
 
-    test("refuses an attached OpenCode 2.x server without signalling it", () async {
+    test("refuses an attached below-minimum v2 without signalling it", () async {
       final host = attachHost();
       final descriptor = OpenCodePluginDescriptor(
         catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
-        probeClientFactory: () => _v2ServerClient(version: "2.0.16"),
+        probeClientFactory: () => _v2ServerClient(version: "2.0.10"),
       );
 
       await expectLater(descriptor.start(host), throwsA(isA<PluginStartException>()));
       expect(host.processes.signals, isEmpty);
       expect(apiRecorder.last, isNull);
+    });
+
+    test("production factory attaches the v2 facade and its event stream", () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      final subscription = server.listen((request) async {
+        request.response.headers.contentType = ContentType.json;
+        if (request.uri.path == "/api/event") {
+          request.response.headers.set(HttpHeaders.contentTypeHeader, "text/event-stream");
+          request.response.bufferOutput = false;
+          request.response.write(": fixture\n\n");
+          await request.response.flush();
+          return;
+        }
+        request.response.write(
+          jsonEncode(switch (request.uri.path) {
+            "/api/info" => {
+              "version": "2.0.16",
+              "pid": 1,
+              "urls": <String>[],
+              "paths": {"tmp": "/fixture/tmp"},
+            },
+            "/api/project" => <Object?>[],
+            "/api/session" => {
+              "data": <Object?>[],
+              "cursor": {"next": null},
+            },
+            "/api/session/active" => {"data": <String, Object?>{}},
+            _ => {"data": <Object?>[]},
+          }),
+        );
+        await request.response.close();
+      });
+      addTearDown(subscription.cancel);
+      final host = _FakeHost(
+        config: PluginConfig(
+          values: {
+            "port": "${server.port}",
+            "host": "127.0.0.1",
+            "no-auto-start": true,
+            "password": "",
+            "bin": "opencode",
+            "no-password": true,
+          },
+        ),
+      );
+      final plugin = await OpenCodePluginDescriptor.production().start(host);
+      addTearDown(() => plugin.shutdown(budget: null));
+      expect(plugin.api, isA<OpenCodeV2Plugin>());
+      expect(plugin.currentStatus, isA<PluginReady>());
+      expect(await plugin.api.healthCheck(), isTrue);
+      expect(host.processes.spawnedProcesses, isEmpty);
+      expect(host.processes.signals, isEmpty);
     });
 
     test("attaches to a non-loopback host at the configured address", () async {
@@ -1063,15 +1136,18 @@ class _FakeApiRecorder() {
   void Function()? onInitialize;
   bool neverCompleteInitialize = false;
   final List<_FakeManagedApi> built = <_FakeManagedApi>[];
+  OpenCodeProtocol? protocol;
 
   _FakeManagedApi? get last => built.isEmpty ? null : built.last;
 
   OpenCodeManagedApi build({
+    required OpenCodeProtocol protocol,
     required String serverUrl,
     required String? password,
     required void Function() onConnected,
     required void Function() onDisconnected,
   }) {
+    this.protocol = protocol;
     final api = _FakeManagedApi(
       initializeError: initializeError,
       onInitialize: onInitialize,

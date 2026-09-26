@@ -4,8 +4,8 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 7.a (PR 10/14) — writes/forms verified and architecture-approved; ready for publication.
-  Branch: `sesori/opencode-v2-step-7a-writes`.
+- Current step: 7.b (PR 11/14) — [#1780](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1780) open; CI/review pending.
+  Branch: `sesori/opencode-v2-step-7b-activation`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
   Step 3 [#1716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1716),
@@ -14,8 +14,9 @@
   Step 5.b [#1743](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1743),
   Step 5.c [#1748](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1748),
   Step 6.a [#1755](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1755),
-  Step 6.b [#1762](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1762).
-- One-step-ahead successor: Step 7.b production activation (PR 11/14); keep local until Step 7.a merges.
+  Step 6.b [#1762](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1762),
+  Step 7.a [#1767](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1767).
+- One-step-ahead successor: Step 8 managed runtime (PR 12/14); keep local until Step 7.b merges.
 - Takeover: continue from `aqua-hummingbird`; preserve the existing published Step 2/3 history.
 - Plan architecture review: first pass rejected 9 layering points; all applied (see PLAN.md Status)
 
@@ -189,6 +190,47 @@
   v1, the managed target and the v2 refusal stay unchanged. Native execution/reconnect remain later gates.
   Architecture review approved `b30dcf8557...0b7f2f9` on its first pass: 15 files, 1,209 authored changed lines,
   no generated churn and no findings. The ceiling is adjusted to 1,250 after measuring the complete slice.
+
+## Step 7.b Evidence And Handoff
+
+- #1767 merged at accepted head `2bfe1a7`, with CI 21/21 and 1,210 authored changed lines, no generated churn.
+  Both findings were declined with source evidence: current creation pairs model/variant; settled native forms
+  return 409 rather than 404, and transient competing replies reconcile through native events/refresh.
+- Step 7.b starts from `main` at `a7c3f49ae5`. Reuse the existing SSE owner, await async enrichment, and keep
+  the version-specific facade thin. Startup selects v2 at 2.0.11 or newer; absent-server late attach remains
+  v1-only until a bridge restart. Managed downloads remain unchanged until Step 8.
+- Native message IDs accept the `msg_` prefix with no fixed suffix shape. Prompt/compaction requests can supply
+  that ID, enabling stateless bridge prompt correlation. Preserve the native sortable timestamp/random prefix
+  and append a bridge-only suffix; native compaction preserves the supplied input ID in both minimum/current
+  projectors. Custom command requests accept no ID and return 204; do not invent correlation or completion evidence.
+- Added `OpenCodeV2Plugin` as the version-specific composition/lifecycle facade. All domain reads/writes delegate
+  to the service; no additional business-state owner, queue, correlation map, wire field or database change.
+  Removed unused repository sandbox output rather than building an alias registry.
+- The shared SSE connection awaits callbacks and refresh in order. The facade suppresses late publication after
+  disposal, shares initialization, buffers before first subscription, and waits for native interruption settlement.
+  API status failures become plugin failures with their original cause and privacy-safe presentation.
+- Verification: 184 unique relevant cases passed across descriptor, shared SSE, existing v1 facade, v2 API,
+  repository, writes, event/message mapping and the new loopback facade. Analyzer (`--fatal-infos`), formatting,
+  and diff checks passed. Fixture corrections supplied required `ServerInfo.paths.tmp` and `interrupted`; the
+  2.0.11 schema/projector were source-checked. No generator inputs changed or generation was rerun.
+- Native provider execution, tool/write parity and real-process reconnect remain later L3 gates; loopback tests
+  do not satisfy them.
+- First architecture implementation review approved the complete range `a7c3f49ae5...594ef58e7e` with no findings:
+  all 20 paths, 1,248 additions + 143 deletions = 1,391 authored changed lines, no generated churn. Applied
+  A1–A13 and B-Bridge B-B1–B-B6; B-Client/B-Shared were not applicable. Later review fixes are local API error
+  handling only; no new ownership, layer or contract changes.
+- Merged incoming `main` at `a10540c018` after the publication-time conflict. Retained its tool-kind removal and
+  the active-v2 capability section; only capability documentation required manual resolution. The incoming v1/v2
+  mapper changes passed 46 affected mapper/event/facade cases and owning-package fatal-info analysis.
+- #1780 review fixes normalize HTTP client connection failures into cause-preserving plugin failures (default
+  upstream 502) and retain original bounded HTTP/transport diagnostics in local logs, not remote presentation.
+  All 33 affected API/facade cases and fatal-info analysis pass; captured stderr retains diagnostic fixtures
+  while the existing decode-payload fixture remains absent. No generator inputs changed.
+- Declined unconditional initial-prompt rollback: response loss can follow accepted/completed native work, so
+  deleting the created session could destroy valid history. A residual empty native session is lower damage;
+  current creation validates explicit model/variant before mutation, and failures remain observable.
+- Merged `main` at `568fe891c7`, preserving its live-timer documentation alongside the active v2 section.
+  Only capability documentation conflicted; no OpenCode source, dependencies or toolchain changed in this merge.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.

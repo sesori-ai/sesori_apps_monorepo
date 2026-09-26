@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `opencode-v2`
-- **Status:** Active; through Step 6.b merged, Step 7.a writes/forms verified and architecture-approved; ready for PR 10/14.
+- **Status:** Active; through Step 7.a merged, Step 7.b activation verified and architecture-approved; PR #1780 (11/14) open.
 - **Plan date:** 2026-09-25
 - **Implementation base:** `main` at `fed841c2f9`
 - **Trigger:** issue #1677 — OpenCode 2.0.11 on PATH fails cold start with `FormatException ... <!doctype html>`.
@@ -255,9 +255,11 @@ no history rewrite, compatibility shim or new mutable owner is needed. Count all
        (the D4 check stays in the descriptor), and passes the protocol to `_defaultBuildApi`.
      - `_defaultBuildApi` switches on the protocol to construct `OpenCodePlugin` or `OpenCodeV2Plugin`.
      - The Step 2 blanket refusal is removed.
-     - `--no-auto-start` with no server at start (`handle == null`) has no protocol to probe. Decide how the
-       server that appears later gets its adapter: probe on late connect, or require a bridge restart. Today
-       that path silently builds the v1 adapter.
+     - `--no-auto-start` with no server at start (`handle == null`) has no protocol to probe. Preserve degraded
+       v1 recovery; a later v2 server requires a bridge restart for adapter selection. Do not add runtime switching.
+   - Preserve supported prompt/compaction correlation using native caller-supplied message IDs and stateless ID
+     projection, not another correlation map. Native custom commands return 204 and accept no ID; document that gap.
+   - Normalize raw HTTP failures into typed plugin failures at the API boundary, retaining the original cause.
    - Tests: a plugin test against a loopback fake v2 server, as the v1 impl test does.
 8. **🌿 Managed runtime on v2 (D9).**
    - `OpenCodeRuntimeManifest`:
