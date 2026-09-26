@@ -73,8 +73,8 @@ Shared storage remains below core in `module_persistence`; permanent domain
 keys live in `foundation/persistence/`. The migration service logs import failure,
 resets destination secrets/preferences and the old native namespace, then attempts
 to mark migration handled before allowing normal logged-out startup. Failed secret
-reset preserves an untouched source and leaves import retryable on relaunch, but
-retires a source whose deletion already started rather than importing half of it.
+reset preserves an untouched source and leaves import retryable on relaunch.
+Retirement requires a whole destination: a committed copy, or one the reset emptied.
 The shell installs the file sink first; recovery diagnostics retain native/SQL
 causes while excluding parser source buffers. Normal account analytics rules apply.
 

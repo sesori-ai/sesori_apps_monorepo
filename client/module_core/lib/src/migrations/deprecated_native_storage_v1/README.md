@@ -55,19 +55,24 @@ omitted, not their error messages/offsets. Before normal startup:
    unusable on relaunch if SQL deletion failed; no new writes use it until both
    operations succeed.
 2. Clear both primitive tables atomically through `PersisterRepository.clear()`.
-3. If secret reset failed while the source is still untouched, stop recovery here:
-   retain it and leave import incomplete so a cold launch retries before trusting
-   destination rows. Do not claim partial/unfenced reset was handled. Once source
-   deletion started, the remainder is an arbitrary half of the old session, so
-   continue to retirement instead: importing that half later would restore exactly
-   the partial state this recovery discards.
+3. Retire this import permanently only when the destination consumers inherit is
+   whole: either the copy committed every value, or the reset emptied it to a clean
+   slate. Any other outcome leaves half-copied or half-fenced rows, so retire
+   nothing and let a relaunch retry from the still-untouched source. A failed reset
+   also leaves this process unable to persist a session that such a retry could
+   overwrite. A committed copy stays trusted even when the reset could not fence
+   it: it is a finished import, not the partial state this recovery discards, and
+   its source remainder must never be imported in halves.
 4. After successful secret reset, clear the old native namespace, including unknown
    entries. The new master uses a separate namespace. Then attempt completion even
    if preference/source cleanup failed, fencing surviving legacy auth when saved.
 
 Each cleanup failure stays logged. Primitive clearing is attempted even when
-secret reset failed; source retirement/completion require its success only while
-the source is still complete.
+secret reset failed; retirement is gated only by the whole-destination rule above.
+Either namespace clearing or the marker fences the source. When neither can be
+recorded the source stays importable, which a later launch then imports before any
+consumer starts; the accepted residue is that a session established between those
+launches can be replaced by the imported one.
 Successful reset permits fresh login and follows normal account/server analytics
 preferences; pending local-only opt-out may be lost, as explicitly accepted.
 No alternate store, consent flag or blocking migration-specific UI is introduced.

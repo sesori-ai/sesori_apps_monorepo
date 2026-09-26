@@ -22,9 +22,9 @@ class LegacyNativeStorageMigrationService({
   @Deprecated("Remove only when supported direct upgrades exclude all per-value-native production builds.")
   Future<void> migrate() async {
     var operation = LegacyStorageMigrationOperation.readCompletion;
-    // Only an untouched source is still a complete import that a relaunch may
-    // safely retry. Cleared once deletion starts.
-    var sourceComplete = true;
+    // Set once every copy has committed, which is also the only point source
+    // deletion can start from. See the retirement rule in the catch block.
+    var importCommitted = false;
     try {
       if (await persister.readBool(key: LegacyMigrationKey.completed) ?? false) return;
 
@@ -45,7 +45,7 @@ class LegacyNativeStorageMigrationService({
       // Every copy has committed. Interrupted cleanup leaves those rows intact;
       // a relaunch merges only remaining source entries, never replacing a map.
       operation = LegacyStorageMigrationOperation.deleteSource;
-      sourceComplete = false;
+      importCommitted = true;
       for (final entry in values) {
         await source.delete(sourceKey: entry.sourceKey);
       }
@@ -59,15 +59,18 @@ class LegacyNativeStorageMigrationService({
         action: secrets.reset,
       );
       await _recover(operation: LegacyStorageMigrationOperation.clearPreferences, action: persister.clear);
-      // Do not discard a still-complete source or trust partial destination rows
-      // on a cold launch when reset failed. Leave that import/reset retryable.
-      // Once deletion started, the remainder is an arbitrary half of the old
-      // session: importing it later would restore exactly the partial state this
-      // recovery exists to discard, so retire it instead of retrying.
-      if (!secretsReset && sourceComplete) return;
+      // The retirement rule, and the only one: retire this import permanently
+      // only when the destination consumers inherit is whole. It is whole when the
+      // copy committed every value, or when the reset emptied it to a clean slate.
+      // Any other outcome leaves half-copied or half-fenced rows, so retire
+      // nothing and let a relaunch retry from the still-untouched source; a failed
+      // reset keeps this process unable to persist a session that retry could
+      // overwrite. A committed copy stays trusted even unfenced: it is a finished
+      // import, not the partial state this recovery discards.
+      if (!importCommitted && !secretsReset) return;
       await _recover(operation: LegacyStorageMigrationOperation.clearSource, action: source.clear);
-      // Also retire an unreadable/undeletable source: it must not resurrect old
-      // auth after a fresh login. Failure to persist this decision stays logged.
+      // Either clearing or this marker fences the source; the marker also covers
+      // an unreadable/undeletable one. Failure to persist it stays logged.
       await _recover(
         operation: LegacyStorageMigrationOperation.markReset,
         action: () => persister.writeBool(key: LegacyMigrationKey.completed, value: true),

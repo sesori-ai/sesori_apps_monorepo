@@ -313,6 +313,47 @@ void main() {
     expect(await fixture.secrets.read(key: AuthSecretKey.user), isNull);
   });
 
+  test("a fully copied destination stays trusted when both reset legs fail", () async {
+    final fixture = await MigrationFixture.create(values: _values);
+    addTearDown(fixture.dispose);
+    fixture.source.deleteFailure = (key: "refresh_token", error: StateError("fixture cleanup denied"));
+    fixture.source.beforeDelete = () async {
+      // Every copy has already committed. Only now do both stores fail, so no
+      // reset leg and no namespace clearing can succeed.
+      fixture.source.beforeDelete = null;
+      await fixture.database.customStatement("""
+        CREATE TEMP TRIGGER reject_reset BEFORE DELETE ON encrypted_values
+        BEGIN SELECT RAISE(ABORT, 'fixture SQL reset denied'); END;
+      """);
+      fixture.master.writeFailure = StateError("fixture native denial");
+      fixture.source.clearFailure = StateError("fixture clear denied");
+    };
+    await fixture.service.migrate();
+
+    // Deletion only starts once the import committed in full, so what survives an
+    // unfenced reset is a complete migration rather than partial state. Recording
+    // completion keeps that session instead of orphaning it; only the primitives
+    // this recovery cleared are lost.
+    final master = fixture.master.value;
+    expect(master, isNotNull);
+    expect(await fixture.database.select(fixture.database.encryptedValues).get(), hasLength(8));
+    expect(await fixture.database.select(fixture.database.stringValues).get(), isEmpty);
+    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), true);
+
+    // Nothing new can be persisted here, so no later import can overwrite it.
+    await expectLater(
+      fixture.secrets.write(key: AuthSecretKey.accessToken, value: "fresh-login"),
+      throwsA(isA<ParallelWaitError<Object?, Object?>>()),
+    );
+
+    await fixture.reopen();
+    final reads = fixture.source.reads;
+    await fixture.service.migrate();
+    expect(fixture.source.reads, reads);
+    expect(fixture.master.value, master);
+    expect(await fixture.secrets.read(key: AuthSecretKey.refreshToken), "fixture-refresh");
+  });
+
   test("storage diagnostics unwrap causes but omit parser source buffers", () {
     final error = LegacyStorageMigrationException(
       operation: LegacyStorageMigrationOperation.resetSecrets,
