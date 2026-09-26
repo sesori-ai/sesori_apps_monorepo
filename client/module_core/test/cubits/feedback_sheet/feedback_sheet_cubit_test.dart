@@ -47,15 +47,15 @@ void main() {
   test("Yes counts as love from the celebration onward, and Leave a review is recorded", () {
     cubit.chooseLove();
     expect(cubit.state, const FeedbackSheetState.celebrating());
-    expect(cubit.outcome, isA<FeedbackSheetOutcomeLove>().having((o) => o.leaveReview, "leaveReview", isFalse));
+    expect(cubit.outcome, isA<FeedbackSheetOutcomeLoveNotNow>());
 
     cubit.finishCelebration();
     expect(cubit.state, const FeedbackSheetState.reviewConfirmation());
-    expect(cubit.outcome, isA<FeedbackSheetOutcomeLove>().having((o) => o.leaveReview, "leaveReview", isFalse));
+    expect(cubit.outcome, isA<FeedbackSheetOutcomeLoveNotNow>());
 
     cubit.chooseLeaveReview();
     expect(cubit.state, const FeedbackSheetState.reviewAccepted());
-    expect(cubit.outcome, isA<FeedbackSheetOutcomeLove>().having((o) => o.leaveReview, "leaveReview", isTrue));
+    expect(cubit.outcome, isA<FeedbackSheetOutcomeLoveLeaveReview>());
   });
 
   test("an answer is final: repeated or crossed taps keep the first choice", () {

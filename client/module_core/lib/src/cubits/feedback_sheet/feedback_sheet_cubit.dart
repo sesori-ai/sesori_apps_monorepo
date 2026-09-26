@@ -71,8 +71,8 @@ class FeedbackSheetCubit({
   FeedbackSheetOutcome get outcome => switch (state) {
     FeedbackSheetRating() => const FeedbackSheetOutcomeDismissed(),
     FeedbackSheetCelebrating() ||
-    FeedbackSheetReviewConfirmation() => const FeedbackSheetOutcomeLove(leaveReview: false),
-    FeedbackSheetReviewAccepted() => const FeedbackSheetOutcomeLove(leaveReview: true),
+    FeedbackSheetReviewConfirmation() => const FeedbackSheetOutcomeLoveNotNow(),
+    FeedbackSheetReviewAccepted() => const FeedbackSheetOutcomeLoveLeaveReview(),
     FeedbackSheetPrivateFeedback(:final submission) => FeedbackSheetOutcomeCouldBeBetter(
       sent: submission == FeedbackSubmission.sent,
     ),

@@ -133,11 +133,29 @@ void main() {
       expect(find.byType(BottomSheet, skipOffstage: false), findsOneWidget);
 
       await tester.pumpAndSettle();
-      expect(outcomes.single, isA<FeedbackSheetOutcomeLove>().having((o) => o.leaveReview, "leaveReview", isTrue));
+      expect(outcomes.single, isA<FeedbackSheetOutcomeLoveLeaveReview>());
       expect(sheetsAtOutcome, [false]);
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets("a celebration that ends while the sheet closes does not switch to the review step", (tester) async {
+    await open(tester: tester);
+    await tester.tap(love);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1400));
+
+    await tester.tap(close);
+    await tester.pump();
+    // The celebration completes 100 ms into the 200 ms exit animation.
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.byType(BottomSheet, skipOffstage: false), findsOneWidget);
+    expect(cubit.state, const FeedbackSheetState.celebrating());
+
+    await tester.pumpAndSettle();
+    expect(outcomes.single, isA<FeedbackSheetOutcomeLoveNotNow>());
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets("Not now and closing mid-celebration both keep the positive answer without a review", (tester) async {
     await open(tester: tester);
@@ -153,8 +171,8 @@ void main() {
     await tapAndSettle(tester: tester, finder: close);
 
     expect(outcomes, [
-      isA<FeedbackSheetOutcomeLove>().having((o) => o.leaveReview, "leaveReview", isFalse),
-      isA<FeedbackSheetOutcomeLove>().having((o) => o.leaveReview, "leaveReview", isFalse),
+      isA<FeedbackSheetOutcomeLoveNotNow>(),
+      isA<FeedbackSheetOutcomeLoveNotNow>(),
     ]);
     expect(find.byType(BottomSheet, skipOffstage: false), findsNothing);
     expect(tester.takeException(), isNull);
