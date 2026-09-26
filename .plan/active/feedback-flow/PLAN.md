@@ -85,6 +85,25 @@ User decisions from the round 1 question page (2026-09-26; page on the
   device, not the account. Signing in with another account does not reset
   them.
 
+Implementation decisions (2026-09-26, step 3 review):
+
+- The sheet's outcome is read from `FeedbackSheetCubit` state once the route
+  has closed, not from the route's pop result.
+- `FeedbackSheetCubit` is created per Settings screen with
+  `BlocProvider(create:)` and outlives each sheet route; every presentation
+  restarts it at the first question.
+- Desktop has no `InstalledAppBuildSource` implementation, because desktop
+  never resolves it.
+- The private draft text lives in the composer's `TextEditingController`, not
+  in the cubit.
+- Step 5: `AppReviewClient.requestReviewOpensStore` tells `FeedbackSheetCubit`
+  whether the automatic sheet needs the D10 confirmation. When it does not
+  (iOS), the celebration ends in `reviewPromptPending`, and the sheet closes
+  itself on that state. `requestStoreReview()` calls `requestReview()` for the
+  automatic source and `openStoreReviewPage()` for Settings. The OS prompt is
+  not gated by build mode: StoreKit shows it in debug builds and applies its
+  quota in release.
+
 ## Current Behavior (origin/main after #1361, 2026-09-26)
 
 - Nothing in the app opens a rating or feedback flow. Settings has Support
@@ -175,7 +194,7 @@ Platform interfaces:
   `market://details?id=com.sesori.app` with an `https://play.google.com/...`
   fallback) and `requestReview()` (OS prompt) in step 5.
 - `InstalledAppBuildSource` gains `readVersion()` and `devicePlatform`,
-  implemented in both shells and exposed through the existing
+  implemented in `client/app` only and exposed through the existing
   `api/installed_app_build_api.dart`, so feedback does not depend on the push
   capability for its platform.
 
@@ -218,17 +237,19 @@ Consumers:
 - `FeedbackPromptCubit` (`cubits/feedback_prompt/`), dependency
   `FeedbackPromptService`: listens to `prompts` and emits a one-shot "show"
   state (D6).
-- `FeedbackSheetCubit` (`cubits/feedback_sheet/`) owns one sheet instance:
-  step (rating, private), selected issues, draft, submission state, source.
-  The sheet ends with a typed `FeedbackSheetOutcome` (`love`,
-  `couldBeBetter`, `dismissed`). The shell awaits the sheet route, and only
-  after its exit animation has completed calls
+- `FeedbackSheetCubit` (`cubits/feedback_sheet/`) drives the sheet: step
+  (rating, private), selected issues, submission state, source. The draft
+  text stays in the composer. The sheet ends with a typed
+  `FeedbackSheetOutcome` (`love`, `couldBeBetter`, `dismissed`) read from the
+  cubit's state. The shell awaits the sheet route, and only after its exit
+  animation has completed calls
   `FeedbackSheetCubit.requestStoreReview()`, which uses `AppReviewClient`.
   Dependencies grow per step: `FeedbackRepository` and `AppReviewClient`
   (step 3), `FeedbackPromptService` for `recordYes()` from either entry
   (step 6), `ProductAnalyticsService` (step 7).
 - The cubits are created with `BlocProvider(create:)` in `client/app`:
-  `FeedbackSheetCubit` per sheet (Settings entry and app-root presenter),
+  `FeedbackSheetCubit` per entry (one per Settings screen, reused by each
+  sheet it opens, and one for the app-root presenter),
   `FeedbackPromptCubit` once at the app root; the `module_app_ui` sheet reads
   `FeedbackSheetCubit` from context. Step 4 builds its `VoiceInputCubit` in the
   app shell the same way.
@@ -256,10 +277,9 @@ Per D10:
   `AppDelegate.swift`.
 - Android has no review channel: `AppReviewClient.requestReview()` opens the
   Play Store listing on Android (after the D10 confirmation).
-- Delete `FeedbackPreviewActivity`, the `mainActivityName` placeholder, the
-  `debugImplementation` Play Review dependency and the debug-only iOS block.
-  Microphone permission comes from the real voice stack, so
-  `requestMicrophoneAccess` goes away.
+- The debug-only preview hooks (`FeedbackPreviewActivity`, the
+  `mainActivityName` placeholder, the `debugImplementation` Play Review
+  dependency and the iOS `#if DEBUG` block) were already removed in step 3.a.
 
 ## Steps
 
@@ -275,12 +295,13 @@ Fixed titles live in [TRACKER](TRACKER.md#fixed-pr-titles).
    - Add `FeedbackApi`, `FeedbackSubmitRequest`, `FeedbackRepository`,
      `FeedbackIssue`, `FeedbackSource`, `InstalledAppBuildSource.readVersion()`
      and `AppReviewClient` (store page only in this step).
-   - Settings: a **Rate Sesori** row in the Support section of the mobile
-     `SettingsView`. Yes → celebration → store write-review page. Could be
+   - Settings: a **Rate Sesori** row, second in the Account section of the
+     mobile `SettingsView`. Yes → celebration → store write-review page. Could be
      better → private step (typing only; the voice button arrives in step 4)
      → submit to `/feedback` → top toast. Errors keep the draft.
-   - Delete the preview launcher, simulated states, `FEEDBACK_PREVIEW.md` and
-     tests the production tests replace.
+   - Delete the preview launcher, simulated states, `FEEDBACK_PREVIEW.md`,
+     tests the production tests replace, and the debug-only native preview
+     hooks.
    - Add `docs/regression/feedback-flow.md`.
    - Size: expected near the cap. Use `git mv` for the motion file and assets;
      if the authored diff exceeds ~1,500 lines, split into 3.a (sheet + Settings
@@ -313,7 +334,8 @@ New mutable parts:
 - **Persistent (server):** the `feedback` collection (D1).
 - **In memory:** `FeedbackPromptService` keeps one SSE subscription (mobile
   only) and reads state through its repository; `FeedbackPromptCubit` holds one
-  `prompts` subscription; `FeedbackSheetCubit` holds one sheet's draft.
+  `prompts` subscription; `FeedbackSheetCubit` holds one sheet's step, issues
+  and submission state.
 
 Deliberately not added:
 - No dedupe of error events (reset is idempotent) and no per-session
