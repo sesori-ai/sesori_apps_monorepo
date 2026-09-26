@@ -4,6 +4,10 @@ enum LegacyStorageMigrationOperation() {
   copyValues,
   deleteSource,
   writeCompletion,
+  resetSecrets,
+  clearPreferences,
+  clearSource,
+  markReset,
 }
 
 /// Safe presentation; retain the native/SQL/format cause and original stack for

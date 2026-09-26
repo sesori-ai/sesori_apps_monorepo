@@ -82,7 +82,6 @@ void main() {
     await bootstrapSesoriApp(
       shouldInitializeFirebase: true,
       configureDependenciesFn: configureDependencies,
-      disposeDependenciesFn: () async => fail("Successful startup must keep its graph"),
       prepareSingularAttributionFn: prepareSingularAttribution,
       applySingularCrawlGateFn: applySingularCrawlGate,
       initializeDeepLinks: initializeDeepLinks,
@@ -173,7 +172,6 @@ void main() {
           crawlGate: Future.value(AnalyticsStoreCrawlGate.allow),
         );
       },
-      disposeDependenciesFn: () async => fail("Successful startup must keep its graph"),
       prepareSingularAttributionFn: () => events.add("singularAttribution.prepare"),
       applySingularCrawlGateFn: ({required crawlGate}) {
         events.add("singularAttribution.${crawlGate.name}");

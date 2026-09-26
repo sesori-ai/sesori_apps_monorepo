@@ -11,7 +11,7 @@ import "injection.config.dart";
 final getIt = GetIt.instance;
 
 // Platform → persistence → auth → core → production migration → consumers.
-// Registrations stay lazy until migration succeeds. Only then prepare analytics
+// Registrations stay lazy until import or its reset recovery finishes. Then prepare analytics
 // without awaiting its remote crawl-gate decision and register its capability
 // before consumer resolution. Development never resolves the legacy source.
 @InjectableInit(ignoreUnregisteredTypes: [PersistenceScope])

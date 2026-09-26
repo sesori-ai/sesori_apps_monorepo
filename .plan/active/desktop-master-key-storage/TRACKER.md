@@ -2,20 +2,21 @@
 
 ## Execution
 
-- Status: #1751 merged with 34 passing checks. Regression reconciliation passes
-  documentation validation; native qualification remains unexecuted for the cutover.
+- Status: #1751 and regression reconciliation #1758 merged. Native qualification
+  is partial. The user-requested failed-import reset follow-up is in progress.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
   with a retirement condition and deletion checklist.
-- Current branch: `sesori/desktop-master-key-storage-regression-docs`, from fixed
-  main `6056290` in the supplied worktree. No additional worktree is allowed;
-  no qualification/retirement successor has started.
+- Current branch: `sesori/desktop-master-key-storage-reset-recovery`, from fixed
+  main `b1d4c57` in the supplied worktree. No additional worktree is allowed.
+  Qualification checkpoint `975e286` remains preserved on its published branch;
+  no final qualification PR is open.
 - #1717 is closed as superseded, not merged. Its published desktop checkpoint
   `4a27888` and the full shared checkpoint `de38951` remain in history.
-- One open PR and at most one local successor. Current total: **12 PRs** after
-  splitting the backend at SQL/secret ownership and extracting startup recovery
-  from the 1,650-line consumer cutover. Published titles use the same total.
+- One open PR and at most one local successor. Current total: **13 PRs** after
+  adding the user-requested reset follow-up before final qualification/retirement.
+  Keep published series titles synchronized; no published history is rewritten.
 - Source of truth: [PLAN.md](PLAN.md). Original directory slug stays stable.
 
 | Milestone | State | PR / evidence |
@@ -30,8 +31,9 @@
 | 4.b — Native capabilities and backup | Merged | #1744; 28 tests, two analyses, architecture approval and 24 passing checks; no native qualification. |
 | 4.c — Startup recovery | Merged | #1749; eight tests, three analyses, architecture approval and 22 passing checks; no storage cutover. |
 | 4.d — Both-client cutover | Merged | #1751; architecture approved, 24 reconciled shell cases plus retained auth/core evidence, README feedback fixed and 34 passing checks. |
-| 5 — Regression reconciliation | Verified locally | PR 11; account/analytics/storage/package contracts aligned; links, fences, coverage and whitespace checks pass. |
-| 6 — Required qualification/retirement | Not started | PR 12; plan remains active until recorded mobile + desktop matrix passes. |
+| 5 — Regression reconciliation | Merged | #1758; explicit replacement on all three desktops, 139 authored lines, 7 checks passed at readiness. |
+| 5.a — Failed-import reset follow-up | In progress | PR 12; scoped reset to normal login, analytics policy, tests and regression guidance. Plan review approved; implementation review pending. |
+| 6 — Required qualification/retirement | Partial / blocked | PR 13; checkpoint `975e286` retains mobile/signed-macOS evidence. Missing native matrix still blocks retirement. |
 
 ## Decisions and code-informed constraints
 
@@ -42,9 +44,9 @@
 - Deprecated mobile import lives under core's
   `migrations/deprecated_native_storage_v1/` and a matching mobile platform area.
   It is awaited before auth, analytics, deep links or other consumers resolve.
-- Copy every present known value, then remove copied native items, then mark
-  complete. Retry by merging remaining source values into committed destination
-  rows; never replace/clear a partial snapshot or run legacy fallback reads.
+- Successful import copies known values, deletes copied native items, then marks
+  complete. After process interruption, merge remaining source into committed
+  rows. Caught failures instead attempt scoped reset; no legacy fallback reads.
 - Mobile production data includes all auth/OAuth fields, the relay room key,
   scoped plugin preferences and pending analytics opt-out JSON.
 - iOS currently shares its bundle ID between build modes. Only production scope
@@ -58,11 +60,15 @@
 - Keep the new native master namespace separate from the deprecated source.
   iOS legacy enumeration omits the accessibility query filter without changing
   stored ACLs; native legacy-envelope completeness/error behavior needs proof.
-- Mobile import failure must preserve data and present a startup failure state;
-  it must not silently boot logged out or start analytics with default consent.
-- Native cleanup completes before the marker. Current-device logout is local,
-  so leaving usable old auth items as a parallel source is not an acceptable
-  successful migration outcome. Failure/relaunch recovery is explicitly tested.
+- User explicitly requested failed-import reset on 2026-09-26: clear scoped
+  secrets/preferences/legacy data, replace the master and continue logged out.
+  Normal account/server analytics preferences apply; pending local-only opt-out
+  may be lost. No separate consent flag or blocking recovery screen.
+- Recovery attempts completion even after cleanup failure to fence stale source
+  auth when the marker succeeds. Each failure stays logged. Failed secret reset
+  stays cached, preventing partial auth restoration in that process. Permanent
+  native/SQL denial can still fail normal persistence; this is not guaranteed
+  successful erasure when storage cannot be changed.
 - Desktop is unpublished: sign out in the old build before cutover, then sign in
   once. No legacy desktop migration, automatic old-Keychain cleanup or claims
   that new local logout revokes old internal builds' separate sessions.
@@ -191,7 +197,7 @@
   per-value seeding and retained desktop baseline before using it with this
   cutover. Seed with production Dart storage; do not copy SQL/crypto into Swift
   or Python. The CI-only packaged platform probe already uses shared storage,
-  but it has not been executed on a native runner for this cutover.
+  with initial source/unit verification only; later signed-run evidence is below.
 - #1751 merged after current-head Codex completed without further findings.
   Its terminal monitor recorded 34 passing checks; the README thread was resolved
   and the narrow deprecated call acknowledgment was justified explicitly.
@@ -204,6 +210,26 @@
   existing plan and are not reduced or represented as passing. Codex identified
   omitted Windows/Linux replacement wording; L3 now explicitly preserves the
   database/master pairing through new-format replacement on all three desktops.
-- None of this evidence establishes released-mobile migration, mobile
-  backup/restore, real credential behavior, packaged replacement or actual
-  prompt counts. Those gates remain.
+- Later native evidence is preserved on qualification checkpoint `975e286`, not
+  replaced or represented as execution of the new reset policy:
+  [mobile migration](https://github.com/sesori-ai/sesori_apps_monorepo/blob/975e286/.plan/active/desktop-master-key-storage/MOBILE_MIGRATION.md)
+  and [qualification](https://github.com/sesori-ai/sesori_apps_monorepo/blob/975e286/.plan/active/desktop-master-key-storage/QUALIFICATION.md).
+  Android retained seed/migrate/reopen passed; iOS import checks passed before a
+  bad fixture assertion failed, then corrected separate-process reopen passed.
+  The owned iOS runner uninstall incident was disclosed and repaired; no claim
+  of a wholly green first iOS invocation or byte-identical sandbox preservation.
+- Signed macOS roundtrip/reopen evidence from Actions run `36221737896` is reused
+  with source/digest checks. Windows/Linux native execution, all-desktop new-format
+  replacement, native denied-access/reset, actual distributed upgrades and hardware
+  backup/restore remain missing. No physical devices or coverage waiver exist.
+- Reset plan review `18a9a582-7357-41c4-be8f-8085526806ed` approved the scoped
+  ownership/startup/cache design, with B-Client in scope and no violations.
+  B-Bridge/B-Shared were skipped. This is design approval, not native qualification.
+- Reset implementation: 77 focused cases pass (54 persistence, 12 migration,
+  11 mobile admission/native-channel/startup). Persistence/core analyses are clean;
+  mobile/shared-UI analyses are retained from unchanged shell/UI inputs. Localization
+  was regenerated. Successful import and process-interruption merging remain intact.
+  Secret reset attempts deletion and key replacement independently, retaining both
+  errors: native-key invalidation must not be skipped when SQL deletion fails.
+  Fresh-instance tests prove surviving ciphertext cannot restore with the new key.
+  No native adverse-state/reset, hardware restore or final qualification is claimed.

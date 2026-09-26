@@ -58,11 +58,12 @@ participates.
   already absent or the saved authentication session has expired. Non-sandboxed
   macOS desktop builds protect the master through flutter_secure_storage's classic
   Keychain mode, without a provisioned Data Protection Keychain access group.
-  Android native failures never automatically reset persisted data.
+  Android plugin-level destructive reset stays disabled.
 - Production mobile imports released native auth/OAuth state before restoration,
   preserving encodings and cleaning only successfully copied items after all
-  copies commit. Import failure disposes startup and shows close/reopen recovery,
-  not a false fresh-login state. Development leaves that source untouched. See
+  copies commit. Failed import instead attempts scoped local reset and continues
+  through normal logged-out startup, with cleanup errors logged. Persistent storage
+  denial can still reject login writes. Development leaves that source untouched. See
   [client persistence](client-persistence.md) for the complete upgrade/restore matrix.
   Desktop is unpublished: sign out in the old per-value build before replacing it,
   then sign in once; new-store logout does not revoke the old build's session.

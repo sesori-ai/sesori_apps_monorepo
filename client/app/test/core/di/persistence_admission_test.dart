@@ -120,20 +120,27 @@ void main() {
     expect(master.writes, 1);
   });
 
-  test("failed production enumeration leaves consumers unconstructed and analytics unprepared", () async {
+  test("failed production enumeration resets storage before normal consumers start", () async {
     final cause = StateError("fixture-native-denial");
     final legacy = _LegacyStore()..readError = cause;
     getIt.registerSingleton<LegacyNativeStorage>(legacy);
-    await expectLater(
-      configureDependencies(
-        scope: PersistenceScope.production,
-        firebaseEnabled: false,
-        createAnalyticsRuntimeBootstrap: ({required crawlGateService}) async => fail("Analytics must not be prepared"),
-      ),
-      throwsA(isA<LegacyStorageMigrationException>().having((error) => error.innerError, "cause", same(cause))),
+    legacy.values.addAll({"access_token": "stale-token", "appearance_mode": "dark"});
+    var analyticsPrepared = false;
+    await configureDependencies(
+      scope: PersistenceScope.production,
+      firebaseEnabled: false,
+      createAnalyticsRuntimeBootstrap: ({required crawlGateService}) async {
+        expect(legacy.values, isEmpty);
+        expect(master.writes, 1);
+        expect(await getIt<AuthSession>().restoreLocalSession(), isFalse);
+        expect(await getIt<AppearanceStore>().read(), AppearanceMode.system);
+        expect(await getIt<ProductAnalyticsPreferenceStorage>().read(userId: "fixture-user"), isNull);
+        analyticsPrepared = true;
+        return _disabledBootstrap();
+      },
     );
-    expect(getIt.checkLazySingletonInstanceExists<AuthSession>(), isFalse);
-    expect(getIt.checkLazySingletonInstanceExists<MessageThumbnailCacheService>(), isFalse);
+    expect(analyticsPrepared, isTrue);
+    expect(getIt.checkLazySingletonInstanceExists<MessageThumbnailCacheService>(), isTrue);
     expect(master.reads, 0);
   });
 }
@@ -186,4 +193,7 @@ class _LegacyStore() implements LegacyNativeStorage {
 
   @override
   Future<void> delete({required String key}) async => values.remove(key);
+
+  @override
+  Future<void> clear() async => values.clear();
 }

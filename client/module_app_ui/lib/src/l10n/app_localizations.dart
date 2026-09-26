@@ -103,18 +103,6 @@ abstract class AppLocalizations {
   /// **'Sesori Mobile'**
   String get appTitle;
 
-  /// No description provided for @persistenceStartupFailureTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Storage upgrade paused'**
-  String get persistenceStartupFailureTitle;
-
-  /// No description provided for @persistenceStartupFailureDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Sesori couldn’t finish upgrading your local storage. Close and reopen Sesori to try again.'**
-  String get persistenceStartupFailureDescription;
-
   /// No description provided for @connectErrorUnexpectedFormat.
   ///
   /// In en, this message translates to:
