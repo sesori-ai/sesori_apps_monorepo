@@ -7,12 +7,14 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "feedback_private_step.dart";
 import "feedback_rating_motion.dart";
 import "feedback_sheet_motion.dart";
 
 /// Presents the rating sheet driven by [cubit] and resolves with its outcome
 /// once the sheet's route has fully closed, so a follow-up such as opening
-/// the store never cuts the exit animation short.
+/// the store never cuts the exit animation short. Sent private feedback is
+/// confirmed with a toast once the sheet has gone.
 Future<FeedbackSheetOutcome> showFeedbackSheet({
   required BuildContext context,
   required FeedbackSheetCubit cubit,
@@ -40,7 +42,14 @@ Future<FeedbackSheetOutcome> showFeedbackSheet({
   );
   // A popped sheet's result completes before its closing animation does.
   await sheetRoute?.completed;
-  return cubit.outcome;
+  final outcome = cubit.outcome;
+  if (outcome case FeedbackSheetOutcomeCouldBeBetter(sent: true) when context.mounted) {
+    PregoPopupAlertPresenter.of(context).show(
+      title: context.loc.feedbackSent,
+      variant: PregoPopupAlertsNotificationsVariant.success,
+    );
+  }
+  return outcome;
 }
 
 /// Grabber-only sheet from Figma 5527:8368. `PregoBottomSheet` carries a
@@ -60,6 +69,8 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
       TweenSequenceItem(tween: Tween<double>(begin: 0.6, end: 1), weight: 20),
     ]),
   );
+  // Keeps the draft when Reduce Motion removes the surrounding AnimatedSize.
+  final _privateStepKey = GlobalKey();
 
   @override
   void initState() {
@@ -104,10 +115,7 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
     context.read<FeedbackSheetCubit>().finishCelebration();
   }
 
-  void _chooseCouldBeBetter() {
-    context.read<FeedbackSheetCubit>().chooseCouldBeBetter();
-    _close();
-  }
+  void _chooseCouldBeBetter() => context.read<FeedbackSheetCubit>().chooseCouldBeBetter();
 
   void _leaveReview() {
     context.read<FeedbackSheetCubit>().chooseLeaveReview();
@@ -122,15 +130,22 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
     final state = context.watch<FeedbackSheetCubit>().state;
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     final reducedMotion = prefersReducedMotion(context);
-    final content = _RatingStep(
-      animation: reducedMotion ? const AlwaysStoppedAnimation(0) : _celebrationTimeline,
-      state: state,
-      onLove: _chooseLove,
-      onCouldBeBetter: _chooseCouldBeBetter,
-      onLeaveReview: _leaveReview,
-      onClose: _close,
+    final privateStep = state is FeedbackSheetPrivateFeedback;
+    final content = FeedbackContentTransition(
+      layoutBuilder: (current, previous) => feedbackStepLayout(current: current, previous: previous),
+      child: privateStep
+          ? FeedbackPrivateStep(key: _privateStepKey, onCancel: _close)
+          : _RatingStep(
+              key: const ValueKey("feedback-rating-step"),
+              animation: reducedMotion ? const AlwaysStoppedAnimation(0) : _celebrationTimeline,
+              state: state,
+              onLove: _chooseLove,
+              onCouldBeBetter: _chooseCouldBeBetter,
+              onLeaveReview: _leaveReview,
+              onClose: _close,
+            ),
     );
-    return Material(
+    final sheet = Material(
       color: context.prego.colors.bgSurface2,
       borderRadius: const BorderRadius.vertical(top: Radius.circular(PregoRadius.x8l)),
       clipBehavior: Clip.antiAlias,
@@ -171,12 +186,26 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
         ),
       ),
     );
+    // A sheet closed mid-send would drop the result, so it stays until the
+    // send lands. The back gesture and barrier tap ask PopScope first.
+    final sending = state is FeedbackSheetPrivateFeedback && state.submission == FeedbackSubmission.submitting;
+    return BlocListener<FeedbackSheetCubit, FeedbackSheetState>(
+      listenWhen: (_, next) => next is FeedbackSheetPrivateFeedback && next.submission == FeedbackSubmission.sent,
+      listener: (_, _) => _close(),
+      child: PopScope(
+        canPop: !sending,
+        // Drag-to-dismiss pops without asking PopScope, so this claims the
+        // vertical drag ahead of the sheet's own recognizer while sending.
+        child: GestureDetector(onVerticalDragStart: sending ? (_) {} : null, child: sheet),
+      ),
+    );
   }
 }
 
 /// The hero stays in place while the answers below it hand over to the
 /// review confirmation (D10), so the celebration settles into the question.
 class const _RatingStep({
+  super.key,
   required final Animation<double> animation,
   required final FeedbackSheetState state,
   required final VoidCallback onLove,

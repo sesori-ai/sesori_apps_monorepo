@@ -26,7 +26,11 @@ class const SettingsScreen({super.key}) extends StatelessWidget {
           ),
         ),
         BlocProvider(
-          create: (_) => FeedbackSheetCubit(appReviewClient: getIt<AppReviewClient>()),
+          create: (_) => FeedbackSheetCubit(
+            appReviewClient: getIt<AppReviewClient>(),
+            feedbackRepository: getIt<FeedbackRepository>(),
+            source: FeedbackSource.settings,
+          ),
         ),
         BlocProvider(
           create: (_) => BridgeSettingsCubit(

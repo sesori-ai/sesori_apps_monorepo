@@ -9,8 +9,9 @@ final class const FeedbackSheetOutcomeLoveLeaveReview() extends FeedbackSheetOut
 /// positive answer without a review.
 final class const FeedbackSheetOutcomeLoveNotNow() extends FeedbackSheetOutcome;
 
-/// The user answered **Could be better**.
-final class const FeedbackSheetOutcomeCouldBeBetter() extends FeedbackSheetOutcome;
+/// The user answered **Could be better**. [sent] is true only when their
+/// private feedback reached the server.
+final class const FeedbackSheetOutcomeCouldBeBetter({required final bool sent}) extends FeedbackSheetOutcome;
 
 /// The user closed the sheet without answering.
 final class const FeedbackSheetOutcomeDismissed() extends FeedbackSheetOutcome;

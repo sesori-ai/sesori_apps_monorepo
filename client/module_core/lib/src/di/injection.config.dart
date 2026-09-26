@@ -24,6 +24,7 @@ import 'package:sesori_dart_core/src/api/client/relay_http_client.dart'
     as _i857;
 import 'package:sesori_dart_core/src/api/connection_notification_observation_api.dart'
     as _i479;
+import 'package:sesori_dart_core/src/api/feedback_api.dart' as _i872;
 import 'package:sesori_dart_core/src/api/filesystem_api.dart' as _i1068;
 import 'package:sesori_dart_core/src/api/installed_app_build_api.dart' as _i258;
 import 'package:sesori_dart_core/src/api/legal_api.dart' as _i835;
@@ -113,6 +114,8 @@ import 'package:sesori_dart_core/src/repositories/composer_draft_repository.dart
     as _i198;
 import 'package:sesori_dart_core/src/repositories/connection_notification_observation_repository.dart'
     as _i678;
+import 'package:sesori_dart_core/src/repositories/feedback_repository.dart'
+    as _i860;
 import 'package:sesori_dart_core/src/repositories/installed_app_build_repository.dart'
     as _i507;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
@@ -247,6 +250,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i384.BridgeApi>(
       () => _i384.BridgeApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
+    );
+    gh.lazySingleton<_i872.FeedbackApi>(
+      () => _i872.FeedbackApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
     );
     gh.lazySingleton<_i400.NotificationApi>(
       () =>
@@ -388,6 +394,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i933.LegalRepository>(
       () => _i933.LegalRepository(api: gh<_i835.LegalApi>()),
+    );
+    gh.lazySingleton<_i860.FeedbackRepository>(
+      () => _i860.FeedbackRepository(
+        api: gh<_i872.FeedbackApi>(),
+        installedAppBuildApi: gh<_i258.InstalledAppBuildApi>(),
+      ),
     );
     gh.lazySingleton<_i594.PluginPreferenceRepository>(
       () => _i594.PluginPreferenceRepository(
