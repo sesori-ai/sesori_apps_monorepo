@@ -54,13 +54,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
       expect(find.byIcon(TablerRegular.git_compare), findsNothing);
-      expect(find.bySemanticsLabel("Close archived sessions"), findsOneWidget);
+      // The audit page carries Back only; closing the flow belongs to the list.
+      expect(find.bySemanticsLabel("Close archived sessions"), findsNothing);
       verifyNever(() => harness.projectViewingService.beginDetailClaim(projectId: any(named: "projectId")));
       await tester.tap(find.byIcon(TablerRegular.chevron_left));
       await tester.pumpAndSettle();
       expect(tester.element(find.byType(ArchivedSessionsView)), same(listElement));
-      await tester.tap(find.text("Archived record"));
-      await tester.pumpAndSettle();
       await tester.tap(find.bySemanticsLabel("Close archived sessions"));
       await tester.pumpAndSettle();
       expect(harness.router.state.uri.toString(), opener);
@@ -70,7 +69,7 @@ void main() {
     });
   }
 
-  testWidgets("closing audit detail retains the live detail cubit and its unsent draft", (tester) async {
+  testWidgets("leaving the archive retains the live detail cubit and its unsent draft", (tester) async {
     final harness = AdaptiveSessionRouterTestHarness();
     await tester.binding.setSurfaceSize(const Size(956, 440));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -104,6 +103,8 @@ void main() {
     verifyNever(() => viewingService.setViewingSession("live"));
     await tester.tap(find.text("Archived record"));
     await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.chevron_left));
+    await tester.pumpAndSettle();
     await tester.tap(find.bySemanticsLabel("Close archived sessions"));
     await tester.pumpAndSettle();
     expect(harness.router.state.uri.toString(), opener);
@@ -117,7 +118,7 @@ void main() {
     verify(() => harness.projectViewingService.beginDetailClaim(projectId: "p1")).called(1);
   });
 
-  testWidgets("active-only project has an empty archive; direct detail has Back and X", (tester) async {
+  testWidgets("active-only project has an empty archive; direct detail has only Back", (tester) async {
     final harness = AdaptiveSessionRouterTestHarness();
     addTearDown(harness.tearDown);
     await harness.setUp(
@@ -129,7 +130,8 @@ void main() {
     );
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
-    expect(find.bySemanticsLabel("Close archived sessions"), findsOneWidget);
+    expect(find.bySemanticsLabel("Close archived sessions"), findsNothing);
+    expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
     await tester.tap(find.byIcon(TablerRegular.chevron_left));
     await tester.pumpAndSettle();
     expect(find.text("No archived sessions"), findsOneWidget);

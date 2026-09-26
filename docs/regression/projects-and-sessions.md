@@ -228,10 +228,16 @@ state.
   Primary buttons are the inverse pill on both apps; the desktop Archived toggle turns blue while on. The
   "Jump to latest" pill is neutral. Text fields show no required-field asterisk,
   and their placeholders are tertiary.
-- The phone's open root session page offers the row's actions from a menu in its glass bar: Rename, Mark as
-  unread, Archive, Archive keeping the worktree when the session has one, and Delete, from the shared
-  dispatcher. Mark as unread always sends unread, whatever local state says. Archive, Delete and Mark as
-  unread return to the session list. The read-only archived view and a sub-agent's page offer no menu.
+- The phone's open root session page offers the row's actions from a menu in its glass bar: Changes with its
+  line counts, then Rename, Mark as unread, Archive, Archive keeping the worktree when the session has one,
+  and Delete, from the shared dispatcher. Mark as unread always sends unread, whatever local state says.
+  Archive, Delete and Mark as unread return to the session list. A sub-agent's page offers no row actions,
+  and the read-only archived view offers neither those nor Changes.
+- Beside the centred title, the phone's session bar carries only Back, the fold toggle and that menu, so the
+  title keeps the rest of the row at 320 px and under large text scaling. It shows no Changes button and no
+  busy spinner; the transcript, the composer and the sub-agents bar report the session's progress. The
+  archived page is the same bar with no menu: Back returns to the archived list, whose own bar closes the
+  flow, so the page carries no second close control.
 - Project and session row actions remain swipeable without competing visually
   with system back navigation. On iOS, drags beginning in the row's leading 10%
   are reserved for back; on Android gesture navigation, both 10% edges are

@@ -44,7 +44,6 @@ Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorSta
       home: SessionDetailScreen(
         auditView: false,
         onBack: null,
-        onClose: null,
         projectId: "project-1",
         projectName: null,
         sessionId: "session-1",

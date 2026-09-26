@@ -139,7 +139,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionHeading => 'What should we work on?';
 
   @override
-  String get desktopSessionPageChanges => 'Changes';
+  String get sessionChangesLabel => 'Changes';
 
   @override
   String get desktopSessionParentBreadcrumb => 'Main session';
@@ -2324,9 +2324,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commandSourceCustom => 'Custom';
-
-  @override
-  String get sessionDetailFileChangesTooltip => 'File changes';
 
   @override
   String get diffBinaryFileChanged => 'Binary file changed';

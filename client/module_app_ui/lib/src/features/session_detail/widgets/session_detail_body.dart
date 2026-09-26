@@ -56,7 +56,6 @@ class const SessionDetailBody({
   required final bool readOnly,
   required final Widget? banner,
   required final VoidCallback? onBack,
-  required final VoidCallback? onClose,
   required final VoidCallback? onShowDiffs,
   required final SessionDetailBottomControlsBuilder? bottomControlsBuilder,
 
@@ -164,13 +163,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<SessionDetailCubit>().state;
-    final isBusy = switch (state) {
-      SessionDetailLoaded(:final sessionStatus, :final childStatuses) => hasActiveWork(
-        sessionStatus: sessionStatus,
-        childStatuses: childStatuses,
-      ),
-      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => false,
-    };
     final fallbackTitle = widget.sessionTitle ?? loc.sessionDetailTitle;
     final title = switch (state) {
       SessionDetailLoaded(:final sessionTitle) => sessionTitle ?? fallbackTitle,
@@ -178,68 +170,11 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
       SessionDetailLoading() || SessionDetailFailed() => fallbackTitle,
     };
     final canShowDiffs = state is SessionDetailLoaded && (state.isRootSession ?? false) && !state.isArchived;
-    final onShowDiffs = widget.onShowDiffs;
+    final openDiffs = canShowDiffs ? widget.onShowDiffs : null;
     final menuEntriesBuilder = widget.menuEntriesBuilder;
     final session = state.hydratedSession;
     final canConfigureContinuation =
         !widget.readOnly && session?.time?.archived == null && !(state is SessionDetailLoaded && state.isArchived);
-
-    final actions = <Widget>[
-      if (widget.onClose != null)
-        PregoButtonsIconGlass(
-          icon: TablerRegular.x,
-          semanticLabel: loc.archivedSessionsClose,
-          onPressed: widget.onClose,
-        ),
-      if (canShowDiffs && onShowDiffs != null)
-        BlocBuilder<DiffSummaryCubit, DiffSummaryState>(
-          builder: (context, summary) => PregoButtonsIconGlass(
-            icon: TablerRegular.git_compare,
-            semanticLabel: loc.sessionDetailFileChangesTooltip,
-            onPressed: onShowDiffs,
-            trailing: sessionChangesCounts(state: summary, style: context.prego.textTheme.textSm.medium),
-          ),
-        ),
-      if (state case SessionDetailLoaded(:final transcriptFolded))
-        PregoButtonsIconGlass(
-          icon: transcriptFolded ? TablerRegular.separator_horizontal : TablerRegular.fold,
-          semanticLabel: transcriptFolded ? loc.transcriptUnfoldAll : loc.transcriptFoldAll,
-          onPressed: () => context.read<SessionDetailCubit>().setTranscriptFolded(folded: !transcriptFolded),
-        ),
-      // Root sessions only: the actions run on the project's session list,
-      // which holds no sub-agent sessions and must not gain one.
-      if (session != null && ((menuEntriesBuilder != null && session.parentID == null) || canConfigureContinuation))
-        PregoAnchorMenu(
-          flat: true,
-          menuWidth: 240,
-          acquireOpenLease: null,
-          entriesBuilder: () => [
-            if (canConfigureContinuation) sessionAutoContinuationMenuEntry(context: context, session: session),
-            if (menuEntriesBuilder != null && session.parentID == null)
-              ...menuEntriesBuilder(context: context, session: session),
-          ],
-          triggerBuilder: (context, openMenu) => PregoButtonsIconGlass(
-            key: const Key("session-detail-more"),
-            icon: TablerRegular.dots,
-            semanticLabel: loc.sessionDetailMoreActions,
-            onPressed: openMenu,
-          ),
-        ),
-      if (isBusy)
-        // A status indicator, not a button — sized to the glass button's 40×40
-        // footprint so the bar height stays stable as work starts and stops.
-        const SizedBox(
-          width: 40,
-          height: 40,
-          child: Center(
-            child: SizedBox(
-              width: 20,
-              height: 20,
-              child: PregoActivityIndicator(color: null),
-            ),
-          ),
-        ),
-    ];
 
     final statusWarning = switch (state) {
       SessionDetailLoaded(isArchived: true) => null,
@@ -263,6 +198,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     final pageChrome = widget.pageChrome;
     final content = _buildContent(context: context, state: state, maxContentWidth: pageChrome?.maxContentWidth);
     if (pageChrome != null) {
+      final isBusy = switch (state) {
+        SessionDetailLoaded(:final sessionStatus, :final childStatuses) => hasActiveWork(
+          sessionStatus: sessionStatus,
+          childStatuses: childStatuses,
+        ),
+        SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => false,
+      };
       final cubit = context.read<SessionDetailCubit>();
       return CallbackShortcuts(
         bindings: {
@@ -277,8 +219,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                   context: context,
                   title: title,
                   isBusy: isBusy,
-                  onShowDiffs: canShowDiffs ? onShowDiffs : null,
-                  session: state.hydratedSession,
+                  onShowDiffs: openDiffs,
+                  session: session,
                 ),
                 ?banner,
                 // The header sits above the transcript, so nothing scrolls behind a
@@ -296,6 +238,59 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         ),
       );
     }
+    // The floating glass bar's centred title shares one row with its controls,
+    // and on a phone that row runs out first: every control it carries is taken
+    // out of the title. So it keeps only the two the reader acts on here — fold
+    // and the menu — while Changes rides in that menu with its counts, and the
+    // session's progress is left to the transcript, the composer and the
+    // sub-agents bar, which all report it already.
+    //
+    // Watched rather than read so the totals are on hand when the menu opens,
+    // and only for a page that offers Changes at all: the summary request is
+    // made by whoever first asks this cubit for its state.
+    final changesSummary = openDiffs == null ? null : context.watch<DiffSummaryCubit>().state;
+    final actions = <Widget>[
+      if (state case SessionDetailLoaded(:final transcriptFolded))
+        PregoButtonsIconGlass(
+          icon: transcriptFolded ? TablerRegular.separator_horizontal : TablerRegular.fold,
+          semanticLabel: transcriptFolded ? loc.transcriptUnfoldAll : loc.transcriptFoldAll,
+          onPressed: () => context.read<SessionDetailCubit>().setTranscriptFolded(folded: !transcriptFolded),
+        ),
+      // Root sessions only: the session actions run on the project's session
+      // list, which holds no sub-agent sessions and must not gain one, and only
+      // a root session has changes to show.
+      if (session != null &&
+          (openDiffs != null || (menuEntriesBuilder != null && session.parentID == null) || canConfigureContinuation))
+        PregoAnchorMenu(
+          flat: true,
+          menuWidth: 240,
+          acquireOpenLease: null,
+          entriesBuilder: () => [
+            if (openDiffs != null)
+              PregoMenuItem(
+                key: const Key("session-detail-changes"),
+                leadingIcon: TablerRegular.git_compare,
+                title: loc.sessionChangesLabel,
+                subtitle: null,
+                isSelected: false,
+                shortcutLabel: null,
+                trailing: changesSummary == null
+                    ? null
+                    : sessionChangesCounts(state: changesSummary, style: context.prego.textTheme.textSm.medium),
+                onTap: openDiffs,
+              ),
+            if (canConfigureContinuation) sessionAutoContinuationMenuEntry(context: context, session: session),
+            if (menuEntriesBuilder != null && session.parentID == null)
+              ...menuEntriesBuilder(context: context, session: session),
+          ],
+          triggerBuilder: (context, openMenu) => PregoButtonsIconGlass(
+            key: const Key("session-detail-more"),
+            icon: TablerRegular.dots,
+            semanticLabel: loc.sessionDetailMoreActions,
+            onPressed: openMenu,
+          ),
+        ),
+    ];
     return PregoGlassScaffold(
       title: title,
       subtitleText: null,
