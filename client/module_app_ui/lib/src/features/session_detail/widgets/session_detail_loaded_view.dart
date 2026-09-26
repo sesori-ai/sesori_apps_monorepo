@@ -19,6 +19,16 @@ typedef SessionDetailBottomControlsBuilder = Widget Function({
   required SessionDetailLoaded state,
 });
 
+/// The centred column widths of a pointer surface's session page.
+///
+/// The transcript reads wider than the composer below it: long-form text
+/// benefits from a column that would make a text field and its pill row look
+/// stretched.
+class const SessionDetailColumnWidths({
+  required final double transcript,
+  required final double composer,
+});
+
 class SessionDetailLoadedView extends StatefulWidget {
   final String? projectId;
   final String sessionId;
@@ -26,9 +36,9 @@ class SessionDetailLoadedView extends StatefulWidget {
   final bool readOnly;
   final Widget? bottomControls;
 
-  /// Caps the transcript and the bottom controls to a centred column; null
-  /// lets them span the pane.
-  final double? maxContentWidth;
+  /// Caps the transcript and the bottom controls to centred columns of their
+  /// own widths; null lets both span the pane.
+  final SessionDetailColumnWidths? columnWidths;
   final VoidCallback onShowPendingQuestions;
   final VoidCallback onShowPendingPermissions;
 
@@ -40,7 +50,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
     required this.bottomControls,
-    required this.maxContentWidth,
+    required this.columnWidths,
   }) : readOnly = true;
 
   const new interactive({
@@ -51,7 +61,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
     required this.bottomControls,
-    required this.maxContentWidth,
+    required this.columnWidths,
   }) : readOnly = false;
 
   @override
@@ -79,17 +89,27 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
 
   @override
   Widget build(BuildContext context) {
-    final maxContentWidth = widget.maxContentWidth;
-    if (maxContentWidth == null) return _buildContent(context: context, horizontalInset: 0);
+    final columnWidths = widget.columnWidths;
+    if (columnWidths == null) return _buildContent(context: context, transcriptInset: 0, composerInset: 0);
     return LayoutBuilder(
       builder: (context, constraints) => _buildContent(
         context: context,
-        horizontalInset: math.max(0, (constraints.maxWidth - maxContentWidth) / 2),
+        transcriptInset: _centringInset(paneWidth: constraints.maxWidth, columnWidth: columnWidths.transcript),
+        composerInset: _centringInset(paneWidth: constraints.maxWidth, columnWidth: columnWidths.composer),
       ),
     );
   }
 
-  Widget _buildContent({required BuildContext context, required double horizontalInset}) {
+  /// No inset once the pane is narrower than the column, so a narrow window
+  /// degrades to the full-width layout instead of clipping.
+  static double _centringInset({required double paneWidth, required double columnWidth}) =>
+      math.max(0, (paneWidth - columnWidth) / 2);
+
+  Widget _buildContent({
+    required BuildContext context,
+    required double transcriptInset,
+    required double composerInset,
+  }) {
     final loc = context.loc;
     final state = widget.state;
     // A session waiting on the user is not working; its card says so.
@@ -200,7 +220,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           // up behind the bar's fade and the composer's fade.
                           topInset: topInset,
                           bottomInset: hasBottomControls ? bottomControlsHeight : 0,
-                          horizontalInset: horizontalInset,
+                          horizontalInset: transcriptInset,
                         ),
                       ),
                     ),
@@ -235,8 +255,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
         if (hasBottomControls)
           Positioned(
             bottom: 0,
-            left: horizontalInset,
-            right: horizontalInset,
+            left: composerInset,
+            right: composerInset,
             child: PregoSizeObserver(
               onSizeChanged: (size) {
                 if (!mounted) return;

@@ -217,7 +217,7 @@ The main pane hosts one full-width routed page.
   undone, refused or fails. Archiving the open session leaves its page. See
   `session-archiving-and-deletion.md`.
 - The new session page uses the same toolbar, titled New session under the project breadcrumb, above one
-  centred column no wider than the session page's: the shared heading and project selector (see
+  centred column no wider than the session page's composer: the shared heading and project selector (see
   session-creation-and-options.md), the harness chooser, the input, then Dedicated workspace and
   Refresh options. The column is centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
   Choosing another project builds a fresh cubit for it.
@@ -235,8 +235,11 @@ The main pane hosts one full-width routed page.
   directly. Mark unread always sends unread,
   whatever local state says, defers the session like a row's Mark unread, and returns to the project's
   all-sessions page; Shift+Cmd/Ctrl+U does the same while focus is in the session page and is inert
-  elsewhere. The transcript and composer sit in a centred column about 760 pt wide while the wheel and
-  scrollbar keep the whole pane. The phone keeps its floating glass bar and full-width transcript.
+  elsewhere. The transcript sits in a centred reading column about 960 pt wide; the composer and the pill
+  row above it keep their own narrower column, about 760 pt, centred under it. The wheel and scrollbar keep
+  the whole pane. A window too narrow for a column drops that column's inset instead of clipping, so the
+  timestamp peek degrades to the phone's behaviour. The phone keeps its floating glass bar and full-width
+  transcript.
 - With projects, home starts work: the new-session composer for a picked project (the first listed until the
   user picks another, each pick with its own draft), then Needs you, Running and Recent sections across projects.
   Recent holds the five newest sessions that are neither running nor waiting; empty sections are left out. A row

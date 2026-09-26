@@ -37,10 +37,10 @@ typedef SessionDetailMenuEntriesBuilder = List<PregoMenuEntry> Function({
 });
 
 /// A pointer surface's page frame: an opaque header above the transcript
-/// instead of the floating glass bar over it, and a centred reading column.
+/// instead of the floating glass bar over it, and centred reading columns.
 class const SessionDetailPageChrome({
   required final SessionDetailHeaderBuilder headerBuilder,
-  required final double maxContentWidth,
+  required final SessionDetailColumnWidths columnWidths,
 
   /// Fold and unfold every turn while focus is in the page. The shell picks
   /// the platform's modifier keys.
@@ -261,7 +261,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
             ],
           );
     final pageChrome = widget.pageChrome;
-    final content = _buildContent(context: context, state: state, maxContentWidth: pageChrome?.maxContentWidth);
+    final content = _buildContent(context: context, state: state, columnWidths: pageChrome?.columnWidths);
     if (pageChrome != null) {
       final cubit = context.read<SessionDetailCubit>();
       return CallbackShortcuts(
@@ -341,7 +341,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
   Widget _buildContent({
     required BuildContext context,
     required SessionDetailState state,
-    required double? maxContentWidth,
+    required SessionDetailColumnWidths? columnWidths,
   }) {
     final loc = context.loc;
     return switch (state) {
@@ -362,7 +362,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                 onShowPendingQuestions: _showPendingQuestions,
                 onShowPendingPermissions: _showPendingPermissions,
                 bottomControls: _buildReadOnlyControls(loaded: loaded),
-                maxContentWidth: maxContentWidth,
+                columnWidths: columnWidths,
               )
             : SessionDetailLoadedView.interactive(
                 projectId: widget.projectId,
@@ -378,7 +378,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                         sessionId: widget.sessionId,
                         state: loaded,
                       ),
-                maxContentWidth: maxContentWidth,
+                columnWidths: columnWidths,
               ),
       SessionDetailHarnessUnavailable(:final interaction, :final session) => Center(
         child: PregoTopBarInsetBuilder(

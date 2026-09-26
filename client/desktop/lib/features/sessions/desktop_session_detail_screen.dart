@@ -164,7 +164,10 @@ class const DesktopSessionDetailView({
                 state: state,
               ),
           pageChrome: SessionDetailPageChrome(
-            maxContentWidth: maxContentWidth,
+            columnWidths: const SessionDetailColumnWidths(
+              transcript: maxTranscriptWidth,
+              composer: maxComposerWidth,
+            ),
             headerBuilder: _buildToolbar,
             foldActivator: _foldShortcut,
             unfoldActivator: _unfoldShortcut,
@@ -175,7 +178,20 @@ class const DesktopSessionDetailView({
     );
   }
 
-  static const double maxContentWidth = 760;
+  /// The transcript's reading column. Wider than the composer because a
+  /// pointer window has the room and long-form answers read better with it.
+  ///
+  /// Capped by the timestamp reveal: dragging the transcript slides its content
+  /// up to 108 px out of the column, so the revealed row stays inside the window
+  /// only while this width is at most `paneWidth - 216`. On the 1240 px window
+  /// the pane is designed around, that ceiling is 1024 and 960 leaves 64 px of
+  /// headroom; 1060 would slide content under the window edge mid-drag.
+  /// Narrower windows collapse the centring inset and peek like the phone does.
+  static const double maxTranscriptWidth = 960;
+
+  /// The composer and the pill row above it. A text field and its pills read
+  /// as stretched long before body text does, so they keep the narrower column.
+  static const double maxComposerWidth = 760;
 
   static SingleActivator get _foldShortcut => desktopShortcut(key: LogicalKeyboardKey.minus);
   static SingleActivator get _unfoldShortcut => desktopShortcut(key: LogicalKeyboardKey.equal);
