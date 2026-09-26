@@ -12,7 +12,7 @@ const _opener = MessageWithParts(
 );
 
 TranscriptTurnSummary _summary({required int steps, required TranscriptTurnOutcome outcome}) =>
-    TranscriptTurnSummary(steps: steps, failedSteps: 0, outcome: outcome);
+    TranscriptTurnSummary(steps: steps, outcome: outcome);
 
 TranscriptTurn _promptTurn({required int steps, required Duration? duration, required TranscriptTurnOutcome outcome}) =>
     TranscriptPromptTurn(

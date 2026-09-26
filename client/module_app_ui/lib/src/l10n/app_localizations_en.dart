@@ -1338,81 +1338,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailFollowOutput => 'Follow';
 
   @override
-  String get transcriptSummaryThought => 'Thought';
-
-  @override
   String transcriptSummarySteps(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
       other: '$count steps',
       one: '1 step',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String transcriptSummaryRead(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'read $count files',
-      one: 'read 1 file',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String transcriptSummaryEdited(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'edited $count files',
-      one: 'edited 1 file',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String transcriptSummaryRan(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'ran $count commands',
-      one: 'ran 1 command',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String transcriptSummarySearches(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count searches',
-      one: '1 search',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String transcriptSummarySubAgents(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count sub-agents',
-      one: '1 sub-agent',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String transcriptSummaryFailed(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count failed',
-      one: '1 failed',
     );
     return '$_temp0';
   }
