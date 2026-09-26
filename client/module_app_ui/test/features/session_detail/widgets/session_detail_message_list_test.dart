@@ -42,6 +42,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   bool _isLoadingOlderMessages = false;
   bool _transcriptFolded = false;
   bool _hasOlderMessages = true;
+  bool _isRefreshing = false;
   int? lastCancelledQueuedMessageIndex;
 
   @override
@@ -96,6 +97,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
 
   void setRetryErrorMessage(String? message) {
     setState(() => _retryErrorMessage = message);
+  }
+
+  void setRefreshing({required bool refreshing}) {
+    setState(() => _isRefreshing = refreshing);
   }
 
   void setTranscriptFolded({required bool folded}) {
@@ -210,6 +215,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           awaitingBridgeSubmissions: _awaitingBridgeSubmissions,
           queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
+          isRefreshing: _isRefreshing,
           transcriptFolded: _transcriptFolded,
           onTranscriptFoldedChanged: setTranscriptFolded,
           topInset: widget.topInset,
@@ -1220,6 +1226,59 @@ void main() {
 
       // The page lands with its load, still too short, so the next one follows.
       key.currentState?.prependOlderMessages(older: _page(prefix: "older", count: 2), hasOlderMessages: true);
+      pages.single.complete();
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(2));
+    });
+
+    testWidgets("asks again when a refresh ends, for a page the refresh dropped", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      var requested = 0;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          // The cubit ignores a request while a refresh runs.
+          onLoadOlderMessages: () async => requested++,
+        ),
+      );
+      key.currentState?.setRefreshing(refreshing: true);
+      await tester.pumpAndSettle();
+      expect(requested, 1);
+
+      // The refresh lands on the same newest page.
+      key.currentState?.replaceMessages(_page(prefix: "newest", count: 2));
+      key.currentState?.setRefreshing(refreshing: false);
+      await tester.pumpAndSettle();
+      expect(requested, 2);
+    });
+
+    testWidgets("asks again once a page the refresh discarded settles", (tester) async {
+      final key = GlobalKey<_SessionDetailMessageListHarnessState>();
+      final pages = <Completer<void>>[];
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: key,
+          initialMessages: _page(prefix: "newest", count: 2),
+          initialStreamingText: const {},
+          onLoadOlderMessages: () {
+            final page = Completer<void>();
+            pages.add(page);
+            return page.future;
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      key.currentState?.setRefreshing(refreshing: true);
+      await tester.pump();
+      key.currentState?.setRefreshing(refreshing: false);
+      await tester.pumpAndSettle();
+      expect(pages, hasLength(1));
+
+      // The discarded page returns after the refresh landed.
       pages.single.complete();
       await tester.pumpAndSettle();
       expect(pages, hasLength(2));

@@ -182,7 +182,8 @@ reconnect or restart.
   first page, a fold, or a taller window that leaves the oldest edge within
   reach loads the next page, and pages keep loading until the screen fills or
   the start of the transcript is loaded. A failed page is not retried on its
-  own; the next scroll or layout change asks again. Prepended rows become visible without shifting the detached
+  own; the next scroll, layout change or finished refresh asks again. A page a
+  silent refresh dropped or discarded is asked for again when the refresh ends. Prepended rows become visible without shifting the detached
   reading position or admitting messages and streaming changes that arrived at
   the newest edge while detached.
 - After a reconnect inside the replay window, buffered events are delivered;

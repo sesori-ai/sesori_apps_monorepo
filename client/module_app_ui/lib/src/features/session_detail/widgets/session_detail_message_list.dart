@@ -67,6 +67,10 @@ class const SessionDetailMessageList({
   required final ValueChanged<int>? onCancelQueuedMessage,
   required final bool isLoadingOlderMessages,
 
+  /// Whether a refresh is replacing the transcript. One ending asks again for
+  /// an older page the refresh dropped, when the transcript is still short.
+  required final bool isRefreshing,
+
   /// Whether each turn shows folded: its prompt, then one line for the rest.
   required final bool transcriptFolded,
 
@@ -189,6 +193,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   _DetachedSnapshot? _snapshot;
   bool _loadOlderCallbackInFlight = false;
 
+  /// Set when the oldest edge needed a check while a page was on its way, so
+  /// the check runs once that load settles.
+  bool _checkOldestEdgeAfterLoad = false;
+
   /// Cache for the id → data-source-index map consumed by the row
   /// builder. Keyed on a content signature of `(length, firstId,
   /// lastId)` — NOT list identity. The cubit's `state.messages` getter
@@ -255,13 +263,20 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // A page that leaves the transcript shorter than the viewport moves no
     // scroll extent, so no metrics notification follows it. Check the oldest
     // edge once the page is laid out, to keep paging until the viewport fills.
-    // A failed page keeps the oldest message, so a failing bridge is not asked
-    // again until the list scrolls or its layout changes.
-    if (widget.messages.firstOrNull?.info.id != oldWidget.messages.firstOrNull?.info.id) {
+    // A refresh drops or discards an older page asked for meanwhile, and can
+    // land on the same oldest message, so its end checks too. A failed page
+    // keeps the oldest message, so a failing bridge is not asked again until
+    // the list scrolls, its layout changes or a refresh ends.
+    final refreshEnded = oldWidget.isRefreshing && !widget.isRefreshing;
+    if (refreshEnded || widget.messages.firstOrNull?.info.id != oldWidget.messages.firstOrNull?.info.id) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        final position = _follow.scrollController.position;
-        if (position.hasContentDimensions && position.extentAfter < _kOlderPagePrefetchExtent) _requestOlderPage();
+        // A discarded page can still be on its way; check once it settles.
+        if (_loadOlderCallbackInFlight) {
+          _checkOldestEdgeAfterLoad = true;
+        } else {
+          _checkOldestEdge();
+        }
       });
     }
     final olderPageRequestCompleted = oldWidget.isLoadingOlderMessages && !widget.isLoadingOlderMessages;
@@ -956,6 +971,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     return notification is ScrollNotification && _onNestedScrollNotification(notification);
   }
 
+  void _checkOldestEdge() {
+    final position = _follow.scrollController.position;
+    if (position.hasContentDimensions && position.extentAfter < _kOlderPagePrefetchExtent) _requestOlderPage();
+  }
+
   /// Asks for the page before the oldest message, unless the start of the
   /// transcript is loaded or a page is already on its way.
   void _requestOlderPage() {
@@ -971,7 +991,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     } catch (error, stackTrace) {
       loge("Failed to load older session messages", error, stackTrace);
     } finally {
-      if (mounted) _loadOlderCallbackInFlight = false;
+      if (mounted) {
+        _loadOlderCallbackInFlight = false;
+        if (_checkOldestEdgeAfterLoad) {
+          _checkOldestEdgeAfterLoad = false;
+          _checkOldestEdge();
+        }
+      }
     }
   }
 
