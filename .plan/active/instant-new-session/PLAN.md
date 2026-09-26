@@ -13,7 +13,7 @@
   stages) moves to the rough later phase below. That plan also predates
   desktop session creation and the move of the new-session view into
   `module_app_ui`.
-- **Delivery:** eight numbered PRs. Step 1 raises this plan.
+- **Delivery:** seven numbered PRs. Step 1 raises this plan.
 - **Review page answers applied (2026-09-26).** The user answered five
   questions. Two of them changed the shape of this plan:
   - **Q1 A** — while creating, the page shows only the user's message as a
@@ -52,6 +52,28 @@
     into cubit state.
 
   All eleven findings and their resolutions are tabulated in `TRACKER.md`.
+- **Decisions D1 to D9 answered by the user (2026-09-26).** Nothing in this plan
+  is open any more. The "Decisions" section records each answer and its
+  consequences; D10 and D11 remain the plan's own recorded decisions and were
+  never user questions. Two answers overrode this plan's recommendation and the
+  plan now follows the answer, not the recommendation:
+  - **D1** — failed-creation follow-ups are appended into the restored composer
+    draft, separated by blank lines.
+  - **D3** — the placeholder row **is** tappable, tells the user the session is
+    still being created, and carries a visible in-progress signal of its own.
+- **Code review applied (2026-09-26, 13 findings).** Eleven changed the plan:
+  regression documents now move with the step that changes behaviour (which
+  removes the old step 7 and makes the series seven PRs), creation reuses
+  `RelayHttpApiClient.post`'s existing `timeout` argument instead of widening
+  `postWithTimeout`, the phone transition travels as a route query parameter
+  rather than `state.extra`, the launch owner publishes a typed terminal
+  outcome and keeps the launch↔session association past the handoff,
+  follow-up **delivery** belongs to `SessionLaunchService` instead of the
+  detail route, the release predicate ignores follow-up prompt ids, and the
+  service keeps both the selection-revision clear and the diagnostic failure
+  log. Two findings were rejected as disproportionate and are recorded as
+  accepted limits instead: the harness-unavailable state dropping the bubble,
+  and a first message that is a command producing no transcript echo.
 
 ## Primary Goal: How This Must Feel
 
@@ -181,8 +203,11 @@ the duplicate-risk warning.
   serialisation point), `completeSend`, `failSend` (re-heads), `holdFailedSend`,
   `retryFailedSend` (same promptId, so the bridge dedups), `cancel(index)`.
   It is **not** DI-registered; `SessionDetailCubit` owns the only instance
-  (`session_detail_cubit.dart:136`). Step 4 reuses it rather than adding a
-  second queue.
+  (`session_detail_cubit.dart:136`), so it exists only while a session screen
+  does. That lifetime is why step 4 keeps it for sends made **from** the session
+  screen and does **not** route launch follow-ups through it: their delivery
+  cannot depend on a route being open. It stays the reference for the bubble
+  presentations, the FIFO rule and the retry vocabulary the launch reuses.
 - `QueuedSessionSubmission` (`cubits/session_detail/queued_session_submission.dart`)
   is the queue's item type: `promptId`, `text`, `command`, `inputMode`,
   `attachments`, `agent`, `agentModel`, `fastMode`, plus `displayText` and
@@ -190,7 +215,8 @@ the duplicate-risk warning.
 - `SessionDetailCubit.sendMessage` already **enqueues without requiring
   `SessionDetailLoaded`** (`:1985-2042`); only `_drainQueuedMessages` requires
   loaded and connected. That is the existing precedent for "accept now, send
-  later", and step 4 leans on it.
+  later"; step 4 applies the same idea one lifetime up, where the session does
+  not exist yet either.
 - `SessionDetailMessageList` already renders transient submission rows under
   `_kPromptRowPrefix = "session-detail-prompt-"` so one prompt keeps one row
   identity from queued → sending → bridge-queued → delivered
@@ -256,15 +282,33 @@ the duplicate-risk warning.
   `docs/regression/navigation-transitions.md` already requires ("The
   new-session page changes in place without a fade … when its first prompt
   turns it into the session"). Desktop keeps its existing 150 ms main-pane
-  cross-fade (`_withPageFade`, `desktop_router.dart:270`), which between
-  identical content is not a visible navigation.
+  cross-fade (`_withPageFade`, `desktop_router.dart:270`). The two sides there
+  are **not** identical: the destination has a session toolbar, and an embedded
+  composer's pane still carries its own chrome (`DesktopFileAccessCard` and the
+  home sections on the home pane, the catalog header on a project page). Two
+  things make the fade continuity rather than a second navigation, and both are
+  required: while sending, the chrome page **hides its `topBar` and `footer`**
+  so the pane is already session-shaped (step 4, where the composer also reaches
+  the bottom edge), and the bubble occupies the same rect on both sides, so the
+  one element the user is reading cross-fades with itself while only the
+  surrounding toolbar changes. Reduced motion already makes this instant. An
+  instant cut is deliberately **not** chosen: it would snap the differing
+  toolbar. The final step verifies this on all three desktop creating surfaces,
+  and an observed second-navigation feel is what would switch those routes to an
+  instant replacement.
 - **The first bubble is released by position, not by promptId.** The initial
   input is accepted before the session exists anywhere else. So in a
   brand-new session, the first user message with renderable content, or the
   first bridge-queued prompt (Claude or Pi command and queue windows), is by
   construction the submitted input. The bubble is dropped in the same emission
   that shows that replacement. Content matching is not used. Follow-ups do not
-  participate: they match on their real promptId through the existing path.
+  participate: they match on their real promptId through the existing path, and
+  they are **excluded from the predicate itself**. A follow-up delivered while
+  the first message still has no echo appears in `bridgeQueuedPrompts` with a
+  promptId the launch already knows, and treating it as the first message's
+  replacement would make the first bubble vanish until its own echo arrived. The
+  predicate therefore ignores prompts whose id is one of the launch's follow-up
+  ids.
 - **The placeholder row is not a `Session`.** It is a separate field beside
   `sessions`, never an entry inside it. Synthesising a `Session` with a
   sentinel id would make an impossible state representable and would leak into
@@ -278,15 +322,17 @@ the duplicate-risk warning.
   (`:597`), `_canEditComposer` (`:560`), `canRefreshOptions` (`:585`),
   `needsHarnessDiscovery` (`:574`), `_canApplyLoad` (`:550`) and
   `_onConnectionStatusChanged` (`:89`) all early-return. Step 4 splits that
-  single gate: the harness, agent, model, variant and worktree mode stay
+  single gate (**D9**, settled): the harness, agent, model, variant and worktree mode stay
   locked, because they are already committed to the request in flight, while
   text, attachments and command entry become live. Follow-ups inherit the
   launch's committed selection, which is what the session would apply anyway.
 - **The create timeout rises to 180 s.** Cold budgets exceed 30 s. With the
   message visible and the composer usable, a longer honest wait is better than
-  a false uncertain failure. `postWithTimeout` gains a `sensitiveResponse`
-  parameter so create-failure logs keep the diagnostic body. The existing
-  attachment caller stays sensitive.
+  a false uncertain failure. Both create paths keep calling
+  `RelayHttpApiClient.post` and simply pass its existing `timeout` argument
+  (`relay_http_client.dart:47`); `post` already reports non-sensitive responses
+  (`:56`), so failure logs keep the diagnostic body and **no client signature
+  changes**. `postWithTimeout` and its attachment caller are untouched.
 - **Analytics move with the operation, unchanged in shape.**
   `sessionCreatedWithMessage` and `sessionCreationFailed` stay exactly as they
   are, but they are reported by `SessionLaunchService` rather than
@@ -312,35 +358,81 @@ and its adapter.
   - `PendingSessionLaunch({launchId, projectId, pluginId, submission, followUps})`
     — the bridge has not answered. **Only this variant produces a placeholder
     row.**
-  - `CreatedSessionLaunch({launchId, projectId, pluginId, sessionId, submission, followUps})`
-    — `sessionId` is non-null. **Only this variant can be consumed by
-    `takeForSession`.**
+  - `CreatedSessionLaunch({launchId, projectId, pluginId, session, submission, followUps})`
+    — the bridge answered with a real `Session`. **Only this variant can hand
+    its first-message payload over**, through `takeHandoff`.
+  - `ReconcilingSessionLaunch({launchId, projectId, pluginId, session, followUps})`
+    — the first-message payload has been taken by the session screen or released
+    by the composing route, and the entry is retained only for the two things
+    that still need it: the `launchId`↔`session.id` association the lists key
+    their row through, and any follow-up still being delivered. It has no
+    submission field at all, so "a launch whose payload was already consumed but
+    still looks unconsumed" is not representable.
 
   `launchId` is client-generated and is the stable row key. A flattened
   `String? sessionId` would make "a created launch still drawing a placeholder
   row next to its own real session row" a representable state, prevented only by
   some consumer happening to run in time. Sealing it makes the placeholder
-  provably disappear the instant a session id exists.
+  provably disappear the instant a session exists, and the third variant is what
+  lets the payload be consumed **without** also destroying the association the
+  lists need (see step 5).
 - `SessionLaunchStorage` (Layer 1, `api/storage/`, `@lazySingleton`): the
   process-local map `Map<String, SessionLaunch>` keyed by `launchId`, mirroring
   `ComposerDraftStorage`'s shape exactly. It is the **sole writer** of the map.
   No persistence, no timers.
 - `SessionLaunchRepository` (Layer 2, `@lazySingleton`): the **sole publisher**.
   `start`, `addFollowUp`, `cancelFollowUp`,
-  `promote({required String launchId, required String sessionId})` (pending →
-  created), `finish({required String launchId})`,
-  `takeForSession({required String sessionId})` which returns and clears only on
-  a matching `CreatedSessionLaunch`, plus a broadcast stream of the current
-  `PendingSessionLaunch`es for the list surfaces. Follow-ups live here and
+  `promote({required String launchId, required Session session})` (pending →
+  created), `takeHandoff({required String sessionId})` which returns the
+  first-message payload once and moves created → reconciling,
+  `releaseHandoff({required String launchId})` which makes the same transition
+  without returning it, `followUpDelivered({launchId, promptId})` and
+  `followUpFailed({launchId, promptId, reason})`,
+  `fail({required String launchId, required RemoteFailureReason reason})`, and
+  `complete({required String launchId})` which removes an entry whose payload is
+  gone and whose follow-ups have all been delivered. Follow-ups live here and
   nowhere else.
+
+  It publishes three things, deliberately separate because they have different
+  lifetimes and different readers:
+  - a broadcast stream of current `PendingSessionLaunch`es — the placeholder
+    rows;
+  - a broadcast stream of `launchId`→`session` associations covering the created
+    **and** reconciling variants — the list row keys, which must survive the
+    handoff being consumed;
+  - a broadcast stream of typed terminal outcomes, sealed
+    `SessionLaunchSucceeded({launchId, session})` /
+    `SessionLaunchFailed({launchId, reason})`. Without this there is no value a
+    composing cubit could observe to report success or restore a failed
+    submission, because `fail` removes the entry that carried the reason. It is
+    also the one channel the shell-level failure alert (**D5**) listens to.
+  - a per-session view for the session screen, `watchForSession(sessionId)`, so
+    the detail cubit renders follow-ups that are still being delivered instead of
+    taking a one-shot snapshot of them.
 - `SessionLaunchService` (Layer 3, `services/`, `@lazySingleton`): owns the
-  **operation**, which is the reason this family exists at all. One method,
-  `launch(...)`, which starts the launch in the repository, awaits
+  **operation**, which is the reason this family exists at all. `launch(...)`
+  starts the launch in the repository, awaits
   `SessionRepository.createSessionWithMessage`, then `promote`s on success or
-  `finish`es with the reason on failure, and reports
-  `sessionCreatedWithMessage` / `sessionCreationFailed`. Because the service is
-  a singleton, that sequence completes whether or not the composing route still
-  exists. It has two collaborators (`SessionRepository`,
+  `fail`s with the reason on failure, and reports
+  `sessionCreatedWithMessage` / `sessionCreationFailed`. On failure it also keeps
+  today's `loge("New session creation failed", error)` with the original
+  `ApiError` and the operation context, because the published outcome carries
+  only a `RemoteFailureReason` and would otherwise discard the response detail
+  and stack.
+
+  It also owns **delivery of the follow-ups**: after `promote` it sends each
+  retained follow-up in order, awaiting one before starting the next, through the
+  same `SessionRepository` prompt send the session screen uses, reusing the
+  promptId the follow-up was born with so the bridge dedups a resend. Each
+  accepted follow-up is dropped from the launch; a rejected one is retained with
+  its reason for the session screen to show. Delivery lives here, and not in
+  `SessionDetailCubit`, for the same reason the operation does: a user who leaves
+  before creation finishes must not have their queued messages stranded until
+  they happen to reopen that session. When everything is delivered and the
+  payload is gone, the service calls `complete`.
+
+  Because the service is a singleton, all of that runs whether or not the
+  composing route still exists. It has two collaborators (`SessionRepository`,
   `SessionLaunchRepository`) plus analytics, so it is a real service and not a
   pass-through.
 - `SessionLaunchCubit` (Layer 4, `module_core/lib/src/cubits/session_launch/`):
@@ -354,23 +446,41 @@ and its adapter.
 
 `NewSessionCubit` therefore stops owning the create response. It calls
 `SessionLaunchService.launch(...)`, keeps the `launchId` in its sending phase,
-and renders the launch's submission and follow-ups from the launch owner. Its
+renders the launch's submission and follow-ups from the launch owner, and
+watches the **outcome stream** for its own `launchId`: `SessionLaunchSucceeded`
+becomes `NewSessionState.created(session:)` and also clears the captured
+selection revision through the existing
+`NewSessionSelectionTracker.clearIfRevision` (`new_session_cubit.dart:909-963`),
+which must not be lost in the move — otherwise a deliberately chosen agent,
+model, variant or fast-mode value would be reapplied the next time this
+project's composer opens. `SessionLaunchFailed` becomes the existing
+`restoringSubmission` phase. The tracker stays in the cubit rather than becoming
+a service collaborator, because a selection belongs to the composer that made
+it; when the route is already gone the revision is not cleared, exactly as
+today. In `close()`, a cubit that started a launch it never handed over calls
+`releaseHandoff`, so an abandoned first-message payload — including its
+attachment bytes — does not outlive the route that could have used it. Its
 existing `if (isClosed) return;` early exit becomes harmless, because nothing
 important happens after it any more.
 
 Launches are keyed, not a single slot. A single slot was enough while the
 handoff was invisible, but a visible placeholder row makes overwriting wrong:
 starting a second session (trivially easy on desktop, where the home composer
-and a project composer both exist) would silently erase the first row. The map
-is bounded by the number of creations actually in flight, and because the
-service always reaches `promote` or `finish`, every entry is removed — which is
-what makes that bound real rather than aspirational, and what keeps attachment
-bytes from outliving the launch.
+and a project composer both exist) would silently erase the first row. That is
+also what **D6** settles: concurrent launches are supported, each with its own
+row. The map is bounded by the number of creations actually in flight, and
+because the service always reaches `promote` or `fail` and then `complete`,
+every entry is removed — which is what makes that bound real rather than
+aspirational. Attachment bytes are bounded twice over: a failed launch's payload
+goes with the entry, and an unclaimed successful launch's payload goes when the
+composing route closes without handing it over.
 
 **Invariant, enforced by construction rather than left as a decision:** a
-placeholder row and its real session row never coexist, because the list stream
+placeholder row and its real session row never coexist, because the row stream
 carries only `PendingSessionLaunch`es and `promote` is the single transition out
-of that variant.
+of that variant. The association stream deliberately carries the other two
+variants and produces **no rows at all**; it only tells a list which key a real
+row should keep.
 
 **One source of truth for the harness name.** The launch stores `pluginId` only.
 Both presentation seams that need a display name derive it the same way, through
@@ -409,10 +519,9 @@ the first spinner with no new state at all.
   the type, rather than inside step 3, so step 3's diff is behaviour only. A
   Layer 2 repository holds this type from step 3 onwards, so the move is
   required either way. `QueuedSessionSubmission` is not touched.
-- Relay create timeout: both create paths in `SessionApi` use
-  `postWithTimeout(timeout: 180 s, sensitiveResponse: false)`.
-  `postWithTimeout` gains a required `sensitiveResponse`, and the existing
-  caller passes `true`.
+- Relay create timeout: both create paths in `SessionApi` pass
+  `timeout: Duration(seconds: 180)` to the `post` call they already make. No
+  client method gains or loses a parameter.
 - Cleanup: the sending-branch `PregoLaunchStatus` usage and its widget-test
   expectations go. `newSessionLoadingMessage1..3` stay, because the ordinary
   session-detail load still uses them.
@@ -420,6 +529,12 @@ the first spinner with no new state at all.
   attachments. Failure restores the composer exactly as today. The chrome
   (desktop) and glass (phone) variants are covered. The timeout applies on the
   plain and attachment create paths.
+- **Regression documents, in this PR:**
+  `docs/regression/session-creation-and-options.md` — Send now shows the
+  submitted message as a sending bubble instead of detail-shaped launch status,
+  at the same unresolved route, with the composer still replaced and duplicate
+  Send still blocked, and creation now waits up to 180 s before reporting an
+  uncertain failure.
 - **Feel check:** the bubble is bottom-anchored in the same place the session
   screen puts it, so step 3's replacement moves nothing.
 
@@ -427,17 +542,21 @@ the first spinner with no new state at all.
 
 - Introduce the whole launch owner family — sealed `SessionLaunch`,
   `SessionLaunchStorage`, `SessionLaunchRepository` and `SessionLaunchService` —
-  as described in "The Launch Owner". `SessionLaunchCubit` and the list-facing
-  stream arrive in step 5 with their first reader; the repository's stream is
-  defined here because the service already publishes to it.
+  as described in "The Launch Owner". This step defines the streams it has
+  readers for: the typed outcome stream (read by `NewSessionCubit`) and
+  `watchForSession` (read by `SessionDetailCubit`). The placeholder-row stream,
+  the association stream and `SessionLaunchCubit` arrive in step 5 with their
+  first readers.
 - `NewSessionCubit` gains a constructor dependency on `SessionLaunchService`,
   wired in `cubit_composition.dart:92-104`. `createSession` stops awaiting the
   repository itself: it mints a `launchId`, calls
   `SessionLaunchService.launch(...)`, and emits
-  `NewSessionPhase.sending(launchId: …)`. It then watches the launch owner for
-  the outcome and emits `NewSessionState.created(session: …)` when the launch is
-  promoted, or the existing `restoringSubmission` phase when it fails. Failure
-  restoration, `_restoreStagedCommand` and
+  `NewSessionPhase.sending(launchId: …)`. It then watches the owner's **typed
+  outcome stream** for that `launchId`: `SessionLaunchSucceeded` becomes
+  `NewSessionState.created(session: …)` and clears the captured selection
+  revision, `SessionLaunchFailed` becomes the existing `restoringSubmission`
+  phase with the carried reason (see "The Launch Owner"). Failure restoration,
+  `_restoreStagedCommand` and
   `acknowledgeRestoredSubmission` are otherwise unchanged.
   `NewSessionState.created` is **not** given a `submission` field: the created
   listener's only job is still `onSessionCreated(session:)`, and the handoff
@@ -450,20 +569,40 @@ the first spinner with no new state at all.
 - `SessionDetailCubit` gains a constructor dependency on
   `SessionLaunchRepository`, wired in `createSessionDetailCubit`
   (`cubit_composition.dart:41-70`), and calls
-  `takeForSession(sessionId: …)` before its initial state:
+  `takeHandoff(sessionId: …)` before its initial state. Taking the payload moves
+  the launch to its reconciling variant, which keeps the association the lists
+  key through (step 5) and any follow-up still being delivered (step 4):
   - `SessionDetailState.loading` gains
     `required NewSessionSubmissionSnapshot? launchSubmission` and
     `required String? launchPluginId`, and every loading emission of
     `_loadMessages` carries them through. Step 4 adds the follow-ups beside
     them, so the loading state is the one place that describes a taken launch.
-  - `SessionDetailLoaded` gains the same fields. `SessionDetailFailed` does not:
-    a failed first load loses the bubble and Retry loads normally (low damage,
-    accepted).
+  - `SessionDetailLoaded` gains the same fields. `SessionDetailFailed` and
+    `SessionDetailHarnessUnavailable` do not. A failed first load loses the
+    bubble and Retry loads normally; the harness-unavailable state
+    (`session_detail_cubit.dart:419-429`, which additionally requires
+    `!_interaction.canInteract`, so it needs the harness to become blocked
+    between a successful create and the first load) shows its own explanation of
+    why the transcript is empty. Both are accepted low-damage losses of a
+    client-side bubble, not of the message, which the bridge already accepted.
+    Carrying the launch through two more states to cover them would add state to
+    the path that always runs for a path that almost never does.
   - **The release rule has exactly one owner.** A pure predicate beside
     `hasRenderableUserContent` in `session_detail_resolvers.dart` answers
     "does this state now show the launch's replacement?" — true when a user
     message with `hasRenderableUserContent` is present, or `bridgeQueuedPrompts`
-    is non-empty. A single private `_emitLoaded(SessionDetailLoaded)` funnel
+    contains a prompt that is **not** one of the launch's follow-up ids. The
+    exclusion matters: a follow-up can be delivered and appear in that list while
+    the first message still has no echo, and treating it as the replacement would
+    make the first bubble disappear and come back.
+    A first message that is a command producing no transcript entry at all (a
+    Pi notification-only command is the known case) therefore never reaches a
+    replacement, and its bubble stays "Sending" until the session screen is
+    reopened, when there is no launch left to seed it. That is an accepted limit
+    rather than a reason to add echo correlation or a bubble timeout: it needs a
+    no-echo command as the very first message, the session itself is correct, and
+    it self-corrects on reopen.
+    A single private `_emitLoaded(SessionDetailLoaded)` funnel
     applies it to **every** loaded emission and is the only way the cubit emits
     a loaded state. This matters because the cubit emits loaded state through
     `copyWith` at over fifty sites, all of which would otherwise preserve
@@ -488,25 +627,36 @@ the first spinner with no new state at all.
   read in routing:
   - **Phone** (`client/app/lib/features/new_session/new_session_screen.dart:49`):
     today, `replaceRoute` animates the platform push, or a fade in split view,
-    through `buildSessionPaneTransitionPage` (`app_router.dart:142`). The call
-    site switches to a new typed `replaceRouteInstantly(AppRoute)` extension
-    beside `replaceRoute`. It passes a shell-private marker as go_router
-    `extra`, and `buildSessionPaneTransitionPage` uses `Duration.zero` when
-    that marker is present.
+    through `buildSessionPaneTransitionPage` (`app_router.dart:142`). The
+    session-detail route type gains an optional flag that serialises as a
+    **query parameter** (`?fromLaunch=1`), the call site sets it when it replaces
+    the new-session route, and `buildSessionPaneTransitionPage` uses
+    `Duration.zero` when it is present. `state.extra` is **not** used:
+    `client/app/AGENTS.md:93` requires path/query route state and forbids it, and
+    a query parameter needs no new shell-local mutable state to carry a one-shot
+    marker. The flag is inert on every other route entry, so a deep link or a
+    restored route transitions exactly as today.
   - **Desktop** (`desktop_router.dart:176` new-session route,
     `desktop_session_list_screen.dart:198` → `desktop_router.dart:132`
     project-page composer, `desktop_home_pane.dart:242` → `desktop_router.dart`
     `onOpenSession` home composer): all three go through the main-pane
-    `_PageFade` (150 ms cross-fade, zero under reduced motion). They stay
-    unchanged, because a short cross-fade between identical content reads as
-    continuity. Step 8 verifies this visually. Only an observed visible jump
-    would add the same instant replacement there.
+    `_PageFade` (150 ms cross-fade, zero under reduced motion) and stay
+    unchanged. The two sides are not identical content, so the reason is the one
+    given under Design Decisions: the bubble holds its rect across the fade while
+    only the toolbar changes, and step 4 hides the embedded panes' own chrome
+    while sending so there is less left to change. The final step verifies this on
+    all three desktop surfaces, and an observed second-navigation feel is what
+    would switch them to the same instant replacement the phone uses.
 - Tests:
-  - Launch match and consume, and no consume for a different session id or for
-    a still-pending launch.
+  - `takeHandoff` matches and returns once, returns nothing for a different
+    session id or a still-pending launch, and leaves the association behind.
   - A launch started and then abandoned (the cubit closed before the response)
-    still reaches `promote` or `finish`, still reports its analytics outcome,
-    and leaves no entry behind.
+    still reaches `promote` or `fail`, still reports its analytics outcome, and
+    leaves no entry behind once its payload is released and its follow-ups are
+    delivered.
+  - The outcome stream carries the created `Session` on success and the
+    `RemoteFailureReason` on failure, a successful outcome clears the captured
+    selection revision, and a failed create still logs the original error.
   - Loading carries the bubble and the plugin id, and the load path's emissions
     preserve them.
   - Release on a snapshot, message, part, or queued prompt, each in one
@@ -515,6 +665,14 @@ the first spinner with no new state at all.
   - No "No messages yet" while the bubble is pending.
   - Ordinary opens are unchanged (no launch for that session id).
   - Widget continuity across the replacement, including the harness name.
+- **Regression documents, in this PR:**
+  `docs/regression/session-creation-and-options.md` — the created session now
+  takes over with no second launch status and no "No messages yet" gap, and the
+  bubble stays until the harness's own transcript shows the message;
+  `docs/regression/session-turns.md` — the launch bubble's place in the
+  transient-row ordering and its positional release;
+  `docs/regression/navigation-transitions.md` — confirm the phone replacement is
+  transition-free, which its existing rule already requires.
 - **Feel check:** the bubble must occupy the same offset before and after the
   route replacement. The test asserts the rendered bubble's global rect is
   unchanged across the swap, which is the only mechanical way to prove
@@ -561,9 +719,14 @@ the first spinner with no new state at all.
     `Column[Expanded(pane), composer]` as the idle branch, with the pane being
     `SessionLaunchSubmissionView` instead of the options scroll.
   - Chrome/desktop (`:274-295`): the sending branch becomes
-    `Column[Expanded(SessionLaunchSubmissionView), composer]`. The composer
-    therefore moves from the centred column to the bottom edge at Send. See
-    open decision **D8**.
+    `Column[Expanded(SessionLaunchSubmissionView), composer]`, and the page
+    chrome's `topBar` and `footer` are hidden while sending, so an embedded
+    composer's pane (the home pane's `DesktopFileAccessCard` and home sections, a
+    project page's catalog header) becomes session-shaped instead of a home page
+    with a bubble in it. The composer therefore moves from the centred column to
+    the bottom edge at Send. **D8**, settled: that move is animated **once**, at
+    240 ms, and is instant under reduced motion — the transition that explains
+    "this is now a session".
   - `canSend` changes from `cubit.canCreateSession && !isSending` (`:416`) to
     `cubit.canCreateSession || cubit.canSubmitFollowUp`, and `onSend` routes
     to `createSession` or `queueFollowUp` on the same condition.
@@ -573,30 +736,72 @@ the first spinner with no new state at all.
     `pending(onCancel: …)`, in order, reusing
     `_kPromptRowPrefix`-style keys so they keep identity into the session
     screen.
-- **Drain.** `SessionDetailCubit`'s `takeForSession` already returns the whole
-  `CreatedSessionLaunch`; it now also reads `followUps` and calls
-  `_promptQueue.enqueue` for each, in order, before its first drain. From that
-  point every existing behaviour applies unchanged: FIFO through `beginSend`,
-  promptId dedup, `holdFailedSend`/`retryFailedSend`, cancellation by index,
-  and `QueuedMessageBubble` rendering through `queuedMessages`. **No second
-  queue is created.**
+- **Delivery does not wait for a route.** `SessionLaunchService` sends the
+  follow-ups as soon as the launch is promoted, in order, awaiting one before
+  starting the next (see "The Launch Owner"). Draining them through
+  `SessionDetailCubit`'s `PromptSendQueue` instead would strand every queued
+  message whenever the user leaves before creation finishes, because no detail
+  cubit exists at promote time — which would contradict both the promise that
+  follow-ups send once the session exists and the lifetime argument that moved
+  the operation out of the route in the first place.
+
+  The session screen therefore **renders** follow-ups it does not own:
+  `watchForSession(sessionId)` gives it the launch's undelivered and failed
+  follow-ups, drawn with the same `QueuedMessageBubble` presentations as its own
+  queue and matched by promptId, so a delivered follow-up's bubble becomes the
+  real row without moving. Retry and cancel on such a bubble act on the launch
+  through the repository; `_promptQueue` keeps owning everything typed **in** the
+  session screen. Once the bridge accepts a follow-up it leaves the launch and the
+  ordinary prompt path owns it, including recovery from a later failure. **No
+  second send queue type is created**, and the follow-up list still has exactly
+  one owner.
+- **Voice stays available (**D7**, settled).** Keeping the composer mounted keeps
+  the voice cubit alive through creation, and dictating a follow-up works exactly
+  like typing one. The resources are released when the route is replaced or the
+  user leaves.
 - **The follow-up bubbles must survive the load, not just the swap.**
   `SessionDetailLoading` gains
   `required List<QueuedSessionSubmission> launchFollowUps` beside step 3's
-  `launchSubmission` and `launchPluginId`, and the loading branch renders them
-  below the first bubble. Without this they would vanish from the route
+  `launchSubmission` and `launchPluginId`, fed by `watchForSession` rather than a
+  one-shot snapshot so a follow-up delivered mid-load updates in place, and the
+  loading branch renders them below the first bubble. Without this they would vanish from the route
   replacement until the detail load completes — a window this plan measured at
   up to about 2.5 s on Pi and Hermes, plus relay tiers — because
   `_emitQueueUpdate` only publishes the queue in loaded states. The first
   message and its follow-ups are therefore handled symmetrically in every
   state.
-- **Failure.** Q2 restores the first submission into the composer exactly as
-  today. What happens to the follow-ups is open decision **D1**.
+- **Failure (D1, settled).** Q2 restores the first submission into the composer
+  exactly as today, and the queued follow-ups are **appended into that same
+  restored draft**, in the order they were typed, each separated by a blank line.
+  Three consequences, stated plainly because this plan had recommended the other
+  option: a follow-up's staged attachments are re-staged on the restored composer
+  beside the first submission's, so nothing is silently dropped, and the existing
+  per-prompt attachment limit then applies to the merged set through the
+  composer's existing rejection surface; a follow-up that was a slash command is
+  appended as its literal `/cmd args` text, because the composer holds one command
+  intent and that one belongs to the restored first submission; and the turns the
+  user had separated arrive merged, which the user accepted as the cost of having
+  everything in one editable draft. The restoration consumes the launch's
+  follow-up list, so pressing Send again is an ordinary single submission. If the
+  composing route is already gone there is nothing to restore into, and the
+  follow-ups go with the launch while **D5** reports the failure.
 - Tests: `queueFollowUp` appends in order and mints distinct promptIds;
   command-plus-attachments is refused; option pickers stay locked while
   sending; the composer keeps staged attachments across the idle→sending
-  switch; the drain enqueues follow-ups in order and the existing queue sends
-  them in order; cancelling a follow-up before creation completes removes it.
+  switch; the service delivers follow-ups in order after promote **with no
+  session screen ever opened**; a rejected follow-up is retained with its reason
+  and rendered by the session screen; cancelling a follow-up before delivery
+  removes it; a creation failure appends the follow-ups into the restored draft in
+  order, blank-line separated, with their attachments re-staged and a command
+  follow-up appended as text.
+- **Regression documents, in this PR:**
+  `docs/regression/session-creation-and-options.md` — Send now keeps the
+  composer, a second Send queues a follow-up instead of being blocked while a
+  second *creation* is still blocked, options lock at Send, and a creation failure
+  restores the first submission with the follow-ups appended into the draft;
+  `docs/regression/session-turns.md` — follow-ups typed before a session id
+  exists are delivered by the launch owner in order, independently of the session
+  screen being open.
 - **Feel check:** the composer must not lose focus, text, attachments or
   keyboard when the pane behind it changes at Send. The widget test asserts
   the same `PromptInput` `State` instance survives the phase change.
@@ -610,14 +815,44 @@ the first spinner with no new state at all.
   (`module_app_ui/lib/src/features/session_list/pending_session_launch_tile.dart`)
   renders one launch in `SessionTile` geometry: the same status slot, title
   line, meta line and paddings, taken from `session_row_metrics.dart` and
-  `session_tile.dart:523-528`, so the swap changes no height. Its content is
-  open decision **D2**; its interactivity is open decision **D3**.
+  `session_tile.dart:523-528`, so the swap changes no height.
+  - **Content (D2, settled).** The first line of `submission.displayText` as the
+    title (or `/command`, or the localised attachment-only fallback), the
+    animating sparkle `SessionTile._state` (`:370-396`) already shows for a
+    running session in the status slot, the harness display name on the meta line
+    via `PregoBrandLogo.displayNameFor(pluginId)`, and **no time** — which
+    `SessionTile._time` already supports, since it returns null when
+    `session.time == null`.
+  - **Tappable, and it says why (D3, settled).** The user overrode the inert
+    recommendation: an unresponsive row reads as a bug, so the row must both
+    answer a tap and show that it is mid-creation. The lightest thing that does
+    both, and the whole of it:
+    - the meta line reads the localised "Creating…" **before** the harness name,
+      on the same single line in the same style, so the row says what is happening
+      without a second line, without a badge, and without changing its height; the
+      sparkle in the status slot is the motion that backs it up, and the trailing
+      slot stays empty, as **D2** requires;
+    - the row is tappable and answers with the ordinary press feedback a real row
+      gives, then one `PregoPopupAlertPresenter.show` (the presenter these views
+      already use) with one new localised string saying the session is still being
+      created and cannot be opened yet. Nothing navigates, nothing in the list
+      moves, and the row stays exactly where it was, so a tap costs the reader
+      nothing.
+    - On the swap, "Creating…" drops off the meta line and the time appears in the
+      trailing slot, in the same row, at the same height. The sparkle does not
+      change at all, because the real running row already shows it — the row
+      settles rather than being replaced.
+    - Still excluded: no context menu, no swipe actions, no palette entry.
+      `sessionMenuEntries` and `updateActionSession` require a real `Session` and
+      are untouched.
 - `SessionListContent` / `SessionListFilteredContent` gain
   `required List<PendingSessionLaunch> pendingLaunches` and insert those rows at
   the head of the **Today** heading, above running sessions, in
   `_sessionListRows` (`session_list_content.dart:64-89`) — the same place the
-  heading rows are already synthesised. Their relationship to the quick-filter
-  counts and the search field is open decision **D4**.
+  heading rows are already synthesised. **D4, settled:** a launch is excluded from
+  the All/Running/Unread counts, which keep describing the loaded list exactly,
+  and the row is hidden while a search query is active and in the archived filter.
+  No count path and no filter path learns about launches.
 - **The empty state must count launches.**
   `session_list_content.dart:212`'s `if (loaded.sessions.isEmpty)` renders
   `SessionEmptyState` / `archivedEmptyState`. Because launches never enter
@@ -638,14 +873,31 @@ the first spinner with no new state at all.
   the one moment the whole step exists to get right, so the plan must name a
   mechanism rather than assume the keys work out.
 
-  The mechanism: `CreatedSessionLaunch` carries both `launchId` and `sessionId`,
-  so the launch owner knows the association. While a launch entry exists, the
-  list resolves that session's row key **through the launch**, so the
-  placeholder and the real row are one item whose content changed and whose
-  height is unchanged (**D2** fixes the geometry). The entry is removed by
-  `finish` on failure, or after `promote` once the real session is present in
-  `sessions`, so the key only reverts to `ValueKey(session.id)` in a frame where
-  the row already renders the real session and nothing visible changes.
+  The mechanism has two halves, and the second exists because the first is not
+  enough on its own.
+
+  **Published, and not consumed by the handoff.** `promote` publishes the
+  `launchId`→`session` association on its own stream, which carries the created
+  **and** reconciling variants. `takeHandoff` takes only the first-message
+  payload, so the normal instant-navigation path — which reaches the detail route
+  before the independently delivered `session.created` event reaches a session
+  list — cannot destroy the association the list is about to need. This is why the
+  launch is sealed into three variants rather than being deleted at handoff.
+
+  **Latched where the jump would happen.** A list surface that is currently drawing
+  a placeholder for `launchId` records that association in its own state when it
+  arrives, and keys the real session's row by `launchId` from then on. So the
+  placeholder and the real row are one item whose content changed and whose height
+  did not (**D2** fixes the geometry), and the animated list plays no removal and
+  no insertion. The latch lives in the list because "this list already drew that
+  placeholder" is knowledge only that list has; a surface that never drew one has
+  nothing to hold still and simply inserts a new row, which is correct. It also
+  means no global "has every list reconciled?" question has to be answered, and no
+  timer is needed: a surface that was drawing the placeholder was subscribed when
+  the association was published.
+
+  `fail` removes the entry on failure, so no association is ever published for a
+  launch that produced no session.
 
   This is the most delicate mechanism in the plan and it is the only place where
   a plausible implementation could satisfy the state rules and still fail the
@@ -660,19 +912,42 @@ the first spinner with no new state at all.
   `showComposer = loaded.sessions.isEmpty || _creating` is untouched, because
   launches never enter `sessions`. Confirmed as the reason for the separate
   field.
+- **Failure after the user has left (D5, settled).** A shell-level listener on the
+  outcome stream — provided beside `SessionLaunchCubit` on both shells, so it
+  lives as long as the app — removes the row and shows **one**
+  `PregoPopupAlertPresenter` alert naming the project, through one new localised
+  string. A row that appeared and then silently vanished is exactly the
+  unexplained change the feel rules forbid. When the composing route is still
+  current it already reports the failure itself, so the alert is not shown twice:
+  the listener skips an outcome the composing cubit restored.
 - Tests: a launch adds exactly one row at the top of Today; the placeholder and
   the real row never both appear, which the sealed variants make structural; its
   removal on failure leaves the list as it was; a project whose only item is a
-  launch shows the row and **not** the empty state; archived lists never show
-  it; the row's height equals `SessionTile`'s at standard and accessibility
-  text.
+  launch shows the row and **not** the empty state; archived lists and an active
+  search never show it; the chips' counts are unchanged by a launch; tapping the
+  row shows the "still being created" alert and neither navigates nor moves the
+  list; the row's height equals `SessionTile`'s at standard and accessibility
+  text, with and without the "Creating…" prefix; a failure after the route is gone
+  removes the row and shows one alert naming the project.
+- **Regression documents, in this PR:**
+  `docs/regression/projects-and-sessions.md` — the launching row: where it
+  appears, that it leads Today, that tapping it reports the session is still being
+  created while it carries no menu or swipe actions, that it is excluded from the
+  chip counts and hidden while searching or archived, that a project whose only
+  item is a launch shows the row rather than the empty state, that it never
+  coexists with its own real row, and that a failure removes it with one alert
+  naming the project.
 - **Feel check:** the swap test asserts the y offset of the row below the
   placeholder is identical before and after, which is the mechanical proof of
   property 3.
 
 ### Step 6: The pending-launch row in the sidebar and Activity rows (Q4, part 2) (module_app_ui, desktop)
 
-The remaining row surfaces use two other widgets, so they are a separate PR.
+The remaining row surfaces use two other widgets, so they are a separate PR. Each
+carries the same settled content and behaviour as step 5's row, in its own
+geometry: the prompt's first line, the animating sparkle, "Creating…" before the
+harness name where the row has a meta line, no time, a tap that shows the "still
+being created" alert, and no menu or swipe.
 
 - **Desktop sidebar** (`desktop/lib/core/widgets/desktop_sidebar.dart`): the
   project group's `_SidebarSessionRow` list (`:766`) and the Activity group's
@@ -705,27 +980,39 @@ The remaining row surfaces use two other widgets, so they are a separate PR.
   snapshot at open time and lists real sessions only. Launches are **not**
   added there: a row you cannot open is not a useful palette entry.
 - Tests: each of the three row widgets renders a launch above its real rows;
-  the sidebar never treats a launch as selected, sticky or menu-bearing; the
+  tapping any of them shows the alert and selects nothing; the sidebar never
+  treats a launch as selected, sticky or menu-bearing; the
   phone home shows the launch and drops it on completion;
   `SessionActivityProjection`'s existing tests are untouched, which is the proof
   that the projection did not change.
+- **Regression documents, in this PR:**
+  `docs/regression/desktop-cockpit-shell.md` — the sidebar's launching row in the
+  project and Activity groups, and that it is never the selected or sticky
+  session; `docs/regression/projects-and-sessions.md` — the launching row in the
+  phone home and desktop home Activity groups.
 
-### Step 7: Reconcile regression coverage
-
-Update the affected documents and complete the cleanup audit (below).
-
-### Step 8: Run coverage and retire
+### Step 7: Run coverage and retire
 
 Run the level and matrix recorded here, record the result in `TRACKER.md`, and
 move the plan to `.plan/completed/`.
+
+There is deliberately **no** separate regression-reconciliation step. Each
+behaviour-changing step edits the regression documents its own PR makes true, as
+the repository requires, so no implementation PR can merge while the regression
+source of truth still describes the behaviour it just replaced. This step only
+confirms that the merged documents match what shipped and closes the cleanup
+audit below.
 
 ### Complexity budget
 
 New mutable parts: **one** — the `SessionLaunchStorage` map of launches, with
 its repository as sole publisher, its service as sole driver of the operation,
 and its cubit adapter. Everything else is immutable: sealed `SessionLaunch`
-values, and `launchSubmission` / `launchPluginId` / `launchFollowUps` on the
-detail loading and loaded states.
+values, sealed launch outcomes, and `launchSubmission` / `launchPluginId` /
+`launchFollowUps` on the detail loading and loaded states. The one addition
+beyond that is the row-key association a list surface latches while it is drawing
+a placeholder (step 5); it is local widget state in the widget that drew the row,
+and it exists because that widget is the only thing that knows it drew one.
 
 Justification for the one part: Q3 needs the queue to survive the route
 replacement, and Q4 needs the row to survive Back. Nothing already in the app
@@ -739,7 +1026,9 @@ dropped analytics event. Q3 and Q4 raise the cost of that gap to unsent messages
 and a permanent phantom row, so the owner moves to match the lifetime the
 operation always had.
 
-Explicitly **not** added: a second send queue (step 4 reuses `PromptSendQueue`),
+Explicitly **not** added: a second send queue type (the launch's own follow-up
+list is the only carrier until the bridge accepts a prompt, and `PromptSendQueue`
+keeps owning sends made in the session screen),
 a second copy of the follow-up list, a `submission` field on
 `NewSessionCreated`, a promptId for the first message, a synthetic `Session`, a
 `String? sessionId` on one flattened launch class, a pending session id or wire
@@ -748,39 +1037,49 @@ echo-correlation state, a bubble timeout, persistence or timers of any kind, a
 byte cap on the launch queue (see **D11**), and retaining the launch through a
 failed first load. Stop and ask if implementation seems to need any of them.
 
-## Open Decisions (for the next review page)
+## Decisions (all settled, 2026-09-26)
 
-Each has a recommended default. None is settled.
+The user answered D1 to D9 on 2026-09-26. D10 and D11 were never user questions;
+they are the plan's own recorded decisions, restated here so the implementer finds
+every decision in one place. Nothing in this plan is open. Where an answer went
+against this plan's recommendation — **D1** and **D3** — the plan follows the
+answer, the recommendation is recorded as rejected, and the consequences are
+spelled out rather than softened.
 
 ### D1. Queued follow-ups when creation fails
 
-**Recommended: keep them queued and visible as cancellable pending bubbles.**
-The first submission is restored into the composer exactly as Q2 asks, the
-error banner and duplicate-risk warning appear as today, and the follow-ups
-stay on screen above the composer as `pending(onCancel:)` bubbles. Pressing
-Send again starts a new launch that carries them, in order, behind the first
-message. Nothing is lost and nothing is merged.
+**Decided: append the follow-ups into the restored composer draft, separated by
+blank lines.** Neither discarding them nor retrying automatically was chosen.
 
-The user's suggested default — append the extras into the same composer draft
-below the first message, separated by blank lines — **loses data**, which is
-why I do not recommend it: an extra message can carry attachments, and text
-concatenation has nowhere to put them, so images typed into follow-ups would
-be silently dropped. It also merges turns the user deliberately separated,
-and a follow-up that was a slash command cannot be appended to a text draft at
-all.
+The failed launch's first submission is restored exactly as Q2 asks — text, voice
+spans, command intent, attachments — and each queued follow-up's text is appended
+below it in order, separated by a blank line, so the user ends up with one
+editable draft holding everything they had typed.
 
-Dropping them is worse still and should not be considered.
+The recommendation (keeping them as cancellable pending bubbles) is **rejected**.
+It was argued for on the grounds that appending loses data; the plan carries that
+concern into the implementation rather than leaving it to be discovered:
 
-Cost of the recommendation: the failed launch keeps its `followUps` while the
-route is current, which is strictly **less** work than converting them to
-text, because step 4 already renders exactly these bubbles. They are discarded
-when the user leaves the route, as an abandoned draft is today.
+- **Attachments are re-staged, not dropped.** A follow-up's staged attachments are
+  restored onto the composer beside the first submission's. The existing
+  per-prompt limit then applies to the merged set through the composer's existing
+  rejection surface, so an over-limit merge is something the user sees and edits,
+  never a silent loss.
+- **A command follow-up is appended as its literal `/cmd args` text.** The
+  composer holds one command intent and it belongs to the restored first
+  submission. The text stays editable and re-sendable.
+- **Merged turns are the accepted cost.** The user chose one draft over several
+  bubbles, and this plan follows that.
+
+If the route is already gone there is no composer to restore into; the follow-ups
+go with the launch and **D5** reports the failure.
 
 ### D2. What the placeholder row shows
 
-**Recommended: the same row shape as a real session row, with the first line
-of the prompt as the title, the running sparkle in the status slot, the harness
-name on the meta line, and no time.**
+**Decided: the same row shape as a real session row, with the first line
+of the prompt as the title, the sparkle in the status slot, the harness
+name on the meta line, and no time.** **D3** adds one localised word before the
+harness name on that same meta line; nothing else about this changes.
 
 - **Title** — the first line of `submission.displayText`, or `/command` for a
   command start, or the localised attachment-only fallback. Real rows show
@@ -815,13 +1114,37 @@ name on the meta line, and no time.**
 
 ### D3. Can the placeholder row be tapped?
 
-**Recommended: no. It is inert — no tap, no menu, no swipe actions.** There is
-no session to open, and `sessionMenuEntries` requires a real `Session`.
-Alternative worth weighing: tapping returns to the new-session route so the
-user can watch the bubble and keep typing. That is genuinely nicer, but the
-route may no longer exist, so it needs a re-created route seeded from the
-launch — real work for a rare tap. I would ship it inert and add the tap later
-only if the row's inertness actually annoys.
+**Decided: yes, it is tappable, and it also says on the row that it is being
+created.** The inert recommendation is **rejected** in the user's own words: an
+unresponsive row "will seem like a bug", so the row must (a) tell a tapping user
+that the session is being created and cannot be opened yet, and (b) signal that
+state in the row itself. Only the tap is in scope; swipe actions and a context
+menu remain out.
+
+The lightest design that honestly satisfies both, and all of it:
+
+- **The row says it.** The meta line reads a localised "Creating…" immediately
+  before the harness name, on the same single line, in the same style. It adds no
+  second line, no badge and no height, so **D2**'s geometry and the 70 px row
+  contract hold, and the trailing slot stays empty as **D2** requires — no
+  invented time. The sparkle already animating in the status slot is the motion
+  that backs the word up.
+- **The tap answers.** The row takes a tap with the same press feedback a real row
+  gives — so the finger gets a reaction, which is the actual complaint about
+  inertness — and then shows one `PregoPopupAlertPresenter` alert with one new
+  localised string: the session is still being created and cannot be opened yet.
+  Nothing navigates, nothing scrolls, nothing in the list moves, so the reader
+  loses their place for exactly nothing.
+- **How the swap feels.** When the real row lands, "Creating…" drops off the meta
+  line and a time appears in the trailing slot. The sparkle does not change,
+  because a freshly created session is running and already shows it. The row
+  settles into itself instead of being replaced, and the rows below it do not move.
+- **Still excluded:** no context menu, no swipe actions, no command-palette entry.
+  `sessionMenuEntries` and `updateActionSession` keep requiring a real `Session`.
+- **Not chosen:** re-creating the new-session route from the launch so a tap could
+  return to the composer. It needs a rebuilt route for a rare tap, and **D4** keeps
+  this row out of search and archived views anyway. It stays available later if
+  the alert proves annoying.
 
 ### D4. The placeholder, the quick-filter chips and search
 
@@ -829,13 +1152,13 @@ only if the row's inertness actually annoys.
 carry "exact counts from the loaded list", and the phone search field "narrows
 the loaded titles without a request".
 
-**Recommended: the placeholder is excluded from all three chip counts, and is
+**Decided: the placeholder is excluded from all three chip counts, and is
 hidden while a search query is active or the archived filter is on.** It is not
 a loaded session, so counting it would make the chips disagree with the list
-they describe; and a row that ignores the user's search would read as a bug.
-Alternative: count it under Running and match it against the query by its
-prompt text. That is defensible but adds the launch to three count paths and a
-filter path for a row that lives for a few seconds.
+they describe; and a row that ignores the user's search would read as a bug. The
+alternative — counting it under Running and matching it against the query — is
+**not** taken: it would add the launch to three count paths and a filter path for a
+row that lives for a few seconds.
 
 Related and **not** optional: the list's **empty state** must treat a pending
 launch as content, because a project's first session is the commonest path
@@ -850,21 +1173,22 @@ session will appear in the list once it's launched") and a later failure is
 silent, because nothing had been promised. With Q4 a row is now visibly
 promising that session in every list.
 
-**Only the product half of this is an open question.** The architectural half is
-already settled in the plan and is not up for review: the observer of a late
-outcome is `SessionLaunchService`, not the closed `NewSessionCubit`. Without
-that, neither option below could be implemented, because nothing would be alive
-to notice.
+Only the product half of this was ever a question. The architectural half was
+already settled in the plan: the observer of a late outcome is the launch owner,
+not the closed `NewSessionCubit`. Without that, neither option below could be
+implemented, because nothing would be alive to notice.
 
-**Recommended: remove the row and show one popup alert naming the project**,
-through the existing `popupAlertPresenter`, with one new localised string. A row
-that appears and then silently vanishes is the kind of unexplained change the
-feel rules forbid. Alternative: stay silent and just remove the row — cheaper,
-and arguably fine because the user chose to leave.
+**Decided: remove the row and show one popup alert naming the project**,
+through the existing `PregoPopupAlertPresenter`, with one new localised string. A
+row that appears and then silently vanishes is the kind of unexplained change the
+feel rules forbid. Staying silent is **not** chosen. The alert is shown by a
+shell-level listener on the launch outcome stream (step 5), and is suppressed when
+the composing route is still current and has already reported the failure itself,
+so a user who never left sees exactly one message.
 
 ### D6. More than one launch at a time
 
-**Recommended: support several concurrent launches, each with its own row.**
+**Decided: support several concurrent launches, each with its own row.**
 Desktop makes this easy to reach (the home composer and a project composer are
 separate surfaces), and the cost is a map instead of a field. The alternative,
 a single slot, would make the second launch erase the first's row and queue.
@@ -878,11 +1202,11 @@ released during launch — the comment at `new_session_view.dart:550-556` says
 so explicitly. Keeping the composer mounted (Q3) keeps the voice cubit alive
 through creation.
 
-**Recommended: accept it.** The composer being usable is the point of Q3, and
-the resources are released when the route is replaced or the user leaves, which
-is within seconds. Alternative: keep voice specifically disabled while sending
-— but then the user can type a follow-up and not dictate one, which is a
-confusing partial capability.
+**Decided: voice stays available while creating.** The composer being usable is
+the point of Q3, and the resources are released when the route is replaced or the
+user leaves, which is within seconds. Disabling voice specifically while sending is
+**not** chosen: being able to type a follow-up but not dictate one is a confusing
+partial capability.
 
 ### D8. The desktop composer moves at Send
 
@@ -891,27 +1215,29 @@ On desktop the idle composer sits inline in a centred, scrolling column
 bottom-anchored. With Q3 keeping it mounted, it must move from the centre to
 the bottom at Send.
 
-**Recommended: accept the move and animate it once**, as the transition that
-explains "this is now a session", using the standard 240 ms and
-`Duration.zero` under reduced motion. The move is unavoidable — the composer
-has to end up at the bottom — so the only question is whether it happens
-visibly at Send or invisibly during the later route replacement. Doing it at
-Send, animated, is the honest version. Phone is unaffected: its composer is
-already bottom-anchored in both branches.
+**Decided: the move happens at Send and is animated once**, as the transition
+that explains "this is now a session", at 240 ms, with no animation under reduced
+motion. The move is unavoidable — the composer has to end up at the bottom — so
+the only question was whether it happens visibly at Send or invisibly during the
+later route replacement, and doing it at Send, animated, is the honest version.
+The page chrome the pane carries while idle is hidden in the same moment (step 4),
+so the pane becomes session-shaped in one movement rather than two. Phone is
+unaffected: its composer is already bottom-anchored in both branches.
 
 ### D9. Options stay locked while creating
 
-**Recommended: yes, locked** — harness, agent, model, variant and worktree
+**Decided: locked at Send** — harness, agent, model, variant and worktree
 mode cannot change once Send commits them to the request in flight, and
-follow-ups inherit them. Only text, attachments and command entry are live.
+follow-ups inherit them. Only text, attachments and command entry stay live.
 This also keeps the existing behaviour where an options refresh arriving
-mid-send is dropped. The alternative, letting the user change the model for the
-queued follow-ups only, would mean the page shows one selection while two
-different ones are in flight.
+mid-send is dropped. Letting the user change the model for the queued follow-ups
+only is **not** chosen: the page would show one selection while two different ones
+were in flight.
 
 ### D10. Follow-ups do not use the positional release
 
-**Recommended: only the first message is released by position**; follow-ups
+**Recorded (plan decision, not a user question): only the first message is
+released by position**; follow-ups
 carry real promptIds and settle through the existing promptId matching in
 `SessionDetailMessageList`. Stated here because it is easy to get wrong during
 implementation: applying the positional rule to follow-ups would drop the
@@ -924,7 +1250,8 @@ wrong bubble.
 ceiling on the total across queued items. N follow-ups can therefore pin N ×
 up to 50 MB while creation runs.
 
-**Recommended: add no cap**, matching the existing session queue exactly.
+**Recorded (plan decision, not a user question): add no cap**, matching the
+existing session queue exactly.
 Adding one here would invent a limit new sessions have and existing sessions
 do not, for a window of a few seconds, with no observed failure. Recorded so a
 later reviewer does not reopen it without evidence.
@@ -938,10 +1265,11 @@ later reviewer does not reopen it without evidence.
   warning on uncertain failure stays. See the later phase.
 - **Navigating away mid-creation:** creation continues in
   `SessionLaunchService`, which outlives the route, so the launch reaches
-  `promote` or `finish` either way. The placeholder row stays in the lists until
-  it does, the queued follow-ups still drain when the session screen is opened
-  later, and the analytics outcome is still reported — none of which is true
-  today. The existing alert still fires. Failure handling is **D5**.
+  `promote` or `fail` either way. The placeholder row stays in the lists until it
+  does, the queued follow-ups are delivered by the service without needing any
+  screen to be open, and the analytics outcome is still reported — none of which
+  is true today. The existing alert still fires. Failure handling is **D5**: the
+  row goes and one alert names the project.
 - **Navigating back to New Session:** a fresh cubit and composer. The in-flight
   launch is unaffected and keeps its own row.
 - **Deep links and restoration:** the launch lookup is by session id and
@@ -960,8 +1288,13 @@ later reviewer does not reopen it without evidence.
 - **Process death during launch:** the launch, its bubble, its queue and its
   row are all in memory only, so they are lost, exactly as an unacknowledged
   send is today. No persistence is added.
-- **A follow-up fails after the session exists:** it is an ordinary queued send
-  by then, so the existing `holdFailedSend` / retry / remove surfaces own it.
+- **A follow-up is rejected before the bridge accepts it:** it stays on the
+  launch with its reason, and the session screen renders it as a failed bubble
+  whose retry and remove act on the launch. Once accepted, it is an ordinary
+  prompt and the existing `holdFailedSend` / retry / remove surfaces own it.
+- **A creation failure with follow-ups queued:** **D1** — the first submission is
+  restored and the follow-ups are appended into the same draft, blank-line
+  separated, with their attachments re-staged.
 
 ## Cleanup Assessment
 
@@ -1007,14 +1340,17 @@ compatibility paths were found: no step changes persistence or the wire.
 
 | Step | Exact PR title | Scope | Size |
 |---|---|---|---|
-| 1/8 | `🌿 [instant-new-session] Plan opening new sessions instantly [step 1/8]` | This plan and `TRACKER.md`; remove the superseded `instant-session-launch` plan. | docs only |
-| 2/8 | `⚙️ [instant-new-session] Show the first message while a new session is created [step 2/8]` | Step 2 design: session-shaped creating view on every surface, `displayText`, the submission-model relocation, 180 s create timeout, tests. | 500–700 |
-| 3/8 | `🚧 [instant-new-session] Hand the first message off to the session screen [step 3/8]` | Step 3 design: the launch owner family including `SessionLaunchService`, `NewSessionCubit` handing creation over, detail state, the single release funnel, detail presentation, transition-free phone swap, tests. | 850–1,150 |
-| 4/8 | `🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 4/8]` | Step 4 design: gate split, follow-ups owned by the launch, shared `generatePromptId`, composer mounted in both sending branches, follow-ups carried through the detail load, drain into `PromptSendQueue`, tests. | 700–950 |
-| 5/8 | `⚙️ [instant-new-session] Show a launching row in the session lists [step 5/8]` | Step 5 design: launch stream and cubit, shell providers, `PendingSessionLaunchTile`, the three `SessionTile` hosts, tests. | 550–750 |
-| 6/8 | `⚙️ [instant-new-session] Show a launching row in the sidebar and Activity [step 6/8]` | Step 6 design: two sidebar rows, pending `ActivityTile` variant, rail popout provider, the phone and desktop home hosts, tests. | 450–650 |
-| 7/8 | `🌱 [instant-new-session] Reconcile new-session regression coverage [step 7/8]` | Update the affected regression documents and complete the cleanup audit. | 150–300 |
-| 8/8 | `🌿 [instant-new-session] Run new-session coverage and retire the plan [step 8/8]` | Run the matrix below, record it in `TRACKER.md`, and move the plan to `.plan/completed/`. | docs only |
+| 1/7 | `🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7]` | This plan and `TRACKER.md`; remove the superseded `instant-session-launch` plan. | docs only |
+| 2/7 | `⚙️ [instant-new-session] Show the first message while a new session is created [step 2/7]` | Step 2 design: session-shaped creating view on every surface, `displayText`, the submission-model relocation, 180 s create timeout, tests, its regression-document edits. | 550–750 |
+| 3/7 | `🚧 [instant-new-session] Hand the first message off to the session screen [step 3/7]` | Step 3 design: the launch owner family including `SessionLaunchService` and the typed outcome stream, `NewSessionCubit` handing creation over, detail state, the single release funnel, detail presentation, transition-free phone swap, tests, its regression-document edits. | 900–1,200 |
+| 4/7 | `🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 4/7]` | Step 4 design: gate split, follow-ups owned by the launch, shared `generatePromptId`, composer mounted in both sending branches with the desktop move and chrome hiding, service-owned delivery, failure appending into the draft, tests, its regression-document edits. | 750–1,000 |
+| 5/7 | `⚙️ [instant-new-session] Show a launching row in the session lists [step 5/7]` | Step 5 design: row and association streams, `SessionLaunchCubit`, shell providers and the failure alert listener, `PendingSessionLaunchTile` with its tap, the three `SessionTile` hosts, tests, its regression-document edits. | 600–800 |
+| 6/7 | `⚙️ [instant-new-session] Show a launching row in the sidebar and Activity [step 6/7]` | Step 6 design: two sidebar rows, pending `ActivityTile` variant, rail popout provider, the phone and desktop home hosts, tests, its regression-document edits. | 500–700 |
+| 7/7 | `🌿 [instant-new-session] Run new-session coverage and retire the plan [step 7/7]` | Run the matrix below, record it in `TRACKER.md`, confirm the merged regression documents match what shipped, and move the plan to `.plan/completed/`. | docs only |
+
+Regression documents travel with the step that changes behaviour, which is why
+there is no separate reconciliation PR: each implementation PR leaves the
+regression source of truth true about the app as merged.
 
 Every implementation step is independently valid and independently valuable:
 
@@ -1032,16 +1368,16 @@ and would delay the most valuable and least risky half of the feature behind
 the more contentious half.
 
 Every step is comfortably inside the ~1,500-line soft cap, and steps 3 and 4
-are deliberately held near 1,000 because they carry the cross-layer and
+are deliberately held near 1,000 to 1,200 because they carry the cross-layer and
 state-machine risk.
 
 **Pre-approved split if step 3 runs long.** Step 3 is the largest step and now
 carries the launch-owner family as well as the detail-side handoff. If the real
-diff passes about 1,150 lines, split it into `3.a` (the launch owner family plus
+diff passes about 1,200 lines, split it into `3.a` (the launch owner family plus
 `NewSessionCubit` handing creation over to the service, with the new-session
 surface as its first reader) and `3.b` (the detail-side handoff: state fields,
 the release funnel, presentation, and the phone transition), renumber the series
-to nine steps, and update this table and `TRACKER.md`. A clean split of already
+to eight steps, and update this table and `TRACKER.md`. A clean split of already
 approved work needs no permission. The two halves are not merged the other way
 round: the owner family without any reader would be dead code.
 
@@ -1061,8 +1397,11 @@ round: the owner family without any reader would be dead code.
 
 ### Regression documents
 
-- `docs/regression/session-creation-and-options.md` (primary). Three existing
-  rules change materially:
+Each document is edited by the step that makes its new text true, named in that
+step's design above. Nothing here waits for a later PR.
+
+- `docs/regression/session-creation-and-options.md` (primary; steps 2, 3 and 4).
+  Three existing rules change materially:
   - "Send immediately replaces the composer with detail-shaped launch status
     while the unresolved URI remains `/projects/<projectId>/sessions/new`.
     Duplicate Send is blocked." — Send now shows the sending bubble and
@@ -1070,24 +1409,31 @@ round: the owner family without any reader would be dead code.
     blocked, while a second *creation* is still blocked.
   - "A creation failure on the still-current route restores the exact submitted
     text/voice spans, command intent, and memory-only attachment identities
-    once …" — extended by whatever **D1** settles.
+    once …" — extended by **D1**: any queued follow-ups are appended into that
+    same restored draft, blank-line separated and in order, with their
+    attachments re-staged and a command follow-up appended as literal text.
   - The L3 row's "Send immediately renders launch status at the unresolved
     route, blocks duplicate submit, and replaces with the durable session"
     becomes the sending bubble, the launch handoff, the positional release, the
     follow-up queue and the 180 s timeout.
-- `docs/regression/projects-and-sessions.md`: the launching row, where it
-  appears, that it leads Today, that it is not selectable or actionable, that a
-  project whose only item is a launch shows the row rather than the empty state,
-  that it never coexists with its own real row, and its relationship to the
-  chips and search (**D4**).
-- `docs/regression/session-turns.md`: the launch row in the transient-row
-  ordering, and that follow-ups queued before a session id exists drain through
-  the ordinary local queue.
-- `docs/regression/navigation-transitions.md`: the transition-free
+- `docs/regression/projects-and-sessions.md` (steps 5 and 6): the launching row,
+  where it appears, that it leads Today, that tapping it reports the session is
+  still being created while it carries no menu or swipe actions and never becomes
+  the selected session, that its meta line names the harness after "Creating…" and
+  shows no time, that a project whose only item is a launch shows the row rather
+  than the empty state, that it never coexists with its own real row, that it is
+  excluded from the chip counts and hidden while searching or archived (**D4**),
+  and that a failure removes it with one alert naming the project (**D5**).
+- `docs/regression/session-turns.md` (steps 3 and 4): the launch bubble in the
+  transient-row ordering and its positional release, and that follow-ups typed
+  before a session id exists are delivered in order by the launch owner whether or
+  not the session screen is open.
+- `docs/regression/navigation-transitions.md` (step 3): the transition-free
   created-session replacement. Its existing rule already requires the
   new-session page to change in place without a fade when its first prompt
   turns it into the session, so this is a confirmation rather than a new claim.
-- `docs/regression/desktop-cockpit-shell.md`: the sidebar's launching row.
+- `docs/regression/desktop-cockpit-shell.md` (step 6): the sidebar's launching
+  row.
 - `docs/HARNESS_CAPABILITIES.md`: no entry. Nothing here is harness-specific;
   every harness gets all of it.
 
@@ -1107,11 +1453,18 @@ list composition, and each plugin's first-message echo.
   OpenCode start is the best case for watching the bubble, the live composer
   and the placeholder row all at once.
 - **Follow-ups:** queue two follow-ups during a cold create, confirm they send
-  in order after the session exists, and confirm one can be cancelled before
-  it does.
+  in order after the session exists, confirm one can be cancelled before it does,
+  and repeat the run leaving the route immediately after queueing them — they must
+  still send, with no session screen ever opened.
+- **The launching row:** tap it and confirm the alert says the session is still
+  being created, that nothing navigates and the list does not move, and that the
+  row reads "Creating…" before the harness name until the real row takes over.
 - **Failure:** definitive rejection, and response loss or timeout, restore the
-  exact draft with the warning and remove the placeholder row. Also cover Back
-  mid-creation, and failure after leaving the route (**D5**).
+  exact draft with the warning and remove the placeholder row; with follow-ups
+  queued, confirm they arrive appended into that draft in order with their
+  attachments re-staged (**D1**). Also cover Back mid-creation, and failure after
+  leaving the route, which must remove the row and show exactly one alert naming
+  the project (**D5**).
 - **Acceptance is structural:** the bubble appears in the first sending frame;
   no frame between Send and the echo lacks the message or shows a spinner or
   "No messages yet"; the bubble's rect and its harness name are unchanged across
@@ -1128,6 +1481,15 @@ list composition, and each plugin's first-message echo.
 - The positional release could drop the first bubble early if a different user
   message echoed first. No current plugin can do that before the initial
   dispatch, and the outcome self-corrects.
+- Two accepted losses of the bubble, both client-side only and neither losing the
+  message itself: a first message that is a command producing no transcript entry
+  (a Pi notification-only command) leaves the bubble reading "Sending" until the
+  session screen is reopened, and a first load that ends in the failed or
+  harness-unavailable state drops the bubble, in a state that explains itself. No
+  echo correlation, bubble timeout or extra state is added for either.
+- **D1** merges turns on a failed creation. The follow-ups arrive appended into one
+  draft rather than as separate messages, and a command follow-up arrives as text.
+  This is the user's decision, taken with the trade-off stated.
 - A 180 s timeout means a genuinely lost response surfaces later. Back stays
   available throughout, and the placeholder row makes the wait visible
   elsewhere in the app.
@@ -1138,12 +1500,17 @@ list composition, and each plugin's first-message echo.
   create (**D11**). Accepted, matching the existing session queue.
 - Steps 5 and 6 touch four different row widgets across two shells. That is the
   real cost of Q4, and it is why the row work is two PRs rather than one.
-- Step 3 moves the create call out of `NewSessionCubit` into a service. That is
-  the largest behavioural risk in the plan, because it touches the success,
-  failure, restoration and analytics paths of the one flow that creates
-  sessions. It is also what makes Q3 and Q4 implementable at all. The mitigation
-  is that the observable contract does not change: the same phases, the same
-  restoration, the same two analytics events with the same parameters.
+- Step 3 moves the create call out of `NewSessionCubit` into a service, and step 4
+  moves follow-up delivery there too. That is the largest behavioural risk in the
+  plan, because it touches the success, failure, restoration and analytics paths of
+  the one flow that creates sessions, and it makes the service, not a screen,
+  responsible for messages actually being sent. It is also what makes Q3 and Q4
+  implementable at all. The mitigation is that the observable contract does not
+  change: the same phases, the same restoration, the same selection cleanup, the
+  same two analytics events with the same parameters, and the same failure log.
 - The placeholder-to-real row swap depends on animated-list item identity, which
   is the one mechanism in this plan that could pass every state test and still
-  visibly jump. Step 5's offset assertion is the gate, and a fallback is named.
+  visibly jump. It now rests on two things that have to hold together: the
+  association surviving the handoff, and each list latching it while it draws a
+  placeholder. Step 5's offset assertion is the gate, and a no-animation fallback
+  for the swapping pair is named.
