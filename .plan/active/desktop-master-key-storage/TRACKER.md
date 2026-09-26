@@ -34,7 +34,7 @@
 | 4.d — Both-client cutover | Merged | #1751; architecture approved, 24 reconciled shell cases plus retained auth/core evidence, README feedback fixed and 34 passing checks. |
 | 5 — Regression reconciliation | Merged | #1758; explicit replacement on all three desktops, 139 authored lines, 7 checks passed at readiness. |
 | 5.a — Failed-import reset follow-up | Merged | #1779 (PR 12), `8fe13f3`; later changes allowed stale-session exceptions, rejected by user. |
-| 5.b — Durable recovery intent | Verified locally | PR 13; 134 focused cases, four owning analyses. Reset-only intent, blocked secrets until completion, obsolete exceptions removed. Implementation review pending. |
+| 5.b — Durable recovery intent | Verified locally | PR 13; 134 focused cases, four owning analyses. Reset-only intent, blocked secrets until completion, obsolete exceptions removed. Architecture review `77c2c6f9` approved `83a00c8..498200d` (19 paths, 482 authored lines). |
 | 6 — Required qualification/retirement | Partial / blocked | PR 14; checkpoint `975e286` retains mobile/signed-macOS evidence. Missing native matrix still blocks retirement. |
 
 ## Decisions and code-informed constraints
