@@ -3,7 +3,8 @@
 ## Execution
 
 - Status: #1751 and regression reconciliation #1758 merged. Native qualification
-  is partial. The user-requested failed-import reset follow-up is in progress.
+  is partial. The user-requested failed-import reset follow-up is verified and
+  architecture-approved, ready for PR delivery.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
@@ -32,7 +33,7 @@
 | 4.c — Startup recovery | Merged | #1749; eight tests, three analyses, architecture approval and 22 passing checks; no storage cutover. |
 | 4.d — Both-client cutover | Merged | #1751; architecture approved, 24 reconciled shell cases plus retained auth/core evidence, README feedback fixed and 34 passing checks. |
 | 5 — Regression reconciliation | Merged | #1758; explicit replacement on all three desktops, 139 authored lines, 7 checks passed at readiness. |
-| 5.a — Failed-import reset follow-up | In progress | PR 12; scoped reset to normal login, analytics policy, tests and regression guidance. Plan review approved; implementation review pending. |
+| 5.a — Failed-import reset follow-up | Verified / approved | PR 12; 77 focused cases, four analyses, generated localization, fixture visuals and architecture approval. |
 | 6 — Required qualification/retirement | Partial / blocked | PR 13; checkpoint `975e286` retains mobile/signed-macOS evidence. Missing native matrix still blocks retirement. |
 
 ## Decisions and code-informed constraints
@@ -233,3 +234,12 @@
   errors: native-key invalidation must not be skipped when SQL deletion fails.
   Fresh-instance tests prove surviving ciphertext cannot restore with the new key.
   No native adverse-state/reset, hardware restore or final qualification is claimed.
+- Implementation review `ba733ea6-4935-45fe-8740-ef7632798ebf` approved exact
+  `b1d4c57..6a32232` (38 paths, 1,098 lines: 1,079 authored and 19 generated),
+  without architectural violations. B-Client applied; B-Bridge/B-Shared skipped.
+- Two font-loaded normal-login/email-form previews passed and were inspected in
+  light/dark themes. Fixture-only images/GIF are on `pr-media` at `bd7f0d6934`;
+  they do not demonstrate native migration or a real authentication request.
+- Before resuming qualification, update its retained native fixture's
+  `_NoLegacyReads` for the new `clear()` capability without reseeding or erasing
+  retained slot data. Required new reset/native adverse-state coverage remains.
