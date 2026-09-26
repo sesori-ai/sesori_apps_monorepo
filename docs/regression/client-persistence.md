@@ -50,12 +50,15 @@ desktop do not resolve it. No coding plugin participates.
 - Production admission occurs after lazy platform/persistence/auth/core
   registration and before analytics runtime creation, auth restoration, deep
   links or preference reads. Development must not even construct the source.
-- On caught import failure, independently attempt scoped secret reset, atomic
-  primitive-table clearing and old-native-namespace clearing before normal
-  logged-out startup. The new master belongs to a separate namespace. Attempt
-  completion even after cleanup failure to fence stale legacy auth on relaunch.
-  Log the original and each cleanup failure, preserving cause/stack without
-  exposing stored payloads. No automatic retry or blocking recovery screen.
+- On caught import failure, attempt scoped secret reset and atomic primitive
+  clearing before normal logged-out startup. If secret reset fails, preserve the
+  remaining source and leave import retryable on cold launch; never mark partial
+  destination state handled. After secret reset succeeds, clear the old namespace
+  and attempt completion even after preference/source cleanup failure. The new
+  master belongs to a separate namespace. No automatic retry or blocking screen.
+- Install the app file sink before migration. Log the original and each recovery
+  failure, including underlying native/SQL messages/codes and both reset stacks.
+  Exclude parser source buffers containing values/keys, not all diagnostic details.
 - Successful reset allows fresh login. Normal account/server analytics preferences
   apply; the user accepted losing pending local-only opt-out on this destructive
   path. Persistent storage denial can still reject normal reads/writes; recovery
@@ -131,7 +134,9 @@ channel mocks and old-format package evidence do not establish the L3/L4 matrix.
   any recovery losing useful diagnostic cause/stack or exposing stored payloads.
 - Development consuming production legacy data, consumers starting before import/
   reset attempts finish, a recovered failure stranding the login screen, or a
-  failed reset reusing the old cached key to restore partial auth.
+  failed reset reusing the old cached key or being marked handled so a cold launch
+  trusts partial auth without retrying migration. Recovery diagnostics missing
+  from the app file, losing useful causes, or exposing parser source buffers.
 - Android restoring unusable ciphertext/credential envelopes without their
   Keystore keys, or an iOS restore losing the usable database/master pairing.
 

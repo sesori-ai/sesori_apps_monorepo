@@ -224,19 +224,72 @@ void main() {
     ]);
   });
 
-  test("denied key reset remains cached but cleanup and logged-out reads continue", () async {
+  test("denied key reset remains cached and retains the source for retry", () async {
     final fixture = await MigrationFixture.create(values: _values);
     addTearDown(fixture.dispose);
     fixture.master.writeFailure = StateError("fixture native denial");
     await fixture.service.migrate();
-    expect(fixture.source.values, isEmpty);
+    expect(fixture.source.values, _values);
+    expect(fixture.source.clears, 0);
     expect(await fixture.secrets.read(key: AuthSecretKey.accessToken), isNull);
-    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), true);
+    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), isNull);
     expect(logs.records.map((e) => e.diagnosticError), [contains("copyValues"), contains("resetSecrets")]);
     await expectLater(
       fixture.secrets.write(key: AuthSecretKey.accessToken, value: "new"),
       throwsA(isA<ParallelWaitError<Object?, Object?>>()),
     );
+  });
+  test("dual reset failure retains the source and retries on cold launch instead of trusting partial auth", () async {
+    final fixture = await MigrationFixture.create(values: _values);
+    addTearDown(fixture.dispose);
+    await fixture.secrets.write(key: AuthSecretKey.accessToken, value: "partial-auth");
+    final oldMaster = fixture.master.value;
+    await fixture.database.customStatement("""
+      CREATE TEMP TRIGGER reject_reset BEFORE DELETE ON encrypted_values
+      BEGIN SELECT RAISE(ABORT, 'fixture SQL reset denied'); END;
+    """);
+    fixture.source.readFailure = (error: StateError("source unavailable"), stackTrace: StackTrace.current);
+    fixture.master.writeFailure = StateError("fixture native reset denied");
+    await fixture.service.migrate();
+    expect(fixture.master.value, oldMaster);
+    expect(await fixture.database.select(fixture.database.encryptedValues).get(), hasLength(1));
+    await expectLater(
+      fixture.secrets.read(key: AuthSecretKey.accessToken),
+      throwsA(isA<ParallelWaitError<Object?, Object?>>()),
+    );
+    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), isNull);
+    expect(fixture.source.values, _values);
+    expect(fixture.source.clears, 0);
+    final diagnostic = logs.records.last.formatted;
+    expect(diagnostic, contains("ciphertext reset"));
+    expect(diagnostic, contains("fixture SQL reset denied"));
+    expect(diagnostic, contains("master replacement"));
+    expect(diagnostic, contains("fixture native reset denied"));
+    expect(diagnostic, contains("FakeMasterKeyStore.write"));
+
+    // Closing drops the temporary SQL failure. Native writes become available;
+    // source failure still requires reset, which a premature marker would skip.
+    await fixture.reopen();
+    fixture.master.writeFailure = null;
+    await fixture.service.migrate();
+    expect(fixture.source.reads, 2);
+    expect(fixture.source.clears, 1);
+    expect(await fixture.secrets.read(key: AuthSecretKey.accessToken), isNull);
+    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), true);
+  });
+
+  test("storage diagnostics unwrap causes but omit parser source buffers", () {
+    final error = LegacyStorageMigrationException(
+      operation: LegacyStorageMigrationOperation.resetSecrets,
+      innerError: const StorageException(
+        operation: StorageOperation.decodeMasterKey,
+        innerError: FormatException("Invalid character", "private-encoded-master", 3),
+      ),
+      innerStackTrace: StackTrace.current,
+    );
+    expect(error.toString(), contains("decodeMasterKey"));
+    expect(error.toString(), contains("Invalid character (at offset 3)"));
+    expect(error.toString(), isNot(contains("private-encoded-master")));
   });
 }
 

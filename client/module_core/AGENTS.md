@@ -72,8 +72,10 @@ auth restoration or preferences. Development and desktop never resolve it.
 Shared storage remains below core in `module_persistence`; permanent domain
 keys live in `foundation/persistence/`. The migration service logs import failure,
 resets destination secrets/preferences and the old native namespace, then attempts
-to mark migration handled before allowing normal logged-out startup. Each cleanup
-failure stays logged. Normal account/server analytics rules apply after reset.
+to mark migration handled before allowing normal logged-out startup. Failed secret
+reset preserves the remaining source and leaves import retryable on relaunch.
+The shell installs the file sink first; recovery diagnostics retain native/SQL
+causes while excluding parser source buffers. Normal account analytics rules apply.
 
 ## Logging
 

@@ -33,7 +33,7 @@
 | 4.c — Startup recovery | Merged | #1749; eight tests, three analyses, architecture approval and 22 passing checks; no storage cutover. |
 | 4.d — Both-client cutover | Merged | #1751; architecture approved, 24 reconciled shell cases plus retained auth/core evidence, README feedback fixed and 34 passing checks. |
 | 5 — Regression reconciliation | Merged | #1758; explicit replacement on all three desktops, 139 authored lines, 7 checks passed at readiness. |
-| 5.a — Failed-import reset follow-up | In review | #1779 (PR 12); 131 focused cases across local suites, six analyses, generated localization, fixture visuals and architecture approval. |
+| 5.a — Failed-import reset follow-up | In review | #1779 (PR 12); 148 focused cases across local suites, six analyses, generated localization and fixture visuals. Review follow-up verification recorded below. |
 | 6 — Required qualification/retirement | Partial / blocked | PR 13; checkpoint `975e286` retains mobile/signed-macOS evidence. Missing native matrix still blocks retirement. |
 
 ## Decisions and code-informed constraints
@@ -65,11 +65,11 @@
   secrets/preferences/legacy data, replace the master and continue logged out.
   Normal account/server analytics preferences apply; pending local-only opt-out
   may be lost. No separate consent flag or blocking recovery screen.
-- Recovery attempts completion even after cleanup failure to fence stale source
-  auth when the marker succeeds. Each failure stays logged. Failed secret reset
-  stays cached, preventing partial auth restoration in that process. Permanent
-  native/SQL denial can still fail normal persistence; this is not guaranteed
-  successful erasure when storage cannot be changed.
+- Recovery retires source/attempts completion only after secret reset succeeds;
+  failed reset preserves the remaining source and leaves import retryable on cold
+  launch. Preference/source cleanup errors stay logged. The file sink is installed
+  before migration, with underlying native/SQL diagnostics retained and parser
+  source buffers omitted. Permanent denial is never reported as successful erasure.
 - Desktop is unpublished: sign out in the old build before cutover, then sign in
   once. No legacy desktop migration, automatic old-Keychain cleanup or claims
   that new local logout revokes old internal builds' separate sessions.
@@ -248,3 +248,14 @@
   fixtures. Both now clear their in-memory maps. Their 53/1 cases and owning
   analyses pass; production code is unchanged from the approved implementation.
   This adds 54 focused cases to the previous 77, not a fresh full-matrix run.
+- Current-head CI passed 21 checks at `5f0c5a9`; Codex then identified missing
+  file-sink admission, suppressed diagnostic causes and unsafe completion after
+  failed secret reset. Corrections install the existing sink before import,
+  retain native/SQL messages and both reset stacks while omitting parser source
+  buffers, and preserve remaining source/leave import retryable when reset fails.
+  No new persistent flag, coordinator or fallback store was added.
+- Review-fix verification: 14 migration and 26 mobile startup/DI/channel/file-log
+  cases pass, with clean core/mobile analyses. Retain the unchanged persistence
+  54, auth 53 and desktop one-case evidence: 148 unique latest-per-suite cases,
+  not a full-matrix rerun. The file-sink assertion reads an actual temporary log;
+  the dual-reset-failure fixture retries on a fresh repository before auth.

@@ -258,14 +258,14 @@ itself make retained public upgrade compatibility safe to delete.
 - This is idempotent restart recovery, not a resumable job framework: one final
   marker, no per-key progress records, native mirror, fallback reads, dual
   writes, timers or background retries. No SQL transaction spans native access.
-- Log caught failure through `LegacyStorageMigrationException` with its original
-  cause/stack and payload-free presentation. Independently attempt scoped secret
-  reset (attempt ciphertext clearing and replacement-master save independently,
-  retaining both errors so SQL failure cannot skip key invalidation), atomic primitive
-  clearing, and clearing the legacy namespace. Log every cleanup failure.
-- Attempt completion even if cleanup failed, fencing surviving legacy auth when
-  that marker succeeds. Reset replaces the shared repository's cached key future;
-  its failure stays cached so partial auth cannot restore in that process.
+- Install the mobile file log sink before migration. Its typed diagnostic wrapper
+  retains native/SQL messages and both reset stacks, omitting only parser source
+  buffers. Attempt ciphertext clearing and replacement-master save independently;
+  then attempt atomic primitive clearing. Log every failure.
+- Failed secret reset retains the remaining legacy source and leaves import
+  retryable on cold launch, not marked handled. Only after secret reset succeeds,
+  clear the old namespace and attempt completion even if preference/source cleanup
+  failed. The cached reset future also prevents in-process partial auth restoration.
 - Continue normal logged-out startup after recovery. Successful reset permits
   fresh login and normal account/server analytics preferences; no new consent
   flag or alternate store. Persistent native/SQL denial can still fail ordinary

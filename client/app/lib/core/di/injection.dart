@@ -31,6 +31,8 @@ Future<AnalyticsRuntimeBootstrap> configureDependencies({
   configurePersistenceDependencies(getIt: getIt);
   configureAuthDependencies(getIt);
   configureCoreDependencies(getIt);
+  // Recovery continues startup, so retain its diagnostics in the app log too.
+  setLogSink(sink: getIt<LogSink>());
   if (getIt<PersistenceScope>() == PersistenceScope.production) {
     // COMPATIBILITY 2026-09-25 (v1.9.1): retain this deprecated import until
     // supported direct upgrades exclude all per-value-native production builds.

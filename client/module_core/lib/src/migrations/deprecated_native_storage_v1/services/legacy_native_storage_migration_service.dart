@@ -50,9 +50,14 @@ class LegacyNativeStorageMigrationService({
     } on Object catch (error, stackTrace) {
       _logFailure(operation: operation, error: error, stackTrace: stackTrace);
       // A failed upgrade must not strand the app on a blocking recovery screen.
-      // Each independent cleanup is attempted even if another store is denied.
-      await _recover(operation: LegacyStorageMigrationOperation.resetSecrets, action: secrets.reset);
+      final secretsReset = await _recover(
+        operation: LegacyStorageMigrationOperation.resetSecrets,
+        action: secrets.reset,
+      );
       await _recover(operation: LegacyStorageMigrationOperation.clearPreferences, action: persister.clear);
+      // Do not discard the remaining source or trust partial destination rows
+      // on a cold launch when reset failed. Leave the import/reset retryable.
+      if (!secretsReset) return;
       await _recover(operation: LegacyStorageMigrationOperation.clearSource, action: source.clear);
       // Also retire an unreadable/undeletable source: it must not resurrect old
       // auth after a fresh login. Failure to persist this decision stays logged.
@@ -63,14 +68,16 @@ class LegacyNativeStorageMigrationService({
     }
   }
 
-  Future<void> _recover({
+  Future<bool> _recover({
     required LegacyStorageMigrationOperation operation,
     required Future<void> Function() action,
   }) async {
     try {
       await action();
+      return true;
     } on Object catch (error, stackTrace) {
       _logFailure(operation: operation, error: error, stackTrace: stackTrace);
+      return false;
     }
   }
 
@@ -80,7 +87,7 @@ class LegacyNativeStorageMigrationService({
     required StackTrace stackTrace,
   }) {
     loge(
-      "Local storage migration/recovery failed; continuing with reset recovery",
+      "Local storage migration/recovery failed",
       LegacyStorageMigrationException(operation: operation, innerError: error, innerStackTrace: stackTrace),
       stackTrace,
     );

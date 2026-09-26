@@ -44,9 +44,10 @@ never import migration types.
 
 ## Failed-import recovery
 
-A caught failure is logged through `LegacyStorageMigrationException`, retaining
-its original cause/stack and operation with payload-free presentation. Before
-normal startup, independently attempt:
+The mobile shell installs its file sink before migration. Caught failures log
+through `LegacyStorageMigrationException`, retaining native/SQL causes, operation
+and original stacks (including both reset failures). Parser source buffers are
+omitted, not their error messages/offsets. Before normal startup:
 
 1. Independently attempt ciphertext clearing and protected-master replacement
    through `SecureStorageRepository.reset()`. Its replacement future retains both
@@ -54,12 +55,15 @@ normal startup, independently attempt:
    unusable on relaunch if SQL deletion failed; no new writes use it until both
    operations succeed.
 2. Clear both primitive tables atomically through `PersisterRepository.clear()`.
-3. Clear the old native namespace, including unknown entries, through the
-   temporary source capability. The new master uses a separate namespace.
-4. Write completion even when an earlier cleanup failed, preventing surviving
-   legacy auth from being imported on later launches when this marker succeeds.
+3. If secret reset failed, stop recovery here: retain the remaining legacy source
+   and leave import incomplete so a cold launch retries before trusting destination
+   rows. Do not claim partial/unfenced reset was handled.
+4. After successful secret reset, clear the old native namespace, including unknown
+   entries. The new master uses a separate namespace. Then attempt completion even
+   if preference/source cleanup failed, fencing surviving legacy auth when saved.
 
-Each cleanup failure is logged separately and does not suppress other cleanup.
+Each cleanup failure stays logged. Primitive clearing is attempted even when
+secret reset failed; only source retirement/completion require its success.
 Successful reset permits fresh login and follows normal account/server analytics
 preferences; pending local-only opt-out may be lost, as explicitly accepted.
 No alternate store, consent flag or blocking migration-specific UI is introduced.

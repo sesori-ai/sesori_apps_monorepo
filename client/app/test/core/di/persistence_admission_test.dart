@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
@@ -20,6 +21,9 @@ void main() {
     getIt.registerSingleton<http.Client>(MockClient((_) async => throw StateError("Unexpected network request")));
     getIt.registerSingleton<PersistenceDirectory>(_Directory(root: root));
     getIt.registerSingleton<MasterKeyStore>(master);
+    getIt.registerSingleton<TemporaryDirectoryClient>(
+      TemporaryDirectoryClient(provider: _TemporaryDirectory(root: root)),
+    );
   }
 
   setUp(() async {
@@ -29,6 +33,8 @@ void main() {
     registerPorts();
   });
   tearDown(() async {
+    await getIt<LogSink>().flush();
+    setLogSink(sink: const StdoutLogSink());
     await getIt.reset();
     getIt.skipDoubleRegistration = false;
     await root.delete(recursive: true);
@@ -121,7 +127,7 @@ void main() {
   });
 
   test("failed production enumeration resets storage before normal consumers start", () async {
-    final cause = StateError("fixture-native-denial");
+    final cause = PlatformException(code: "fixture-denied", message: "fixture-native-denial", details: "status -25308");
     final legacy = _LegacyStore()..readError = cause;
     getIt.registerSingleton<LegacyNativeStorage>(legacy);
     legacy.values.addAll({"access_token": "stale-token", "appearance_mode": "dark"});
@@ -142,6 +148,12 @@ void main() {
     expect(analyticsPrepared, isTrue);
     expect(getIt.checkLazySingletonInstanceExists<MessageThumbnailCacheService>(), isTrue);
     expect(master.reads, 0);
+    await getIt<LogSink>().flush();
+    final log = await File("${root.path}/logs/app.log").readAsString();
+    expect(log, contains("readSource"));
+    expect(log, contains("fixture-denied"));
+    expect(log, contains("fixture-native-denial"));
+    expect(log, contains("status -25308"));
   });
 }
 
@@ -155,6 +167,11 @@ AnalyticsRuntimeBootstrap _disabledBootstrap() => AnalyticsRuntimeBootstrap(
 class _Directory({required final Directory root}) implements PersistenceDirectory {
   @override
   Future<Directory> resolve() async => root;
+}
+
+class _TemporaryDirectory({required final Directory root}) implements TemporaryDirectoryProvider {
+  @override
+  Future<Directory> temporaryDirectory() async => root;
 }
 
 class _MasterStore() implements MasterKeyStore {

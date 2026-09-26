@@ -81,7 +81,6 @@ void main() async {
           crawlGateService: crawlGateService,
         ),
       );
-      setLogSink(sink: getIt<LogSink>());
       _configureFirebaseSdk(
         supportsCrashlytics: supportsFirebaseCrashlytics,
       );

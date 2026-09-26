@@ -51,8 +51,10 @@ build-mode scope and lazy native master/directory capabilities before shared
 persistence. Production mobile awaits the deprecated importer before consumers;
 development and desktop never resolve it. Failed import attempts a scoped reset
 before normal startup: clear destination data, replace its master, clear the old
-namespace and mark migration handled. Recovery failures stay logged; failed secret
-reset stays cached so partial auth cannot restore. Normal account analytics rules
+namespace and mark migration handled after secret reset succeeds. Failed secret
+reset keeps the remaining legacy source and the import retryable, rather than
+trusting partial destination rows on relaunch. Recovery failures reach the app
+log; failed reset stays cached in-process. Normal account analytics rules
 apply after login; there is no separate recovery-consent state.
 
 `module_app_ui` owns shared Flutter localization, context, route-presentation,
