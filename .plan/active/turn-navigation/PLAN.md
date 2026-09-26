@@ -238,7 +238,8 @@ Defaults this plan adopts. **Each is a default the user may override:**
 - **D15 The sticky prompt shows only while turns are unfolded.** It is clamped
   to three lines, and a tap scrolls its prompt to the top.
 - **D16 A running turn's stub shows "Running · step {n}"** without the mock's
-  live clock, so there is no timer.
+  live clock, so there is no timer. Before the turn's first step it shows
+  plain "Running", never "step 0".
 - **D17 Follow-ups fold inside their turn.** They do not change the stub.
 - **D18 The desktop index shows only when the detail area is at least 1,000 px
   wide** (the 760 px column plus a 240 px pane). Below that, the button and the
@@ -247,11 +248,11 @@ Defaults this plan adopts. **Each is a default the user may override:**
 Planning decisions, from code evidence and the spikes:
 
 - **D19 The sticky prompt is an overlay over the existing reversed lazy list.**
-  It is not built from slivers. See [Architecture 6](#6-sticky-prompt-step-7).
+  It is not built from slivers. See [Architecture 6](#6-sticky-prompt-step-8).
 - **D20 Pinch uses an eager two-pointer scale recognizer.** See
-  [Architecture 5](#5-pinch-step-6).
-- **D21 Place-keeping uses a registry of built rows and a bounded scroll-to-row
-  helper.** Nothing positions rows by index arithmetic alone.
+  [Architecture 5](#5-pinch-step-7).
+- **D21 Place-keeping uses a registry of built rows and a convergent
+  scroll-to-row helper.** Nothing positions rows by index arithmetic alone.
 - **D22 The Claude `queued_command` replay fix is part of this plan.** Without
   it, a re-import moves Claude follow-ups and automation, so turn boundaries
   change after a re-import. The loss is also a user-visible history bug on its
@@ -280,9 +281,9 @@ Out of phase 1:
 ## Architecture
 
 Dependencies keep the existing direction. The pure turn model sits in
-`module_core` next to `TranscriptBuilder`. The shared widgets are in
-`module_app_ui`, including the phone bar, which the shared `SessionDetailBody`
-builds.
+`module_core` next to `TranscriptBuilder`, and the fold state is
+`SessionDetailCubit` state. The shared widgets are in `module_app_ui`,
+including the phone bar, which the shared `SessionDetailBody` builds.
 
 The desktop shell does two things:
 
@@ -402,29 +403,35 @@ The fix:
   mapper version exists to force one, and the damage is a missing message in an
   old transcript. Accepted.
 
-### 3. Fold state and folded rows (step 4)
+### 3. Fold state, folded rows and fold controls (steps 4 and 6)
 
-- **Fold state.**
-  - `_SessionDetailBodyState` owns one `ValueNotifier<bool>` (folded, initially
-    false).
-  - It has one setter, `_setTranscriptFolded({required bool folded})`, which is
-    the single entry point for every control. It reports the analytics event
-    from step 6.
-  - The body passes the read-only `ValueListenable<bool>` and the setter
-    explicitly:
-    - through `SessionDetailLoadedView` to `SessionDetailMessageList`;
-    - to its own phone bar button;
-    - to the desktop header builder, whose `SessionDetailHeaderBuilder` gains
-      the two parameters and is updated in lockstep.
+Step 4 adds the state and the folded rows but no control, so nothing changes
+for users until place-keeping (step 5) exists. Step 6 adds the controls.
 
-    No new scope class is added, and every path to the state is visible at a
-    call site.
-  - The state survives the loading-to-loaded switch, reloads and id changes.
-    It resets with the page.
-  - The step checks that opening another session starts unfolded. That comes
-    either from a fresh body or from a reset on a session id change.
-- **Folded rows.** `SessionDetailMessageList` listens to the fold listenable
-  and runs the turn model in `build`, after `TranscriptBuilder`. When folded:
+- **Fold state (step 4).** It is session page state, so `SessionDetailCubit`
+  owns it.
+  - `SessionDetailLoaded` gains `@Default(false) bool transcriptFolded`.
+  - The cubit keeps a private `_transcriptFolded` field and seeds every loaded
+    state it builds with it in `_buildLoadedState`
+    (`session_detail_cubit.dart:2939`), as it already does for
+    `isUpdatingAutoContinuation`. A full reload emits
+    `SessionDetailState.loading()` first, so the field carries the state
+    across it. Copies of a loaded state keep it on their own.
+  - One intent, `setTranscriptFolded({required bool folded})`, is the single
+    entry point for every control. It updates the field and, while loaded,
+    emits the switched state. A request that changes nothing emits nothing.
+    From step 6 it also reports the analytics event.
+  - Widgets observe the state and dispatch the intent directly. The bars
+    already read `SessionDetailCubit`, and `SessionDetailLoadedView` passes
+    `state.transcriptFolded` and the intent to `SessionDetailMessageList`, as
+    it passes `loadOlderMessages` today. No notifier or setter is forwarded,
+    and `SessionDetailHeaderBuilder` is unchanged.
+  - Only render-derived layout signals stay widget-local: the row registry,
+    the pending anchor, and the sticky and current-turn values.
+  - Each session page creates its own cubit, so the state resets with the page
+    and another session starts unfolded.
+- **Folded rows.** `SessionDetailMessageList` takes `transcriptFolded` and
+  runs the turn model in `build`, after `TranscriptBuilder`. When folded:
   - each prompt turn renders its unchanged prompt row plus one stub row
     `session-detail-turn-<openerMessageId>`;
   - the leading segment renders as one stub row `session-detail-turn-head`;
@@ -439,8 +446,14 @@ The fix:
     step-group summary style;
   - exposes the same text to semantics;
   - becomes tappable in step 5.
-- **Fold buttons.** Each bar builds its own button in its own style, from the
-  listenable and the setter.
+
+#### Fold controls (step 6)
+
+The first step that exposes folding. Place-keeping (step 5) has already
+merged, so the controls need no interim follow rule.
+
+- **Fold buttons.** Each bar builds its own button in its own style. It reads
+  `transcriptFolded` from the cubit state and calls `setTranscriptFolded`.
   - The phone: a `PregoButtonsIconGlass` in `SessionDetailBody`'s bar actions,
     shown on a loaded session.
   - The desktop: the shell's header builder places a toolbar button between
@@ -450,17 +463,19 @@ The fix:
     `foldActivator` and `unfoldActivator`.
   - `DesktopSessionDetailScreen` builds them with the same platform check as
     `_MarkUnreadShortcut`: ⌘− and ⌘= on macOS, Ctrl elsewhere.
-  - `SessionDetailBody` binds whatever activators the chrome supplies to its
-    setter, through `CallbackShortcuts`.
+  - `SessionDetailBody` binds whatever activators the chrome supplies to the
+    cubit's intent, through `CallbackShortcuts`.
   - `module_app_ui` gains no platform branch.
-- **Interim place-keeping, replaced in step 5.** A switch while following keeps
-  following. A switch while detached re-follows the latest turn. Nothing else
-  depends on this.
+- **Analytics.** `transcript_turns_folded` lands here, with the first control
+  (see [Analytics](#analytics)).
 - **Docs.** Add a "Transcript turn boundaries" section to
   `docs/HARNESS_CAPABILITIES.md`:
-  - ✅ for Claude, Codex, Pi and OpenCode, with a note that Claude's history
-    parity depends on step 3;
+  - ✅ for Claude, Codex, Pi and OpenCode (step 3 has already restored
+    Claude's history parity);
   - 🚫 for the ACP family (stop-and-send, D23).
+
+  The regression document starts here too; see
+  [Regression Coverage](#regression-coverage).
 
 ### 4. Keeping the reader's turn in place (step 5)
 
@@ -476,13 +491,31 @@ The fix:
   the top edge (below `topInset`) and map it to its turn through the turn
   model.
 - **Scroll-to-row helper.** Two private methods on the list state.
+  - Nothing existing reaches an unbuilt row, so none is reused whole. The
+    transcript has no search. Jump to latest (`animateToEdge` and
+    `scheduleJumpToEdge()` on `ScrollFollowTracker`) only reaches the edge. The
+    diffs view's reveal needs a built target, and no positioned-list package
+    is a dependency. The helper reuses that reveal's two passes to settle.
   - The target row is built: measure it, then `jumpTo` the offset that puts its
     top at the requested distance below the top edge. Check once more on the
     next frame, because lazy extents are estimates. This is the two-pass
     precedent in `session_diffs_view.dart:364-381`.
-  - The target row is not built: jump to an estimate from its index share of
-    `maxScrollExtent`, then retry on the next frame. Stop after four attempts,
-    wherever the list is.
+  - The target row is not built: search toward it from the built rows. Each
+    attempt resolves the target's index from its row id and compares it with
+    the registered rows' indices to pick the direction. It jumps until the
+    built row nearest the target has just scrolled out of the viewport on the
+    side away from the target, then retries on the next frame. That row stays
+    in the cache extent, and the list lays out rows in order from it, so the
+    viewport fills with the rows after it and no jump passes over the target.
+    No index-share estimate is used: rows vary too much in height for an index
+    to predict an offset.
+  - **Termination.** The rows between the nearest built row and the target
+    are finite, bounded by the loaded rows. Every attempt builds at least the
+    next of them, so their count strictly falls. It cannot grow meanwhile: older
+    pages add rows only beyond the oldest row, and the detached snapshot
+    freezes the newest end, where synthetic rows shift every index alike. So
+    the search ends with the target built, or earlier when its row id
+    disappears. It needs no attempt cap.
   - The helper calls `detach()` before moving away from the latest edge.
     Otherwise `scheduleJumpToEdge()`, which runs on every build while
     following, would pull the list back.
@@ -494,16 +527,17 @@ The fix:
     edge.
   - If the reader is mid-turn (the opener is above the edge), the opener lands
     at the top edge.
-- **Capture.** Every switch goes through the body's setter.
+- **Capture.** Every switch goes through the cubit's intent.
   - Triggers inside the list (stub tap here, then pinch and index click) set
-    the pending anchor for their turn, then call the setter. They do this only
-    when the fold state actually changes.
-  - The list's listener on the fold listenable runs synchronously, before the
-    rebuild. When no anchor is pending, it captures the top-edge turn from the
-    last frame's layout. That covers the button and the shortcut.
+    the pending anchor for their turn, then dispatch the intent through the
+    list's callback. They do this only when the fold state actually changes.
+  - The list sees the switch in `didUpdateWidget`, when `transcriptFolded`
+    changes. That runs before the new layout, so when no anchor is pending it
+    captures the top-edge turn from the last frame's layout. That covers the
+    buttons and the shortcuts of step 6.
   - A post-frame pass then restores the anchor.
-- **Pending anchor.** One nullable target with an attempt counter. It clears
-  on success, after four attempts, or when its row id disappears.
+- **Pending anchor.** One nullable target. It clears once its row settles, or
+  when its row id disappears.
 - **Stub tap.** Unfolds every turn and anchors on the tapped turn (D9).
 - **`onJumpToTurn`.** The list builds one private callback,
   `onJumpToTurn({required String openerMessageId})`, and later hands it to the
@@ -511,7 +545,7 @@ The fix:
   - Folded: unfold, anchored on that turn.
   - Unfolded: scroll the opener to the top edge.
 
-### 5. Pinch (step 6)
+### 5. Pinch (step 7)
 
 - **The recognizer.**
   - `TranscriptPinchDetector` (`transcript_pinch_detector.dart`, in
@@ -561,9 +595,10 @@ The fix:
 - **Not exercised in the spike; checked in this step.** The one-finger peek,
   the trackpad horizontal peek, and a code block's one-finger horizontal
   scroll.
-- The analytics event lands in this step (see [Analytics](#analytics)).
+- A pinch switches through the same cubit intent, so the step 6 analytics
+  event already covers it.
 
-### 6. Sticky prompt (step 7)
+### 6. Sticky prompt (step 8)
 
 - **Why an overlay.**
   - A spike with a native `PinnedHeaderSliver` in a reversed
@@ -603,12 +638,16 @@ The fix:
   - It looks up the opener through `promptTurnFor`. It shows the opener's text
     clamped to three lines in the user bubble style, or the first attachment's
     name when there is no text.
-  - It is excluded from semantics, because the real prompt row is in the list.
+  - While pinned, it is one labelled, actionable semantics node: a button
+    labelled with the text it shows, with the hint from
+    [Approved Copy](#approved-copy), whose tap action is the jump below. It is
+    never excluded, because in a long turn the opener row is not built, and
+    the overlay is then the only place the prompt and its jump exist.
   - A tap calls `onJumpToTurn`, which puts the opener at the top edge.
 - A one-frame lag is accepted. Move to a render object only if a device shows
   the lag.
 
-### 7. Desktop index pane (step 8)
+### 7. Desktop index pane (step 9)
 
 - **When it shows.** The loaded view already knows `maxContentWidth` (page
   chrome). When the width is at least `maxContentWidth + 240`, it reserves a
@@ -649,9 +688,9 @@ The fix:
 Turns are recomputed from the rendered messages on every build, so no turn
 state can go stale. What outlives a build is small and global:
 
-- the fold bool;
+- the fold flag, held by the cubit;
 - one pending anchor;
-- the sticky value (step 7) and the current-turn value (step 8), both
+- the sticky value (step 8) and the current-turn value (step 9), both
   republished after every frame that scrolled or laid out;
 - the registry, which mirrors the mounted rows.
 
@@ -659,7 +698,8 @@ How each kind of re-sync behaves:
 
 - **Full reload.**
   - The list is torn down and rebuilt at the latest turn, following, as today.
-  - The fold state survives in `SessionDetailBody`.
+  - The fold state survives in the cubit, which seeds the new loaded state
+    with it.
   - The registry refills as rows mount. The sticky header and index recompute
     after the first frame.
 - **Silent refresh or re-import with new ids.**
@@ -680,17 +720,18 @@ stays local.
 
 - `{n}` counts steps.
 - `{duration}` reads like "1m 02s".
-- Steps 4, 7 and 8 add these strings to `app_en.arb`. Review may polish the
-  wording, but not the meaning.
+- Steps 4, 6, 8 and 9 add these strings to `app_en.arb`. Review may polish
+  the wording, but not the meaning.
 
 | Element | Copy |
 |---|---|
-| Folded stub, done | "› {n} steps · {duration} — {first line of the final answer}". Use "1 step" and "No steps". Drop the dash and excerpt when there is no text. |
-| Folded stub, running | Running glyph, then "Running · step {n}". The mock's live clock is dropped (D16). |
+| Folded stub, done | "› {n} steps · {duration} — {first line of the final answer}". Use "1 step" and "No steps". Drop the dash and excerpt when there is no text. When the duration is null, drop it and the " · " before it: "› 3 steps — {excerpt}", or "› 3 steps". |
+| Folded stub, running | Running glyph, then "Running · step {n}". Before the first step, plain "Running". The mock's live clock is dropped (D16). |
 | Folded stub, failed | Error glyph, then "Ended with an error · {first line of the error message}" |
 | Folded stub, partial segment | Planning copy, not in the mock: "Earlier turn, partly loaded · {n} steps" |
 | Folded stub, preamble | Planning copy: "Before the first prompt · {n} steps" |
 | Fold button | "Fold all turns" / "Unfold all turns". On desktop the tooltip adds the shortcut. |
+| Sticky prompt, screen readers | Planning copy: the label is the text it shows; the tap hint is "Jump to this prompt". |
 | Desktop index | Top row "Load earlier turns", with the hint "Older turns appear as their pages load". Each line: the first line of the prompt, a glyph, the time. |
 
 The mock's "Stopped by you" line is not shown in phase 1 (D12).
@@ -704,11 +745,14 @@ Checked against `.opencode/skills/add-analytics/SKILL.md`.
   from unfolded to folded, from any control.
 - **The decision it informs.** Whether folding is used enough to justify F1,
   F2, deck mode, and more navigation surfaces.
-- **The seam.** "Flutter-only capability", as `voiceTranscriptionCompleted`
-  does it:
-  1. the body's single setter, `_setTranscriptFolded`;
-  2. a new `SessionDetailCubit.reportTranscriptTurnsFolded()`;
-  3. `_reportProductEvent` (`session_detail_cubit.dart:2506`).
+- **The seam.** The skill's reactive-state seam, as a bounded transition
+  guard. Cubits are the analytics consumer layer, and the cubit owns the fold
+  state. So `SessionDetailCubit.setTranscriptFolded`, the single entry point
+  for every control, reports through `_reportProductEvent`
+  (`session_detail_cubit.dart:2506`) only when the state changes from
+  unfolded to folded. A repeated fold request sends nothing.
+- **When.** Step 6, the first step that exposes a fold control, so no control
+  ever folds without it.
 
   The event model is `product_analytics_event.dart`. Test it in
   `product_analytics_event_test.dart` and a cubit test.
@@ -735,26 +779,26 @@ Checked against `.opencode/skills/add-analytics/SKILL.md`.
 
 New mutable parts:
 
-1. **The fold `ValueNotifier<bool>` in `SessionDetailBody`** (step 4). One
-   shared state for every control on both shells, surviving reloads.
+1. **The fold flag in `SessionDetailCubit`** (step 4): one private field that
+   seeds `SessionDetailLoaded.transcriptFolded`. One shared state for every
+   control on both shells, surviving reloads.
 2. **The row registry `Map<String, BuildContext>`** (step 5). It is the only
    reliable way to find built rows for anchors, the sticky header and the index
    highlight.
-3. **The pending anchor**: one nullable target with an attempt counter
-   (step 5).
-4. **Per-gesture pinch fields** (step 6): switched-this-gesture,
+3. **The pending anchor**: one nullable target (step 5).
+4. **Per-gesture pinch fields** (step 7): switched-this-gesture,
    started-following and detach-suppressed.
-5. **The sticky `ValueNotifier<TranscriptStickyPosition?>`** (step 7), read
+5. **The sticky `ValueNotifier<TranscriptStickyPosition?>`** (step 8), read
    only by the overlay.
-6. **The current-turn `ValueNotifier<String?>`** (step 8), read only by the
+6. **The current-turn `ValueNotifier<String?>`** (step 9), read only by the
    index.
-7. **The index pane's `ScrollController`** (step 8).
+7. **The index pane's `ScrollController`** (step 9).
 
 Deliberately not added:
 
 - Per-turn or persisted fold state.
-- A fold scope or `InheritedWidget`; the listenable and setter are passed
-  explicitly.
+- A fold scope, an `InheritedWidget` or a widget-owned fold notifier; widgets
+  read the cubit state and call its intent.
 - A turn cache, a navigation controller, or stored turn data.
 - Wire fields, and timestamp heuristics.
 - A sliver or non-reversed list.
@@ -768,7 +812,8 @@ Deliberately not added:
 No relevant cleanup was found:
 
 - Folding reuses the existing rows and `TranscriptSummary` counts.
-- Place-keeping reuses `ScrollFollowTracker`.
+- Place-keeping reuses `ScrollFollowTracker` and the diffs view's two-pass
+  reveal.
 - The pinch sits beside the peek.
 - Step 3 extends, rather than replaces, the Claude context records.
 
@@ -802,19 +847,32 @@ Accepted:
 - Already imported Claude sessions regain dropped follow-ups only on their next
   re-import.
 - The sticky header can lag by one frame.
+- A jump to a distant turn moves about one cache-extended viewport per frame,
+  so a long jump shows brief motion.
 - The jump-to-latest pill can flash briefly when a trackpad pinch starts while
   following. The peek has the same flash.
 
 ## Regression Coverage
 
-Affected documents:
+Each step updates the documents for the behavior it ships, in its own PR.
+Steps 4 and 5 ship nothing users can reach, so they change none.
 
-- The new `docs/regression/transcript-turn-navigation.md`, added to the
-  Feature Index.
-- Cross-references from `session-turns.md` (busy follow-ups),
-  `session-history-and-recovery.md` (paging, re-import and the Claude fix) and
-  `tools-and-file-changes.md` (step groups, jump to latest).
-- `docs/HARNESS_CAPABILITIES.md`.
+| Step | Document changes |
+|---|---|
+| 3 | `session-history-and-recovery.md`: the Claude fix, as [Architecture 2](#2-claude-follow-ups-and-automation-survive-history-load-step-3) says. |
+| 6 | Creates `docs/regression/transcript-turn-navigation.md` and adds it to the Feature Index: capability, required behavior, levels L1–L5, exploration guidance, failure signals, known limitations and sources, for folding, its controls and place-keeping. Adds the cross-references from `session-turns.md` (busy follow-ups), `session-history-and-recovery.md` (paging, re-import) and `tools-and-file-changes.md` (step groups, jump to latest), and the `docs/HARNESS_CAPABILITIES.md` section. |
+| 7 | Pinch, including its follow-state rules. |
+| 8 | The sticky prompt, including its screen reader node. |
+| 9 | The desktop index. |
+| 10 | Reconciles every document with what shipped. |
+
+Failure signals, each added by the step that ships the behavior:
+
+- step 6: the reading position jumps on fold or unfold; turns split
+  differently after a re-import;
+- step 7: a pinch scrolls or a scroll folds;
+- step 8: a follow-up or automation shows as a sticky prompt;
+- step 9: the index lists a turn that is not loaded.
 
 **Highest level: L3 Release.** The boundary is client end to end. It covers
 every supporting production plugin for turn grouping, on the release-target
@@ -825,7 +883,7 @@ this file before retirement:
 
 | Platform | Coverage |
 |---|---|
-| iOS phone, real device (release target) | Pinch in and out on a session of three or more pages: the turn under the fingers stays in place. The fold button. A stub tap unfolds at that turn. The sticky prompt appears mid-turn, is pushed out by the next prompt, clamps a long prompt, and scrolls to it on tap. A partial oldest turn, then scrolling up while folded loads older pages. A running turn's stub while following. VoiceOver reads the stubs and the fold button. One-finger scroll, the timestamp peek and a code block's horizontal scroll are unaffected. `transcript_turns_folded` arrives. |
+| iOS phone, real device (release target) | Pinch in and out on a session of three or more pages: the turn under the fingers stays in place. The fold button. A stub tap unfolds at that turn. The sticky prompt appears mid-turn, is pushed out by the next prompt, clamps a long prompt, and scrolls to it on tap. A partial oldest turn, then scrolling up while folded loads older pages. A running turn's stub while following. VoiceOver reads the stubs, the fold button and the pinned prompt, and the pinned prompt's action jumps to it. One-finger scroll, the timestamp peek and a code block's horizontal scroll are unaffected. `transcript_turns_folded` arrives. |
 | macOS desktop | Trackpad pinch both ways, while following (it stays following) and while reading history (it stays detached). ⌘− and ⌘=. The toolbar toggle. The index follows the scroll, highlights the current turn, jumps on click (folded and unfolded) and loads earlier turns. Below 1,000 px the index hides. Trackpad scroll and the trackpad peek are unaffected. |
 | Android phone | Pinch both ways, the fold button, and a sticky prompt smoke check. |
 | Windows and Linux desktop | Ctrl+− and Ctrl+=, the toolbar toggle, and an index smoke check. |
@@ -835,24 +893,34 @@ Automated coverage in the steps:
 
 - the turn model;
 - Claude parser and mapper parity;
+- the cubit's fold state and analytics event;
 - widget tests for folded rows, place-keeping, the pinch arena with touch and
-  trackpad variants, sticky push-out, the index, and the desktop shortcuts.
+  trackpad variants, sticky push-out and semantics, the index, and the desktop
+  shortcuts.
 
 ## Delivery Rules
 
 - **Order.** Steps run in order.
-  - Step 3 depends only on this plan and may run beside steps 2 and 4–8.
-  - Steps 6 and 7 both need step 5 and may run in parallel.
+  - Step 3 depends only on this plan and may run beside step 2. Step 4 needs
+    it, so no folding ships while a Claude re-import still moves turn
+    boundaries.
+  - No PR exposes a fold control before place-keeping exists. Steps 4 and 5
+    add folding and place-keeping without a control, and step 6 exposes them.
+  - Steps 7 and 8 both need step 6, which starts the regression document they
+    extend, and may run in parallel.
 - **Per-step evidence.** Each step verifies this plan's claims before editing.
-  It writes its evidence to `steps/step-NN.md` in its own PR, and notes
-  behavior changes for step 9's reconciliation.
-- **Visuals.** Steps 4–8 show before and after screenshots, or a short
-  recording for gestures and scrolling. Use fixture sessions only.
-- **Architecture implementation review** for steps 2 to 8: new classes, the
-  fold-state plumbing and the header builder signature, the list-state
-  ownership in step 5, the analytics contract, and the layout insets.
+  It writes its evidence to `steps/step-NN.md` in its own PR, and updates the
+  documents for the behavior it ships (see
+  [Regression Coverage](#regression-coverage)).
+- **Visuals.** Steps 6–9 show before and after screenshots, or a short
+  recording for gestures and scrolling. Use fixture sessions only. Steps 4
+  and 5 change nothing users can see.
+- **Architecture implementation review** for steps 2 to 9: new classes, the
+  fold state in `SessionDetailCubit`, the list-state ownership in step 5, the
+  chrome activators and the analytics contract in step 6, and the layout
+  insets.
 - **Size.** Targets are in the tracker. The list, scroll and gesture steps
-  (4–8) stay well under the soft cap.
+  (4–9) stay well under the soft cap, and place-keeping (step 5) aims lowest.
 - **Checks.** Run `dart analyze --fatal-infos` per touched package, with the
   pinned Flutter 3.47.5 first on `PATH`.
 
@@ -880,37 +948,54 @@ Verify:
   with the same ids and order, after a forced re-import.
 - Analyze `sesori_plugin_claude`.
 
-**Step 4 — fold every turn into one line.**
-[Architecture 3](#3-fold-state-and-folded-rows-step-4). Verify with widget
-tests:
+**Step 4 — render folded turns from the session fold state.**
+[Architecture 3](#3-fold-state-folded-rows-and-fold-controls-steps-4-and-6).
+No control exposes folding yet, so nothing changes for users. Verify with
+cubit and widget tests:
 
+- the intent switches the state, and a request that changes nothing emits
+  nothing;
+- the fold state survives a full reload, and another session's cubit starts
+  unfolded;
 - the folded row layout per turn: prompt plus stub, the leading-segment stub,
   and unchanged synthetic rows;
-- the stub copy for each outcome and segment;
-- the fold state survives a reload;
-- no rows ease in on a switch;
-- the phone bar button and the desktop header button;
-- the shortcuts: the body binds whatever activators the chrome supplies, and
-  the desktop screen builds meta activators on macOS and control elsewhere;
-- the interim follow behavior.
+- the stub copy for each outcome and segment, including plain "Running" for a
+  running turn with no step yet, and a done stub with a null duration, which
+  drops it and its separator, with and without an excerpt;
+- no rows ease in on a switch.
 
-Also: before and after screenshots on phone and desktop, and analyze
-`module_app_ui`, `client/app` and `client/desktop`.
+Also analyze `module_core` and `module_app_ui`.
 
 **Step 5 — keep the reader's turn in place.**
-[Architecture 4](#4-keeping-the-readers-turn-in-place-step-5). Verify with
-widget tests:
+[Architecture 4](#4-keeping-the-readers-turn-in-place-step-5). There is still
+no control, so the tests switch through the cubit's intent and the stub tap.
+Verify with widget tests:
 
 - a switch mid-turn puts the opener at the top edge;
 - a switch with the opener on screen keeps it within 1 px;
 - a stub tap unfolds and anchors;
-- an anchor on an unbuilt row converges within four frames;
+- an anchor on an unbuilt row behind several very tall rows is reached and
+  settles within 1 px, from above and from below;
 - a vanished row id ends the anchor.
 
-Also by hand: the toolbar on macOS and the fold button on iOS, with a short
-recording.
+**Step 6 — fold and unfold every turn from the bar and the keyboard.**
+[Fold controls](#fold-controls-step-6), the first step that exposes folding.
+Verify:
 
-**Step 6 — pinch.** [Architecture 5](#5-pinch-step-6). Verify:
+- widget tests for the phone bar button and the desktop header button: each
+  shows the state and switches it;
+- the shortcuts: the body binds whatever activators the chrome supplies, and
+  the desktop screen builds meta activators on macOS and control elsewhere;
+- the analytics event test, and a cubit test: a fold reports the event once,
+  and an unfold or a repeated fold reports nothing;
+- by hand: the toolbar and shortcuts on macOS and the fold button on iOS keep
+  the reader's turn in place, with a short recording.
+
+Also before and after screenshots on phone and desktop, the documents listed
+under [Regression Coverage](#regression-coverage), and analyze `module_core`,
+`module_app_ui`, `client/app` and `client/desktop`.
+
+**Step 7 — pinch.** [Architecture 5](#5-pinch-step-7). Verify:
 
 - Widget tests with iOS, Android and macOS variants:
   - pinch in folds once, and pinch out unfolds once;
@@ -919,10 +1004,10 @@ recording.
   - a trackpad pinch while following stays following, and while reading stays
     detached;
   - the focal-point anchor.
-- The analytics event test and the cubit test.
 - **A real iPhone pinch and a real macOS trackpad pinch**, recorded.
+- Pinch in the regression document.
 
-**Step 7 — sticky prompt.** [Architecture 6](#6-sticky-prompt-step-7). Verify
+**Step 8 — sticky prompt.** [Architecture 6](#6-sticky-prompt-step-8). Verify
 with widget tests:
 
 - the header appears when the opener leaves the top edge;
@@ -930,12 +1015,13 @@ with widget tests:
 - it hides when folded and for headless segments;
 - the three-line clamp;
 - a tap scrolls to the opener;
-- it is excluded from semantics.
+- while pinned it is a labelled button whose tap action jumps to the opener,
+  also when the opener row is not built.
 
-Also a real iPhone scroll through a long turn for visible lag, and
-screenshots.
+Also a real iPhone scroll through a long turn for visible lag, screenshots,
+and the sticky prompt in the regression document.
 
-**Step 8 — desktop index.** [Architecture 7](#7-desktop-index-pane-step-8).
+**Step 9 — desktop index.** [Architecture 7](#7-desktop-index-pane-step-9).
 Verify with widget tests:
 
 - the pane shows at 1,000 px and hides below it;
@@ -946,26 +1032,12 @@ Verify with widget tests:
 - "Load earlier turns" calls the loader;
 - only prompt turns are listed.
 
-Also by hand on macOS, and screenshots.
+Also by hand on macOS, screenshots, and the index in the regression document.
 
-**Step 9 — regression docs.**
-
-- Write `docs/regression/transcript-turn-navigation.md`: capability, required
-  behavior, levels L1–L5, exploration guidance, failure signals, known
-  limitations and sources.
-- Add it to the Feature Index, and add the cross-references listed above.
-- Reconcile `docs/HARNESS_CAPABILITIES.md` and the matrix.
-
-Failure signals include:
-
-- the reading position jumps on fold or unfold;
-- a follow-up or automation shows as a sticky prompt;
-- turns split differently after a re-import;
-- a pinch scrolls or a scroll folds;
-- the index lists a turn that is not loaded.
-
-**Step 10 — verify and retire.** Run L3 over the recorded matrix, record the
-result in `steps/step-10.md`, and move the plan to `.plan/completed/`.
+**Step 10 — reconcile, verify and retire.** Reconcile the regression and
+capability documents with what shipped. Run L3 over the recorded matrix,
+record the result in `steps/step-10.md`, and move the plan to
+`.plan/completed/`.
 
 ## Later Phases (rough intent only)
 
@@ -1007,7 +1079,7 @@ result in `steps/step-10.md`, and move the plan to `.plan/completed/`.
   - D16: no live clock on the running stub;
   - D17: follow-ups hidden when folded.
 - D2's mock also had alt+↑/↓ to step between prompts on desktop. Add it to
-  step 8 (about 60 lines)?
+  step 9 (about 60 lines)?
 - Claude shows some `isMeta` user records live as user bubbles, for example
   image placeholders, skill notices and interrupt markers. History load drops
   them. Fix that separately, as its own PR?
@@ -1048,3 +1120,29 @@ without re-review, as AGENTS.md allows.
 
 The revised plan has not been re-reviewed; this record does not claim it
 passed.
+
+**Codex review of the merged plan, PR #1753, 2026-09-26:** ten findings, all
+valid. Nine are applied here. The excerpt rule is applied in #1754.
+
+1. P1, fold state in the cubit. Applied: `SessionDetailCubit` holds the fold
+   state and its single intent, which reports analytics. This supersedes item
+   5's body setter and the forwarded listenable (Architecture 3).
+2. P1, folding after Claude parity. Applied: step 4 needs step 3 (Delivery
+   Rules, tracker).
+3. P2, regression docs per step. Applied: steps 6 to 9 each update the
+   documents, step 10 reconciles them, and the docs-only step is gone
+   (Regression Coverage).
+4. P1, sticky semantics. Applied: while pinned, the prompt is a labelled button
+   that jumps to its opener (Architecture 6, Approved Copy).
+5. P1, convergent jump. Applied: a directional search from the built rows with
+   a stated termination argument, reusing the diffs view's two-pass settle
+   (Architecture 4).
+6. P2, place-keeping before any control. Applied: step 4 ships no control, and
+   the controls move to a new step 6 after place-keeping (Architecture 3,
+   Steps).
+7. P2, analytics with the first control. Applied: the event lands in step 6
+   (Analytics).
+8. P2, running before the first step. Applied: plain "Running" (D16, Approved
+   Copy, step 4 tests).
+9. P2, folded copy without a duration. Applied: the done row drops it and its
+   separator (Approved Copy, step 4 tests).
