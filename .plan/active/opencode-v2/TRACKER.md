@@ -4,7 +4,7 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 9 (PR 13/14) — documentation reconciliation verified; ready for publication.
+- Current step: 9 (PR 13/14) — [#1795](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1795) open; review correction verified.
   Branch: `sesori/opencode-v2-step-9-docs`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
@@ -271,12 +271,16 @@
 - Reconcile v2 catalog identity, standalone forks, parent-create refusal, selection validation, prompt/fallback-compaction
   correlation, the custom-command limitation, replay/readback and typed form replies. Scope v1-specific command,
   compaction-reservation and best-effort hydration claims instead of extending them to v2.
-- The capability matrix, setup bounds and npm-install contract already describe the landed behavior. Required final
-  coverage remains L3 on macOS arm64 with a real provider/dev account: managed v2 fresh/v1 upgrade, v1 PATH, and v2 attach.
+- The v2-specific capability section, setup bounds and npm-install contract already describe the landed behavior.
+  Required final coverage remains L3 on macOS arm64 with a real provider/dev account: managed v2 fresh/v1 upgrade,
+  v1 PATH, and v2 attach.
   Startup-only native evidence and fixture/loopback suites do not complete that matrix. No reduction is approved.
 - Validation: all 22 added repository-path references exist, the final verification matrix is unchanged, and diff
-  checks pass. Nine Markdown files only; no production, generated, dependency, database or wire changes. Dart/Flutter
+  checks pass. Ten Markdown files only; no production, generated, dependency, database or wire changes. Dart/Flutter
   suites and architecture re-review are not applicable to this documentation-only step.
+- #1795 review found that the aggregate accepted-prompt table still generalized v1 correlation to native v2 commands.
+  Split that table by adapter/path and state the unsettled optimistic-row gap. The adjacent compaction-summary table
+  now distinguishes v1 assistant summaries from v2 completed native compaction messages. No runtime behavior changed.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.
