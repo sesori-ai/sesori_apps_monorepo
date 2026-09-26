@@ -175,6 +175,7 @@ void main() {
     when(productAnalyticsService.prepareForLogout).thenAnswer((_) async {});
     when(productAnalyticsService.resumeAfterFailedLogout).thenAnswer((_) async {});
     GetIt.instance.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
+    GetIt.instance.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
 
     final store = _MockAppearanceStore();
     when(() => store.write(mode: any(named: "mode"))).thenAnswer((_) async {});

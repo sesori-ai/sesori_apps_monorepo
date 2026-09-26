@@ -72,6 +72,7 @@ void main() {
     late MockPermissionRepository mockPermissionRepository;
     late MockFailureReporter mockFailureReporter;
     late MockProductAnalyticsService mockProductAnalyticsService;
+    late FakeFeedbackPromptService feedbackPromptService;
     late SessionDetailLoadService loadService;
     late SessionRepository promptDispatcher;
     late BehaviorSubject<SesoriSessionEvent> sessionEvents;
@@ -88,6 +89,7 @@ void main() {
       mockPermissionRepository = MockPermissionRepository();
       mockFailureReporter = MockFailureReporter();
       mockProductAnalyticsService = MockProductAnalyticsService();
+      feedbackPromptService = FakeFeedbackPromptService();
       stubProductAnalyticsService(service: mockProductAnalyticsService);
       _stubPromptAttachmentCapability(
         repository: mockPluginRepository,
@@ -175,6 +177,7 @@ void main() {
       lifecycleSource: lifecycleSource ?? MockLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: mockProductAnalyticsService,
+      feedbackPromptService: feedbackPromptService,
       sessionId: pageSessionId,
       projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
@@ -1414,6 +1417,7 @@ void main() {
             occurredAtUtc: any(named: "occurredAtUtc"),
           ),
         ).called(1);
+        expect(feedbackPromptService.positiveInteractions, 1);
       },
     );
 
@@ -2083,6 +2087,7 @@ void main() {
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
+        feedbackPromptService: FakeFeedbackPromptService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: null,
@@ -2614,6 +2619,8 @@ void main() {
 
         final localSend = (cubit.state as SessionDetailLoaded).localSend;
         expect(localSend, isA<LocalSendFailed>().having((phase) => phase.failure, "failure", failure));
+        expect(feedbackPromptService.failures, 1);
+        expect(feedbackPromptService.positiveInteractions, 0);
       });
     }
 

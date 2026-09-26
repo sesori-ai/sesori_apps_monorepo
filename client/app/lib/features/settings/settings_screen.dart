@@ -29,6 +29,7 @@ class const SettingsScreen({super.key}) extends StatelessWidget {
           create: (_) => FeedbackSheetCubit(
             appReviewClient: getIt<AppReviewClient>(),
             feedbackRepository: getIt<FeedbackRepository>(),
+            feedbackPromptService: getIt<FeedbackPromptService>(),
             source: FeedbackSource.settings,
           ),
         ),

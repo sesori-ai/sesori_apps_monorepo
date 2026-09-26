@@ -30,6 +30,7 @@ import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/bridge_settings_service.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
+import "../../services/feedback_prompt_service.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
@@ -102,6 +103,7 @@ class SessionDetailCubit(
   required final LifecycleSource _lifecycleSource,
   required final ComposerDraftRepository _composerDraftRepository,
   required final ProductAnalyticsService _productAnalyticsService,
+  required final FeedbackPromptService _feedbackPromptService,
   required final String _sessionId,
   required final String _projectId,
   required final bool claimProjectView,
@@ -2205,11 +2207,13 @@ class SessionDetailCubit(
           _promptQueue.parkAccepted(epoch: ++_parkEpoch);
           _staleOptionsRecoveryAttemptedPromptIds.remove(submission.promptId);
           _reportAcceptedSubmission(submission: submission);
+          unawaited(_feedbackPromptService.recordPositiveInteraction());
         case ErrorResponse(:final error) when SessionRepository.isStalePromptOptionsError(error: error):
           sendSettledElsewhere = !_promptQueue.failSend();
           if (!sendSettledElsewhere) {
             if (!_staleOptionsRecoveryAttemptedPromptIds.add(submission.promptId)) {
               if (!isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+              unawaited(_feedbackPromptService.recordFailure());
             } else {
               _stalePromptOptionsRefreshInFlight = true;
               try {
@@ -2225,6 +2229,8 @@ class SessionDetailCubit(
             failure: SessionRepository.sendFailureFor(error: error),
           );
           logw("Failed to send queued session submission", error);
+          // A send the bridge already settled is not a failure the user saw.
+          if (!sendSettledElsewhere) unawaited(_feedbackPromptService.recordFailure());
       }
     } on Object catch (error, stackTrace) {
       sendSettledElsewhere = !_settleFailedSend(
@@ -2232,6 +2238,7 @@ class SessionDetailCubit(
         failure: PromptSendFailure.uncertain,
       );
       logw("Failed to send queued session submission", error, stackTrace);
+      if (!sendSettledElsewhere) unawaited(_feedbackPromptService.recordFailure());
     }
 
     _emitQueueUpdate(_latestLoadedState());
@@ -2297,6 +2304,7 @@ class SessionDetailCubit(
         return false;
       case _OptionsReloadResult.failed:
         _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+        unawaited(_feedbackPromptService.recordFailure());
         return false;
       case _OptionsReloadResult.updated:
         break;
@@ -2758,9 +2766,11 @@ class SessionDetailCubit(
       final result = await submit();
       if (result case ErrorResponse(:final error)) throw error;
       reportSuccess();
+      unawaited(_feedbackPromptService.recordPositiveInteraction());
       return true;
     } on Object catch (error, stackTrace) {
       loge("Failed to $failureAction $requestId", error, stackTrace);
+      unawaited(_feedbackPromptService.recordFailure());
       await _loadMessages(isReload: true);
       return false;
     }

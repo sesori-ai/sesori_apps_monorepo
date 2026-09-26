@@ -175,6 +175,7 @@ void _registerDependencies({
   getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
   getIt.registerSingleton<ComposerDraftRepository>(inMemoryComposerDraftRepository());
   getIt.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
+  getIt.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
 }
 
 void main() {
