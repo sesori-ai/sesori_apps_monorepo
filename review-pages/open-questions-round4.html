@@ -137,8 +137,8 @@ summary { cursor: pointer; font-weight: 700; }
 </svg>
 
 <div class="bar"><div class="in">
-  <span class="prog" id="prog">0 of 1 picked</span>
-  <nav><a href="#q1">Early session event</a></nav>
+  <span class="prog" id="prog">0 of 3 picked</span>
+  <nav><a href="#q1">Early session event</a><a href="#q2">Composer after Send</a><a href="#q3">iPhone back swipe</a></nav>
   <label class="darkt" hidden><input type="checkbox" id="darkmode"> Dark mocks</label>
   <span id="toast"></span>
   <button id="copy" type="button">Copy response</button>
@@ -148,7 +148,7 @@ summary { cursor: pointer; font-weight: 700; }
 
 <main>
 <h1>Open questions, round 4</h1>
-<p class="lead">Codex's fourth round on the plan (#1774) turned up one gap I shouldn't close for you. Everything else in that round is settled: two fixes accepted, three declined with reasons.</p>
+<p class="lead">Three gaps from Codex's later rounds that I shouldn't close for you. Two are on the instant-new-session plan (#1774), one is on the Prompts screen plan (#1804). All other findings in those rounds are settled.</p>
 
 <h2 id="q1">1. The real session can show up before the app knows it belongs to the placeholder</h2>
 <div class="box">
@@ -165,6 +165,38 @@ summary { cursor: pointer; font-weight: 700; }
       <p class="why">The app sends an id with the create request, and the bridge echoes it on the broadcast, so the match is exact from the first event. It's the most correct option, but it changes the client↔bridge contract. It needs a compatibility default, a bridge change, and a fallback for older bridges that don't echo the id. That fallback is option A or C anyway, so B adds work without removing the other path.</p></label>
     <label class="opt" data-label="Accept a brief duplicate row"><span class="oh"><input type="radio" name="B1" value="c"><span class="letter">C</span> Accept a brief second row</span>
       <p class="why">Build nothing. In the rare race, both rows show for a moment, then the placeholder goes. It's the cheapest option, but it's exactly the kind of jump under your eyes the product rules forbid, on the first screen after you press Send.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<h2 id="q2">2. The composer disappears for a moment after Send</h2>
+<div class="box">
+  <p style="margin:0">The plan promises that after you press Send on a new session, <b>the composer stays usable the whole time</b>, so you can keep typing a follow-up. But the session screen only builds its composer <b>after its first load finishes</b>. When the new-session screen hands over to the session screen, the composer is gone for up to about 2.5 s. If you were typing, <b>the keyboard drops</b> and the composer disappears and comes back. Today every session opens this way, but here it lands right after Send, on the one flow this plan exists to make feel instant.</p>
+</div>
+<div class="q" data-id="B2" data-title="Composer gap after the new-session handoff">
+  <div class="qh"><span class="qid">B2</span><span class="qt">Should the composer survive the handoff?</span><span class="qhint">Pick one</span></div>
+  <div class="opts">
+    <label class="opt" data-label="Build the composer before the first load when the screen opens from a handoff"><span class="oh"><input type="radio" name="B2" value="a"><span class="letter">A</span> Keep the composer through the load <span class="sug">Suggested</span></span>
+      <p class="why">When the session screen opens from a new-session handoff, it already has everything the composer needs: the session, agent, model and your unsent text. So it builds the composer immediately and the transcript fills in above it. Your focus, keyboard and text never move. This only changes the handoff path; opening an existing session behaves as it does today. It adds roughly one step's worth of work to the plan.</p></label>
+    <label class="opt" data-label="Accept the gap; it matches opening any session today"><span class="oh"><input type="radio" name="B2" value="b"><span class="letter">B</span> Accept the gap</span>
+      <p class="why">Nothing new to build. Your text is kept as a draft, so nothing is lost. But the keyboard drops and the composer blinks out right after Send, which is the exact moment this plan is meant to make feel seamless.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<h2 id="q3">3. Closing the Prompts screen with the iPhone back swipe</h2>
+<div class="box">
+  <p style="margin:0">The Prompts screen is <b>a layer over the session, not a new page</b>, as decided earlier, so the transcript underneath never moves. The side effect: while the layer is open, iOS's <b>edge swipe from the left does nothing</b>. The plan currently closes it only by tapping a prompt or the close control. Android's back gesture works either way.</p>
+</div>
+<div class="q" data-id="B3" data-title="iPhone edge swipe on the Prompts screen">
+  <div class="qh"><span class="qid">B3</span><span class="qt">Should an edge swipe close the Prompts screen on iPhone?</span><span class="qhint">Pick one</span></div>
+  <div class="opts">
+    <label class="opt" data-label="Add an edge swipe that drags the layer away under the finger"><span class="oh"><input type="radio" name="B3" value="a"><span class="letter">A</span> Yes, the layer follows your finger <span class="sug">Suggested</span></span>
+      <p class="why">Swiping from the left edge slides the Prompts layer right with your finger, like the iOS back gesture. Release past the halfway point and it finishes closing; release before that and it springs back. The session underneath stays still. It's a small custom gesture on the layer, and it keeps the one gesture iPhone users reach for without thinking.</p></label>
+    <label class="opt" data-label="No swipe; close by tapping a prompt or the close control"><span class="oh"><input type="radio" name="B3" value="b"><span class="letter">B</span> No swipe</span>
+      <p class="why">Nothing extra to build. But an iPhone user who swipes to go back gets no response at all, which feels broken rather than merely different.</p></label>
+    <label class="opt" data-label="Make the Prompts screen a real page (route) instead of a layer"><span class="oh"><input type="radio" name="B3" value="c"><span class="letter">C</span> Make it a real page</span>
+      <p class="why">You get the native swipe for free, but this reopens the earlier decision. A page transition slides the session away, and returning must rebuild the transcript's position, which is the in-place jump the layer design was chosen to avoid.</p></label>
   </div>
   <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
 </div>
