@@ -2995,12 +2995,6 @@ abstract class AppLocalizations {
   /// **'Undo'**
   String get sessionListArchiveUndo;
 
-  /// Desktop session menu entry, and the default button of the refusal alert, that archives a session without deleting its worktree.
-  ///
-  /// In en, this message translates to:
-  /// **'Archive, keep worktree'**
-  String get sessionListArchiveKeepWorktree;
-
   /// Title of the desktop alert shown before archiving a session that is still running.
   ///
   /// In en, this message translates to:
@@ -3019,11 +3013,17 @@ abstract class AppLocalizations {
   /// **'The worktree can’t be deleted safely'**
   String get sessionListArchiveRefusedTitle;
 
-  /// Desktop refusal alert button that archives the session and force-deletes its worktree.
+  /// Destructive button on both cleanup refusal modals that retries the archive or delete with force, so the worktree and the work in it are removed.
   ///
   /// In en, this message translates to:
-  /// **'Delete it anyway'**
-  String get sessionListArchiveDeleteAnyway;
+  /// **'Delete anyway'**
+  String get sessionListCleanupDeleteAnyway;
+
+  /// Informational line shown after an archive or delete that could not remove a shared worktree. Not a question: nothing was lost and there is nothing to decide.
+  ///
+  /// In en, this message translates to:
+  /// **'Another session is still using the worktree, so it was left in place.'**
+  String get sessionListCleanupWorktreeKept;
 
   /// Title of the desktop delete alert, naming the session.
   ///
@@ -3031,11 +3031,11 @@ abstract class AppLocalizations {
   /// **'Delete “{title}”?'**
   String sessionListDeleteNamedTitle(String title);
 
-  /// Checkbox in the desktop delete alert.
+  /// Line in the delete confirmation, on both shells, stating that a session with a dedicated worktree loses it. Deletion never offers a choice about this.
   ///
   /// In en, this message translates to:
-  /// **'Delete the worktree too (the branch is kept)'**
-  String get sessionListDeleteWorktreeKeepsBranch;
+  /// **'Its worktree will be deleted too. The branch is kept.'**
+  String get sessionListDeleteWorktreeNotice;
 
   /// No description provided for @sessionListDeleted.
   ///
@@ -3877,12 +3877,6 @@ abstract class AppLocalizations {
   /// **'Couldn’t verify whether this project supports worktrees. Try again before creating the session.'**
   String get newSessionProjectUnavailable;
 
-  /// No description provided for @sessionListDeleteWorktreeCheckbox.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete worktree'**
-  String get sessionListDeleteWorktreeCheckbox;
-
   /// No description provided for @sessionDetailArchivedNotice.
   ///
   /// In en, this message translates to:
@@ -3996,12 +3990,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The following issues were found:'**
   String get sessionListForceMessage;
-
-  /// No description provided for @sessionListForceDeleteAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Force delete'**
-  String get sessionListForceDeleteAction;
 
   /// No description provided for @sessionListCleanupIssueUnstagedChanges.
   ///

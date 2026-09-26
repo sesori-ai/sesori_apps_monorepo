@@ -31,9 +31,17 @@ class const PendingSessionArchiveState({
 /// outcome of one session can never overwrite another session's Undo window.
 sealed class const PendingSessionArchiveOutcome({required final Session session});
 
-final class const PendingSessionArchiveCommitted({required super.session}) extends PendingSessionArchiveOutcome;
+final class const PendingSessionArchiveCommitted({
+  required super.session,
 
-/// The bridge refused to clean up the worktree.
+  /// True when the bridge refused to remove a worktree that another live
+  /// session shares, so the archive went through with it left in place. The
+  /// user is told this happened; they are never asked.
+  required final bool worktreeKept,
+}) extends PendingSessionArchiveOutcome;
+
+/// The bridge refused to clean up the worktree over something the user owns:
+/// uncommitted work, or a branch that is not the one expected.
 final class const PendingSessionArchiveRefused({
   required super.session,
   required final SessionCleanupRejection rejection,

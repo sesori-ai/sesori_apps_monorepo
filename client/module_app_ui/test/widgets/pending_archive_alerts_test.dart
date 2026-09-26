@@ -93,33 +93,88 @@ void main() {
     );
   });
 
-  testWidgets("a refused cleanup defaults to keeping the worktree and commits without a second Undo", (tester) async {
-    await pumpAlerts(tester);
-    const rejection = shared.SessionCleanupRejection(issues: [shared.CleanupIssue.unstagedChanges()]);
+  /// Makes the plain archive fail with [issues] as a cleanup refusal.
+  void refuseCleanupWith(List<shared.CleanupIssue> issues) {
+    final rejection = shared.SessionCleanupRejection(issues: issues);
     when(() => repository.archiveSession(sessionId: "s1", deleteWorktree: true, force: false)).thenThrow(
       SessionCleanupRejectedException(
         rejection: SessionCleanupRejection(issues: rejection.issues),
-        innerError: const SessionCleanupApiRejectedException(rejection: rejection),
+        innerError: SessionCleanupApiRejectedException(rejection: rejection),
       ),
     );
-    when(
-      () => repository.archiveSession(sessionId: "s1", deleteWorktree: false, force: false),
-    ).thenAnswer((_) async => ApiResponse.success(session));
+  }
 
+  Future<void> commitArchive(WidgetTester tester) async {
     cubit.archive(session: session, deleteWorktree: true);
     await tester.pump();
     await tester.pump(PendingSessionArchiveCubit.undoWindow);
     await tester.pumpAndSettle();
+  }
 
-    final keep = find.widgetWithText(PregoButtonsSolid, "Archive, keep worktree");
-    expect(tester.widget<PregoButtonsSolid>(keep).hierarchy, PregoButtonsSolidHierarchy.primary);
-    expect(find.text("Delete it anyway"), findsOneWidget);
-    await tester.tap(keep);
+  testWidgets("a refusal over the user's own work offers Cancel or a destructive Delete anyway", (tester) async {
+    await pumpAlerts(tester);
+    refuseCleanupWith(const [shared.CleanupIssue.unstagedChanges()]);
+    when(
+      () => repository.archiveSession(sessionId: "s1", deleteWorktree: true, force: true),
+    ).thenAnswer((_) async => ApiResponse.success(session));
+    await commitArchive(tester);
+
+    expect(find.text("Worktree has unstaged changes"), findsOneWidget);
+    // Exactly two ways out, so no third "keep the worktree" escape remains.
+    expect(find.byType(PregoButtonsSolid), findsNWidgets(2));
+    final anyway = find.widgetWithText(PregoButtonsSolid, "Delete anyway");
+    expect(tester.widget<PregoButtonsSolid>(anyway).type, PregoButtonsSolidType.destructive);
+    expect(find.widgetWithText(PregoButtonsSolid, "Cancel"), findsOneWidget);
+
+    // The alert is the confirmation: one tap forces, with no second Undo.
+    await tester.tap(anyway);
     await tester.pumpAndSettle();
 
-    verify(() => repository.archiveSession(sessionId: "s1", deleteWorktree: false, force: false)).called(1);
+    verify(() => repository.archiveSession(sessionId: "s1", deleteWorktree: true, force: true)).called(1);
     expect(cubit.state.window, isA<PendingArchiveIdle>());
     expect(cubit.state.hiddenIds, {"s1"});
+  });
+
+  testWidgets("Cancel on that refusal sends nothing more and returns the session", (tester) async {
+    await pumpAlerts(tester);
+    refuseCleanupWith(const [shared.CleanupIssue.unstagedChanges()]);
+    await commitArchive(tester);
+
+    await tester.tap(find.widgetWithText(PregoButtonsSolid, "Cancel"));
+    await tester.pumpAndSettle();
+
+    verifyNever(() => repository.archiveSession(sessionId: "s1", deleteWorktree: true, force: true));
+    expect(cubit.state.hiddenIds, isEmpty);
+  });
+
+  testWidgets("a worktree another session shares is kept without asking, and said so once", (tester) async {
+    await pumpAlerts(tester);
+    refuseCleanupWith(const [shared.CleanupIssue.sharedWorktree()]);
+    when(
+      () => repository.archiveSession(sessionId: "s1", deleteWorktree: false, force: false),
+    ).thenAnswer((_) async => ApiResponse.success(session));
+    await commitArchive(tester);
+
+    // No modal and no force: the session archives, the other session keeps its
+    // worktree, and the user is told rather than asked.
+    expect(find.text("Delete anyway"), findsNothing);
+    expect(find.text("Session archived"), findsOneWidget);
+    expect(find.text("Another session is still using the worktree, so it was left in place."), findsOneWidget);
+    verify(() => repository.archiveSession(sessionId: "s1", deleteWorktree: false, force: false)).called(1);
+    verifyNever(() => repository.archiveSession(sessionId: "s1", deleteWorktree: true, force: true));
+    expect(cubit.state.hiddenIds, {"s1"});
+    await tester.pumpAndSettle(const Duration(seconds: 4));
+  });
+
+  testWidgets("a shared worktree alongside the user's own work still asks", (tester) async {
+    await pumpAlerts(tester);
+    refuseCleanupWith(const [shared.CleanupIssue.sharedWorktree(), shared.CleanupIssue.unstagedChanges()]);
+    await commitArchive(tester);
+
+    expect(find.text("Another active session uses this worktree"), findsOneWidget);
+    expect(find.text("Worktree has unstaged changes"), findsOneWidget);
+    expect(find.widgetWithText(PregoButtonsSolid, "Delete anyway"), findsOneWidget);
+    verifyNever(() => repository.archiveSession(sessionId: "s1", deleteWorktree: false, force: false));
   });
 
   testWidgets("any other failure says so", (tester) async {

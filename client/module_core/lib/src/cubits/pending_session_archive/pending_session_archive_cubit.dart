@@ -46,9 +46,9 @@ class PendingSessionArchiveCubit({required final SessionRepository repository})
     emit(PendingSessionArchiveState(window: const PendingArchiveIdle(), archivingIds: state.archivingIds));
   }
 
-  /// Archives at once, for the choice made in the refusal alert.
-  Future<void> commitNow({required Session session, required bool deleteWorktree, required bool force}) =>
-      _commit(session: session, deleteWorktree: deleteWorktree, force: force);
+  /// Archives at once, forcing the worktree removal the bridge refused. No
+  /// second Undo window: the user has already answered the refusal alert.
+  Future<void> commitForced({required Session session}) => _commit(session: session, deleteWorktree: true, force: true);
 
   void _commitWindow() {
     _timer?.cancel();
@@ -88,12 +88,21 @@ class PendingSessionArchiveCubit({required final SessionRepository repository})
       );
       switch (response) {
         case SuccessResponse():
-          return PendingSessionArchiveCommitted(session: session);
+          return PendingSessionArchiveCommitted(session: session, worktreeKept: false);
         case ErrorResponse(:final error):
           loge("Failed to archive session ${session.id}", error);
           return PendingSessionArchiveFailed(session: session);
       }
     } on SessionCleanupRejectedException catch (error) {
+      // A worktree another live session still uses is not the user's problem to
+      // solve: archive the session and leave that worktree to the other one.
+      // The retry sends deleteWorktree: false, so it cannot be refused again.
+      if (deleteWorktree && error.rejection.isOnlySharedWorktree) {
+        final retry = await _archive(session: session, deleteWorktree: false, force: false);
+        return retry is PendingSessionArchiveCommitted
+            ? PendingSessionArchiveCommitted(session: session, worktreeKept: true)
+            : retry;
+      }
       return PendingSessionArchiveRefused(session: session, rejection: error.rejection);
     } on Object catch (error, stackTrace) {
       loge("Failed to archive session ${session.id}", error, stackTrace);

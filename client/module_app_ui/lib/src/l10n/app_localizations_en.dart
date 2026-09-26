@@ -1643,9 +1643,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListArchiveUndo => 'Undo';
 
   @override
-  String get sessionListArchiveKeepWorktree => 'Archive, keep worktree';
-
-  @override
   String get sessionListArchiveRunningTitle => 'Archive a running session?';
 
   @override
@@ -1657,7 +1654,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListArchiveRefusedTitle => 'The worktree can’t be deleted safely';
 
   @override
-  String get sessionListArchiveDeleteAnyway => 'Delete it anyway';
+  String get sessionListCleanupDeleteAnyway => 'Delete anyway';
+
+  @override
+  String get sessionListCleanupWorktreeKept => 'Another session is still using the worktree, so it was left in place.';
 
   @override
   String sessionListDeleteNamedTitle(String title) {
@@ -1665,7 +1665,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get sessionListDeleteWorktreeKeepsBranch => 'Delete the worktree too (the branch is kept)';
+  String get sessionListDeleteWorktreeNotice => 'Its worktree will be deleted too. The branch is kept.';
 
   @override
   String get sessionListDeleted => 'Session deleted';
@@ -2123,9 +2123,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn’t verify whether this project supports worktrees. Try again before creating the session.';
 
   @override
-  String get sessionListDeleteWorktreeCheckbox => 'Delete worktree';
-
-  @override
   String get sessionDetailArchivedNotice => 'This session is archived and read-only.';
 
   @override
@@ -2198,9 +2195,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListForceMessage => 'The following issues were found:';
-
-  @override
-  String get sessionListForceDeleteAction => 'Force delete';
 
   @override
   String get sessionListCleanupIssueUnstagedChanges => 'Worktree has unstaged changes';
