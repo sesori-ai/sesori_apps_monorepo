@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instant new session — the eleven decisions</title>
+<style>
+@font-face { font-family: Satoshi; src: url("fonts/SatoshiPrego-Regular.otf"); font-weight: 400; }
+@font-face { font-family: Satoshi; src: url("fonts/SatoshiPrego-Medium.otf"); font-weight: 500; }
+@font-face { font-family: Satoshi; src: url("fonts/SatoshiPrego-Bold.otf"); font-weight: 700; }
+@font-face { font-family: TablerRegular; src: url("fonts/TablerIcons-Regular.ttf"); }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Satoshi, -apple-system, sans-serif; background: #f4f4f5; color: #161616; line-height: 1.45; }
+main { max-width: 1320px; margin: 0 auto; padding: 28px 28px 120px; }
+h1 { font-size: 30px; margin: 0 0 6px; }
+h2 { font-size: 24px; margin: 56px 0 6px; padding-top: 18px; border-top: 1px solid #ddd; }
+p.lead { color: #444; margin: 0 0 18px; max-width: 980px; font-size: 16px; }
+.box { background: #fff; border-radius: 14px; padding: 16px 20px; margin: 14px 0; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.box.settled { border-left: 4px solid #12a150; }
+.box.how { border-left: 4px solid #1a6dff; }
+.box h3 { margin: 0 0 6px; font-size: 16px; }
+ul { margin: 6px 0; padding-left: 22px; } li { margin: 3px 0; }
+code { font-size: 13px; background: #ececef; padding: 1px 5px; border-radius: 5px; }
+.muted { color: #666; }
+
+/* Sticky answer bar */
+.bar { position: sticky; top: 0; z-index: 10; background: rgba(244,244,245,.94); backdrop-filter: blur(8px); border-bottom: 1px solid #e0e0e0; }
+.bar .in { max-width: 1320px; margin: 0 auto; padding: 10px 28px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.bar nav a { margin-right: 12px; color: #1a4fd6; text-decoration: none; font-weight: 500; font-size: 14px; }
+.bar .prog { font-weight: 700; font-size: 14px; }
+.bar .darkt { font-size: 14px; color: #555; }
+#copy { margin-left: auto; background: #1a6dff; color: #fff; border: 0; border-radius: 10px; padding: 9px 18px; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+#copy:hover { background: #1558d6; }
+#toast { font-size: 14px; color: #12813f; font-weight: 700; min-width: 60px; }
+#fallback { width: 100%; height: 160px; font: 13px ui-monospace, monospace; }
+
+/* Section overview: today next to the suggested result */
+.overview { display: grid; grid-template-columns: 390px 390px 1fr; gap: 22px; align-items: start; margin: 14px 0 10px; }
+.overview figure { margin: 0; }
+.overview figcaption { font-size: 14px; margin: 0 0 8px; }
+.overview img { width: 390px; display: block; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 10px; }
+@media (max-width: 1260px) { .overview { grid-template-columns: 390px 390px; } .overview table { grid-column: 1 / -1; } }
+.tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; margin-right: 6px; }
+.tag.today { background: #e6e6e6; color: #555; }
+.tag.after { background: #dcf5e6; color: #0f7a3d; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
+th { color: #666; font-weight: 500; background: #fafafa; }
+
+/* Question cards */
+.q { background: #fff; border-radius: 16px; padding: 18px 20px 16px; margin: 22px 0; box-shadow: 0 1px 3px rgba(0,0,0,.08); border: 1.5px solid transparent; }
+.q.answered { border-color: #cfe0ff; }
+.qh { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.qid { flex: none; font-size: 13px; font-weight: 700; color: #fff; background: #161616; border-radius: 8px; padding: 2px 8px; }
+.qt { font-size: 18px; font-weight: 700; }
+.qhint { font-size: 13px; color: #1a4fd6; font-weight: 700; margin-left: auto; white-space: nowrap; }
+.qsub { color: #444; margin: 0 0 12px; max-width: 1000px; }
+.opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.opt { display: block; border: 1.5px solid #ddd; border-radius: 12px; padding: 12px 14px; cursor: pointer; background: #fff; }
+.opt:hover { border-color: #9ab; }
+.opt.on { border-color: #1a6dff; background: #f2f6ff; box-shadow: 0 0 0 3px rgba(26,109,255,.12); }
+.oh { display: flex; align-items: center; gap: 8px; font-size: 15px; margin-bottom: 10px; }
+.oh input { width: 18px; height: 18px; margin: 0; accent-color: #1a6dff; flex: none; }
+.oh .letter { font-weight: 700; }
+.sug { font-size: 12px; font-weight: 700; color: #0f7a3d; background: #dcf5e6; border-radius: 99px; padding: 2px 8px; margin-left: auto; white-space: nowrap; }
+.why { font-size: 14px; color: #444; margin: 8px 0 0; }
+.note-in { display: block; margin-top: 12px; width: 100%; border: 1.5px solid #e2e2e2; border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 14px; resize: vertical; min-height: 38px; }
+#other { min-height: 110px; }
+
+/* Phone transcript mock: Prego tokens, textSm 14/20, rows 16 px from the edge. */
+.phone { width: 390px; max-width: 100%; background: var(--bg); color: var(--tp); border-radius: 12px; padding: 8px 0 10px; font-size: 14px; line-height: 20px; overflow: hidden; border: 1px solid #ddd; }
+.light { --bg: #F0F0F0; --s2: #FCFCFC; --tp: #141414; --ts: #474747; --tt: #6A6A6A; --err: #D92D20; --spin: 60, 60, 68; }
+.dark { --bg: #141414; --s2: #1E1E1E; --tp: #FDFDFD; --ts: #AEAEAE; --tt: #999999; --err: #F97066; --spin: 235, 235, 245; border-color: #333; }
+.bubble { width: fit-content; max-width: 272px; margin: 4px 16px 4px auto; padding: 10px; background: var(--s2); border-radius: 12px; letter-spacing: .14px; }
+.answer { padding: 6px 16px; letter-spacing: .14px; }
+.row { display: flex; align-items: center; min-height: 44px; padding: 0 16px; color: var(--ts); white-space: nowrap; }
+.row.sum { margin: 2px 0; }
+.row.work { min-height: 36px; margin: 4px 0; }
+.row.two { align-items: flex-start; padding-top: 12px; padding-bottom: 12px; }
+.row.sub { min-height: 32px; padding-left: 44px; }
+.slot { flex: none; width: 20px; height: 20px; margin-right: 8px; display: grid; place-items: center; color: var(--ts); }
+.txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.grow { flex: 1; }
+.time { flex: none; color: var(--tt); font-variant-numeric: tabular-nums; }
+.sum .time { color: var(--ts); }
+.err { flex: none; color: var(--err); }
+.stack { display: flex; flex-direction: column; min-width: 0; }
+.stack .line { display: flex; min-width: 0; }
+.stack .sub2 { color: var(--tt); white-space: normal; }
+.chev { flex: none; margin-left: 8px; font-size: 18px; color: var(--ts); }
+.ti { font-family: TablerRegular; font-style: normal; font-size: 14px; line-height: 1; }
+.dot { width: 5px; height: 5px; border-radius: 50%; background: var(--tt); }
+.spark { width: 14px; height: 14px; color: var(--ts); }
+.spark.turn { animation: turn 2s linear infinite; }
+.spin { width: 13px; height: 13px; color: rgb(var(--spin)); animation: turn 1s steps(8) infinite; }
+@keyframes turn { to { transform: rotate(360deg); } }
+.shim { background: linear-gradient(90deg, var(--tt) 0 40%, var(--tp) 50%, var(--tt) 60% 100%); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shim 1.5s linear infinite; }
+.shim u { text-decoration-color: var(--tt); }
+@keyframes shim { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.divider { border-top: 1px dashed var(--tt); opacity: .35; margin: 6px 16px; }
+.phonelabel { font-size: 12px; color: var(--tt); padding: 2px 16px 0; }
+@media (prefers-reduced-motion: reduce) { .spark.turn, .spin, .shim { animation: none; } }
+details { margin: 14px 0; }
+summary { cursor: pointer; font-weight: 700; }
+
+/* Narrow screens (answering from a phone). */
+@media (max-width: 760px) {
+  main { padding: 16px 14px 120px; }
+  h1 { font-size: 24px; }
+  h2 { font-size: 20px; margin-top: 38px; }
+  .qt { font-size: 16px; }
+  .qhint { display: none; }
+  .opts { grid-template-columns: 1fr; }
+  .overview { grid-template-columns: 1fr; }
+  .overview img { width: 100%; }
+  .bar .in { padding: 9px 14px; gap: 10px; }
+  .bar nav { display: none; }
+  #copy { padding: 9px 14px; }
+  .phone { width: 100%; }
+  table { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="sparkle" viewBox="0 0 24 24"><path d="M12 3C12.375 3 12.711 3.231 12.846 3.581L14.496 7.871A2.85 2.85 0 0 0 16.128 9.504L20.419 11.154A0.906 0.906 0 0 1 20.419 12.846L16.129 14.496A2.84 2.84 0 0 0 14.496 16.128L12.846 20.419A0.906 0.906 0 0 1 11.154 20.419L9.504 16.129A2.84 2.84 0 0 0 7.872 14.496L3.581 12.846A0.906 0.906 0 0 1 3.581 11.154L7.871 9.504A2.84 2.84 0 0 0 9.504 7.872L11.154 3.581A0.91 0.91 0 0 1 12 3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="spinner" viewBox="0 0 20 20">
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".58"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".18" transform="rotate(45 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".18" transform="rotate(90 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".18" transform="rotate(135 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".18" transform="rotate(180 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".28" transform="rotate(225 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".38" transform="rotate(270 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".48" transform="rotate(315 10 10)"/>
+  </symbol>
+</svg>
+
+<style>
+.ic { width: 15px; height: 15px; flex: none; }
+.tile { display: flex; align-items: center; gap: 10px; padding: 12px 16px; min-height: 70px; }
+.tile .st { flex: none; width: 18px; display: grid; place-items: center; color: var(--ts); }
+.tile .stack { flex: 1; min-width: 0; }
+.tile .t { color: var(--tp); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .m { color: var(--tt); font-size: 12px; margin-top: 2px; }
+.tile .tm { flex: none; color: var(--tt); font-size: 12px; }
+.daylbl { font-size: 12px; color: var(--tt); padding: 8px 16px 2px; }
+.comp { margin: 8px 12px; background: var(--s2); border-radius: 14px; padding: 10px 12px; color: var(--tt); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.comp .send { margin-left: auto; width: 26px; height: 26px; border-radius: 50%; background: var(--tp); flex: none; }
+.pend { margin: 4px 12px 4px auto; width: fit-content; max-width: 260px; background: var(--s2); border-radius: 12px; padding: 8px 10px; font-size: 13px; color: var(--ts); display: flex; gap: 8px; align-items: center; }
+.pend .x { color: var(--tt); }
+.banner { margin: 8px 12px; border-radius: 10px; padding: 8px 10px; font-size: 12px; background: rgba(217,45,32,.12); color: var(--err); }
+.centre { display: grid; place-items: center; min-height: 120px; }
+.arrowdown { text-align: center; color: var(--tt); font-size: 20px; line-height: 1; margin: 2px 0; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; align-items: start; margin: 14px 0; }
+.pair figure { margin: 0; }
+.pair figcaption { font-size: 14px; margin: 0 0 8px; }
+</style>
+
+<div class="bar"><div class="in">
+  <span class="prog" id="prog">0 of 9 picked</span>
+  <nav><a href="#qs">Decisions</a><a href="#recorded">Recorded</a></nav>
+  <label class="darkt"><input type="checkbox" id="darkmode"> Dark mocks</label>
+  <span id="toast"></span>
+  <button id="copy" type="button">Copy response</button>
+</div>
+<div class="in" style="padding-top:0"><textarea id="fallback" hidden></textarea></div>
+</div>
+
+<main>
+<h1>Instant new session — the eleven decisions</h1>
+<p class="lead">Your five answers reshaped the plan into eight steps, and they raised eleven smaller decisions along the way. Nine need you; two are recorded at the bottom with no real alternative. Each has a recommendation — <b>including one where I recommend against what you suggested</b>, because it loses data (D1).</p>
+
+<div class="box settled">
+  <h3>Settled by your answers</h3>
+  <ul>
+    <li>The first message shows <b>immediately</b>, in a session-shaped screen, while creation runs.</li>
+    <li>The <b>composer stays live</b>; extra messages queue until the session exists.</li>
+    <li>A <b>placeholder row</b> appears in the session lists right away.</li>
+    <li>Two happy discoveries: follow-ups need no new queue (the existing one already accepts prompts for a session that is not loaded), and running rows already lead <b>Today</b>, so the placeholder and the real session occupy the same slot — the list does not move when they swap.</li>
+  </ul>
+</div>
+
+<h2 id="qs">Decisions</h2>
+
+<div class="q" data-id="D1" data-title="Queued follow-ups when creation fails">
+  <div class="qh"><span class="qid">D1</span><span class="qt">Creation fails and you had already typed follow-ups</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">Your first message goes back into the composer, as you asked. The open part is what happens to the extra messages queued behind it. Your suggestion was to append them into the same draft, separated by blank lines — I recommend against it, for a concrete reason: a follow-up can carry <b>attachments</b>, and text has nowhere to put them, so images would be silently dropped. It also merges turns you deliberately separated, and a queued slash command cannot be appended to a text draft at all.</p>
+  <div class="pair">
+    <figure><figcaption><span class="tag after">A</span> follow-ups stay as cancellable bubbles</figcaption>
+      <div class="phone light">
+        <div class="banner">Couldn't create the session. Check the bridge and try again.</div>
+        <div class="pend">Also add the Android case <span class="x">✕</span></div>
+        <div class="pend">And a test for UNC paths <span class="x">✕</span></div>
+        <div class="comp">Fix the flaky reconnect test<span class="send"></span></div>
+      </div>
+    </figure>
+    <figure><figcaption><span class="tag today">B</span> everything merged into the draft</figcaption>
+      <div class="phone light">
+        <div class="banner">Couldn't create the session. Check the bridge and try again.</div>
+        <div class="comp" style="align-items:flex-start"><span>Fix the flaky reconnect test<br><br>Also add the Android case<br><br>And a test for UNC paths</span><span class="send"></span></div>
+      </div>
+    </figure>
+  </div>
+  <div class="opts">
+    <label class="opt" data-label="Keep follow-ups queued as cancellable pending bubbles"><span class="oh"><input type="radio" name="D1" value="a"><span class="letter">A</span> Keep them as cancellable bubbles <span class="sug">Suggested</span></span>
+      <p class="why">Nothing is lost and nothing is merged: attachments and slash commands survive, and pressing Send again starts a new launch carrying them in order. It is also <i>less</i> work, because those bubbles are already built.</p></label>
+    <label class="opt" data-label="Append the follow-ups into the composer draft, separated by blank lines"><span class="oh"><input type="radio" name="D1" value="b"><span class="letter">B</span> Merge them into the draft (your suggestion)</span>
+      <p class="why">One editable block you can fix up and resend. Silently drops any images in the follow-ups, merges turns you separated, and cannot represent a slash command.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" data-id="D2" data-title="What the placeholder row shows">
+  <div class="qh"><span class="qid">D2</span><span class="qt">What the launching row looks like in the list</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">It has to be the same 70 px shape as a real row or the list jumps when the real session replaces it. That fixes most of it; the question is the title and the meta line.</p>
+  <div class="pair">
+    <figure><figcaption><span class="tag after">A</span> prompt's first line, sparkle, harness name</figcaption>
+      <div class="phone light">
+        <div class="daylbl">Today</div>
+        <div class="tile"><span class="st"><svg class="spark turn" viewBox="0 0 24 24"><use href="#sparkle"/></svg></span><span class="stack"><span class="t">Fix the flaky reconnect test</span><span class="m">Claude Code</span></span></div>
+        <div class="tile"><span class="st"><span class="dot"></span></span><span class="stack"><span class="t">Windows drive picker</span><span class="m">Codex</span></span><span class="tm">2h</span></div>
+      </div>
+    </figure>
+    <figure><figcaption><span class="tag today">B</span> a neutral "Creating session…" row</figcaption>
+      <div class="phone light">
+        <div class="daylbl">Today</div>
+        <div class="tile"><span class="st"><svg class="spark turn" viewBox="0 0 24 24"><use href="#sparkle"/></svg></span><span class="stack"><span class="t">Creating session…</span><span class="m">Claude Code</span></span></div>
+        <div class="tile"><span class="st"><span class="dot"></span></span><span class="stack"><span class="t">Windows drive picker</span><span class="m">Codex</span></span><span class="tm">2h</span></div>
+      </div>
+    </figure>
+  </div>
+  <div class="opts">
+    <label class="opt" data-label="Prompt's first line as the title, sparkle, harness name, no time"><span class="oh"><input type="radio" name="D2" value="a"><span class="letter">A</span> Your prompt's first line <span class="sug">Suggested</span></span>
+      <p class="why">It names the session by what you asked for, and the generated title that arrives later usually resembles it — so the text barely changes on the swap. No time until there is one.</p></label>
+    <label class="opt" data-label="A neutral Creating session… title until the real title arrives"><span class="oh"><input type="radio" name="D2" value="b"><span class="letter">B</span> A neutral "Creating session…"</span>
+      <p class="why">Never claims to be a title it is not. Tells you nothing about <i>which</i> session it is when several are launching, and the text changes completely on the swap.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" data-id="D3" data-title="Can the placeholder row be tapped">
+  <div class="qh"><span class="qid">D3</span><span class="qt">What happens if you tap the launching row</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">There is no session to open yet. It could instead take you back to the screen where your message is already showing.</p>
+  <div class="opts">
+    <label class="opt" data-label="Inert: no tap, no menu, no swipe"><span class="oh"><input type="radio" name="D3" value="a"><span class="letter">A</span> Inert — nothing happens <span class="sug">Suggested</span></span>
+      <p class="why">It lives for a few seconds and there is nothing behind it. Add the tap later if the inertness actually annoys you.</p></label>
+    <label class="opt" data-label="Tapping returns to the launching screen"><span class="oh"><input type="radio" name="D3" value="b"><span class="letter">B</span> Tapping returns to that launch</span>
+      <p class="why">Genuinely nicer — you get back to your message and can keep typing. Costs a re-created screen rebuilt from the launch, because the original may be gone.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" data-id="D4" data-title="Placeholder versus chips and search">
+  <div class="qh"><span class="qid">D4</span><span class="qt">Do the filter chips count it, and does search match it?</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">The All/Running/Unread chips show exact counts of the loaded list, and the search field narrows loaded titles. The launching row is not a loaded session. (Separately and not in question: the list's empty state must treat it as content — a project's first session is the commonest path here, and "no sessions yet" above a launching row would be plainly wrong.)</p>
+  <div class="opts">
+    <label class="opt" data-label="Excluded from chip counts; hidden while searching or in archived"><span class="oh"><input type="radio" name="D4" value="a"><span class="letter">A</span> Excluded from counts, hidden while searching <span class="sug">Suggested</span></span>
+      <p class="why">The chips keep agreeing with the list they describe, and a row that ignored your search would read as a bug.</p></label>
+    <label class="opt" data-label="Counted under Running and matched against the search query"><span class="oh"><input type="radio" name="D4" value="b"><span class="letter">B</span> Counted as Running and searchable</span>
+      <p class="why">It is running, after all. Adds the launch to three count paths and a filter path for a row that lives a few seconds.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" data-id="D5" data-title="Failure after you have left">
+  <div class="qh"><span class="qid">D5</span><span class="qt">Creation fails after you have left the screen</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">Today a late failure is silent, because nothing had promised you anything. With the placeholder row, a session is now being visibly promised in every list.</p>
+  <div class="opts">
+    <label class="opt" data-label="Remove the row and show one popup naming the project"><span class="oh"><input type="radio" name="D5" value="a"><span class="letter">A</span> Remove the row and say so, once <span class="sug">Suggested</span></span>
+      <p class="why">A row that appears and then silently vanishes is exactly the unexplained change the feel rules forbid. One popup, naming the project so you know which one failed.</p></label>
+    <label class="opt" data-label="Remove the row silently"><span class="oh"><input type="radio" name="D5" value="b"><span class="letter">B</span> Just remove the row</span>
+      <p class="why">Cheaper and quieter, and you did walk away. You may never learn the session was not created.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" data-id="D6" data-title="Several launches at once">
+  <div class="qh"><span class="qid">D6</span><span class="qt">Starting a second session while the first is still launching</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">On desktop this is easy to reach: the home composer and a project composer are separate surfaces.</p>
+  <div class="opts">
+    <label class="opt" data-label="Support several concurrent launches, each with its own row"><span class="oh"><input type="radio" name="D6" value="a"><span class="letter">A</span> Allow several, each with its own row <span class="sug">Suggested</span></span>
+      <p class="why">The cost is a map instead of a single field. A single slot would let the second launch erase the first one's row and its queued messages.</p></label>
+    <label class="opt" data-label="One launch at a time"><span class="oh"><input type="radio" name="D6" value="b"><span class="letter">B</span> One at a time</span>
+      <p class="why">Simpler state. Needs a rule for what the second Send does — block it or replace the first — and both are worse than allowing it.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" data-id="D7" data-title="Voice while creating">
+  <div class="qh"><span class="qid">D7</span><span class="qt">Dictation stays alive during creation</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">Today the composer is unmounted at Send, and that is what releases the phone's voice resources. Keeping it live (which is the point of your Q3 answer) keeps dictation alive for the few seconds creation takes.</p>
+  <div class="opts">
+    <label class="opt" data-label="Accept: voice stays available while creating"><span class="oh"><input type="radio" name="D7" value="a"><span class="letter">A</span> Accept it <span class="sug">Suggested</span></span>
+      <p class="why">A usable composer is the point, and the resources are released within seconds when the screen is replaced.</p></label>
+    <label class="opt" data-label="Disable voice specifically while creating"><span class="oh"><input type="radio" name="D7" value="b"><span class="letter">B</span> Disable dictation while creating</span>
+      <p class="why">Releases the microphone sooner. You could then type a follow-up but not dictate one, which is a confusing half-capability.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" data-id="D8" data-title="Desktop composer moves at Send">
+  <div class="qh"><span class="qid">D8</span><span class="qt">On desktop the composer has to move at Send</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">The idle new-session composer sits inline in a centred column; a session's composer is anchored to the bottom. Since it now stays mounted, it has to travel. The only question is whether you see it happen.</p>
+  <div class="pair">
+    <figure><figcaption>from: centred column</figcaption>
+      <div class="phone light"><div class="centre"><div class="comp" style="width:80%">What should we build?<span class="send"></span></div></div></div>
+    </figure>
+    <figure><figcaption>to: bottom-anchored</figcaption>
+      <div class="phone light"><div style="min-height:120px;display:flex;flex-direction:column;justify-content:flex-end"><div class="bubble">Fix the flaky reconnect test</div><div class="comp">Message<span class="send"></span></div></div></div>
+    </figure>
+  </div>
+  <div class="opts">
+    <label class="opt" data-label="Animate the move once at Send, 240 ms, none under reduced motion"><span class="oh"><input type="radio" name="D8" value="a"><span class="letter">A</span> Animate it once, at Send <span class="sug">Suggested</span></span>
+      <p class="why">The movement becomes the thing that explains "this is a session now", at the standard 240 ms, and nothing under reduced motion.</p></label>
+    <label class="opt" data-label="Let it move invisibly during the later screen replacement"><span class="oh"><input type="radio" name="D8" value="b"><span class="letter">B</span> Let it jump during the screen swap</span>
+      <p class="why">No new animation to build. The composer teleports at a moment you are not looking for it, which is the kind of unexplained jump we are trying to remove.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" data-id="D9" data-title="Options lock at Send">
+  <div class="qh"><span class="qid">D9</span><span class="qt">Can you still change harness, model or worktree while it creates?</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">Send commits those to a request already in flight, and the queued follow-ups inherit them.</p>
+  <div class="opts">
+    <label class="opt" data-label="Locked at Send; only text, attachments and commands stay live"><span class="oh"><input type="radio" name="D9" value="a"><span class="letter">A</span> Locked at Send <span class="sug">Suggested</span></span>
+      <p class="why">The page cannot show one selection while a different one is in flight. Text, attachments and slash commands stay usable, which is what you need in those seconds.</p></label>
+    <label class="opt" data-label="Let the model change apply to the queued follow-ups only"><span class="oh"><input type="radio" name="D9" value="b"><span class="letter">B</span> Let changes apply to the follow-ups</span>
+      <p class="why">More control if you change your mind mid-launch. The screen would then be showing options that do not describe the session being created.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" style="border-color:#ddd">
+  <div class="qh"><span class="qt">Anything else?</span></div>
+  <textarea id="other" placeholder="Free text (optional)"></textarea>
+</div>
+
+<h2 id="recorded">Recorded, not asked <span class="muted" style="font-size:15px;font-weight:400">— nothing to pick</span></h2>
+<div class="box">
+  <ul>
+    <li><b>D10 — only the first message is matched by position.</b> Follow-ups carry real ids and settle the normal way. Written down because applying the positional rule to them would drop the wrong bubble, and that is an easy mistake to make while implementing.</li>
+    <li><b>D11 — no cap on queued attachment bytes.</b> Each prompt already caps at 50 MB, and the existing session queue has no total ceiling. Adding one only here would invent a limit that new sessions have and existing ones do not, for a window of seconds, with no observed failure.</li>
+    <li><b>Two regression documents are now wrong</b> and get rewritten rather than patched: "Send replaces the composer" and "the new-session page changes in place without a fade" both stop being true.</li>
+    <li><b>Pre-warming a harness</b> (OpenCode's 16.6 s cold start) is noted as a later phase, not planned yet.</li>
+  </ul>
+</div>
+</main>
+<script>
+// Answers: one pick and one note per question, kept in this browser.
+const KEY = "sesori-instant-new-session-d";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { state = {}; }
+const save = () => localStorage.setItem(KEY, JSON.stringify(state));
+const questions = [...document.querySelectorAll(".q[data-id]")];
+function refresh() {
+  let picked = 0;
+  for (const q of questions) {
+    const s = state[q.dataset.id] || {};
+    if (s.v) picked++;
+    q.classList.toggle("answered", Boolean(s.v));
+    q.querySelectorAll("input[type=radio]").forEach((r) => {
+      r.checked = r.value === s.v;
+      r.closest(".opt").classList.toggle("on", r.checked);
+    });
+  }
+  document.getElementById("prog").textContent = `${picked} of ${questions.length} picked`;
+}
+for (const q of questions) {
+  const id = q.dataset.id;
+  q.querySelectorAll("input[type=radio]").forEach((r) => r.addEventListener("change", () => {
+    (state[id] ||= {}).v = r.value;
+    save();
+    refresh();
+  }));
+  const note = q.querySelector(".note-in");
+  note.value = (state[id] || {}).n || "";
+  note.addEventListener("input", () => { (state[id] ||= {}).n = note.value; save(); });
+}
+const other = document.getElementById("other");
+other.value = state.other || "";
+other.addEventListener("input", () => { state.other = other.value; save(); });
+
+function response() {
+  const lines = ["Instant new session: the D1-D11 decisions", ""];
+  for (const q of questions) {
+    const s = state[q.dataset.id] || {};
+    const opt = s.v ? q.querySelector(`input[value="${s.v}"]`).closest(".opt") : null;
+    const pick = opt
+      ? `${s.v.toUpperCase()}. ${opt.dataset.label}${opt.querySelector(".sug") ? " (suggested)" : ""}`
+      : "no answer";
+    lines.push(`${q.dataset.id} ${q.dataset.title}: ${pick}`);
+    if (s.n && s.n.trim()) lines.push(`    Note: ${s.n.trim()}`);
+  }
+  if (state.other && state.other.trim()) lines.push("", `Anything else: ${state.other.trim()}`);
+  return lines.join("\n") + "\n";
+}
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = response();
+  const toast = document.getElementById("toast");
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.textContent = "Copied";
+  } catch (e) {
+    const fallback = document.getElementById("fallback");
+    fallback.hidden = false;
+    fallback.value = text;
+    fallback.focus();
+    fallback.select();
+    toast.textContent = "Copy the selected text";
+  }
+  setTimeout(() => { toast.textContent = ""; }, 2500);
+});
+refresh();
+
+// Dark mocks: swap the phone palette and the Today renders.
+document.getElementById("darkmode").addEventListener("change", (event) => {
+  const dark = event.target.checked;
+  document.querySelectorAll(".phone").forEach((p) => { p.classList.toggle("dark", dark); p.classList.toggle("light", !dark); });
+  document.querySelectorAll("img[data-today]").forEach((img) => {
+    img.src = dark ? img.src.replace("-light.png", "-dark.png") : img.src.replace("-dark.png", "-light.png");
+  });
+});
+
+// "42s", "1m 02s", "1h 05m 12s": one format, seconds always shown.
+function format(total) {
+  if (total < 60) return `${total}s`;
+  const s = String(total % 60).padStart(2, "0");
+  const m = Math.floor(total / 60);
+  if (m < 60) return `${m}m ${s}s`;
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m ${s}s`;
+}
+const opened = Date.now();
+function tick() {
+  const elapsed = Math.floor((Date.now() - opened) / 1000);
+  document.querySelectorAll(".tick").forEach((node) => { node.textContent = format(Number(node.dataset.base) + elapsed); });
+}
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
