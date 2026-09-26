@@ -183,16 +183,19 @@ void main() {
   });
 
   testWidgets("keeps a settled reveal inside the narrowest supported window", (tester) async {
-    tester.view.physicalSize = const Size(600, 800);
+    // The desktop window minimum is 560 wide, where the reading column fills
+    // the pane and leaves the gutter no margin to spill into.
+    const windowWidth = 560.0;
+    tester.view.physicalSize = const Size(windowWidth, 480);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    await pumpColumn(tester, columnWidth: 600, contentWidths: const [120.0, 600.0]);
+    await pumpColumn(tester, columnWidth: windowWidth, contentWidths: const [120.0, windowWidth]);
 
-    for (final width in const [120.0, 600.0]) {
+    for (final width in const [120.0, windowWidth]) {
       final rect = labelRect(tester, contentWidth: width);
       expect(rect.left, greaterThanOrEqualTo(0));
-      expect(rect.right, lessThanOrEqualTo(600));
+      expect(rect.right, lessThanOrEqualTo(windowWidth));
     }
   });
 }
