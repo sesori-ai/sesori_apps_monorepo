@@ -147,34 +147,6 @@ void main() {
     );
   }
 
-  testWidgets("enabling Reduce Motion mid-release cancels its continuation", (tester) async {
-    await tester.pumpWidget(_harness(child: _button(onTap: () {})));
-    await tester.tap(find.byType(PregoTappable));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 40));
-    expect(_scale(tester: tester), greaterThan(1));
-
-    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
-      reduceMotion: true,
-    );
-    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-    await tester.pump();
-    expect(_scale(tester: tester), 1);
-    expect(tester.hasRunningAnimations, isFalse);
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(_scale(tester: tester), 1);
-    expect(tester.hasRunningAnimations, isFalse);
-
-    tester.platformDispatcher.clearAccessibilityFeaturesTestValue();
-    await tester.pump();
-    final gesture = await tester.startGesture(tester.getCenter(find.byType(PregoTappable)));
-    await tester.pump(const Duration(milliseconds: 110));
-    await tester.pump(const Duration(milliseconds: 80));
-    expect(_scale(tester: tester), greaterThan(1));
-    await gesture.up();
-    await tester.pumpAndSettle();
-  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
-
   testWidgets("non-iOS disabled controls stay static and enabled taps activate", (tester) async {
     await tester.pumpWidget(_harness(child: _button(onTap: null)));
     expect(find.text("Disabled"), findsOneWidget);

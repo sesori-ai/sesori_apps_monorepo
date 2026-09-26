@@ -128,8 +128,7 @@ dismisses automatically after three seconds. Close or swipe up to dismiss sooner
   returns to Primary Alt’s dark fill and light label before sheet closure. Figma and
   Impeller differ slightly in the early soft-light glow; source blend settings
   and keyframes are preserved. Physical-device frame performance is unmeasured.
-- The Figma label `Notifications don’t arirve` is preserved intentionally.
-  Confirm the correction to `Notifications don’t arrive` before production.
+- The preview corrects the Figma label typo to `Notifications don’t arrive`.
 - Figma comment #151 asks for voice and quick issue choices; both are included.
   Comment #150 questions the intermediate state: no extra thank-you sheet is
   inserted before native rating. The annotated blue focus ring is

@@ -540,12 +540,11 @@ class const _IosTappable({
 
 class _IosTappableState()
     extends State<_IosTappable>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver, _ScalePulseMixin<_IosTappable> {
+    with SingleTickerProviderStateMixin, _ScalePulseMixin<_IosTappable> {
   /// Border radius for the overlay, used to align it with the inner edge of the border when
   /// [PregoTappable.overlayInset] is set. Will be set in [initState] and [didUpdateWidget].
   BorderRadius _overlayBorderRadius = .zero;
   final Set<WidgetState> _state = {};
-  bool _reducedMotion = false;
 
   @override
   bool get isScalePulseActive => _state.contains(WidgetState.pressed);
@@ -553,26 +552,8 @@ class _IosTappableState()
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _overlayBorderRadius = _insetBorderRadius(widget.borderRadius, widget.overlayInset);
     if (widget.onTap == null) _state.add(WidgetState.disabled);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _syncReducedMotionPreference();
-  }
-
-  void _syncReducedMotionPreference() {
-    _reducedMotion = prefersReducedMotion(context);
-    if (_reducedMotion) scalePulseController.value = 0;
-  }
-
-  @override
-  void didChangeAccessibilityFeatures() {
-    super.didChangeAccessibilityFeatures();
-    setState(_syncReducedMotionPreference);
   }
 
   @override
@@ -583,29 +564,23 @@ class _IosTappableState()
     }
     if (widget.onTap == null) {
       _state.add(WidgetState.disabled);
-      if (_state.remove(WidgetState.pressed) && !_reducedMotion) animateCancel();
+      if (_state.remove(WidgetState.pressed) && !prefersReducedMotion(context)) animateCancel();
     } else {
       _state.remove(WidgetState.disabled);
     }
   }
 
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
   void _handleTapDown() {
     setState(() => _state.add(WidgetState.pressed));
     tapDownFeedback();
-    if (!_reducedMotion) animatePress();
+    if (!prefersReducedMotion(context)) animatePress();
   }
 
   void _handleTapUp() {
     setState(() => _state.remove(WidgetState.pressed));
     tapUpFeedback();
     widget.onTap?.call();
-    if (!_reducedMotion) animateRelease();
+    if (!prefersReducedMotion(context)) animateRelease();
   }
 
   void _handleTapCancel() {
@@ -613,7 +588,7 @@ class _IosTappableState()
     // during build. didUpdateWidget has already cleared and released that press.
     if (!isScalePulseActive) return;
     setState(() => _state.remove(WidgetState.pressed));
-    if (!_reducedMotion) animateCancel();
+    if (!prefersReducedMotion(context)) animateCancel();
   }
 
   @override

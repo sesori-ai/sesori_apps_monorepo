@@ -63,7 +63,7 @@ const _sampleTranscript =
 const _feedbackIssues = [
   "Hard to navigate",
   "Connection drops",
-  "Notifications don’t arirve",
+  "Notifications don’t arrive",
   "App feels slow",
 ];
 
