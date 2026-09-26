@@ -54,24 +54,30 @@ Defaults chosen by the agent and reported to the user (change on request):
   visible (app start or navigating back), or the app resumes while it is
   visible. It never opens over a session or composer, which stay mounted
   above the project list.
-- **D7 — Store review split (pending the user's D10 answer for Android).**
+- **D7 — Store review split.**
   - Automatic prompt on iOS: **Yes** asks StoreKit for its review prompt.
     Apple guideline 5.6.1 requires the system API and does not forbid a
-    preceding question.
-  - Settings on both platforms: **Yes** opens the store's write-review page
-    with `url_launcher`, because the OS prompt may silently not appear.
-  - The review call starts only after the sheet's route has finished closing,
-    as in the preview.
-- **D10 — Android and Play policy (open; recommendation recorded).** Google's
+    preceding question. The prompt stays inside the app.
+  - Every jump to a store page (Android from both entries, iOS from Settings)
+    goes through the D10 confirmation step first, because the OS prompt may
+    silently not appear and leaving the app must never be a surprise.
+  - The review call or store jump starts only after the sheet's route has
+    finished closing, as in the preview.
+- **D10 — Android and Play policy (user decision, 2026-09-26).** Google's
   In-App Review guidance says the app "shouldn't ask the user any questions
   before or while presenting the rating button or card, including questions
   about their opinion (such as 'Do you like the app?')". The approved sheet is
-  exactly that question, so Android **Yes** must not call the In-App Review
-  API. Recommended: on Android, **Yes** opens the Play Store listing
-  (`market://details?id=com.sesori.app`) from both entries, and the app ships
-  no Play Review dependency. Alternative: Android drops the question and the
-  automatic prompt calls In-App Review directly, keeping private feedback in
-  Settings only.
+  exactly that question, so Android never calls the In-App Review API and the
+  app ships no Play Review dependency. Instead:
+  - After the **Yes** celebration, the sheet shows a confirmation step asking
+    whether the user would leave a review on the store, with **Leave a
+    review** and **Not now**.
+  - **Leave a review** closes the sheet, then opens the store page
+    (`market://details?id=com.sesori.app`, or the App Store write-review page
+    for the iOS Settings entry). **Not now** closes the sheet.
+  - The step has no Figma design yet; step 3 builds it from the sheet's
+    existing parts (title, body, the solid button pair) and the PR shows it.
+  - Either answer counts as **Yes** for D4: the user said they like the app.
 - **D8 — Mobile only.** iOS and Android. The desktop app has no Firebase and
   is not distributed through a store; desktop private feedback is a later
   phase (see [Later Phases](#later-phases-rough-intent-only)).
@@ -241,12 +247,12 @@ Consumers:
 
 ### Native (step 5)
 
-With the recommended D10:
+Per D10:
 - iOS production channel `com.sesori.app/app_review` with one method,
   `requestReview`, registered next to the recorder-prewarm channel in
   `AppDelegate.swift`.
 - Android has no review channel: `AppReviewClient.requestReview()` opens the
-  Play Store listing on Android.
+  Play Store listing on Android (after the D10 confirmation).
 - Delete `FeedbackPreviewActivity`, the `mainActivityName` placeholder, the
   `debugImplementation` Play Review dependency and the debug-only iOS block.
   Microphone permission comes from the real voice stack, so
@@ -353,13 +359,14 @@ Deliberately not added:
     two sends show it on the project list; an AI retry in between resets it;
     Yes retires it; dismiss respects the cooldown.
   - iOS StoreKit prompt appears (debug build) only after the sheet has
-    closed. Android **Yes** opens the Play Store listing (D10 recommendation).
+    closed. Android **Yes** shows the confirmation step; **Leave a review**
+    opens the Play Store listing and **Not now** only closes (D10).
   - Deleting the account removes its feedback documents (dev auth server).
 - Codex plan review (2026-09-26, 10 findings): applied route-visible claiming
   (D6), feedback deletion with the account, package asset namespace, the
   4,000-character client limit, empty submissions, subscription disposal,
   review after the sheet exit, the platform via `InstalledAppBuildApi`, and
-  the Play policy question (D10, open). Declined one: separate Firebase and
+  the Play policy question (D10, decided by the user). Declined one: separate Firebase and
   no-op config adapters in `client/app` follow the existing
   `AnalyticsReleaseCutoffSource` precedent.
 
