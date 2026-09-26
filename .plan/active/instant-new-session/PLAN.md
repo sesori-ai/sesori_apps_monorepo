@@ -410,8 +410,10 @@ and its adapter.
 - **`SessionLaunch` (Layer 0 model, `foundation/models/session_launch/`) is
   sealed, not one class with a nullable id.** Every variant carries
   `launchId`, `projectId`, `pluginId`, `startedAt` and `followUpIds`:
-  - `PendingSessionLaunch({…, submission, followUps})` — the bridge has not
-    answered. **Only this variant produces a placeholder row.**
+  - `PendingSessionLaunch({…, title, submission, followUps})` — the bridge has not
+    answered. **Only this variant produces a placeholder row.** `title` is the
+    row's title (**D2**), snapshotted at `start` so the row keeps it after
+    `releaseHandoff` drops `submission` (then null).
   - `CreatedSessionLaunch({…, session, submission, unsentComposer, followUps})` —
     the bridge answered with a real `Session`. **Only this variant can hand over**,
     through `takeHandoff`. `unsentComposer` is null until the composing cubit
@@ -675,7 +677,8 @@ things a launch can owe is discharged independently:
    `releaseHandoff({required String launchId})` is defined on **any** variant, not
    only on created: a user who leaves while the launch is still pending must be
    able to detach, and that is the commonest way this path is reached. On a
-   pending launch it drops the submission immediately, and the later `promote`
+   pending launch it drops the submission immediately (the placeholder keeps its
+   `title` snapshot), and the later `promote`
    then produces a `ReconcilingSessionLaunch` directly rather than a
    `CreatedSessionLaunch` whose payload nobody could ever take and whose
    attachment bytes nothing would free. Release is also what makes the failure
@@ -1225,8 +1228,9 @@ the first spinner with no new state at all.
   renders one launch in `SessionTile` geometry: the same status slot, title
   line, meta line and paddings, taken from `session_row_metrics.dart` and
   `session_tile.dart:523-528`, so the swap changes no height.
-  - **Content (D2, settled).** The first line of `submission.displayText` as the
-    title (or `/command`, or the localised attachment-only fallback), the
+  - **Content (D2, settled).** The launch's `title` snapshot — the first line of
+    `submission.displayText` (or `/command`, or the localised attachment-only
+    fallback), taken at `start` so it survives `releaseHandoff` — as the title, the
     animating sparkle `SessionTile._state` (`:370-396`) already shows for a
     running session in the status slot, the harness display name on the meta line
     via `PregoBrandLogo.displayNameFor(pluginId)`, and **no time** — which
@@ -1336,10 +1340,12 @@ the first spinner with no new state at all.
   as `desktop_sidebar.dart`'s `_stickyActivitySessionId` and `_activitySessionIds`
   (`:393-419`), which exist for exactly this reason, and it cannot move into a
   cubit because "this list already drew that row" and "this list's snapshot now has
-  that session" are facts only the mounted list has. Step 6's surfaces do not need
-  it: none of them renders session rows through an animated list, so they have no
-  item identity to preserve — they need only the "keep drawing until the session
-  arrives" half, and step 6 says so explicitly.
+  that session" are facts only the mounted list has. Of step 6's surfaces, only the
+  desktop sidebar renders session rows through an animated list
+  (`PregoAnimatedList`, `desktop_sidebar.dart:670`, `:763`), so only it applies the
+  same `launchId` key there; the phone and desktop home have no item identity to
+  preserve and need only the "keep drawing until the session arrives" half. Step 6
+  says so explicitly.
 
   `fail` removes the entry on failure, so no association is ever published for a
   launch that produced no session, and the latch drops with it.
@@ -1482,12 +1488,15 @@ being created" alert, and no menu or swipe.
   behaviour is an instant cut, not a shorter animation). Nothing else about these
   sections changes, and the real rows keep behaving exactly as they do today.
 
-  The desktop sidebar's groups are not in this: they already render through
-  `PregoAnimatedSliverList` (`desktop_sidebar.dart`), so an inserted or removed
-  pending row animates there for free, with the item key being the `launchId`.
+  The desktop sidebar's groups are not in this: their session rows already render
+  through `PregoAnimatedList` (`desktop_sidebar.dart:670`, `:763`, keyed by
+  `session.id`), so an inserted or removed pending row animates there for free,
+  with the item key being the `launchId`.
 - **Step 6's surfaces also hold the row until the real row would take its
-  place.** None of them renders session rows through an animated list, so none
-  needs step 5's row-key latch; all of them need the other half of the same rule
+  place.** Only the sidebar renders session rows through an animated list, so
+  only it keys the swapped row by `launchId` as step 5's latch does (the same kind
+  of render state as its `_stickyActivitySessionId`); the phone and desktop home
+  need no row key. All of them need the other half of the same rule
   in "The launch's lifetime", because all of them can receive `promote` before
   the session reaches their own data. On the sidebar's project group the slot is
   the head of the project's rows, as in step 5. On an Activity host (the phone
@@ -1651,7 +1660,8 @@ name on the meta line, and no time.** **D3** adds one localised word before the
 harness name on that same meta line; nothing else about this changes.
 
 - **Title** — the first line of `submission.displayText`, or `/command` for a
-  command start, or the localised attachment-only fallback. Real rows show
+  command start, or the localised attachment-only fallback, snapshotted into the
+  launch at `start` so a released handoff does not blank it. Real rows show
   `session.title ?? loc.sessionListUntitled`, and a generated title arrives
   later through `session.updated`, so the prompt's first line is the closest
   honest stand-in and usually resembles the title that follows.
