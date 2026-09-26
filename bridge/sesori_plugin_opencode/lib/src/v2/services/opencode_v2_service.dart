@@ -87,7 +87,8 @@ class OpenCodeV2Service({
         stack,
       );
     }
-    if (changed) result.add(const BridgeSseProjectUpdated());
+    // Creation is authoritative even when its full session details are unavailable.
+    if (changed || event is V2SessionCreated) result.add(const BridgeSseProjectUpdated());
     return result;
   }
 

@@ -318,6 +318,27 @@ void main() {
     expect(service.buildSummary().single.activeSessions.single.childSessionIds, ["child"]);
   });
 
+  test("creation retains a refresh signal when session enrichment fails", () async {
+    await service.coldStart();
+    repository.calls.clear();
+    repository.metadataFailure = StateError("Fixture creation metadata failure");
+    final events = await service.handleEvent(
+      envelope: frame(
+        type: "session.created",
+        data: {
+          "sessionID": "fresh",
+          "projectID": "native",
+          "location": {"directory": worktree},
+          "slug": "fresh",
+          "version": "2.0.16",
+        },
+      ),
+    );
+    expect(events, [const BridgeSseProjectUpdated()]);
+    expect(repository.calls, ["session:fresh"]);
+    expect(tracker.session(sessionId: "fresh"), isNull);
+  });
+
   test("metadata failures do not suppress a native permission request", () async {
     repository.sessions = [];
     await service.coldStart();

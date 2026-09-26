@@ -4,7 +4,7 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 6.b (PR 9/13) — activity/service integration implemented and architecture-approved; ready for PR review.
+- Current step: 6.b (PR 9/13) — activity/service integration under review in [#1762](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1762).
   Branch: `sesori/opencode-v2-step-6b-activity-service`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
@@ -162,6 +162,12 @@
   Package analysis is clean. No generator inputs changed. Architecture approved `03f60664ed...0f399fe` on the
   first completed pass: 9 files, 1,005 authored changed lines, no generated churn and no findings. A provider
   `fetch failed` interrupted the initial attempt; the same reviewer resumed against the unchanged clean head.
+- #1762 review: preserve the existing project-activity refresh signal for native creation when metadata enrichment
+  fails, without inventing a session row or retry owner. All 15 activity/service cases and package analysis pass;
+  the 21 unchanged repository/model cases remain passing. This localized method change adds no architecture owner.
+- Declined the tracker/status-converter coupling finding: the static pure function defines native busy/retry/idle
+  semantics once for tracking and emission, including shutdown/unknown non-settlement. The tracker has no mapper
+  instance, subscription or I/O dependency; duplicating or relocating that policy adds no demonstrated benefit.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.
