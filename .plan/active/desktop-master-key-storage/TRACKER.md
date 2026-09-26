@@ -2,15 +2,17 @@
 
 ## Execution
 
-- Status: #1751 merged with 34 passing checks. Regression reconciliation passes
-  documentation validation; native qualification remains unexecuted for the cutover.
+- Status: #1758 merged. Native qualification is partial: real mobile development
+  flows and signed macOS shared-store roundtrip/reopen pass; required production
+  migration, replacement and adverse/restore gates remain. Plan stays active.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
   with a retirement condition and deletion checklist.
-- Current branch: `sesori/desktop-master-key-storage-regression-docs`, from fixed
-  main `6056290` in the supplied worktree. No additional worktree is allowed;
-  no qualification/retirement successor has started.
+- Current branch: `sesori/desktop-master-key-storage-qualification`, from fixed
+  main `d550856` in the supplied worktree. No additional worktree is allowed.
+  Planned PR 12 remains an incomplete qualification checkpoint, not ready for
+  retirement; no final PR is opened or marked ready.
 - #1717 is closed as superseded, not merged. Its published desktop checkpoint
   `4a27888` and the full shared checkpoint `de38951` remain in history.
 - One open PR and at most one local successor. Current total: **12 PRs** after
@@ -30,8 +32,8 @@
 | 4.b — Native capabilities and backup | Merged | #1744; 28 tests, two analyses, architecture approval and 24 passing checks; no native qualification. |
 | 4.c — Startup recovery | Merged | #1749; eight tests, three analyses, architecture approval and 22 passing checks; no storage cutover. |
 | 4.d — Both-client cutover | Merged | #1751; architecture approved, 24 reconciled shell cases plus retained auth/core evidence, README feedback fixed and 34 passing checks. |
-| 5 — Regression reconciliation | Verified locally | PR 11; account/analytics/storage/package contracts aligned; links, fences, coverage and whitespace checks pass. |
-| 6 — Required qualification/retirement | Not started | PR 12; plan remains active until recorded mobile + desktop matrix passes. |
+| 5 — Regression reconciliation | Merged | #1758; 139 authored lines; Codex coverage finding fixed, seven passing checks at readiness. Terminal report was 7/8 done, not a confirmed final eight-check pass. |
+| 6 — Required qualification/retirement | Partial / blocked | PR 12; see [QUALIFICATION.md](QUALIFICATION.md). Mobile development flows and signed macOS roundtrip pass; missing matrix remains, with no coverage waiver. |
 
 ## Decisions and code-informed constraints
 
@@ -68,8 +70,11 @@
   that new local logout revokes old internal builds' separate sessions.
 - One-time mobile import may require native access; normal plaintext operations
   do not. One master-item lookup does not promise zero OS authorization dialogs.
-- No running app/helper launches, personal credential reads/Keychain changes or
-  wallet modifications are authorized by fixture tests or plan editing.
+- Personal app/helper launches, personal credential reads/Keychain changes and
+  wallet modifications remain unauthorized. On 2026-09-26 the user approved
+  test-only existing CI credentials, then explicitly requested the global
+  `sesori-local-testing` skill and its isolated slot-owned development surfaces.
+  No dedicated physical devices are available; this is not a coverage waiver.
 
 ## Evidence retained, not overclaimed
 
@@ -190,8 +195,8 @@
 - Native qualification must replace the authenticated macOS fixture's old
   per-value seeding and retained desktop baseline before using it with this
   cutover. Seed with production Dart storage; do not copy SQL/crypto into Swift
-  or Python. The CI-only packaged platform probe already uses shared storage,
-  but it has not been executed on a native runner for this cutover.
+  or Python. Later source-bound execution of the shared-store packaged platform
+  probe is recorded in [QUALIFICATION.md](QUALIFICATION.md).
 - #1751 merged after current-head Codex completed without further findings.
   Its terminal monitor recorded 34 passing checks; the README thread was resolved
   and the narrow deprecated call acknowledgment was justified explicitly.
@@ -204,6 +209,14 @@
   existing plan and are not reduced or represented as passing. Codex identified
   omitted Windows/Linux replacement wording; L3 now explicitly preserves the
   database/master pairing through new-format replacement on all three desktops.
-- None of this evidence establishes released-mobile migration, mobile
-  backup/restore, real credential behavior, packaged replacement or actual
-  prompt counts. Those gates remain.
+- #1758 merged as `09e4e02`; current-head Codex completed after the coverage fix.
+  Read-only inspection of existing release run `36221737896` then established
+  native signed macOS arm64/x64 roundtrip and cold reopen for source `e510d11`.
+  Native mobile testing used the global slot skill on source `d550856`: iOS 26.5
+  and Android 16 sign-in, encrypted persistence, cold restoration, preferences,
+  logout cleanup and re-login passed. Only owned test processes/devices were
+  stopped; the existing personal desktop and bridge stayed running.
+- Full boundaries, the initial unsigned-simulator setup failure, artifact hashes,
+  user permissions, cleanup and missing gates are in
+  [QUALIFICATION.md](QUALIFICATION.md). Released-mobile migration, backup/restore,
+  replacement and actual prompt-count qualification remain unestablished.
