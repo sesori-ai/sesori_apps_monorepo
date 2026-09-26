@@ -40,11 +40,8 @@ class const V2ModelMapper({required final String _pluginId}) {
     ),
   );
 
-  shared.Session mapSessionDetails({
-    required SessionInfo session,
-    required String projectId,
-    required V2AgentNames agentNames,
-  }) => shared.Session(
+  /// Activity/deletion metadata needs no agent catalog or prompt defaults.
+  shared.Session mapSessionMetadata({required SessionInfo session, required String projectId}) => shared.Session(
     id: session.id,
     pluginId: _pluginId,
     projectID: projectId,
@@ -56,6 +53,19 @@ class const V2ModelMapper({required final String _pluginId}) {
       updated: session.time.updated.toInt(),
       archived: session.time.archived?.toInt(),
     ),
+    promptDefaults: null,
+    pullRequest: null,
+    branchName: null,
+    lastUserActivityAt: null,
+    autoContinuation: null,
+    approvalOverride: null,
+  );
+
+  shared.Session mapSessionDetails({
+    required SessionInfo session,
+    required String projectId,
+    required V2AgentNames agentNames,
+  }) => mapSessionMetadata(session: session, projectId: projectId).copyWith(
     promptDefaults: shared.SessionPromptDefaults(
       agent: switch (session.agent) {
         final id? => agentNames.displayName(id: id),
@@ -66,11 +76,6 @@ class const V2ModelMapper({required final String _pluginId}) {
         null => null,
       },
     ),
-    pullRequest: null,
-    branchName: null,
-    lastUserActivityAt: null,
-    autoContinuation: null,
-    approvalOverride: null,
   );
 
   PluginAgent mapAgent({required AgentInfo agent}) => PluginAgent(
