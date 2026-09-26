@@ -564,9 +564,19 @@ class _IosTappableState()
     }
     if (widget.onTap == null) {
       _state.add(WidgetState.disabled);
-      if (_state.remove(WidgetState.pressed) && !prefersReducedMotion(context)) animateCancel();
+      if (_state.remove(WidgetState.pressed)) _settle(animateCancel);
     } else {
       _state.remove(WidgetState.disabled);
+    }
+  }
+
+  // Reduce Motion can turn on mid-press, so restore the resting scale directly
+  // instead of skipping the release.
+  void _settle(void Function() animate) {
+    if (prefersReducedMotion(context)) {
+      scalePulseController.value = 0;
+    } else {
+      animate();
     }
   }
 
@@ -580,7 +590,7 @@ class _IosTappableState()
     setState(() => _state.remove(WidgetState.pressed));
     tapUpFeedback();
     widget.onTap?.call();
-    if (!prefersReducedMotion(context)) animateRelease();
+    _settle(animateRelease);
   }
 
   void _handleTapCancel() {
@@ -588,7 +598,7 @@ class _IosTappableState()
     // during build. didUpdateWidget has already cleared and released that press.
     if (!isScalePulseActive) return;
     setState(() => _state.remove(WidgetState.pressed));
-    if (!prefersReducedMotion(context)) animateCancel();
+    _settle(animateCancel);
   }
 
   @override

@@ -11,7 +11,8 @@ activating it.
 
 iOS Reduce Motion and MediaQuery's disable-animations preference keep static
 pressed styling and haptics while suppressing the scale controller. The
-preference is read when each press starts and ends.
+preference is read when each press starts and ends; a press held while Reduce
+Motion turns on returns straight to rest on release.
 
 ## Regression Levels
 

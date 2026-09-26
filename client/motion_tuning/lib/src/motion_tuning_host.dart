@@ -552,14 +552,25 @@ class _NumericInputState() extends State<_NumericInput> {
   String get _formatted => widget.current.toStringAsFixed(widget.precision);
 
   @override
+  void initState() {
+    super.initState();
+    _focus.addListener(_syncText);
+  }
+
+  @override
   void didUpdateWidget(_NumericInput oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (num.tryParse(_text.text) != widget.current && (!_focus.hasFocus || oldWidget.current != widget.current)) {
-      _text.value = TextEditingValue(
-        text: _formatted,
-        selection: TextSelection.collapsed(offset: _formatted.length),
-      );
-    }
+    _syncText();
+  }
+
+  // Leave focused text alone so partial input such as "0." survives; format
+  // external changes and the committed value once focus leaves.
+  void _syncText() {
+    if (_focus.hasFocus || num.tryParse(_text.text) == widget.current) return;
+    _text.value = TextEditingValue(
+      text: _formatted,
+      selection: TextSelection.collapsed(offset: _formatted.length),
+    );
   }
 
   @override
