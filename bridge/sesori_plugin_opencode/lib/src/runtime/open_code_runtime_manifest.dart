@@ -8,19 +8,18 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 ///
 /// Two version constants drive provisioning:
 /// - [minPathVersion] gates a *pre-installed* (PATH) OpenCode: at or above it,
-///   the bridge uses the user's own install; below it, the bridge falls back to
-///   the managed runtime (so a too-old install can't break the bridge, and a
-///   newer one is never downgraded — important because OpenCode migrates its
-///   local DB on launch).
+///   the bridge uses the user's own install; below it, startup is blocked until
+///   that install is updated. Managed installation is permitted only when PATH
+///   has no OpenCode. Never downgrade a newer install: OpenCode migrates its DB.
 /// - [bundledVersion] is the exact version the managed runtime downloads.
 ///
 /// ## Bumping the bundled runtime
-/// 1. Pick the new `vX.Y.Z` release of `anomalyco/opencode`.
-/// 2. Update [targetVersion].
-/// 3. Replace all six [_assets] SHA-256 values with that release's asset digests
-///    (GitHub's release API exposes each asset's `digest: "sha256:…"`).
-/// 4. Raise [_minPathVersion] only if the new bridge code requires a newer
-///    OpenCode API than older installs provide.
+/// 1. Resolve the stable `@opencode/cli` npm version and matching upstream tag.
+/// 2. Download all six `@opencode/cli-<target>` tarballs and verify npm integrity.
+/// 3. Update [targetVersion] and [_assets] with SHA-256 hashes of those bytes;
+///    confirm each entrypoint is `package/bin/opencode[.exe]`.
+/// 4. Regenerate v2 REST models and audit/regenerate its SSE manifest at that tag.
+///    Preserve [_minPathVersion] unless a separate compatibility change is approved.
 class const OpenCodeRuntimeManifest() extends RuntimeManifest {
   /// Minimum pre-installed OpenCode version the bridge will use as-is.
   /// Conservative on purpose: prefer the user's own compatible install and
@@ -28,67 +27,66 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
   static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "1.14.0");
 
   /// The latest stable OpenCode release targeted by this plugin.
-  static const String targetVersion = "1.18.32";
+  static const String targetVersion = "2.0.18";
 
   /// The exact OpenCode version the managed runtime installs.
   static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
-  /// Pinned per-platform assets for [bundledVersion]. darwin/windows ship `.zip`,
-  /// linux ships `.tar.gz`; the non-baseline, non-musl CLI builds are used. The
-  /// OpenCode archives contain the executable under its plain canonical name, so
-  /// [ArchiveRuntimeAsset.archiveBinaryName] equals [binaryFileName] per platform.
+  /// All six npm assets are gzip tarballs containing one self-contained binary
+  /// under `package/bin/`. Installation normalizes it to [binaryFileName].
+  /// Linux uses the standard, non-musl builds.
   static const Map<PlatformOs, Map<PlatformArch, RuntimeAsset>> _assets = {
     PlatformOs.macos: {
       PlatformArch.arm64: ArchiveRuntimeAsset(
-        assetName: "opencode-darwin-arm64.zip",
-        format: ArchiveFormat.zip,
+        assetName: "cli-darwin-arm64-$targetVersion.tgz",
+        format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "fa643f93401c13508d8d513780e54ce9cc01203d501114be9b88d62408b8101f",
-        archiveBinaryName: "opencode",
+        sha256: "411a1816e41820922e75ef820103f7a5507abc6d4c828db648ece2127b10a3af",
+        archiveBinaryName: "package/bin/opencode",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
       PlatformArch.x64: ArchiveRuntimeAsset(
-        assetName: "opencode-darwin-x64.zip",
-        format: ArchiveFormat.zip,
+        assetName: "cli-darwin-x64-$targetVersion.tgz",
+        format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "a24bf10499382f8855e19d2a081b8683e4ab99c7c2affb32dc89b17c8a00ccd6",
-        archiveBinaryName: "opencode",
+        sha256: "0a61caa3b561340554732e71a4fae6d0f8bb46b224cb3013937c1cd9d1fd5f40",
+        archiveBinaryName: "package/bin/opencode",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
     },
     PlatformOs.linux: {
       PlatformArch.arm64: ArchiveRuntimeAsset(
-        assetName: "opencode-linux-arm64.tar.gz",
+        assetName: "cli-linux-arm64-$targetVersion.tgz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "568461b7d4d8c19865c97e9a1102e613049c6039d01fe772154de873c1865840",
-        archiveBinaryName: "opencode",
+        sha256: "ddc98e5c789c496dada1ecfae9fe4e0931c7ac43a46da5436b97ecda5cd0ba5d",
+        archiveBinaryName: "package/bin/opencode",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
       PlatformArch.x64: ArchiveRuntimeAsset(
-        assetName: "opencode-linux-x64.tar.gz",
+        assetName: "cli-linux-x64-$targetVersion.tgz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "3046e0404fdc60fb80307e7a47824ba07477364178a4d09baa8548496dd6d43b",
-        archiveBinaryName: "opencode",
+        sha256: "aa455d073b3a0733a6912f477b370f3d50ca7af44715bb7ccc41faa13b3cc2eb",
+        archiveBinaryName: "package/bin/opencode",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
     },
     PlatformOs.windows: {
       PlatformArch.arm64: ArchiveRuntimeAsset(
-        assetName: "opencode-windows-arm64.zip",
-        format: ArchiveFormat.zip,
+        assetName: "cli-windows-arm64-$targetVersion.tgz",
+        format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "5c1c21e85b694ac3fedccff22f934484c29273d5b5780eff006960304108e124",
-        archiveBinaryName: "opencode.exe",
+        sha256: "6ef58c70cf0fc99efaf1e05d85754f5c71e739237efb098fd8bd1e654826de92",
+        archiveBinaryName: "package/bin/opencode.exe",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
       PlatformArch.x64: ArchiveRuntimeAsset(
-        assetName: "opencode-windows-x64.zip",
-        format: ArchiveFormat.zip,
+        assetName: "cli-windows-x64-$targetVersion.tgz",
+        format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "1483c72d5adced825590a0ecf8cc18b3e87e535960a125dbf539d33bce135d0f",
-        archiveBinaryName: "opencode.exe",
+        sha256: "f8d085e500e6b0375f577bc46e31b4e28e0702e1442ff29308fec7ac47bcc4dd",
+        archiveBinaryName: "package/bin/opencode.exe",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
     },
@@ -106,7 +104,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
   @override
   String get pathExecutableName => "opencode";
 
-  /// The executable file name inside the extracted archive.
+  /// The canonical installed executable file name.
   @override
   String get binaryFileName => Platform.isWindows ? "opencode.exe" : "opencode";
 
@@ -127,6 +125,8 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
 
   /// The download URL for [asset] at [bundledVersion].
   @override
-  String downloadUrlFor({required RuntimeAsset asset}) =>
-      githubReleaseAssetUrl(repository: "anomalyco/opencode", tag: "v${bundledVersion.raw}", asset: asset);
+  String downloadUrlFor({required RuntimeAsset asset}) {
+    final package = asset.assetName.replaceFirst("-$targetVersion.tgz", "");
+    return "https://registry.npmjs.org/@opencode/$package/-/${asset.assetName}";
+  }
 }

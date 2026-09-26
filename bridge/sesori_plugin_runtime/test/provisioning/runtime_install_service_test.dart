@@ -268,6 +268,37 @@ void main() {
     );
   });
 
+  test("normalizes a nested single-binary entry without retaining package siblings", () async {
+    const asset = ArchiveRuntimeAsset(
+      assetName: "nested-test.tgz",
+      format: ArchiveFormat.tarGz,
+      archiveCommandTimeout: Duration(minutes: 2),
+      sha256: "nested-hash",
+      archiveBinaryName: "bin/codex",
+      layout: RuntimeArchiveLayout.singleBinary,
+    );
+    final validator = _FakeCandidateValidator();
+    await build(rootPackage: true, candidateValidator: validator)
+        .install(
+          managedDir: managedDir.path,
+          versionDir: versionDir(),
+          binaryFileName: "opencode",
+          downloadUrl: "https://example.test/nested-test.tgz",
+          asset: asset,
+          environment: const {},
+          revalidateManagedMutation: permitManagedMutation,
+          startAborted: StartAbortSignal.never,
+        )
+        .drain<void>();
+    expect(validator.contexts.single.executablePath, endsWith(p.join("candidate", "bin", "codex")));
+    expect(File(p.join(versionDir(), "opencode")).readAsStringSync(), "BINARY");
+    expect(
+      Directory(versionDir()).listSync().map((entry) => p.basename(entry.path)),
+      unorderedEquals(["opencode", RuntimeInstallService.sentinelFileName]),
+    );
+    expect(File(p.join(versionDir(), RuntimeInstallService.sentinelFileName)).readAsStringSync(), asset.sha256);
+  });
+
   test("places a direct binary without extraction and cleans stale staging", () async {
     final extractor = _FakeArchiveExtractor(success: true, packageDirectory: false);
     final staleStaging = Directory(p.join(managedDir.path, ".sesori-runtime-staging"))..createSync(recursive: true);

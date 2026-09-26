@@ -4,8 +4,8 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 7.b (PR 11/14) — [#1780](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1780) open; CI/review pending.
-  Branch: `sesori/opencode-v2-step-7b-activation`.
+- Current step: 8 (PR 12/14) — managed 2.0.18 verified; ready for publication.
+  Branch: `sesori/opencode-v2-step-8-runtime`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
   Step 3 [#1716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1716),
@@ -15,8 +15,9 @@
   Step 5.c [#1748](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1748),
   Step 6.a [#1755](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1755),
   Step 6.b [#1762](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1762),
-  Step 7.a [#1767](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1767).
-- One-step-ahead successor: Step 8 managed runtime (PR 12/14); keep local until Step 7.b merges.
+  Step 7.a [#1767](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1767),
+  Step 7.b [#1780](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1780).
+- One-step-ahead successor: Step 9 docs reconciliation (PR 13/14); keep local until Step 8 merges.
 - Takeover: continue from `aqua-hummingbird`; preserve the existing published Step 2/3 history.
 - Plan architecture review: first pass rejected 9 layering points; all applied (see PLAN.md Status)
 
@@ -35,7 +36,7 @@
 | 6.b. v2 activity and service integration (PR 9/14) | 🚧 | 1,200 |
 | 7.a. v2 write coordination and form replies (PR 10/14) | 🚧 | 1,250 |
 | 7.b. v2 production activation (PR 11/14) | 🚧 | 1,500 |
-| 8. Managed runtime on v2 (PR 12/14) | 🌿 | 500 |
+| 8. Managed runtime on v2 (PR 12/14) | 🌿 | 500 including generated source headers |
 | 9. Reconcile docs (PR 13/14) | 🌱 | 400 |
 | 10. Run coverage and retire (PR 14/14) | 🌱 | 300 |
 
@@ -231,6 +232,35 @@
   current creation validates explicit model/variant before mutation, and failures remain observable.
 - Merged `main` at `568fe891c7`, preserving its live-timer documentation alongside the active v2 section.
   Only capability documentation conflicted; no OpenCode source, dependencies or toolchain changed in this merge.
+
+## Step 8 Evidence And Handoff
+
+- #1780 merged at accepted head `245a659`, with current-head Codex completed and no new findings; all three
+  earlier threads have substantive dispositions. CI was 20/20 at readiness; a post-merge check was still running
+  in the terminal report. Final scope: 1,440 authored changed lines, no generated churn.
+- Step 8 starts from `main` at `264087e172`. All eleven registry entries were checked; only OpenCode is included.
+  Stable npm `@opencode/cli` and all six platform packages agree on 2.0.18. The source tag resolves to
+  `cd9a14a6b688d4021bee381dfd39d2cef9c0f862`; legacy npm/GitHub latest still select 1.18.32.
+- Downloaded all six archives independently. Each matches published npm SHA-512 integrity and SHA-1;
+  production SHA-256 pins come from those downloaded bytes. Sandboxed archive listing confirms exactly
+  `package/package.json` plus `package/bin/opencode[.exe]` on each platform. No npm execution is involved.
+- Audited the complete 384-file source delta from 2.0.16 using a source-only bare store inside this worktree;
+  GitHub's 300-file compare response was incomplete. Changed areas include AI providers/media, model catalog,
+  codemode, tools/shell, MCP/OAuth, CLI/server pairing, client/UI/TUI/desktop, console/services and build/dependencies.
+  Consumed REST and 41 SSE variant shapes are unchanged. Native delta flushing improves text/tool ordering;
+  shell signals add optional metadata. Provider/verbosity/error handling, old media checkpoints and MCP URL checks
+  change natively. Pairing is track-only outside scope; no Sesori workaround removal or new capability is warranted.
+- REST regeneration changed only the source tag/commit header in 106 models (212 generated changed lines).
+  SSE regeneration is byte-identical after the source audit. V1 output remains unchanged; no Freezed source changed.
+- Sandboxed macOS arm64 probe passed the production managed installer, checksum/extractor, actual exact-version
+  validator, canonical placement and digest sentinel. Native 2.0.18 passed authenticated info/catalog/activity reads,
+  unauthenticated refusal and SSE startup. Filtered fixture environment, no external network, owned process teardown
+  and zero remaining owned processes were observed. Other-platform execution, provider turns, native reconnect and
+  managed-v1 upgrade/migration remain final-stage gates, not inferred passes.
+- Focused verification passed 145 OpenCode manifest/policy/descriptor/model/API/event cases and 16 runtime-install
+  cases; both owning-package fatal-info analyzers are clean. Hash records match all six manifest entries exactly.
+  Architecture re-review is not applicable: only release facts/URL construction change production behavior, with
+  unchanged generated shapes and existing installer ownership. Authored formatting and diff checks passed.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.

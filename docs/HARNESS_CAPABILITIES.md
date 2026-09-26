@@ -222,8 +222,8 @@ the client never starts its own clock.
 
 ## OpenCode v2 adapter
 
-Startup selects the v2 adapter for 2.0.11 or newer; the generated surface targets 2.0.16.
-V1 behavior is unchanged. Managed downloads remain on 1.18.32 until the runtime refresh.
+Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.0.18.
+V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the native database one-way.
 
 | Capability | Status |
 |---|---|
