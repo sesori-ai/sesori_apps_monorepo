@@ -226,6 +226,9 @@ class _FixtureSecretKey({@override required final String storageKey}) implements
 
 class _NoLegacyReads() implements LegacyNativeStorage {
   @override
+  Future<void> clear() async => throw StateError("Completed migration must not clear legacy data");
+
+  @override
   Future<Map<String, String>> readAll() async => throw StateError("Completed migration must not enumerate legacy data");
 
   @override
