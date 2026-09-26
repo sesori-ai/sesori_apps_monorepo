@@ -27,8 +27,8 @@ class const JumpToEdgePill({
     final prego = context.prego;
     return Positioned(
       bottom: 12 + bottomInset,
-      left: 0,
-      right: 0,
+      left: 16,
+      right: 16,
       child: Center(
         child: Material(
           elevation: 4,
@@ -46,7 +46,16 @@ class const JumpToEdgePill({
                 children: [
                   Icon(TablerRegular.arrow_down, size: PregoIconSize.sm, color: prego.colors.textPrimary),
                   const SizedBox(width: 6),
-                  Text(label, style: prego.textTheme.textSm.bold.copyWith(color: prego.colors.textPrimary)),
+                  // Bounded so large text scales or a narrow pane ellipsize the
+                  // label instead of overflowing the pill.
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: prego.textTheme.textSm.bold.copyWith(color: prego.colors.textPrimary),
+                    ),
+                  ),
                 ],
               ),
             ),
