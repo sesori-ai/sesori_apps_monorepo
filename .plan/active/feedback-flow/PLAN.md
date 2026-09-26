@@ -50,13 +50,28 @@ Defaults chosen by the agent and reported to the user (change on request):
 - **D5 — Showing resets the counter.** Each automatic showing sets the counter
   to zero, so the next one needs 10 new good interactions *and* the cooldown.
 - **D6 — When it appears.** Reaching the threshold only makes the prompt
-  due. The sheet opens on the project list when it is built at app start or
-  when the app resumes while it is showing, never over an active session or
-  composer. Navigating back to the list does not open it.
-- **D7 — Store review split.** The automatic prompt asks the OS for its review
-  prompt (StoreKit / Play In-App Review). The Settings entry opens the store's
-  write-review page with `url_launcher`, because the OS prompt may silently
-  not appear and must not be the result of a button tap.
+  due. The sheet opens when the project list is the visible route: it becomes
+  visible (app start or navigating back), or the app resumes while it is
+  visible. It never opens over a session or composer, which stay mounted
+  above the project list.
+- **D7 — Store review split (pending the user's D10 answer for Android).**
+  - Automatic prompt on iOS: **Yes** asks StoreKit for its review prompt.
+    Apple guideline 5.6.1 requires the system API and does not forbid a
+    preceding question.
+  - Settings on both platforms: **Yes** opens the store's write-review page
+    with `url_launcher`, because the OS prompt may silently not appear.
+  - The review call starts only after the sheet's route has finished closing,
+    as in the preview.
+- **D10 — Android and Play policy (open; recommendation recorded).** Google's
+  In-App Review guidance says the app "shouldn't ask the user any questions
+  before or while presenting the rating button or card, including questions
+  about their opinion (such as 'Do you like the app?')". The approved sheet is
+  exactly that question, so Android **Yes** must not call the In-App Review
+  API. Recommended: on Android, **Yes** opens the Play Store listing
+  (`market://details?id=com.sesori.app`) from both entries, and the app ships
+  no Play Review dependency. Alternative: Android drops the question and the
+  automatic prompt calls In-App Review directly, keeping private feedback in
+  Settings only.
 - **D8 — Mobile only.** iOS and Android. The desktop app has no Firebase and
   is not distributed through a store; desktop private feedback is a later
   phase (see [Later Phases](#later-phases-rough-intent-only)).
@@ -117,7 +132,8 @@ Defaults chosen by the agent and reported to the user (change on request):
   - `issues`: array of the closed set `hard_to_navigate`, `connection_drops`,
     `notifications_missing`, `app_slow`; unique, may be empty.
   - `message`: trimmed string, 1–4000 characters, or absent.
-  - At least one issue or a message.
+  - Both may be empty: the approved sheet keeps **Send** available with
+    nothing filled in, and an empty "could be better" is still a signal.
   - `source`: `automatic` | `settings`.
   - `platform`: `ios` | `android`.
   - `appVersion`: semver-like string, max 32 characters.
@@ -126,6 +142,10 @@ Defaults chosen by the agent and reported to the user (change on request):
 - Response `201` with no body fields the client needs.
 - Route, service, repository, `AuthDbCollection.feedback`, zod model, and
   `node:test` coverage following the settings route.
+- Account deletion also deletes the user's `feedback` documents, with test
+  coverage, because a message may contain pasted code or secrets. Step 3
+  updates the storage and deletion disclosure in `docs/SECURITY.md` ("we do
+  not store message history" no longer covers everything we store).
 
 ### Client layers (module_core)
 
@@ -148,10 +168,10 @@ Platform interfaces:
   `itms-apps://itunes.apple.com/app/id6760642500?action=write-review`,
   `market://details?id=com.sesori.app` with an `https://play.google.com/...`
   fallback) and `requestReview()` (OS prompt) in step 5.
-- `InstalledAppBuildSource` gains `readVersion()`, implemented in both shells
-  with package_info and exposed through the existing
-  `api/installed_app_build_api.dart`. The platform comes from the existing
-  `DevicePlatform` seam (`PushMessagingSource.devicePlatform`).
+- `InstalledAppBuildSource` gains `readVersion()` and `devicePlatform`,
+  implemented in both shells and exposed through the existing
+  `api/installed_app_build_api.dart`, so feedback does not depend on the push
+  capability for its platform.
 
 API → Repository → Service:
 - `FeedbackApi` (`POST $authBaseUrl/feedback`, Freezed
@@ -175,6 +195,7 @@ API → Repository → Service:
     returns true. Checking and marking happen in one call, so D5 stays in the
     service.
   - `recordYes()` (→ retired).
+  - An idempotent `@disposeMethod` cancels the subscription.
 
 Consumers:
 - `SessionDetailCubit` and `NewSessionCubit` receive the service through
@@ -188,10 +209,16 @@ Consumers:
   when `FirebaseCrashlytics.didCrashOnPreviousExecution()` is true (native
   crashes).
 - `FeedbackPromptCubit` (`cubits/feedback_prompt/`), dependencies
-  `FeedbackPromptService` and `LifecycleSource`: calls `claimDuePrompt()` on
-  creation and on resume and emits a one-shot "show" state.
+  `FeedbackPromptService`, `RouteSource` and `LifecycleSource`: calls
+  `claimDuePrompt()` only while `RouteSource.projectPageVisibility` is true —
+  when it turns true, and on resume while it is true — and emits a one-shot
+  "show" state (D6).
 - `FeedbackSheetCubit` (`cubits/feedback_sheet/`) owns one sheet instance:
   step (rating, private), selected issues, draft, submission state, source.
+  The sheet ends with a typed `FeedbackSheetOutcome` (`love`,
+  `couldBeBetter`, `dismissed`). The shell awaits the sheet route, and only
+  after its exit animation has completed calls
+  `FeedbackSheetCubit.requestStoreReview()`, which uses `AppReviewClient`.
   Dependencies grow per step: `FeedbackRepository` and `AppReviewClient`
   (step 3), `FeedbackPromptService` for `recordYes()` from either entry
   (step 6), `ProductAnalyticsService` (step 7).
@@ -199,9 +226,14 @@ Consumers:
   Settings screen and the project-list screen); the `module_app_ui` sheet reads
   `FeedbackSheetCubit` from context. Step 4 builds its `VoiceInputCubit` in the
   app shell the same way.
+- The composer enforces the server's 4,000-character limit with a visible
+  counter near the limit; an inserted transcript is cut at the limit.
 - UI in `client/module_app_ui/lib/src/features/feedback/`: the sheet, rating
   step, private step, pills and composer from the preview, plus the motion
-  file moved unchanged. Artwork moves to `module_app_ui/assets/images/`.
+  file. Artwork moves to `module_app_ui/assets/images/`, and the motion file's
+  `Image.asset` / `SvgPicture.asset` calls gain the `sesori_app_ui` package
+  name so they resolve from the module. Copy moves into the localization
+  files.
 - Settings: `SettingsView` gains a required `onOpenRateSesori` callback (it is
   mobile-only, so desktop is unaffected).
 - The mobile project-list screen listens to `FeedbackPromptCubit` with a
@@ -209,20 +241,24 @@ Consumers:
 
 ### Native (step 5)
 
-- Production channel `com.sesori.app/app_review` with one method,
+With the recommended D10:
+- iOS production channel `com.sesori.app/app_review` with one method,
   `requestReview`, registered next to the recorder-prewarm channel in
-  `MainActivity.kt` and `AppDelegate.swift`.
-- Android: `implementation("com.google.android.play:review:2.0.2")`.
-- Delete `FeedbackPreviewActivity`, the `mainActivityName` placeholder and the
-  debug-only iOS block. Microphone permission comes from the real voice stack,
-  so `requestMicrophoneAccess` goes away.
+  `AppDelegate.swift`.
+- Android has no review channel: `AppReviewClient.requestReview()` opens the
+  Play Store listing on Android.
+- Delete `FeedbackPreviewActivity`, the `mainActivityName` placeholder, the
+  `debugImplementation` Play Review dependency and the debug-only iOS block.
+  Microphone permission comes from the real voice stack, so
+  `requestMicrophoneAccess` goes away.
 
 ## Steps
 
 Fixed titles live in [TRACKER](TRACKER.md#fixed-pr-titles).
 
 1. **Plan** — this document.
-2. **Auth server `POST /feedback`** — [Auth server](#auth-server-step-2).
+2. **Auth server `POST /feedback`** — [Auth server](#auth-server-step-2),
+   including deletion with the account.
 3. **Rating sheet in the app, opened from Settings**
    - Move the motion file and artwork into module_app_ui; turn the preview's
      sheet, steps, pills and composer into production widgets driven by
@@ -316,15 +352,25 @@ Deliberately not added:
   - Automatic prompt with Remote Config lowered to threshold 2 / cooldown 1:
     two sends show it on the project list; an AI retry in between resets it;
     Yes retires it; dismiss respects the cooldown.
-  - iOS StoreKit prompt appears (debug build). Android Play In-App Review is
-    exercised through an internal-testing install; Play may silently skip it,
-    and that result counts as expected behavior.
+  - iOS StoreKit prompt appears (debug build) only after the sheet has
+    closed. Android **Yes** opens the Play Store listing (D10 recommendation).
+  - Deleting the account removes its feedback documents (dev auth server).
+- Codex plan review (2026-09-26, 10 findings): applied route-visible claiming
+  (D6), feedback deletion with the account, package asset namespace, the
+  4,000-character client limit, empty submissions, subscription disposal,
+  review after the sheet exit, the platform via `InstalledAppBuildApi`, and
+  the Play policy question (D10, open). Declined one: separate Firebase and
+  no-op config adapters in `client/app` follow the existing
+  `AnalyticsReleaseCutoffSource` precedent.
 
 ## Risks
 
 - **OS review quotas** (evidence: platform docs). StoreKit shows at most three
-  prompts a year and Play may skip silently; the automatic path therefore
-  never claims a prompt appeared.
+  prompts a year and may skip silently; the automatic path therefore never
+  claims a prompt appeared.
+- **Store policy** (evidence: Google's In-App Review guidance, quoted in D10).
+  Asking "do you like it" before the Play review card violates that guidance;
+  D10 keeps Android away from the In-App Review API.
 - **Spurious resets** (theoretical). A replayed old AI error resets the
   counter and only delays the prompt. Accepted.
 - **Resets from other surfaces** (ordinary flow). `ConnectionService.events`
