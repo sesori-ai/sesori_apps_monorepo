@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pinned prompt halo — strength (round 2)</title>
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f4f5; color: #161616; line-height: 1.45; }
+main { max-width: 1320px; margin: 0 auto; padding: 28px 28px 120px; }
+h1 { font-size: 30px; margin: 0 0 6px; }
+h2 { font-size: 24px; margin: 56px 0 6px; padding-top: 18px; border-top: 1px solid #ddd; }
+p.lead { color: #444; margin: 0 0 18px; max-width: 980px; font-size: 16px; }
+.box { background: #fff; border-radius: 14px; padding: 16px 20px; margin: 14px 0; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.box.settled { border-left: 4px solid #12a150; }
+.box.how { border-left: 4px solid #1a6dff; }
+.box h3 { margin: 0 0 6px; font-size: 16px; }
+ul { margin: 6px 0; padding-left: 22px; } li { margin: 3px 0; }
+code { font-size: 13px; background: #ececef; padding: 1px 5px; border-radius: 5px; }
+.muted { color: #666; }
+
+/* Sticky answer bar */
+.bar { position: sticky; top: 0; z-index: 10; background: rgba(244,244,245,.94); backdrop-filter: blur(8px); border-bottom: 1px solid #e0e0e0; }
+.bar .in { max-width: 1320px; margin: 0 auto; padding: 10px 28px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.bar nav a { margin-right: 12px; color: #1a4fd6; text-decoration: none; font-weight: 500; font-size: 14px; }
+.bar .prog { font-weight: 700; font-size: 14px; }
+.bar .darkt { font-size: 14px; color: #555; }
+#copy { margin-left: auto; background: #1a6dff; color: #fff; border: 0; border-radius: 10px; padding: 9px 18px; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+#copy:hover { background: #1558d6; }
+#toast { font-size: 14px; color: #12813f; font-weight: 700; min-width: 60px; }
+#fallback { width: 100%; height: 160px; font: 13px ui-monospace, monospace; }
+
+/* Section overview: today next to the suggested result */
+.overview { display: grid; grid-template-columns: 390px 390px 1fr; gap: 22px; align-items: start; margin: 14px 0 10px; }
+.overview figure { margin: 0; }
+.overview figcaption { font-size: 14px; margin: 0 0 8px; }
+.overview img { width: 390px; display: block; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 10px; }
+@media (max-width: 1260px) { .overview { grid-template-columns: 390px 390px; } .overview table { grid-column: 1 / -1; } }
+.tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; margin-right: 6px; }
+.tag.today { background: #e6e6e6; color: #555; }
+.tag.after { background: #dcf5e6; color: #0f7a3d; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
+th { color: #666; font-weight: 500; background: #fafafa; }
+
+/* Question cards */
+.q { background: #fff; border-radius: 16px; padding: 18px 20px 16px; margin: 22px 0; box-shadow: 0 1px 3px rgba(0,0,0,.08); border: 1.5px solid transparent; }
+.q.answered { border-color: #cfe0ff; }
+.qh { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.qid { flex: none; font-size: 13px; font-weight: 700; color: #fff; background: #161616; border-radius: 8px; padding: 2px 8px; }
+.qt { font-size: 18px; font-weight: 700; }
+.qhint { font-size: 13px; color: #1a4fd6; font-weight: 700; margin-left: auto; white-space: nowrap; }
+.qsub { color: #444; margin: 0 0 12px; max-width: 1000px; }
+.opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.opt { display: block; border: 1.5px solid #ddd; border-radius: 12px; padding: 12px 14px; cursor: pointer; background: #fff; }
+.opt:hover { border-color: #9ab; }
+.opt.on { border-color: #1a6dff; background: #f2f6ff; box-shadow: 0 0 0 3px rgba(26,109,255,.12); }
+.oh { display: flex; align-items: center; gap: 8px; font-size: 15px; margin-bottom: 10px; }
+.oh input { width: 18px; height: 18px; margin: 0; accent-color: #1a6dff; flex: none; }
+.oh .letter { font-weight: 700; }
+.sug { font-size: 12px; font-weight: 700; color: #0f7a3d; background: #dcf5e6; border-radius: 99px; padding: 2px 8px; margin-left: auto; white-space: nowrap; }
+.why { font-size: 14px; color: #444; margin: 8px 0 0; }
+.note-in { display: block; margin-top: 12px; width: 100%; border: 1.5px solid #e2e2e2; border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 14px; resize: vertical; min-height: 38px; }
+#other { min-height: 110px; }
+
+/* Phone transcript mock: Prego tokens, textSm 14/20, rows 16 px from the edge. */
+.phone { width: 390px; max-width: 100%; background: var(--bg); color: var(--tp); border-radius: 12px; padding: 8px 0 10px; font-size: 14px; line-height: 20px; overflow: hidden; border: 1px solid #ddd; }
+.light { --bg: #F0F0F0; --s2: #FCFCFC; --tp: #141414; --ts: #474747; --tt: #6A6A6A; --err: #D92D20; --spin: 60, 60, 68; }
+.dark { --bg: #141414; --s2: #1E1E1E; --tp: #FDFDFD; --ts: #AEAEAE; --tt: #999999; --err: #F97066; --spin: 235, 235, 245; border-color: #333; }
+.bubble { width: fit-content; max-width: 272px; margin: 4px 16px 4px auto; padding: 10px; background: var(--s2); border-radius: 12px; letter-spacing: .14px; }
+.answer { padding: 6px 16px; letter-spacing: .14px; }
+.row { display: flex; align-items: center; min-height: 44px; padding: 0 16px; color: var(--ts); white-space: nowrap; }
+.row.sum { margin: 2px 0; }
+.row.work { min-height: 36px; margin: 4px 0; }
+.row.two { align-items: flex-start; padding-top: 12px; padding-bottom: 12px; }
+.row.sub { min-height: 32px; padding-left: 44px; }
+.slot { flex: none; width: 20px; height: 20px; margin-right: 8px; display: grid; place-items: center; color: var(--ts); }
+.txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.grow { flex: 1; }
+.time { flex: none; color: var(--tt); font-variant-numeric: tabular-nums; }
+.sum .time { color: var(--ts); }
+.err { flex: none; color: var(--err); }
+.stack { display: flex; flex-direction: column; min-width: 0; }
+.stack .line { display: flex; min-width: 0; }
+.stack .sub2 { color: var(--tt); white-space: normal; }
+.chev { flex: none; margin-left: 8px; font-size: 18px; color: var(--ts); }
+.ti { font-family: TablerRegular; font-style: normal; font-size: 14px; line-height: 1; }
+.dot { width: 5px; height: 5px; border-radius: 50%; background: var(--tt); }
+.spark { width: 14px; height: 14px; color: var(--ts); }
+.spark.turn { animation: turn 2s linear infinite; }
+.spin { width: 13px; height: 13px; color: rgb(var(--spin)); animation: turn 1s steps(8) infinite; }
+@keyframes turn { to { transform: rotate(360deg); } }
+.shim { background: linear-gradient(90deg, var(--tt) 0 40%, var(--tp) 50%, var(--tt) 60% 100%); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shim 1.5s linear infinite; }
+.shim u { text-decoration-color: var(--tt); }
+@keyframes shim { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.divider { border-top: 1px dashed var(--tt); opacity: .35; margin: 6px 16px; }
+.phonelabel { font-size: 12px; color: var(--tt); padding: 2px 16px 0; }
+@media (prefers-reduced-motion: reduce) { .spark.turn, .spin, .shim { animation: none; } }
+details { margin: 14px 0; }
+summary { cursor: pointer; font-weight: 700; }
+
+/* Narrow screens (answering from a phone). */
+@media (max-width: 760px) {
+  main { padding: 16px 14px 120px; }
+  h1 { font-size: 24px; }
+  h2 { font-size: 20px; margin-top: 38px; }
+  .qt { font-size: 16px; }
+  .qhint { display: none; }
+  .opts { grid-template-columns: 1fr; }
+  .overview { grid-template-columns: 1fr; }
+  .overview img { width: 100%; }
+  .bar .in { padding: 9px 14px; gap: 10px; }
+  .bar nav { display: none; }
+  #copy { padding: 9px 14px; }
+  .phone { width: 100%; }
+  table { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="sparkle" viewBox="0 0 24 24"><path d="M12 3C12.375 3 12.711 3.231 12.846 3.581L14.496 7.871A2.85 2.85 0 0 0 16.128 9.504L20.419 11.154A0.906 0.906 0 0 1 20.419 12.846L16.129 14.496A2.84 2.84 0 0 0 14.496 16.128L12.846 20.419A0.906 0.906 0 0 1 11.154 20.419L9.504 16.129A2.84 2.84 0 0 0 7.872 14.496L3.581 12.846A0.906 0.906 0 0 1 3.581 11.154L7.871 9.504A2.84 2.84 0 0 0 9.504 7.872L11.154 3.581A0.91 0.91 0 0 1 12 3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="spinner" viewBox="0 0 20 20">
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".58"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".18" transform="rotate(45 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".18" transform="rotate(90 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".18" transform="rotate(135 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".18" transform="rotate(180 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".28" transform="rotate(225 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".38" transform="rotate(270 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".48" transform="rotate(315 10 10)"/>
+  </symbol>
+</svg>
+
+<style>
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; margin: 14px 0; }
+.pair figure { margin: 0; min-width: 0; }
+.pair figcaption { font-size: 14px; margin: 0 0 8px; }
+.shotw { max-width: 100%; border-radius: 10px; border: 1px solid #ddd; display: block; }
+.duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+.duo figure { margin: 0; min-width: 0; }
+.duo figcaption { font-size: 12px; font-weight: 700; color: #666; margin: 0 0 6px; text-transform: uppercase; letter-spacing: .04em; }
+.opt, .q, .box { min-width: 0; overflow-wrap: anywhere; }
+.box.fix { border-left: 4px solid #e5a300; }
+.box.settled { border-left: 4px solid #12a150; }
+.vals { font-size: 13px; color: #555; margin: 8px 0 0; }
+.vals code { background: #f1f1f3; border-radius: 5px; padding: 1px 5px; font-size: 12px; }
+.edge { margin-top: 10px; }
+.edge img { width: 100%; display: block; border-radius: 8px; border: 1px solid #ddd; }
+.edge figcaption { font-size: 12px; color: #666; margin: 0 0 6px; }
+.bars { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #555; margin-top: 8px; flex-wrap: wrap; }
+.meter { flex: 1 1 120px; min-width: 90px; height: 8px; border-radius: 99px; background: #ececef; overflow: hidden; }
+.meter i { display: block; height: 100%; border-radius: 99px; }
+.meter i.cov { background: #1a6dff; }
+.meter i.calm { background: #12a150; }
+td.num { font-variant-numeric: tabular-nums; }
+tr.rec td { background: #f3fbf6; font-weight: 700; }
+tr.rej td { color: #8a6100; background: #fffaf0; }
+@media (max-width: 720px) { .duo { grid-template-columns: 1fr 1fr; gap: 8px; } }
+</style>
+
+<div class="bar"><div class="in">
+  <span class="prog" id="prog">0 of 1 picked</span>
+  <nav><a href="#why">What went wrong</a><a href="#tension">The trade</a><a href="#qs">The choice</a></nav>
+  <span id="toast"></span>
+  <button id="copy" type="button">Copy response</button>
+</div>
+<div class="in" style="padding-top:0"><textarea id="fallback" hidden></textarea></div>
+</div>
+
+<main>
+<h1>The pinned prompt halo: how strong?</h1>
+<p class="lead"><b>Option B is settled — a halo made of the page's own background colour. That is not up for discussion again.</b> This page is only about its strength. You said the committed version reads as &ldquo;literally a solid block&rdquo;, and you were right to flag it. Round 1 is at <a href="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/review-pages/sticky-prompt-shadow.html">the earlier page</a>.</p>
+
+<h2 id="why">Two things were wrong, and one of them was my renders</h2>
+
+<div class="box fix">
+  <h3>1. The mockups you saw were not what the app draws</h3>
+  <p style="margin:0 0 8px">Flutter's widget-test framework sets <code>debugDisableShadows = true</code> by default. Every <code>BoxShadow</code> is then painted with <b>no blur at all</b> — just its spread, as a hard-edged rectangle. So round 1's images drew the halo as a <b>28&nbsp;px-radius solid plate with a cliff edge</b> and no fade whatsoever. It was literally a solid block, exactly as you said. The real widget has always blurred it.</p>
+  <p style="margin:0">Every image on this page is rendered with that flag turned off, so what you see below is what the app actually paints. I am sorry you were asked to judge a picture the app never draws.</p>
+</div>
+
+<div class="box fix">
+  <h3>2. The committed values are still wrong — just differently</h3>
+  <p style="margin:0 0 8px">With the blur restored, <code>28&nbsp;/&nbsp;14</code> is not a plate. Its problem is <b>reach</b>: the wash carries far enough to visibly grey out a transcript line a <i>full row and a half</i> below the bubble — a line the bubble never touches and has no business dimming. That is the halo becoming a visible shape.</p>
+  <p style="margin:0">So your instinct was correct on both renders. It is too intense; the reason is reach, not a hard edge.</p>
+</div>
+
+<div class="pair">
+  <figure><figcaption><span class="tag today">Committed 28 / 14</span> — light, real blur</figcaption>
+    <img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/ref-light.png" alt="The committed halo in light theme with blur enabled: the wash reaches a row and a half below the bubble">
+  </figure>
+  <figure><figcaption><span class="tag after">Suggested 18 / 8</span> — light, real blur</figcaption>
+    <img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/g-light.png" alt="The suggested halo in light theme: the same clearing around the bubble, with distant rows untouched">
+  </figure>
+</div>
+
+<h2 id="tension">The trade, stated honestly</h2>
+<div class="box">
+  <p style="margin:0 0 8px">The halo exists for one job: the bubble's edge cuts through a transcript row, and the bottom halves of those letters keep showing. In the fixture that row is <b>&ldquo;Older vaults keep their recorded iteration count, so&rdquo;</b>, sliced by the bubble's lower edge. The halo's job is to make that rubble go away.</p>
+  <p style="margin:0 0 8px"><b>Less reach means a prettier, more invisible halo and more rubble left showing. More reach hides the rubble and starts dimming rows that should be left alone.</b> There is no setting that does both perfectly; the goal is the point where the rubble is gone and you still cannot see the halo as a shape.</p>
+  <p style="margin:0">Two numbers below, measured off the actual pixels rather than my eye. <b>Rubble hidden</b> is how much of the sliced row the halo erases. <b>Neighbours left alone</b> is how untouched the next full row down stays, where the weakest option (A) is the 100% mark because it barely reaches at all.</p>
+</div>
+
+<table>
+<thead><tr><th>Option</th><th>Values</th><th class="num">Rubble hidden</th><th class="num">Neighbours left alone</th><th>Reads as</th></tr></thead>
+<tbody>
+<tr class="rec"><td>G</td><td><code>blur 18, spread 8</code></td><td class="num">80%</td><td class="num">96%</td><td>Clearing gone by the next line</td></tr>
+<tr><td>E</td><td><code>blur 22, spread 3</code></td><td class="num">26%</td><td class="num">99%</td><td>Barely there at all</td></tr>
+<tr><td>C</td><td><code>blur 36, spread 4</code></td><td class="num">29%</td><td class="num">89%</td><td>Soft but wide and weak</td></tr>
+<tr><td>A</td><td><code>blur 24, spread 0</code></td><td class="num">0%</td><td class="num">100%</td><td>Almost no halo</td></tr>
+<tr><td>B</td><td><code>blur 40, spread 0</code></td><td class="num">7%</td><td class="num">91%</td><td>Wide wash, little cover</td></tr>
+<tr class="rej"><td>REF</td><td><code>blur 28, spread 14</code></td><td class="num">100%</td><td class="num">77%</td><td>What you rejected</td></tr>
+</tbody>
+</table>
+<p class="vals">Percentages are relative: rubble hidden is scaled between A (0%, weakest tested) and the committed values (100%); neighbours left alone is scaled against A. Light and dark agree to within a tenth of a point on every row, so one table covers both.</p>
+
+<div class="box">
+  <h3>Two stacked shadows: tried, and not needed</h3>
+  <p style="margin:0 0 8px">You allowed a pair if it genuinely beat every single shadow. I rendered one — a wide <code>blur 40</code> under a tight <code>blur 12, spread 2</code> — and it does cover the rubble well (84%), but it leaves the next row at only 91% — G covers essentially as much rubble (80%) while leaving that row at 96%. A single <code>blur 30, spread 8</code> was worse on both counts (58% / 87%).</p>
+  <p style="margin:0"><b>One shadow wins, so the committed code keeps one.</b> Short blur with real spread beats long blur every time here, because the rubble sits within about 20&nbsp;px of the bubble and everything past that is collateral.</p>
+</div>
+
+<h2 id="qs">The choice</h2>
+
+<div class="q" data-id="S1" data-title="Halo strength">
+  <div class="qh"><span class="qid">S1</span><span class="qt">How strong should the halo be?</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">Same fixture, same scroll position, same frame as round 1 — but rendered with shadow blur enabled this time. Each option shows the full screen in light and dark, plus a 1:1 crop of the bubble's lower edge, which is where the whole argument lives. In the crop, watch two things: how much of <b>&ldquo;Older vaults keep their recorded&hellip;&rdquo;</b> survives right under the bubble, and whether <b>&ldquo;as to be re-encrypted. They are upgraded lazily&rdquo;</b> below it is still properly black.</p>
+  <div class="opts">
+
+    <label class="opt" data-label="G - blur 18, spread 8"><span class="oh"><input type="radio" name="S1" value="g"><span class="letter">G</span> Tight and dense <span class="sug">Suggested</span></span>
+      <p class="why">A short fade with real body close to the bubble. The sliced row under the edge is wiped almost as completely as the committed values wipe it, and the next row down is as untouched as if there were no halo at all. The clearing is over before the next line of prose begins, so there is nothing to see as a shape.</p>
+      <p class="vals"><code>BoxShadow(color: scaffoldBackground, blurRadius: 18, spreadRadius: 8)</code></p>
+      <div class="duo">
+        <figure><figcaption>Light</figcaption><img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/g-light.png" alt="Option G, light theme"></figure>
+        <figure><figcaption>Dark</figcaption><img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/g-dark.png" alt="Option G, dark theme"></figure>
+      </div>
+      <figure class="edge"><figcaption>Lower edge, 1:1 — light</figcaption><img src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/g-light-edge.png" alt="Option G, close crop of the bubble's lower edge in light theme"></figure>
+    </label>
+
+    <label class="opt" data-label="E - blur 22, spread 3"><span class="oh"><input type="radio" name="S1" value="e"><span class="letter">E</span> The softest that still does anything</span>
+      <p class="why">If you would rather err far on the quiet side. Nothing around the bubble is dimmed in any way you could point at, and the halo is genuinely invisible — but the sliced row keeps most of its broken letters, so the thing the halo was added for is only a quarter solved. Honest option if you decide the rubble bothers you less than the halo would.</p>
+      <p class="vals"><code>BoxShadow(color: scaffoldBackground, blurRadius: 22, spreadRadius: 3)</code></p>
+      <div class="duo">
+        <figure><figcaption>Light</figcaption><img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/e-light.png" alt="Option E, light theme"></figure>
+        <figure><figcaption>Dark</figcaption><img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/e-dark.png" alt="Option E, dark theme"></figure>
+      </div>
+      <figure class="edge"><figcaption>Lower edge, 1:1 — light</figcaption><img src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/e-light-edge.png" alt="Option E, close crop of the bubble's lower edge in light theme"></figure>
+    </label>
+
+    <label class="opt" data-label="C - blur 36, spread 4"><span class="oh"><input type="radio" name="S1" value="c"><span class="letter">C</span> A little spread, very wide blur</span>
+      <p class="why">The wide-and-gentle end of the range. It covers about as much rubble as E does, but spends a much larger area doing it, so rows well below the bubble pick up a faint grey. That is the worst of the trade: the collateral of a strong halo with the coverage of a weak one.</p>
+      <p class="vals"><code>BoxShadow(color: scaffoldBackground, blurRadius: 36, spreadRadius: 4)</code></p>
+      <div class="duo">
+        <figure><figcaption>Light</figcaption><img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/c-light.png" alt="Option C, light theme"></figure>
+        <figure><figcaption>Dark</figcaption><img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/c-dark.png" alt="Option C, dark theme"></figure>
+      </div>
+      <figure class="edge"><figcaption>Lower edge, 1:1 — light</figcaption><img src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/c-light-edge.png" alt="Option C, close crop of the bubble's lower edge in light theme"></figure>
+    </label>
+
+    <label class="opt" data-label="A - blur 24, spread 0"><span class="oh"><input type="radio" name="S1" value="a"><span class="letter">A</span> Small spread, wide blur</span>
+      <p class="why">Effectively no halo. The broken half-letters sit right against the bubble's edge, fully legible, which is the state that prompted adding a halo in the first place. Worth seeing as the floor of the range: everything else on this page is measured against it.</p>
+      <p class="vals"><code>BoxShadow(color: scaffoldBackground, blurRadius: 24, spreadRadius: 0)</code></p>
+      <div class="duo">
+        <figure><figcaption>Light</figcaption><img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/a-light.png" alt="Option A, light theme"></figure>
+        <figure><figcaption>Dark</figcaption><img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/a-dark.png" alt="Option A, dark theme"></figure>
+      </div>
+      <figure class="edge"><figcaption>Lower edge, 1:1 — light</figcaption><img src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/a-light-edge.png" alt="Option A, close crop of the bubble's lower edge in light theme"></figure>
+    </label>
+
+    <label class="opt" data-label="B - blur 40, spread 0"><span class="oh"><input type="radio" name="S1" value="b"><span class="letter">B</span> Wider blur, no spread</span>
+      <p class="why">Nearly twice A's reach and it buys almost nothing: with no spread, the halo is only half-strength at the bubble's own edge, which is precisely where the rubble is. All the extra blur does is spread a faint wash over rows that were fine. This is the clearest demonstration that blur alone cannot do the job.</p>
+      <p class="vals"><code>BoxShadow(color: scaffoldBackground, blurRadius: 40, spreadRadius: 0)</code></p>
+      <div class="duo">
+        <figure><figcaption>Light</figcaption><img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/b-light.png" alt="Option B, light theme"></figure>
+        <figure><figcaption>Dark</figcaption><img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/b-dark.png" alt="Option B, dark theme"></figure>
+      </div>
+      <figure class="edge"><figcaption>Lower edge, 1:1 — light</figcaption><img src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/b-light-edge.png" alt="Option B, close crop of the bubble's lower edge in light theme"></figure>
+    </label>
+
+    <label class="opt" data-label="REF - blur 28, spread 14, the committed values you rejected"><span class="oh"><input type="radio" name="S1" value="ref"><span class="letter">REF</span> What is committed today</span>
+      <p class="why">The values you called a solid block, shown here as the app really draws them rather than as round 1 mis-rendered them. It hides the rubble best of anything tested — but it is the only option that visibly greys a row the bubble never touches, and in the crop that row is plainly not black any more. Included so the improvement is measurable, not because I think you should keep it.</p>
+      <p class="vals"><code>BoxShadow(color: scaffoldBackground, blurRadius: 28, spreadRadius: 14)</code></p>
+      <div class="duo">
+        <figure><figcaption>Light</figcaption><img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/ref-light.png" alt="The committed values, light theme"></figure>
+        <figure><figcaption>Dark</figcaption><img class="shotw" src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/ref-dark.png" alt="The committed values, dark theme"></figure>
+      </div>
+      <figure class="edge"><figcaption>Lower edge, 1:1 — light</figcaption><img src="https://raw.githack.com/sesori-ai/sesori_apps_monorepo/pr-media/transcript-sticky-prompt-no-scrim/round2/ref-light-edge.png" alt="The committed values, close crop of the bubble's lower edge in light theme"></figure>
+    </label>
+
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional) — e.g. 'G but a touch softer', or a spread number you want tried"></textarea>
+</div>
+
+<div class="box settled">
+  <p style="margin:0 0 8px"><b>Why G is suggested:</b> it is the only option that does the halo's job and disappears. It reaches far enough to wipe the sliced letters the bubble's edge leaves behind, and stops before it touches the next line of prose, so there is no greyed band for the eye to find. It behaves identically in light and dark because it is made of the page colour, and it stays a single shadow.</p>
+  <p style="margin:0"><b>G is what is now committed on the branch.</b> Moving to any other row in the table afterwards is a one-line edit, so pick on how it looks, not on what it would cost to change.</p>
+</div>
+
+<div class="q" style="border-color:#ddd">
+  <div class="qh"><span class="qt">Anything else?</span></div>
+  <textarea id="other" placeholder="Free text (optional)"></textarea>
+</div>
+</main>
+<script>
+// Answers: one pick and one note per question, kept in this browser.
+const KEY = "sesori-sticky-prompt-shadow-round2";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { state = {}; }
+const save = () => localStorage.setItem(KEY, JSON.stringify(state));
+const questions = [...document.querySelectorAll(".q[data-id]")];
+function refresh() {
+  let picked = 0;
+  for (const q of questions) {
+    const s = state[q.dataset.id] || {};
+    if (s.v) picked++;
+    q.classList.toggle("answered", Boolean(s.v));
+    q.querySelectorAll("input[type=radio]").forEach((r) => {
+      r.checked = r.value === s.v;
+      r.closest(".opt").classList.toggle("on", r.checked);
+    });
+  }
+  document.getElementById("prog").textContent = `${picked} of ${questions.length} picked`;
+}
+for (const q of questions) {
+  const id = q.dataset.id;
+  q.querySelectorAll("input[type=radio]").forEach((r) => r.addEventListener("change", () => {
+    (state[id] ||= {}).v = r.value;
+    save();
+    refresh();
+  }));
+  const note = q.querySelector(".note-in");
+  note.value = (state[id] || {}).n || "";
+  note.addEventListener("input", () => { (state[id] ||= {}).n = note.value; save(); });
+}
+const other = document.getElementById("other");
+other.value = state.other || "";
+other.addEventListener("input", () => { state.other = other.value; save(); });
+
+function response() {
+  const lines = ["Review the pinned prompt halo strength (round 2)", ""];
+  for (const q of questions) {
+    const s = state[q.dataset.id] || {};
+    const opt = s.v ? q.querySelector(`input[value="${s.v}"]`).closest(".opt") : null;
+    const pick = opt
+      ? `${s.v.toUpperCase()}. ${opt.dataset.label}${opt.querySelector(".sug") ? " (suggested)" : ""}`
+      : "no answer";
+    lines.push(`${q.dataset.id} ${q.dataset.title}: ${pick}`);
+    if (s.n && s.n.trim()) lines.push(`    Note: ${s.n.trim()}`);
+  }
+  if (state.other && state.other.trim()) lines.push("", `Anything else: ${state.other.trim()}`);
+  return lines.join("\n") + "\n";
+}
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = response();
+  const toast = document.getElementById("toast");
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.textContent = "Copied";
+  } catch (e) {
+    const fallback = document.getElementById("fallback");
+    fallback.hidden = false;
+    fallback.value = text;
+    fallback.focus();
+    fallback.select();
+    toast.textContent = "Copy the selected text";
+  }
+  setTimeout(() => { toast.textContent = ""; }, 2500);
+});
+refresh();
+</script>
+</body>
+</html>
