@@ -204,7 +204,6 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
           transcriptFolded: _transcriptFolded,
-          onTranscriptFoldedChanged: setTranscriptFolded,
           streamingText: _streamingText,
           children: const <Session>[],
           childStatuses: const <String, SessionStatus>{},

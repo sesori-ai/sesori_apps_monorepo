@@ -68,9 +68,6 @@ class const SessionDetailMessageList({
 
   /// Whether each turn shows folded: its prompt, then one line for the rest.
   required final bool transcriptFolded,
-
-  /// Folds or unfolds every turn; the session's one fold intent.
-  required final void Function({required bool folded}) onTranscriptFoldedChanged,
   final String? retryErrorMessage,
 
   /// Height of the floating composer overlaying the list's bottom edge. Used

@@ -10,8 +10,9 @@ Branch `turn-navigation/fold-turns`. Architecture 3.
 - `reload()` emits `SessionDetailState.loading()` first, so only the cubit's
   field carries the fold across it. Two load failures re-emit the state from
   before the load and seed it again; the plan did not name them.
-- `SessionDetailLoadedView` passes `loadOlderMessages` from the cubit to
-  `SessionDetailMessageList`; the fold follows the same path.
+- `SessionDetailLoadedView` passes the loaded state's fields, such as
+  `isLoadingOlderMessages`, to `SessionDetailMessageList`; the fold follows the
+  same path.
 - The list eases in every row id missing from `_knownRowIds`, so without a
   reset the stub rows a switch brings in would ease in.
 
@@ -20,7 +21,8 @@ Branch `turn-navigation/fold-turns`. Architecture 3.
 - `SessionDetailLoaded.transcriptFolded`, with Freezed regenerated, and in
   `SessionDetailCubit` the `_transcriptFolded` field and the one intent,
   `setTranscriptFolded({required bool folded})`.
-- `SessionDetailLoadedView` passes both to `SessionDetailMessageList`.
+- `SessionDetailLoadedView` passes `state.transcriptFolded` to
+  `SessionDetailMessageList`.
 - Folded, the list runs `TranscriptTurnBuilder` after `TranscriptBuilder`. Each
   prompt turn shows its prompt row and a stub row
   `session-detail-turn-<openerMessageId>`. The leading segment shows one stub
@@ -38,14 +40,15 @@ Branch `turn-navigation/fold-turns`. Architecture 3.
 - The two load-failure fallbacks seed the fold again. Otherwise a fold request
   during a load that then fails leaves the field folded and the state unfolded,
   and every later request is dropped as a no-change. Architecture 3 records it.
-- The list takes `onTranscriptFoldedChanged` as planned, but nothing calls it
-  until step 5's stub tap.
+- The list takes no fold callback. The plan passed the intent to it here, but
+  nothing would call it before step 5, so it moves to step 5 with the stub tap
+  that first calls it. PLAN.md's Architectures 3 and 4 say so.
 - Partial and preamble stubs always lead with a chevron: their copy has no
   running or error form.
 
-Size: 686 changed lines against the 700-line target. Production code is
-225 authored lines, 67 of them ARB copy, and 115 generated (localizations 98,
-Freezed 17). Tests are 260 lines, and docs the rest.
+Size: 695 changed lines against the 700-line target. Production code is
+221 authored lines, 67 of them ARB copy, and 115 generated (localizations 98,
+Freezed 17). Tests are 259 lines, and docs the rest.
 
 ## Automated Evidence
 
@@ -66,12 +69,12 @@ clean in `module_core`, `module_app_ui`, `app` and `desktop`.
 ## Review
 
 `architecture-implementation-review` over `origin/main...HEAD` rejected on one
-low finding: nothing calls the list's required `onTranscriptFoldedChanged`
-before step 5. The plan's step 4 and this step's brief put that wiring here,
-which the reviewer noted overrides the finding, so it stays and the review was
-not rerun. Everything else conformed: the fold seeded wherever a loaded state
-is built or re-emitted, the turn model in the list's build, the unexported
-stub, and the dependency direction.
+low finding: nothing called the list's required `onTranscriptFoldedChanged`
+before step 5. Codex raised the same point on the PR, and the callback is
+removed as the reviewer proposed, so the review was not rerun. Everything else
+conformed: the fold seeded wherever a loaded state is built or re-emitted, the
+turn model in the list's build, the unexported stub, and the dependency
+direction.
 
 ## Manual
 
