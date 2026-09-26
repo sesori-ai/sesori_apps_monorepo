@@ -411,8 +411,9 @@ and its adapter.
   sealed, not one class with a nullable id.** Every variant carries
   `launchId`, `projectId`, `pluginId`, `startedAt` and `followUpIds`:
   - `PendingSessionLaunch({…, title, submission, followUps})` — the bridge has not
-    answered. **Only this variant produces a placeholder row.** `title` is the
-    row's title (**D2**), snapshotted at `start` so the row keeps it after
+    answered. **Only this variant produces a placeholder row.** `String? title`
+    is the first line of `submission.displayText` (**D2**; null for an
+    attachment-only start), snapshotted at `start` so the row keeps it after
     `releaseHandoff` drops `submission` (then null).
   - `CreatedSessionLaunch({…, session, submission, unsentComposer, followUps})` —
     the bridge answered with a real `Session`. **Only this variant can hand over**,
@@ -421,9 +422,8 @@ and its adapter.
     there was nothing.
   - `ReconcilingSessionLaunch({…, session, followUps})` — the handoff has been
     taken by the session screen or released by the composing route, and the
-    entry is retained only for the two things that still need it: the
-    `launchId`↔`session.id` association the lists key their row through, and
-    any follow-up still owed. It has no submission field at all, so "a launch
+    entry is retained only while a follow-up is still owed (the lists latched
+    its `launchId`↔`session.id` association at `promote`, step 5). It has no submission field at all, so "a launch
     whose payload was already consumed but still looks unconsumed" is not
     representable.
 
@@ -451,8 +451,8 @@ and its adapter.
   row next to its own real session row" a representable state, prevented only by
   some consumer happening to run in time. Sealing it makes the placeholder
   provably disappear the instant a session exists, and the third variant is what
-  lets the payload be consumed **without** also destroying the association the
-  lists need (see step 5).
+  lets the payload be consumed while follow-ups are still owed (see "The
+  launch's lifetime").
 
   Two fields are on every variant on purpose, because they are the only launch
   facts that must survive the payload:
@@ -491,8 +491,9 @@ and its adapter.
   - a broadcast stream of current `PendingSessionLaunch`es — the placeholder
     rows;
   - a broadcast stream of `launchId`→`session` associations covering the created
-    **and** reconciling variants — the list row keys, which must survive the
-    handoff being consumed;
+    **and** reconciling variants — the list row keys, which a list latches from
+    the emission `promote` produces (step 5), so the entry need not outlive the
+    handoff for them;
   - a broadcast stream of typed terminal outcomes, sealed as **three** variants
     rather than two, so exactly one reader acts on each:
     - `SessionLaunchSucceeded({launchId, session})` — read by the composing cubit
@@ -699,7 +700,9 @@ the moment the answer is no. There is deliberately no `complete(launchId:)` for 
 caller to remember: on the ordinary happy path with no follow-ups, the last debt
 is discharged inside `takeHandoff`, which runs on the detail route long after
 `SessionLaunchService` finished its own work, so no service call site could have
-been the right place to ask.
+been the right place to ask. Removal never takes the association from a list
+that needs it: `promote` publishes it before any removal, and a list drawing the
+placeholder latches it from that emission (step 5).
 
 **The row is owed until the surface drawing it would draw the real row in its
 place.** The one thing the owner deliberately does not decide is when a
@@ -840,8 +843,9 @@ the first spinner with no new state at all.
   `takeHandoff(sessionId: …)` before its initial state. In this step the handoff
   is the first message only; step 4 adds the accepted follow-ups and the unsent
   composer to the same value. Taking it moves
-  the launch to its reconciling variant, which keeps the association the lists
-  key through (step 5) and any follow-up still owed (step 4):
+  the launch to its reconciling variant while any follow-up is still owed
+  (step 4), and otherwise removes it (the lists latched the association at
+  `promote`, step 5):
   - `SessionDetailState.loading` gains
     `required NewSessionSubmissionSnapshot? launchSubmission` and
     `required String? launchPluginId`, and every loading emission of
@@ -1236,8 +1240,9 @@ the first spinner with no new state at all.
   line, meta line and paddings, taken from `session_row_metrics.dart` and
   `session_tile.dart:523-528`, so the swap changes no height.
   - **Content (D2, settled).** The launch's `title` snapshot — the first line of
-    `submission.displayText` (or `/command`, or the localised attachment-only
-    fallback), taken at `start` so it survives `releaseHandoff` — as the title, the
+    `submission.displayText` (or `/command`), taken at `start` so it survives
+    `releaseHandoff` — as the title, the localised attachment-only fallback
+    resolved by the tile when it is null, the
     animating sparkle `SessionTile._state` (`:370-396`) already shows for a
     running session in the status slot, the harness display name on the meta line
     via `PregoBrandLogo.displayNameFor(pluginId)`, and **no time** — which
@@ -1302,13 +1307,14 @@ the first spinner with no new state at all.
   The mechanism has two halves, and the second exists because the first is not
   enough on its own.
 
-  **Published, and not consumed by the handoff.** `promote` publishes the
-  `launchId`→`session` association on its own stream, which carries the created
-  **and** reconciling variants. `takeHandoff` takes only the first-message
-  payload, so the normal instant-navigation path — which reaches the detail route
-  before the independently delivered `session.created` event reaches a session
-  list — cannot destroy the association the list is about to need. This is why the
-  launch is sealed into three variants rather than being deleted at handoff.
+  **Published at `promote`, latched from that emission.** `promote` publishes the
+  `launchId`→`session` association on its own stream, before any removal it or a
+  later transition causes. A list drawing the placeholder latches it from that
+  emission through a listener that sees every state, not a builder that can skip
+  one. `promote` precedes the success outcome that navigates, so the normal
+  instant-navigation path — whose `takeHandoff` removes an entry with nothing
+  else owed, often before `session.created` reaches a session list — cannot take
+  the association from a list that is about to need it.
 
   **Latched where the jump would happen.** A list surface that is currently drawing
   a placeholder for `launchId` records that association in its own state when it
@@ -1667,8 +1673,9 @@ name on the meta line, and no time.** **D3** adds one localised word before the
 harness name on that same meta line; nothing else about this changes.
 
 - **Title** — the first line of `submission.displayText`, or `/command` for a
-  command start, or the localised attachment-only fallback, snapshotted into the
-  launch at `start` so a released handoff does not blank it. Real rows show
+  command start (snapshotted into the launch at `start` so a released handoff
+  does not blank it), or the localised attachment-only fallback, which the tile
+  resolves when that snapshot is null. Real rows show
   `session.title ?? loc.sessionListUntitled`, and a generated title arrives
   later through `session.updated`, so the prompt's first line is the closest
   honest stand-in and usually resembles the title that follows.
@@ -2127,7 +2134,7 @@ list composition, and each plugin's first-message echo.
 - The placeholder-to-real row swap depends on animated-list item identity, which
   is the one mechanism in this plan that could pass every state test and still
   visibly jump. It now rests on three things that have to hold together: the
-  association surviving the handoff, `SessionListContent` latching it while it
+  association being latched from `promote`'s emission, `SessionListContent` holding it while it
   draws a placeholder, and the row being held until that list would draw the
   session in the placeholder's slot so there is never an emission with neither
   row. Step 5's offset assertion is the gate, and a no-animation fallback for the
