@@ -28,6 +28,10 @@ const _minimumRecordingDuration = Duration(milliseconds: 200);
 const _cancelReachRadius = 170.0;
 const _cancelCommitRadius = 44.0;
 
+/// Wider than the commit radius, so a finger resting on the boundary does not
+/// flicker the target or repeat its haptic.
+const _cancelDisengageRadius = 56.0;
+
 enum _VoicePresentation() {
   idle,
   recording,
@@ -48,7 +52,10 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
   final _text = TextEditingController();
   final _focus = FocusNode();
   final _textScroll = ScrollController();
-  final _cancelTargetKey = GlobalKey();
+
+  /// Replaced per recording, because the previous recording row may still be
+  /// fading out when the next one mounts.
+  var _cancelTargetKey = GlobalKey();
 
   /// 0 at rest, 1 with the holding finger on the cancel target.
   final _cancelProgress = ValueNotifier<double>(0);
@@ -101,10 +108,8 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
     final target = _cancelTargetKey.currentContext?.findRenderObject();
     if (target is! RenderBox || !target.hasSize) return;
     final distance = (event.position - target.localToGlobal(target.size.center(Offset.zero))).distance;
-    final progress = (1 - (distance - _cancelCommitRadius) / (_cancelReachRadius - _cancelCommitRadius)).clamp(
-      0.0,
-      1.0,
-    );
+    final threshold = _cancelProgress.value >= 1 ? _cancelDisengageRadius : _cancelCommitRadius;
+    final progress = (1 - (distance - threshold) / (_cancelReachRadius - threshold)).clamp(0.0, 1.0);
     if ((progress >= 1) != (_cancelProgress.value >= 1)) unawaited(_playHaptic(play: HapticFeedback.selectionClick));
     _cancelProgress.value = progress;
   }
@@ -137,6 +142,7 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
     _holding = true;
     _minimumDurationReached = false;
     _cancelProgress.value = 0;
+    _cancelTargetKey = GlobalKey();
     // Before the recorder starts, so touch-down feels immediate.
     unawaited(_playHaptic(play: HapticFeedback.lightImpact));
     await voice.startRecording();
@@ -165,6 +171,8 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
   /// Cancels the recording or transcription; the draft stays as it is.
   void _cancelVoice() {
     _endHold();
+    // Still starting: _startRecording cancels once the recorder is up.
+    if (_voice.state is VoiceInputStarting) return;
     unawaited(_voice.cancel());
   }
 
@@ -332,7 +340,8 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
                           label: loc.feedbackRetry,
                           hierarchy: PregoButtonsSolidHierarchy.link,
                           size: PregoButtonsSolidSize.lg,
-                          onPressed: _submit,
+                          // A retry mid-recording would send the draft without the words still coming.
+                          onPressed: voice == _VoicePresentation.idle ? _submit : null,
                         ),
                       ],
                     ),
