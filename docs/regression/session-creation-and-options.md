@@ -26,7 +26,9 @@ variant, and worktree mode, and creating the session with its first input.
 - The agent, model and effort selectors sit in one strip above the input on every surface, each a pill
   with a leading glyph and an unfold caret. A label too long for its pill keeps its end behind a leading
   ellipsis, "…Opus 5" rather than "Claude Op…", and screen readers hear the whole name. On a pointer
-  surface the pills size to their labels; on touch they share the width. On a pointer surface the attach
+  surface the pills size to their labels; on touch they share the width. On either surface a pill whose
+  share of the strip is too narrow for a readable label shows only its glyph, keeping the name as its
+  tooltip, so a narrow window never overflows the strip. On a pointer surface the attach
   and command buttons are always visible and the box grows with the draft instead of opening an editor
   sheet. It stops at a third of the window and the draft scrolls, so even the minimum window keeps the
   selectors on screen.
