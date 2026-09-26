@@ -126,6 +126,9 @@ They remain Actions artifacts while `DESKTOP_MACOS_PUBLICATION_ENABLED` is absen
 macOS publication, desktop attaches its installers and separate `desktop-checksums.txt`/`desktop-release.json`
 after both its native jobs and the existing shared finalizer pass. Desktop never changes bridge assets, checksums,
 tags, prerelease status or Latest. Desktop failure remains visible without changing core finalization.
+Stable bridge/npm cleanup skips desktop-completed internal previews, including bridge-only production and
+pending/failed stable desktop attachment. Internal rollover owns their retirement; stable desktop availability
+does not replace the internal channel.
 
 For an immediate build or a retry after fixing credentials/store issues, open **Actions → Release All Platforms → Run workflow**, normally on `main`, leaving **automatic** unchecked (`false`). This explicit manual retry bypasses the automatic tag/path checks but still validates versions and allocates a fresh aligned build number. Manual builds on another branch do not move main's attempt marker. The standalone iOS/Android manual workflows remain available.
 

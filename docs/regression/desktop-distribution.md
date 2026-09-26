@@ -115,6 +115,9 @@ alongside the current core release; older completed previews retire only once a 
 completion exists. A failed desktop build or attachment therefore preserves the last
 downloadable preview without holding back core releases. The marker reuses the publisher's
 existing last-uploaded completion signal, not a second pointer or release owner.
+Stable bridge/npm cleanup skips completed desktop previews even when stable desktop
+assets exist: an internal channel must not be forced onto stable. This also preserves
+previews during bridge-only production or pending/failed stable desktop attachment.
 `DESKTOP_MACOS_PUBLICATION_ENABLED` defaults off; the user admitted macOS on 2026-09-26
 and it is now `true`. Windows/Linux remain unadmitted.
 
@@ -277,6 +280,8 @@ historical evidence as shared-store qualification.
   The actual internal-rollover shell runs with a fake GitHub boundary to verify repeated
   desktop failures retain the last completed preview, newer completion retires older
   previews, pre-desktop cleanup stays intact and current-release retries remain valid.
+  The npm-cleanup shell separately preserves desktop previews with or without stable
+  desktop assets while still deleting same-version core-only internal releases.
   Windows fixtures cover identity/CPU refusal, complete native inventory, pinned
   compiler arguments, bounded installer directives and no-overwrite diagnostics.
   Linux fixtures cover identity/CPU refusal, payload layout and symlink preservation,

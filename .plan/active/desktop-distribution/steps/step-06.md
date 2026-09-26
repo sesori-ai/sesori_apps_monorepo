@@ -47,7 +47,9 @@ A desktop build failure stays visible without rolling back other products. Inter
 rollover retains the newest desktop-completed public prerelease alongside the new core
 release. Only older desktop previews retire, using the existing last-uploaded
 `desktop-release.json` signal. No release service, extra pointer or build dependency
-is added; transient shell values hold the public listing and retained tag.
+is added; transient shell values hold the public listing and retained tag. Stable
+bridge/npm cleanup skips completed desktop previews; internal rollover remains their
+retirement owner, independent of stable desktop availability.
 
 `_reusable-desktop-publish.yml` runs only after native desktop success and the shared
 release job. Production therefore already passed `store-production`; no second
@@ -137,11 +139,15 @@ historical source/tag/evidence attribution remains explicit.
 
 Review on #1761 identified that core rollover could delete the previous desktop assets
 before a later desktop failure. The existing rollover now retains the newest completed
-desktop preview without blocking core finalization. Four offline tests execute the actual
-shell with a fake GitHub boundary: repeated desktop failures, advancement/older-preview
-retirement, pre-desktop cleanup and current-release retry. Three subcases failed against
-the old cleanup; all 16 publisher/workflow tests and actionlint passed after correction.
-This is a local workflow regression proof, not a forced live store/desktop failure.
+desktop preview without blocking core finalization. A second review identified stable
+bridge/npm cleanup as another deletion path; it now leaves completed previews to the
+internal rollover owner, even if stable desktop assets exist. Five offline tests execute
+the actual cleanup shells through a fake GitHub boundary: repeated desktop failures,
+advancement/older-preview retirement, pre-desktop cleanup, current-release retry and
+stable cleanup with/without desktop assets. Three internal-rollover and both stable
+cleanup subcases failed against their old implementations; all 17 publisher/workflow
+tests and actionlint passed after correction. This is a local workflow regression proof,
+not a forced live store/desktop failure.
 
 ## Shared-cycle native evidence (2026-09-25)
 

@@ -45,8 +45,9 @@ new store upload, private-evidence publication, installation or app launch occur
 Continuation `🌿 [desktop-distribution] Retire accepted QA gate and publish macOS previews [step 8.m/14]`
 is open as #1761. It records this decision/evidence and fixes the review-identified
 rollover loss: retain the newest desktop-completed internal preview while core releases
-advance, without new state owners or blocking core success. Four real-shell offline
-regressions and all 16 publisher/workflow tests pass; native failure injection is not
+advance, without new state owners or blocking core success. Stable npm cleanup also
+preserves completed previews, leaving their retirement to internal rollover. Five
+real-shell regressions and all 17 publisher/workflow tests pass; native failure injection is not
 claimed. The website still needs its internal macOS links; stable production attachment
 remains subject to existing `store-production` approval.
 

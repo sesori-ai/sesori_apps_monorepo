@@ -448,8 +448,10 @@ internal release using the unchanged publisher. Verify anonymous hashes, signatu
 stapled tickets, Gatekeeper and unchanged bridge/Latest state. PR #1761 also fixes the
 reachable partial-cycle failure: existing internal cleanup retains the newest preview
 with the publisher's completion manifest, retiring older previews only after a newer
-completion. Two transient shell values; no new persistent pointer, owner or core build
-dependency. Verify the real shell with offline GitHub fixtures. No app/database change.
+completion. Stable npm cleanup preserves those channel-specific previews regardless of
+stable desktop availability. Two transient shell values; no new persistent pointer,
+owner or core build dependency. Verify both cleanup shells with offline GitHub fixtures.
+No app/database change.
 Website wiring follows; stable production retains its existing approval. Do not retire
 the six-platform plan.
 

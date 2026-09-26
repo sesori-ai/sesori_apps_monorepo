@@ -64,8 +64,10 @@ Desktop previews advance only when `desktop-release.json` completes publication.
 The shared cycle retains the newest desktop-completed internal release while newer
 core-only releases build or desktop fails. Older completed previews can roll away
 after a newer one is available. The website must select that newest completed desktop
-preview, not merely the newest core release. Do not pin a permanent website link to
-the first internal tag or use Latest stable as a substitute.
+preview, not merely the newest core release. Stable bridge/npm publication preserves
+completed internal previews too; it does not replace their channel with stable.
+Do not pin a permanent website link to the first internal tag or use Latest stable
+as a substitute.
 
 [shared-releases]: https://github.com/sesori-ai/sesori_apps_monorepo/releases
 

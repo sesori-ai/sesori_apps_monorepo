@@ -196,6 +196,9 @@ class InternalReleaseRolloverTest(unittest.TestCase):
         workflow = Path(__file__).resolve().parents[1] / "workflows/release-all-platforms.yml"
         step = workflow.read_text().split("      - name: Roll internal pre-release\n", 1)[1]
         script = textwrap.dedent(step.split("        run: |\n", 1)[1].split("      - name: Summary", 1)[0])
+        return self.run_script(script=script, releases=releases, tag=tag)
+
+    def run_script(self, *, script, releases, tag):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             (root / "releases.json").write_text(json.dumps(releases))
@@ -262,6 +265,24 @@ class InternalReleaseRolloverTest(unittest.TestCase):
         self.assertIn(["release", "delete", old["tag_name"], "--yes"], calls)
         self.assertNotIn(["release", "delete", current["tag_name"], "--yes"], calls)
         self.assertTrue(any(c[:3] == ["release", "upload", current["tag_name"]] for c in calls))
+
+    def test_stable_cleanup_preserves_desktop_previews_regardless_of_stable_assets(self):
+        workflow = Path(__file__).resolve().parents[1] / "workflows/bridge-npm-publish.yml"
+        step = workflow.read_text().split("      - name: Delete superseded internal pre-release\n", 1)[1]
+        script = textwrap.dedent(step.split("        run: |\n", 1)[1].split("\n  publish-platform:", 1)[0])
+        older = self.release(tag="v1.0.0-internal.10", published="2026-09-25T10:00:00Z", complete=True)
+        newer = self.release(tag="v1.0.0-internal.11", published="2026-09-25T11:00:00Z", complete=True)
+        incomplete = self.release(tag="v1.0.0-internal.12", published="2026-09-25T12:00:00Z")
+        other_version = self.release(tag="v1.0.1-internal.13", published="2026-09-25T13:00:00Z")
+        beta = self.release(tag="v1.0.0-beta.1", published="2026-09-25T13:00:00Z")
+        for stable_complete in [False, True]:
+            with self.subTest(stable_has_desktop=stable_complete):
+                stable = self.release(tag="v1.0.0", published="2026-09-25T14:00:00Z",
+                                      complete=stable_complete, prerelease=False)
+                calls = self.run_script(script=script, tag=stable["tag_name"],
+                                        releases=[stable, other_version, incomplete, newer, older, beta])
+                deleted = [c[2] for c in calls if c[:2] == ["release", "delete"]]
+                self.assertEqual(deleted, [incomplete["tag_name"]])
 
 
 if __name__ == "__main__":
