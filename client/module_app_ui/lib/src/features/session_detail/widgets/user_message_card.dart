@@ -86,6 +86,7 @@ class const UserMessageBubble({
                       context: context,
                       uri: uri,
                       semanticLabel: alt,
+                      interactive: true,
                     ),
                     styleSheet: buildChatMessageMarkdownStyleSheet(prego: prego),
                     blockSyntaxes: sessionMarkdownBlockSyntaxes,

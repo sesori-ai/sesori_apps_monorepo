@@ -2689,7 +2689,7 @@ void main() {
       expect(markdownHeight, moreOrLessEquals(tester.getSize(bubble).height, epsilon: 0.5));
     });
 
-    testWidgets("pins a remote image as the bubble's button, never as a fetch", (tester) async {
+    testWidgets("pins a remote image as a plain mention, never a fetch or a control", (tester) async {
       await _pumpTurns(
         tester,
         messages: _turnsWithPrompt(id: "u4", text: "![diagram](https://example.com/diagram.png)"),
@@ -2698,10 +2698,13 @@ void main() {
 
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
 
-      // A prompt can name any host, so pinning it must not contact that host:
-      // the bubble's own button is all a remote image ever renders as.
+      // A prompt can name any host, so pinning it must not contact that host.
       expect(find.descendant(of: overlay, matching: find.byType(MarkdownMessageImage)), findsNothing);
-      expect(find.descendant(of: overlay, matching: find.byType(TextButton)), findsOneWidget);
+      // Nor offer a press: the bubble's tap jumps to the prompt, so the real
+      // bubble's open-image button would open nothing here. The transcript's
+      // own bubble keeps that button (see the session detail body's test).
+      expect(find.descendant(of: overlay, matching: find.byType(TextButton)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(InkWell)), findsNothing);
       expect(pinned("diagram"), findsOneWidget);
     });
 
@@ -2795,6 +2798,19 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(_topOf(tester, "u6"), moreOrLessEquals(_topInset, epsilon: 1));
+      semantics.dispose();
+    });
+
+    testWidgets("offers the bubble's action alone, never the band's no-op tap", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+
+      // The band's tap only swallows presses beside the bubble, so announcing
+      // it would put an inert action next to the real one.
+      expect(tester.getSemantics(band), isNot(isSemantics(hasTapAction: true)));
+      expect(tester.getSemantics(bubble), isSemantics(isButton: true, hasTapAction: true));
+
       semantics.dispose();
     });
   });

@@ -54,8 +54,11 @@ class const TranscriptStickyPromptOverlay({
       // The band hides the top of the rows beneath it, so a tap on the faded
       // area must not reach a row the reader cannot see; only the bubble jumps.
       // Translucent, so a drag or a wheel that starts anywhere on the band
-      // still scrolls those rows.
+      // still scrolls those rows. Excluded from semantics, because a tap that
+      // is there to do nothing must not be offered as an action; the bubble
+      // beside it carries the only one.
       behavior: HitTestBehavior.translucent,
+      excludeFromSemantics: true,
       onTap: () {},
       child: Stack(
         children: [
@@ -147,7 +150,10 @@ class const TranscriptStickyPromptOverlay({
         styleSheet: styleSheet,
         // The user bubble's own image rule, so a pinned prompt discloses no
         // more to a remote host than the prompt's own bubble does: nothing.
-        imageBuilder: (uri, _, alt) => buildUserPromptMarkdownImage(context: context, uri: uri, semanticLabel: alt),
+        // Not interactive here: the bubble's tap jumps to the prompt, so a
+        // press on an open-image button would open nothing.
+        imageBuilder: (uri, _, alt) =>
+            buildUserPromptMarkdownImage(context: context, uri: uri, semanticLabel: alt, interactive: false),
         blockSyntaxes: sessionMarkdownBlockSyntaxes,
         builders: buildSessionMarkdownBuilders(highlightEnabled: true, copyTooltip: context.loc.sessionDetailCopy),
       ),
