@@ -4,7 +4,7 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 6.b (PR 9/13) — activity/service integration, local implementation.
+- Current step: 6.b (PR 9/13) — activity/service integration implemented and architecture-approved; ready for PR review.
   Branch: `sesori/opencode-v2-step-6b-activity-service`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
@@ -159,7 +159,9 @@
   Cached session metadata supplies deletion events; no request is made for an already-deleted row.
 - Focused repository/model/activity-service coverage passes 35 cases. The new 14-case activity/service suite was
   rerun after supplying the native compaction event's required `recent` field; unchanged passing suites were not.
-  Package analysis is clean. No generator inputs changed. Architecture implementation review is pending.
+  Package analysis is clean. No generator inputs changed. Architecture approved `03f60664ed...0f399fe` on the
+  first completed pass: 9 files, 1,005 authored changed lines, no generated churn and no findings. A provider
+  `fetch failed` interrupted the initial attempt; the same reviewer resumed against the unchanged clean head.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.
