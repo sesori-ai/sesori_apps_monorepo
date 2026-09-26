@@ -4,14 +4,26 @@ Publication content specification for **https://sesori.com/desktop/**, which is 
 and built from the `sesori-ai/landingpage` repository. The app opens that website, not
 this repository document. The page renders every channel/OS/CPU heading anchor below
 plus `linux-package-managers`, and its contract checks fail when one is renamed or
-removed. Publishing a row means registering the verified public artifact in that
-repository's `src/lib/desktop-downloads.ts` and updating the matching section here.
+removed. Its `src/lib/desktop-downloads.ts` resolves completed public shared releases;
+individual preview builds do not need a source edit or website redeployment.
 
-**Internal macOS installers are public for both CPUs.** Stable macOS and Windows/Linux
-are not published yet. The first shared internal publication was `1.9.1+987`; the
-website's download wiring follows separately. Private CI artifacts are not public
-links. This index never substitutes a mobile/CLI release or private evidence for a
-desktop installer.
+**Internal macOS installers are public for both CPUs, with live website downloads.**
+Stable macOS and Windows/Linux are not published yet. The website selects the newest
+completed internal release rather than permanently pinning the first publication.
+Private CI artifacts are not public links. This index never substitutes a mobile/CLI
+release or private evidence for a desktop installer.
+
+Release discovery is anonymous and cached for five minutes, including logged failed
+lookups. All release pages share one five-second timeout on the fixed repository
+endpoint. A completed macOS entry requires the desktop manifest/checksum assets and
+both native DMGs with valid index sizes/SHA-256 digests. The publisher uploads the
+manifest last; the website does not rehash packages or parse that manifest on each
+lookup. Displayed checksums and manifest links support independent verification.
+Preview availability never creates stable controls, version metadata or offers.
+
+The website's base branch deploys automatically after push/merge, normally within
+1–3 minutes. A source merge alone is not live-page verification; allow the existing
+deployment to finish instead of creating a redundant deploy commit.
 
 ## Updating safely
 

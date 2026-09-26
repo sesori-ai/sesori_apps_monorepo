@@ -14,6 +14,17 @@ The repository download document is a content/anchor specification, not an alter
 user-facing destination. Source builds show development guidance; Linux shows
 package-manager guidance.
 
+The deployed website resolves completed public macOS releases independently for
+stable/internal. It follows all release pages on the fixed GitHub repository endpoint
+under one five-second timeout. A five-minute cache coalesces lookups and logged failures;
+no credentials, background polling or persistent release pointer is used. Completion
+requires desktop manifest/checksum assets and both native DMGs with positive sizes and
+valid SHA-256 index digests. The publisher uploads the manifest last; runtime discovery
+does not parse it or rehash installers. URLs use validated tags and expected filenames.
+Newer core-only releases cannot replace completed desktop rows. Preview navigation,
+version/size/hash and verification links never imply stable schema/offer availability.
+Actual-widget demo imagery discloses native-control differences, not native account QA.
+
 Staging accepts `--channel stable|internal` (default stable) and emits
 `SESORI_DESKTOP_RELEASE_CHANNEL` beside the compiled bundle identity. Channel is
 build metadata, not helper identity, persisted state or a client/bridge contract.
@@ -265,8 +276,15 @@ Internal `1.9.1+987` installers were published from a successful shared producer
 four payloads, desktop checksums and the last-uploaded manifest passed anonymous public
 hash verification. Both CPUs' apps/DMGs passed independent Developer ID, stapled-ticket
 and Gatekeeper checks without local app execution. Bridge assets and Latest stable
-were unchanged. Website wiring and stable production attachment remain separate.
-Windows signed N→N+1 and Linux signed-repository N→N+1 requirements remain open.
+were unchanged. Ordinary shared run `36230719108` then completed automatic desktop
+attachment for `1.9.1+991`; this was not another local bootstrap or scheduler no-op.
+Website PR `sesori-ai/landingpage#111` merged and automatically deployed. Live browser
+verification on 2026-09-26 selected `1.9.1+993`, exercised all nine anchors and preview
+navigation, and confirmed both anonymous links/sizes and manifest/checksum agreement.
+Stable schema/platform boundaries, mobile width and zero browser exceptions were checked.
+Those checks do not claim new full-byte hashing, Apple trust or native execution.
+Stable production attachment remains separate. Windows signed N→N+1 and Linux
+signed-repository N→N+1 requirements remain open.
 Shared-store native roundtrip, cold reopen, replacement and authorization remain
 unproved by pre-cutover package evidence; the retired gate does not relabel that
 historical evidence as shared-store qualification.
@@ -292,13 +310,18 @@ historical evidence as shared-store qualification.
   main-only environment scoping. Staging parser/default/invalid-channel and exact
   dotenv tests; Settings
   composition retains attention controls. Generated fragments match specification headings.
+  Website resolver/SSR fixtures cover incomplete newer releases, page-two stable
+  discovery, channel isolation, malformed assets, cache reuse/failure logging and all
+  anchors. These run in `sesori-ai/landingpage`, without live GitHub fixture dependencies.
 - **L3:** Real Settings navigation and external-browser dispatch on a packaged native
   build. Verify the browser lands on the website section matching the build's channel,
   OS and CPU. No published installer is needed to check browser dispatch.
 - **L4:** Actual publisher verification and signed N→N+1 manual replacement with
   helper On/Off, failed-stop refusal, normal Quit/no relaunch, and data preservation.
 - **L5:** All recorded native platform/package/host gates in the active distribution
-  plan, downloaded artifacts, trust checks and public links.
+  plan, downloaded artifacts, trust checks and public links. The deployed website
+  browser checks prove live preview selection, anchors, channel/platform presentation
+  and anonymous link/metadata agreement only, not native Settings dispatch or installation.
 
 L1/L2 do not establish installation, native trust, real-account restoration, minimum
 OS or publication. Published internal macOS assets have their own recorded trust proof;
@@ -309,7 +332,8 @@ and [download instructions](../desktop/downloads.md).
 ## Failure signals
 
 Wrong channel/CPU fragment, guessed architecture for source builds, private or
-unshipped artifact links, a dead Linux/self-update button, raw release-version
+unshipped artifact links, permanently pinned previews, core-only releases hiding usable
+desktop downloads, stable schema borrowing preview availability, a dead Linux/self-update button, raw release-version
 inference, losing attention settings, startup network waits, or a download action
 that stops/restarts the app or helper. Windows setup/uninstall proceeding while GUI
 mutex exists, changing login intent during install, launching the app, forced close/
