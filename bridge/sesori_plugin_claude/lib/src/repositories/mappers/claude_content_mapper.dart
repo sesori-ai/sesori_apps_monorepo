@@ -474,7 +474,6 @@ final class const ClaudeContentMapper() {
           sessionID: sessionId,
           messageID: messageId,
           tool: null,
-          // A result names no tool; replay and live dispatch merge it onto its call, whose kind stays.
           state: PluginToolState(
             status: isError ? PluginToolStatus.error : PluginToolStatus.completed,
             title: null,
