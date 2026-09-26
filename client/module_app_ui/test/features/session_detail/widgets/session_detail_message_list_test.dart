@@ -2680,10 +2680,15 @@ void main() {
     // Every prompt and answer is taller than the viewport.
     final tallTurns = _turns(count: 16, promptLines: 40, answers: 4, paragraphs: 24);
     final overlay = find.byType(TranscriptStickyPromptOverlay);
-    // The faded band paints first, the bubble's own box inside it next.
+    // The band paints nothing of its own; it is the full-width layer that
+    // swallows a tap beside the bubble, and the only thing excluded from
+    // semantics. The bubble's box encloses anything a preview paints, so the
+    // outermost DecoratedBox is the bubble whatever the prompt renders as.
+    // Both are anchored outermost-first rather than by a property they are
+    // asserted on, so a regression trips the assertion instead of the finder.
+    final band = find.descendant(of: overlay, matching: find.byType(GestureDetector)).first;
     final boxes = find.descendant(of: overlay, matching: find.byType(DecoratedBox));
-    final band = boxes.first;
-    final bubble = boxes.at(1);
+    final bubble = boxes.first;
     Finder pinned(String text) => find.descendant(of: overlay, matching: find.text(text, findRichText: true));
     RenderParagraph pinnedParagraph(WidgetTester tester) =>
         tester.renderObject(find.descendant(of: overlay, matching: find.byType(RichText)).first);
@@ -2737,6 +2742,21 @@ void main() {
 
       expect(pinned("Prompt 8 line 0"), findsOneWidget);
       expect(tester.getTopLeft(band).dy, moreOrLessEquals(_topInset, epsilon: 0.5));
+    });
+
+    testWidgets("paints no full-width scrim, so the rows beside it stay whole", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+
+      // The bubble is the only thing the band paints, and it is narrower than
+      // the band, so a row running past it to the left is left whole.
+      expect(boxes, findsOneWidget);
+      expect(tester.getSize(bubble).width, lessThan(tester.getSize(band).width));
+      expect(
+        tester.widget<DecoratedBox>(bubble).decoration,
+        isA<BoxDecoration>().having((decoration) => decoration.gradient, "gradient", isNull),
+      );
     });
 
     testWidgets("is pushed out by the next turn's prompt", (tester) async {

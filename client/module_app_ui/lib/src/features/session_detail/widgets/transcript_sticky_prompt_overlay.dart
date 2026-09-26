@@ -55,8 +55,8 @@ class const TranscriptStickyPromptOverlay({
     final background = Theme.of(context).scaffoldBackgroundColor;
     void jump() => onJumpToTurn(openerMessageId: turn.opener.info.id);
     return GestureDetector(
-      // The band hides the top of the rows beneath it, so a tap on the faded
-      // area must not reach a row the reader cannot see; only the bubble jumps.
+      // The bubble hides the part of a row it covers, so a tap beside it must
+      // not reach a row the reader cannot fully see; only the bubble jumps.
       // Translucent, so a drag or a wheel that starts anywhere on the band
       // still scrolls those rows. Excluded from semantics, because a tap that
       // is there to do nothing must not be offered as an action; the bubble
@@ -64,74 +64,66 @@ class const TranscriptStickyPromptOverlay({
       behavior: HitTestBehavior.translucent,
       excludeFromSemantics: true,
       onTap: () {},
-      child: Stack(
-        children: [
-          // The page's background fades out below the bubble, so the rows it
-          // covers do not read as part of it. Ignored, because a box decoration
-          // hit-tests as opaque and would swallow the rows' scroll.
-          Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: const [0.78, 1],
-                    colors: [background, background.withValues(alpha: 0)],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
-            child: LayoutBuilder(
-              builder: (context, constraints) => Align(
-                alignment: AlignmentDirectional.centerEnd,
-                heightFactor: 1,
-                child: Semantics(
-                  button: true,
-                  label: label,
-                  hint: context.loc.transcriptStickyPromptJumpHint,
-                  onTap: jump,
-                  excludeSemantics: true,
-                  // Translucent over an ignored bubble, so a drag or a wheel
-                  // that starts on the prompt still scrolls the rows beneath; a
-                  // tap goes to the prompt, whose recognizer joins the arena
-                  // before the band's.
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: jump,
-                    child: IgnorePointer(
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl, vertical: PregoSpacing.xs),
-                        padding: const EdgeInsets.all(10),
-                        constraints: BoxConstraints(maxWidth: (constraints.maxWidth - PregoSpacing.xl * 2) * 0.76),
-                        decoration: BoxDecoration(
-                          color: prego.colors.bgSurface2,
-                          borderRadius: BorderRadius.circular(PregoRadius.xl),
-                        ),
-                        child: source == null
-                            ? Text(
-                                label,
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                                style: styleSheet.p,
-                              )
-                            : _cutMarkdown(
-                                context: context,
-                                markdown: source,
-                                maxHeight: _threeLineHeight(context: context, styleSheet: styleSheet, prego: prego),
-                                styleSheet: styleSheet,
-                              ),
-                      ),
+      child: Padding(
+        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
+        child: LayoutBuilder(
+          builder: (context, constraints) => Align(
+            alignment: AlignmentDirectional.centerEnd,
+            heightFactor: 1,
+            child: Semantics(
+              button: true,
+              label: label,
+              hint: context.loc.transcriptStickyPromptJumpHint,
+              onTap: jump,
+              excludeSemantics: true,
+              // Translucent over an ignored bubble, so a drag or a wheel
+              // that starts on the prompt still scrolls the rows beneath; a
+              // tap goes to the prompt, whose recognizer joins the arena
+              // before the band's.
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: jump,
+                child: IgnorePointer(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl, vertical: PregoSpacing.xs),
+                    padding: const EdgeInsets.all(10),
+                    constraints: BoxConstraints(maxWidth: (constraints.maxWidth - PregoSpacing.xl * 2) * 0.76),
+                    decoration: BoxDecoration(
+                      color: prego.colors.bgSurface2,
+                      borderRadius: BorderRadius.circular(PregoRadius.xl),
+                      // A halo of the page's own background, so the bubble
+                      // lifts off the rows it covers without the half-clipped
+                      // glyphs of the row its edge cuts through crowding it.
+                      // Those glyphs sit within about 20 logical pixels of the
+                      // edge, so the spread carries the halo's body that far
+                      // and the blur ends it softly. It reaches into the next
+                      // line of prose, which is the cost of erasing the sliced
+                      // row most completely; a narrower halo leaves more of
+                      // those glyphs showing. Judge any change to these values
+                      // on a render with shadows enabled: `flutter_test` sets
+                      // `debugDisableShadows`, which drops the blur entirely
+                      // and paints this as a hard-edged plate.
+                      boxShadow: [BoxShadow(color: background, blurRadius: 28, spreadRadius: 14)],
                     ),
+                    child: source == null
+                        ? Text(
+                            label,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: styleSheet.p,
+                          )
+                        : _cutMarkdown(
+                            context: context,
+                            markdown: source,
+                            maxHeight: _threeLineHeight(context: context, styleSheet: styleSheet, prego: prego),
+                            styleSheet: styleSheet,
+                          ),
                   ),
                 ),
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }
