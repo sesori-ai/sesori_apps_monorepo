@@ -9,7 +9,6 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
-import "../session_detail/widgets/voice_cancel_button.dart";
 import "feedback_sheet_motion.dart";
 
 const _pressScale = 0.97;
@@ -187,6 +186,8 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
     final loc = context.loc;
     switch (state) {
       case VoiceInputTranscribing(limitReached: true):
+        // The recording stopped itself, so an assistive toggle must not wait for a release.
+        _endHold();
         _showNotice(message: loc.voiceRecordingLimitReached, variant: PregoPopupAlertsNotificationsVariant.warning);
       case VoiceInputCompleted(:final transcript):
         _appendTranscript(transcript: transcript);
@@ -449,7 +450,12 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
                       _VoicePresentation.recording => Row(
                         key: const ValueKey("feedback-voice-recording"),
                         children: [
-                          VoiceCancelButton(key: _cancelTargetKey, progress: _cancelProgress, onCancel: _cancelVoice),
+                          PregoVoiceCancelButton(
+                            key: _cancelTargetKey,
+                            semanticLabel: loc.voiceCancelRecording,
+                            progress: _cancelProgress,
+                            onCancel: _cancelVoice,
+                          ),
                           const SizedBox(width: PregoSpacing.md),
                           Expanded(
                             child: PregoVoiceWaveform(

@@ -2483,7 +2483,7 @@ void main() {
     expect(feedback, ["HapticFeedbackType.lightImpact"]);
     await tester.pump(const Duration(milliseconds: 250));
 
-    final cancelCenter = tester.getCenter(find.byType(VoiceCancelButton));
+    final cancelCenter = tester.getCenter(find.byType(PregoVoiceCancelButton));
     await gesture.moveTo(cancelCenter);
     expect(feedback, ["HapticFeedbackType.lightImpact", "HapticFeedbackType.selectionClick"]);
 
@@ -2548,7 +2548,7 @@ void main() {
     final holdCenter = tester.getCenter(find.text("Hold to talk"));
     final gesture = await tester.startGesture(holdCenter);
     await tester.pump(const Duration(milliseconds: 250));
-    await gesture.moveTo(tester.getCenter(find.byType(VoiceCancelButton)));
+    await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceCancelButton)));
     await gesture.moveTo(holdCenter);
     await gesture.up();
     await tester.pump();
@@ -2636,7 +2636,7 @@ void main() {
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump();
 
-    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
     expect(find.byType(PregoVoiceWaveform), findsOneWidget);
     expect(find.text("Release to transcribe"), findsOneWidget);
     expect(find.byIcon(TablerRegular.keyboard), findsNothing);
@@ -2650,14 +2650,14 @@ void main() {
 
     await tester.pump(const Duration(milliseconds: 110));
     final recordingFades = tester.widgetList<FadeTransition>(
-      find.ancestor(of: find.byType(VoiceCancelButton), matching: find.byType(FadeTransition)),
+      find.ancestor(of: find.byType(PregoVoiceCancelButton), matching: find.byType(FadeTransition)),
     );
     expect(
       recordingFades.any((transition) => transition.opacity.value > 0 && transition.opacity.value < 1),
       isTrue,
     );
 
-    await tester.tap(find.byType(VoiceCancelButton));
+    await tester.tap(find.byType(PregoVoiceCancelButton));
     await tester.pump();
     verifyNever(() => voiceTranscriptionService.cancel(session: voiceSession));
 
@@ -2901,13 +2901,13 @@ void main() {
     // The eager morph runs while native startup is pending.
     final first = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump();
-    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
 
     // A later platform/filesystem failure reverts the optimistic presentation,
     // surfaces the error, and releases the startup guard.
     firstStartCompleter.completeError(StateError("recorder unavailable"));
     await tester.pumpAndSettle();
-    expect(find.byType(VoiceCancelButton), findsNothing);
+    expect(find.byType(PregoVoiceCancelButton), findsNothing);
     expect(find.text("Hold to talk"), findsOneWidget);
     expect(find.text("Recording failed. Please try again."), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -3030,10 +3030,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(tester.getSize(find.byType(PromptInput)).height, closeTo(restingComposerHeight, 0.01));
-    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
     // The cancel target must keep the full 44pt footprint (a CustomPaint with
     // a child would otherwise shrink to its icon).
-    expect(tester.getSize(find.byType(VoiceCancelButton)), const Size(44, 44));
+    expect(tester.getSize(find.byType(PregoVoiceCancelButton)), const Size(44, 44));
     expect(find.byType(PregoVoiceWaveform), findsOneWidget);
     expect(find.text("Release to transcribe"), findsOneWidget);
     // The keyboard button leaves the pill while the waveform needs its width.
@@ -3059,7 +3059,7 @@ void main() {
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
 
-    await gesture.moveTo(tester.getCenter(find.byType(VoiceCancelButton)));
+    await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceCancelButton)));
     await tester.pump();
     expect(find.text("Release to cancel"), findsOneWidget);
 
@@ -3118,7 +3118,7 @@ void main() {
     // Record, then discard by releasing on the cancel target.
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
-    await gesture.moveTo(tester.getCenter(find.byType(VoiceCancelButton)));
+    await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceCancelButton)));
     await tester.pump();
     await gesture.up();
     await tester.pump();
@@ -3210,7 +3210,7 @@ void main() {
     stopCompleters.first.complete("stale words");
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
     expect(find.text("Release to transcribe"), findsOneWidget);
 
     // The new interaction still completes normally.
@@ -3299,7 +3299,7 @@ void main() {
     // The field (and its text) stay while the bottom pill hosts the chrome.
     expect(find.byType(EditableText), findsOneWidget);
     expect(find.text("draft"), findsOneWidget);
-    expect(find.byType(VoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
     expect(find.byType(PregoVoiceWaveform), findsOneWidget);
     expect(find.text("Release to transcribe"), findsOneWidget);
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);

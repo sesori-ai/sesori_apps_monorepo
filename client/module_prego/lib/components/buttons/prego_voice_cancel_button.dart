@@ -2,9 +2,9 @@ import "dart:math" as math;
 
 import "package:flutter/foundation.dart";
 import "package:material_ui/material_ui.dart";
-import "package:theme_prego/module_prego.dart";
 
-import "../../../extensions/build_context_x.dart";
+import "../../icons/tabler_icons.g.dart";
+import "../../theme/prego_theme.dart";
 
 /// The cancel target shown in the accordion's place while a hold-to-talk
 /// recording runs.
@@ -17,8 +17,11 @@ import "../../../extensions/build_context_x.dart";
 ///
 /// Driven by [progress] straight into the painter, so the drag scrubs colour
 /// without rebuilding the composer.
-class const VoiceCancelButton({
+class const PregoVoiceCancelButton({
   super.key,
+
+  /// Announced by assistive technologies; the consumer localizes it.
+  required final String semanticLabel,
 
   /// 0 → resting dashed ghost, 1 → solid destructive fill under the finger.
   required final ValueListenable<double> progress,
@@ -30,11 +33,10 @@ class const VoiceCancelButton({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final loc = context.loc;
 
     return Semantics(
       button: true,
-      label: loc.voiceCancelRecording,
+      label: semanticLabel,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(

@@ -481,7 +481,7 @@ void main() {
 
       final gesture = await hold(tester);
       expect(waveform, findsOneWidget);
-      expect(find.byType(VoiceCancelButton), findsOneWidget);
+      expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
       expect(sendEnabled(tester), isFalse, reason: "A recording cannot race a send.");
       expect(tester.getRect(text), draftRect, reason: "Recording must not move the draft.");
 
@@ -508,7 +508,7 @@ void main() {
       await openPrivateStep(tester: tester, typed: "Keep me");
 
       final gesture = await hold(tester);
-      await gesture.moveTo(tester.getCenter(find.byType(VoiceCancelButton)));
+      await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceCancelButton)));
       await tester.pump();
       await gesture.up();
       await tester.pumpAndSettle();
