@@ -45,6 +45,9 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   bool _isRefreshing = false;
   int? lastCancelledQueuedMessageIndex;
 
+  /// Fold switches the list asked for.
+  int foldRequests = 0;
+
   @override
   void initState() {
     super.initState();
@@ -217,7 +220,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           isLoadingOlderMessages: _isLoadingOlderMessages,
           isRefreshing: _isRefreshing,
           transcriptFolded: _transcriptFolded,
-          onTranscriptFoldedChanged: setTranscriptFolded,
+          onTranscriptFoldedChanged: ({required folded}) {
+            foldRequests++;
+            setTranscriptFolded(folded: folded);
+          },
           topInset: widget.topInset,
           streamingText: _streamingText,
           children: const <Session>[],
@@ -415,6 +421,44 @@ Future<void> _detachViewport(WidgetTester tester) async {
   await tester.pumpAndSettle();
   expect(_position(tester).pixels, greaterThan(20));
   expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+}
+
+const _pinchPlatforms = TargetPlatformVariant({TargetPlatform.iOS, TargetPlatform.android, TargetPlatform.macOS});
+
+/// Two fingers land [from] px apart across [center] along [axis] and spread to
+/// [to] px apart. With [stillFinger], the first finger holds still and the
+/// second travels the whole change.
+Future<void> _touchPinch(
+  WidgetTester tester, {
+  required Offset center,
+  required double from,
+  required double to,
+  Offset axis = const Offset(1, 0),
+  bool stillFinger = false,
+}) async {
+  final first = await tester.startGesture(center - axis * (from / 2));
+  final second = await tester.startGesture(center + axis * (from / 2));
+  for (var step = 1; step <= 5; step++) {
+    final gap = from + (to - from) * step / 5;
+    if (!stillFinger) await first.moveTo(center - axis * (gap / 2));
+    await second.moveTo(center - axis * (from / 2) + axis * (stillFinger ? gap : gap / 2 + from / 2));
+    await tester.pump();
+  }
+  await first.up();
+  await second.up();
+  await tester.pumpAndSettle();
+}
+
+/// A trackpad pinch at [center] that scales to [scale].
+Future<void> _trackpadPinch(WidgetTester tester, {required Offset center, required double scale}) async {
+  final gesture = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+  await gesture.panZoomStart(center);
+  for (var step = 1; step <= 5; step++) {
+    await gesture.panZoomUpdate(center, scale: 1 + (scale - 1) * step / 5);
+    await tester.pump();
+  }
+  await gesture.panZoomEnd();
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -1696,7 +1740,7 @@ void main() {
 
     expect(_position(tester).pixels, lessThanOrEqualTo(20));
     expect(find.byKey(_jumpToLatestKey), findsNothing);
-  });
+  }, variant: _pinchPlatforms);
 
   testWidgets("desktop pointer scroll detaches immediately", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -2255,7 +2299,7 @@ void main() {
       expect(find.byType(TranscriptTurnStub), findsNothing);
       expect(_messageKey("a17-0"), findsOneWidget);
       expect(_topOf(tester, "u17"), moreOrLessEquals(top, epsilon: 1));
-    });
+    }, variant: _pinchPlatforms);
 
     testWidgets("a prompt pushed out of the built rows is searched for from below it", (tester) async {
       final harness = await _pumpTurns(tester, messages: tallTurns, folded: true);
@@ -2312,8 +2356,10 @@ void main() {
 
       harness.setTranscriptFolded(folded: true);
       await tester.pumpAndSettle();
-      // Too little is folded below turn 18 to lift its prompt to the edge.
+      // Too little is folded below turn 18 to lift its prompt to the edge, yet
+      // the list stays detached, so new output does not pull the reader on.
       expect(_position(tester).pixels, lessThan(1));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
       final held = topEdgePrompt(tester, folded: true);
 
       harness.setTranscriptFolded(folded: false);
@@ -2348,6 +2394,106 @@ void main() {
       expect(_position(tester).pixels, 0);
       expect(find.byKey(_jumpToLatestKey), findsNothing);
     });
+  });
+
+  group("a pinch", () {
+    final shortTurns = _turns(count: 20, promptLines: 1, answers: 1, paragraphs: 12);
+    Offset center(WidgetTester tester) => tester.getCenter(find.byKey(_listViewKey));
+
+    testWidgets("in folds once, and out unfolds once", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+
+      await _touchPinch(tester, center: center(tester), from: 300, to: 40);
+      expect(find.byType(TranscriptTurnStub), findsWidgets);
+      expect(harness.foldRequests, 1);
+
+      await _touchPinch(tester, center: center(tester), from: 40, to: 300);
+      expect(find.byType(TranscriptTurnStub), findsNothing);
+      expect(harness.foldRequests, 2);
+    }, variant: _pinchPlatforms);
+
+    testWidgets("with one finger held still folds on a vertical pinch", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+
+      await _touchPinch(
+        tester,
+        center: center(tester),
+        from: 300,
+        to: 120,
+        axis: const Offset(0, 1),
+        stillFinger: true,
+      );
+
+      expect(find.byType(TranscriptTurnStub), findsWidgets);
+      expect(harness.foldRequests, 1);
+    }, variant: _pinchPlatforms);
+
+    testWidgets("on a trackpad folds and unfolds", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+
+      await _trackpadPinch(tester, center: center(tester), scale: 0.6);
+      expect(find.byType(TranscriptTurnStub), findsWidgets);
+
+      await _trackpadPinch(tester, center: center(tester), scale: 1.6);
+      expect(find.byType(TranscriptTurnStub), findsNothing);
+      expect(harness.foldRequests, 2);
+    }, variant: _pinchPlatforms);
+
+    testWidgets("below the thresholds switches, scrolls and detaches nothing", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+
+      await _touchPinch(tester, center: center(tester), from: 200, to: 180, axis: const Offset(0, 1));
+      await _trackpadPinch(tester, center: center(tester), scale: 0.9);
+
+      expect(harness.foldRequests, 0);
+      expect(_position(tester).pixels, 0);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
+    }, variant: _pinchPlatforms);
+
+    testWidgets("while following holds the turn under the fingers and stops following", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: true);
+      final stub = _messageKey("session-detail-turn-u17");
+      final top = _topOf(tester, "u17");
+
+      await _trackpadPinch(tester, center: tester.getCenter(stub), scale: 1.6);
+
+      expect(_messageKey("a17-0"), findsOneWidget);
+      expect(_topOf(tester, "u17"), moreOrLessEquals(top, epsilon: 1));
+      expect(_position(tester).pixels, greaterThan(20));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    }, variant: _pinchPlatforms);
+
+    testWidgets("while reading history holds the turn under the fingers and stays detached", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "u8", top: 300);
+      // The turn at the top edge is an earlier one.
+      expect(tester.getTopLeft(_messageKey("a7-0")).dy, lessThan(_topInset));
+
+      await _touchPinch(
+        tester,
+        center: Offset(400, tester.getBottomLeft(_messageKey("u8")).dy + 60),
+        from: 300,
+        to: 40,
+      );
+
+      expect(_messageKey("session-detail-turn-u8"), findsOneWidget);
+      expect(_topOf(tester, "u8"), moreOrLessEquals(300, epsilon: 1));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    }, variant: _pinchPlatforms);
+
+    testWidgets("while reading history stays detached when its hold clamps at the latest edge", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a18-0", top: _topInset - 100);
+
+      await _touchPinch(tester, center: tester.getCenter(_messageKey("a18-0")), from: 300, to: 40);
+      expect(_position(tester).pixels, lessThan(1));
+
+      harness.appendNewestMessage(_message(messageId: "late", role: "assistant", text: "Late output"));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+      expect(_messageKey("late"), findsNothing);
+    }, variant: _pinchPlatforms);
   });
 
   testWidgets("removing a message while following drops its row and stays pinned", (tester) async {
@@ -2463,7 +2609,7 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
-  });
+  }, variant: _pinchPlatforms);
 
   testWidgets("iOS system-back edge does not peek timestamps", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -2618,7 +2764,7 @@ void main() {
 
     await trackpad.panZoomEnd();
     await tester.pumpAndSettle();
-  });
+  }, variant: _pinchPlatforms);
 
   testWidgets("peeking timestamps while detached does not snap back to the latest edge", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
@@ -2888,7 +3034,7 @@ void main() {
     await gesture.panZoomEnd();
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
-  });
+  }, variant: _pinchPlatforms);
 }
 
 QueuedSessionSubmission _textSubmission({required String promptId, required String text}) =>
