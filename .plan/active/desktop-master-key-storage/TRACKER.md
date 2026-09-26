@@ -2,15 +2,15 @@
 
 ## Execution
 
-- Status: #1751 is open. Initial head passed 33 checks; Codex's README finding
-  is corrected in a documentation-only follow-up. Native qualification remains.
+- Status: #1751 merged with 34 passing checks. Regression reconciliation passes
+  documentation validation; native qualification remains unexecuted for the cutover.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
   with a retirement condition and deletion checklist.
-- Current branch: `sesori/desktop-master-key-storage-client-cutover`, preserving
-  complete checkpoint `ea7550e` and merging fixed main `33c7815`. No additional
-  worktree is allowed. No regression-reconciliation successor has started.
+- Current branch: `sesori/desktop-master-key-storage-regression-docs`, from fixed
+  main `6056290` in the supplied worktree. No additional worktree is allowed;
+  no qualification/retirement successor has started.
 - #1717 is closed as superseded, not merged. Its published desktop checkpoint
   `4a27888` and the full shared checkpoint `de38951` remain in history.
 - One open PR and at most one local successor. Current total: **12 PRs** after
@@ -29,8 +29,8 @@
 | 4.a — Deprecated mobile import | Merged | #1739; 11 recovery tests, three analyses, architecture approval and 24 passing CI checks; unwired. |
 | 4.b — Native capabilities and backup | Merged | #1744; 28 tests, two analyses, architecture approval and 24 passing checks; no native qualification. |
 | 4.c — Startup recovery | Merged | #1749; eight tests, three analyses, architecture approval and 22 passing checks; no storage cutover. |
-| 4.d — Both-client cutover | In PR | #1751; architecture approved, 24 reconciled shell cases plus retained auth/core evidence; README feedback corrected. |
-| 5 — Regression reconciliation | Not started | PR 11; behavior docs also accompany their implementation. |
+| 4.d — Both-client cutover | Merged | #1751; architecture approved, 24 reconciled shell cases plus retained auth/core evidence, README feedback fixed and 34 passing checks. |
+| 5 — Regression reconciliation | Verified locally | PR 11; account/analytics/storage/package contracts aligned; links, fences, coverage and whitespace checks pass. |
 | 6 — Required qualification/retirement | Not started | PR 12; plan remains active until recorded mobile + desktop matrix passes. |
 
 ## Decisions and code-informed constraints
@@ -192,6 +192,16 @@
   cutover. Seed with production Dart storage; do not copy SQL/crypto into Swift
   or Python. The CI-only packaged platform probe already uses shared storage,
   but it has not been executed on a native runner for this cutover.
+- #1751 merged after current-head Codex completed without further findings.
+  Its terminal monitor recorded 34 passing checks; the README thread was resolved
+  and the narrow deprecated call acknowledgment was justified explicitly.
+  Final cutover diff: 1,634 lines (1,548 authored, 86 generated), including 376
+  documentation lines. No native storage boundary was exercised by these checks.
+- Regression reconciliation validates 17 relative links, code fences, all twelve
+  series entries, retained native coverage requirements and whitespace. Only
+  Markdown changes; no runtime suites or architecture review are required.
+  Automated admission/recovery sits at L2; native L3/L4 requirements match the
+  existing plan and are not reduced or represented as passing.
 - None of this evidence establishes released-mobile migration, mobile
   backup/restore, real credential behavior, packaged replacement or actual
   prompt counts. Those gates remain.

@@ -23,7 +23,9 @@ packaging capability does not imply public downloads or an updater have shipped.
   subtree. Changing that resource after signing must invalidate the app's seal.
 - Sign nested native code/frameworks inside-out, including every helper dylib;
   enable hardened runtime for the GUI/helper without adding speculative security
-  exceptions. Keep the established non-sandboxed classic-Keychain configuration.
+  exceptions. Keep the established non-sandboxed classic-Keychain configuration
+  for the shared store's scoped master item; secrets themselves remain encrypted
+  SQLite rows. Preserve both database and master through same-format replacement.
   The Dart AOT bridge helper alone needs `allow-unsigned-executable-memory` for
   its mapped snapshot pages; keep library validation enabled and do not apply
   this exception to the GUI or helper dylibs. On macOS 27, verify the helper
@@ -57,22 +59,26 @@ packaging capability does not imply public downloads or an updater have shipped.
   copy and exact fresh-host state paths. Keep authenticated helper-On qualification in
   a separate main-only environment job: serialize CPUs around one approved
   production-compatible QA relay slot, pass credentials only to the exercise step,
-  remove them from the environment before child processes, use stdin for
-  classic-Keychain writes, and
-  upload only bounded markers/coordinates rather than raw auth, app/bridge logs or
-  authenticated screenshots.
+  remove them from the environment before child processes, and seed new-format
+  credentials through production Dart storage with private fixture input and
+  native master access. Upload only bounded markers/coordinates rather than raw
+  auth, app/bridge logs or authenticated screenshots.
 - Signing, native-header inventory and fake-service helper E2E cannot stand in for
   installed GUI, account, Keychain, filesystem/TCC, autostart, minimum-OS or update
   evidence. Public-release prerequisites stay independent.
 
 ## Coverage
 
-These are required checks, not a record that every level has passed.
+These are required checks, not a record that every level has passed. The existing
+authenticated replacement fixture and retained baseline use per-value storage;
+see the [distribution boundary](desktop-distribution.md#client-storage-boundary)
+before adapting them. Historical package passes do not qualify shared-store
+restoration or authorization; those require new source-bound native evidence.
 
 | Level | Boundary / scope | Added checks |
 |---|---|---|
 | L1 | Automated; no plugin | Signing order, publisher/runtime/entitlement arguments, architecture and ZIP/DMG divergence refusal, every helper library's signature, isolated local/active-process/registration guards and blocked-screen failure. |
-| L2 | Packaged/external; macOS x64 + arm64; faithful bridge fakes | Trusted CI signs/notarizes both formats; verify extracted headers, signatures, staples, Gatekeeper and helper E2E. Fresh native hosts exercise a separately signed release fixture's synthetic Keychain persistence/delete, login-registration write/read/remove and owned file access; install the real signed app, observe its window and attempt a screenshot. Retain source/run evidence and explicit blocked outcomes. Default PR runs cannot receive signing credentials. |
+| L2 | Packaged/external; macOS x64 + arm64; faithful bridge fakes | Trusted CI signs/notarizes both formats; verify extracted headers, signatures, staples, Gatekeeper and helper E2E. Fresh native hosts exercise a separately signed release fixture's synthetic shared SQLite/encrypted-value/master roundtrip and cold reopen, login-registration write/read/remove and owned file access; install the real signed app, observe its window and attempt a screenshot. Retain source/run evidence and explicit blocked outcomes. Default PR runs cannot receive signing credentials. |
 | L3 | Client end to end; installed macOS x64 + arm64; representative production plugin | Download and install the signed app into Applications without a security bypass. Verify actual GUI startup, browser login/return, token write/read/relaunch restoration, helper control, runtime launch and user-approved filesystem/TCC behavior. |
 | L4 | Packaged/client end to end; both Mac CPUs | Private helper-Off replacement plus the full coverage below. |
 | L5 | Packaged/client end to end; both Mac CPUs | Include the declared minimum OS and clean-host cases. Combine with the distribution plan's full platform/public ship gate; missing hosts or credentials remain Blocked, not Pass. |

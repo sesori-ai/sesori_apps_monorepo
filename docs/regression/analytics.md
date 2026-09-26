@@ -22,6 +22,11 @@ with release-injected credentials. Desktop uses a no-op sink, the bridge is excl
 - Disable applies immediately here and records durable local intent before any network work; a failed sync shows
   pending, never saved, and survives logout and restart. Enable activates only after server success plus local
   persistence.
+- Account preferences are scoped typed SQL values. Production-mobile import
+  preserves opaque preference JSON, including pending disable, before analytics
+  runtime preparation or consent reads. Failed import must not start normal
+  analytics consumers with guessed/default consent. See
+  [client persistence](client-persistence.md) for the native upgrade proof boundary.
 - Account-less authentication events carry only a pinned provider or method plus the attempt funnel's bounded failure
   kind, and no user key. Settings copy must not claim the switch stops vendor automatic events, these authentication
   events, or older installed binaries.
@@ -80,7 +85,7 @@ with release-injected credentials. Desktop uses a no-op sink, the bridge is excl
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because analytics must never gate the product heartbeat. |
-| L2 Routine | Automated, mobile client, no plugin: wire names and pinned parameters, exhaustive route-to-screen and provider mappings, a check that no variant can carry a free-form string, preference storage state transitions, native default-off configuration, typed Remote Config and installed-build source/API/repository mapping, monotonic ETag-safe cutoff publication wired only after Android production submission, typed account-status parsing, Firebase recommended authentication-event mapping, and Singular eligibility/deferred-start configuration, partner-sharing posture, standard/custom event mapping, app-container claim persistence, and restart deduplication with fake adapters. |
+| L2 Routine | Automated, mobile client, no plugin: wire names and pinned parameters, exhaustive route-to-screen and provider mappings, a check that no variant can carry a free-form string, preference storage state transitions, imported pending-disable ordering through real SQL/DI with fake native ports, native default-off configuration, typed Remote Config and installed-build source/API/repository mapping, monotonic ETag-safe cutoff publication wired only after Android production submission, typed account-status parsing, Firebase recommended authentication-event mapping, and Singular eligibility/deferred-start configuration, partner-sharing posture, standard/custom event mapping, app-container claim persistence, and restart deduplication with fake adapters. |
 | L3 Release | Automated with fake sinks: suppression while unknown, disabled, unauthenticated, or non-release; first-frame and notification startup proceeding while the crawl gate is unresolved; the crawl gate suspending only an unauthenticated eligible release build newer than the production-submission cutoff; authenticated, at-cutoff, older, unavailable-cutoff, and unavailable-build paths allowing analytics; interactive authentication lifting a pending or resolved gate for both SDKs; activation only after readiness and enabled preference; bounded deferral emitted once with preserved occurrence time; generation change dropping stale work; outcome seams firing on success only; mutually exclusive Firebase signup/existing-account login classification; Singular registration-before-login only for server-confirmed account creation; bridge pairing only from a connected E2E outcome; and first-session attribution from the canonical successful message outcomes even while product analytics is preference-disabled. |
 | L4 Extended | Client end to end on the release-target client platform against the real auth-server preference endpoint: disable and re-enable, pending state after a sync failure, persistence across restart, logout with a pending disable, account switch isolation, and no product event while disabled. |
 | L5 Full | Release build against the real analytics properties and Firebase Remote Config: expected pinned events and parameters observed upstream, `sign_up` configured as a GA4 key event while `login` remains a normal event, automatic screen reporting confirmed off at runtime, an ahead-of-production Play pre-launch report producing no Firebase or Singular rows while the cutoff fetch succeeds, the production submission workflow publishing its exact build cutoff, Singular install/session attribution plus standard login/registration and one-shot `bridge_paired`/`first_session_run` events observed without an advertising ID, custom user identity, or event attributes, repeat pairing/sessions producing no additional custom events, and warehouse checks that exported rows carry no prohibited field and internal accounts are excluded. |
@@ -105,8 +110,8 @@ account against a real property.
 - An account-linked event is emitted while unknown, disabled, unauthenticated, or in a debug or profile build.
 - Any automatic or Sesori-defined event reaches Firebase from a debug/profile process, or from an unauthenticated
   eligible Android release build newer than a successfully fetched production-submission cutoff.
-- Disable is delayed, reported saved while sync failed, or lost across restart or logout; enable activates before
-  server success plus local persistence.
+- Disable is delayed, reported saved while sync failed, or lost across restart, logout or native-storage upgrade;
+  consent reads precede import completion; enable activates before server success plus local persistence.
 - An event fires on a tap or failed operation, is duplicated after deferral, has a rewritten occurrence time, or
   carries a route path instead of a pinned screen.
 - A delayed Remote Config response holds the native splash or first product frame; automatic screen reporting is
@@ -144,5 +149,6 @@ account against a real property.
 `client/module_core/lib/src/services/analytics_crawl_gate_service.dart`; attribution trigger ownership lives in
 `client/module_core/lib/src/services/attribution_service.dart`, and authentication analytics orchestration lives in
 `client/module_core/lib/src/services/installation_analytics_service.dart`; Firebase cutoff access and delivery live
-under `client/app/lib/core/platform/`; Singular startup and delivery live under
+under `client/app/lib/core/platform/`; mobile admission coverage lives in
+`client/app/test/core/di/persistence_admission_test.dart`; Singular startup and delivery live under
 `client/app/lib/core/platform/singular/` and `client/app/lib/core/platform/singular_attribution_startup.dart`.
