@@ -113,6 +113,24 @@ void main() {
     },
   );
 
+  testWidgets("a celebration that ends while the sheet closes does not switch to the review step", (tester) async {
+    await open(tester: tester);
+    await tester.tap(love);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1400));
+
+    await tester.tap(close);
+    await tester.pump();
+    // The celebration completes 100 ms into the 200 ms exit animation.
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.byType(BottomSheet, skipOffstage: false), findsOneWidget);
+    expect(cubit.state, const FeedbackSheetState.celebrating());
+
+    await tester.pumpAndSettle();
+    expect(outcomes.single, isA<FeedbackSheetOutcomeLoveNotNow>());
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("Not now and closing mid-celebration both keep the positive answer without a review", (tester) async {
     await open(tester: tester);
     await tapAndSettle(tester: tester, finder: love);

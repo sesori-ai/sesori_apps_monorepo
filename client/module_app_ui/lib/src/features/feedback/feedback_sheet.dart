@@ -97,7 +97,11 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
   }
 
   void _celebrationStatusChanged(AnimationStatus status) {
-    if (status == AnimationStatus.completed) context.read<FeedbackSheetCubit>().finishCelebration();
+    if (status != AnimationStatus.completed) return;
+    // A sheet closed in the celebration's last moments keeps its content while
+    // it animates out instead of switching to the review step.
+    if (ModalRoute.of(context)?.isCurrent == false) return;
+    context.read<FeedbackSheetCubit>().finishCelebration();
   }
 
   void _chooseCouldBeBetter() {

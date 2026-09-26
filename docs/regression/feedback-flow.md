@@ -50,6 +50,8 @@ Desktop Settings does not show the row.
 - The store opens while the sheet is still visible or animating out, or opens
   after **Not now**, the close button, or a swipe down.
 - A second tap changes a recorded answer, or reopening resumes a finished step.
+- Closing the sheet as the celebration ends switches it to the review step
+  while it animates out.
 - Android shows nothing when the Play Store app is unavailable.
 - With reduced motion enabled, the celebration or sheet travel still animates.
 - The sheet clips or overflows on a small screen or at large text sizes.
