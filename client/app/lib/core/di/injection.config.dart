@@ -50,6 +50,8 @@ import 'package:sesori_mobile/core/platform/firebase/no_op_analytics_release_cut
     as _i1005;
 import 'package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart'
     as _i52;
+import 'package:sesori_mobile/core/platform/firebase/no_op_feedback_prompt_config_source.dart'
+    as _i595;
 import 'package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart'
     as _i483;
 import 'package:sesori_mobile/core/platform/firebase_analytics_client.dart'
@@ -58,6 +60,8 @@ import 'package:sesori_mobile/core/platform/firebase_analytics_release_cutoff_so
     as _i425;
 import 'package:sesori_mobile/core/platform/firebase_analytics_startup.dart'
     as _i950;
+import 'package:sesori_mobile/core/platform/firebase_feedback_prompt_config_source.dart'
+    as _i260;
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
 import 'package:sesori_mobile/core/platform/flutter_app_review_client.dart'
@@ -305,6 +309,10 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       registerFor: {_firebaseEnabled},
     );
+    gh.lazySingleton<_i948.FeedbackPromptConfigSource>(
+      () => _i595.NoOpFeedbackPromptConfigSource(),
+      registerFor: {_firebaseDisabled},
+    );
     gh.lazySingleton<_i948.ImageClipboard>(
       () => _i274.FlutterImageClipboard(
         pasteboardClient: gh<_i748.PasteboardClient>(),
@@ -318,6 +326,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i52.NoOpFailureReporter(),
       registerFor: {_firebaseDisabled},
+    );
+    gh.lazySingleton<_i948.FeedbackPromptConfigSource>(
+      () => _i260.FirebaseFeedbackPromptConfigSource(
+        remoteConfig: gh<_i627.FirebaseRemoteConfig>(),
+      ),
+      registerFor: {_firebaseEnabled},
     );
     gh.lazySingleton<_i902.DeepLinkService>(
       () => _i902.DeepLinkService(gh<_i948.DeepLinkSource>()),

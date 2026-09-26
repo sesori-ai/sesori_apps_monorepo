@@ -13,7 +13,8 @@ GitHub.
 | 3.b | monorepo | `🚧 [feedback-flow] Send private feedback from the rating sheet [step 3.b/9]` |
 | 4 | monorepo | `⚙️ [feedback-flow] Add voice input to private feedback [step 4/9]` |
 | 5 | monorepo | `⚙️ [feedback-flow] Request the OS review prompt in release builds [step 5/9]` |
-| 6 | monorepo | `🚧 [feedback-flow] Show the rating sheet automatically after good sessions [step 6/9]` |
+| 6.a | monorepo | `⚙️ [feedback-flow] Track good sessions toward the automatic rating sheet [step 6.a/9]` |
+| 6.b | monorepo | `🚧 [feedback-flow] Show the rating sheet automatically after good sessions [step 6.b/9]` |
 | 7 | monorepo | `🌿 [feedback-flow] Record feedback answers in product analytics [step 7/9]` |
 | 8 | monorepo | `🌱 [feedback-flow] Reconcile the feedback regression document [step 8/9]` |
 | 9 | monorepo | `🌱 [feedback-flow] Run release coverage and retire the plan [step 9/9]` |

@@ -103,6 +103,17 @@ Implementation decisions (2026-09-26, step 3 review):
   automatic source and `openStoreReviewPage()` for Settings. The OS prompt is
   not gated by build mode: StoreKit shows it in debug builds and applies its
   quota in release.
+- Step 6 is split in two PRs: 6.a adds the config source, storage, repository
+  and `FeedbackPromptService` without callers; 6.b adds the success and failure
+  hooks, crash resets, `FeedbackPromptCubit`, the app-root presenter and the
+  bootstrap `start()`.
+- Step 6.a: `FeedbackPromptService` records nothing until `start()`. Desktop
+  never starts it, so its shared cubits leave no stored progress instead of
+  counting inertly. Remote Config is fetched once per launch, on `start()`; a
+  failed fetch reads the values activated on an earlier launch. The persisted
+  state is a plain sealed class (no Freezed); `FeedbackPromptStorage` maps it
+  to versioned JSON with map patterns and discards an unreadable value with a
+  warning, which restarts the count from zero.
 
 ## Current Behavior (origin/main after #1361, 2026-09-26)
 
