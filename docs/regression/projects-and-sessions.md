@@ -209,6 +209,9 @@ state.
   the session's updated time whenever one exists. A row opens its session directly, and pulling to refresh also
   retries each project's session read. Finished unseen sessions stay in their project lists, and the group and
   its Projects heading are left out when nothing is in motion.
+- However a phone session is reached, from Activity or from its project's list, Android back (edge gesture or
+  button) first closes the topmost sheet over it, one sheet at a time, and only then leaves the session. The same
+  holds for sheets over harness settings and archived sessions.
 - On the phone, only the top-level Projects and Settings pages show a large 36 bold title. Under the Projects
   title, a status row names the paired machine, holds a skeleton while the name loads, and says what onboarding
   waits for before any bridge is registered. The row is left out when the lookup finds no machine to name.
@@ -502,6 +505,8 @@ started one. Restore harness eligibility afterwards.
   instead of "No matches".
 - Phone Activity lists an idle session, orders a running session before a waiting one, keeps a finished
   session after it stops, or a row opens the project instead of its session.
+- Android back with a sheet open (steps, reasoning, tool detail) over a session opened from Activity returns to
+  Projects instead of closing the sheet, or closes stacked sheets together.
 - A catalog read starts a backend, hangs on import, returns a partial list, or an
   older response overwrites a post-commit snapshot.
 - An already-satisfied automatic hydration emits a misleading zero-count
