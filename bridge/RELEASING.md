@@ -113,7 +113,13 @@ unrelated documentation does not. Exact paths live in `.github/scripts/check_int
 
 Before version validation, store queries, or builds, the workflow moves the lightweight `internal-release-attempt` tag to the chosen SHA. A failure or cancellation therefore cannot cause hourly retries of that commit. A later relevant change allows another attempt; the marker is not a release and creates no GitHub release object. If recording the marker fails, no build starts.
 
-An eligible run uploads the mobile apps to TestFlight / Play internal, builds all six bridge platform archives with `X.Y.Z-internal.<N>` baked in, and — only when everything succeeded — pushes a `v<X.Y.Z>-internal.<N>` tag and rolls the single internal GitHub pre-release onto it (binaries + `checksums.txt` + regenerated notes). Existing internal release tags remain immutable build-number-to-commit mappings. The auto-updater ignores pre-releases on the default `stable` track; bridges switched to the `internal` track (`sesori-bridge config track internal`) pick up these `-internal.<N>` pre-releases.
+An eligible run uploads mobile apps to TestFlight / Play internal and builds all six bridge archives with
+`X.Y.Z-internal.<N>` baked in. Only after all core products succeed, it pushes a `v<X.Y.Z>-internal.<N>` tag
+and publishes its GitHub prerelease (bridge binaries, `checksums.txt`, regenerated notes). Internal tags remain
+immutable build-number-to-commit mappings. Cleanup retains the newest desktop-completed internal prerelease
+alongside the current core release, so a desktop failure does not erase its previous public downloads. Older
+completed desktop previews retire once a newer completion exists. The default `stable` bridge updater ignores
+prereleases; `sesori-bridge config track internal` selects the newest `-internal.<N>` core release.
 
 Native macOS desktop builds use the same source and aligned build number, with their own signing/qualification.
 They remain Actions artifacts while `DESKTOP_MACOS_PUBLICATION_ENABLED` is absent/false. Once the owner admits

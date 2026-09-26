@@ -445,9 +445,13 @@ no new state or cleanup. Merged as #1741, squash
 Record the user's accepted limitations, retire Gate C as a prerequisite, enable the
 existing repository admission and attach build 987 to its already-public shared
 internal release using the unchanged publisher. Verify anonymous hashes, signatures,
-stapled tickets, Gatekeeper and unchanged bridge/Latest state. No app/database or
-workflow code change; no new mutable owner or cleanup. Website wiring follows; stable
-production retains its existing approval. Do not retire the six-platform plan.
+stapled tickets, Gatekeeper and unchanged bridge/Latest state. PR #1761 also fixes the
+reachable partial-cycle failure: existing internal cleanup retains the newest preview
+with the publisher's completion manifest, retiring older previews only after a newer
+completion. Two transient shell values; no new persistent pointer, owner or core build
+dependency. Verify the real shell with offline GitHub fixtures. No app/database change.
+Website wiring follows; stable production retains its existing approval. Do not retire
+the six-platform plan.
 
 **Step 6 continuation PR:**
 `🚧 [desktop-distribution] Qualify signed macOS manual replacement [step 8/14]`.
@@ -764,10 +768,11 @@ every desktop environment: representative selection is justified per invariant.
    without authentication. winget discovery is verified through its actual external
    manifest/install path; record an unapproved manifest as blocked, not passing.
 
-Use current native N and N+1 test builds before the first public desktop release;
-there is no obligation to migrate unpublished desktop builds. Once a public version
-ships, include it as the upgrade baseline. Same-version metadata corruption does not
-justify silently replacing immutable public artifacts.
+For unwaived platform gates, use current native N and N+1 test builds before first
+public desktop publication. Only public production releases establish compatibility
+baselines; internal previews do not impose migration promises. The macOS acceptance and explicit
+coverage reduction above remain authoritative, not a renewed Gate C prerequisite.
+Same-version metadata corruption does not justify replacing immutable public artifacts.
 
 Per-platform ship gates can release ready platforms while later ones remain blocked.
 Private qualification now covers signed/notarized macOS packages and unsigned Windows

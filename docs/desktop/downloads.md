@@ -37,8 +37,8 @@ Internal build 987 uses the older per-value native storage format. Before replac
 that build with a shared-store preview, sign out in the old app, Quit, install the
 new package, then sign in again. Internal format changes do not carry a production
 migration promise; old-format replacement proof does not qualify the new format.
-The sections below do not imply every platform/channel has a release. Do not use GitHub's generic Latest
-release to choose a desktop installer.
+The sections below do not imply every platform/channel has a release. Do not use
+GitHub's generic Latest release to choose a desktop installer.
 
 ## Stable macOS x64
 
@@ -50,18 +50,22 @@ No public download is available.
 
 ## Internal macOS x64
 
-Available in the current completed internal [shared release][shared-releases]:
+Available in the newest internal [shared release][shared-releases] with a desktop completion manifest:
 `Sesori-macos-x64.dmg` or `Sesori-macos-x64.zip`. Verify against its
 `desktop-checksums.txt` and `desktop-release.json`, not bridge `checksums.txt`.
 
 ## Internal macOS arm64
 
-Available in the current completed internal [shared release][shared-releases]:
+Available in the newest internal [shared release][shared-releases] with a desktop completion manifest:
 `Sesori-macos-arm64.dmg` or `Sesori-macos-arm64.zip`. Verify against its
 `desktop-checksums.txt` and `desktop-release.json`, not bridge `checksums.txt`.
 
-The internal release rolls forward with the shared cycle. Do not pin a permanent
-website link to the first internal tag or use Latest stable as a substitute.
+Desktop previews advance only when `desktop-release.json` completes publication.
+The shared cycle retains the newest desktop-completed internal release while newer
+core-only releases build or desktop fails. Older completed previews can roll away
+after a newer one is available. The website must select that newest completed desktop
+preview, not merely the newest core release. Do not pin a permanent website link to
+the first internal tag or use Latest stable as a substitute.
 
 [shared-releases]: https://github.com/sesori-ai/sesori_apps_monorepo/releases
 

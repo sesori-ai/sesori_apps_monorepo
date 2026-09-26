@@ -246,19 +246,29 @@ jobs:
             --output notes.md
           cat notes.md
 
-      # Keep exactly ONE internal pre-release: delete previous internal
-      # pre-release OBJECTS (their tags stay — submit-release.yml resolves
-      # build numbers through them) before publishing the new one.
+      # Retain the newest completed desktop preview alongside the current core
+      # pre-release. Desktop failure must not remove its last public downloads.
+      # Older release OBJECTS roll away; tags stay for submit-release.yml.
       - name: Roll internal pre-release
         env:
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -euo pipefail
-          gh release list --limit 100 --json tagName,isPrerelease \
-            --jq '.[] | select(.isPrerelease) | .tagName' \
+          RELEASES_JSON="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100")"
+          # The publisher uploads this completion marker only after anonymous hash checks.
+          KEEP_DESKTOP_TAG="$(jq -r '
+            [.[] | select(.prerelease and (.draft | not))
+             | select(.tag_name | test("^v.+-internal[.][0-9]+$"))
+             | select(any(.assets[]; .name == "desktop-release.json"))]
+            | sort_by(.published_at) | last | .tag_name // empty
+          ' <<< "$RELEASES_JSON")"
+          if [ -n "$KEEP_DESKTOP_TAG" ]; then
+            echo "Retaining completed desktop pre-release $KEEP_DESKTOP_TAG"
+          fi
+          jq -r '.[] | select(.prerelease) | .tag_name' <<< "$RELEASES_JSON" \
             | { grep -E '^v.+-internal\.[0-9]+$' || true; } \
             | while read -r stale; do
-                if [ "$stale" != "$TAG" ]; then
+                if [ "$stale" != "$TAG" ] && [ "$stale" != "$KEEP_DESKTOP_TAG" ]; then
                   echo "Deleting previous internal pre-release $stale (tag kept)"
                   gh release delete "$stale" --yes
                 fi

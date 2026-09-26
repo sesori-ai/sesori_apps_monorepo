@@ -42,8 +42,12 @@ Transient Python values only; no architecture-bearing application code changes.
 build number/source and internal channel. Desktop-only changes now enter the same
 product cycle. `submit-release.yml` uses the resolved source/build with the stable
 channel for admitted macOS releases; beta and `bridge-only` keep their existing scope.
-Core mobile/bridge success conditions, tags, attempt recording and finalizers remain
-unchanged. A desktop build failure stays visible without rolling back other products.
+Core mobile/bridge success conditions, tags and attempt recording remain unchanged.
+A desktop build failure stays visible without rolling back other products. Internal
+rollover retains the newest desktop-completed public prerelease alongside the new core
+release. Only older desktop previews retire, using the existing last-uploaded
+`desktop-release.json` signal. No release service, extra pointer or build dependency
+is added; transient shell values hold the public listing and retained tag.
 
 `_reusable-desktop-publish.yml` runs only after native desktop success and the shared
 release job. Production therefore already passed `store-production`; no second
@@ -128,8 +132,16 @@ build-987 authenticated replacement. Build 987 also predates the subsequent desk
 shared-store cutover: its evidence does not prove new-format cold reopen, authorization
 or N→N+1 preservation. Old-format internal users must sign out before replacing with
 a shared-store preview and sign in again; this is not a production migration promise.
-The rolling internal release may later be replaced
-by the normal shared cycle; historical source/tag/evidence attribution remains explicit.
+The rolling internal release can retire after a newer desktop-completed preview exists;
+historical source/tag/evidence attribution remains explicit.
+
+Review on #1761 identified that core rollover could delete the previous desktop assets
+before a later desktop failure. The existing rollover now retains the newest completed
+desktop preview without blocking core finalization. Four offline tests execute the actual
+shell with a fake GitHub boundary: repeated desktop failures, advancement/older-preview
+retirement, pre-desktop cleanup and current-release retry. Three subcases failed against
+the old cleanup; all 16 publisher/workflow tests and actionlint passed after correction.
+This is a local workflow regression proof, not a forced live store/desktop failure.
 
 ## Shared-cycle native evidence (2026-09-25)
 

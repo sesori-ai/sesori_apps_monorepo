@@ -43,8 +43,12 @@ bridge assets and unchanged Latest stable release were verified. No stable promo
 new store upload, private-evidence publication, installation or app launch occurred.
 
 Continuation `🌿 [desktop-distribution] Retire accepted QA gate and publish macOS previews [step 8.m/14]`
-records this decision and evidence. The website still needs its internal macOS links;
-stable production attachment remains subject to existing `store-production` approval.
+is open as #1761. It records this decision/evidence and fixes the review-identified
+rollover loss: retain the newest desktop-completed internal preview while core releases
+advance, without new state owners or blocking core success. Four real-shell offline
+regressions and all 16 publisher/workflow tests pass; native failure injection is not
+claimed. The website still needs its internal macOS links; stable production attachment
+remains subject to existing `store-production` approval.
 
 ## Shared release-cycle history (2026-09-25)
 

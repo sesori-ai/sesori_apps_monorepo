@@ -109,10 +109,14 @@ the nested upgrade jobs' PR-provenance permission even when those jobs are skipp
 A missing scope rejects the entire caller before its release gate can execute.
 
 Desktop attachment follows the existing shared release finalizer; production already
-passed `store-production`. Desktop failure does not change bridge/mobile finalization.
-`DESKTOP_MACOS_PUBLICATION_ENABLED` is default-off until the owner accepts platform
-ship gates. While disabled, internal desktop outputs stay in Actions artifacts. This
-implementation does not enable publication or expose Windows/Linux downloads.
+passed `store-production`. Desktop failure does not change bridge/mobile success conditions.
+Internal rollover retains the newest public prerelease with `desktop-release.json`
+alongside the current core release; older completed previews retire only once a newer
+completion exists. A failed desktop build or attachment therefore preserves the last
+downloadable preview without holding back core releases. The marker reuses the publisher's
+existing last-uploaded completion signal, not a second pointer or release owner.
+`DESKTOP_MACOS_PUBLICATION_ENABLED` defaults off; the user admitted macOS on 2026-09-26
+and it is now `true`. Windows/Linux remain unadmitted.
 
 Admitted publication attaches four installers, `desktop-checksums.txt` and
 `desktop-release.json` to existing product tags. It never creates/promotes a release,
@@ -270,6 +274,9 @@ historical evidence as shared-store qualification.
   widget tests exercise external-link dispatch without claiming release availability.
 - **L2:** Offline preparation fixtures cover both CPUs, channel/source mismatches,
   altered payload/evidence, missing packages, deterministic output and no overwrite.
+  The actual internal-rollover shell runs with a fake GitHub boundary to verify repeated
+  desktop failures retain the last completed preview, newer completion retires older
+  previews, pre-desktop cleanup stays intact and current-release retries remain valid.
   Windows fixtures cover identity/CPU refusal, complete native inventory, pinned
   compiler arguments, bounded installer directives and no-overwrite diagnostics.
   Linux fixtures cover identity/CPU refusal, payload layout and symlink preservation,

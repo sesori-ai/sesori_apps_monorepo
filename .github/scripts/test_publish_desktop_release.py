@@ -2,7 +2,11 @@
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
+import subprocess
+import tempfile
+import textwrap
 import unittest
 from unittest.mock import patch
 
@@ -180,6 +184,84 @@ class DesktopReleaseWorkflowTest(unittest.TestCase):
         self.assertIn("desktop-qualification-${{ github.workflow }}-", producer)
         self.assertIn("'/.ci-workflow/'", producer)
         self.assertIn("git rev-parse --git-path info/exclude", producer)
+
+
+class InternalReleaseRolloverTest(unittest.TestCase):
+    @staticmethod
+    def release(*, tag, published, complete=False, prerelease=True, draft=False):
+        return {"tag_name": tag, "published_at": published, "prerelease": prerelease, "draft": draft,
+                "assets": [{"name": "desktop-release.json"}] if complete else []}
+
+    def roll(self, *, releases, tag):
+        workflow = Path(__file__).resolve().parents[1] / "workflows/release-all-platforms.yml"
+        step = workflow.read_text().split("      - name: Roll internal pre-release\n", 1)[1]
+        script = textwrap.dedent(step.split("        run: |\n", 1)[1].split("      - name: Summary", 1)[0])
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "releases.json").write_text(json.dumps(releases))
+            (root / "artifacts").mkdir()
+            for name in ["fixture.tar.gz", "fixture.zip", "checksums.txt"]:
+                (root / "artifacts" / name).write_text("fixture")
+            gh = root / "gh"
+            gh.write_text(textwrap.dedent('''\
+                #!/usr/bin/env python3
+                import json, os, pathlib, sys
+                args = sys.argv[1:]
+                root = pathlib.Path(os.environ["FAKE_GH_ROOT"])
+                releases = json.loads((root / "releases.json").read_text())
+                with (root / "calls.jsonl").open("a") as log:
+                    log.write(json.dumps(args) + "\\n")
+                if args[0] == "api":
+                    assert args == ["api", "repos/fixture/repo/releases?per_page=100"], args
+                    print(json.dumps(releases))
+                elif args[:2] == ["release", "view"]:
+                    sys.exit(0 if any(r["tag_name"] == args[2] for r in releases) else 1)
+                else:
+                    assert args[0] == "release" and args[1] in ["delete", "create", "upload", "edit"], args
+                '''))
+            gh.chmod(0o755)
+            env = os.environ | {"PATH": f"{root}:{os.environ['PATH']}", "FAKE_GH_ROOT": str(root),
+                                "GITHUB_REPOSITORY": "fixture/repo", "TAG": tag,
+                                "VERSION": "1.0.0", "BUILD_NUMBER": tag.rsplit(".", 1)[1]}
+            result = subprocess.run(["bash", "-c", script], cwd=root, env=env, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            return [json.loads(line) for line in (root / "calls.jsonl").read_text().splitlines()]
+
+    def test_rollover_preserves_completed_desktop_through_repeated_failures(self):
+        completed = self.release(tag="v1.0.0-internal.11", published="2026-09-25T11:00:00Z", complete=True)
+        # A failed desktop build/attachment leaves the newer shared release without its manifest.
+        for failed_tag, next_tag in [("v1.0.0-internal.12", "v1.0.0-internal.13"),
+                                     ("v1.0.0-internal.13", "v1.0.0-internal.14")]:
+            with self.subTest(failed=failed_tag):
+                failed = self.release(tag=failed_tag, published="2026-09-25T12:00:00Z")
+                calls = self.roll(releases=[failed, completed], tag=next_tag)
+                self.assertNotIn(["release", "delete", completed["tag_name"], "--yes"], calls)
+                self.assertIn(["release", "delete", failed_tag, "--yes"], calls)
+                self.assertTrue(any(c[:3] == ["release", "create", next_tag] for c in calls))
+
+    def test_rollover_retires_older_desktop_only_after_a_newer_completion(self):
+        older = self.release(tag="v1.0.0-internal.11", published="2026-09-25T11:00:00Z", complete=True)
+        newer = self.release(tag="v1.0.0-internal.13", published="2026-09-25T13:00:00Z", complete=True)
+        stable = self.release(tag="v1.0.0", published="2026-09-25T14:00:00Z", complete=True, prerelease=False)
+        beta = self.release(tag="v1.0.0-beta.1", published="2026-09-25T14:00:00Z", complete=True)
+        draft = self.release(tag="v1.0.0-internal.15", published=None, complete=True, draft=True)
+        calls = self.roll(releases=[older, draft, beta, stable, newer], tag="v1.0.0-internal.16")
+        deleted = [c[2] for c in calls if c[:2] == ["release", "delete"]]
+        self.assertCountEqual(deleted, [older["tag_name"], draft["tag_name"]])
+        self.assertNotIn(newer["tag_name"], deleted)
+
+    def test_rollover_keeps_existing_cleanup_before_any_desktop_publication(self):
+        old = self.release(tag="v1.0.0-internal.10", published="2026-09-25T10:00:00Z")
+        calls = self.roll(releases=[old], tag="v1.0.0-internal.11")
+        self.assertIn(["release", "delete", old["tag_name"], "--yes"], calls)
+
+    def test_rollover_retains_current_completed_release_on_retry(self):
+        old = self.release(tag="v1.0.0-internal.10", published="2026-09-25T10:00:00Z", complete=True)
+        current = self.release(tag="v1.0.0-internal.11", published="2026-09-25T11:00:00Z", complete=True)
+        calls = self.roll(releases=[old, current], tag=current["tag_name"])
+        self.assertIn(["release", "delete", old["tag_name"], "--yes"], calls)
+        self.assertNotIn(["release", "delete", current["tag_name"], "--yes"], calls)
+        self.assertTrue(any(c[:3] == ["release", "upload", current["tag_name"]] for c in calls))
 
 
 if __name__ == "__main__":
