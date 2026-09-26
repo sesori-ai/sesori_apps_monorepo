@@ -953,16 +953,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }
 
   bool _onScrollNotification(Notification notification) {
-    // The list's metrics notification follows every layout that moves its
-    // extents: each scroll frame, the first page, a fold or a taller window.
-    // Nearing the oldest edge on any of them prefetches the older page, so
-    // paging back through history feels continuous and a transcript shorter
-    // than the viewport pages without a scroll. The scroll-end check is the
-    // fallback for a transcript too short to scroll: clamping physics moves
-    // nothing at zero extent, so only the end notification reports the
-    // attempt. A nested scrollable's notifications (depth above 0) do not
-    // count.
+    // Nearing the oldest edge prefetches the older page, so paging back through
+    // history feels continuous. Scroll updates report it while scrolling; the
+    // metrics notification reports it after a layout without a scroll, such as
+    // the first page, a fold or a taller window, so a transcript shorter than
+    // the viewport pages on its own. The scroll-end check is the fallback for
+    // a transcript too short to scroll: clamping physics moves nothing at zero
+    // extent, so only the end notification reports the attempt. A nested
+    // scrollable's notifications (depth above 0) do not count.
     final nearingOldestEdge = switch (notification) {
+      ScrollUpdateNotification(depth: 0, :final metrics) ||
       ScrollMetricsNotification(depth: 0, :final metrics) => metrics.extentAfter < _kOlderPagePrefetchExtent,
       ScrollEndNotification(depth: 0, :final metrics) => metrics.extentAfter == 0,
       _ => false,
