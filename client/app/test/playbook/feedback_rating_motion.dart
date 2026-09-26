@@ -43,7 +43,7 @@ class const FeedbackRatingHero({super.key, required final Animation<double> anim
                     clipBehavior: Clip.none,
                     children: [
                       Positioned.fill(
-                        child: Image.asset("assets/images/feedback_rating_background.png", fit: BoxFit.fill),
+                        child: Image.asset("assets/images/feedback_rating_background.webp", fit: BoxFit.fill),
                       ),
                       _HeroLayer(
                         animation: animation,
@@ -127,7 +127,7 @@ class const FeedbackRatingHero({super.key, required final Animation<double> anim
                         ),
                       ),
                       // The rising hearts pass behind the phone, as in Figma.
-                      Positioned.fill(child: Image.asset("assets/images/feedback_rating_phone.png", fit: BoxFit.fill)),
+                      Positioned.fill(child: Image.asset("assets/images/feedback_rating_phone.webp", fit: BoxFit.fill)),
                       _HeroLayer(
                         animation: animation,
                         bounds: const Rect.fromLTWH(43.555, -6, 97.445, 96.476),

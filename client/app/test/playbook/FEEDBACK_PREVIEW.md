@@ -112,8 +112,9 @@ dismisses automatically after three seconds. Close or swipe up to dismiss sooner
   enters the keyboard variant (`5037:13617`), with 26px bottom corners,
   microphone/Send controls, and the annotated focus ring outside the border.
 - The layered hero comes from Figma `5528:30768`: two 3× raster exports
-  preserve the static background/phone treatments, while eight small SVGs keep
-  the doodles and hearts sharp. Total new artwork is approximately 833 KiB.
+  (lossy WebP with alpha) preserve the static background/phone treatments,
+  while eight small SVGs keep the doodles and hearts sharp. Total new artwork
+  is approximately 236 KiB.
   Assets use the app's existing image declaration and remain bundled even when
   the preview entry point is not used.
 - `feedback_rating_motion.dart` translates the ten animated nodes' 31 tracks,
@@ -196,13 +197,13 @@ Production work still needs:
 
 ```sh
 # From client/app
-flutter test test/playbook/feedback_flow_playbook_test.dart test/playbook/feedback_celebration_test.dart test/playbook/feedback_motion_test.dart test/playbook/feedback_motion_tuning_test.dart test/playbook/feedback_voice_states_test.dart
+flutter test test/playbook/feedback_flow_playbook_test.dart test/playbook/feedback_celebration_test.dart test/playbook/feedback_motion_test.dart test/playbook/feedback_voice_states_test.dart
 dart analyze
 ```
 
 Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
 
-- All 57 combined flow, celebration, motion, tuning and voice-state tests pass.
+- All 41 combined flow, celebration, motion and voice-state tests pass.
   The positive route shares one timeline, preserves the opening pace, locks both
   choices, and requests native review once after 1.5 seconds of celebration and
   complete sheet removal. Closing mid-celebration cancels the request.
@@ -211,9 +212,7 @@ Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
   simulated transcription, cancellation, and tap-to-edit. A 320 × 568 viewport
   with 1.5× text and keyboard insets remains usable. Native-channel failures and
   mocked iOS/Android microphone-permission recovery retain explicit outcomes.
-- Motion tuning replays the coordinated celebration with an editable duration;
-  whole-flow replay enters private feedback and never requests native review.
-  Existing voice, shared toast, shimmer and composer checks remain covered.
+- Voice, shared toast, shimmer and composer checks remain covered.
 - The confirmation integration check verifies placement below the top navigation
   and automatic removal after the three-second reading interval. Twenty shared
   popup tests pass, covering entry/exit, an interrupted entrance, close/swipe,

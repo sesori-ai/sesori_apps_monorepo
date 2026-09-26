@@ -8,7 +8,7 @@ FLUTTER := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)/bin/flutter
 export FLUTTER_ROOT := $(HOME)/.asdf/installs/flutter/$(FLUTTER_VERSION)
 
 # Dependency order starts with persistence, then auth/core and the presentation/desktop packages.
-MODULES := module_persistence module_auth module_core module_prego module_app_ui module_desktop_core design_catalog motion_tuning app desktop
+MODULES := module_persistence module_auth module_core module_prego module_app_ui module_desktop_core design_catalog app desktop
 
 # Modules with active build_runner generators.
 CODEGEN_MODULES := module_persistence module_auth module_core module_prego module_desktop_core app desktop
@@ -28,7 +28,7 @@ test:
 	@for mod in $(MODULES); do \
 		if [ -d "$$mod/test" ]; then \
 			echo "=== test: $$mod ==="; \
-			if [ "$$mod" = "app" ] || [ "$$mod" = "desktop" ] || [ "$$mod" = "module_prego" ] || [ "$$mod" = "module_app_ui" ] || [ "$$mod" = "design_catalog" ] || [ "$$mod" = "motion_tuning" ]; then \
+			if [ "$$mod" = "app" ] || [ "$$mod" = "desktop" ] || [ "$$mod" = "module_prego" ] || [ "$$mod" = "module_app_ui" ] || [ "$$mod" = "design_catalog" ]; then \
 				(cd $$mod && $(FLUTTER) test) || exit 1; \
 			else \
 				(cd $$mod && $(DART) test) || exit 1; \

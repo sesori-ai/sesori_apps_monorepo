@@ -167,7 +167,6 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Desktop distribution and manual updates](desktop-distribution.md)
 - [Diffs and source control](diffs-and-source-control.md)
 - [Glass presentation](glass-presentation.md)
-- [Motion tuning](motion-tuning.md)
 - [Native activity indicators](native-activity-indicators.md)
 - [Navigation transitions](navigation-transitions.md)
 - [Notifications](notifications.md)

@@ -12,7 +12,6 @@ on:
       - 'client/module_persistence/**'
       - 'client/module_prego/**'
       - 'client/module_app_ui/**'
-      - 'client/motion_tuning/**'
       - 'client/pubspec.yaml'
       - 'client/pubspec.lock'
       - 'client/analysis_options.yaml'
@@ -33,7 +32,6 @@ on:
       - 'client/module_persistence/**'
       - 'client/module_prego/**'
       - 'client/module_app_ui/**'
-      - 'client/motion_tuning/**'
       - 'client/pubspec.yaml'
       - 'client/pubspec.lock'
       - 'client/analysis_options.yaml'
@@ -133,9 +131,6 @@ jobs:
             runner: flutter
             shard: 1/1
           - package: module_app_ui
-            runner: flutter
-            shard: 1/1
-          - package: motion_tuning
             runner: flutter
             shard: 1/1
     runs-on: ubuntu-latest

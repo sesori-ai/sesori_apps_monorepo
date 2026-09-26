@@ -206,7 +206,6 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                             children: [
                               if (refreshing) const LinearProgressIndicator(),
                               CatalogScanRow(
-                                motion: CatalogScanRowMotion.standard,
                                 scan: loaded.catalogScan,
                                 onCancel: cubit.cancelCatalogScan,
                                 onDismiss: cubit.dismissCatalogScan,
@@ -236,7 +235,6 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                               if (refreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
                               SliverToBoxAdapter(
                                 child: CatalogScanRow(
-                                  motion: CatalogScanRowMotion.standard,
                                   scan: loaded?.catalogScan ?? const CatalogRescanState.idle(),
                                   onCancel: cubit.cancelCatalogScan,
                                   onDismiss: cubit.dismissCatalogScan,

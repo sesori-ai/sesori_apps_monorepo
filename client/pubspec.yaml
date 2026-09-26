@@ -8,7 +8,6 @@ environment:
 workspace:
   - app
   - design_catalog
-  - motion_tuning
   - module_core
   - module_auth
   - module_persistence
