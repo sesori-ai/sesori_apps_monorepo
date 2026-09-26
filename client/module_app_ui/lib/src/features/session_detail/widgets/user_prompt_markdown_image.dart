@@ -2,6 +2,7 @@ import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../l10n/app_localizations.dart";
 import "../session_detail_markdown_link_handler.dart";
 import "text_part_widget.dart" show MarkdownMessageImage;
 
@@ -30,10 +31,7 @@ Widget buildUserPromptMarkdownImage({
   }
 
   final prego = context.prego;
-  final normalizedLabel = semanticLabel?.trim();
-  final label = normalizedLabel == null || normalizedLabel.isEmpty
-      ? context.loc.sessionDetailImageOpen
-      : normalizedLabel;
+  final label = userPromptMarkdownImageName(loc: context.loc, altText: semanticLabel);
   if (!interactive) return _RemoteImageMention(label: label);
 
   final handleLink = buildSessionDetailMarkdownLinkTapHandler(context: context);
@@ -58,6 +56,14 @@ Widget buildUserPromptMarkdownImage({
       ),
     ),
   );
+}
+
+/// The words that name a Markdown image in the user's own prompt: the alt text
+/// the prompt wrote for it, or a generic name where it wrote none. One owner, so
+/// the mention an eye reads and the label a screen reader hears cannot drift.
+String userPromptMarkdownImageName({required AppLocalizations loc, required String? altText}) {
+  final normalized = altText?.trim();
+  return normalized == null || normalized.isEmpty ? loc.sessionDetailImageOpen : normalized;
 }
 
 /// Names the image the prompt links to, with no surface and nothing to press.

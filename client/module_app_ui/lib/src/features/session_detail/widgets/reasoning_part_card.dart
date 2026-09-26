@@ -134,7 +134,9 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
   static String _firstLinePlainText(String markdown) {
     final firstLine = _extractFirstLine(markdown);
     if (firstLine.isEmpty) return markdown.trim();
-    final plain = markdownPlainText(markdown: firstLine);
+    // This row shows words beside a label, never a picture, so an image has
+    // nothing to contribute to it.
+    final plain = markdownPlainText(markdown: firstLine, nameImage: null);
     return plain.isEmpty ? firstLine.trim() : plain;
   }
 }

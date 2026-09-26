@@ -2620,6 +2620,31 @@ void main() {
       return styles;
     }
 
+    /// Pins a prompt that renders as a single image mention and checks that the
+    /// eye and a screen reader are given the same [words]: the label is all a
+    /// reader gets, so it must never fall back to the image's source.
+    Future<void> expectPinnedImageNamed(WidgetTester tester, {required String prompt, required String words}) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: prompt),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      final mention = find.descendant(of: overlay, matching: find.byType(Text));
+      expect(mention, findsOneWidget);
+      expect(tester.widget<Text>(mention).data, words, reason: "the words the row shows");
+      expect(
+        tester.getSemantics(bubble),
+        isSemantics(label: words, hint: "Jump to this prompt", isButton: true, hasTapAction: true),
+        reason: "the words a screen reader hears",
+      );
+
+      semantics.dispose();
+    }
+
     testWidgets("pins the turn's prompt once it leaves the top edge", (tester) async {
       await _pumpTurns(tester, messages: shortTurns, folded: false);
       await _scrollRowTo(tester, rowId: "u8", top: 200);
@@ -2814,6 +2839,47 @@ void main() {
       );
 
       semantics.dispose();
+    });
+
+    testWidgets("reads a pinned list, table and struck word as the row lays them out", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(
+          id: "u4",
+          text: "- Fix login\n- Fix signup\n\n| col |\n| --- |\n| cell |\n\n~~dropped~~",
+        ),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // Each item, cell and paragraph has a line of its own in the row, so none
+      // of them may run into the next word. And the label is read with the same
+      // extensions the row is rendered with, or a table would be spoken as its
+      // pipes and a struck word as its tildes.
+      expect(
+        tester.getSemantics(bubble),
+        isSemantics(label: "Fix login\nFix signup\ncol\ncell\ndropped", isButton: true),
+      );
+
+      semantics.dispose();
+    });
+
+    testWidgets("reads an image-only prompt out as its alt text", (tester) async {
+      await expectPinnedImageNamed(
+        tester,
+        prompt: "![diagram](https://example.com/diagram.png)",
+        words: "diagram",
+      );
+    });
+
+    testWidgets("reads an image-only prompt with no alt text out as the row names it", (tester) async {
+      await expectPinnedImageNamed(
+        tester,
+        prompt: "![](https://example.com/diagram.png)",
+        words: "Open image",
+      );
     });
 
     testWidgets("pins every block with nothing pressable and nothing scrollable", (tester) async {

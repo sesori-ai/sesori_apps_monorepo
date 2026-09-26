@@ -50,7 +50,7 @@ class const TranscriptStickyPromptOverlay({
     final source = markdown == null ? null : _boundedSource(markdown: markdown);
     final label = source == null
         ? _attachmentLabelOf(loc: context.loc, opener: turn.opener)
-        : _spokenLabelOf(source: source);
+        : _spokenLabelOf(loc: context.loc, source: source);
     final styleSheet = buildChatMessagePreviewMarkdownStyleSheet(prego: prego);
     final background = Theme.of(context).scaffoldBackgroundColor;
     void jump() => onJumpToTurn(openerMessageId: turn.opener.info.id);
@@ -190,10 +190,16 @@ class const TranscriptStickyPromptOverlay({
   /// same cut source the row renders, so the label agrees with the row and does
   /// not grow with the prompt; the reader reaches the rest by activating the
   /// button, which puts the real bubble at the top edge.
-  static String _spokenLabelOf({required String source}) {
-    final plain = markdownPlainText(markdown: source);
-    // An image or a rule on its own renders no words at all, and a button with
-    // no label is worse than one that reads out the source.
+  static String _spokenLabelOf({required AppLocalizations loc, required String source}) {
+    // Whatever the row renders as words, spoken the same way: the parser resolves
+    // the syntax, so `**markers**`, backticks, pipes and URLs never reach here.
+    final plain = markdownPlainText(
+      markdown: source,
+      // An image reads as the row names it, by the row's own rule.
+      nameImage: ({required altText}) => userPromptMarkdownImageName(loc: loc, altText: altText),
+    );
+    // A prompt of nothing but a horizontal rule renders no words for either of
+    // us; its own source is short, and reading it out beats an unlabelled button.
     return plain.isEmpty ? source : plain;
   }
 
