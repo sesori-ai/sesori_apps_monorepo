@@ -1091,6 +1091,10 @@
   "desktopLoginContinueWithGithub": "Continue with GitHub",
   "desktopLoginContinueWithApple": "Continue with Apple",
   "desktopLoginContinueWithGoogle": "Continue with Google",
+  "desktopLoginLastUsed": "Last used",
+  "@desktopLoginLastUsed": {
+    "description": "Marker on the desktop sign-in method this device signed in with last."
+  },
   "desktopLoginEmailSubtitle": "For accounts created with an email and password.",
   "@desktopLoginEmailSubtitle": {
     "description": "Subtitle above the desktop email sign-in form."

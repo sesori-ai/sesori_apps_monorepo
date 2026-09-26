@@ -3223,6 +3223,12 @@ abstract class AppLocalizations {
   /// **'Continue with Google'**
   String get desktopLoginContinueWithGoogle;
 
+  /// Marker on the desktop sign-in method this device signed in with last.
+  ///
+  /// In en, this message translates to:
+  /// **'Last used'**
+  String get desktopLoginLastUsed;
+
   /// Subtitle above the desktop email sign-in form.
   ///
   /// In en, this message translates to:

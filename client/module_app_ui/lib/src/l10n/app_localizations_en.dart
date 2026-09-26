@@ -1794,6 +1794,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopLoginContinueWithGoogle => 'Continue with Google';
 
   @override
+  String get desktopLoginLastUsed => 'Last used';
+
+  @override
   String get desktopLoginEmailSubtitle => 'For accounts created with an email and password.';
 
   @override

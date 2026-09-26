@@ -10,6 +10,8 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
+import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/widgets/desktop_window_drag_area.dart";
 import "package:sesori_desktop/features/login/login_brand_panel.dart";
 import "package:sesori_desktop/features/login/login_screen.dart";
@@ -19,7 +21,13 @@ import "package:theme_prego/module_prego.dart";
 
 class _MockLoginCubit() extends MockCubit<LoginState> implements LoginCubit;
 
+class _MockLastSignInProviderCubit() extends MockCubit<AuthProvider?> implements LastSignInProviderCubit;
+
 class _MockWindowHost() extends Mock implements WindowHost;
+
+class _MockAuthSession() extends Mock implements AuthSession;
+
+class _MockInstallationAnalyticsService() extends Mock implements InstallationAnalyticsService;
 
 const _tagline = "Watch and steer your coding sessions from your desk or your phone.";
 const _legal = "By signing in, you accept our Terms of Use and Privacy Policy.";
@@ -43,6 +51,7 @@ LoginState _polling({required LoginBrowserLaunch browser}) => LoginState.polling
 void main() {
   late _MockLoginCubit cubit;
   late StreamController<LoginState> cubitStates;
+  late _MockLastSignInProviderCubit lastUsed;
   late List<Uri> openedLinks;
 
   setUp(() {
@@ -50,6 +59,8 @@ void main() {
     // Synchronous, so an emitted state is already built by the next pump.
     cubitStates = StreamController<LoginState>.broadcast(sync: true);
     addTearDown(cubitStates.close);
+    lastUsed = _MockLastSignInProviderCubit();
+    whenListen(lastUsed, const Stream<AuthProvider?>.empty(), initialState: null);
     openedLinks = [];
   });
 
@@ -57,7 +68,13 @@ void main() {
     theme: buildPregoThemeData(brightness: Brightness.light),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: BlocProvider<LoginCubit>.value(value: cubit, child: child),
+    home: MultiBlocProvider(
+      providers: [
+        BlocProvider<LoginCubit>.value(value: cubit),
+        BlocProvider<LastSignInProviderCubit>.value(value: lastUsed),
+      ],
+      child: child,
+    ),
   );
 
   Widget view() => LoginView(
@@ -349,6 +366,70 @@ void main() {
       for (final label in [..._providerLabels, "Sign in with email"]) {
         expect(button(tester, label).onPressed, isNotNull, reason: label);
       }
+    });
+  });
+
+  group("last used", () {
+    Finder lastUsedIn(String label) =>
+        find.descendant(of: find.widgetWithText(PregoButtonsSolid, label), matching: find.text("Last used"));
+
+    testWidgets("no stored method marks nothing", (tester) async {
+      await pumpLogin(tester, state: const LoginState.idle());
+
+      expect(find.text("Last used"), findsNothing);
+    });
+
+    testWidgets("the provider this device signed in with last carries the chip", (tester) async {
+      whenListen(lastUsed, const Stream<AuthProvider?>.empty(), initialState: AuthProvider.apple);
+      await pumpLogin(tester, state: const LoginState.idle());
+
+      expect(lastUsedIn("Continue with Apple"), findsOneWidget);
+      expect(find.text("Last used"), findsOneWidget);
+    });
+
+    testWidgets("an email sign-in marks the email link instead", (tester) async {
+      whenListen(lastUsed, const Stream<AuthProvider?>.empty(), initialState: AuthProvider.email);
+      await pumpLogin(tester, state: const LoginState.idle());
+
+      expect(
+        find.descendant(
+          of: find.widgetWithText(PregoButtonsSolid, "Sign in with email"),
+          matching: find.byType(PregoTag),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text("Last used"), findsOneWidget);
+    });
+
+    testWidgets("LoginScreen marks the provider the auth session stored", (tester) async {
+      await getIt.reset();
+      addTearDown(getIt.reset);
+      final authSession = _MockAuthSession();
+      when(authSession.lastSignedInProvider).thenAnswer((_) async => AuthProvider.google);
+      final lifecycle = FakeLifecycleSource();
+      addTearDown(lifecycle.close);
+      getIt
+        ..registerSingleton<AuthSession>(authSession)
+        ..registerSingleton<OAuthFlowProvider>(MockOAuthFlowProvider())
+        ..registerSingleton<UrlLauncher>(MockUrlLauncher())
+        ..registerSingleton<LifecycleSource>(lifecycle)
+        ..registerSingleton<InstallationAnalyticsService>(_MockInstallationAnalyticsService());
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildPregoThemeData(brightness: Brightness.light),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const LoginScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(lastUsedIn("Continue with Google"), findsOneWidget);
+      expect(find.text("Last used"), findsOneWidget);
     });
   });
 
