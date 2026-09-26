@@ -1,4 +1,3 @@
-import "package:collection/collection.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../services/models/recent_sessions_entry.dart";
@@ -7,14 +6,17 @@ import "../../services/session_activity_calculator.dart";
 /// Surface-neutral presentation derivation, following SessionListResolvers.
 /// Ordering/filtering remain owned by SessionListService; this chooses its head.
 extension RecentSessionsResolvers on RecentSessionsLoaded {
-  /// The first [limit] sessions, plus the selected one when it sits further down.
-  List<Session> rows({required String? selectedSessionId, required int limit}) {
-    final recent = visibleSessions.take(limit).toList();
-    final selected = visibleSessions.firstWhereOrNull((session) => session.id == selectedSessionId);
-    return [
-      ...recent,
-      if (selected != null && !recent.any((session) => session.id == selected.id)) selected,
-    ];
+  /// Every running session, the first [idleLimit] others, and the selected one
+  /// wherever it sits, all in list order.
+  List<Session> rows({required String? selectedSessionId, required int idleLimit}) {
+    final rows = <Session>[];
+    var idle = 0;
+    for (final session in visibleSessions) {
+      final running = isRunning(session: session);
+      if (running || idle < idleLimit || session.id == selectedSessionId) rows.add(session);
+      if (!running) idle++;
+    }
+    return rows;
   }
 
   bool isUnseen({required Session session}) => listStateBySessionId[session.id]?.unseen ?? session.unseen;

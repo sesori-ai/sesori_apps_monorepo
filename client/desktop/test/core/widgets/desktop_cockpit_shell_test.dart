@@ -723,7 +723,7 @@ void main() {
   });
 
   testWidgets("recent tree pins selection, keeps route actions, and persists project collapse", (tester) async {
-    final sessions = [for (var index = 1; index <= 4; index++) _session(id: "session-$index")];
+    final sessions = [for (var index = 1; index <= 3; index++) _session(id: "session-$index")];
     whenListen(
       recent,
       const Stream<Map<String, RecentSessionsEntry>>.empty(),
@@ -743,7 +743,7 @@ void main() {
         state: running,
         child: DesktopCockpitShell(
           selectedProjectId: "project-1",
-          selectedSessionId: "session-4",
+          selectedSessionId: "session-3",
           sessionActions: _sessionActions,
           onOpenSession: ({required context, required project, required displayName, required session}) =>
               openedSession = session.id,
@@ -757,25 +757,25 @@ void main() {
         ),
       ),
     );
-    // The selected session is pinned under the three newest, so nothing is left to show.
+    // The selected session is pinned under the two newest, so nothing is left to show.
     expect(find.byKey(const ValueKey("sidebar-show-more-project-1")), findsNothing);
     for (final session in sessions) {
       expect(find.text(session.title!), findsOneWidget);
     }
-    final selected = find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.label == "session-4");
+    final selected = find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.label == "session-3");
     expect(tester.widget<Semantics>(selected).properties.selected, isTrue);
-    await tester.tap(find.text("session-4"));
-    expect(openedSession, "session-4");
+    await tester.tap(find.text("session-3"));
+    expect(openedSession, "session-3");
     final projectToggle = find.byKey(const ValueKey("sidebar-project-toggle-project-1"));
     await tester.tap(projectToggle);
     await tester.pump();
-    expect(find.text("session-4"), findsNothing);
+    expect(find.text("session-3"), findsNothing);
     expect(sidebar.state.collapsedProjectIds, {"project-1"});
     verify(() => repository.writeSidebarLayout(layout: const DesktopSidebarLayout(collapsedProjectIds: {"project-1"})))
         .called(1);
     await tester.tap(projectToggle);
     await tester.pump();
-    expect(find.text("session-4"), findsOneWidget);
+    expect(find.text("session-3"), findsOneWidget);
     final add = find.byKey(const ValueKey("sidebar-new-session-project-1"));
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer(location: Offset.zero);
@@ -809,7 +809,7 @@ void main() {
     await tester.pumpWidget(app(state: running));
     final rows = find.textContaining("session-");
     final showMore = find.byKey(const ValueKey("sidebar-show-more-project-1"));
-    expect(rows, findsNWidgets(3));
+    expect(rows, findsNWidgets(2));
     final showMoreLabel = tester.widget<Text>(find.text("Show 10 more"));
     expect(showMoreLabel.maxLines, 1);
     expect(showMoreLabel.style?.fontFamily, startsWith("packages/theme_prego/"));
@@ -817,8 +817,8 @@ void main() {
     expect(showMoreLabel.style?.color, tester.element(showMore).prego.colors.textTertiary);
     await tester.tap(showMore);
     await tester.pumpAndSettle();
-    expect(rows, findsNWidgets(13));
-    expect(find.text("Show 2 more"), findsOneWidget);
+    expect(rows, findsNWidgets(12));
+    expect(find.text("Show 3 more"), findsOneWidget);
     await tester.ensureVisible(showMore);
     await tester.pump();
     await tester.tap(showMore);
@@ -832,7 +832,43 @@ void main() {
     expect(rows, findsNothing);
     await sidebar.toggleProject(projectId: "project-1");
     await tester.pumpAndSettle();
-    expect(rows, findsNWidgets(3));
+    expect(rows, findsNWidgets(2));
+  });
+
+  testWidgets("every running session shows beside the two newest others", (tester) async {
+    final sessions = [for (var index = 1; index <= 9; index++) _session(id: "session-$index")];
+    const busy = SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null);
+    final activity = {
+      for (final index in [2, 4, 5, 7, 9]) "session-$index": busy,
+    };
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: sessions,
+          visibleSessions: sessions,
+          activityBySessionId: activity,
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+    for (final index in [1, 2, 3, 4, 5, 7, 9]) {
+      expect(find.byKey(ValueKey("sidebar-session-project-1-session-$index")), findsOneWidget);
+    }
+    expect(find.byKey(const ValueKey("sidebar-session-project-1-session-6")), findsNothing);
+    expect(find.text("Show 2 more"), findsOneWidget);
+
+    final showMore = find.byKey(const ValueKey("sidebar-show-more-project-1"));
+    await tester.ensureVisible(showMore);
+    await tester.pump();
+    await tester.tap(showMore);
+    await tester.pumpAndSettle();
+    for (var index = 1; index <= 9; index++) {
+      expect(find.byKey(ValueKey("sidebar-session-project-1-session-$index"), skipOffstage: false), findsOneWidget);
+    }
+    expect(showMore, findsNothing);
   });
 
   testWidgets("projects lead, sessions stay quiet, and the open session alone is highlighted", (tester) async {
@@ -1223,6 +1259,9 @@ void main() {
       },
     );
     await tester.pumpWidget(app(state: running));
+    // Reveal the third quiet session.
+    await tester.tap(find.byKey(const ValueKey("sidebar-show-more-project-1")));
+    await tester.pumpAndSettle();
 
     final scheduledRow = find.byKey(const ValueKey("sidebar-session-project-1-scheduled"));
     expect(find.descendant(of: scheduledRow, matching: find.textContaining(":")), findsOneWidget);
