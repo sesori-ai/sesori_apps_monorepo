@@ -373,7 +373,18 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
     try {
       return await request;
     } on OpenCodeApiException catch (error, stackTrace) {
-      Error.throwWithStackTrace(_V2ApiException(error: error), stackTrace);
+      // The remote-safe wrapper deliberately omits the native diagnostic body.
+      Log.w("[opencode-v2] HTTP request failed", error, stackTrace);
+      Error.throwWithStackTrace(
+        _V2ApiException(operation: error.endpoint, statusCode: error.statusCode, innerError: error),
+        stackTrace,
+      );
+    } on http.ClientException catch (error, stackTrace) {
+      Log.w("[opencode-v2] Transport request failed", error, stackTrace);
+      Error.throwWithStackTrace(
+        _V2ApiException(operation: error.uri?.path ?? "request", statusCode: null, innerError: error),
+        stackTrace,
+      );
     }
   }
 
@@ -404,9 +415,10 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
 }
 
 /// Retain native diagnostics without reflecting an arbitrary response body in presentation.
-class _V2ApiException({required OpenCodeApiException error}) extends PluginOperationException {
-  this : super(error.endpoint, statusCode: error.statusCode, message: "OpenCode request failed.", cause: error);
+class _V2ApiException({required String operation, required int? statusCode, required Exception innerError})
+    extends PluginOperationException {
+  this : super(operation, statusCode: statusCode, message: "OpenCode request failed.", cause: innerError);
 
   @override
-  String toString() => "OpenCode v2 request failed: $operation (HTTP $statusCode)";
+  String toString() => "OpenCode v2 request failed: $operation${statusCode == null ? "" : " (HTTP $statusCode)"}";
 }

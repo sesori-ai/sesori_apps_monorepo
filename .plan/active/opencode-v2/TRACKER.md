@@ -217,10 +217,18 @@
   do not satisfy them.
 - First architecture implementation review approved the complete range `a7c3f49ae5...594ef58e7e` with no findings:
   all 20 paths, 1,248 additions + 143 deletions = 1,391 authored changed lines, no generated churn. Applied
-  A1–A13 and B-Bridge B-B1–B-B6; B-Client/B-Shared were not applicable. No task-specific production changes followed review.
+  A1–A13 and B-Bridge B-B1–B-B6; B-Client/B-Shared were not applicable. Later review fixes are local API error
+  handling only; no new ownership, layer or contract changes.
 - Merged incoming `main` at `a10540c018` after the publication-time conflict. Retained its tool-kind removal and
   the active-v2 capability section; only capability documentation required manual resolution. The incoming v1/v2
   mapper changes passed 46 affected mapper/event/facade cases and owning-package fatal-info analysis.
+- #1780 review fixes normalize HTTP client connection failures into cause-preserving plugin failures (default
+  upstream 502) and retain original bounded HTTP/transport diagnostics in local logs, not remote presentation.
+  All 33 affected API/facade cases and fatal-info analysis pass; captured stderr retains diagnostic fixtures
+  while the existing decode-payload fixture remains absent. No generator inputs changed.
+- Declined unconditional initial-prompt rollback: response loss can follow accepted/completed native work, so
+  deleting the created session could destroy valid history. A residual empty native session is lower damage;
+  current creation validates explicit model/variant before mutation, and failures remain observable.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.

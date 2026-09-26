@@ -174,6 +174,24 @@ void main() {
     );
   });
 
+  test("connection failures retain their cause without reflecting transport details", () async {
+    final cause = http.ClientException(
+      "socket fixture diagnostics",
+      Uri.parse("http://localhost/api/info?scope=fixture"),
+    );
+    final api = makeApi(handler: (_) async => throw cause);
+    await expectLater(
+      api.getServerInfo(),
+      throwsA(
+        isA<PluginOperationException>()
+            .having((error) => error.operation, "operation", "/api/info")
+            .having((error) => error.statusCode, "status defaults to upstream 502", isNull)
+            .having((error) => error.cause, "cause", same(cause))
+            .having((error) => error.toString(), "presentation", "OpenCode v2 request failed: /api/info"),
+      ),
+    );
+  });
+
   for (final filter in V2MessageFilter.values) {
     test("reads the latest ${filter.name} without loading unrelated history", () async {
       final api = makeApi(

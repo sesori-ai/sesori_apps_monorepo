@@ -503,6 +503,9 @@ Native-shaped prompt echoes and history retain bridge prompt IDs without a mutab
 correlation cache; named compaction settles only on a terminal snapshot. A late ACK
 never restores busy after native settlement. Successful input replies update pending
 work, failed replies retain constraints, and managed interruption awaits native idle.
+Connection failures surface as cause-preserving upstream errors, not generic internal
+500s. Local logs retain native HTTP/transport diagnostics while remote errors omit
+response bodies and transport details. Decode failures still omit response payloads.
 This is transport-boundary automation, not a real-provider turn or reconnect claim.
 
 ## Exploration Guidance
