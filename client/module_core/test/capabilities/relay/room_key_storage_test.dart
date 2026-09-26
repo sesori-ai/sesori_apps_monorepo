@@ -3,18 +3,19 @@ import "dart:typed_data";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
+import "package:sesori_dart_core/src/foundation/persistence/persistence_keys.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:test/test.dart";
 
 void main() {
-  late MockSecureStorage mockStorage;
+  late MockSecureStorageRepository mockStorage;
   late RoomKeyStorage roomKeyStorage;
 
   setUpAll(registerCoreFallbackValues);
 
   setUp(() {
-    mockStorage = MockSecureStorage();
-    roomKeyStorage = RoomKeyStorage(mockStorage);
+    mockStorage = MockSecureStorageRepository();
+    roomKeyStorage = RoomKeyStorage(storage: mockStorage);
   });
 
   group("RoomKeyStorage", () {
@@ -22,7 +23,7 @@ void main() {
       // given
       final key = Uint8List.fromList(List.generate(32, (i) => i));
       final encoded = base64Url.encode(key);
-      when(() => mockStorage.write(key: "relay_room_key", value: encoded)).thenAnswer((_) async {
+      when(() => mockStorage.write(key: CoreSecretKey.relayRoomKey, value: encoded)).thenAnswer((_) async {
         return;
       });
 
@@ -30,7 +31,7 @@ void main() {
       await roomKeyStorage.saveRoomKey(key);
 
       // then
-      verify(() => mockStorage.write(key: "relay_room_key", value: encoded)).called(1);
+      verify(() => mockStorage.write(key: CoreSecretKey.relayRoomKey, value: encoded)).called(1);
     });
 
     test("getRoomKey reads and base64url-decodes correctly", () async {
@@ -69,31 +70,31 @@ void main() {
         0xFE,
         0xFF,
       ]);
-      when(() => mockStorage.read(key: "relay_room_key")).thenAnswer((_) async => base64Url.encode(key));
+      when(() => mockStorage.read(key: CoreSecretKey.relayRoomKey)).thenAnswer((_) async => base64Url.encode(key));
 
       // when
       final result = await roomKeyStorage.getRoomKey();
 
       // then
-      verify(() => mockStorage.read(key: "relay_room_key")).called(1);
+      verify(() => mockStorage.read(key: CoreSecretKey.relayRoomKey)).called(1);
       expect(result, equals(key));
     });
 
     test("getRoomKey returns null when storage returns null", () async {
       // given
-      when(() => mockStorage.read(key: "relay_room_key")).thenAnswer((_) async => null);
+      when(() => mockStorage.read(key: CoreSecretKey.relayRoomKey)).thenAnswer((_) async => null);
 
       // when
       final result = await roomKeyStorage.getRoomKey();
 
       // then
-      verify(() => mockStorage.read(key: "relay_room_key")).called(1);
+      verify(() => mockStorage.read(key: CoreSecretKey.relayRoomKey)).called(1);
       expect(result, isNull);
     });
 
     test("clearRoomKey deletes with correct key", () async {
       // given
-      when(() => mockStorage.delete(key: "relay_room_key")).thenAnswer((_) async {
+      when(() => mockStorage.delete(key: CoreSecretKey.relayRoomKey)).thenAnswer((_) async {
         return;
       });
 
@@ -101,7 +102,7 @@ void main() {
       await roomKeyStorage.clearRoomKey();
 
       // then
-      verify(() => mockStorage.delete(key: "relay_room_key")).called(1);
+      verify(() => mockStorage.delete(key: CoreSecretKey.relayRoomKey)).called(1);
     });
 
     test("saveRoomKey rethrows on storage error", () async {
@@ -109,22 +110,22 @@ void main() {
       final key = Uint8List.fromList(List.generate(32, (i) => i));
       final encoded = base64Url.encode(key);
       final error = Exception("write failed");
-      when(() => mockStorage.write(key: "relay_room_key", value: encoded)).thenThrow(error);
+      when(() => mockStorage.write(key: CoreSecretKey.relayRoomKey, value: encoded)).thenThrow(error);
 
       // when/then
       await expectLater(roomKeyStorage.saveRoomKey(key), throwsA(same(error)));
-      verify(() => mockStorage.write(key: "relay_room_key", value: encoded)).called(1);
+      verify(() => mockStorage.write(key: CoreSecretKey.relayRoomKey, value: encoded)).called(1);
     });
 
     test("getRoomKey returns null on storage error", () async {
       // given
-      when(() => mockStorage.read(key: "relay_room_key")).thenThrow(Exception("read failed"));
+      when(() => mockStorage.read(key: CoreSecretKey.relayRoomKey)).thenThrow(Exception("read failed"));
 
       // when
       final result = await roomKeyStorage.getRoomKey();
 
       // then
-      verify(() => mockStorage.read(key: "relay_room_key")).called(1);
+      verify(() => mockStorage.read(key: CoreSecretKey.relayRoomKey)).called(1);
       expect(result, isNull);
     });
   });

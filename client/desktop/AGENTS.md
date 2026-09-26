@@ -9,19 +9,20 @@ desktop business logic lives in `module_desktop_core` — never here.
 ```
 lib/
 ├── core/platform/           # concrete implementations of module_core/module_desktop_core interfaces
-├── core/di/                 # DI wiring (4-phase, see below)
+├── core/di/                 # DI wiring (5-phase, see below)
 ├── core/routing/            # window/router composition
 ├── core/widgets/            # desktop-only presentation
 ├── app.dart                 # root widget
 └── main.dart
 ```
 
-## DI — 4-phase init (`lib/core/di/injection.dart`)
+## DI — 5-phase init (`lib/core/di/injection.dart`)
 
-1. `getIt.init()` — desktop platform adapters (SecureStorage, UrlLauncher, …)
-2. `configureAuthDependencies(getIt)` — auth module
-3. `configureCoreDependencies(getIt)` — core module
-4. `configureDesktopCoreDependencies(getIt)` — desktop core module
+1. Register scope and `getIt.init()` — desktop platform capabilities
+2. `configurePersistenceDependencies(getIt: getIt)` — shared SQL/crypto repositories
+3. `configureAuthDependencies(getIt)` — auth module
+4. `configureCoreDependencies(getIt)` — core module
+5. `configureDesktopCoreDependencies(getIt)` — desktop core module
 
 All module registrations are lazy; respect the order — a later phase may
 depend on registrations from an earlier one at resolution time.
@@ -47,16 +48,19 @@ depend on registrations from an earlier one at resolution time.
   desktop equivalents go through platform adapters (ADR A11).
 - Follow the repo-root `AGENTS.md` error-handling and naming rules.
 
-## Prepared Shared Persistence Capabilities
+## Shared Persistence
 
 Bootstrap registers the build-mode scope explicitly and native master/directory
-capabilities lazily. They are unused until the shared-backend consumer cutover.
+capabilities lazily before the shared persistence module. Auth/core consumers
+use the same typed SQL/crypto repositories as mobile.
 The persistence directory reuses `DesktopApplicationSupportDirectory` without
 moving logs, helper state or other desktop files. macOS uses the new master-item
 service in classic Keychain mode; Windows/Linux keep existing native plugin
 protection and use the scoped logical master key. No desktop legacy importer or
 automatic credential cleanup is added. Primary-process admission remains before
-storage I/O and the current four-phase consumer sequence is unchanged.
+storage I/O. Desktop is unpublished: sign out in an old per-value-storage build
+before replacing it, then sign in once. New-store logout cannot revoke an old
+build's separate session.
 
 ## Commands
 

@@ -6,12 +6,13 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/src/auth_config.dart";
 import "package:sesori_auth/src/auth_manager.dart";
 import "package:sesori_auth/src/models/auth_login_result.dart";
+import "package:sesori_auth/src/models/auth_secret_key.dart";
 import "package:sesori_auth/src/models/auth_state.dart";
 import "package:sesori_auth/src/models/oauth_flow_errors.dart";
 import "package:sesori_auth/src/platform/oauth_device_descriptor_provider.dart";
-import "package:sesori_auth/src/platform/secure_storage.dart";
 import "package:sesori_auth/src/storage/oauth_storage_service.dart";
 import "package:sesori_auth/src/storage/token_storage_service.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -410,9 +411,9 @@ void main() {
     });
 
     test("a rejected refresh cannot be restored by a new manager", () async {
-      final _MemorySecureStorage storage = _MemorySecureStorage();
-      final TokenStorageService tokenStorage = TokenStorageService(storage);
-      final OAuthStorageService oauthStorage = OAuthStorageService(storage);
+      final storage = _MemorySecrets();
+      final tokenStorage = TokenStorageService(storage: storage);
+      final oauthStorage = OAuthStorageService(storage: storage);
       await tokenStorage.saveTokens(
         accessToken: "old-access-token",
         refreshToken: "revoked-refresh-token",
@@ -434,14 +435,14 @@ void main() {
         FakeOAuthDeviceDescriptorProvider(),
       );
       expect(await firstManager.getFreshAccessToken(forceRefresh: true), isNull);
-      expect(await storage.read(key: "access_token"), isNull);
-      expect(await storage.read(key: "refresh_token"), isNull);
-      expect(await storage.read(key: "auth_user"), isNull);
+      expect(await storage.read(key: AuthSecretKey.accessToken), isNull);
+      expect(await storage.read(key: AuthSecretKey.refreshToken), isNull);
+      expect(await storage.read(key: AuthSecretKey.user), isNull);
 
       final AuthManager relaunchedManager = AuthManager(
         MockHttpClient(),
-        TokenStorageService(storage),
-        OAuthStorageService(storage),
+        TokenStorageService(storage: storage),
+        OAuthStorageService(storage: storage),
         FakeOAuthDeviceDescriptorProvider(),
       );
       expect(await relaunchedManager.hasLocallyValidSession(), isFalse);
@@ -2197,19 +2198,19 @@ void main() {
   });
 }
 
-class _MemorySecureStorage() implements SecureStorage {
-  final Map<String, String> _values = <String, String>{};
+class _MemorySecrets() implements SecureStorageRepository {
+  final Map<SecretStorageKey, String> _values = {};
 
   @override
-  Future<String?> read({required String key}) async => _values[key];
+  Future<String?> read({required SecretStorageKey key}) async => _values[key];
 
   @override
-  Future<void> write({required String key, required String value}) async {
+  Future<void> write({required SecretStorageKey key, required String value}) async {
     _values[key] = value;
   }
 
   @override
-  Future<void> delete({required String key}) async {
+  Future<void> delete({required SecretStorageKey key}) async {
     _values.remove(key);
   }
 }

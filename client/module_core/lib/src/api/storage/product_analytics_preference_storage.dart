@@ -2,10 +2,11 @@ import "dart:convert";
 
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:injectable/injectable.dart";
-import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "../../foundation/models/product_analytics/product_analytics_preference.dart";
+import "../../foundation/persistence/persistence_keys.dart";
 
 part "product_analytics_preference_storage.freezed.dart";
 part "product_analytics_preference_storage.g.dart";
@@ -45,11 +46,9 @@ sealed class StoredProductAnalyticsPreference with _$StoredProductAnalyticsPrefe
 }
 
 @lazySingleton
-class ProductAnalyticsPreferenceStorage({required final SecureStorage _storage}) {
-  static const _keyPrefix = "product_analytics_preference_v1:";
-
+class ProductAnalyticsPreferenceStorage({required final PersisterRepository _persister}) {
   Future<StoredProductAnalyticsPreference?> read({required String userId}) async {
-    final value = await _storage.read(key: _key(userId));
+    final value = await _persister.readString(key: ProductAnalyticsPreferenceKey(userId: userId));
     if (value == null) return null;
     final StoredProductAnalyticsPreference record;
     try {
@@ -79,12 +78,14 @@ class ProductAnalyticsPreferenceStorage({required final SecureStorage _storage})
 
   Future<void> write({required StoredProductAnalyticsPreference record}) {
     final json = record.toJson()..["version"] = _storageVersion;
-    return _storage.write(key: _key(record.userId), value: jsonEncode(json));
+    return _persister.writeString(
+      key: ProductAnalyticsPreferenceKey(userId: record.userId),
+      value: jsonEncode(json),
+    );
   }
 
-  Future<void> delete({required String userId}) => _storage.delete(key: _key(userId));
-
-  String _key(String userId) => "$_keyPrefix$userId";
+  Future<void> delete({required String userId}) =>
+      _persister.deleteString(key: ProductAnalyticsPreferenceKey(userId: userId));
 }
 
 final class const ProductAnalyticsPreferenceStorageFormatException({

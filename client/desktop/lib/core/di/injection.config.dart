@@ -13,7 +13,6 @@
 import 'package:device_info_plus/device_info_plus.dart' as _i833;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     as _i163;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
@@ -49,8 +48,6 @@ import 'package:sesori_desktop/core/platform/desktop_plugin_authentication_brows
     as _i916;
 import 'package:sesori_desktop/core/platform/desktop_route_source.dart'
     as _i911;
-import 'package:sesori_desktop/core/platform/desktop_secure_storage_adapter.dart'
-    as _i757;
 import 'package:sesori_desktop/core/platform/desktop_share_client.dart'
     as _i692;
 import 'package:sesori_desktop/core/platform/desktop_url_launcher.dart'
@@ -95,9 +92,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i553.RelayCryptoService>(
       () => registerModule.relayCryptoService,
-    );
-    gh.lazySingleton<_i558.FlutterSecureStorage>(
-      () => registerModule.secureStorage,
     );
     gh.lazySingleton<_i880.DesktopFileSaveClient>(
       () => _i880.DesktopFileSaveClient(),
@@ -171,11 +165,6 @@ extension GetItInjectableX on _i174.GetIt {
       dispose: (i) => i.dispose(),
     );
     gh.singleton<_i948.RouteSource>(() => _i911.DesktopRouteSource());
-    gh.lazySingleton<_i948.SecureStorage>(
-      () => _i757.DesktopSecureStorageAdapter(
-        storage: gh<_i558.FlutterSecureStorage>(),
-      ),
-    );
     gh.lazySingleton<_i948.AttributionClaimStorage>(
       () => _i804.NoOpAttributionClaimStorage(),
     );

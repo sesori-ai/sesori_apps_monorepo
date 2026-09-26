@@ -25,7 +25,10 @@ Decorates `HttpApiClient` with bearer token injection and automatic one-time ret
 
 **`TokenStorageService` / `OAuthStorageService`**
 
-Internal services for persisting access/refresh tokens and PKCE state via the `SecureStorage` platform interface.
+Internal services persist tokens and OAuth state through `sesori_persistence`'s
+`SecureStorageRepository`, using canonical `AuthSecretKey` identities. Auth owns
+serialization and mutation fencing; the shared repository owns encryption and
+cached native master-key initialization.
 
 **`AuthState`**
 
@@ -63,12 +66,17 @@ Freezed sealed class for typed error handling:
 
 ```dart
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 
-// Phase 2 of 3-phase init — after platform adapters, before core:
+// After platform capabilities and scope, before core:
+configurePersistenceDependencies(getIt: getIt);
 configureAuthDependencies(getIt);
 ```
 
-Platform adapters (`SecureStorage`, `http.Client`) must be registered before calling this. `configureCoreDependencies` must be called after.
+Shells first register `PersistenceScope`, `MasterKeyStore`, `PersistenceDirectory`,
+`http.Client` and `OAuthDeviceDescriptorProvider`. Core registration follows auth.
+Production mobile then awaits its deprecated import before resolving consumers;
+development and desktop do not invoke it.
 
 ## Testing
 

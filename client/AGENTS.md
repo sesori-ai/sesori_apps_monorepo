@@ -46,12 +46,12 @@ auth, core, desktop-core or Flutter. Domain keys/serialization stay in auth/core
 shells supply native master-key access, storage scope and a persistent directory
 with the appropriate backup policy. Temporary public-mobile data migration stays
 isolated and explicitly deprecated in core, never inside normal repositories.
-Auth/core now depend on persistence for domain key contracts and the isolated
-mobile importer. Shells now register a build-mode scope value and lazy native
-master/directory capabilities; mobile also registers the temporary source.
-Neither shell configures the shared storage backend or invokes import yet.
-Consumer/bootstrap integration follows the active `desktop-master-key-storage`
-plan; the existing DI sequence below is unchanged until that integration lands.
+Auth/core consume its typed repositories on both clients. Shells register the
+build-mode scope and lazy native master/directory capabilities before shared
+persistence. Production mobile awaits the deprecated importer before consumers;
+development and desktop never resolve it. An import failure disposes the partial
+graph and renders a standalone localized recovery root, without starting normal
+consumers or analytics.
 
 `module_app_ui` owns shared Flutter localization, context, route-presentation,
 settings/harness-management screens, and adaptive-screen foundations above
@@ -98,20 +98,26 @@ operations use the dedicated plugin-scoped request DTO.
 
 ## DI
 
-3-phase init in `app/lib/core/di/injection.dart`:
+Mobile init in `app/lib/core/di/injection.dart`:
 
-1. `getIt.init()` — Flutter platform adapters
-2. `configureAuthDependencies(getIt)` — auth module
-3. `configureCoreDependencies(getIt)` — core module
+1. Register the build-mode scope and `getIt.init()` — platform capabilities
+2. `configurePersistenceDependencies(getIt: getIt)` — shared SQL/crypto repositories
+3. `configureAuthDependencies(getIt)` — auth module
+4. `configureCoreDependencies(getIt)` — core module
+5. Production only: await deprecated native import before resolving consumers
+6. Prepare/register analytics runtime, then resolve thumbnail and normal consumers
 
 New services register in their module's `configure*Dependencies()` function, not in `app/`. Respect the init order — a core service cannot depend on something that hasn't been registered yet.
 
-Desktop uses the same first three phases, then configures desktop core:
+Desktop uses five phases, without mobile migration:
 
-1. Desktop platform adapters for `module_core` and `module_desktop_core`
-2. `configureAuthDependencies(getIt)`
-3. `configureCoreDependencies(getIt)`
-4. `configureDesktopCoreDependencies(getIt)`
+1. Desktop platform capabilities and build-mode scope
+2. `configurePersistenceDependencies(getIt: getIt)`
+3. `configureAuthDependencies(getIt)`
+4. `configureCoreDependencies(getIt)`
+5. `configureDesktopCoreDependencies(getIt)`
+
+Retain primary-process admission before storage I/O and disabled desktop analytics.
 
 Desktop services register in `module_desktop_core`, not in `client/desktop`.
 
@@ -144,7 +150,7 @@ streams exposed by `ConnectionService`. Desktop control cubits may subscribe to
 Root `AGENTS.md` has the full suffix vocabulary. Concrete client examples:
 
 - **Platform abstractions** (in `module_core/foundation/platform/`) are interfaces named by capability: `UrlLauncher`, `DeepLinkSource`, `LifecycleSource`, `RouteSource`, `NotificationCanceller`
-- **Platform implementations** (in `app/core/platform/`) use `Adapter` or `Flutter*` prefix for the concrete Flutter version: `FlutterSecureStorageAdapter`, `FlutterUrlLauncher`, `AppLifecycleObserver`, `AppLinksDeepLinkSource`, `GoRouterRouteSource`
+- **Platform implementations** (in `app/core/platform/`) use `Adapter` or `Flutter*` prefix for the concrete Flutter version: `FlutterMasterKeyStore`, `FlutterUrlLauncher`, `AppLifecycleObserver`, `AppLinksDeepLinkSource`, `GoRouterRouteSource`
 - **Transport Layer 0** uses `Client` / `Service`: `RelayClient` (raw WebSocket), `ConnectionService` (lifecycle + reconnect), `RelayHttpApiClient` (HTTP-over-relay)
 - **Layer 1 APIs** use `Api`: `SessionApi`, `ProjectApi`, `VoiceApi`, `NotificationApi`
 - **Layer 2 Repositories** use `Repository`: `SessionRepository`, `ProjectRepository`, `NotificationPreferencesRepository`
@@ -229,5 +235,5 @@ or single-instance business logic in `client/desktop`.
 - [`app/AGENTS.md`](app/AGENTS.md) — Flutter shell conventions, routing, widget patterns
 - [`module_core/AGENTS.md`](module_core/AGENTS.md) — pure Dart conventions, cubit/service patterns
 - [`module_auth/AGENTS.md`](module_auth/AGENTS.md) — auth package public API, token lifecycle
-- [`desktop/AGENTS.md`](desktop/AGENTS.md) — desktop Flutter shell conventions, 4-phase DI
+- [`desktop/AGENTS.md`](desktop/AGENTS.md) — desktop Flutter shell conventions, 5-phase DI
 - [`module_desktop_core/AGENTS.md`](module_desktop_core/AGENTS.md) — pure Dart desktop business module, target layer structure

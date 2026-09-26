@@ -12,13 +12,13 @@ import "register_module.dart";
 
 final GetIt getIt = GetIt.instance;
 
-// Desktop 4-phase DI initialization order (see client/AGENTS.md):
-//   1. getIt.init()                         — desktop platform adapters
-//      (SecureStorage, UrlLauncher, LifecycleSource, OAuthDeviceDescriptor-
-//      Provider, http.Client, …)
-//   2. configureAuthDependencies(…)         — auth module
-//   3. configureCoreDependencies(…)         — core module
-//   4. configureDesktopCoreDependencies(…)  — desktop core module
+// Desktop 5-phase DI initialization order (see client/AGENTS.md):
+//   1. getIt.init()                         — desktop platform capabilities
+//   2. configurePersistenceDependencies(…)  — shared storage
+//   3. configureAuthDependencies(…)         — auth module
+//   4. configureCoreDependencies(…)         — core module
+//   5. configureDesktopCoreDependencies(…)  — desktop core module
+// Desktop never resolves the deprecated mobile importer.
 //
 // Module registrations are lazy: resolution happens on first getIt<T>() use.
 // The only eager registration is the shell's own DesktopLifecycleObserver,
@@ -33,6 +33,7 @@ void configureDesktopDependencies({required GoRouter router, required Future<voi
     const AnalyticsRuntimeCapability.disabled(reason: AnalyticsRuntimeDisabledReason.unsupportedPlatform),
   );
   getIt.init();
+  configurePersistenceDependencies(getIt: getIt);
   configureAuthDependencies(getIt);
   configureCoreDependencies(getIt);
   configureDesktopCoreDependencies(getIt);

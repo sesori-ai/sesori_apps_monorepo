@@ -12,7 +12,8 @@ product, the design catalog, and the shared client modules they consume.
 | `design_catalog/` | Web-only interactive catalog for auditing production Prego components and states. |
 | `module_core/` | Pure Dart shared business logic: transport, APIs, repositories, services, cubits, and routing models. |
 | `module_desktop_core/` | Pure Dart desktop business logic: bridge supervision, control orchestration, trackers, services, and cubits. |
-| `module_auth/` | Authentication, OAuth, token lifecycle, secure storage seams, and authenticated HTTP. |
+| `module_auth/` | Authentication, OAuth, token lifecycle, and authenticated HTTP. |
+| `module_persistence/` | Pure-Dart typed SQL preferences, encrypted secrets, and cached native master-key ownership. |
 | `module_prego/` | Shared Flutter design system: theme, fonts, icons, and components. |
 | `module_app_ui/` | Shared Flutter localization, route presentation, context extensions, settings/harness management, and adaptive UI. |
 
@@ -37,6 +38,10 @@ graph TD
   desktop_core --> shared[shared/sesori_shared]
   core --> auth[client/module_auth]
   auth --> shared
+  core --> persistence[client/module_persistence]
+  auth --> persistence
+  mobile --> persistence
+  desktop --> persistence
 ```
 
 Never reverse these dependencies. The product shells may depend on
@@ -77,18 +82,22 @@ appropriate pure Dart module, not in product shells or `module_app_ui`.
 
 ## Dependency Injection
 
-Mobile initializes three phases:
+Mobile startup:
 
-1. Mobile platform adapters
-2. `configureAuthDependencies(getIt)`
-3. `configureCoreDependencies(getIt)`
+1. Build-mode `PersistenceScope` and mobile platform adapters
+2. `configurePersistenceDependencies(getIt: getIt)`
+3. `configureAuthDependencies(getIt)`
+4. `configureCoreDependencies(getIt)`
+5. Production only: await the deprecated native-storage import
+6. Prepare analytics and resolve consumers
 
-Desktop initializes four phases:
+Desktop initializes five phases without mobile migration:
 
-1. Desktop platform adapters for `module_core` and `module_desktop_core`
-2. `configureAuthDependencies(getIt)`
-3. `configureCoreDependencies(getIt)`
-4. `configureDesktopCoreDependencies(getIt)`
+1. Build-mode scope and desktop platform adapters
+2. `configurePersistenceDependencies(getIt: getIt)`
+3. `configureAuthDependencies(getIt)`
+4. `configureCoreDependencies(getIt)`
+5. `configureDesktopCoreDependencies(getIt)`
 
 ## Getting Started
 
@@ -129,6 +138,7 @@ Target individual members when needed:
 (cd module_core && dart test)
 (cd module_desktop_core && dart test)
 (cd module_auth && dart test)
+(cd module_persistence && dart test)
 (cd module_prego && flutter test)
 (cd module_app_ui && flutter test)
 ```

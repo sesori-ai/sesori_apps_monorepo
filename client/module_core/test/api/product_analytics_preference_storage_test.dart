@@ -1,35 +1,37 @@
 import "dart:convert";
 
+import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:test/test.dart";
 
 const _userKey = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const _operationId = "123e4567-e89b-42d3-a456-426614174000";
 
-class _MemorySecureStorage() implements SecureStorage {
+class _MemoryPersister() extends Fake implements PersisterRepository {
   final values = <String, String>{};
 
   @override
-  Future<String?> read({required String key}) async => values[key];
+  Future<String?> readString({required StringPersistenceKey key}) async => values[key.storageKey];
 
   @override
-  Future<void> write({required String key, required String value}) async {
-    values[key] = value;
+  Future<void> writeString({required StringPersistenceKey key, required String value}) async {
+    values[key.storageKey] = value;
   }
 
   @override
-  Future<void> delete({required String key}) async {
-    values.remove(key);
+  Future<void> deleteString({required StringPersistenceKey key}) async {
+    values.remove(key.storageKey);
   }
 }
 
 void main() {
-  late _MemorySecureStorage secureStorage;
+  late _MemoryPersister persister;
   late ProductAnalyticsPreferenceStorage storage;
 
   setUp(() {
-    secureStorage = _MemorySecureStorage();
-    storage = ProductAnalyticsPreferenceStorage(storage: secureStorage);
+    persister = _MemoryPersister();
+    storage = ProductAnalyticsPreferenceStorage(persister: persister);
   });
 
   test("round-trips each versioned account-scoped record variant", () async {
@@ -73,7 +75,7 @@ void main() {
       }
     }
 
-    final encoded = jsonDecode(secureStorage.values.values.single) as Map<String, dynamic>;
+    final encoded = jsonDecode(persister.values.values.single) as Map<String, dynamic>;
     expect(encoded["version"], 1);
     expect(encoded["userId"], "user-a");
     expect(encoded.keys, isNot(contains("rawAccountId")));
@@ -145,14 +147,14 @@ void main() {
     ];
 
     for (final payload in invalidPayloads) {
-      secureStorage.values["product_analytics_preference_v1:user-a"] = jsonEncode(payload);
+      persister.values["product_analytics_preference_v1:user-a"] = jsonEncode(payload);
       await expectLater(storage.read(userId: "user-a"), throwsFormatException);
     }
   });
 
   test("malformed JSON errors never retain the stored source", () async {
     const malformed = '{"userId":"raw-user","userKey":"secret-key"';
-    secureStorage.values["product_analytics_preference_v1:user-a"] = malformed;
+    persister.values["product_analytics_preference_v1:user-a"] = malformed;
 
     try {
       await storage.read(userId: "user-a");

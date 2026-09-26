@@ -2,16 +2,15 @@
 
 ## Execution
 
-- Status: #1744 merged with 24 passing checks. Extracted recovery foundation
-  passes eight focused tests, three analyses and architecture review.
+- Status: #1751 is open. Initial head passed 33 checks; Codex's README finding
+  is corrected in a documentation-only follow-up. Native qualification remains.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
   with a retirement condition and deletion checklist.
-- Current branch: `sesori/desktop-master-key-storage-startup-recovery`, from
-  fixed main `064dcf8` in the supplied worktree. No additional worktree is
-  allowed. One local successor, `sesori/desktop-master-key-storage-client-cutover`,
-  preserves complete checkpoint `ea7550e`.
+- Current branch: `sesori/desktop-master-key-storage-client-cutover`, preserving
+  complete checkpoint `ea7550e` and merging fixed main `33c7815`. No additional
+  worktree is allowed. No regression-reconciliation successor has started.
 - #1717 is closed as superseded, not merged. Its published desktop checkpoint
   `4a27888` and the full shared checkpoint `de38951` remain in history.
 - One open PR and at most one local successor. Current total: **12 PRs** after
@@ -29,8 +28,8 @@
 | 3.d — Cached shared secrets | Merged | #1734; 46 shared tests, architecture approval, clean analysis/generation and 24 passing CI checks. |
 | 4.a — Deprecated mobile import | Merged | #1739; 11 recovery tests, three analyses, architecture approval and 24 passing CI checks; unwired. |
 | 4.b — Native capabilities and backup | Merged | #1744; 28 tests, two analyses, architecture approval and 24 passing checks; no native qualification. |
-| 4.c — Startup recovery | Architecture approved | PR 9; eight tests, three analyses and two font-loaded fixture previews; no storage cutover. |
-| 4.d — Both-client cutover | Local checkpoint | PR 10; preserved `ea7550e`, to reconcile after recovery foundation merges. |
+| 4.c — Startup recovery | Merged | #1749; eight tests, three analyses, architecture approval and 22 passing checks; no storage cutover. |
+| 4.d — Both-client cutover | In PR | #1751; architecture approved, 24 reconciled shell cases plus retained auth/core evidence; README feedback corrected. |
 | 5 — Regression reconciliation | Not started | PR 11; behavior docs also accompany their implementation. |
 | 6 — Required qualification/retirement | Not started | PR 12; plan remains active until recorded mobile + desktop matrix passes. |
 
@@ -170,6 +169,29 @@
   `pr-media` (`a6efba6`), with no account content or real app/service launch.
   Architecture review `324bf4c7-5bc4-4cfe-94b1-c56e5d52401e` approved exact
   `064dcf8..683077f` (12 paths, 274 lines) without findings; successor excluded.
+- #1749 merged with current-head Codex complete and no findings; its terminal
+  monitor report recorded 22 passing checks. Merged base is `33c7815`.
+- Reconciled cutover: 13 mobile and 11 desktop cases pass, including upstream
+  shared-email-login consumers, production admission, pending disable, local
+  auth/preferences and cold reopen. Both shell analyses and exact Android XML
+  exclusions pass. Auth/core source, tests and configs are byte-identical to
+  `ea7550e`, so retain their 85/46 passing cases and clean analyses rather than
+  rerunning unchanged inputs. Across saved latest-per-suite evidence there are
+  163 unique passing cases, not a new full-suite invocation. DI remains the
+  generated checkpoint output; no generated conflicts or hand edits occurred.
+  Formatting checked 35 handwritten Dart files; obsolete runtime interface and
+  adapter symbol searches found no remaining Dart references.
+  Architecture review `554a1f9d-c952-4df8-8501-eb9595df2e64` approved exact
+  `33c7815..90b20bd` (54 paths, 1,539 lines) without findings.
+  Codex identified stale package READMEs; corrected setup/dependency guidance in
+  mobile, auth, core, workspace and persistence READMEs. Documentation checks
+  cover retired names/phases, public exports, code fences and whitespace;
+  production/test inputs remain unchanged, so no suite or architecture rerun.
+- Native qualification must replace the authenticated macOS fixture's old
+  per-value seeding and retained desktop baseline before using it with this
+  cutover. Seed with production Dart storage; do not copy SQL/crypto into Swift
+  or Python. The CI-only packaged platform probe already uses shared storage,
+  but it has not been executed on a native runner for this cutover.
 - None of this evidence establishes released-mobile migration, mobile
   backup/restore, real credential behavior, packaged replacement or actual
   prompt counts. Those gates remain.

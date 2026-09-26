@@ -19,7 +19,7 @@ See [`../AGENTS.md`](../AGENTS.md) for shared conventions (architecture layering
   The app shell consumes those widgets; it does not own duplicate implementations
   or manually register their platform views.
 - Guard `emit()` with `if (isClosed) return;` after any async gap in cubits
-- DI configured in `lib/core/di/injection.dart` — calls `configureCoreDependencies(getIt)` after Flutter-specific registrations
+- DI configured in `lib/core/di/injection.dart`: platform → persistence → auth → core → production migration → consumers
 
 ## Project Structure
 
@@ -29,7 +29,7 @@ lib/
 ├── core/
 │   ├── di/           Flutter DI — registers platform adapters, then calls core init
 │   ├── extensions/   Mobile-only Flutter mappings
-│   ├── platform/     FlutterSecureStorageAdapter, FlutterVoiceCapture, FlutterUrlLauncher, AppLifecycleObserver
+│   ├── platform/     FlutterMasterKeyStore, FlutterVoiceCapture, FlutterUrlLauncher, AppLifecycleObserver
 │   ├── routing/      GoRouter routes, deep link handling (AppLinksDeepLinkSource)
 │   └── widgets/      Connection overlay, modal bottom sheets
 ├── features/         Screen widgets (login, project_list, session_list, session_detail)
@@ -103,7 +103,6 @@ so the dependency is explicit and the adapter can be tested in isolation.
 
 | Interface | Implementation | Wraps |
 |-----------|---------------|-------|
-| `SecureStorage` | `FlutterSecureStorageAdapter` | Existing per-value `flutter_secure_storage` (until cutover) |
 | `MasterKeyStore` | `FlutterMasterKeyStore` | One scoped native item in the new persistence namespace |
 | `PersistenceDirectory` | `FlutterPersistenceDirectory` | Existing app-support resolver; ready `persistence/` subtree |
 | `LegacyNativeStorage` | `FlutterLegacyNativeStorageAdapter` | Temporary old-keyspace enumeration/named deletion |
@@ -111,11 +110,14 @@ so the dependency is explicit and the adapter can be tested in isolation.
 | `DeepLinkSource` | `AppLinksDeepLinkSource` | `app_links` |
 
 The persistence contracts come from lower-level `sesori_persistence`. Scope is
-registered explicitly (release → production; debug/profile → development);
-capabilities are lazy and remain unused until the planned consumer cutover.
-Android backup XML currently excludes only the unused database subtree. Legacy
-credential preferences remain eligible until migration/cutover; iOS retains
-Application Support backup eligibility. The legacy adapter stays inside
-`deprecated_native_storage_v1/` and is deleted with its core importer.
+selected by `main` (release → production; debug/profile → development), then
+registered explicitly before lazy platform DI. Production startup awaits the
+deprecated importer before consumers; development does not construct its source.
+Import failure disposes the partial graph and renders `PersistenceStartupFailureApp`
+without DI, analytics or preference reads. Only OS close/reopen retries.
+Android backup XML excludes the database subtree and exact legacy/new native
+credential preferences; iOS retains Application Support backup eligibility.
+The legacy adapter stays inside `deprecated_native_storage_v1/` and is deleted
+with its core importer.
 
 `AppLifecycleObserver` bridges Flutter's `WidgetsBindingObserver` to `ConnectionService.onAppBackgrounded()` / `onAppResumed()`.

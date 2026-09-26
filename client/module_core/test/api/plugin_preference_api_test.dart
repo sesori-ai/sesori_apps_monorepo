@@ -1,32 +1,33 @@
-import "package:sesori_auth/sesori_auth.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/src/api/plugin_preference_api.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:test/test.dart";
 
-class _InMemorySecureStorage() implements SecureStorage {
+class _InMemoryPersister() extends Fake implements PersisterRepository {
   final Map<String, String> data = {};
 
   @override
-  Future<String?> read({required String key}) async => data[key];
+  Future<String?> readString({required StringPersistenceKey key}) async => data[key.storageKey];
 
   @override
-  Future<void> write({required String key, required String value}) async {
-    data[key] = value;
+  Future<void> writeString({required StringPersistenceKey key, required String value}) async {
+    data[key.storageKey] = value;
   }
 
   @override
-  Future<void> delete({required String key}) async {
-    data.remove(key);
+  Future<void> deleteString({required StringPersistenceKey key}) async {
+    data.remove(key.storageKey);
   }
 }
 
 void main() {
   group("PluginPreferenceApi", () {
-    late _InMemorySecureStorage storage;
+    late _InMemoryPersister storage;
     late PluginPreferenceApi api;
 
     setUp(() {
-      storage = _InMemorySecureStorage();
-      api = PluginPreferenceApi(storage: storage);
+      storage = _InMemoryPersister();
+      api = PluginPreferenceApi(persister: storage);
     });
 
     test("round-trips a plugin id under the encoded bridge key", () async {

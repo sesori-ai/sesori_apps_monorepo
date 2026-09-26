@@ -3,6 +3,7 @@ import "dart:async";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/client/relay_http_client.dart";
@@ -254,7 +255,7 @@ class MockRelayClient() extends Mock implements RelayClient;
 
 class MockVoiceApi() extends Mock implements VoiceApi;
 
-class MockSecureStorage() extends Mock implements SecureStorage;
+class MockSecureStorageRepository() extends Mock implements SecureStorageRepository;
 
 class MockDeepLinkSource() extends Mock implements DeepLinkSource;
 

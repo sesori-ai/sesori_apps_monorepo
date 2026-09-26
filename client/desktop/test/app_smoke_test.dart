@@ -3,25 +3,29 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/app.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _InMemorySecureStorage() implements SecureStorage {
-  final Map<String, String> _values = <String, String>{};
+class _InMemorySecrets() implements SecureStorageRepository {
+  final Map<SecretStorageKey, String> _values = {};
 
   @override
-  Future<String?> read({required String key}) async => _values[key];
+  Future<String?> read({required SecretStorageKey key}) async => _values[key];
 
   @override
-  Future<void> write({required String key, required String value}) async => _values[key] = value;
+  Future<void> write({required SecretStorageKey key, required String value}) async => _values[key] = value;
 
   @override
-  Future<void> delete({required String key}) async => _values.remove(key);
+  Future<void> delete({required SecretStorageKey key}) async => _values.remove(key);
 }
+
+class _MockPersister() extends Mock implements PersisterRepository;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -35,10 +39,14 @@ void main() {
       router: desktopRouter,
       routerReady: desktopRouterReady,
     );
-    // The secure-storage plugin has no platform channel under flutter_test;
-    // swap in an in-memory fake so the gate's local-session check completes.
-    getIt.unregister<SecureStorage>();
-    getIt.registerLazySingleton<SecureStorage>(_InMemorySecureStorage.new);
+    // Keep widget behavior isolated from real application files/native keys.
+    getIt.unregister<SecureStorageRepository>();
+    getIt.registerLazySingleton<SecureStorageRepository>(_InMemorySecrets.new);
+    final persister = _MockPersister();
+    when(() => persister.readBool(key: BoolPreferenceKey.hasRegisteredBridges)).thenAnswer((_) async => null);
+    when(() => persister.writeString(key: StringPreferenceKey.appearanceMode, value: "light")).thenAnswer((_) async {});
+    getIt.unregister<PersisterRepository>();
+    getIt.registerLazySingleton<PersisterRepository>(() => persister);
     final _UnavailableSystemTray systemTray = _UnavailableSystemTray();
     getIt.unregister<SystemTray>();
     getIt.registerLazySingleton<SystemTray>(() => systemTray);

@@ -2,7 +2,9 @@ import "dart:async";
 
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 
+import "../foundation/persistence/persistence_keys.dart";
 import "../logging/logging.dart";
 
 /// Remembers the one-way "this account has registered at least one bridge"
@@ -30,13 +32,10 @@ import "../logging/logging.dart";
 /// signing in on the same device never inherits this one's answer.
 @lazySingleton
 class RegisteredBridgesStore({
-  required SecureStorage secureStorage,
+  required PersisterRepository persister,
   required AuthSession authSession,
 }) {
-  static const _storageKey = "has_registered_bridges";
-  static const _storedValue = "true";
-
-  final SecureStorage _storage = secureStorage;
+  final PersisterRepository _persister = persister;
   StreamSubscription<AuthState>? _authSubscription;
 
   /// In-memory mirror of the latch. `true` once the account is known to have a
@@ -65,7 +64,7 @@ class RegisteredBridgesStore({
     if (_knownRegistered) return true;
     final generation = _authGeneration;
     try {
-      if (await _storage.read(key: _storageKey) == _storedValue) {
+      if (await _persister.readBool(key: BoolPreferenceKey.hasRegisteredBridges) ?? false) {
         if (generation == _authGeneration) _knownRegistered = true;
       }
     } catch (error, stackTrace) {
@@ -80,7 +79,7 @@ class RegisteredBridgesStore({
     if (_knownRegistered) return;
     _knownRegistered = true;
     try {
-      await _storage.write(key: _storageKey, value: _storedValue);
+      await _persister.writeBool(key: BoolPreferenceKey.hasRegisteredBridges, value: true);
     } catch (error, stackTrace) {
       loge("Failed to persist registered-bridges latch", error, stackTrace);
     }
@@ -98,7 +97,7 @@ class RegisteredBridgesStore({
   /// logout listener.
   Future<void> clear() async {
     try {
-      await _storage.delete(key: _storageKey);
+      await _persister.deleteBool(key: BoolPreferenceKey.hasRegisteredBridges);
       _knownRegistered = false;
     } catch (error, stackTrace) {
       loge("Failed to clear the registered-bridges latch", error, stackTrace);

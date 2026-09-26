@@ -23,9 +23,9 @@ import 'package:sesori_auth/src/interfaces/auth_token_provider.dart' as _i264;
 import 'package:sesori_auth/src/interfaces/oauth_flow_provider.dart' as _i798;
 import 'package:sesori_auth/src/platform/oauth_device_descriptor_provider.dart'
     as _i63;
-import 'package:sesori_auth/src/platform/secure_storage.dart' as _i892;
 import 'package:sesori_auth/src/storage/oauth_storage_service.dart' as _i765;
 import 'package:sesori_auth/src/storage/token_storage_service.dart' as _i164;
+import 'package:sesori_persistence/sesori_persistence.dart' as _i903;
 
 extension GetItInjectableX on _i174.GetIt {
   // initializes the registration of main-scope dependencies inside of GetIt
@@ -36,10 +36,14 @@ extension GetItInjectableX on _i174.GetIt {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final authModule = _$AuthModule();
     gh.lazySingleton<_i765.OAuthStorageService>(
-      () => _i765.OAuthStorageService(gh<_i892.SecureStorage>()),
+      () => _i765.OAuthStorageService(
+        storage: gh<_i903.SecureStorageRepository>(),
+      ),
     );
     gh.lazySingleton<_i164.TokenStorageService>(
-      () => _i164.TokenStorageService(gh<_i892.SecureStorage>()),
+      () => _i164.TokenStorageService(
+        storage: gh<_i903.SecureStorageRepository>(),
+      ),
     );
     gh.lazySingleton<_i542.HttpApiClient>(
       () => _i542.HttpApiClient(gh<_i519.Client>()),

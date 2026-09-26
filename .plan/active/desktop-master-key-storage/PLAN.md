@@ -348,6 +348,9 @@ these boundaries without claiming cross-device synchronization.
 Register database disposal with GetIt. Drift owns the connection/isolate; no new
 lifecycle controller, background flush loop or global file lock. Native fixture
 seeding uses production Dart storage/schema code, not a copied Python/Swift DDL.
+The existing authenticated macOS upgrade fixture seeds per-value credentials and
+retains an old-format desktop baseline. Adapt both during required qualification
+before using that fixture with the cutover; no desktop legacy migration is owed.
 
 ## Complexity, safeguards and cleanup
 
@@ -398,9 +401,10 @@ deprecated importer #1739 and native capabilities #1744 merged.
 
 The complete consumer cutover at `ea7550e` (base `064dcf8`) measures 1,650 lines:
 1,545 authored and 105 generated. It passes 153 focused tests and five module/
-shell analyses. Extract the standalone recovery root/bootstrap seam first, then
-keep all storage consumers and production import admission atomic in the next
-PR. No temporary backend or compatibility adapter bridges this split.
+shell analyses. Standalone recovery #1749 merged; reconcile the preserved
+consumer checkpoint with fixed main `33c7815`, keeping every storage consumer
+and production import admission atomic. No temporary backend or compatibility
+adapter bridges this split.
 
 | Milestone | Exact PR title | Scope / expected result | Estimate |
 |---|---|---|---|
@@ -412,8 +416,8 @@ PR. No temporary backend or compatibility adapter bridges this split.
 | 3.d | 🚧 [desktop-master-key-storage] Add cached shared secret storage [step 6/12] | #1734 merged; cached-key repository, encryption/recovery/concurrency tests and docs; no shell cutover. | Completed: 672 lines (655 authored, 17 generated) |
 | 4.a | 🚧 [desktop-master-key-storage] Prepare deprecated mobile storage migration [step 7/12] | #1739 merged; domain keys and deprecated importer with recovery tests; not invoked yet. | Completed: 946 lines (773 authored, 173 generated) |
 | 4.b | 🚧 [desktop-master-key-storage] Provide native client persistence capabilities [step 8/12] | #1744 merged; lazy master/directory/source ports and DB-only Android backup exclusion; no shell cutover. | Completed: 590 lines (565 authored, 25 generated) |
-| 4.c | ⚙️ [desktop-master-key-storage] Prepare storage-upgrade recovery [step 9/12] | Stateless localized recovery root and typed bootstrap catch/disposal, with no migration invocation or backend change. | 180–280 authored/generated |
-| 4.d | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 10/12] | All consumers/exports/bootstrap/guidance in lockstep, production import admission, credential backup exclusions, adapter removal and updated native probe. | Preserved checkpoint; approximately 1,470 lines before updated tracking |
+| 4.c | ⚙️ [desktop-master-key-storage] Prepare storage-upgrade recovery [step 9/12] | #1749 merged; localized recovery root and typed bootstrap catch/disposal; no storage cutover. | Completed: 280 lines (261 authored, 19 generated) |
+| 4.d | 🚧 [desktop-master-key-storage] Switch both clients to shared persistence [step 10/12] | All consumers/exports/bootstrap/guidance in lockstep, production import admission, credential backup exclusions, adapter removal and updated native probe. | Approximately 1,640 lines including corrected package READMEs/evidence and 86 generated; keep remaining atomic handoff coherent |
 | 5 | 🌿 [desktop-master-key-storage] Complete shared persistence regression documentation [step 11/12] | Reconcile feature/matrix/distribution/support evidence; no additional runtime/database change. | 100–250 authored |
 | 6 | ⚙️ [desktop-master-key-storage] Qualify and retire shared client persistence [step 12/12] | Required full recorded matrix and bounded evidence; retire plan only on pass, not the still-required deprecated importer. | 100–250 authored |
 
@@ -501,3 +505,7 @@ or successful build is not native authorization, migration or distribution proof
   approved exact range `064dcf8..683077f` (all 12 paths) without findings. The
   preserved consumer/import-admission successor and native qualification remain
   outside this approval.
+- Consumer-cutover implementation review `554a1f9d-c952-4df8-8501-eb9595df2e64`
+  approved exact range `33c7815..90b20bd` (all 54 paths) without findings. This
+  approves architecture, not actual native migration, backup/restore or prompt
+  behavior; required qualification remains.
