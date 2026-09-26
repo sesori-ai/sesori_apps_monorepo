@@ -811,7 +811,8 @@ the first spinner with no new state at all.
   release is defined on the pending variant, and removal is the repository's own
   consequence of nothing being owed rather than a `complete` call. This step
   defines the streams it has readers for: the three-variant outcome stream (read
-  by `NewSessionCubit`, and by step 5's shell listener for its third variant) and
+  by `NewSessionCubit`, and in step 5 by `SessionLaunchCubit` for its third
+  variant) and
   `watchForSession` (read by `SessionDetailCubit`). `watch(launchId:)` arrives in
   step 4, and the placeholder-row stream, the association stream and
   `SessionLaunchCubit` in step 5, each with its first reader.
@@ -1154,7 +1155,9 @@ the first spinner with no new state at all.
   attachments as the
   composer's `initialAttachments` (today `const []`,
   `session_detail_composer_controls.dart:69`), which step 4's budget-checked
-  restoration then stages. An empty composer hands over nothing. When the created
+  restoration then stages; the composer's `onInitialAttachmentsConsumed` (a no-op
+  there today) clears the cubit's copy, so a recreated composer cannot stage them
+  again. An empty composer hands over nothing. When the created
   listener skips navigation because its route is no longer current, the composing
   route still holds its own composer, so nothing is lost there either.
 - **Failure (D1, settled).** Q2 restores the first submission into the composer
@@ -1271,8 +1274,9 @@ the first spinner with no new state at all.
       `sessionMenuEntries` and `updateActionSession` require a real `Session` and
       are untouched.
 - `SessionListContent` / `SessionListFilteredContent` gain
-  `required List<PendingSessionLaunch> pendingLaunches` and insert those rows at
-  the head of the **Today** heading, above running sessions, in
+  `required List<PendingSessionLaunch> pendingLaunches` and insert those rows,
+  newest `startedAt` first (the order their running rows will take, `launchId`
+  breaking a tie), at the head of the **Today** heading, above running sessions, in
   `_sessionListRows` (`session_list_content.dart:64-89`) — the same place the
   heading rows are already synthesised. **D4, settled:** a launch is excluded from
   the All/Running/Unread counts, which keep describing the loaded list exactly,
@@ -1376,11 +1380,15 @@ the first spinner with no new state at all.
   `showComposer = loaded.sessions.isEmpty || _creating` is untouched, because
   launches never enter `sessions`. Confirmed as the reason for the separate
   field.
-- **Failure after the user has left (D5, settled).** A shell-level listener on the
-  outcome stream — provided beside `SessionLaunchCubit` on both shells, so it
-  lives as long as the app — removes the row and shows **one**
+- **Failure after the user has left (D5, settled).** `SessionLaunchCubit` reads
+  `SessionLaunchFailedAfterLeaving` from the outcome stream and re-exposes it as a
+  notice stream, as `SessionDetailCubit` does its notices; a shell-level listener
+  on that cubit — provided with it on both shells, so it lives as long as the app,
+  and reading no repository — removes the row and shows **one**
   `PregoPopupAlertPresenter` alert naming the project, through one new localised
-  string. A row that appeared and then silently vanished is exactly the
+  string, followed by the existing `newSessionCreationDuplicateWarning`
+  (`new_session_view.dart:110-113`), because creation is not idempotent and the
+  composing failure already warns the same way. A row that appeared and then silently vanished is exactly the
   unexplained change the feel rules forbid.
 
   **The alert cannot double up, because the two readers see different values.**
@@ -1775,7 +1783,7 @@ implemented, because nothing would be alive to notice.
 through the existing `PregoPopupAlertPresenter`, with one new localised string. A
 row that appears and then silently vanishes is the kind of unexplained change the
 feel rules forbid. Staying silent is **not** chosen. The alert is shown by a
-shell-level listener on the launch outcome stream (step 5) and only ever fires for
+shell-level listener on `SessionLaunchCubit`'s outcome notice (step 5) and only ever fires for
 `SessionLaunchFailedAfterLeaving`, which the owner publishes exactly when no
 composer is attached to the launch any more. A user who never left therefore sees
 their restored draft and no alert, and one who left sees the alert and no draft,
@@ -1993,7 +2001,9 @@ split of already approved work.
 carries the launch-owner family as well as the detail-side handoff. If the real
 diff passes about 1,200 lines, split it into `3.a` (the launch owner family plus
 `NewSessionCubit` handing creation over to the service, with the new-session
-surface as its first reader) and `3.b` (the detail-side handoff: state fields,
+surface as its first reader, and `SessionDetailCubit` calling `takeHandoff` and
+discarding the result so every launch is still discharged) and `3.b` (the
+detail-side use of the handoff: state fields,
 the release funnel, presentation, and the phone transition), renumber the series
 to eight steps, and update this table and `TRACKER.md`. A clean split of already
 approved work needs no permission. The two halves are not merged the other way

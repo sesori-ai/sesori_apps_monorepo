@@ -4,7 +4,7 @@
 
 | Step | PR title | Status | Notes |
 |---|---|---|---|
-| 1/7 | 🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7] | In review | Removes the superseded `instant-session-launch` plan. Reworked for Q3 and Q4, then for the settled D1–D9, then for five code-review waves |
+| 1/7 | 🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7] | In review | Removes the superseded `instant-session-launch` plan. Reworked for Q3 and Q4, then for the settled D1–D9, then for six code-review waves |
 | 2/7 | ⚙️ [instant-new-session] Show the first message while a new session is created [step 2/7] | Planned | Instant screen only; composer still replaced while sending |
 | 3/7 | 🚧 [instant-new-session] Hand the first message off to the session screen [step 3/7] | Planned | Introduces the launch owner, including the typed outcome stream |
 | 4/7 | 🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 4/7] | Planned | Q3. Delivery is owned by `SessionLaunchService`, not the session screen |
@@ -169,3 +169,17 @@ Five findings; two accepted, two declined, one raised with the maintainer.
 | 3 | The Layer 0 launch title held localised fallback copy | Accepted. `title` is nullable raw text; the tile resolves the attachment-only fallback |
 | 4 | Launch storage survives sign-out | Declined. Same process-local shape as `ComposerDraftStorage`, which is not cleared on logout either; entries are keyed to the old bridge's sessions and bounded |
 | 5 | A failed first detail load loses the unsent command and attachments | Declined. The same rare path whose bubble loss the plan already accepts; the unsent text survives as a draft |
+
+## Code Review, sixth wave (2026-09-26)
+
+Seven findings; five accepted, two declined.
+
+| # | Finding | Verdict |
+|---|---|---|
+| 1 | A skipped navigation keeps the handoff payload until the session is opened | Declined. By design: opening the session later takes the handoff, including the unsent composer; the retained payload is bounded and the covered route's created state is today's behaviour |
+| 2 | The D5 shell listener read the repository's outcome stream directly | Accepted. `SessionLaunchCubit` re-exposes `SessionLaunchFailedAfterLeaving` as a notice stream; the shell listens to the cubit |
+| 3 | Concurrent pending rows in one project had no defined order | Accepted. Newest `startedAt` first, `launchId` breaking a tie, matching the order the running rows take |
+| 4 | A failure-restored dictated follow-up loses its voice spans | Declined. Only the analytics input mode of a resend in a rare flow is affected |
+| 5 | Handed-off attachments were never cleared after the detail composer adopted them | Accepted. `onInitialAttachmentsConsumed` clears the cubit's copy |
+| 6 | Split step 3.a would leave every successful launch in storage | Accepted. 3.a's `SessionDetailCubit` takes the handoff and discards it |
+| 7 | The D5 alert omitted the duplicate-risk warning | Accepted. The alert adds the existing `newSessionCreationDuplicateWarning` |
