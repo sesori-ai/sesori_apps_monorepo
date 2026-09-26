@@ -177,7 +177,7 @@ class OpenCodeV2Repository({
     return _modelMapper.mapProviders(providers: providers, models: models, defaultModel: defaultModel);
   }
 
-  Future<List<PluginCommand>> getCommands({required String directory}) async => [
+  Future<List<PluginCommand>> getCommands({required String? directory}) async => [
     for (final command in await _api.listCommands(directory: directory)) _modelMapper.mapCommand(command: command),
   ];
 
@@ -207,6 +207,15 @@ class OpenCodeV2Repository({
       ),
     );
     return _modelMapper.mapSession(session: session, projectId: location.project.canonical);
+  }
+
+  Future<PluginAgentModel?> getSessionModel({required String sessionId}) async {
+    final session = await _api.getSession(sessionId: sessionId);
+    if (session.model case final model?) {
+      return PluginAgentModel(providerID: model.providerID, modelID: model.id, variant: model.variant);
+    }
+    final model = await _api.getDefaultModel(directory: session.location.directory);
+    return model == null ? null : PluginAgentModel(providerID: model.providerID, modelID: model.id, variant: null);
   }
 
   Future<void> switchAgent({required String sessionId, required String directory, required String agent}) async {

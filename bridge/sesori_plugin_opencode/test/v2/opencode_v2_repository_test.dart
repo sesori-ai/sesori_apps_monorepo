@@ -9,6 +9,7 @@ import "package:opencode_plugin/src/v2/models/openapi/form_reply.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/location_public_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/location_public_ref.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/model_info.g.dart";
+import "package:opencode_plugin/src/v2/models/openapi/model_ref.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_reply.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_request.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/project.g.dart";
@@ -311,6 +312,23 @@ void main() {
     expect(api.agentDirectories, isEmpty);
   });
 
+  test("variant selection resolves a native session override or the directory default", () async {
+    api.currentSession = api.initialSession.copyWith(
+      model: const ModelRef(providerID: "p", id: "m", variant: "high"),
+    );
+    expect(
+      await repository.getSessionModel(sessionId: "session-fixture"),
+      const PluginAgentModel(providerID: "p", modelID: "m", variant: "high"),
+    );
+    expect(api.catalogDirectories, isEmpty);
+    api.currentSession = SessionInfo.fromJson({...api.initialSession.toJson(), "model": null});
+    expect(
+      await repository.getSessionModel(sessionId: "session-fixture"),
+      PluginAgentModel(providerID: api.model.providerID, modelID: api.model.id, variant: null),
+    );
+    expect(api.catalogDirectories, [api.initialSession.location.directory]);
+  });
+
   test("propagates history failures rather than returning an empty transcript", () async {
     final failure = StateError("Fixture transport failure");
     api.historyFailure = failure;
@@ -332,7 +350,7 @@ class FakeV2Api({
   List<SessionMessageInfo> messages = [];
   final sessionQueries = <({String? directory, String? parentId})>[];
   final agentDirectories = <String>[];
-  final catalogDirectories = <String>[];
+  final catalogDirectories = <String?>[];
   final pendingDirectories = <String>[];
   final calls = <String>[];
   final decisions = <PermissionReply>[];
@@ -442,7 +460,7 @@ class FakeV2Api({
   }
 
   @override
-  Future<List<CommandInfo>> listCommands({required String directory}) async {
+  Future<List<CommandInfo>> listCommands({required String? directory}) async {
     catalogDirectories.add(directory);
     return [
       CommandInfo.fromJson(const <String, dynamic>{"name": "review"}),

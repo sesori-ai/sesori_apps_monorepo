@@ -222,6 +222,16 @@ command”). Other calls count as plain steps.
 | Codex | ✅ Partial: shell calls are commands, file changes are edits and web searches are searches. Codex reads and searches files through shell commands, so those count as commands, not reads. |
 | Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ The ACP tool `kind`: `read`; `edit`/`delete`/`move`; `execute`; `search`. A call without a `kind`, or with `fetch`, `think` or `other`, counts as a plain step. |
 
+## OpenCode v2 adapter (not yet active)
+
+The staged adapter targets the public 2.0.11–2.0.16 API; active v1 behavior is unchanged.
+
+| Capability | Status |
+|---|---|
+| Explicit parent-linked creation | Not supported by the native create API; refused before mutation. Native forks remain standalone roots, never children of their source. |
+| Conditional/external form rendering | Not implemented; native-only. Visible replies preserve native keys/types and numeric bounds; native validation remains authoritative. |
+| Native archival | Not supported; archival stays in the bridge database. |
+
 ## Managed runtime
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
