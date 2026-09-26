@@ -56,6 +56,11 @@ variant, and worktree mode, and creating the session with its first input.
 - Claude's catalog drops the CLI's own `default` model entry and names the
   selection instead: Opus is the default model and `high` the default effort, so
   every picker entry states what will actually run.
+- Claude's picker offers only each family's newest model per context window
+  (Fable, Opus, Sonnet, Haiku), strongest first. The CLI also lists pinned older
+  versions (`claude-opus-4-8`); those are not offered, even through search. A
+  family alias (`opus`) ranks by the model it resolves to, so it never sorts
+  below a pinned older version.
 - Claude stamps assistant and error messages with the catalog picker id and
   effort the turn ran with, so a reopened session keeps its model and variants
   selected. Replayed transcripts and live turns without an explicit selection
