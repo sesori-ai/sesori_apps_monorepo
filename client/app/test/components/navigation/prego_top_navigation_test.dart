@@ -16,8 +16,12 @@ import "package:theme_prego/module_prego.dart";
 void main() {
   const title = "Centered";
 
-  Widget sideBox(double width, {Key? key}) =>
-      SizedBox(key: key, width: width, height: 40, child: const ColoredBox(color: Color(0xFF000000)));
+  Widget sideBox(double width, {Key? key}) => SizedBox(
+    key: key,
+    width: width,
+    height: 40,
+    child: const ColoredBox(color: Color(0xFF000000)),
+  );
 
   Future<void> pumpBar(WidgetTester tester, {Widget? leading, List<Widget>? actions}) async {
     await tester.pumpWidget(
@@ -69,7 +73,11 @@ void main() {
   testWidgets("insets the leading and trailing buttons 16pt from the bar edges", (tester) async {
     const leadingKey = Key("leading");
     const trailingKey = Key("trailing");
-    await pumpBar(tester, leading: sideBox(40, key: leadingKey), actions: [sideBox(40, key: trailingKey)]);
+    await pumpBar(
+      tester,
+      leading: sideBox(40, key: leadingKey),
+      actions: [sideBox(40, key: trailingKey)],
+    );
 
     // The bar spans the full width, so its edges are the screen edges.
     final screenWidth = tester.getSize(find.byType(MaterialApp)).width;

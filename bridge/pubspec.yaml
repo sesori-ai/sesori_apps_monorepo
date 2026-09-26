@@ -2,7 +2,7 @@ name: sesori_bridge_workspace
 publish_to: none
 
 environment:
-  sdk: ^3.13.3
+  sdk: ^3.13.4
 
 workspace:
   - app

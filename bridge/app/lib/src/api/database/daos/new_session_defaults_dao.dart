@@ -22,6 +22,7 @@ class NewSessionDefaultsDao({required AppDatabase database})
         (_) => NewSessionDefaultsTableCompanion(
           agent: Value(row.agent),
           agentModel: Value(row.agentModel),
+          fastMode: Value(row.fastMode),
         ),
         target: [newSessionDefaultsTable.pluginId],
       ),

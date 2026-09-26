@@ -70,10 +70,6 @@ class AntigravitySetupService({
             actionHint: "Antigravity setup could not be determined. Check the local runtime pair and retry.",
           ),
         };
-      case AntigravityRuntimeCandidateUnsupported():
-        return const PluginSetupUnavailable(
-          actionHint: "Google does not publish the Antigravity ACP runtime for this platform.",
-        );
     }
   }
 

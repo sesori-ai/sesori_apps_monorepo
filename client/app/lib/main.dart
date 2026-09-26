@@ -16,6 +16,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "core/di/analytics_runtime_bootstrap.dart";
 import "core/di/injection.dart";
+import "core/di/register_module.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "core/platform/firebase_analytics_startup.dart";
 import "core/platform/singular_attribution_startup.dart";
@@ -53,6 +54,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Initialize standard shaders, but do not preload the unused premium tier.
   await LiquidGlassWidgets.initialize(warmUpMode: GlassWarmUpMode.never);
+  await PregoSystemDatePatterns.load();
   // The native splash runs in fullscreen, which leaves the status/nav bars
   // hidden on iOS until the engine is told otherwise. Restore them and let
   // content draw behind them so the background image still reaches the edges.
@@ -71,6 +73,7 @@ void main() async {
     shouldInitializeFirebase: shouldInitializeFirebase,
     configureDependenciesFn: () async {
       final analyticsBootstrap = await configureDependencies(
+        scope: clientPersistenceScope,
         firebaseEnabled: shouldInitializeFirebase,
         createAnalyticsRuntimeBootstrap: ({required crawlGateService}) => _createAnalyticsRuntimeBootstrap(
           shouldInitializeFirebase: shouldInitializeFirebase,
@@ -84,6 +87,7 @@ void main() async {
       );
       return analyticsBootstrap;
     },
+    disposeDependenciesFn: getIt.reset,
     prepareSingularAttributionFn: _prepareSingularAttribution,
     applySingularCrawlGateFn: _applySingularCrawlGate,
     initializeDeepLinks: () => getIt<DeepLinkService>().init(),
@@ -107,6 +111,7 @@ void main() async {
 Future<void> bootstrapSesoriApp({
   required bool shouldInitializeFirebase,
   required Future<AnalyticsRuntimeBootstrap> Function() configureDependenciesFn,
+  required Future<void> Function() disposeDependenciesFn,
   required void Function() prepareSingularAttributionFn,
   required void Function({required AnalyticsStoreCrawlGate crawlGate}) applySingularCrawlGateFn,
   required void Function() initializeDeepLinks,
@@ -118,7 +123,19 @@ Future<void> bootstrapSesoriApp({
   required Future<ChatInputMode> Function() readChatInputModeFn,
   required void Function(Widget app) runAppFn,
 }) async {
-  final analyticsBootstrap = await configureDependenciesFn();
+  final AnalyticsRuntimeBootstrap analyticsBootstrap;
+  try {
+    analyticsBootstrap = await configureDependenciesFn();
+  } on LegacyStorageMigrationException catch (error, stackTrace) {
+    loge("Unable to finish the local storage upgrade", error, stackTrace);
+    try {
+      await disposeDependenciesFn();
+    } on Object catch (disposeError, disposeStackTrace) {
+      loge("Failed to dispose startup dependencies after the storage upgrade failed", disposeError, disposeStackTrace);
+    }
+    runAppFn(const PersistenceStartupFailureApp());
+    return;
+  }
   prepareSingularAttributionFn();
   initializeDeepLinks();
   await startProductAnalyticsFn();
@@ -152,7 +169,10 @@ Future<void> bootstrapSesoriApp({
       brightnessResolver: Theme.maybeBrightnessOf,
       adaptiveQuality: true,
       adaptiveConfig: GlassAdaptiveScopeConfig(
-        targetFrameMs: 8,
+        // Degrades once P95 raster time exceeds 1.5x this target (24 ms). The
+        // former 8 ms (120 Hz) target lowered glass quality at 12 ms, while
+        // frames still met 60 fps.
+        targetFrameMs: 16,
         minQuality: .minimal,
         initialQuality: .standard,
         maxQuality: .standard,
@@ -367,7 +387,15 @@ class const _SesoriAppShell() extends StatelessWidget {
               ),
               child: SseToastListener(
                 navigatorKey: appRootNavigatorKey,
-                child: child ?? const SizedBox.shrink(),
+                // Above the router, so an archive's Undo window survives
+                // leaving the project it was started in.
+                child: BlocProvider(
+                  create: (_) => PendingSessionArchiveCubit(repository: getIt<SessionRepository>()),
+                  child: PendingArchiveAlerts(
+                    navigatorKey: appRootNavigatorKey,
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
               ),
             ),
           ),

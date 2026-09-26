@@ -5,11 +5,15 @@ import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart" show ClockProvider;
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
@@ -19,15 +23,21 @@ import "package:sesori_dart_core/src/foundation/models/session_options/session_o
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
+import "package:sesori_dart_core/src/repositories/models/prompt_send_failure.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/bridge_settings_service.dart";
+import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
+import "package:sesori_dart_core/src/services/session_approval_calculator.dart";
+import "package:sesori_dart_core/src/services/session_approval_service.dart";
+import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
@@ -143,6 +153,9 @@ void main() {
       ProjectViewingService? projectViewingService,
       LifecycleSource? lifecycleSource,
       PluginManagementService? pluginManagementService,
+      BridgeSettingsService? bridgeSettingsService,
+      ClockProvider clock = const ClockProvider(),
+      String pageSessionId = sessionId,
     }) => SessionDetailCubit(
       mockConnectionService,
       claimProjectView: claimProjectView,
@@ -150,6 +163,8 @@ void main() {
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
       sessionAbortService: SessionAbortService(repository: promptDispatcher),
+      autoContinuationService: SessionAutoContinuationService(repository: promptDispatcher),
+      approvalService: SessionApprovalService(repository: promptDispatcher),
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: sessionViewingService ?? stubbedSessionViewingService(),
@@ -157,16 +172,555 @@ void main() {
       lifecycleSource: lifecycleSource ?? MockLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: mockProductAnalyticsService,
-      sessionId: sessionId,
+      sessionId: pageSessionId,
       projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: mockFailureReporter,
+      bridgeSettingsService: bridgeSettingsService ?? stubbedBridgeSettingsService(),
+      clock: clock,
     );
 
     tearDown(() async {
       await sessionEvents.close();
       await globalEvents.close();
       await connectionStatus.close();
+    });
+
+    test("carries the last-known YOLO setting and follows its changes", () async {
+      final yoloSettings = BehaviorSubject.seeded(const YoloSettingsResponse(enabled: true));
+      addTearDown(yoloSettings.close);
+      final bridgeSettingsService = MockBridgeSettingsService();
+      when(() => bridgeSettingsService.yoloSettings).thenAnswer((_) => yoloSettings.stream);
+      final cubit = buildCubit(bridgeSettingsService: bridgeSettingsService);
+      addTearDown(cubit.close);
+
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.approvalControl is SessionApprovalBridgeWideYolo,
+        description: "loaded with bridge-wide YOLO on",
+      );
+
+      yoloSettings.add(const YoloSettingsResponse(enabled: false));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.approvalControl is SessionApprovalHidden,
+        description: "YOLO off on an older bridge",
+      );
+    });
+
+    test("keeps the bridge's prompt defaults as reported for surfaces that only show them", () async {
+      const recorded = SessionPromptDefaults(
+        agent: "explore",
+        model: AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: "high"),
+      );
+      stubSessionRepositoryGetSession(
+        repository: mockSessionRepository,
+        sessionId: sessionId,
+        session: testSession(id: sessionId, promptDefaults: recorded),
+      );
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+
+      final loaded = await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded,
+        description: "loaded",
+      );
+      expect((loaded as SessionDetailLoaded).promptDefaults, recorded);
+
+      const changed = SessionPromptDefaults(agent: "general", model: null);
+      sessionEvents.add(const SesoriSessionPromptDefaultsChanged(sessionID: sessionId, promptDefaults: changed));
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.promptDefaults == changed,
+        description: "prompt defaults followed",
+      );
+    });
+
+    group("approval mode", () {
+      Future<SessionDetailCubit> loadedCubit({
+        required bool bridgeYolo,
+        required SessionApprovalMode? sessionOverride,
+      }) async {
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(id: sessionId).copyWith(approvalOverride: sessionOverride),
+        );
+        final yoloSettings = BehaviorSubject.seeded(
+          YoloSettingsResponse(enabled: bridgeYolo, supportsSessionOverride: true),
+        );
+        addTearDown(yoloSettings.close);
+        final bridgeSettingsService = MockBridgeSettingsService();
+        when(() => bridgeSettingsService.yoloSettings).thenAnswer((_) => yoloSettings.stream);
+        final cubit = buildCubit(bridgeSettingsService: bridgeSettingsService);
+        addTearDown(cubit.close);
+        await awaitState(cubit: cubit, predicate: (state) => state is SessionDetailLoaded, description: "loaded");
+        return cubit;
+      }
+
+      void replyWith({required SessionApprovalMode? sent}) {
+        when(() => mockSessionRepository.setApprovalOverride(sessionId: sessionId, approvalOverride: sent)).thenAnswer(
+          (_) async => ApiResponse.success(testSession(id: sessionId).copyWith(approvalOverride: sent)),
+        );
+      }
+
+      SessionApprovalControl controlOf(SessionDetailCubit cubit) =>
+          (cubit.state as SessionDetailLoaded).approvalControl;
+
+      test("picking YOLO over an asking default stores a YOLO override", () async {
+        replyWith(sent: SessionApprovalMode.yolo);
+        final cubit = await loadedCubit(bridgeYolo: false, sessionOverride: null);
+        expect(
+          controlOf(cubit),
+          isA<SessionApprovalPerSession>().having((c) => c.effective, "effective", SessionApprovalMode.ask),
+        );
+
+        await cubit.setApprovalMode(mode: SessionApprovalMode.yolo);
+
+        verify(
+          () => mockSessionRepository.setApprovalOverride(
+            sessionId: sessionId,
+            approvalOverride: SessionApprovalMode.yolo,
+          ),
+        ).called(1);
+        expect(
+          controlOf(cubit),
+          isA<SessionApprovalPerSession>()
+              .having((c) => c.effective, "effective", SessionApprovalMode.yolo)
+              .having((c) => c.bridgeDefault, "bridgeDefault", SessionApprovalMode.ask),
+        );
+      });
+
+      test("picking the bridge default clears the override", () async {
+        replyWith(sent: null);
+        final cubit = await loadedCubit(bridgeYolo: true, sessionOverride: SessionApprovalMode.ask);
+
+        await cubit.setApprovalMode(mode: SessionApprovalMode.yolo);
+
+        verify(() => mockSessionRepository.setApprovalOverride(sessionId: sessionId, approvalOverride: null)).called(1);
+        expect(
+          controlOf(cubit),
+          isA<SessionApprovalPerSession>().having((c) => c.effective, "effective", SessionApprovalMode.yolo),
+        );
+      });
+
+      test("picking the current mode sends nothing", () async {
+        final cubit = await loadedCubit(bridgeYolo: true, sessionOverride: null);
+
+        await cubit.setApprovalMode(mode: SessionApprovalMode.yolo);
+
+        verifyNever(
+          () => mockSessionRepository.setApprovalOverride(
+            sessionId: any(named: "sessionId"),
+            approvalOverride: any(named: "approvalOverride"),
+          ),
+        );
+      });
+
+      test("keeps the acknowledged mode and reports a failed change", () async {
+        when(
+          () => mockSessionRepository.setApprovalOverride(
+            sessionId: sessionId,
+            approvalOverride: SessionApprovalMode.yolo,
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        final cubit = await loadedCubit(bridgeYolo: false, sessionOverride: null);
+        final notice = cubit.noticeStream.first;
+
+        await cubit.setApprovalMode(mode: SessionApprovalMode.yolo);
+
+        expect(await notice, isA<SessionDetailApprovalUpdateFailed>());
+        expect(
+          controlOf(cubit),
+          isA<SessionApprovalPerSession>().having((c) => c.effective, "effective", SessionApprovalMode.ask),
+        );
+        expect((cubit.state as SessionDetailLoaded).isUpdatingApproval, isFalse);
+      });
+    });
+
+    group("transcript fold", () {
+      Future<SessionDetailCubit> loadedCubit({required String pageSessionId}) async {
+        final cubit = buildCubit(pageSessionId: pageSessionId);
+        addTearDown(cubit.close);
+        await awaitState(cubit: cubit, predicate: (state) => state is SessionDetailLoaded, description: "loaded");
+        await pumpEventQueue();
+        return cubit;
+      }
+
+      bool foldedOf(SessionDetailCubit cubit) => (cubit.state as SessionDetailLoaded).transcriptFolded;
+
+      test("switches the fold, and a request that changes nothing emits nothing", () async {
+        final cubit = await loadedCubit(pageSessionId: sessionId);
+        expect(foldedOf(cubit), isFalse);
+        final emitted = <SessionDetailState>[];
+        final subscription = cubit.stream.listen(emitted.add);
+        addTearDown(subscription.cancel);
+
+        cubit.setTranscriptFolded(folded: false);
+        await pumpEventQueue();
+        expect(emitted, isEmpty);
+
+        cubit.setTranscriptFolded(folded: true);
+        cubit.setTranscriptFolded(folded: true);
+        await pumpEventQueue();
+        expect(emitted.map((state) => (state as SessionDetailLoaded).transcriptFolded), [true]);
+
+        cubit.setTranscriptFolded(folded: false);
+        await pumpEventQueue();
+        expect(emitted.map((state) => (state as SessionDetailLoaded).transcriptFolded), [true, false]);
+      });
+
+      test("keeps the fold through a full reload, while another session starts unfolded", () async {
+        final cubit = await loadedCubit(pageSessionId: sessionId);
+        cubit.setTranscriptFolded(folded: true);
+        final emitted = <SessionDetailState>[];
+        final subscription = cubit.stream.listen(emitted.add);
+        addTearDown(subscription.cancel);
+
+        await cubit.reload();
+
+        expect(emitted.first, isA<SessionDetailLoading>());
+        expect(foldedOf(cubit), isTrue);
+
+        const otherSessionId = "session-2";
+        stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: otherSessionId);
+        when(() => mockConnectionService.sessionEvents(otherSessionId)).thenAnswer((_) => const Stream.empty());
+        expect(foldedOf(await loadedCubit(pageSessionId: otherSessionId)), isFalse);
+      });
+    });
+
+    group("auto continuation", () {
+      const disabled = SessionAutoContinuationView(
+        enabled: false,
+        availability: AutoContinuationAvailability.conditional,
+        status: SessionAutoContinuationStatus.resetKnown(resetAt: 100000, continueAt: 220000),
+      );
+      const enabled = SessionAutoContinuationView(
+        enabled: true,
+        availability: AutoContinuationAvailability.conditional,
+        status: SessionAutoContinuationStatus.resetKnown(resetAt: 100000, continueAt: 220000),
+      );
+
+      Future<SessionDetailCubit> loadedCubit() async {
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(id: sessionId).copyWith(autoContinuation: disabled),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await awaitState(cubit: cubit, predicate: (state) => state is SessionDetailLoaded, description: "loaded");
+        return cubit;
+      }
+
+      test("waits for acknowledgement and ignores duplicate taps while saving", () async {
+        final response = Completer<ApiResponse<Session>>();
+        when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: true))
+            .thenAnswer((_) => response.future);
+        final cubit = await loadedCubit();
+        final saving = cubit.setAutoContinuation(enabled: true);
+        expect(cubit.state.autoContinuationUpdatePending, isTrue);
+        expect(cubit.state.hydratedSession!.autoContinuation, disabled);
+        await cubit.setAutoContinuation(enabled: true);
+        verify(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: true)).called(1);
+
+        response.complete(ApiResponse.success(testSession(id: sessionId).copyWith(autoContinuation: enabled)));
+        await saving;
+        expect(cubit.state.hydratedSession!.autoContinuation, enabled);
+        expect(cubit.state.autoContinuationUpdatePending, isFalse);
+      });
+
+      test("keeps the last acknowledged setting and reports a failed update", () async {
+        when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: true))
+            .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+        final cubit = await loadedCubit();
+        final notice = cubit.noticeStream.first;
+        await cubit.setAutoContinuation(enabled: true);
+        expect(await notice, isA<SessionDetailAutoContinuationUpdateFailed>());
+        expect(cubit.state.hydratedSession!.autoContinuation, disabled);
+        expect(cubit.state.autoContinuationUpdatePending, isFalse);
+      });
+
+      for (final metadataFails in [false, true]) {
+        test("preserves an acknowledgement during reload (metadata fails: $metadataFails)", () async {
+          final response = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: true))
+              .thenAnswer((_) => response.future);
+          final cubit = await loadedCubit();
+          final saving = cubit.setAutoContinuation(enabled: true);
+          final metadata = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+          final reloading = cubit.reload();
+          expect(cubit.state, isA<SessionDetailLoading>());
+          response.complete(ApiResponse.success(testSession(id: sessionId).copyWith(autoContinuation: enabled)));
+          await saving;
+          metadata.complete(
+            metadataFails
+                ? ApiResponse.error(ApiError.generic())
+                : ApiResponse.success(testSession(id: sessionId).copyWith(autoContinuation: disabled)),
+          );
+          await reloading;
+          expect(cubit.state.hydratedSession!.autoContinuation, enabled);
+          expect(cubit.state.autoContinuationUpdatePending, isFalse);
+        });
+      }
+
+      for (final historyFails in [false, true]) {
+        test("keeps a disable acknowledgement in the unavailable shell (history fails: $historyFails)", () async {
+          final session = testSession(id: sessionId).copyWith(autoContinuation: enabled);
+          stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId, session: session);
+          final management = MockPluginManagementService();
+          final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+            managementFixture(
+              pluginId: "plugin-1",
+              setup: PluginSetupState.authenticationRequired,
+              runtime: PluginRuntimeState.blocked,
+            ),
+          );
+          addTearDown(snapshots.close);
+          when(() => management.snapshots).thenAnswer((_) => snapshots);
+          when(management.refresh).thenAnswer((_) async {});
+          when(
+            () => mockSessionService.getMessages(
+              sessionId: any(named: "sessionId"),
+              limit: any(named: "limit"),
+              before: any(named: "before"),
+              storedOnly: any(named: "storedOnly"),
+            ),
+          ).thenAnswer(
+            (_) async => historyFails
+                ? ApiResponse.error(ApiError.generic())
+                : ApiResponse.success(
+                    const MessageWithPartsResponse(
+                      messages: [],
+                      nextCursor: null,
+                      replayedPromptDefaults: null,
+                      awaitingHarnessSync: true,
+                    ),
+                  ),
+          );
+          final cubit = buildCubit(pluginManagementService: management);
+          addTearDown(cubit.close);
+          await awaitState(
+            cubit: cubit,
+            predicate: (state) => state is SessionDetailHarnessUnavailable,
+            description: "unavailable shell",
+          );
+          final response = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: false))
+              .thenAnswer((_) => response.future);
+          final saving = cubit.setAutoContinuation(enabled: false);
+          final metadata = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+          final reloading = cubit.reload();
+          response.complete(ApiResponse.success(session.copyWith(autoContinuation: disabled)));
+          await saving;
+          metadata.complete(ApiResponse.success(session));
+          await reloading;
+          expect(cubit.state, isA<SessionDetailHarnessUnavailable>());
+          expect(cubit.state.hydratedSession!.autoContinuation, disabled);
+          expect(cubit.state.autoContinuationUpdatePending, isFalse);
+        });
+      }
+
+      test("applies changes from another client through the normal session event", () async {
+        final cubit = await loadedCubit();
+        sessionEvents.add(
+          SesoriSessionUpdated(
+            info: testSession(id: sessionId).copyWith(autoContinuation: enabled),
+          ),
+        );
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state.hydratedSession?.autoContinuation == enabled,
+          description: "remote continuation update",
+        );
+        expect(cubit.state.autoContinuationUpdatePending, isFalse);
+      });
+
+      test("can disable an unavailable preference and reports an already accepted send", () async {
+        const submitted = SessionAutoContinuationStatus.submitted(acceptedAt: 230000);
+        final cubit = await loadedCubit();
+        sessionEvents.add(
+          SesoriSessionUpdated(
+            info: testSession(id: sessionId).copyWith(
+              autoContinuation: const SessionAutoContinuationView(
+                enabled: true,
+                availability: AutoContinuationAvailability.unavailable,
+                status: submitted,
+              ),
+            ),
+          ),
+        );
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state.hydratedSession?.autoContinuation?.enabled ?? false,
+          description: "enabled unavailable preference",
+        );
+        when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: false)).thenAnswer(
+          (_) async => ApiResponse.success(
+            testSession(id: sessionId).copyWith(
+              autoContinuation: const SessionAutoContinuationView(
+                enabled: false,
+                availability: AutoContinuationAvailability.unavailable,
+                status: submitted,
+              ),
+            ),
+          ),
+        );
+        final notice = cubit.noticeStream.first;
+        await cubit.setAutoContinuation(enabled: false);
+        expect(cubit.state.hydratedSession!.autoContinuation!.enabled, isFalse);
+        expect(await notice, isA<SessionDetailAutoContinuationAlreadySubmitted>());
+      });
+
+      test("settles an in-flight update safely after the screen closes", () async {
+        final response = Completer<ApiResponse<Session>>();
+        when(() => mockSessionRepository.setAutoContinuation(sessionId: sessionId, enabled: true))
+            .thenAnswer((_) => response.future);
+        final cubit = await loadedCubit();
+        final saving = cubit.setAutoContinuation(enabled: true);
+        await cubit.close();
+        response.complete(ApiResponse.success(testSession(id: sessionId).copyWith(autoContinuation: enabled)));
+        await saving;
+        expect(cubit.isClosed, isTrue);
+      });
+    });
+
+    group("fast mode", () {
+      const fastModel = AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: "xhigh");
+      // testSession's last update, which stands in for model activity because
+      // the default transcript's assistant message carries no timestamps.
+      final lastActivity = DateTime.fromMillisecondsSinceEpoch(1700000000000);
+
+      setUp(() {
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            _fastModeProviders(fastMode: const FastModeSupport.available(promptCacheTtlSeconds: 1800)),
+          ),
+        );
+        stubSessionRepositoryGetSession(
+          repository: mockSessionRepository,
+          sessionId: sessionId,
+          session: testSession(
+            id: sessionId,
+            promptDefaults: const SessionPromptDefaults(agent: null, model: fastModel, fastMode: true),
+          ),
+        );
+      });
+
+      Future<SessionDetailLoaded> loaded(SessionDetailCubit cubit) => awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded,
+        description: "loaded",
+      ).then((state) => state as SessionDetailLoaded);
+
+      test("reconciles fast mode from the prompt defaults and sends it with prompts", () async {
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        final state = await loaded(cubit);
+
+        expect(state.fastMode, isTrue);
+        expect(state.fastModeControl, FastModeControl.on);
+
+        await cubit.sendMessage(text: "go", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+        verify(
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
+            sessionId: sessionId,
+            text: "go",
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: true,
+            command: null,
+          ),
+        ).called(1);
+
+        sessionEvents.add(
+          const SesoriSessionPromptDefaultsChanged(
+            sessionID: sessionId,
+            promptDefaults: SessionPromptDefaults(agent: null, model: fastModel, fastMode: false),
+          ),
+        );
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && !state.fastMode,
+          description: "fast mode reconciled off",
+        );
+        expect((cubit.state as SessionDetailLoaded).fastModeControl, FastModeControl.off);
+      });
+
+      test("sends fast mode off once the selected model's fast mode is unavailable", () async {
+        when(
+          () => mockSessionService.listProviders(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            _fastModeProviders(
+              fastMode: const FastModeSupport.unavailable(reason: FastModeUnavailableReason.extraUsageDisabled),
+            ),
+          ),
+        );
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        final state = await loaded(cubit);
+
+        expect(state.fastModeControl, FastModeControl.unavailable);
+        expect(
+          cubit.fastModeToggleDecision(),
+          isA<FastModeToggleUnavailable>().having(
+            (decision) => decision.reason,
+            "reason",
+            FastModeUnavailableReason.extraUsageDisabled,
+          ),
+        );
+
+        await cubit.sendMessage(text: "go", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+        verify(
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
+            sessionId: sessionId,
+            text: "go",
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: false,
+            command: null,
+          ),
+        ).called(1);
+      });
+
+      test("confirms a switch only while the prompt cache is warm", () async {
+        var now = lastActivity.add(const Duration(minutes: 10));
+        final cubit = buildCubit(clock: _FixedClock(() => now));
+        addTearDown(cubit.close);
+        await loaded(cubit);
+
+        expect(
+          cubit.fastModeToggleDecision(),
+          isA<FastModeToggleConfirmCacheReset>().having((decision) => decision.fastMode, "fastMode", isFalse),
+        );
+
+        now = lastActivity.add(const Duration(minutes: 30));
+        expect(
+          cubit.fastModeToggleDecision(),
+          isA<FastModeToggleApply>().having((decision) => decision.fastMode, "fastMode", isFalse),
+        );
+
+        cubit.setFastMode(false);
+        expect((cubit.state as SessionDetailLoaded).runsFastMode, isFalse);
+      });
     });
 
     for (final initialBlocked in [true, false]) {
@@ -185,8 +739,7 @@ void main() {
         addTearDown(cubit.close);
         await awaitState(
           cubit: cubit,
-          predicate: (state) =>
-              state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
+          predicate: (state) => state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
           description: "initial harness state",
         );
         final before = cubit.state;
@@ -211,6 +764,7 @@ void main() {
               agent: any(named: "agent"),
               model: any(named: "model"),
               variant: any(named: "variant"),
+              fastMode: any(named: "fastMode"),
               command: null,
             ),
           ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
@@ -220,7 +774,7 @@ void main() {
             inputMode: ComposerInputMode.typed,
             attachments: const [],
           );
-          expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
+          expect(_failedOf(state: cubit.state as SessionDetailLoaded), isNotNull);
           final savedMetadata = await mockSessionRepository.getSession(sessionId: sessionId);
           final metadata = Completer<ApiResponse<Session>>();
           when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
@@ -238,8 +792,8 @@ void main() {
           );
           expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
           expect((cubit.state as SessionDetailLoaded).sessionStatus, const SessionStatus.busy());
-          cubit.cancelQueuedMessage(0);
-          expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
+          cubit.removeFailedSend();
+          expect(_failedOf(state: cubit.state as SessionDetailLoaded), isNull);
           await cubit.cancelBridgeQueuedPrompt(promptId: "remote-prompt");
           verifyNever(() => mockSessionRepository.cancelQueuedPrompt(sessionId: sessionId, promptId: "remote-prompt"));
         }
@@ -291,6 +845,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: any(named: "command"),
           ),
         );
@@ -518,6 +1073,19 @@ void main() {
         (blocked.interaction as SessionInteractionBlocked).reason,
         SessionInteractionBlockedReason.authenticationRequired,
       );
+
+      // The shell still offers the session's actions, so a rename reaches it.
+      sessionEvents.add(
+        SesoriSessionUpdated(
+          info: testSession(id: sessionId, title: "Renamed Session"),
+        ),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state.hydratedSession?.title == "Renamed Session",
+        description: "renamed unavailable session",
+      );
+      expect(cubit.state, isA<SessionDetailHarnessUnavailable>());
     });
 
     test("a block racing a reload keeps the rendered transcript instead of the unavailable shell", () async {
@@ -778,6 +1346,7 @@ void main() {
             agent: "coder",
             model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
+            fastMode: false,
             command: null,
           ),
         ).called(1);
@@ -832,6 +1401,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         ).called(1);
@@ -877,6 +1447,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: any(named: "command"),
           ),
         );
@@ -911,6 +1482,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: any(named: "command"),
           ),
         );
@@ -945,6 +1517,7 @@ void main() {
             agent: "coder",
             model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
+            fastMode: false,
             command: "review",
           ),
         ).called(1);
@@ -1019,6 +1592,7 @@ void main() {
             agent: "coder",
             model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
+            fastMode: false,
             command: null,
           ),
         ).called(1);
@@ -1158,6 +1732,7 @@ void main() {
                   defaultModelID: "gpt-4",
                   models: {
                     "gpt-4": ProviderModel(
+                      fastMode: null,
                       id: "gpt-4",
                       providerID: "openai",
                       name: "GPT-4",
@@ -1443,6 +2018,8 @@ void main() {
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: loadService,
         sessionAbortService: SessionAbortService(repository: promptDispatcher),
+        autoContinuationService: SessionAutoContinuationService(repository: promptDispatcher),
+        approvalService: SessionApprovalService(repository: promptDispatcher),
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
@@ -1454,6 +2031,7 @@ void main() {
         projectId: "project-1",
         notificationCanceller: null,
         failureReporter: mockFailureReporter,
+        bridgeSettingsService: stubbedBridgeSettingsService(),
       );
       addTearDown(cubit.close);
       await _awaitLoaded(cubit);
@@ -1577,7 +2155,7 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "SSE session.updated updates title",
+      "SSE session.updated updates title and the hydrated session",
       build: buildCubit,
       act: (cubit) async {
         await _awaitLoaded(cubit);
@@ -1591,12 +2169,10 @@ void main() {
         );
       },
       expect: () => [
-        isA<SessionDetailLoaded>(),
-        isA<SessionDetailLoaded>().having(
-          (state) => state.sessionTitle,
-          "sessionTitle",
-          "Renamed Session",
-        ),
+        isA<SessionDetailLoaded>().having((state) => state.session.id, "hydrated session", sessionId),
+        isA<SessionDetailLoaded>()
+            .having((state) => state.sessionTitle, "sessionTitle", "Renamed Session")
+            .having((state) => state.session.title, "hydrated session title", "Renamed Session"),
       ],
     );
 
@@ -1900,6 +2476,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         );
@@ -1942,14 +2519,93 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         );
       },
     );
 
+    for (final (label, error, failure) in [
+      ("a bridge rejection", ApiError.nonSuccessCode(errorCode: 400, rawErrorString: null), PromptSendFailure.rejected),
+      ("a lost response", ApiError.dartHttpClient(Exception("timed out")), PromptSendFailure.uncertain),
+    ]) {
+      test("$label marks the failed send ${failure.name}", () async {
+        when(
+          () => mockSessionService.sendMessage(
+            promptId: any(named: "promptId"),
+            attachments: const [],
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: null,
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(error));
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await _awaitLoaded(cubit);
+
+        await cubit.sendMessage(
+          attachments: const [],
+          text: "hello",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+        );
+
+        final localSend = (cubit.state as SessionDetailLoaded).localSend;
+        expect(localSend, isA<LocalSendFailed>().having((phase) => phase.failure, "failure", failure));
+      });
+    }
+
+    test("Retry resends a failed send under its prompt id, then drains what waited behind it", () async {
+      final sentPromptIds = <String>[];
+      final sentTexts = <String>[];
+      when(
+        () => mockSessionService.sendMessage(
+          promptId: any(named: "promptId"),
+          attachments: const [],
+          sessionId: any(named: "sessionId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: null,
+        ),
+      ).thenAnswer((invocation) async {
+        sentPromptIds.add(invocation.namedArguments[#promptId] as String);
+        sentTexts.add(invocation.namedArguments[#text] as String);
+        return sentPromptIds.length == 1 ? ApiResponse.error(ApiError.generic()) : ApiResponse.success(null);
+      });
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      await cubit.sendMessage(attachments: const [], text: "first", command: null, inputMode: ComposerInputMode.typed);
+      await cubit.sendMessage(attachments: const [], text: "second", command: null, inputMode: ComposerInputMode.typed);
+
+      final failed = cubit.state as SessionDetailLoaded;
+      expect(_failedOf(state: failed)?.displayText, "first");
+      expect(failed.queuedMessages.map((message) => message.displayText), ["second"]);
+      expect(sentTexts, ["first"]);
+
+      cubit.retryFailedSend();
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && sentTexts.length == 3 && _sendingOf(state: state) == null,
+        description: "retry and the waiting send accepted",
+      );
+
+      expect(sentTexts, ["first", "first", "second"]);
+      expect(sentPromptIds[1], sentPromptIds[0]);
+      expect(_failedOf(state: cubit.state as SessionDetailLoaded), isNull);
+    });
+
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "sendMessage re-queues on send failure",
+      "sendMessage holds a failed send for Retry",
       build: () {
         when(
           () => mockSessionService.sendMessage(
@@ -1960,6 +2616,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
@@ -1979,8 +2636,8 @@ void main() {
         isA<SessionDetailLoaded>(),
         _queuedSubmission("hello"),
         _sendingSubmission("hello"),
-        // Message re-queued after failed send.
-        _queuedSubmission("hello"),
+        // The failure on the same connection is held for Retry.
+        _failedSubmission("hello"),
       ],
       verify: (_) {
         verify(
@@ -1992,6 +2649,7 @@ void main() {
             agent: "coder",
             model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
+            fastMode: false,
             command: null,
           ),
         ).called(1);
@@ -2075,6 +2733,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         );
@@ -2139,6 +2798,7 @@ void main() {
             agent: "coder",
             model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
+            fastMode: false,
             command: null,
           ),
         ).called(1);
@@ -2199,6 +2859,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "xhigh"),
+          fastMode: false,
           command: null,
         ),
       ).called(1);
@@ -2296,6 +2957,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "xhigh"),
+          fastMode: false,
           command: "review",
         ),
       ).called(1);
@@ -2315,6 +2977,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) async {
@@ -2408,6 +3071,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) async {
@@ -2451,6 +3115,7 @@ void main() {
           agent: "coder",
           model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
           variant: const SessionVariant(id: "xhigh"),
+          fastMode: false,
           command: null,
         ),
       ).called(1);
@@ -2510,6 +3175,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         ).called(1);
@@ -2522,6 +3188,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         ).called(1);
@@ -2529,7 +3196,7 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
-      "queued message send failure re-queues the message",
+      "a queued message that fails after reconnect is held for Retry",
       build: () {
         // Make sendMessage always fail — it is only called during drain,
         // not during initial load, so this is safe.
@@ -2542,6 +3209,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
@@ -2583,9 +3251,9 @@ void main() {
           cubit: cubit,
           predicate: (state) =>
               state is SessionDetailLoaded &&
-              state.queuedMessages.map((message) => message.displayText).contains("will fail") &&
-              state.sendingSubmission == null,
-          description: "failed queued message re-queued",
+              _failedOf(state: state)?.displayText == "will fail" &&
+              _sendingOf(state: state) == null,
+          description: "failed queued message held",
         );
       },
       expect: () => [
@@ -2598,12 +3266,8 @@ void main() {
           ["will fail"],
         ),
         _sendingSubmission("will fail"),
-        // Re-queued after failure.
-        isA<SessionDetailLoaded>().having(
-          (state) => state.queuedMessages.map((message) => message.displayText).toList(),
-          "queuedMessages",
-          ["will fail"],
-        ),
+        // Held after the failure on the reconnected connection.
+        _failedSubmission("will fail"),
       ],
       verify: (_) {
         verify(
@@ -2615,6 +3279,7 @@ void main() {
             agent: any(named: "agent"),
             model: any(named: "model"),
             variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
             command: null,
           ),
         ).called(1);
@@ -2829,15 +3494,20 @@ Matcher _queuedSubmission(String text) => isA<SessionDetailLoaded>()
       "queuedMessages",
       [text],
     )
-    .having((state) => state.sendingSubmission, "sendingSubmission", isNull);
+    .having((state) => _sendingOf(state: state), "sendingSubmission", isNull);
 
 Matcher _sendingSubmission(String text) => isA<SessionDetailLoaded>()
     .having((state) => state.queuedMessages, "queuedMessages", isEmpty)
-    .having((state) => state.sendingSubmission?.displayText, "sendingSubmission", text);
+    .having((state) => _sendingOf(state: state)?.displayText, "sendingSubmission", text);
+
+Matcher _failedSubmission(String text) => isA<SessionDetailLoaded>()
+    .having((state) => state.queuedMessages, "queuedMessages", isEmpty)
+    .having((state) => _sendingOf(state: state), "sendingSubmission", isNull)
+    .having((state) => _failedOf(state: state)?.displayText, "failedSubmission", text);
 
 final Matcher _noPendingSubmission = isA<SessionDetailLoaded>()
     .having((state) => state.queuedMessages, "queuedMessages", isEmpty)
-    .having((state) => state.sendingSubmission, "sendingSubmission", isNull);
+    .having((state) => _sendingOf(state: state), "sendingSubmission", isNull);
 
 void _stubPromptAttachmentCapability({
   required MockPluginRepository repository,
@@ -2887,6 +3557,34 @@ Future<void> _awaitNotRefreshing(SessionDetailCubit cubit) async {
     description: "non-refreshing SessionDetailLoaded",
   );
 }
+
+final class _FixedClock(final DateTime Function() _now) implements ClockProvider {
+  @override
+  DateTime call() => _now();
+}
+
+ProviderListResponse _fastModeProviders({required FastModeSupport fastMode}) => ProviderListResponse(
+  connectedOnly: false,
+  items: [
+    ProviderInfo(
+      id: "anthropic",
+      name: "Anthropic",
+      defaultModelID: "claude-3-5-sonnet",
+      models: {
+        "claude-3-5-sonnet": ProviderModel(
+          fastMode: fastMode,
+          id: "claude-3-5-sonnet",
+          providerID: "anthropic",
+          name: "Claude 3.5 Sonnet",
+          variants: const ["xhigh"],
+          defaultVariant: null,
+          family: null,
+          releaseDate: null,
+        ),
+      },
+    ),
+  ],
+);
 
 void _stubAllDefaults(
   MockSessionRepository service,
@@ -3008,6 +3706,7 @@ void _stubAllDefaults(
       agent: any(named: "agent"),
       model: any(named: "model"),
       variant: any(named: "variant"),
+      fastMode: any(named: "fastMode"),
       command: any(named: "command"),
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -3031,3 +3730,13 @@ void _stubAllDefaults(
     ),
   ).thenAnswer((_) async => ApiResponse<void>.success(null));
 }
+
+QueuedSessionSubmission? _sendingOf({required SessionDetailLoaded state}) => switch (state.localSend) {
+  LocalSendSending(:final submission) => submission,
+  LocalSendIdle() || LocalSendFailed() => null,
+};
+
+QueuedSessionSubmission? _failedOf({required SessionDetailLoaded state}) => switch (state.localSend) {
+  LocalSendFailed(:final submission) => submission,
+  LocalSendIdle() || LocalSendSending() => null,
+};

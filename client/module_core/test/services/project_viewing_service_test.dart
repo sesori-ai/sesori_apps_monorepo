@@ -30,6 +30,9 @@ class _FakeRouteSource({required AppRouteDef? initialRoute}) implements RouteSou
   ValueStream<AppRouteDef?> get currentRouteStream => routes.stream;
 
   @override
+  Stream<bool> get projectPageVisibility => currentRouteStream.map((route) => route == AppRouteDef.projects);
+
+  @override
   String? currentLocation;
 }
 

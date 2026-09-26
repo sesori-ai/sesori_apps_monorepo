@@ -8,8 +8,7 @@ class const OAuthDeviceDescriptor({required final AuthClientType clientType, req
 /// Supplies the [OAuthDeviceDescriptor] for this device.
 ///
 /// `module_auth` is pure Dart and cannot read Flutter/native device APIs, so
-/// the app layer provides the implementation (mirrors the `SecureStorage`
-/// platform interface). There is exactly one production implementation.
+/// each product shell provides the implementation.
 ///
 /// [describe] must never throw: the auth-init request requires a device, so the
 /// implementation degrades to a best-effort descriptor (platform-default name,

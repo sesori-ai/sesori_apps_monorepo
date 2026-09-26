@@ -15,6 +15,9 @@ class const JumpToEdgePill({
   super.key,
   required final Key? tapTargetKey,
   required final String label,
+
+  /// Whether [label] names live work, which shimmers until it finishes.
+  required final bool live,
   required final VoidCallback onTap,
 
   /// Extra distance lifted above the bottom edge so the pill clears a floating
@@ -25,31 +28,44 @@ class const JumpToEdgePill({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final text = Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: prego.textTheme.textSm.bold.copyWith(color: prego.colors.textPrimary),
+    );
     return Positioned(
       bottom: 12 + bottomInset,
-      left: 0,
-      right: 0,
+      left: 16,
+      right: 16,
       child: Center(
         child: Material(
           elevation: 4,
-          borderRadius: BorderRadius.circular(20),
-          color: prego.colors.bgBrandPrimary,
+          borderRadius: BorderRadius.circular(PregoRadius.x3l),
+          color: prego.colors.bgSurface3,
           child: InkWell(
+            mouseCursor: WidgetStateMouseCursor.clickable,
             key: tapTargetKey,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(PregoRadius.x3l),
             onTap: onTap,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.arrow_downward, size: 16, color: prego.colors.textBrandPrimary),
+                  Icon(TablerRegular.arrow_down, size: PregoIconSize.sm, color: prego.colors.textPrimary),
                   const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: prego.textTheme.textSm.bold.copyWith(
-                      color: prego.colors.textBrandPrimary,
-                    ),
+                  Flexible(
+                    // The live row's band, without its full-width alignment.
+                    child: live
+                        ? PregoShimmer(
+                            appearDelay: Duration.zero,
+                            baseColor: prego.colors.textTertiary,
+                            highlightColor: prego.colors.textPrimary,
+                            semanticLabel: label,
+                            child: text,
+                          )
+                        : text,
                   ),
                 ],
               ),

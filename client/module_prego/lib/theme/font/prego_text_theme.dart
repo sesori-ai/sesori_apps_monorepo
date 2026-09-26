@@ -17,6 +17,10 @@ class PregoTextTheme {
   static const fontFamily = "packages/theme_prego/Satoshi Prego";
   static const fontFamilyFallback = [".SF UI Text", ".SF UI Display", "Roboto", "Arial"];
 
+  /// The platform monospace alias, then cross-platform fallbacks in priority order.
+  static const monoFontFamily = "monospace";
+  static const monoFontFamilyFallback = ["Menlo", "Roboto Mono", "Courier New"];
+
   static final dark = PregoTextTheme._(variant: .dark);
   static final light = PregoTextTheme._(variant: .light);
 
@@ -86,6 +90,15 @@ class PregoTextTheme {
         height: 18,
         letterSpacing: 0,
         color: variant.color,
+      ),
+      code = TextStyle(
+        fontFamily: monoFontFamily,
+        fontFamilyFallback: monoFontFamilyFallback,
+        fontSize: 12,
+        height: 18 / 12,
+        leadingDistribution: TextLeadingDistribution.even,
+        fontWeight: FontWeight.w400,
+        color: variant.color,
       );
 
   final FontVariation display2xl;
@@ -101,6 +114,9 @@ class PregoTextTheme {
   final FontVariation textSm;
   final FontVariation textXs;
 
+  /// The one style for code and command output: 12 regular monospace.
+  final TextStyle code;
+
   static PregoTextTheme lerpTextThemes({required PregoTextTheme a, required PregoTextTheme b, required double t}) =>
       PregoTextTheme._lerped(
         display2xl: FontVariation.lerpVariation(a: a.display2xl, b: b.display2xl, t: t),
@@ -114,6 +130,7 @@ class PregoTextTheme {
         textMd: FontVariation.lerpVariation(a: a.textMd, b: b.textMd, t: t),
         textSm: FontVariation.lerpVariation(a: a.textSm, b: b.textSm, t: t),
         textXs: FontVariation.lerpVariation(a: a.textXs, b: b.textXs, t: t),
+        code: TextStyle.lerp(a.code, b.code, t) ?? a.code,
       );
 
   new _lerped({
@@ -128,6 +145,7 @@ class PregoTextTheme {
     required this.textMd,
     required this.textSm,
     required this.textXs,
+    required this.code,
   });
 
   GuaranteedTextTheme asFlutterTextTheme() => GuaranteedTextTheme(
@@ -233,5 +251,14 @@ class FontVariation {
     leadingDistribution: TextLeadingDistribution.even,
     fontWeight: fontWeight,
     color: color,
+  );
+}
+
+extension TextStyleMonospace on TextStyle {
+  /// A copy in the monospace family, for code inline in prose that keeps its
+  /// paragraph's size. Code and output surfaces use [PregoTextTheme.code].
+  TextStyle get monospace => copyWith(
+    fontFamily: PregoTextTheme.monoFontFamily,
+    fontFamilyFallback: PregoTextTheme.monoFontFamilyFallback,
   );
 }

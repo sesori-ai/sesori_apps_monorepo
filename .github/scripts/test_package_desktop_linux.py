@@ -134,9 +134,9 @@ class LinuxPackagingTests(unittest.TestCase):
         self.assertEqual(audit["explicitDependencies"], [])
         self.assertEqual(audit["packages"], [
             "file_selector_linux", "flutter_secure_storage_linux", "pasteboard", "screen_retriever_linux",
-            "tray_manager", "url_launcher_linux", "window_manager",
+            "url_launcher_linux", "window_manager",
         ])
-        source = self.plugin_root / "tray_manager/linux/plugin.cc"
+        source = self.plugin_root / "url_launcher_linux/linux/plugin.cc"
         source.write_text('void *x = dlopen("libguessed.so", 1);\n')
         with self.assertRaisesRegex(ValueError, "source-derived package dependency"):
             packaging.audit_dynamic_loading(package_config=self.package_config)

@@ -6,6 +6,7 @@ import "dart:io";
 import "package:args/args.dart";
 import "package:cryptography/cryptography.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
@@ -18,10 +19,13 @@ import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/project_repository.dart";
+import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/trackers/session_event_tracker.dart";
 import "package:sesori_bridge/src/services/session_event_service.dart";
+import "package:sesori_bridge/src/services/session_prompt_service.dart";
+import "package:sesori_bridge/src/services/session_view_service.dart";
 import "package:sesori_bridge/src/sse/bridge_event_mapper.dart";
 import "package:sesori_bridge/src/sse/sse_event_delivery.dart";
 import "package:sesori_bridge/src/sse/sse_manager.dart";
@@ -160,6 +164,15 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
       );
       final failureReporter = _BenchmarkFailureReporter();
       final eventService = SessionEventService(
+        sessionViews: SessionViewService(
+          sessions: sessionRepository,
+          continuations: SessionContinuationRepository(
+            dao: SessionContinuationDao(database: database),
+            runtime: runtime,
+          ),
+          resetBuffer: const Duration(minutes: 2),
+        ),
+        sessionPromptService: const _UnusedSessionPromptService(),
         sessionRepository: sessionRepository,
         pluginRuntime: runtime,
         eventMapper: const SessionEventMapper(),
@@ -482,6 +495,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
     await database.sessionDao.upsertSessionRows(
       rows: [
         SessionDto(
+          fastMode: false,
           sessionId: _sentinelSessionId,
           backendSessionId: fixture.sessions.first.id,
           projectId: fixture.projectPaths.first,
@@ -506,6 +520,7 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
           pluginId: _pluginId,
           title: null,
           catalogTitle: "last-committed-sentinel",
+          approvalOverride: null,
         ),
       ],
     );
@@ -544,6 +559,8 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
       generation: 1,
       event: BridgeSseSessionUpdated(
         info: Session(
+          approvalOverride: null,
+          autoContinuation: null,
           branchName: null,
           id: fixture.sessions.first.id,
           pluginId: _pluginId,
@@ -881,6 +898,9 @@ class _ExistingFilesystemApi() implements FilesystemApi {
   bool directoryExists(String path) => true;
 
   @override
+  Future<bool> directoryExistsAsync(String path) async => true;
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -902,4 +922,11 @@ class _BenchmarkFailureReporter() implements FailureReporter {
 
   @override
   void setGlobalKey({required String key, required Object value}) {}
+}
+
+/// The benchmark plugins report no prompt defaults, so nothing reaches this.
+final class const _UnusedSessionPromptService() implements SessionPromptService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnsupportedError("benchmark does not publish prompt defaults: ${invocation.memberName}");
 }

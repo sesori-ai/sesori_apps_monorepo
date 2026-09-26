@@ -78,7 +78,7 @@ void main() {
     test("reads sub-agent parentage and nickname from session metadata", () async {
       final repository = CodexCatalogRepository(rolloutApi: _HeaderRolloutApi());
 
-      final records = {for (final record in repository.listSessionRecords()) record.id: record};
+      final records = {for (final record in await repository.listSessionRecords()) record.id: record};
 
       expect(records["01a06259-6e4f-77f2-8bc7-000000000001"]?.parentId, isNull);
       expect(records["01a06259-6e4f-77f2-8bc7-000000000002"]?.parentId, "01a06259-6e4f-77f2-8bc7-000000000001");
@@ -821,7 +821,7 @@ class _StubCatalogRepository({required final List<CodexSessionRecord> records}) 
   final List<String> deletedSessionIds = [];
 
   @override
-  Future<List<CodexSessionRecord>> listSessionRecordsInIsolate() async => records;
+  Future<List<CodexSessionRecord>> listSessionRecords() async => records;
 
   @override
   bool deleteSession({required String sessionId}) {
@@ -846,7 +846,7 @@ class _HeaderRolloutApi() extends CodexRolloutApi {
   List<CodexSessionIndexEntryDto> readSessionIndex() => const [];
 
   @override
-  List<CodexRolloutLineDto> readHeader({required String rolloutPath}) {
+  CodexRolloutHeader readHeader({required String rolloutPath}) {
     final meta = switch (rolloutPath) {
       _root => const CodexRolloutSessionMetadataPayloadDto(
         id: "01a06259-6e4f-77f2-8bc7-000000000001",
@@ -882,23 +882,27 @@ class _HeaderRolloutApi() extends CodexRolloutApi {
         agentPath: null,
       ),
     };
-    return [
-      CodexRolloutLineDto.sessionMetadata(timestamp: meta.timestamp, payload: meta),
-      if (rolloutPath != _root)
-        const CodexRolloutLineDto.sessionMetadata(
-          timestamp: "2026-09-02T16:40:23Z",
-          payload: CodexRolloutSessionMetadataPayloadDto(
-            id: "01a06259-6e4f-77f2-8bc7-000000000001",
-            cwd: "/repo/app",
+    return CodexRolloutHeader(
+      reachedLineLimit: true,
+      fileLength: 1,
+      lines: [
+        CodexRolloutLineDto.sessionMetadata(timestamp: meta.timestamp, payload: meta),
+        if (rolloutPath != _root)
+          const CodexRolloutLineDto.sessionMetadata(
             timestamp: "2026-09-02T16:40:23Z",
-            modelProvider: "openai",
-            cliVersion: "0.148.0",
-            parentThreadId: null,
-            threadSource: null,
-            agentNickname: null,
-            agentPath: null,
+            payload: CodexRolloutSessionMetadataPayloadDto(
+              id: "01a06259-6e4f-77f2-8bc7-000000000001",
+              cwd: "/repo/app",
+              timestamp: "2026-09-02T16:40:23Z",
+              modelProvider: "openai",
+              cliVersion: "0.148.0",
+              parentThreadId: null,
+              threadSource: null,
+              agentNickname: null,
+              agentPath: null,
+            ),
           ),
-        ),
-    ];
+      ],
+    );
   }
 }

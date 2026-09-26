@@ -1,5 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "models/claude_agent_selection.dart";
+import "models/claude_message_origin_kind.dart";
 import "models/claude_tool_use_result.dart";
 import "repositories/mappers/claude_api_error_mapper.dart";
 import "repositories/mappers/claude_content_mapper.dart";
@@ -91,8 +93,22 @@ final class const ClaudeHistoryMapper({
           });
           apiError.content.add(record.content);
           apiError.apiErrorStatus ??= record.apiErrorStatus;
+        case ClaudeTranscriptUserRecord(isCompactSummary: true):
+          if (skip(record)) continue;
+          entries.add(
+            _MappedHistoryMessage(
+              message: _content.compactionMessage(
+                sessionId: sessionId,
+                messageId: record.id,
+                time: _messageTime(record.timestamp),
+                content: record.content,
+              ),
+            ),
+          );
         case ClaudeTranscriptUserRecord():
-          if (skip(record) || record.isMeta || record.isVisibleInTranscriptOnly) {
+          if (skip(record) ||
+              (record.isMeta && record.originKind != ClaudeMessageOriginKind.peer) ||
+              record.isVisibleInTranscriptOnly) {
             continue;
           }
           final blocks = _content.map(content: record.content);
@@ -124,41 +140,30 @@ final class const ClaudeHistoryMapper({
             if (targets.length == 1) targets.single.content.add(record.content);
             continue;
           }
-          if (blocks.whereType<ClaudeMappedTaskNotificationContentBlock>().firstOrNull case final block?
-              when tasks.isKnownTask(toolUseId: block.notification.toolUseId)) {
-            tasks.taskNotified(
-              toolUseId: block.notification.toolUseId,
-              taskId: block.notification.taskId,
-              status: block.notification.status,
-              summary: block.notification.summary,
-              result: block.notification.result,
-            );
-            continue;
-          }
-          // The CLI's own delivery of a task outcome to the model, never a
-          // user-authored message, even when its envelope names no task here.
-          if (record.isTaskNotification) continue;
-
-          final parts = _content.mapParts(
-            content: _content.visibleUserContent(content: record.content),
+          final message = _userTurn(
             sessionId: sessionId,
             messageId: record.id,
+            timestamp: record.timestamp,
+            content: record.content,
+            blocks: blocks,
+            originKind: record.originKind,
+            tasks: tasks,
           );
-          if (!parts.any((part) => part.type.isVisible)) continue;
-          entries.add(
-            _UserHistoryMessage(
-              message: PluginMessageWithParts(
-                info: PluginMessage.user(
-                  id: record.id,
-                  sessionID: sessionId,
-                  agent: null,
-                  time: _messageTime(record.timestamp),
-                  promptId: null,
-                ),
-                parts: parts,
-              ),
-            ),
+          if (message != null) entries.add(_MappedHistoryMessage(message: message));
+        case ClaudeTranscriptQueuedCommandRecord():
+          if (skip(record) || (record.isMeta && record.originKind != ClaudeMessageOriginKind.peer)) continue;
+          final blocks = _content.map(content: record.prompt);
+          if (_content.containsInternalCommandOutput(blocks: blocks)) continue;
+          final message = _userTurn(
+            sessionId: sessionId,
+            messageId: record.id,
+            timestamp: record.timestamp,
+            content: record.prompt,
+            blocks: blocks,
+            originKind: record.originKind,
+            tasks: tasks,
           );
+          if (message != null) entries.add(_MappedHistoryMessage(message: message));
         case ClaudeTranscriptContextRecord() ||
             ClaudeTranscriptUnreplayableMessageRecord() ||
             ClaudeTranscriptTitleRecord() ||
@@ -177,7 +182,7 @@ final class const ClaudeHistoryMapper({
     final messages = <PluginMessageWithParts>[];
     for (final entry in entries) {
       switch (entry) {
-        case _UserHistoryMessage(:final message):
+        case _MappedHistoryMessage(:final message):
           messages.add(message);
         case _ApiErrorHistoryMessage():
           messages.add(_buildApiError(entry: entry, sessionId: sessionId, modelId: modelId));
@@ -187,6 +192,48 @@ final class const ClaudeHistoryMapper({
       }
     }
     return messages;
+  }
+
+  /// A user-role turn, mapped as the live path maps its frame. Null when
+  /// nothing is shown.
+  PluginMessageWithParts? _userTurn({
+    required String sessionId,
+    required String messageId,
+    required DateTime? timestamp,
+    required Object? content,
+    required List<ClaudeMappedContentBlock> blocks,
+    required ClaudeMessageOriginKind originKind,
+    required ClaudeToolTracker tasks,
+  }) {
+    // The CLI's own delivery of a task outcome to the model, never a
+    // user-authored message: a known task absorbs it, anything else
+    // replays as the same Automation row the live path shows.
+    if (_content.isTaskNotification(blocks: blocks, originKind: originKind)) {
+      final notifications = [
+        for (final block in blocks)
+          if (block is ClaudeMappedTaskNotificationContentBlock) block.notification,
+      ];
+      final unclaimed = [
+        for (final notification in notifications)
+          if (tasks.envelopeNotified(notification: notification) == null) notification,
+      ];
+      if (notifications.isNotEmpty && unclaimed.isEmpty) return null;
+      return _content.taskNotificationMessage(
+        sessionId: sessionId,
+        messageId: messageId,
+        time: _messageTime(timestamp),
+        content: content,
+        notifications: unclaimed,
+      );
+    }
+    return _content.userMessage(
+      content: content,
+      sessionId: sessionId,
+      messageId: messageId,
+      time: _messageTime(timestamp),
+      originKind: originKind,
+      promptId: null,
+    );
   }
 
   PluginMessageWithParts _buildApiError({
@@ -202,7 +249,7 @@ final class const ClaudeHistoryMapper({
       info: PluginMessage.error(
         id: entry.id,
         sessionID: sessionId,
-        agent: "claude",
+        agent: ClaudeAgentSelection.messageAgent,
         modelID: modelId(entry.model),
         providerID: "anthropic",
         variant: null,
@@ -256,7 +303,7 @@ final class const ClaudeHistoryMapper({
       info: PluginMessage.assistant(
         id: entry.id,
         sessionID: sessionId,
-        agent: "claude",
+        agent: ClaudeAgentSelection.messageAgent,
         modelID: modelId(entry.model),
         providerID: "anthropic",
         variant: entry.variant,
@@ -270,7 +317,8 @@ final class const ClaudeHistoryMapper({
 
 sealed class const _ClaudeHistoryEntry();
 
-final class const _UserHistoryMessage({required final PluginMessageWithParts message}) extends _ClaudeHistoryEntry;
+/// A message fully mapped from one record: a user turn or a compaction row.
+final class const _MappedHistoryMessage({required final PluginMessageWithParts message}) extends _ClaudeHistoryEntry;
 
 final class _ApiErrorHistoryMessage({
   required final String id,

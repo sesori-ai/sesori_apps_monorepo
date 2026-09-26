@@ -18,6 +18,9 @@ class const SessionDetailPresentationScope({
   required final ExternalLinkOpener openExternalLink,
   required final SessionDetailSessionOpener openSession,
   required final VoidCallback openHarnessSettings,
+
+  /// Opens the settings that hold the connected bridge's YOLO toggle.
+  required final VoidCallback openBridgeSettings,
   required super.child,
 }) extends InheritedWidget {
   static SessionDetailPresentationScope of(BuildContext context) {
@@ -30,6 +33,25 @@ class const SessionDetailPresentationScope({
     return scope ?? (throw StateError("SessionDetailPresentationScope was not found in the widget tree"));
   }
 
+  /// This scope again around [child], for a route pushed from below it: the
+  /// route's content does not inherit the session page's scope. [openSession]
+  /// lets the route close itself before it navigates away.
+  SessionDetailPresentationScope around({
+    required SessionDetailSessionOpener openSession,
+    required Widget child,
+  }) => SessionDetailPresentationScope(
+    messageImageRepository: messageImageRepository,
+    imageSaver: imageSaver,
+    imageClipboard: imageClipboard,
+    imageSharer: imageSharer,
+    canShareImages: canShareImages,
+    openExternalLink: openExternalLink,
+    openSession: openSession,
+    openHarnessSettings: openHarnessSettings,
+    openBridgeSettings: openBridgeSettings,
+    child: child,
+  );
+
   @override
   bool updateShouldNotify(SessionDetailPresentationScope oldWidget) =>
       messageImageRepository != oldWidget.messageImageRepository ||
@@ -39,7 +61,8 @@ class const SessionDetailPresentationScope({
       canShareImages != oldWidget.canShareImages ||
       openExternalLink != oldWidget.openExternalLink ||
       openSession != oldWidget.openSession ||
-      openHarnessSettings != oldWidget.openHarnessSettings;
+      openHarnessSettings != oldWidget.openHarnessSettings ||
+      openBridgeSettings != oldWidget.openBridgeSettings;
 }
 
 typedef SessionDetailCapabilityProvider<T> = T Function();

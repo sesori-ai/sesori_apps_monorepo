@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""Prepare private macOS release metadata from trusted qualification artifacts.
+"""Prepare macOS release metadata from trusted qualification/shared-release artifacts.
 
 Offline consistency checks only: never sign, publish, install, or claim ship readiness.
 """
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 
 
 ARCHITECTURES = ("arm64", "x64")
 CHANNELS = ("stable", "internal")
+PRODUCER_WORKFLOWS = {".github/workflows/desktop-qualification.yml",
+                      ".github/workflows/release-all-platforms.yml", ".github/workflows/submit-release.yml"}
 
 
 def require(condition: bool, message: str) -> None:
@@ -31,7 +34,7 @@ def sha256(path: Path) -> str:
 
 
 def prepare(*, root: Path, source_sha: str, channel: str, tooling_sha: str,
-            repository: str, run_id: int, output: Path) -> None:
+            repository: str, run_id: int, current_run_id: int | None, output: Path) -> dict:
     require(bool(re.fullmatch(r"[0-9a-f]{40}", source_sha)), "Expected immutable source SHA")
     require(bool(re.fullmatch(r"[0-9a-f]{40}", tooling_sha)), "Expected immutable tooling SHA")
     require(channel in CHANNELS, "Unknown release channel")
@@ -39,10 +42,21 @@ def prepare(*, root: Path, source_sha: str, channel: str, tooling_sha: str,
     run = read_json(root / "run.json")
     require(run.get("id") == run_id and run_id > 0, "Wrong packaging run")
     require(run.get("repository", {}).get("full_name") == repository, "Wrong run repository")
-    require(run.get("path") == ".github/workflows/desktop-qualification.yml", "Wrong producer workflow")
-    require(run.get("event") == "workflow_dispatch" and run.get("conclusion") == "success",
-            "Select a successful manually dispatched qualification run")
-    require(run.get("head_sha") == source_sha, "Run source differs from selected source")
+    producer = run.get("path")
+    require(producer in PRODUCER_WORKFLOWS, "Wrong producer workflow")
+    require(run.get("event") == "workflow_dispatch" and run.get("head_branch") == "main",
+            "Select a main-only manually dispatched producer")
+    require(isinstance(run.get("head_sha"), str) and bool(re.fullmatch(r"[0-9a-f]{40}", run["head_sha"])),
+            "Expected immutable producer workflow SHA")
+    # A shared finalizer runs after its native build dependency, before its own run completes.
+    own_finalizer = (run_id == current_run_id and run.get("head_sha") == tooling_sha
+                     and producer != ".github/workflows/desktop-qualification.yml"
+                     and run.get("status") == "in_progress" and run.get("conclusion") is None)
+    require(run.get("conclusion") == "success" or own_finalizer, "Select a successful producer or its own finalizer")
+    # Production and private qualification may rebuild an older main-ancestor product source.
+    # Their sealed identity/compiled defines and producer-side ancestry guard bind that source.
+    if producer == ".github/workflows/release-all-platforms.yml":
+        require(run.get("head_sha") == source_sha, "Run source differs from selected source")
     records = []
     common = None
     for arch in ARCHITECTURES:
@@ -84,18 +98,19 @@ def prepare(*, root: Path, source_sha: str, channel: str, tooling_sha: str,
             records.append({**common, "channel": channel, "platform": "macos", "architecture": arch,
                             "name": name, "sha256": digest,
                             "evidenceArtifact": evidence.name})
-    tag = f"desktop-v{common['version']}"
+    tag = f"v{common['version']}"
     if channel == "internal":
         tag += f"-internal.{common['buildNumber']}"
     metadata = {"schemaVersion": 1, **common, "channel": channel, "platform": "macos",
-                "proposedTag": tag, "githubLatest": False, "preparationSourceSha": tooling_sha,
+                "tag": tag, "preparationSourceSha": tooling_sha, "producerWorkflowSha": run["head_sha"],
                 "packagingRun": run_id, "repository": repository, "artifacts": records,
-                "proofBoundary": "Private consistency preparation only; not independent signature verification, "
-                                 "installed upgrade QA, publication approval, or a public release"}
+                "proofBoundary": "Artifact consistency only; not independent signature verification, "
+                                 "interactive/minimum-OS QA, or publication approval"}
     output.mkdir(parents=True)  # Fresh output only; do not overwrite a previous preparation.
     (output / "desktop-release.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
     (output / "checksums.txt").write_text("".join(f"{row['sha256']}  {row['name']}\n" for row in records),
                                           encoding="utf-8")
+    return metadata
 
 
 def main() -> None:
@@ -107,7 +122,7 @@ def main() -> None:
     parser.add_argument("--repository", required=True)
     parser.add_argument("--run-id", type=int, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    prepare(**vars(parser.parse_args()))
+    prepare(**vars(parser.parse_args()), current_run_id=int(os.environ.get("GITHUB_RUN_ID", "0")) or None)
 
 
 if __name__ == "__main__":

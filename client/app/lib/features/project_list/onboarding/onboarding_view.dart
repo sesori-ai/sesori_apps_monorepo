@@ -139,7 +139,6 @@ class const _ConnectBridgeChecklist() extends StatelessWidget {
             stepHeader: _InfoLabel(
               title: "1. ${loc.projectsOnboardingInstallStepTitle}",
               info: loc.projectsOnboardingInstallStepInfo,
-              centered: false,
             ),
           ),
         ),
@@ -153,7 +152,6 @@ class const _ConnectBridgeChecklist() extends StatelessWidget {
               _InfoLabel(
                 title: "2. ${loc.projectsOnboardingStartStepTitle}",
                 info: loc.projectsOnboardingStartStepInfo,
-                centered: false,
               ),
               const SizedBox(height: PregoSpacing.md),
               _CommandBoxFrame(
@@ -195,7 +193,7 @@ class const _WhyBridgeButton({
         hierarchy: PregoButtonsSolidHierarchy.tertiary,
         size: PregoButtonsSolidSize.sm,
         onPressed: () {
-          final presentation = showPregoBottomSheet<void>(
+          final presentation = showPregoModal<void>(
             context: context,
             title: loc.projectsOnboardingPcStatusWhy,
             builder: (_) => const _WhyBridgeInfoSheet(),
@@ -209,40 +207,22 @@ class const _WhyBridgeButton({
 }
 
 /// A command-box label with a trailing "ⓘ" info popover — e.g. "1. Install the
-/// bridge ⓘ" on the connect onboarding or "Make sure the Bridge is running ⓘ"
-/// on the bridge-offline view. Tapping the icon opens a [PregoInfoPopover]
-/// (glass on iOS, flat/`cue` on Android) anchored to it, showing [info].
+/// bridge ⓘ" on the connect onboarding. Tapping the icon opens a
+/// [PregoInfoPopover] (glass on iOS, flat/`cue` on Android) anchored to it,
+/// showing [info].
 class const _InfoLabel({
   required final String title,
   required final String info,
-
-  /// Centres the label + icon pair instead of aligning it to the start. The
-  /// numbered onboarding steps sit above a full-width box and read as a list,
-  /// so they stay start-aligned; the bridge-offline label heads a centred
-  /// composition.
-  required final bool centered,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
     return Row(
-      mainAxisAlignment: centered ? MainAxisAlignment.center : MainAxisAlignment.start,
       children: [
-        // The info icon's 40px tap target holds its 12px glyph against its
-        // start, leaving 24px of dead space at the end. An equal gap in front
-        // centres what the user actually sees rather than the hit box — and
-        // keeps it centred once the title grows wide enough to claim the whole
-        // row, where the spacer becomes the leading margin matching the glyph's
-        // trailing one.
-        if (centered) const SizedBox(width: 24),
         Flexible(
           child: Text(
             title,
-            // A title too long for one line (long locale, large text scale)
-            // wraps; centre those lines so the block still reads as centred
-            // rather than ragged against the leading edge.
-            textAlign: centered ? TextAlign.center : TextAlign.start,
             style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
           ),
         ),
@@ -260,7 +240,7 @@ class const _InfoLabel({
               behavior: HitTestBehavior.opaque,
               onTap: toggle,
               // 40×40 hit area keeps the tap target comfortably above the
-              // touch-target minimum while the 12px glyph stays visually snug
+              // touch-target minimum while the 14px glyph stays visually snug
               // against the step title via the small leading inset.
               child: SizedBox(
                 width: 40,
@@ -269,7 +249,7 @@ class const _InfoLabel({
                   alignment: AlignmentDirectional.centerStart,
                   child: Padding(
                     padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                    child: Icon(TablerRegular.info_circle, size: 12, color: prego.colors.textSecondary),
+                    child: Icon(TablerRegular.info_circle, size: PregoIconSize.sm, color: prego.colors.textSecondary),
                   ),
                 ),
               ),
@@ -281,7 +261,7 @@ class const _InfoLabel({
   }
 }
 
-/// The onboarding support menu: a low-emphasis "Need help?" tertiary (ghost)
+/// The onboarding support menu: a "Need help?" pill or quiet link
 /// button that opens a flat anchored menu of support channels (email, Discord,
 /// X), each launching an external link. Forced flat on every platform
 /// ([PregoAnchorMenu.flat]) so the popup matches its flat trigger instead of
@@ -290,6 +270,10 @@ class const _NeedHelpMenu({
   /// The onboarding surface hosting the pill, reported with every event so
   /// help-seeking is attributable to the funnel step the user was on.
   required final OnboardingSurface surface,
+
+  /// A plain link instead of a pill, for a surface whose own fix should
+  /// outweigh asking for help.
+  required final bool quiet,
 }) extends StatelessWidget {
   /// Opens one of the "Need help?" contact links ([SupportLinks]) through the
   /// shared [openExternalLink] helper. Reports the tapped [channel] to
@@ -311,11 +295,12 @@ class const _NeedHelpMenu({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: 200,
+      acquireOpenLease: null,
       triggerBuilder: (context, toggle) => PregoButtonsSolid(
-        leadingIcon: TablerRegular.help,
+        leadingIcon: quiet ? null : TablerRegular.help,
         label: loc.projectsOnboardingNeedHelp,
-        hierarchy: PregoButtonsSolidHierarchy.secondary,
-        size: PregoButtonsSolidSize.xl,
+        hierarchy: quiet ? PregoButtonsSolidHierarchy.tertiary : PregoButtonsSolidHierarchy.secondary,
+        size: quiet ? PregoButtonsSolidSize.sm : PregoButtonsSolidSize.xl,
         onPressed: () {
           // While the popup is up its barrier covers the trigger, so a pill
           // tap can only ever open the menu — safe to count as an open.
@@ -329,6 +314,7 @@ class const _NeedHelpMenu({
           title: loc.projectsOnboardingNeedHelpEmail,
           subtitle: null,
           isSelected: false,
+          shortcutLabel: null,
           onTap: () => unawaited(
             _openSupportLink(
               cubit: context.read<ProjectListCubit>(),
@@ -342,6 +328,7 @@ class const _NeedHelpMenu({
           title: loc.projectsOnboardingNeedHelpDiscord,
           subtitle: null,
           isSelected: false,
+          shortcutLabel: null,
           onTap: () => unawaited(
             _openSupportLink(
               cubit: context.read<ProjectListCubit>(),
@@ -356,6 +343,7 @@ class const _NeedHelpMenu({
           title: loc.projectsOnboardingNeedHelpX,
           subtitle: null,
           isSelected: false,
+          shortcutLabel: null,
           onTap: () => unawaited(
             _openSupportLink(
               cubit: context.read<ProjectListCubit>(),
@@ -678,6 +666,7 @@ class _InstallCommandBoxState() extends State<_InstallCommandBox> {
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
           onTap: selected ? null : () => setState(() => _selectedIndex = index),
           borderRadius: BorderRadius.circular(PregoRadius.sm),
           child: Padding(
@@ -788,7 +777,7 @@ class _CommandActionRowState() extends State<_CommandActionRow> {
     final prego = context.prego;
     final colors = prego.colors;
     final loc = context.loc;
-    final mono = prego.textTheme.textXs.regular.copyWith(color: colors.textSecondary).monospace;
+    final mono = prego.textTheme.code.copyWith(color: colors.textSecondary);
 
     return Container(
       width: double.infinity,
@@ -865,13 +854,14 @@ class const _CommandIconButton({
       child: Material(
         type: MaterialType.transparency,
         child: InkResponse(
+          mouseCursor: WidgetStateMouseCursor.clickable,
           onTap: onTap,
           radius: 22,
           child: SizedBox(
             width: 40,
             height: 44,
             child: Center(
-              child: Icon(icon, size: 18, color: colors.textSecondary),
+              child: Icon(icon, size: PregoIconSize.md, color: colors.textSecondary),
             ),
           ),
         ),

@@ -259,6 +259,10 @@ class AdaptiveSessionRouterTestHarness() {
     getIt.registerSingleton<RegisteredBridgesService>(registeredBridgesService);
     getIt.registerSingleton<SessionRepository>(sessionRepository);
     getIt.registerSingleton<SessionAbortService>(SessionAbortService(repository: sessionRepository));
+    getIt.registerSingleton<SessionAutoContinuationService>(
+      SessionAutoContinuationService(repository: sessionRepository),
+    );
+    getIt.registerSingleton<SessionApprovalService>(SessionApprovalService(repository: sessionRepository));
     getIt.registerSingleton<NewSessionOptionsService>(
       NewSessionOptionsService(
         sessionRepository: sessionRepository,
@@ -275,6 +279,7 @@ class AdaptiveSessionRouterTestHarness() {
     getIt.registerSingleton<PermissionRepository>(permissionRepository);
     getIt.registerSingleton<SessionDetailLoadService>(sessionDetailLoadService);
     getIt.registerSingleton<PluginManagementService>(stubbedPluginManagementService());
+    getIt.registerSingleton<BridgeSettingsService>(stubbedBridgeSettingsService());
     getIt.registerSingleton<SessionInteractionCalculator>(const SessionInteractionCalculator());
     getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
     getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
@@ -297,6 +302,7 @@ class AdaptiveSessionRouterTestHarness() {
       providers: [
         BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
         BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+        BlocProvider(create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository())),
       ],
       child: MaterialApp.router(
         routerConfig: router,
@@ -344,6 +350,8 @@ Session adaptiveTestSession({
   required String title,
 }) {
   return Session(
+    approvalOverride: null,
+    autoContinuation: null,
     branchName: null,
     id: id,
     pluginId: "plugin-1",

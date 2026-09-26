@@ -238,7 +238,7 @@ void main() {
       );
     });
 
-    test("retains pre-compaction history and maps sentinel card without summaries", () {
+    test("retains pre-compaction history and maps the compaction entry's summary once", () {
       const privateSummary = "private summary";
       final messages = mapper.map(
         sessionId: sessionId,
@@ -248,6 +248,7 @@ void main() {
             id: "compact",
             parentId: "user",
             timestamp: DateTime.fromMillisecondsSinceEpoch(2),
+            summary: "Continue the auth work.",
           ),
           _message(
             id: "summary",
@@ -280,11 +281,9 @@ void main() {
         "pi:session:compaction:${PiMessageIdentityBuilder.compactionTimestampSentinel}:1",
       );
       expect(messages.last.info.time, isNull);
-      final compact = messages.last.parts.single;
-      expect(compact.tool, "compact");
-      expect(compact.state.status, PluginToolStatus.completed);
-      expect(compact.state.title, isNull);
-      expect(compact.state.output, isNull);
+      final compact = messages.last.parts.single as PluginMessagePartCompaction;
+      expect(compact.id, "${messages.last.info.id}-tool");
+      expect(compact.summary, "Continue the auth work.");
       expect(messages.toString(), isNot(contains(privateSummary)));
     });
 

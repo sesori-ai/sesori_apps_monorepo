@@ -2,20 +2,17 @@ import "dart:convert";
 import "dart:developer" as developer;
 
 import "package:injectable/injectable.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart" show AuthUser, jsonDecodeMap, parseJwtExpiry;
 
-import "../platform/secure_storage.dart";
+import "../models/auth_secret_key.dart";
 
 @lazySingleton
-class TokenStorageService(final SecureStorage _storage) {
-  static const _accessTokenKey = "access_token";
-  static const _refreshTokenKey = "refresh_token";
-  static const _userKey = "auth_user";
-
+class TokenStorageService({required final SecureStorageRepository _storage}) {
   Future<void> saveTokens({required String accessToken, required String refreshToken}) async {
     try {
-      await _storage.write(key: _accessTokenKey, value: accessToken);
-      await _storage.write(key: _refreshTokenKey, value: refreshToken);
+      await _storage.write(key: AuthSecretKey.accessToken, value: accessToken);
+      await _storage.write(key: AuthSecretKey.refreshToken, value: refreshToken);
     } catch (error, stackTrace) {
       developer.log(
         "Failed to persist auth tokens",
@@ -33,9 +30,9 @@ class TokenStorageService(final SecureStorage _storage) {
   Future<void> saveUser(AuthUser? user) async {
     try {
       if (user == null) {
-        await _storage.delete(key: _userKey);
+        await _storage.delete(key: AuthSecretKey.user);
       } else {
-        await _storage.write(key: _userKey, value: jsonEncode(user.toJson()));
+        await _storage.write(key: AuthSecretKey.user, value: jsonEncode(user.toJson()));
       }
     } catch (error, stackTrace) {
       developer.log(
@@ -50,7 +47,7 @@ class TokenStorageService(final SecureStorage _storage) {
 
   Future<AuthUser?> getUser() async {
     try {
-      final raw = await _storage.read(key: _userKey);
+      final raw = await _storage.read(key: AuthSecretKey.user);
       if (raw == null || raw.isEmpty) return null;
       return AuthUser.fromJson(jsonDecodeMap(raw));
     } catch (error, stackTrace) {
@@ -66,7 +63,7 @@ class TokenStorageService(final SecureStorage _storage) {
 
   Future<String?> _getAccessToken() async {
     try {
-      return await _storage.read(key: _accessTokenKey);
+      return await _storage.read(key: AuthSecretKey.accessToken);
     } catch (error, stackTrace) {
       developer.log(
         "Failed to read access token",
@@ -100,7 +97,7 @@ class TokenStorageService(final SecureStorage _storage) {
 
   Future<String?> getRefreshToken() async {
     try {
-      return await _storage.read(key: _refreshTokenKey);
+      return await _storage.read(key: AuthSecretKey.refreshToken);
     } catch (error, stackTrace) {
       developer.log(
         "Failed to read refresh token",
@@ -115,9 +112,9 @@ class TokenStorageService(final SecureStorage _storage) {
   Future<void> clearTokens() async {
     try {
       await Future.wait([
-        _storage.delete(key: _accessTokenKey),
-        _storage.delete(key: _refreshTokenKey),
-        _storage.delete(key: _userKey),
+        _storage.delete(key: AuthSecretKey.accessToken),
+        _storage.delete(key: AuthSecretKey.refreshToken),
+        _storage.delete(key: AuthSecretKey.user),
       ]);
     } catch (error, stackTrace) {
       developer.log(

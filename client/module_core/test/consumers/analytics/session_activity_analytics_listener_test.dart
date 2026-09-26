@@ -3,6 +3,7 @@ import "dart:async";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/src/consumers/analytics/session_activity_analytics_listener.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
@@ -12,6 +13,7 @@ import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -35,7 +37,8 @@ const _activeAnalyticsState = ProductAnalyticsState(
 );
 
 const _emptyState = SessionDetailState.loaded(
-  interaction: SessionInteractionState.available(refreshError: null),
+  bridgePromptAttachments: {},
+  interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
   messages: [
     MessageWithParts(
       info: Message.user(
@@ -49,54 +52,61 @@ const _emptyState = SessionDetailState.loaded(
     ),
   ],
   olderMessagesCursor: null,
+  transcriptFolded: false,
   streamingText: {},
   sessionStatus: SessionStatus.idle(),
   pendingQuestions: [],
   pendingPermissions: [],
   sessionTitle: null,
+  session: testConstSession,
   pluginId: "opencode",
   supportsPromptAttachments: false,
-  agent: null,
   assistantAgentModel: null,
   children: [],
   childStatuses: {},
   isRootSession: true,
   isArchived: false,
   queuedMessages: [],
-  sendingSubmission: null,
+  localSend: LocalSendPhase.idle(),
   availableAgents: [],
   availableProviders: [],
   availableCommands: [],
   selectedAgent: "build",
   selectedAgentModel: null,
+  promptDefaults: null,
+  fastMode: false,
   stagedCommand: null,
   isRefreshing: false,
 );
 
 const _nonEmptyState = SessionDetailState.loaded(
-  interaction: SessionInteractionState.available(refreshError: null),
+  bridgePromptAttachments: {},
+  interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
   messages: [],
   olderMessagesCursor: null,
+  transcriptFolded: false,
   streamingText: {},
   sessionStatus: SessionStatus.busy(),
   pendingQuestions: [],
   pendingPermissions: [],
   sessionTitle: null,
+  session: testConstSession,
   pluginId: "opencode",
   supportsPromptAttachments: false,
-  agent: null,
   assistantAgentModel: null,
   children: [],
   childStatuses: {},
   isRootSession: true,
   isArchived: false,
   queuedMessages: [],
-  sendingSubmission: null,
+  localSend: LocalSendPhase.idle(),
   availableAgents: [],
   availableProviders: [],
   availableCommands: [],
   selectedAgent: "build",
   selectedAgentModel: null,
+  promptDefaults: null,
+  fastMode: false,
   stagedCommand: null,
   isRefreshing: false,
 );

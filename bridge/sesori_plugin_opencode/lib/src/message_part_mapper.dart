@@ -53,6 +53,18 @@ class const MessagePartMapper() {
     return part;
   }
 
+  /// Maps a part of OpenCode's compaction summary message (`summary: true`):
+  /// its text is the continuation summary, shown as a compaction row.
+  PluginMessagePart mapSummaryPart(PluginMessagePart part) => switch (part) {
+    PluginMessagePartText(:final id, :final sessionID, :final messageID, :final text) => PluginMessagePart.compaction(
+      id: id,
+      sessionID: sessionID,
+      messageID: messageID,
+      summary: text.isEmpty ? null : text,
+    ),
+    _ => part,
+  };
+
   PluginMessagePart _mapPart(Part raw) => switch (raw) {
     TextPart(synthetic: true) => _unknownPart(raw),
     TextPart() => PluginMessagePart.text(
@@ -72,6 +84,7 @@ class const MessagePartMapper() {
       sessionID: raw.sessionID,
       messageID: raw.messageID,
       tool: raw.tool,
+      kind: _toolKind(tool: raw.tool),
       state: _mapToolState(tool: raw.tool, state: raw.state),
     ),
     SubtaskPart() => PluginMessagePart.subtask(
@@ -303,6 +316,15 @@ class const MessagePartMapper() {
       attachments: attachments,
     );
   }
+
+  /// Classifies OpenCode's built-in tool names; MCP and plugin tools are other.
+  PluginToolKind _toolKind({required String tool}) => switch (tool.toLowerCase()) {
+    "read" => PluginToolKind.read,
+    "edit" || "multiedit" || "write" || "patch" || "apply_patch" => PluginToolKind.edit,
+    "bash" => PluginToolKind.command,
+    "grep" || "glob" || "list" || "codesearch" || "websearch" => PluginToolKind.search,
+    _ => PluginToolKind.other,
+  };
 
   String? _shellCommand({required String tool, required ToolState state}) {
     if (tool.toLowerCase() != "bash") return null;

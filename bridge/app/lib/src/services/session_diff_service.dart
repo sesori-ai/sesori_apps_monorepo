@@ -1,5 +1,6 @@
 import "dart:convert";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/filesystem_repository.dart";
@@ -29,6 +30,8 @@ class _DiffFileTooLarge() extends _DiffFileReadResult;
 
 class _DiffFileReadFailure() extends _DiffFileReadResult;
 
+typedef _DiffTarget = ({String worktreePath, String revision, SessionDiffComparisonMode comparisonMode});
+
 class SessionDiffService({
   required final SessionRepository _sessionRepository,
   required final SessionDiffRepository _sessionDiffRepository,
@@ -37,52 +40,10 @@ class SessionDiffService({
   static const _maxFileContentBytes = 200 * 1024;
 
   Future<List<FileDiff>> getDiffs({required String sessionId}) async {
-    final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
-    if (session == null) {
-      throw SessionDiffSessionNotFoundException();
-    }
-    if (session.archivedAt != null) return const [];
-
-    final String worktreePath;
-    final String revision;
-    final SessionDiffComparisonMode comparisonMode;
-    if (session.isDedicated) {
-      final dedicatedWorktreePath = session.worktreePath;
-      final baseBranch = session.baseBranch;
-      if (dedicatedWorktreePath == null || baseBranch == null) return const [];
-      if (baseBranch.isEmpty) {
-        throw const BaseBranchUnreachableException(message: "invalid base branch format: ''");
-      }
-      if (!_filesystemRepository.directoryExists(path: dedicatedWorktreePath)) return const [];
-      worktreePath = dedicatedWorktreePath;
-      revision = baseBranch;
-      comparisonMode = SessionDiffComparisonMode.mergeBase;
-    } else {
-      // Only the new null-branch shape is an exact session-start snapshot.
-      final startCommit = session.baseBranch == null ? session.baseCommit?.trim() : null;
-      if (startCommit == null || startCommit.isEmpty) return const [];
-      final projectPath = await _sessionRepository.getProjectPath(projectId: session.projectId);
-      if (projectPath == null) return const [];
-      if (!_filesystemRepository.directoryExists(path: projectPath)) return const [];
-      worktreePath = projectPath;
-      revision = startCommit;
-      comparisonMode = SessionDiffComparisonMode.exactRevision;
-    }
-    final queryResult = await _sessionDiffRepository.query(
-      worktreePath: worktreePath,
-      revision: revision,
-      comparisonMode: comparisonMode,
-    );
-    final snapshot = switch (queryResult) {
-      SessionDiffQuerySuccess() => queryResult,
-      SessionDiffBaseUnreachable() => throw BaseBranchUnreachableException(
-        message: "diff base '$revision' is not reachable",
-      ),
-      SessionDiffNoCommonAncestor() => throw BaseBranchUnreachableException(
-        message: "no common ancestor between '$revision' and HEAD",
-      ),
-      SessionDiffQueryFailure(:final message) => throw GitDiffQueryException(message: message),
-    };
+    final target = await _resolveTarget(sessionId: sessionId);
+    if (target == null) return const [];
+    final snapshot = await _query(target: target);
+    final worktreePath = target.worktreePath;
 
     final diffs = <FileDiff>[];
     for (final entry in snapshot.entries) {
@@ -151,6 +112,100 @@ class SessionDiffService({
       );
     }
     return diffs;
+  }
+
+  /// The session's line totals from the numstat step alone, without reading
+  /// the files [getDiffs] reads. Only an untracked file, which numstat does
+  /// not see, is read to count its lines, as [getDiffs] counts it.
+  Future<SessionDiffLineCounts> getSummary({required String sessionId}) async {
+    final target = await _resolveTarget(sessionId: sessionId);
+    if (target == null) return const (additions: 0, deletions: 0);
+    final snapshot = await _query(target: target);
+    var additions = 0;
+    var deletions = 0;
+    for (final entry in snapshot.entries) {
+      final counts =
+          snapshot.lineCountsByFile[entry.file] ??
+          _untrackedLineCounts(worktreePath: target.worktreePath, file: entry.file);
+      additions += counts.additions;
+      deletions += counts.deletions;
+    }
+    return (additions: additions, deletions: deletions);
+  }
+
+  SessionDiffLineCounts _untrackedLineCounts({required String worktreePath, required String file}) {
+    if (_filesystemRepository.isKnownBinaryFile(relativePath: file)) return const (additions: 0, deletions: 0);
+    return switch (_filesystemRepository.readBoundedTextFile(
+      rootDirectoryPath: worktreePath,
+      relativePath: file,
+      maxBytes: _maxFileContentBytes,
+    )) {
+      BoundedTextFileContent(:final content) => (additions: _countLines(content: content), deletions: 0),
+      BoundedTextFileMissing() ||
+      BoundedTextFileBinary() ||
+      BoundedTextFileTooLarge() => const (additions: 0, deletions: 0),
+      BoundedTextFileReadFailure() => _unreadableUntrackedFile(worktreePath: worktreePath, file: file),
+    };
+  }
+
+  /// The summary still returns; the file just adds nothing to the totals.
+  SessionDiffLineCounts _unreadableUntrackedFile({required String worktreePath, required String file}) {
+    Log.w("Could not read untracked file '$file' in '$worktreePath' for the change totals; counting it as 0 lines");
+    return const (additions: 0, deletions: 0);
+  }
+
+  /// What the session's changes are measured against; null when there is
+  /// nothing to compare, which reads as no changes.
+  Future<_DiffTarget?> _resolveTarget({required String sessionId}) async {
+    final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
+    if (session == null) {
+      throw SessionDiffSessionNotFoundException();
+    }
+    if (session.archivedAt != null) return null;
+
+    if (session.isDedicated) {
+      final dedicatedWorktreePath = session.worktreePath;
+      final baseBranch = session.baseBranch;
+      if (dedicatedWorktreePath == null || baseBranch == null) return null;
+      if (baseBranch.isEmpty) {
+        throw const BaseBranchUnreachableException(message: "invalid base branch format: ''");
+      }
+      if (!_filesystemRepository.directoryExists(path: dedicatedWorktreePath)) return null;
+      return (
+        worktreePath: dedicatedWorktreePath,
+        revision: baseBranch,
+        comparisonMode: SessionDiffComparisonMode.mergeBase,
+      );
+    }
+    // Only the new null-branch shape is an exact session-start snapshot.
+    final startCommit = session.baseBranch == null ? session.baseCommit?.trim() : null;
+    if (startCommit == null || startCommit.isEmpty) return null;
+    final projectPath = await _sessionRepository.getProjectPath(projectId: session.projectId);
+    if (projectPath == null) return null;
+    if (!_filesystemRepository.directoryExists(path: projectPath)) return null;
+    return (
+      worktreePath: projectPath,
+      revision: startCommit,
+      comparisonMode: SessionDiffComparisonMode.exactRevision,
+    );
+  }
+
+  Future<SessionDiffQuerySuccess> _query({required _DiffTarget target}) async {
+    final queryResult = await _sessionDiffRepository.query(
+      worktreePath: target.worktreePath,
+      revision: target.revision,
+      comparisonMode: target.comparisonMode,
+    );
+    return switch (queryResult) {
+      SessionDiffQuerySuccess() => queryResult,
+      SessionDiffBaseUnreachable() => throw BaseBranchUnreachableException(
+        message: "diff base '${target.revision}' is not reachable",
+      ),
+      SessionDiffNoCommonAncestor() => throw BaseBranchUnreachableException(
+        message: "no common ancestor between '${target.revision}' and HEAD",
+      ),
+      SessionDiffQueryFailure(:final message) => throw GitDiffQueryException(message: message),
+    };
   }
 
   Future<_DiffFileReadResult> _readBefore({

@@ -9,6 +9,7 @@ import "../api/models/pi_event.dart";
 import "../api/models/pi_extension_ui_request.dart";
 import "../api/models/pi_rpc_frame.dart";
 import "../api/pi_rpc_client.dart";
+import "../repositories/mappers/pi_quota_interruption_mapper.dart";
 import "../repositories/pi_session_catalog_repository.dart";
 import "../repositories/pi_session_process_repository.dart";
 import "pi_event_dispatcher.dart";
@@ -31,10 +32,6 @@ enum _PiQueueState() {
 }
 
 final class _PiSessionTurnState({required final String initialDirectory}) {
-  /// See [recentPromptIds]. 64 comfortably exceeds any realistic gap between
-  /// a lost acceptance response and its retry.
-  static const int _recentPromptIdLimit = 64;
-
   String directory = initialDirectory;
 
   /// Admitted turns waiting for their FIFO dispatch attempt.
@@ -51,14 +48,9 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
   /// The current resident whose frames may outlive a bridge-admitted prompt.
   int? residentGeneration;
   bool agentRunning = false;
+  PluginQuotaInterruption? quotaCandidate;
   int generation = 0;
   int idleGeneration = 0;
-
-  /// Settled turns' prompt ids, retained so the retry of a send whose
-  /// response was lost is an idempotent no-op instead of a duplicate turn.
-  /// Active and queued turns carry their id and are checked live, so only
-  /// settled ids need this bounded window.
-  final Queue<String> recentPromptIds = Queue<String>();
 
   List<_PiTurn> get turns {
     final result = List<_PiTurn>.of(inFlight);
@@ -70,20 +62,6 @@ final class _PiSessionTurnState({required final String initialDirectory}) {
 
   bool get hasAdmittedWork => active != null || inFlight.isNotEmpty || queue.isNotEmpty;
   bool get hasWork => agentRunning || hasAdmittedWork;
-
-  bool isAdmitted({required String promptId}) =>
-      turns.any(
-        (turn) =>
-            turn.promptId == promptId && (turn is! _PiQueuedPromptTurn || turn.queueState != _PiQueueState.cancelled),
-      ) ||
-      recentPromptIds.contains(promptId);
-
-  void recordSettledPromptId({required String promptId}) {
-    recentPromptIds.addLast(promptId);
-    while (recentPromptIds.length > _recentPromptIdLimit) {
-      recentPromptIds.removeFirst();
-    }
-  }
 }
 
 sealed class _PiTurn({
@@ -171,6 +149,7 @@ final class PiSessionService({
   required final PiSessionProcessRepository processRepository,
   required final PiSessionCatalogRepository catalogRepository,
   required final PiEventDispatcher eventDispatcher,
+  required final PiQuotaInterruptionMapper quotaMapper,
   required final PiExtensionUiService extensionUiService,
   required final ServerClock clock,
   required final Duration? Function() resolveIdleTimeout,
@@ -185,6 +164,7 @@ final class PiSessionService({
   final PiSessionProcessRepository _processes = processRepository;
   final PiSessionCatalogRepository _catalog = catalogRepository;
   final PiEventDispatcher _dispatcher = eventDispatcher;
+  final PiQuotaInterruptionMapper _quotaMapper = quotaMapper;
   final PiExtensionUiService _extensionUi = extensionUiService;
   final ServerClock _clock = clock;
   final Duration? Function() _resolveIdleTimeout = resolveIdleTimeout;
@@ -261,6 +241,22 @@ final class PiSessionService({
 
   Map<String, PluginSessionStatus> get sessionStatuses =>
       Map.unmodifiable({for (final entry in _sessions.entries) entry.key: entry.value.status});
+
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async {
+    if (_disposed) return PluginQuotaContinuationReadiness.unavailable;
+    final sessionExists =
+        _sessions.containsKey(sessionId) ||
+        _pendingNewDirectories.containsKey(sessionId) ||
+        await _catalog.hasPersistedSession(sessionId: sessionId);
+    if (_extensionUi.getPendingQuestions(sessionId: sessionId).isNotEmpty) {
+      return PluginQuotaContinuationReadiness.awaitingInput;
+    }
+    final state = _sessions[sessionId];
+    if (state?.status is PluginSessionStatusRetry) return PluginQuotaContinuationReadiness.retrying;
+    if (state?.queue.isNotEmpty ?? false) return PluginQuotaContinuationReadiness.queued;
+    if ((state?.hasWork ?? false) || state?.idleReap != null) return PluginQuotaContinuationReadiness.busy;
+    return sessionExists ? PluginQuotaContinuationReadiness.idle : PluginQuotaContinuationReadiness.unknown;
+  }
 
   Future<void> deleteSession({required PluginSession root}) async {
     final sessions = await _catalog.listAllSessions(knownDirectories: {root.directory});
@@ -441,9 +437,7 @@ final class PiSessionService({
     required _PiCommandTurn turn,
   }) {
     if (_disposed) return Future.error(const PiRpcDisposedException());
-    final state = _sessions[sessionId];
-    if (state != null && state.isAdmitted(promptId: turn.promptId)) return Future.value();
-    if (state?.hasWork ?? false) {
+    if (_sessions[sessionId]?.hasWork ?? false) {
       return Future.error(PiSessionBusyException(sessionId: sessionId));
     }
     _admit(sessionId: sessionId, directory: directory, turn: turn);
@@ -465,12 +459,6 @@ final class PiSessionService({
 
   void _admit({required String sessionId, required String directory, required _PiTurn turn}) {
     final state = _sessions.putIfAbsent(sessionId, () => _PiSessionTurnState(initialDirectory: directory));
-    if (state.isAdmitted(promptId: turn.promptId)) {
-      // The retry of a send whose response was lost: the turn is already
-      // admitted (queued, running, or finished), so accept idempotently.
-      if (turn is _PiCommandTurn) _acceptCommand(turn);
-      return;
-    }
     state.directory = directory;
     state.idleGeneration++;
     final wasIdle = !state.hasWork;
@@ -746,6 +734,11 @@ final class PiSessionService({
     }
     switch (processFrame.frame) {
       case PiEventFrame(:final event):
+        if (event is PiAgentStartEvent ||
+            event is PiAutoRetryStartEvent ||
+            event is PiAutoRetryEndEvent && event.success) {
+          state.quotaCandidate = null;
+        }
         final wasAgentRunning = state.agentRunning;
         if (event is PiAgentStartEvent) {
           state.agentRunning = true;
@@ -789,6 +782,13 @@ final class PiSessionService({
             state.status != mappedStatus;
         if (statusChanged) state.status = mappedStatus;
         final mappedEvents = _dispatcher.map(sessionId: processFrame.sessionId, event: event, now: now);
+        if (event is PiMessageEndEvent) {
+          state.quotaCandidate = _quotaMapper.map(
+            event: event,
+            mappedMessage: mappedEvents.whereType<BridgeSseMessageUpdated>().firstOrNull?.info,
+            observedAt: now,
+          );
+        }
         for (final mapped in mappedEvents) {
           final serviceOwnsLifecycle =
               (event is PiAgentStartEvent || event is PiAgentSettledEvent) &&
@@ -808,6 +808,11 @@ final class PiSessionService({
         }
         if (statusChanged) _emit(const BridgeSseProjectUpdated());
         if (event is PiAgentSettledEvent) {
+          final candidate = state.quotaCandidate;
+          state.quotaCandidate = null;
+          if (candidate != null) {
+            _emit(BridgeSseSessionQuotaBlocked(sessionID: processFrame.sessionId, interruption: candidate));
+          }
           var finishedPromptTurn = false;
           for (final turn in List<_PiTurn>.of(generationTurns)) {
             if (turn.promptDispatched && turn.responseSucceeded) {
@@ -905,6 +910,7 @@ final class PiSessionService({
     final agentInitiatedTurnFailed = affected.isEmpty && state.agentRunning;
     if (affected.isEmpty && !agentInitiatedTurnFailed) return;
     final failure = PiRpcProcessExitException(exitCode: exit.exitCode);
+    state.quotaCandidate = null;
     _clearCompaction(sessionId: exit.sessionId);
     state.agentRunning = false;
     if (agentInitiatedTurnFailed) {
@@ -990,9 +996,6 @@ final class PiSessionService({
     final owned = identical(state.active, turn) || state.inFlight.contains(turn) || state.queue.contains(turn);
     if (!owned) return;
     turn.settled = true;
-    if (turn.promptDispatched) {
-      state.recordSettledPromptId(promptId: turn.promptId);
-    }
     if (turn is _PiCommandTurn && !turn.acceptance.isCompleted && failed) {
       turn.acceptance.completeError(
         failure ?? StateError("Pi command failed before acceptance"),
@@ -1114,6 +1117,7 @@ final class PiSessionService({
     }
     state.generation++;
     state.idleGeneration++;
+    state.quotaCandidate = null;
     final cancelled = state.turns.toList(growable: false);
     final hadQueuedPresentations = cancelled.any(
       (turn) => turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.visible,
@@ -1129,7 +1133,6 @@ final class PiSessionService({
       ..queue.clear()
       ..status = const PluginSessionStatus.idle();
     for (final turn in cancelled) {
-      if (turn.promptDispatched) state.recordSettledPromptId(promptId: turn.promptId);
       _settleTurnPresentation(sessionId: sessionId, turn: turn, failed: true);
       if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
         turn.acceptance.completeError(PiTurnCancelledException(sessionId: sessionId), StackTrace.current);

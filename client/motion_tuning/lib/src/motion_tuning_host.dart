@@ -327,7 +327,7 @@ class const _MotionPanel({
                       padding: const EdgeInsetsDirectional.only(start: 14),
                       child: Row(
                         children: [
-                          const Icon(Icons.drag_indicator, size: 18),
+                          const Icon(TablerRegular.grip_vertical, size: 18),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
@@ -346,17 +346,17 @@ class const _MotionPanel({
                   tooltip: host._mode == _InteractionMode.select ? "Interact with preview" : "Select an element",
                   isSelected: host._mode == _InteractionMode.select,
                   onPressed: host._toggleSelection,
-                  icon: const Icon(Icons.ads_click, size: 20),
+                  icon: const Icon(TablerRegular.click, size: 20),
                 ),
                 IconButton(
                   tooltip: "Replay animation",
                   onPressed: target == null ? null : host._replay,
-                  icon: const Icon(Icons.play_arrow, size: 22),
+                  icon: const Icon(TablerRegular.player_play, size: 22),
                 ),
                 IconButton(
                   tooltip: host._expanded ? "Collapse motion controls" : "Expand motion controls",
                   onPressed: host._toggleExpanded,
-                  icon: Icon(host._expanded ? Icons.expand_less : Icons.expand_more, size: 22),
+                  icon: Icon(host._expanded ? TablerRegular.chevron_up : TablerRegular.chevron_down, size: 22),
                 ),
               ],
             ),
@@ -423,12 +423,12 @@ class const _MotionPanel({
                       children: [
                         TextButton.icon(
                           onPressed: host._copy,
-                          icon: const Icon(Icons.copy, size: 16),
+                          icon: const Icon(TablerRegular.copy, size: 16),
                           label: const Text("Copy preset"),
                         ),
                         TextButton.icon(
                           onPressed: host._paste,
-                          icon: const Icon(Icons.content_paste, size: 16),
+                          icon: const Icon(TablerRegular.clipboard, size: 16),
                           label: const Text("Paste preset"),
                         ),
                       ],
@@ -601,7 +601,7 @@ class const _MotionMenu<T>({
       child: Row(
         children: [
           Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
-          const Icon(Icons.expand_more, size: 18),
+          const Icon(TablerRegular.chevron_down, size: 18),
         ],
       ),
     ),

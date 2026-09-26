@@ -3,7 +3,7 @@ import "package:test/test.dart";
 
 void main() {
   group("ProjectSummary", () {
-    test("project lists ignore detail fields and omit them on output", () {
+    test("project lists carry directoryMissing and ignore other detail fields", () {
       final projects = Projects.fromJson({
         "data": [
           {
@@ -24,11 +24,12 @@ void main() {
           name: "A",
           path: "/projects/a",
           time: ProjectTime(created: 1, updated: 2),
+          directoryMissing: true,
         ),
       );
       final summaryJson = (projects.toJson()["data"]! as List<Object?>).single;
       expect(summaryJson, isNot(contains("supportsDedicatedWorktrees")));
-      expect(summaryJson, isNot(contains("directoryMissing")));
+      expect(summaryJson, containsPair("directoryMissing", true));
     });
 
     test("normalizes an omitted path to the legacy path-shaped id", () {
@@ -43,6 +44,17 @@ void main() {
       });
 
       expect(projects.data.single.path, "/projects/a");
+    });
+
+    test("reads an older bridge's omitted directoryMissing as present", () {
+      final summary = ProjectSummary.fromJson({
+        "id": "/projects/a",
+        "name": "A",
+        "path": "/projects/a",
+        "time": {"created": 1, "updated": 2},
+      });
+
+      expect(summary.directoryMissing, isFalse);
     });
   });
 
@@ -246,7 +258,22 @@ void main() {
       final json = original.toJson();
 
       expect(FilesystemSuggestions.fromJson(json), original);
-      expect(json, {"data": <Object>[], "path": "/Users/dev"});
+      expect(json, {"data": <Object>[], "path": "/Users/dev", "driveRoots": <Object>[]});
+    });
+
+    test("JSON roundtrip carries the drive roots", () {
+      const original = FilesystemSuggestions(data: [], path: r"C:\Users\dev", driveRoots: [r"C:\", r"D:\"]);
+
+      expect(FilesystemSuggestions.fromJson(original.toJson()), original);
+    });
+
+    test("missing driveRoots from an older bridge decodes to no drives", () {
+      final suggestions = FilesystemSuggestions.fromJson({
+        "data": <Object>[],
+        "path": "/Users/dev",
+      });
+
+      expect(suggestions.driveRoots, isEmpty);
     });
 
     test("missing path from an older bridge decodes to null", () {

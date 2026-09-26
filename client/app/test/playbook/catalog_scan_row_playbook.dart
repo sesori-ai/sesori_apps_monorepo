@@ -537,8 +537,6 @@ class _CatalogScanRowInActionExampleState() extends State<CatalogScanRowInAction
     return PregoGlassScaffold(
       key: const Key("catalog-scan-in-action-screen"),
       title: "Projects",
-      titleMode: PregoTopNavigationTitleMode.backLeading,
-      leadingTitleEmphasis: PregoNavLeadingTitleEmphasis.prominent,
       automaticallyImplyLeading: false,
       subtitle: const PregoNavSubtitle(
         text: "MacBook-Pro",
@@ -580,6 +578,7 @@ class _CatalogScanRowInActionExampleState() extends State<CatalogScanRowInAction
                 child: IgnorePointer(
                   child: ProjectTile(
                     project: example.project,
+                    pathLabel: example.project.path,
                     activeSessions: example.activeSessions,
                     unseen: example.unseen,
                     onOpen: ({required context, required project, required displayName}) {},

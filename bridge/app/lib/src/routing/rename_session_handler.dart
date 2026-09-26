@@ -1,11 +1,14 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../services/session_mutation_dispatcher.dart";
+import "../services/session_view_service.dart";
 import "request_handler.dart";
 
 /// Handles `PATCH /session/title` — renames a session.
-class RenameSessionHandler({required final SessionMutationDispatcher _sessionMutationDispatcher})
-    extends BodyRequestHandler<RenameSessionRequest, Session> {
+class RenameSessionHandler({
+  required final SessionMutationDispatcher _sessionMutationDispatcher,
+  required final SessionViewService _sessionViews,
+}) extends BodyRequestHandler<RenameSessionRequest, Session> {
   this : super(HttpMethod.patch, "/session/title", fromJson: RenameSessionRequest.fromJson);
 
   @override
@@ -14,6 +17,8 @@ class RenameSessionHandler({required final SessionMutationDispatcher _sessionMut
     required RenameSessionRequest body,
   }) async {
     requireNonEmpty(request: request, value: body.sessionId, label: "session id");
-    return await _sessionMutationDispatcher.renameSession(sessionId: body.sessionId, title: body.title);
+    return await _sessionViews.enrich(
+      session: await _sessionMutationDispatcher.renameSession(sessionId: body.sessionId, title: body.title),
+    );
   }
 }

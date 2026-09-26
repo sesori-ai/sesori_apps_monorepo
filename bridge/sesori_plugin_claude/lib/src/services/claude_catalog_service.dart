@@ -63,6 +63,7 @@ final class ClaudeCatalogService({
         model: null,
         effort: null,
         permissionMode: null,
+        fastMode: false,
         allowedTools: const [],
       );
       final catalog = await _readCatalog(sessionId: _probeSessionId, refresh: refresh);
@@ -83,14 +84,39 @@ final class ClaudeCatalogService({
   Future<ClaudeBackendCatalog> _readCatalog({required String sessionId, required bool refresh}) async {
     final handshake = _processes.handshake(sessionId: sessionId);
     if (handshake == null) throw StateError("Claude session has no catalog: $sessionId");
-    if (!refresh) return _catalogRepository.map(handshake: handshake);
+    final accountHandshake = await _unmaskFastMode(sessionId: sessionId, handshake: handshake);
+    if (!refresh) return _catalogRepository.map(handshake: accountHandshake);
 
     final refreshed = await _processes.sendControlRequest(
       sessionId: sessionId,
       subtype: "list_models",
       params: const {},
     );
-    return _catalogRepository.map(handshake: {...handshake, ...refreshed});
+    return _catalogRepository.map(handshake: {...accountHandshake, ...refreshed});
+  }
+
+  /// Opts the probe into fast mode and re-reads the handshake, which then
+  /// reports the account's real fast-mode state. The flag is process-scoped
+  /// and the probe is torn down afterwards. Only this probe feeds the catalog,
+  /// so a user session's masked handshake never decides availability.
+  Future<Map<String, Object?>> _unmaskFastMode({
+    required String sessionId,
+    required Map<String, Object?> handshake,
+  }) async {
+    if (!_catalogRepository.fastModeNeedsOptIn(handshake: handshake)) return handshake;
+    try {
+      await _processes.sendControlRequest(
+        sessionId: sessionId,
+        subtype: "apply_flag_settings",
+        params: const {
+          "settings": {"fastMode": true},
+        },
+      );
+      return await _processes.sendControlRequest(sessionId: sessionId, subtype: "initialize", params: const {});
+    } on Object catch (error, stack) {
+      Log.w("[claude] fast-mode availability unverified; offering it as available", error, stack);
+      return handshake;
+    }
   }
 
   Future<void> selectModel({
@@ -108,6 +134,7 @@ final class ClaudeCatalogService({
       model: modelId,
       effort: applied?.effort,
       permissionMode: applied?.permissionMode,
+      fastMode: applied?.fastMode ?? false,
     );
   }
 
@@ -125,6 +152,7 @@ final class ClaudeCatalogService({
       model: applied?.model,
       effort: applied?.effort,
       permissionMode: selection.permissionMode,
+      fastMode: applied?.fastMode ?? false,
     );
   }
 }

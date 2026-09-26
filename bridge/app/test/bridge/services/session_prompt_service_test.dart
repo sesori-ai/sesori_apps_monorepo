@@ -1,6 +1,8 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/accepted_prompts_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
@@ -13,6 +15,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_session_options_service.dart";
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_database.dart";
 import "../routing/routing_test_helpers.dart";
 
@@ -30,6 +33,7 @@ void main() {
     late SessionOperationDispatcher dispatcher;
     late FakeSessionOptionsService optionsService;
     late SessionPromptService service;
+    late RecordingSessionContinuations continuations;
 
     setUp(() async {
       db = createTestDatabase();
@@ -44,7 +48,11 @@ void main() {
       dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       optionsService = FakeSessionOptionsService();
       service = SessionPromptService(
+        continuations: continuations = RecordingSessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
+        acceptedPromptsRepository: AcceptedPromptsRepository(dao: AcceptedPromptsDao(database: db)),
         dispatcher: dispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
         sessionOptionsService: optionsService,
@@ -75,6 +83,7 @@ void main() {
 
     Future<void> sendCommand({String command = "review"}) {
       return service.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "extra args")],
@@ -94,11 +103,34 @@ void main() {
       expect(plugin.lastSendCommandUserVisibleArguments, equals("extra args"));
     });
 
+    test("failed durable cancellation blocks a manual prompt; a projection failure does not", () async {
+      Future<void> send() => service.sendPrompt(
+        sessionId: "s1",
+        promptId: "manual",
+        parts: const [PromptPart.text(text: "resume")],
+        variant: null,
+        fastMode: false,
+        agent: null,
+        model: null,
+        command: null,
+      );
+      continuations.cancellationError = StateError("fixture persistence failure");
+      await expectLater(send(), throwsStateError);
+      expect(plugin.lastSendPromptSessionId, isNull);
+      continuations
+        ..cancellationError = null
+        ..changed = true;
+      await send();
+      expect(continuations.cancellations, ["s1"]);
+      expect(plugin.lastSendPromptSessionId, "backend-s1");
+    });
+
     test("refuses a prompt to an archived session without reaching the plugin", () async {
       await db.sessionDao.setArchived(sessionId: "s1", archivedAt: 5, updatedAt: 5, projectionUpdatedAt: 5);
 
       await expectLater(
         service.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "s1",
           parts: const [PromptPart.text(text: "hello")],
@@ -159,6 +191,7 @@ void main() {
         agentModel: null,
       );
       await service.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-defaults-command",
         parts: const [PromptPart.text(text: "")],
@@ -195,6 +228,7 @@ void main() {
       final changeFuture = service.promptDefaultsChanges.first;
 
       await service.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s-defaults-event",
         parts: const [PromptPart.text(text: "Hello")],
@@ -212,8 +246,66 @@ void main() {
       expect(change.promptDefaults.model?.variant, "high");
     });
 
+    test("forwards fast mode to the plugin and stores it as the session's choice", () async {
+      final changeFuture = service.promptDefaultsChanges.first;
+
+      await service.sendPrompt(
+        promptId: "prompt-fast",
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "Hello")],
+        variant: null,
+        fastMode: true,
+        agent: "planner",
+        model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
+        command: null,
+      );
+      await service.sendPrompt(
+        promptId: "prompt-fast-command",
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "args")],
+        variant: null,
+        fastMode: true,
+        agent: "planner",
+        model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
+        command: "review",
+      );
+
+      expect(plugin.lastSendPromptFastMode, isTrue);
+      expect(plugin.lastSendCommandFastMode, isTrue);
+      expect((await changeFuture).promptDefaults.fastMode, isTrue);
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.fastMode, isTrue);
+    });
+
+    test("backend-reported prompt defaults keep the stored fast mode", () async {
+      await service.sendPrompt(
+        promptId: "prompt-fast",
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "Hello")],
+        variant: null,
+        fastMode: true,
+        agent: "planner",
+        model: const PromptModel(providerID: "openai", modelID: "gpt-5"),
+        command: null,
+      );
+
+      // Backend prompt-default events and history replay persist through this path.
+      await sessionRepository.updatePromptDefaults(
+        sessionId: "s1",
+        agent: "builder",
+        agentModel: const AgentModel(providerID: "openai", modelID: "gpt-5-mini", variant: null),
+      );
+
+      final session = await sessionRepository.getCatalogSession(sessionId: "s1");
+      expect(session?.promptDefaults?.agent, "builder");
+      expect(session?.promptDefaults?.model?.modelID, "gpt-5-mini");
+      expect(session?.promptDefaults?.fastMode, isTrue);
+    });
+
     test("suppresses completion immediately while backend actions retain arrival order", () async {
       final abortService = SessionAbortService(
+        continuations: const EmptySessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
         dispatcher: dispatcher,
       );
@@ -231,6 +323,7 @@ void main() {
       plugin.sendCommandCompleter = commandGate;
 
       final command = service.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "arguments")],
@@ -248,7 +341,8 @@ void main() {
         useAtomicStop: false,
       );
       final prompt = service.sendPrompt(
-        promptId: "prompt-1",
+        fastMode: false,
+        promptId: "prompt-2",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "later")],
         variant: null,
@@ -269,6 +363,7 @@ void main() {
 
     test("plain prompts are unaffected and delegate to sendPrompt", () async {
       await service.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PromptPart.text(text: "Hello")],
@@ -280,6 +375,47 @@ void main() {
 
       expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
       expect(plugin.lastSendCommand, isNull);
+    });
+
+    test("a repeated prompt or command id succeeds without reaching the plugin again", () async {
+      Future<void> sendHello() => service.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-2",
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "Hello")],
+        variant: null,
+        agent: null,
+        model: null,
+        command: null,
+      );
+      await sendCommand();
+      await sendHello();
+      // Reaching the plugin again would now fail the send.
+      plugin
+        ..sendCommandError = StateError("command sent twice")
+        ..sendPromptError = StateError("prompt sent twice");
+
+      await sendCommand();
+      await sendHello();
+    });
+
+    test("a send the plugin rejects stays retryable with the same prompt id", () async {
+      Future<void> sendHello() => service.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: "s1",
+        parts: const [PromptPart.text(text: "Hello")],
+        variant: null,
+        agent: null,
+        model: null,
+        command: null,
+      );
+      plugin.sendPromptError = StateError("backend unavailable");
+      await expectLater(sendHello(), throwsA(isA<StateError>()));
+
+      plugin.sendPromptError = null;
+      await sendHello();
+      expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
     });
 
     test("invalidates the options cache when a command leaves the plugin catalog", () async {
@@ -307,6 +443,7 @@ void main() {
 
       await expectLater(
         service.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "s1",
           parts: const [PromptPart.text(text: "Hello")],

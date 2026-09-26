@@ -217,9 +217,13 @@ class _SteppedTickPainter({
   void paint(Canvas canvas, Size size) {
     const tickCount = PregoSteppedActivityIndicator.tickCount;
     final paint = Paint();
+    // Shrinks to fit a box smaller than the natural size, as the native
+    // spinners do, instead of spilling over its neighbours.
+    final scale = math.min(1.0, size.shortestSide / (2 * _radius));
     canvas
       ..save()
-      ..translate(size.width / 2, size.height / 2);
+      ..translate(size.width / 2, size.height / 2)
+      ..scale(scale);
     for (var i = 0; i < tickCount; i++) {
       paint.color = color.withAlpha(_alphas[(i - tick.value) % tickCount]);
       canvas

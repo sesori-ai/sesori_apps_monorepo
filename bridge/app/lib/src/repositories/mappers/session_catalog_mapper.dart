@@ -21,12 +21,14 @@ class const SessionCatalogMapper() {
       title: row.title ?? row.catalogTitle,
       time: SessionTime(created: row.createdAt, updated: _latestActivityAt(row), archived: row.archivedAt),
       pullRequest: pullRequest,
-      promptDefaults: row.lastAgent == null && row.lastAgentModel == null
+      promptDefaults: row.lastAgent == null && row.lastAgentModel == null && !row.fastMode
           ? null
-          : SessionPromptDefaults(agent: row.lastAgent, model: row.lastAgentModel),
+          : SessionPromptDefaults(agent: row.lastAgent, model: row.lastAgentModel, fastMode: row.fastMode),
       hasWorktree: row.worktreePath != null,
       unseen: unseen,
       lastUserActivityAt: row.lastUserMessageAt,
+      autoContinuation: null,
+      approvalOverride: row.approvalOverride,
     );
   }
 

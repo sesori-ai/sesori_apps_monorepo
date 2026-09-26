@@ -3,6 +3,7 @@ import "dart:async";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/client/relay_http_client.dart";
@@ -35,6 +36,7 @@ import "../repositories/project_repository.dart";
 import "../repositories/registered_bridges_store.dart";
 import "../repositories/session_repository.dart";
 import "../routing/app_routes.dart";
+import "../services/bridge_settings_service.dart";
 import "../services/catalog_rescan_service.dart";
 import "../services/models/catalog_rescan_state.dart";
 import "../services/models/session_activity_info.dart";
@@ -83,6 +85,17 @@ MockPluginManagementService stubbedPluginManagementService() {
   when(() => mock.snapshots).thenAnswer((_) => snapshots);
   when(mock.refresh).thenAnswer((_) async {});
   when(mock.onDispose).thenAnswer((_) async {});
+  return mock;
+}
+
+class MockBridgeSettingsService() extends Mock implements BridgeSettingsService;
+
+/// A [MockBridgeSettingsService] whose YOLO setting stays off, for session
+/// tests that do not exercise it.
+MockBridgeSettingsService stubbedBridgeSettingsService() {
+  final mock = MockBridgeSettingsService();
+  final yoloSettings = BehaviorSubject.seeded(const YoloSettingsResponse(enabled: false));
+  when(() => mock.yoloSettings).thenAnswer((_) => yoloSettings.stream);
   return mock;
 }
 
@@ -242,7 +255,7 @@ class MockRelayClient() extends Mock implements RelayClient;
 
 class MockVoiceApi() extends Mock implements VoiceApi;
 
-class MockSecureStorage() extends Mock implements SecureStorage;
+class MockSecureStorageRepository() extends Mock implements SecureStorageRepository;
 
 class MockDeepLinkSource() extends Mock implements DeepLinkSource;
 
@@ -315,6 +328,9 @@ class MockRouteSource({
   @override
   ValueStream<AppRouteDef?> get currentRouteStream => _currentRoute.stream;
 
+  @override
+  Stream<bool> get projectPageVisibility => currentRouteStream.map((route) => route == AppRouteDef.projects);
+
   AppRouteDef? get currentRoute => _currentRoute.value;
 
   void emitRoute(AppRouteDef? route) => _currentRoute.add(route);
@@ -333,9 +349,6 @@ class MockSseEventTracker() extends Mock implements SseEventTracker {
 
   @override
   ValueStream<Map<String, int>> get projectActivity => _projectActivity.stream;
-
-  @override
-  Map<String, int> get currentProjectActivity => _projectActivity.value;
 
   @override
   ValueStream<Map<String, Map<String, SessionActivityInfo>>> get sessionActivity => _sessionActivity.stream;
@@ -497,6 +510,7 @@ void delegateSessionRepository({
       agent: any(named: "agent"),
       model: any(named: "model"),
       variant: any(named: "variant"),
+      fastMode: any(named: "fastMode"),
       command: any(named: "command"),
     ),
   ).thenAnswer(
@@ -508,6 +522,7 @@ void delegateSessionRepository({
       agent: _namedArgument<String?>(invocation: invocation, name: #agent),
       model: _namedArgument<PromptModel?>(invocation: invocation, name: #model),
       variant: _namedArgument<SessionVariant?>(invocation: invocation, name: #variant),
+      fastMode: _namedArgument<bool>(invocation: invocation, name: #fastMode),
       command: _namedArgument<String?>(invocation: invocation, name: #command),
     ),
   );
@@ -616,6 +631,24 @@ ProjectSummary testProjectSummary({
   });
 }
 
+/// A minimal session for const state fixtures that do not care which one.
+const Session testConstSession = Session(
+  approvalOverride: null,
+  autoContinuation: null,
+  branchName: null,
+  id: "session-1",
+  pluginId: "plugin-1",
+  projectID: "project-1",
+  directory: "/project",
+  parentID: null,
+  title: null,
+  pullRequest: null,
+  time: null,
+  promptDefaults: null,
+  lastUserActivityAt: null,
+  unseen: false,
+);
+
 Session testSession({
   String? id = _noString,
   String? title = _noString,
@@ -630,6 +663,8 @@ Session testSession({
   String? branchName = _noString,
 }) {
   return Session(
+    approvalOverride: null,
+    autoContinuation: null,
     branchName: branchName,
     id: id ?? "session-1",
     pluginId: pluginId,
@@ -781,6 +816,7 @@ ProviderListResponse testProviderListResponse() => const ProviderListResponse(
       defaultModelID: "claude-3-5-sonnet",
       models: {
         "claude-3-5-sonnet": ProviderModel(
+          fastMode: null,
           id: "claude-3-5-sonnet",
           providerID: "anthropic",
           name: "Claude 3.5 Sonnet",
@@ -822,6 +858,9 @@ class FakeAuthSession({required AuthState initialState}) implements AuthSession 
 
   @override
   Future<bool> hasLocallyValidSession() async => false;
+
+  @override
+  Future<AuthProvider?> lastSignedInProvider() async => null;
 
   @override
   Future<void> invalidateAllSessions() async {}

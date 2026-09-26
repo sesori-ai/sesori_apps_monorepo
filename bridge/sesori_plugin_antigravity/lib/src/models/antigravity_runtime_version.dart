@@ -8,12 +8,13 @@ sealed class const AntigravityRuntimeVersion({required final String buildLabel})
   static final _legacyPattern = RegExp(r"^(\d{8})_(\d{2})_RC(\d{2})$");
 
   static AntigravityRuntimeVersion? tryParse({required String buildLabel}) {
-    if (!buildLabel.startsWith(AntigravityRelease.serverBuildLabelPrefix)) return null;
-    final value = buildLabel.substring(AntigravityRelease.serverBuildLabelPrefix.length);
+    final hasPrefix = buildLabel.startsWith(AntigravityRelease.serverBuildLabelPrefix);
+    final value = hasPrefix ? buildLabel.substring(AntigravityRelease.serverBuildLabelPrefix.length) : buildLabel;
     final semantic = SemanticVersion.tryParse(value: value);
     if (semantic != null) {
       return _AntigravitySemanticRuntimeVersion(buildLabel: buildLabel, version: semantic);
     }
+    if (!hasPrefix) return null;
     final legacy = _legacyPattern.firstMatch(value);
     if (legacy == null) return null;
     final releaseDate = int.tryParse(legacy.group(1) ?? "");

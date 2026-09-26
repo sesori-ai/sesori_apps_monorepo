@@ -8,6 +8,7 @@ import "../api/claude_transcript_api.dart";
 import "../api/models/claude_subagent_meta_dto.dart";
 import "../api/models/claude_transcript_record_dto.dart";
 import "../models/claude_effort_level.dart";
+import "../models/claude_message_origin_kind.dart";
 import "../models/claude_subagent_session_id.dart";
 import "models/claude_session_record.dart";
 import "models/claude_transcript_record.dart";
@@ -109,6 +110,10 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
   }
 
   /// Resolves a transcript by session id without reading any file.
+  /// Filesystem enumeration must not block the bridge while checking readiness.
+  Future<String?> findTranscriptPathInIsolate({required String sessionId}) =>
+      Isolate.run(() => findTranscriptPath(sessionId: sessionId));
+
   String? findTranscriptPath({required String sessionId}) {
     for (final path in _listTranscriptPaths()) {
       if (_rootIdFromPath(path) == sessionId || _childIdFromPath(path) == sessionId) return path;
@@ -315,8 +320,9 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
         content: dto.message?.content,
         isMeta: dto.isMeta ?? false,
         isVisibleInTranscriptOnly: dto.isVisibleInTranscriptOnly ?? false,
+        isCompactSummary: dto.isCompactSummary ?? false,
         toolUseResult: dto.toolUseResult,
-        isTaskNotification: dto.originKind == "task-notification",
+        originKind: dto.originKind,
         cwd: dto.cwd,
         timestamp: dto.timestamp,
         isSidechain: dto.isSidechain,
@@ -364,6 +370,32 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
       );
     }
     return _unreplayableMessageRecord(line: line);
+  }
+
+  final attachment = dto.attachment;
+  if (type == ClaudeTranscriptContextKind.attachment.wireType &&
+      attachment != null &&
+      attachment.type == ClaudeTranscriptQueuedCommandRecord.attachmentType) {
+    final id = _nonEmpty(attachment.sourceUuid) ?? _nonEmpty(dto.uuid);
+    if (id != null) {
+      return ClaudeTranscriptQueuedCommandRecord(
+        id: id,
+        prompt: attachment.prompt,
+        isMeta: attachment.isMeta ?? false,
+        // The command mode shares the origin vocabulary (`task-notification`).
+        originKind: attachment.originKind == ClaudeMessageOriginKind.unknown
+            ? ClaudeMessageOriginKind.parse(kind: attachment.commandMode)
+            : attachment.originKind,
+        cwd: dto.cwd,
+        timestamp: dto.timestamp,
+        isSidechain: dto.isSidechain,
+        agentId: dto.agentId,
+        gitBranch: dto.gitBranch,
+        version: dto.version,
+        sessionId: dto.sessionId,
+        raw: line.raw,
+      );
+    }
   }
 
   final contextKind = ClaudeTranscriptContextKind.tryParse(type);

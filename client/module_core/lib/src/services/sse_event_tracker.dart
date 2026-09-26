@@ -45,9 +45,6 @@ class SseEventTracker(
   /// Late subscribers immediately receive the latest cached value.
   ValueStream<Map<String, int>> get projectActivity => _projectActivity.stream;
 
-  /// The latest project activity map, synchronously available.
-  Map<String, int> get currentProjectActivity => _projectActivity.value;
-
   /// Map of project ID -> (session ID -> activity info).
   ///
   /// Each entry describes a root session that is currently active — either

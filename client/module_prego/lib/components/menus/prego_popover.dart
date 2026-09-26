@@ -3,6 +3,7 @@ import "dart:async";
 import "package:cue/cue.dart";
 import "package:material_ui/material_ui.dart";
 
+import "../../motion/prego_reduced_motion.dart";
 import "anchored_flat_panel.dart";
 
 /// Builds the trigger that opens the popover. [toggle] opens the popup — wire it
@@ -34,8 +35,20 @@ class const PregoPopover({
   /// Builds the popover body. The provided callback dismisses it.
   required final PregoPopoverContentBuilder contentBuilder,
 
-  /// Width of the open popover.
+  /// Width of the open popover. It narrows to fit the screen, so
+  /// [double.infinity] spans it.
   final double popoverWidth = 280,
+
+  /// Caps how tall the open popover grows. Null lets it grow with its content;
+  /// either way it stays within the room beside the trigger.
+  required final double? popoverMaxHeight,
+
+  /// Whether the content brings its own scroll view, such as a search field
+  /// pinned above a list, instead of the popover scrolling it.
+  required final bool contentScrolls,
+
+  /// Called once the popover has closed, however it was dismissed.
+  required final VoidCallback? onClosed,
 
   /// Corner radius of the open popover.
   final double popoverBorderRadius = 24,
@@ -45,23 +58,29 @@ class const PregoPopover({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    // Reduced motion opens and closes the popover at once.
+    final reduced = prefersReducedMotion(context);
     // `cue` still imports the SDK Material library and reads its localizations.
     // ignore: deprecated_member_use
     return MaterialUiCompatibilityBridge(
       child: CueModalTransition(
         barrierColor: Colors.transparent,
-        motion: const Spring.smooth(),
-        reverseMotion: const Spring.snappy(),
+        motion: reduced ? CueMotion.none : const Spring.smooth(),
+        reverseMotion: reduced ? CueMotion.none : const Spring.snappy(),
         // No alignment: the panel positions itself from the trigger rect so it can
         // clamp to the screen edges.
-        triggerBuilder: (context, showModal) => triggerBuilder(context, () => unawaited(showModal())),
+        triggerBuilder: (context, showModal) => triggerBuilder(
+          context,
+          () => unawaited(showModal().then((_) => onClosed?.call())),
+        ),
         builder: (context, triggerRect) => AnchoredFlatPanel(
           triggerRect: triggerRect,
+          placement: AnchoredPanelPlacement.besideTrigger,
           width: popoverWidth,
-          // Content-sized (still bounded to stay on screen).
-          maxHeight: null,
+          maxHeight: popoverMaxHeight,
           borderRadius: popoverBorderRadius,
           screenPadding: screenPadding,
+          contentScrolls: contentScrolls,
           childBuilder: contentBuilder,
         ),
       ),

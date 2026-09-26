@@ -2,6 +2,7 @@ import "models/plugin_agent.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_question.dart";
 import "models/plugin_queued_prompt.dart";
+import "models/plugin_quota_interruption.dart";
 import "models/plugin_session_status.dart";
 
 sealed class const BridgeSseEvent();
@@ -36,6 +37,15 @@ class const BridgeSseSessionUpdated({required final Map<String, dynamic> info, r
 /// This is an internal plugin event. [sessionID] is the backend's session
 /// identity so bridge core can resolve its stable persisted binding.
 class const BridgeSseSessionOptionsChanged({required final String sessionID}) extends BridgeSseEvent;
+
+/// Internal quota observation after native retry/turn settlement.
+///
+/// Both the session and error message identities belong to the emitting plugin.
+/// This event is not a client-facing SSE payload.
+class const BridgeSseSessionQuotaBlocked({
+  required final String sessionID,
+  required final PluginQuotaInterruption interruption,
+}) extends BridgeSseEvent;
 
 /// Signals that a backend changed the effective defaults for future turns.
 class const BridgeSseSessionPromptDefaultsChanged({

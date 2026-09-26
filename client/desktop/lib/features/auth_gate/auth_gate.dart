@@ -18,6 +18,7 @@ class const AuthGate({required final Widget child, super.key}) extends Stateless
         authSession: getIt(),
         logoutOrchestrator: getIt(),
         relayConnectionService: getIt(),
+        windowHost: getIt(),
       ),
       child: AuthGateView(child: child),
     );

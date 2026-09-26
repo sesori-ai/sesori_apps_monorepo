@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../l10n/app_localizations.dart";
 
 import "assistant_message_card.dart";
 import "error_message_card.dart";
@@ -17,6 +18,11 @@ import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "system_message_card.dart";
+import "tool_part_widget.dart";
+import "transcript_live_row.dart";
+import "transcript_motion.dart";
+import "transcript_row_reporter.dart";
+import "transcript_turn_stub.dart";
 import "user_message_card.dart";
 
 /// Chat-style message list for the session detail screen.
@@ -28,24 +34,46 @@ class const SessionDetailMessageList({
   super.key,
   required final String? projectId,
   required final List<MessageWithParts> messages,
-  required final QueuedSessionSubmission? sendingSubmission,
+
+  /// The head of the local send queue; [queuedMessages] wait behind it.
+  required final LocalSendPhase localSend,
   required final List<QueuedSessionSubmission> queuedMessages,
+
+  /// The harness name a slow send names, or null until it is known.
+  required final String? harnessName,
+
+  /// Null on a read-only surface, which shows the failure without actions.
+  required final VoidCallback? onRetryFailedSend,
+  required final VoidCallback? onRemoveFailedSend,
 
   /// Accepted sends the bridge has not listed yet — rendered as read-only
   /// queued bubbles so the prompt never blanks between its acceptance
   /// response and the bridge's queue event.
   final List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],
   required final List<QueuedSessionPrompt> bridgeQueuedPrompts,
+  required final Map<String, List<ComposerAttachment>> bridgePromptAttachments,
   final void Function(String promptId)? onCancelBridgeQueuedPrompt,
   required final Map<String, String> streamingText,
   required final List<Session> children,
   required final Map<String, SessionStatus> childStatuses,
+
+  /// Whether the session works, by `hasActiveWork`. With no live step and
+  /// no text streaming, a "Working…" row closes the transcript.
+  required final bool isBusy,
 
   /// Requests the page of messages before the ones shown, or null when the
   /// start of the transcript is already loaded.
   required final Future<void> Function()? onLoadOlderMessages,
   required final ValueChanged<int>? onCancelQueuedMessage,
   required final bool isLoadingOlderMessages,
+
+  /// Whether each turn shows folded: its prompt, then one line for the rest.
+  required final bool transcriptFolded,
+
+  /// Switches [transcriptFolded] from a control inside the list, such as a
+  /// folded turn's tap. The list holds the reader's turn in place across
+  /// every switch, wherever it comes from.
+  required final void Function({required bool folded}) onTranscriptFoldedChanged,
   final String? retryErrorMessage,
 
   /// Height of the floating composer overlaying the list's bottom edge. Used
@@ -60,6 +88,10 @@ class const SessionDetailMessageList({
   /// transparent bar at full scroll, while content in between scrolls up behind
   /// it and dissolves into the bar's fade.
   final double topInset = 0,
+
+  /// Side padding that centres the rows in a wide pane. It is scroll padding,
+  /// so the wheel and the scrollbar still belong to the whole pane.
+  final double horizontalInset = 0,
 }) extends StatefulWidget {
   @override
   State<SessionDetailMessageList> createState() => _SessionDetailMessageListState();
@@ -74,9 +106,22 @@ typedef _DetachedSnapshot = ({
   List<Session> children,
   Map<String, SessionStatus> childStatuses,
   String? retryErrorMessage,
+  bool isBusy,
 });
 
-typedef _TransientSubmission = ({QueuedSessionSubmission submission, bool isSending, bool awaitingBridge});
+enum _TransientStage() {
+  awaitingBridge,
+  sending,
+  failed,
+  pending,
+}
+
+typedef _TransientSubmission = ({QueuedSessionSubmission submission, _TransientStage stage});
+
+/// A turn held in place across a fold switch: its first row, which should
+/// rest [top] px below the top edge. Compared by identity, so a newer anchor
+/// stops the steps of the one it replaced.
+final class _TurnAnchor({required final String rowId, required final double top});
 
 class _SessionDetailMessageListState() extends State<SessionDetailMessageList> with SingleTickerProviderStateMixin {
   static const _kListViewKey = Key("session-detail-message-list-view");
@@ -103,9 +148,20 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// Synthetic id for the shimmering retry-error row pinned at the newest
   /// edge. Domain message ids come from the assistant backend and cannot
-  /// collide with this.
+  /// collide with this. Like the working row it stays in the list, empty
+  /// without a retry, so the card eases in and out.
   static const _kRetryErrorRowId = "session-detail-retry-error-row";
+
+  /// Synthetic id for the live row that closes the transcript while the
+  /// session works. The row stays in the list, empty while idle, so it eases
+  /// in and out as work starts and ends.
+  static const _kWorkingRowId = "session-detail-working-row";
   static const _kPromptRowPrefix = "session-detail-prompt-";
+
+  /// Folded, a prompt turn's stub row follows its prompt row, keyed by the
+  /// prompt's message id; the messages before the first prompt share one.
+  static const _kTurnRowPrefix = "session-detail-turn-";
+  static const _kLeadingTurnRowId = "session-detail-turn-head";
 
   /// Distance from the oldest edge at which the next older page starts
   /// loading — about one phone viewport, so scrolling back through history
@@ -147,6 +203,23 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   int? _indexSignature;
   Map<String, int> _indexById = const <String, int>{};
 
+  /// The rows of the last build, so a row that joins at the newest edge while
+  /// following eases in. Null until the first build and after reattaching, so
+  /// the rows already there, or caught up at once, do not animate.
+  Set<String>? _knownRowIds;
+
+  /// The last build's rows in order, and each message row's turn, so a fold
+  /// switch can read the turn the reader was on.
+  List<String> _rowIds = const [];
+  Map<String, TranscriptTurn> _rowTurns = const {};
+
+  /// The built rows by id. Only built rows are here, so every scan stays
+  /// bounded by the viewport and its cache extent.
+  final Map<String, BuildContext> _rowContexts = {};
+
+  /// The one turn being held in place, until its row settles or goes.
+  _TurnAnchor? _anchor;
+
   @override
   void initState() {
     super.initState();
@@ -169,6 +242,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   @override
   void didUpdateWidget(SessionDetailMessageList oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.transcriptFolded != widget.transcriptFolded) {
+      // The rows a fold switch brings in are not new, so they must not ease in.
+      _knownRowIds = null;
+      // Unless a control in the list already chose the turn, hold the one at
+      // the top edge, measured in the last frame's layout. Following keeps the
+      // newest turn in view by itself.
+      if (_anchor == null && !_follow.following) {
+        if (_topEdgeTurn() case final turn?) _holdTurn(turn: turn, folded: widget.transcriptFolded);
+      }
+    }
     final olderPageRequestCompleted = oldWidget.isLoadingOlderMessages && !widget.isLoadingOlderMessages;
     // While detached the snapshot keeps the list structure from shifting
     // under the reader; `_onFollowChanged` restores live inputs on reattach.
@@ -207,6 +290,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         children: frozen.children,
         childStatuses: frozen.childStatuses,
         retryErrorMessage: frozen.retryErrorMessage,
+        isBusy: frozen.isBusy,
       );
     });
     // The prepended rows render against the frozen `streamingText` and
@@ -235,6 +319,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     setState(() {
       if (_follow.following) {
         _snapshot = null;
+        _knownRowIds = null;
       } else {
         _snapshot ??= (
           messages: List<MessageWithParts>.unmodifiable(widget.messages),
@@ -242,13 +327,100 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           children: List<Session>.unmodifiable(widget.children),
           childStatuses: Map<String, SessionStatus>.unmodifiable(widget.childStatuses),
           retryErrorMessage: widget.retryErrorMessage,
+          isBusy: widget.isBusy,
         );
       }
     });
   }
 
+  void _onRowMount({required String rowId, required BuildContext context}) => _rowContexts[rowId] = context;
+
+  void _onRowUnmount({required String rowId}) => _rowContexts.remove(rowId);
+
+  /// Where row [rowId] sits in the list's box, or null while it is not built.
+  ({double top, double bottom})? _spanOf({required String rowId}) {
+    final list = context.findRenderObject();
+    final row = _rowContexts[rowId]?.findRenderObject();
+    if (list is! RenderBox || row is! RenderBox || !row.hasSize) return null;
+    final top = row.localToGlobal(Offset.zero, ancestor: list).dy;
+    return (top: top, bottom: top + row.size.height);
+  }
+
+  /// The turn of the first row that reaches below the top edge.
+  TranscriptTurn? _topEdgeTurn() {
+    TranscriptTurn? edgeTurn;
+    var edgeTop = double.infinity;
+    for (final rowId in _rowContexts.keys) {
+      final turn = _rowTurns[rowId];
+      final span = _spanOf(rowId: rowId);
+      if (turn == null || span == null || span.bottom <= widget.topInset || span.top >= edgeTop) continue;
+      (edgeTurn, edgeTop) = (turn, span.top);
+    }
+    return edgeTurn;
+  }
+
+  /// Holds [turn] across a switch to [folded]. While any of its first row
+  /// shows below the top edge, that row keeps its distance from the edge;
+  /// from mid-turn, it lands at the edge.
+  void _holdTurn({required TranscriptTurn turn, required bool folded}) {
+    final shownRowId = _firstRowOf(turn: turn, folded: !folded);
+    final span = _spanOf(rowId: shownRowId);
+    final top = span == null || span.bottom <= widget.topInset ? 0.0 : span.top - widget.topInset;
+    final rowId = _firstRowOf(turn: turn, folded: folded);
+    final anchor = _anchor = _TurnAnchor(rowId: rowId, top: top);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _stepAnchor(anchor: anchor, first: true));
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  /// One step toward [anchor], once a frame has laid out the rows it
+  /// measures, so at most one jump a frame. A built row jumps into place and
+  /// is checked again, as lazy extents are estimates. An unbuilt row is
+  /// searched for from the built rows. The anchor ends once its row settles
+  /// or the list can move no closer, when the row goes, or when the list
+  /// follows the latest edge again.
+  void _stepAnchor({required _TurnAnchor anchor, required bool first}) {
+    if (!mounted || !identical(anchor, _anchor)) return;
+    _anchor = null;
+    final list = context.findRenderObject();
+    final rowIndex = {for (final (index, rowId) in _rowIds.indexed) rowId: index};
+    final target = rowIndex[anchor.rowId];
+    if (list is! RenderBox || target == null || (_follow.following && !first)) return;
+    final double delta;
+    if (_spanOf(rowId: anchor.rowId) case final span?) {
+      delta = widget.topInset + anchor.top - span.top;
+    } else {
+      // Move the built row nearest the target just out of the viewport on the
+      // far side. The rows toward the target then fill the viewport in order
+      // from that row, so no jump passes over it.
+      final built = [
+        for (final rowId in _rowContexts.keys)
+          if (rowIndex[rowId] case final index?) (rowId: rowId, index: index),
+      ];
+      if (built.isEmpty) return;
+      final nearest = built.reduce((a, b) => (a.index - target).abs() <= (b.index - target).abs() ? a : b);
+      final span = _spanOf(rowId: nearest.rowId);
+      if (span == null) return;
+      // Older rows sit above.
+      delta = target < nearest.index ? list.size.height - span.top : -span.bottom;
+    }
+    final position = _follow.scrollController.position;
+    final pixels = (position.pixels + delta).clamp(position.minScrollExtent, position.maxScrollExtent);
+    if ((pixels - position.pixels).abs() <= 0.5) return;
+    _anchor = anchor;
+    // The jump ends a scroll, so the tracker detaches the list, or follows
+    // again when it lands within the latest edge's tolerance.
+    position.jumpTo(pixels);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _stepAnchor(anchor: anchor, first: false));
+  }
+
+  /// Unfolds every turn and holds [turn] in place.
+  void _unfoldAt({required TranscriptTurn turn}) {
+    _holdTurn(turn: turn, folded: false);
+    widget.onTranscriptFoldedChanged(folded: false);
+  }
+
   bool _transientSubmissionsMatch({required SessionDetailMessageList oldWidget}) {
-    if (!identical(oldWidget.sendingSubmission, widget.sendingSubmission)) return false;
+    if (oldWidget.localSend != widget.localSend) return false;
     if (oldWidget.queuedMessages.length != widget.queuedMessages.length) return false;
     for (var i = 0; i < widget.queuedMessages.length; i++) {
       if (!identical(oldWidget.queuedMessages[i], widget.queuedMessages[i])) return false;
@@ -266,14 +438,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   bool _hasNewTransientSubmission({required SessionDetailMessageList oldWidget}) {
     final previousPromptIds = <String>{
-      ?oldWidget.sendingSubmission?.promptId,
+      ?_localSendRow(localSend: oldWidget.localSend)?.submission.promptId,
       for (final submission in oldWidget.queuedMessages) submission.promptId,
       // A fast acceptance can move a send straight to the parked surface
       // between two builds; it is still the reader's new submission.
       for (final submission in oldWidget.awaitingBridgeSubmissions) submission.promptId,
     };
     return [
-      ?widget.sendingSubmission,
+      ?_localSendRow(localSend: widget.localSend)?.submission,
       ...widget.queuedMessages,
       ...widget.awaitingBridgeSubmissions,
     ].any((submission) => !previousPromptIds.contains(submission.promptId));
@@ -281,11 +453,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   List<String> _rowIdsFor({
     required List<MessageWithParts> messages,
-    required QueuedSessionSubmission? sendingSubmission,
+    required Iterable<String> messageRows,
+    required QueuedSessionSubmission? localSendSubmission,
     required List<QueuedSessionSubmission> queuedMessages,
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
     required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
-    required bool hasRetryError,
   }) {
     final deliveredPromptIds = <String>{
       for (final message in messages)
@@ -293,15 +465,15 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           if (message.info case MessageUser(promptId: final promptId?)) promptId,
     };
     final entries = <String>[
-      for (final message in messages)
-        if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
-      if (hasRetryError) _kRetryErrorRowId,
+      ...messageRows,
+      _kRetryErrorRowId,
+      _kWorkingRowId,
       for (final prompt in bridgeQueuedPrompts)
         if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
       for (final submission in awaitingBridgeSubmissions)
         if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
-      if (sendingSubmission != null && !deliveredPromptIds.contains(sendingSubmission.promptId))
-        "$_kPromptRowPrefix${sendingSubmission.promptId}",
+      if (localSendSubmission != null && !deliveredPromptIds.contains(localSendSubmission.promptId))
+        "$_kPromptRowPrefix${localSendSubmission.promptId}",
       for (final submission in queuedMessages)
         if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
     ];
@@ -312,10 +484,39 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     ];
   }
 
+  static _TransientSubmission? _localSendRow({required LocalSendPhase localSend}) => switch (localSend) {
+    LocalSendIdle() => null,
+    LocalSendSending(:final submission) => (submission: submission, stage: _TransientStage.sending),
+    LocalSendFailed(:final submission) => (submission: submission, stage: _TransientStage.failed),
+  };
+
   String _entryIdForMessage({required Message info}) => switch (info) {
     MessageUser(promptId: final promptId?) => "$_kPromptRowPrefix$promptId",
     MessageUser() || MessageAssistant() || MessageError() => info.id,
   };
+
+  static String _stubRowIdFor({required TranscriptTurn turn}) => switch (turn) {
+    TranscriptPromptTurn(:final opener) => "$_kTurnRowPrefix${opener.info.id}",
+    TranscriptPartialTurn() || TranscriptPreamble() => _kLeadingTurnRowId,
+  };
+
+  /// The first row [turn] shows [folded] or unfolded. Unfolded, a leading
+  /// segment starts with agent or automation output, whose row is its message.
+  String _firstRowOf({required TranscriptTurn turn, required bool folded}) => switch (turn) {
+    TranscriptPromptTurn(:final opener) => _entryIdForMessage(info: opener.info),
+    TranscriptPartialTurn() || TranscriptPreamble() => folded ? _kLeadingTurnRowId : turn.messageIds.first,
+  };
+
+  /// Whether [rowId] shows the user's side: a prompt or a user message.
+  static bool _isUserRow({
+    required String rowId,
+    required List<MessageWithParts> messages,
+    required Map<String, int> indexById,
+  }) {
+    if (rowId.startsWith(_kPromptRowPrefix)) return true;
+    final index = indexById[rowId];
+    return index != null && index < messages.length && messages[index].info is MessageUser;
+  }
 
   static String? _bridgePromptDisplayText(QueuedSessionPrompt prompt) {
     final command = prompt.command;
@@ -329,35 +530,82 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final loc = context.loc;
     final snap = _snapshot;
     final messages = snap?.messages ?? widget.messages;
-    final sendingSubmission = widget.sendingSubmission;
+    final localSendRow = _localSendRow(localSend: widget.localSend);
     final queuedMessages = widget.queuedMessages;
     final streamingText = snap?.streamingText ?? widget.streamingText;
     final children = snap?.children ?? widget.children;
     final childStatuses = snap?.childStatuses ?? widget.childStatuses;
     final retryErrorMessage = snap?.retryErrorMessage ?? widget.retryErrorMessage;
+    final isBusy = snap?.isBusy ?? widget.isBusy;
 
     final indexById = _indexByIdFor(messages: messages);
+    final transcript = const TranscriptBuilder().build(
+      messages: messages,
+      streamingText: streamingText,
+      children: children,
+      childStatuses: childStatuses,
+    );
+    final turns = const TranscriptTurnBuilder().build(
+      messages: messages,
+      transcript: transcript,
+      isBusy: isBusy,
+      hasOlderMessages: widget.onLoadOlderMessages != null,
+    );
+    // The message rows in order, each with its turn: folded, a prompt turn's
+    // prompt and one stub for the rest; unfolded, every rendered message.
+    final rowTurns = <String, TranscriptTurn>{
+      if (widget.transcriptFolded)
+        for (final turn in turns.turns) ...{
+          if (turn case TranscriptPromptTurn(:final opener)) _entryIdForMessage(info: opener.info): turn,
+          _stubRowIdFor(turn: turn): turn,
+        }
+      else
+        for (final message in messages)
+          if (turns.turnIndexByMessageId[message.info.id] case final index?)
+            _entryIdForMessage(info: message.info): turns.turns[index],
+    };
+    // The rows hold still while the reader is scrolled away, but the jump
+    // button names the step running now.
+    final liveStep = snap == null
+        ? transcript.liveStep
+        : const TranscriptBuilder()
+              .build(
+                messages: widget.messages,
+                streamingText: widget.streamingText,
+                children: widget.children,
+                childStatuses: widget.childStatuses,
+              )
+              .liveStep;
     final transientSubmissions = <String, _TransientSubmission>{
       for (final submission in widget.awaitingBridgeSubmissions)
-        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, isSending: false, awaitingBridge: true),
-      if (sendingSubmission != null)
-        "$_kPromptRowPrefix${sendingSubmission.promptId}": (
-          submission: sendingSubmission,
-          isSending: true,
-          awaitingBridge: false,
-        ),
+        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: _TransientStage.awaitingBridge),
+      if (localSendRow case (:final submission, :final stage))
+        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: stage),
       for (final submission in queuedMessages)
-        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, isSending: false, awaitingBridge: false),
+        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: _TransientStage.pending),
     };
 
     final rowIds = _rowIdsFor(
       messages: messages,
-      sendingSubmission: sendingSubmission,
+      messageRows: rowTurns.keys,
+      localSendSubmission: localSendRow?.submission,
       queuedMessages: queuedMessages,
       bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
       awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
-      hasRetryError: retryErrorMessage != null,
     );
+    final knownRowIds = _knownRowIds;
+    _knownRowIds = rowIds.toSet();
+    _rowIds = rowIds;
+    _rowTurns = rowTurns;
+    // Rows held still while scrolled away never animate, and a prompt shows
+    // at once: only the agent's side of the transcript eases in.
+    final enteringRowIds = knownRowIds == null || snap != null || context.isReducedMotion
+        ? const <String>{}
+        : {
+            for (final rowId in rowIds)
+              if (!knownRowIds.contains(rowId) && !_isUserRow(rowId: rowId, messages: messages, indexById: indexById))
+                rowId,
+          };
     // Coalesced post-frame pin-to-edge while following. The scheduler
     // collapses repeated calls within a frame and the jump is skipped
     // when `position.pixels` is already at the edge.
@@ -367,7 +615,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       tracker: _follow,
       detachedOverlayBuilder: (ctx) => JumpToEdgePill(
         tapTargetKey: _kJumpToLatestKey,
-        label: loc.sessionDetailJumpToLatest,
+        label: liveStep == null ? loc.sessionDetailJumpToLatest : _liveStepLabel(loc: loc, step: liveStep),
+        live: liveStep != null,
         onTap: () => _follow.animateToEdge(),
         // Lift the pill clear of the floating composer overlaid below.
         bottomInset: widget.bottomInset,
@@ -405,7 +654,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             key: _kListViewKey,
             reverse: true,
             controller: _follow.scrollController,
-            padding: EdgeInsetsDirectional.only(top: 8 + widget.topInset, bottom: 8 + widget.bottomInset),
+            padding: EdgeInsetsDirectional.only(
+              start: widget.horizontalInset,
+              end: widget.horizontalInset,
+              top: 8 + widget.topInset,
+              bottom: 8 + widget.bottomInset,
+            ),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
             physics: const AlwaysScrollableScrollPhysics(),
             itemCount: rowIds.length,
@@ -418,17 +672,26 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             },
             itemBuilder: (context, index) {
               final entryId = rowIds[rowIds.length - index - 1];
-              return KeyedSubtree(
+              return TranscriptRowReporter(
                 key: ValueKey(entryId),
-                child: _buildRow(
-                  entryId: entryId,
-                  messages: messages,
-                  indexById: indexById,
-                  transientSubmissions: transientSubmissions,
-                  streamingText: streamingText,
-                  children: children,
-                  childStatuses: childStatuses,
-                  retryErrorMessage: retryErrorMessage,
+                rowId: entryId,
+                onMount: _onRowMount,
+                onUnmount: _onRowUnmount,
+                child: TranscriptPresence(
+                  entering: enteringRowIds.contains(entryId),
+                  exiting: false,
+                  onExited: null,
+                  child: _buildRow(
+                    entryId: entryId,
+                    messages: messages,
+                    indexById: indexById,
+                    rowTurns: rowTurns,
+                    transientSubmissions: transientSubmissions,
+                    transcript: transcript,
+                    streamingText: streamingText,
+                    retryErrorMessage: retryErrorMessage,
+                    isBusy: isBusy,
+                  ),
                 ),
               );
             },
@@ -438,20 +701,58 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     );
   }
 
+  static String _liveStepLabel({required AppLocalizations loc, required TranscriptStep step}) => switch (step) {
+    TranscriptThinkingStep() => loc.sessionDetailThinking,
+    TranscriptToolStep(:final part) => switch (part.state.shellCommand) {
+      // A live tool is pending or running; the row names which.
+      final command? =>
+        "${part.state.status == ToolStatus.pending ? loc.sessionDetailToolPending : loc.sessionDetailToolRunning} \$ $command",
+      null => [ToolPartWidget.toolName(loc: loc, part: part), ?part.state.title].join(" "),
+    },
+    TranscriptSubAgentStep(:final part) => [
+      part.description,
+      part.prompt,
+      loc.sessionDetailSubtaskUnnamed,
+    ].firstWhere((label) => label.isNotEmpty),
+  };
+
   Widget _buildRow({
     required String entryId,
     required List<MessageWithParts> messages,
     required Map<String, int> indexById,
+    required Map<String, TranscriptTurn> rowTurns,
     required Map<String, _TransientSubmission> transientSubmissions,
+    required Transcript transcript,
     required Map<String, String> streamingText,
-    required List<Session> children,
-    required Map<String, SessionStatus> childStatuses,
     required String? retryErrorMessage,
+    required bool isBusy,
   }) {
+    if (rowTurns[entryId] case final turn? when entryId.startsWith(_kTurnRowPrefix)) {
+      return _revealable(
+        createdAtMs: null,
+        child: TranscriptTurnStub(
+          turn: turn,
+          onTap: () => _unfoldAt(turn: turn),
+        ),
+      );
+    }
     if (entryId == _kRetryErrorRowId) {
-      if (retryErrorMessage == null) return const SizedBox.shrink();
       // Synthetic row: no timestamp, but it still slides with the rest.
-      return _revealable(createdAtMs: null, child: RetryErrorMessageCard(message: retryErrorMessage));
+      return _revealable(
+        createdAtMs: null,
+        child: TranscriptPresenceColumn(
+          children: [
+            if (retryErrorMessage != null)
+              RetryErrorMessageCard(key: const ValueKey("session-detail-retry-error"), message: retryErrorMessage),
+          ],
+        ),
+      );
+    }
+    if (entryId == _kWorkingRowId) {
+      // Streaming text, a live step or the retry row already shows progress;
+      // the row fills only the gaps: before the first token and between steps.
+      final show = isBusy && retryErrorMessage == null && transcript.liveStep == null && streamingText.isEmpty;
+      return _revealable(createdAtMs: null, child: _workingRow(show: show));
     }
     if (entryId.startsWith(_kPromptRowPrefix)) {
       // One row serves the prompt's whole lifecycle. Resolve the most settled
@@ -479,9 +780,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               displayText: _bridgePromptDisplayText(prompt),
               isCommand: prompt.command != null,
               attachmentCount: prompt.attachmentCount,
-              localAttachments: const [],
+              localAttachments: widget.bridgePromptAttachments[prompt.id] ?? const [],
               presentation: switch (prompt.dispatchState) {
-                QueuedPromptDispatchState.dispatched => const QueuedMessageBubblePresentation.sending(),
+                QueuedPromptDispatchState.dispatched => QueuedMessageBubblePresentation.sending(
+                  harnessName: widget.harnessName,
+                ),
                 QueuedPromptDispatchState.queued || QueuedPromptDispatchState.unknown =>
                   onCancel == null
                       ? const QueuedMessageBubblePresentation.pendingReadOnly()
@@ -505,19 +808,26 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             isCommand: submission.isCommand,
             attachmentCount: submission.attachments.length,
             localAttachments: submission.attachments,
-            presentation: transientSubmission.isSending
-                ? const QueuedMessageBubblePresentation.sending()
-                : submission is UnavailableQueuedCommandSubmission
-                ? QueuedMessageBubblePresentation.commandUnavailable(
-                    onRemove: onCancelQueuedMessage == null
-                        ? null
-                        : () => _cancelQueuedSubmission(submission: submission),
-                  )
-                : transientSubmission.awaitingBridge || onCancelQueuedMessage == null
-                ? const QueuedMessageBubblePresentation.pendingReadOnly()
-                : QueuedMessageBubblePresentation.pending(
-                    onCancel: () => _cancelQueuedSubmission(submission: submission),
-                  ),
+            presentation: switch (transientSubmission.stage) {
+              _TransientStage.sending => QueuedMessageBubblePresentation.sending(harnessName: widget.harnessName),
+              _TransientStage.failed => QueuedMessageBubblePresentation.failed(
+                onRetry: widget.onRetryFailedSend,
+                onRemove: widget.onRemoveFailedSend,
+              ),
+              _TransientStage.awaitingBridge => const QueuedMessageBubblePresentation.pendingReadOnly(),
+              _TransientStage.pending when submission is UnavailableQueuedCommandSubmission =>
+                QueuedMessageBubblePresentation.commandUnavailable(
+                  onRemove: onCancelQueuedMessage == null
+                      ? null
+                      : () => _cancelQueuedSubmission(submission: submission),
+                ),
+              _TransientStage.pending =>
+                onCancelQueuedMessage == null
+                    ? const QueuedMessageBubblePresentation.pendingReadOnly()
+                    : QueuedMessageBubblePresentation.pending(
+                        onCancel: () => _cancelQueuedSubmission(submission: submission),
+                      ),
+            },
           ),
         ),
       );
@@ -530,20 +840,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     }
     final card = switch (message.info) {
       MessageUser() => UserMessageCard(message: message),
-      MessageAssistant(sender: MessageSender.agent) => AssistantMessageCard(
+      MessageAssistant(sender: MessageSender.agent, :final id) => AssistantMessageCard(
         projectId: widget.projectId,
-        message: message,
+        blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
-        children: children,
-        childStatuses: childStatuses,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
-      MessageAssistant() => SystemMessageCard(
+      MessageAssistant(:final id) => SystemMessageCard(
         projectId: widget.projectId,
-        message: message,
+        blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
-        children: children,
-        childStatuses: childStatuses,
       ),
       final MessageError messageError => ErrorMessageCard(message: messageError),
     };
@@ -572,6 +878,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       child: child,
     );
   }
+
+  /// The working row eases in when work starts or a step ends, and away when
+  /// a step starts or work ends.
+  Widget _workingRow({required bool show}) => TranscriptPresenceColumn(
+    children: [if (show) const TranscriptWorkingRow(key: ValueKey("session-detail-working"))],
+  );
 
   /// Wraps a row so the shared horizontal drag reveals its timestamp.
   Widget _revealable({required int? createdAtMs, required Widget child}) {

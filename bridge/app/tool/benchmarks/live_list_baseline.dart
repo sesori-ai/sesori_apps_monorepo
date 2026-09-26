@@ -392,6 +392,7 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
           pluginIds: pluginIds,
         ),
         SessionDto(
+          fastMode: false,
           sessionId: _childSessionId,
           backendSessionId: "child-backend-00000",
           projectId: _projectDirectory,
@@ -416,6 +417,7 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
           pluginId: pluginIds.first,
           title: null,
           catalogTitle: "Child session",
+          approvalOverride: null,
         ),
       ],
     );
@@ -554,6 +556,7 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
     return List<SessionDto>.generate(
       count,
       (index) => SessionDto(
+        fastMode: false,
         sessionId: _sessionId(prefix: idPrefix, index: index),
         backendSessionId: "$idPrefix-backend-${index.toString().padLeft(5, "0")}",
         projectId: projectId,
@@ -578,6 +581,7 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
         pluginId: pluginIds[index % pluginIds.length],
         title: null,
         catalogTitle: "Session $index",
+        approvalOverride: null,
       ),
       growable: false,
     );
@@ -773,6 +777,9 @@ class _ThrowingBenchmarkPlugin({@override required final String id})
 class _ExistingFilesystemApi() implements FilesystemApi {
   @override
   bool directoryExists(String path) => true;
+
+  @override
+  Future<bool> directoryExistsAsync(String path) async => true;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

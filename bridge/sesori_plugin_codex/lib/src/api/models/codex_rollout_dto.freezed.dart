@@ -677,10 +677,13 @@ $CodexRolloutInterAgentCommunicationMetadataDtoCopyWith<$Res> get payload {
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutCompactedLineDto implements CodexRolloutLineDto {
-  const CodexRolloutCompactedLineDto({required this.timestamp,  String? $type}): $type = $type ?? 'compacted';
+  const CodexRolloutCompactedLineDto({required this.timestamp, @JsonKey(name: "payload", fromJson: _compactedSummaryOrNull) required this.summary,  String? $type}): $type = $type ?? 'compacted';
   factory CodexRolloutCompactedLineDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutCompactedLineDtoFromJson(json);
 
 @override final  String? timestamp;
+/// `payload.message`: the continuation summary. Empty when the provider
+/// compacted remotely and kept the summary encrypted.
+@JsonKey(name: "payload", fromJson: _compactedSummaryOrNull) final  String? summary;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -696,18 +699,18 @@ $CodexRolloutCompactedLineDtoCopyWith<CodexRolloutCompactedLineDto> get copyWith
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompactedLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompactedLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.summary, summary) || other.summary == summary));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,timestamp);
+    return Object.hash(runtimeType,timestamp,summary);
 }
 
 @override
 String toString() {
-    return 'CodexRolloutLineDto.compacted(timestamp: $timestamp)';
+    return 'CodexRolloutLineDto.compacted(timestamp: $timestamp, summary: $summary)';
 }
 
 
@@ -718,7 +721,7 @@ abstract mixin class $CodexRolloutCompactedLineDtoCopyWith<$Res> implements $Cod
   factory $CodexRolloutCompactedLineDtoCopyWith(CodexRolloutCompactedLineDto value, $Res Function(CodexRolloutCompactedLineDto) _then) = _$CodexRolloutCompactedLineDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? timestamp
+ String? timestamp,@JsonKey(name: "payload", fromJson: _compactedSummaryOrNull) String? summary
 });
 
 
@@ -735,9 +738,10 @@ class _$CodexRolloutCompactedLineDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutLineDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? timestamp = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? timestamp = freezed,Object? summary = freezed,}) {
   return _then(CodexRolloutCompactedLineDto(
 timestamp: freezed == timestamp ? _self.timestamp : timestamp // ignore: cast_nullable_to_non_nullable
+as String?,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -2062,7 +2066,7 @@ as String?,
 /// @nodoc
 mixin _$CodexRolloutTurnContextPayloadDto {
 
- String? get model;@JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) String? get effort;
+ String? get model;@JsonKey(fromJson: _stringOrNull) String? get effort;
 /// Create a copy of CodexRolloutTurnContextPayloadDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2098,7 +2102,7 @@ abstract mixin class $CodexRolloutTurnContextPayloadDtoCopyWith<$Res>  {
   factory $CodexRolloutTurnContextPayloadDtoCopyWith(CodexRolloutTurnContextPayloadDto value, $Res Function(CodexRolloutTurnContextPayloadDto) _then) = _$CodexRolloutTurnContextPayloadDtoCopyWithImpl;
 @useResult
 $Res call({
- String? model,@JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) String? effort
+ String? model,@JsonKey(fromJson: _stringOrNull) String? effort
 });
 
 
@@ -2131,11 +2135,11 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class _CodexRolloutTurnContextPayloadDto implements CodexRolloutTurnContextPayloadDto {
-  const _CodexRolloutTurnContextPayloadDto({required this.model, @JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) required this.effort});
+  const _CodexRolloutTurnContextPayloadDto({required this.model, @JsonKey(fromJson: _stringOrNull) required this.effort});
   factory _CodexRolloutTurnContextPayloadDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutTurnContextPayloadDtoFromJson(json);
 
 @override final  String? model;
-@override@JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) final  String? effort;
+@override@JsonKey(fromJson: _stringOrNull) final  String? effort;
 
 /// Create a copy of CodexRolloutTurnContextPayloadDto
 /// with the given fields replaced by the non-null parameter values.
@@ -2169,7 +2173,7 @@ abstract mixin class _$CodexRolloutTurnContextPayloadDtoCopyWith<$Res> implement
   factory _$CodexRolloutTurnContextPayloadDtoCopyWith(_CodexRolloutTurnContextPayloadDto value, $Res Function(_CodexRolloutTurnContextPayloadDto) _then) = __$CodexRolloutTurnContextPayloadDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? model,@JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) String? effort
+ String? model,@JsonKey(fromJson: _stringOrNull) String? effort
 });
 
 

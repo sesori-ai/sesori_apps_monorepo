@@ -4,6 +4,14 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
+  setUp(() {
+    TestWidgetsFlutterBinding.instance.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+  });
+  tearDown(() {
+    TestWidgetsFlutterBinding.instance.platformDispatcher.clearAccessibilityFeaturesTestValue();
+  });
+
   Widget buildApp({
     required String text,
     required bool isStreaming,
@@ -11,8 +19,8 @@ void main() {
     String messageId = "msg-1",
   }) {
     return MaterialApp(
-      theme: ThemeData(extensions: [PregoDesignSystem.light]),
-      darkTheme: ThemeData(extensions: [PregoDesignSystem.dark]),
+      theme: buildPregoThemeData(brightness: Brightness.light),
+      darkTheme: buildPregoThemeData(brightness: Brightness.dark),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
@@ -26,6 +34,9 @@ void main() {
     );
   }
 
+  /// A finished thought reads as one line: its label, then its preview.
+  Finder finishedRow(String preview) => find.text("Thought $preview");
+
   group("empty state", () {
     testWidgets("returns SizedBox.shrink when text is empty and not streaming", (tester) async {
       await tester.pumpWidget(buildApp(text: "", isStreaming: false));
@@ -33,14 +44,15 @@ void main() {
 
       expect(find.byType(ReasoningPartCard), findsOneWidget);
       expect(find.byType(SizedBox), findsOneWidget);
-      expect(find.byType(GestureDetector), findsNothing);
+      expect(find.byType(InkWell), findsNothing);
     });
 
     testWidgets("renders card when text is empty but streaming", (tester) async {
       await tester.pumpWidget(buildApp(text: "", isStreaming: true));
       await tester.pumpAndSettle();
 
-      expect(find.byType(GestureDetector), findsOneWidget);
+      expect(find.byType(InkWell), findsOneWidget);
+      expect(tester.getSize(find.byType(InkWell)).height, greaterThanOrEqualTo(44));
     });
   });
 
@@ -51,7 +63,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("First line of reasoning"), findsOneWidget);
+      expect(finishedRow("First line of reasoning"), findsOneWidget);
     });
 
     testWidgets("strips bold markdown from preview", (tester) async {
@@ -60,7 +72,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("Investigating how xyz works"), findsOneWidget);
+      expect(finishedRow("Investigating how xyz works"), findsOneWidget);
     });
 
     testWidgets("strips italic markdown from preview", (tester) async {
@@ -69,7 +81,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("Summarizing why abc is important"), findsOneWidget);
+      expect(finishedRow("Summarizing why abc is important"), findsOneWidget);
     });
 
     testWidgets("strips heading markdown from preview", (tester) async {
@@ -78,7 +90,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("Planning the approach"), findsOneWidget);
+      expect(finishedRow("Planning the approach"), findsOneWidget);
     });
 
     testWidgets("strips inline code markdown from preview", (tester) async {
@@ -87,7 +99,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("Checking foo() method"), findsOneWidget);
+      expect(finishedRow("Checking foo() method"), findsOneWidget);
     });
 
     testWidgets("decodes HTML character references in preview", (tester) async {
@@ -96,7 +108,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('The user wants "quoted text".'), findsOneWidget);
+      expect(finishedRow('The user wants "quoted text".'), findsOneWidget);
     });
 
     testWidgets("preserves HTML character references inside inline code", (tester) async {
@@ -105,7 +117,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("The literal entity is &quot;."), findsOneWidget);
+      expect(finishedRow("The literal entity is &quot;."), findsOneWidget);
     });
 
     testWidgets("strips link markdown from preview", (tester) async {
@@ -114,7 +126,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("See docs"), findsOneWidget);
+      expect(finishedRow("See docs"), findsOneWidget);
     });
 
     testWidgets("removes images from preview", (tester) async {
@@ -123,7 +135,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("Reviewing"), findsOneWidget);
+      expect(finishedRow("Reviewing"), findsOneWidget);
     });
 
     testWidgets("handles mixed markdown in preview", (tester) async {
@@ -135,7 +147,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("Bold and italic and code here"), findsOneWidget);
+      expect(finishedRow("Bold and italic and code here"), findsOneWidget);
     });
 
     testWidgets("preview is limited to one line with ellipsis", (tester) async {
@@ -158,7 +170,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("First real line"), findsOneWidget);
+      expect(finishedRow("First real line"), findsOneWidget);
     });
 
     testWidgets("preserves snake_case identifiers", (tester) async {
@@ -170,7 +182,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text("session_detail_cubit state management"), findsOneWidget);
+      expect(finishedRow("session_detail_cubit state management"), findsOneWidget);
     });
   });
 
@@ -186,34 +198,111 @@ void main() {
     });
   });
 
-  group("streaming tail slicing", () {
-    test("returns text under the tail budget unchanged", () {
-      expect(ReasoningPartCard.streamingTail(text: "short thought"), "short thought");
+  group("latest words", () {
+    test("returns a short thought on one line", () {
+      expect(ReasoningPartCard.latestWords(text: "short\n\nthought  here"), "short thought here");
     });
 
-    test("starts the slice after the first newline inside the tail window", () {
-      final text = "${"a" * 800}\n${"b" * 400}";
+    test("keeps only the end of a long thought", () {
+      final text = "${"a" * 800} newest words";
 
-      expect(ReasoningPartCard.streamingTail(text: text), "b" * 400);
+      expect(ReasoningPartCard.latestWords(text: text), "${"a" * 147} newest words");
     });
 
-    test("keeps the whole slice when a newline near the end would empty the preview", () {
-      // The only newline in the window sits 10 characters from the end;
-      // aligning to it would collapse the 56px preview to a near-blank
-      // sliver showing just those characters.
-      final text = "${"a" * 1000}\n${"b" * 10}";
+    test("never starts on an orphaned UTF-16 low surrogate", () {
+      // The cut lands between the emoji's two code units.
+      final text = "${"x" * 10}😀${"y" * 159}";
 
-      expect(ReasoningPartCard.streamingTail(text: text), "${"a" * 689}\n${"b" * 10}");
+      expect(ReasoningPartCard.latestWords(text: text), "y" * 159);
     });
+  });
 
-    test("never starts the slice on an orphaned UTF-16 low surrogate", () {
-      // Position an emoji so the tail cut lands exactly between its two
-      // UTF-16 code units; no newline follows, so the raw slice would
-      // otherwise begin with a malformed lone low surrogate.
-      final text = "${"x" * 700}😀${"y" * 699}";
+  testWidgets("a streaming thought shows its latest words on one line", (tester) async {
+    await tester.pumpWidget(buildApp(text: "${"older words " * 40}newest words", isStreaming: true));
+    await tester.pumpAndSettle();
 
-      expect(ReasoningPartCard.streamingTail(text: text), "y" * 699);
+    final tail = find.textContaining("newest words");
+    expect(tester.widget<Text>(tail).maxLines, 1);
+    // The newest words stay in view at the row's end; the older start is cut.
+    expect(tester.getRect(tail).right, closeTo(tester.getRect(find.byType(ReasoningPartCard)).right, 1));
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final brightness in Brightness.values) {
+    testWidgets("${brightness.name} a finished thought is one unboxed row", (tester) async {
+      tester.platformDispatcher.platformBrightnessTestValue = brightness;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      await tester.pumpWidget(buildApp(text: "Reviewing the next step", isStreaming: false));
+
+      final prego = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
+      final style = tester.widget<Text>(finishedRow("Reviewing the next step")).style;
+      expect(style?.fontSize, 14);
+      expect(style?.height, closeTo(20 / 14, 0.001));
+      expect(style?.color, prego.colors.textSecondary);
+      expect(style?.fontStyle, isNot(FontStyle.italic));
+      expect(
+        find.descendant(of: find.byType(ReasoningPartCard), matching: find.byType(Container)),
+        findsNothing,
+      );
+      expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
+      expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isFalse);
     });
+  }
+
+  testWidgets("streaming motion stops on completion and preserves the latest preview", (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures();
+    await tester.pumpWidget(buildApp(text: "First thought", isStreaming: true));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(PregoShimmer), findsOneWidget);
+    expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isTrue);
+
+    await tester.pumpWidget(buildApp(text: "**Updated thought**\n\nFinished detail.", isStreaming: false));
+    await tester.pumpAndSettle();
+    expect(finishedRow("Updated thought"), findsOneWidget);
+    expect(find.byType(PregoShimmer), findsNothing);
+    expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isFalse);
+  });
+
+  testWidgets("reduced motion keeps the streaming status accessible and still", (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(buildApp(text: "Current thought", isStreaming: true));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel(RegExp(r"^Thinking\.\.\.\nCurrent thought$")), findsOneWidget);
+    expect(
+      tester.getSemantics(find.byType(MergeSemantics)),
+      isSemantics(isButton: true, hasTapAction: true),
+    );
+    expect(
+      find.descendant(of: find.byType(PregoShimmer), matching: find.byType(ShaderMask)),
+      findsNothing,
+    );
+    expect(tester.binding.hasScheduledFrame, isFalse);
+    semantics.dispose();
+  });
+
+  testWidgets("empty streaming reasoning remains a named disclosure", (tester) async {
+    await tester.pumpWidget(buildApp(text: "", isStreaming: true));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSemantics(find.byType(MergeSemantics)),
+      isSemantics(label: "Thinking...", isButton: true, hasTapAction: true),
+    );
+  });
+
+  testWidgets("narrow panes with large text keep the disclosure and preview inside the row", (tester) async {
+    tester.view.physicalSize = const Size(240, 700);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    for (final streaming in [false, true]) {
+      await tester.pumpWidget(buildApp(text: "A long thought about the next step " * 60, isStreaming: streaming));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(tester.getRect(find.byType(InkWell)).right, lessThanOrEqualTo(240));
+      expect(tester.getSize(find.byType(InkWell)).height, greaterThanOrEqualTo(44));
+    }
   });
 
   group("header text", () {
@@ -221,7 +310,7 @@ void main() {
       await tester.pumpWidget(buildApp(text: "Some thought", isStreaming: false));
       await tester.pumpAndSettle();
 
-      expect(find.text("Thought"), findsOneWidget);
+      expect(finishedRow("Some thought"), findsOneWidget);
     });
 
     testWidgets("shows 'Thinking...' when streaming", (tester) async {

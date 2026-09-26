@@ -36,6 +36,8 @@ void main() {
 
     test("serializes hasWorktree to JSON", () {
       const session = Session(
+        approvalOverride: null,
+        autoContinuation: null,
         branchName: null,
         id: "ses_1",
         pluginId: legacyMissingPluginId,

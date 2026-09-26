@@ -41,7 +41,7 @@ class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
 class _MockLegalRepository() extends Mock implements LegalRepository;
 
-class _MockBridgeSettingsRepository() extends Mock implements BridgeSettingsRepository;
+class _MockBridgeSettingsService() extends Mock implements BridgeSettingsService;
 
 const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null);
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
@@ -112,7 +112,7 @@ void main() {
   late _MockLegalRepository legalRepository;
   late MockProductAnalyticsService productAnalyticsService;
   late BehaviorSubject<ProductAnalyticsState> productAnalyticsStates;
-  late _MockBridgeSettingsRepository bridgeSettingsRepository;
+  late _MockBridgeSettingsService bridgeSettingsService;
   late MockConnectionService connectionService;
   late BehaviorSubject<ConnectionStatus> connectionStatuses;
 
@@ -183,8 +183,8 @@ void main() {
     legalRepository = _MockLegalRepository();
     GetIt.instance.registerSingleton<LegalRepository>(legalRepository);
 
-    bridgeSettingsRepository = _MockBridgeSettingsRepository();
-    when(bridgeSettingsRepository.load).thenAnswer(
+    bridgeSettingsService = _MockBridgeSettingsService();
+    when(bridgeSettingsService.load).thenAnswer(
       (_) async => const BridgeSettingsLoadSupported(
         response: BridgeSettingsResponse(
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
@@ -194,7 +194,7 @@ void main() {
       ),
     );
     when(
-      () => bridgeSettingsRepository.updatePullRequestRefresh(
+      () => bridgeSettingsService.updatePullRequestRefresh(
         intervalSeconds: any(named: "intervalSeconds"),
       ),
     ).thenAnswer((invocation) async {
@@ -203,17 +203,17 @@ void main() {
         response: PullRequestRefreshSettingsResponse(intervalSeconds: intervalSeconds),
       );
     });
-    when(() => bridgeSettingsRepository.updateYolo(enabled: any(named: "enabled"))).thenAnswer((invocation) async {
+    when(() => bridgeSettingsService.updateYolo(enabled: any(named: "enabled"))).thenAnswer((invocation) async {
       final enabled = invocation.namedArguments[#enabled] as bool;
       return YoloSettingsMutationCommitted(response: YoloSettingsResponse(enabled: enabled));
     });
-    when(() => bridgeSettingsRepository.updatePluginWarmup(enabled: any(named: "enabled"))).thenAnswer(
+    when(() => bridgeSettingsService.updatePluginWarmup(enabled: any(named: "enabled"))).thenAnswer(
       (invocation) async {
         final enabled = invocation.namedArguments[#enabled] as bool;
         return PluginWarmupSettingsMutationCommitted(enabled: enabled);
       },
     );
-    GetIt.instance.registerSingleton<BridgeSettingsRepository>(bridgeSettingsRepository);
+    GetIt.instance.registerSingleton<BridgeSettingsService>(bridgeSettingsService);
   });
 
   tearDown(() async {
@@ -222,16 +222,16 @@ void main() {
     await productAnalyticsStates.close();
   });
 
-  testWidgets("profile row stays reachable without a cached account", (tester) async {
+  testWidgets("account row stays reachable without a cached account", (tester) async {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
     // Logout lives on the profile screen, so the row navigating there must
     // not depend on cached account metadata.
-    await tester.tap(find.text("Profile"));
+    await tester.tap(find.text("Account").last);
     await tester.pumpAndSettle();
 
-    expect(find.text("Basic Usage Analytics"), findsOneWidget);
+    expect(find.text("Basic usage analytics"), findsOneWidget);
   });
 
   testWidgets("Harnesses precedes Notifications and navigates without changing other sections", (tester) async {
@@ -243,7 +243,9 @@ void main() {
       tester.getTopLeft(find.text("Harnesses")).dy,
       lessThan(tester.getTopLeft(find.text("Notifications")).dy),
     );
-    expect(find.text("Account"), findsOneWidget);
+    // The section header and the account row, which falls back to the page's
+    // name without a cached account.
+    expect(find.text("Account"), findsNWidgets(2));
     expect(find.text("Appearance"), findsOneWidget);
     expect(find.text("Support"), findsOneWidget);
     expect(find.text("Legal"), findsOneWidget);
@@ -299,7 +301,7 @@ void main() {
 
     expect(find.text("YOLO mode"), findsOneWidget);
     expect(
-      find.text("Automatically approves all permission requests. Use with caution."),
+      find.text("Sesori approves every permission request for you, so the agent never stops to ask."),
       findsOneWidget,
     );
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("yolo_switch"))).value, isFalse);
@@ -307,7 +309,7 @@ void main() {
     await tester.tap(find.byKey(const Key("yolo_switch")));
     await tester.pumpAndSettle();
 
-    verify(() => bridgeSettingsRepository.updateYolo(enabled: true)).called(1);
+    verify(() => bridgeSettingsService.updateYolo(enabled: true)).called(1);
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("yolo_switch"))).value, isTrue);
   });
 
@@ -326,14 +328,14 @@ void main() {
     await tester.tap(find.byKey(const Key("plugin_warmup_switch")));
     await tester.pumpAndSettle();
 
-    verify(() => bridgeSettingsRepository.updatePluginWarmup(enabled: false)).called(1);
+    verify(() => bridgeSettingsService.updatePluginWarmup(enabled: false)).called(1);
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("plugin_warmup_switch"))).value, isFalse);
   });
 
   testWidgets("YOLO disables interaction while an update is in progress", (tester) async {
     _useTallSurface(tester);
     final mutation = Completer<YoloSettingsMutationResult>();
-    when(() => bridgeSettingsRepository.updateYolo(enabled: true)).thenAnswer((_) => mutation.future);
+    when(() => bridgeSettingsService.updateYolo(enabled: true)).thenAnswer((_) => mutation.future);
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
@@ -347,7 +349,7 @@ void main() {
       isNull,
     );
     await tester.tap(find.text("YOLO mode"));
-    verify(() => bridgeSettingsRepository.updateYolo(enabled: true)).called(1);
+    verify(() => bridgeSettingsService.updateYolo(enabled: true)).called(1);
 
     mutation.complete(
       const YoloSettingsMutationCommitted(response: YoloSettingsResponse(enabled: true)),
@@ -359,7 +361,7 @@ void main() {
     _useTallSurface(tester);
     final mutation = Completer<PullRequestRefreshSettingsMutationResult>();
     when(
-      () => bridgeSettingsRepository.updatePullRequestRefresh(intervalSeconds: 45),
+      () => bridgeSettingsService.updatePullRequestRefresh(intervalSeconds: 45),
     ).thenAnswer((_) => mutation.future);
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
@@ -382,7 +384,7 @@ void main() {
 
   testWidgets("old bridges show YOLO as unsupported while keeping refresh settings", (tester) async {
     _useTallSurface(tester);
-    when(bridgeSettingsRepository.load).thenAnswer(
+    when(bridgeSettingsService.load).thenAnswer(
       (_) async => const BridgeSettingsLoadLegacyPartial(
         pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
       ),
@@ -399,7 +401,7 @@ void main() {
 
   testWidgets("a v1.8.2 bridge leaves only session-open warm-up unsupported", (tester) async {
     _useTallSurface(tester);
-    when(bridgeSettingsRepository.load).thenAnswer(
+    when(bridgeSettingsService.load).thenAnswer(
       (_) async => const BridgeSettingsLoadSupported(
         response: BridgeSettingsResponse(
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
@@ -420,7 +422,7 @@ void main() {
   testWidgets("uncertain YOLO mutation reloads and displays the authoritative value", (tester) async {
     _useTallSurface(tester);
     var loads = 0;
-    when(bridgeSettingsRepository.load).thenAnswer((_) async {
+    when(bridgeSettingsService.load).thenAnswer((_) async {
       loads++;
       return BridgeSettingsLoadSupported(
         response: BridgeSettingsResponse(
@@ -430,7 +432,7 @@ void main() {
         ),
       );
     });
-    when(() => bridgeSettingsRepository.updateYolo(enabled: true)).thenAnswer(
+    when(() => bridgeSettingsService.updateYolo(enabled: true)).thenAnswer(
       (_) async => const YoloSettingsMutationUncertain(),
     );
     await tester.pumpWidget(_app(appearance: appearance));
@@ -450,9 +452,19 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.text("Connect to a bridge to configure this setting."), findsNWidgets(3));
-    expect(find.text("Offline"), findsNWidgets(3));
-    verifyNever(bridgeSettingsRepository.load);
+    // One line above the group says it once; the rows keep their own
+    // descriptions and dim.
+    expect(find.text("Connect to a bridge to change these settings."), findsOneWidget);
+    expect(find.text("Offline"), findsNothing);
+    expect(
+      find.text("Sesori approves every permission request for you, so the agent never stops to ask."),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<Opacity>(find.ancestor(of: find.text("YOLO mode"), matching: find.byType(Opacity)).first).opacity,
+      lessThan(1),
+    );
+    verifyNever(bridgeSettingsService.load);
   });
 
   testWidgets("saves a custom interval and displays the committed response", (tester) async {
@@ -467,7 +479,7 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(
-      () => bridgeSettingsRepository.updatePullRequestRefresh(intervalSeconds: 45),
+      () => bridgeSettingsService.updatePullRequestRefresh(intervalSeconds: 45),
     ).called(1);
     expect(find.text("45 seconds"), findsOneWidget);
   });
@@ -492,7 +504,7 @@ void main() {
     );
     expect(find.byKey(const Key("pull_request_refresh_input")), findsOneWidget);
     verifyNever(
-      () => bridgeSettingsRepository.updatePullRequestRefresh(
+      () => bridgeSettingsService.updatePullRequestRefresh(
         intervalSeconds: any(named: "intervalSeconds"),
       ),
     );
@@ -515,7 +527,7 @@ void main() {
 
     expect(find.text("The bridge setting changed while you were editing. Try again."), findsOneWidget);
     verifyNever(
-      () => bridgeSettingsRepository.updatePullRequestRefresh(
+      () => bridgeSettingsService.updatePullRequestRefresh(
         intervalSeconds: any(named: "intervalSeconds"),
       ),
     );
@@ -525,7 +537,7 @@ void main() {
     _useTallSurface(tester);
     var updateCalls = 0;
     when(
-      () => bridgeSettingsRepository.updatePullRequestRefresh(
+      () => bridgeSettingsService.updatePullRequestRefresh(
         intervalSeconds: any(named: "intervalSeconds"),
       ),
     ).thenAnswer((_) async {
@@ -569,7 +581,7 @@ void main() {
   testWidgets("old bridges show the cadence setting as unsupported", (tester) async {
     _useTallSurface(tester);
     when(
-      bridgeSettingsRepository.load,
+      bridgeSettingsService.load,
     ).thenAnswer((_) async => const BridgeSettingsLoadUnsupported());
 
     await tester.pumpWidget(_app(appearance: appearance));
@@ -582,7 +594,7 @@ void main() {
   testWidgets("a failed cadence load exposes one retry that refreshes it", (tester) async {
     _useTallSurface(tester);
     var loadCalls = 0;
-    when(bridgeSettingsRepository.load).thenAnswer((_) async {
+    when(bridgeSettingsService.load).thenAnswer((_) async {
       loadCalls++;
       return loadCalls == 1
           ? BridgeSettingsLoadFailure(error: ApiError.generic())
@@ -690,7 +702,7 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Privacy Policy"));
+    await tester.tap(find.text("Privacy policy"));
     await tester.pumpAndSettle();
 
     verify(() => legalRepository.getMarkdown(document: LegalDocument.privacy)).called(1);
@@ -711,7 +723,7 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Terms of Service"));
+    await tester.tap(find.text("Terms of service"));
     await tester.pumpAndSettle();
 
     expect(find.text("Connection failed — check your network and try again."), findsOneWidget);
@@ -738,17 +750,17 @@ void main() {
     ).called(1);
   });
 
-  testWidgets("basic usage analytics lives on Profile with concise copy", (tester) async {
+  testWidgets("basic usage analytics lives on Account with concise copy", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.text("Basic Usage Analytics"), findsNothing);
+    expect(find.text("Basic usage analytics"), findsNothing);
 
-    await tester.tap(find.text("Profile"));
+    await tester.tap(find.text("Account").last);
     await tester.pumpAndSettle();
 
-    expect(find.text("Basic Usage Analytics"), findsOneWidget);
+    expect(find.text("Basic usage analytics"), findsOneWidget);
     expect(
       find.text("Share basic feature usage — never your code or messages."),
       findsOneWidget,
@@ -756,7 +768,7 @@ void main() {
     expect(find.textContaining("automatic installation events"), findsNothing);
     expect(find.textContaining("retention"), findsNothing);
 
-    await tester.tap(find.text("Basic Usage Analytics"));
+    await tester.tap(find.text("Basic usage analytics"));
     await tester.pump();
 
     verify(
@@ -778,7 +790,7 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Profile"));
+    await tester.tap(find.text("Account").last);
     await tester.pumpAndSettle();
 
     expect(find.text("Analytics preference failed to load."), findsOneWidget);
@@ -808,7 +820,7 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Profile"));
+    await tester.tap(find.text("Account").last);
     await tester.pumpAndSettle();
 
     expect(find.text("Couldn't sync preference."), findsOneWidget);
@@ -835,13 +847,15 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Profile"));
+    await tester.tap(find.text("Account").last);
     await tester.pumpAndSettle();
-    await tester.tap(find.text("Log Out"));
-    await tester.pump();
+    await tester.tap(find.text("Log out"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("logout_confirm_action")));
+    await tester.pumpAndSettle();
 
     expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).onChanged, isNull);
-    await tester.tap(find.text("Basic Usage Analytics"));
+    await tester.tap(find.text("Basic usage analytics"));
     await tester.pump();
     verifyNever(
       () => productAnalyticsService.setPreference(preference: any(named: "preference")),
@@ -849,6 +863,30 @@ void main() {
 
     logoutPreparation.complete();
     await tester.pumpAndSettle();
+  });
+
+  testWidgets("Log out asks first, and Cancel keeps the account signed in", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Account").last);
+    await tester.pumpAndSettle();
+    // The back button is the page's one way out.
+    expect(find.bySemanticsLabel("Close settings"), findsNothing);
+
+    await tester.tap(find.text("Log out"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Log out?"), findsOneWidget);
+    verifyNever(authSession.logoutCurrentDevice);
+
+    await tester.tap(find.byKey(const Key("logout_confirm_cancel")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Log out?"), findsNothing);
+    verifyNever(authSession.logoutCurrentDevice);
+    verifyNever(productAnalyticsService.prepareForLogout);
   });
 
   testWidgets("runtime unavailability does not add alarming session copy", (tester) async {
@@ -868,10 +906,10 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Profile"));
+    await tester.tap(find.text("Account").last);
     await tester.pumpAndSettle();
 
-    expect(find.text("Basic Usage Analytics"), findsOneWidget);
+    expect(find.text("Basic usage analytics"), findsOneWidget);
     expect(find.textContaining("unavailable for this app run"), findsNothing);
   });
 }

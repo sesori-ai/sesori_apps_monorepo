@@ -1,5 +1,7 @@
+import "dart:async";
 import "dart:io";
 
+import "package:fake_async/fake_async.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
@@ -93,6 +95,62 @@ void main() {
       );
 
       expect(repo.defaultBrowsePath, r"C:\Users\dev");
+    });
+
+    test("listDriveRoots is empty off Windows", () async {
+      final repo = FilesystemRepository(
+        filesystemApi: _DriveFilesystemApi(isWindows: false, probes: {r"C:\": Future.value(true)}),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+
+      expect(await repo.listDriveRoots(), isEmpty);
+    });
+
+    test("listDriveRoots lists mounted Windows drives in letter order", () async {
+      final repo = FilesystemRepository(
+        filesystemApi: _DriveFilesystemApi(
+          isWindows: true,
+          probes: {r"D:\": Future.value(true), r"C:\": Future.value(true), r"E:\": Future.value(false)},
+        ),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+
+      expect(await repo.listDriveRoots(), [r"C:\", r"D:\"]);
+    });
+
+    test("listDriveRoots omits a drive whose probe fails and keeps the others", () async {
+      final repo = FilesystemRepository(
+        filesystemApi: _DriveFilesystemApi(
+          isWindows: true,
+          probes: {
+            r"C:\": Future.value(true),
+            r"E:\": Future.error(const FileSystemException("Access is denied", r"E:\")),
+            r"F:\": Future.value(true),
+          },
+        ),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+
+      expect(await repo.listDriveRoots(), [r"C:\", r"F:\"]);
+    });
+
+    test("listDriveRoots skips a drive whose probe stalls", () {
+      fakeAsync((async) {
+        final repo = FilesystemRepository(
+          filesystemApi: _DriveFilesystemApi(
+            isWindows: true,
+            probes: {r"C:\": Future.value(true), r"Z:\": Completer<bool>().future},
+          ),
+          permissionValidator: const FilesystemPermissionValidator(),
+        );
+
+        List<String>? roots;
+        unawaited(repo.listDriveRoots().then((value) => roots = value));
+        async.elapse(const Duration(seconds: 1));
+        expect(roots, isNull);
+        async.elapse(const Duration(seconds: 2));
+        expect(roots, [r"C:\"]);
+      });
     });
 
     for (final existingContent in ["build/", "# .worktrees/", "!.worktrees/"]) {
@@ -224,7 +282,13 @@ class _PermissionDeniedFilesystemApi() implements FilesystemApi {
   bool gitDirectoryExists(String directoryPath) => false;
 
   @override
-  String? environmentValue(String name) => null;
+  Map<String, String> get environment => const {};
+
+  @override
+  bool get isWindows => false;
+
+  @override
+  Future<bool> directoryExistsAsync(String path) async => true;
 
   @override
   List<String> listEntryNames(String path) => throw UnimplementedError();
@@ -267,14 +331,22 @@ class _GrowingFilesystemApi() implements FilesystemApi {
 }
 
 class _EnvironmentFilesystemApi({
-  required final Map<String, String> environment,
+  @override required final Map<String, String> environment,
   required final String currentDirectory,
 }) implements FilesystemApi {
   @override
   String currentDirectoryPath() => currentDirectory;
 
   @override
-  String? environmentValue(String name) => environment[name];
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _DriveFilesystemApi({
+  @override required final bool isWindows,
+  required final Map<String, Future<bool>> _probes,
+}) implements FilesystemApi {
+  @override
+  Future<bool> directoryExistsAsync(String path) => _probes[path] ?? Future.value(false);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

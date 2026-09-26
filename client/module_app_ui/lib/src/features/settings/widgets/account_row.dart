@@ -4,11 +4,11 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 
-/// The signed-in account row from the Figma settings redesign: user avatar,
-/// username with an auth-provider tag, and the signed-in-with subtitle.
+/// The signed-in account row: user avatar, the username, and one
+/// "Signed in with `provider`" line led by the provider's icon.
 ///
 /// Tappable (with a trailing chevron) when [onTap] is provided — the settings
-/// screen navigates to the profile screen; the profile screen renders it
+/// screen navigates to the account screen; the account screen renders it
 /// static.
 ///
 /// The product shell supplies the current account from its authenticated
@@ -20,37 +20,46 @@ class const AccountRow({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final loc = context.loc;
-    final providerLabel = loc.settingsAccountSignedInWith(account.provider.label);
+    final provider = _ProviderLine(provider: account.provider);
     final username = account.providerUsername;
     final hasUsername = username != null && username.isNotEmpty;
 
     return PregoGroupedRow(
       leading: const PregoAvatarUser(),
-      title: Row(
-        children: [
-          Flexible(
-            child: Text(
-              hasUsername ? username : providerLabel,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: PregoSpacing.md),
-          PregoTag(icon: _providerIcon(account.provider), label: account.provider.label),
-        ],
-      ),
-      subtitle: hasUsername ? Text(providerLabel) : null,
+      title: hasUsername ? Text(username, overflow: TextOverflow.ellipsis) : provider,
+      subtitle: hasUsername ? provider : null,
       trailing: onTap != null ? const Icon(TablerRegular.chevron_right) : null,
       onTap: onTap,
     );
   }
 }
 
-IconData? _providerIcon(AuthProvider provider) {
+/// "Signed in with `provider`", led by the provider's icon.
+class const _ProviderLine({required final AuthProvider provider}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      spacing: PregoSpacing.xs,
+      children: [
+        // The icon takes the colour of the line it leads, title or subtitle.
+        Icon(_providerIcon(provider), size: PregoIconSize.sm, color: DefaultTextStyle.of(context).style.color),
+        Flexible(
+          child: Text(
+            context.loc.settingsAccountSignedInWith(provider.label),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+IconData _providerIcon(AuthProvider provider) {
   return switch (provider) {
     GitHubAuthProvider() => TablerSolid.brand_github,
     GoogleAuthProvider() => VESPRSolid.google,
     AppleAuthProvider() => VESPRSolid.apple,
-    EmailAuthProvider() => null,
+    EmailAuthProvider() => TablerRegular.mail,
   };
 }

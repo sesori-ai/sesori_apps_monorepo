@@ -26,7 +26,7 @@ Only these types are exported. Everything else is internal (`lib/src/`).
 
 - `AuthState` (freezed sealed class) — `unauthenticated`, `authenticating`, `authenticated`, `failed`
 - `AuthProvider` enum — `github`, `google`, `email`
-- `SecureStorage` abstract interface — platform-agnostic key-value secure storage
+- `AuthSecretKey` enum — canonical typed secret identities with stable persisted spellings, consumed by auth storage and the temporary mobile importer.
 - `authBaseUrl` constant — auth server base URL
 
 ## Internal Architecture
@@ -48,15 +48,16 @@ lib/src/
 ├── models/
 │   └── auth_state.dart     (+ .freezed.dart)
 ├── platform/
-│   └── secure_storage.dart
+│   └── oauth_device_descriptor_provider.dart
 └── storage/
+    ├── last_sign_in_storage.dart    (NOT exported; survives logout)
     ├── oauth_storage_service.dart   (NOT exported)
     └── token_storage_service.dart   (NOT exported)
 ```
 
 ## Key Design Decisions
 
-- **Single writer**: Only `AuthManager` writes tokens. No external class can clear, refresh, or store tokens.
+- **Runtime single writer**: `AuthManager` owns token mutations. The isolated deprecated mobile importer only copies prior values before any runtime consumer starts.
 - **Package boundary enforcement**: Internal types (`AuthManager`, storage services) are NOT exported. The `implementation_imports` lint prevents cross-package `src/` imports.
 - **No relay knowledge**: Auth package knows nothing about relay, WebSocket, or room keys. Logout emits `AuthState.unauthenticated` — `ConnectionService` reacts by disconnecting.
 - **Singleflight refresh**: Concurrent token refresh requests are coalesced (`_activeRefresh ??= ...`). Only one refresh HTTP call per expiry window.
@@ -67,7 +68,7 @@ lib/src/
 - Pure Dart only — NO `package:flutter*` imports
 - Uses `package:http` directly for auth HTTP calls (NOT core's `HttpApiClient`)
 - `@lazySingleton` for `AuthManager` and storage classes
-- Positional constructor parameters for injectable auto-wiring
+- Required named parameters for new/touched dependency wiring
 - Double quotes for all strings
 
 ## DI Registration
@@ -80,8 +81,13 @@ lib/src/
 - `AuthenticatedHttpApiClient`
 - `TokenStorageService` (internal)
 - `OAuthStorageService` (internal)
+- `LastSignInStorage` (internal)
 
-**Prerequisite**: `SecureStorage` must be registered before auth DI runs (Flutter registers `FlutterSecureStorageAdapter`).
+**Prerequisite**: both shells configure `sesori_persistence` before auth DI.
+Storage services consume its shared `SecureStorageRepository` using `AuthSecretKey`;
+auth owns serialization and mutation fencing, never native-key caching or a
+platform storage backend. The defining repository/key contracts remain in the
+persistence public barrel.
 
 ## Testing
 

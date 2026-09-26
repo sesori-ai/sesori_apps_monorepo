@@ -17,7 +17,9 @@ ProviderModel _model({
   List<String> variants = const [],
   String? defaultVariant,
   bool isAvailable = true,
+  FastModeSupport? fastMode,
 }) => ProviderModel(
+  fastMode: fastMode,
   id: id,
   providerID: providerID,
   name: id,
@@ -36,6 +38,64 @@ AgentInfo _agent({
 }) => AgentInfo(name: name, description: name, model: model, mode: mode, hidden: hidden);
 
 void main() {
+  group("SessionSelectionCalculator fast mode", () {
+    final providers = [
+      _provider(
+        id: "anthropic",
+        models: {
+          "fast": _model(
+            id: "fast",
+            providerID: "anthropic",
+            fastMode: const FastModeSupport.available(promptCacheTtlSeconds: 3600),
+          ),
+          "blocked": _model(
+            id: "blocked",
+            providerID: "anthropic",
+            fastMode: const FastModeSupport.unavailable(reason: FastModeUnavailableReason.notOnPlan),
+          ),
+          "future": _model(id: "future", providerID: "anthropic", fastMode: const FastModeSupport.unknown()),
+          "plain": _model(id: "plain", providerID: "anthropic"),
+          "retired": _model(
+            id: "retired",
+            providerID: "anthropic",
+            isAvailable: false,
+            fastMode: const FastModeSupport.available(promptCacheTtlSeconds: 3600),
+          ),
+        },
+      ),
+    ];
+
+    bool resolved(String modelID, {required bool requested}) => _calculator.resolvedFastMode(
+      providers: providers,
+      model: AgentModel(providerID: "anthropic", modelID: modelID, variant: null),
+      requested: requested,
+    );
+
+    test("keeps the choice only while the model's fast mode is available", () {
+      expect(resolved("fast", requested: true), isTrue);
+      expect(resolved("fast", requested: false), isFalse);
+    });
+
+    test("forces fast mode off for models without available fast mode", () {
+      expect(resolved("blocked", requested: true), isFalse);
+      expect(resolved("future", requested: true), isFalse);
+      expect(resolved("plain", requested: true), isFalse);
+      expect(resolved("retired", requested: true), isFalse);
+      expect(resolved("missing", requested: true), isFalse);
+      expect(_calculator.resolvedFastMode(providers: providers, model: null, requested: true), isFalse);
+    });
+
+    test("a model the catalog no longer offers has no fast mode", () {
+      expect(
+        _calculator.fastModeSupport(
+          providers: providers,
+          model: const AgentModel(providerID: "anthropic", modelID: "retired", variant: null),
+        ),
+        isNull,
+      );
+    });
+  });
+
   group("SessionSelectionCalculator selectable agents", () {
     test("hidden agents and sub-agents are not picker entries", () {
       final agents = [

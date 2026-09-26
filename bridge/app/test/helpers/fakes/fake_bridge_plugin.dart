@@ -4,6 +4,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 /// General-purpose native-project plugin fake shared by bridge tests.
 class FakeBridgePlugin() implements NativeProjectsPluginApi {
+  @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      PluginQuotaContinuationReadiness.unavailable;
+
   final List<PluginQueuedPrompt> queuedPrompts = [];
   final List<({String sessionId, String promptId})> cancelQueuedPromptCalls = [];
 
@@ -52,6 +56,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   List<PluginPromptPart>? lastCreateSessionParts;
   String? lastCreateSessionUserVisibleText;
   String? lastCreateSessionVariant;
+  bool? lastCreateSessionFastMode;
   String? lastCreateSessionAgent;
   ({String providerID, String modelID})? lastCreateSessionModel;
   String? lastRenameSessionId;
@@ -66,6 +71,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   String? lastSendPromptSessionId;
   List<PluginPromptPart>? lastSendPromptParts;
   String? lastSendPromptVariant;
+  bool? lastSendPromptFastMode;
   String? lastSendPromptAgent;
   ({String providerID, String modelID})? lastSendPromptModel;
   String? lastSendCommandSessionId;
@@ -73,6 +79,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   String? lastSendCommandArguments;
   String? lastSendCommandUserVisibleArguments;
   String? lastSendCommandVariant;
+  bool? lastSendCommandFastMode;
   String? lastSendCommandAgent;
   ({String providerID, String modelID})? lastSendCommandModel;
   String? lastAbortSessionId;
@@ -165,6 +172,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -174,6 +182,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     lastCreateSessionParts = parts;
     lastCreateSessionUserVisibleText = userVisibleText;
     lastCreateSessionVariant = variant?.id;
+    lastCreateSessionFastMode = fastMode;
     lastCreateSessionAgent = agent;
     lastCreateSessionModel = model;
     return createSessionResult ??
@@ -252,6 +261,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -259,6 +269,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     lastSendPromptSessionId = sessionId;
     lastSendPromptParts = parts;
     lastSendPromptVariant = variant?.id;
+    lastSendPromptFastMode = fastMode;
     lastSendPromptAgent = agent;
     lastSendPromptModel = model;
   }
@@ -271,6 +282,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -281,6 +293,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     lastSendCommandArguments = arguments;
     lastSendCommandUserVisibleArguments = userVisibleArguments;
     lastSendCommandVariant = variant?.id;
+    lastSendCommandFastMode = fastMode;
     lastSendCommandAgent = agent;
     lastSendCommandModel = model;
     if (sendCommandCompleter case final completer?) await completer.future;

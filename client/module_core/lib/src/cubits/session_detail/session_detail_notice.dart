@@ -20,3 +20,13 @@ final class const SessionDetailAuthenticationRequired({required final String act
 /// A refreshed command catalog no longer contains the queued command. The
 /// command remains visible but blocked until the user removes it.
 final class const SessionDetailCommandUnavailable() extends SessionDetailNotice;
+
+final class const SessionDetailAutoContinuationUnavailable() extends SessionDetailNotice;
+
+final class const SessionDetailAutoContinuationUpdateFailed() extends SessionDetailNotice;
+
+/// Disabling prevents future sends, but cannot retract an accepted prompt.
+final class const SessionDetailAutoContinuationAlreadySubmitted() extends SessionDetailNotice;
+
+/// The bridge did not acknowledge a change to the session's approval mode.
+final class const SessionDetailApprovalUpdateFailed() extends SessionDetailNotice;

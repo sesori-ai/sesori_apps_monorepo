@@ -374,6 +374,47 @@ void main() {
     expect(buttonRight, contentRight);
   });
 
+  testWidgets("keeps a title-only action alert on one row and wraps it at large text", (tester) async {
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    late PregoPopupAlertPresenter presenter;
+    var textScale = 1.0;
+    Future<void> show() async {
+      await tester.pumpWidget(
+        MediaQuery(
+          data: MediaQueryData(size: const Size(390, 800), textScaler: TextScaler.linear(textScale)),
+          child: _harness(
+            Builder(
+              builder: (context) {
+                presenter = PregoPopupAlertPresenter.of(context);
+                return const SizedBox.expand();
+              },
+            ),
+          ),
+        ),
+      );
+      presenter.show(
+        title: "Archived",
+        variant: PregoPopupAlertsNotificationsVariant.success,
+        content: PregoPopupAlertContent(
+          primaryAction: PregoPopupAlertsNotificationsAction(label: "Undo", onPressed: () {}),
+        ),
+        duration: null,
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await show();
+    expect(tester.getCenter(find.text("Undo")).dy, moreOrLessEquals(tester.getCenter(find.text("Archived")).dy));
+
+    textScale = 3.2;
+    await show();
+    expect(tester.takeException(), isNull);
+    expect(tester.getTopLeft(find.text("Undo")).dy, greaterThan(tester.getBottomLeft(find.text("Archived")).dy));
+    expect(tester.getBottomLeft(find.text("Undo")).dy, lessThan(800));
+  });
+
   testWidgets("uses overlay status-bar padding when a modal strips its top padding", (tester) async {
     late PregoPopupAlertPresenter presenter;
     await tester.pumpWidget(

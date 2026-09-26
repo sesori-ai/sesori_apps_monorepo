@@ -5,7 +5,7 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.13.3
+  sdk: ^3.13.4
 
 dependencies:
   bloc: ^9.2.1
@@ -13,7 +13,7 @@ dependencies:
   diff_match_patch: ^0.4.1
   cryptography: ^2.9.0
   freezed_annotation: ^3.1.0
-  get_it: ^9.2.1
+  get_it: ^9.3.0
   http: ^1.6.0
   injectable: ^3.0.0
   json_annotation: ^4.12.0
@@ -23,6 +23,8 @@ dependencies:
   rxdart: ^0.28.0
   sesori_auth:
     path: ../module_auth
+  sesori_persistence:
+    path: ../module_persistence
   sesori_shared:
     path: ../../shared/sesori_shared
   web_socket_channel: ^3.0.3

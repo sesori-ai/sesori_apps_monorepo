@@ -20,6 +20,7 @@ import "package:test/test.dart";
 
 import "../../helpers/fakes/deletion_worktree_service_fake.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 
@@ -37,6 +38,9 @@ void main() {
       sessionRepository = _FakeSessionRepository();
       operationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       service = SessionLifecycleService(
+        continuations: const EmptySessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
         filesystemRepository: FilesystemRepository(
@@ -298,6 +302,7 @@ void main() {
     late _FakeBridgePlugin plugin;
     late SessionOperationDispatcher operationDispatcher;
     late SessionLifecycleService service;
+    late RecordingSessionContinuations continuations;
 
     setUp(() async {
       db = createTestDatabase();
@@ -312,6 +317,9 @@ void main() {
       );
       operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
       service = SessionLifecycleService(
+        continuations: continuations = RecordingSessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         worktreeService: DeletionWorktreeServiceFake(),
         sessionRepository: repository,
         filesystemRepository: FilesystemRepository(
@@ -323,6 +331,7 @@ void main() {
         chatHistoryService: createTestChatHistory().service,
       );
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "root-session",
         backendSessionId: "backend-session",
         projectId: "/repo",
@@ -346,6 +355,26 @@ void main() {
     tearDown(() async {
       await operationDispatcher.dispose();
       await db.close();
+    });
+
+    test("failed durable cancellation blocks archive; a projection failure does not", () async {
+      Future<ArchiveStatusUpdate> archive() => service.updateArchiveStatus(
+        sessionId: "root-session",
+        archived: true,
+        deleteWorktree: false,
+        force: false,
+      );
+      continuations.cancellationError = StateError("fixture persistence failure");
+      await expectLater(archive(), throwsStateError);
+      expect(plugin.lastArchivedSessionId, isNull);
+      expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNull);
+      continuations
+        ..cancellationError = null
+        ..changed = true;
+      await archive();
+      expect(continuations.cancellations, ["root-session"]);
+      expect(plugin.lastArchivedSessionId, "backend-session");
+      expect((await db.sessionDao.getSession(sessionId: "root-session"))?.archivedAt, isNotNull);
     });
 
     test("archive routes plugin I/O through the stored backend id", () async {
@@ -539,6 +568,7 @@ class _FakeBridgePlugin() extends FakeBridgePlugin {
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) => throw UnimplementedError();

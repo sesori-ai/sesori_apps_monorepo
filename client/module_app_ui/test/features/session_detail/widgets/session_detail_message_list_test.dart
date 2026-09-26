@@ -1,9 +1,12 @@
 import "dart:async";
+import "dart:convert";
 
 import "package:flutter/gestures.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_turn_stub.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -18,6 +21,7 @@ class const _SessionDetailMessageListHarness({
   final Future<void> Function()? onLoadOlderMessages,
   final TargetPlatform? platform,
   final EdgeInsets systemGestureInsets = EdgeInsets.zero,
+  final double topInset = 0,
 }) extends StatefulWidget {
   @override
   State<_SessionDetailMessageListHarness> createState() => _SessionDetailMessageListHarnessState();
@@ -28,10 +32,15 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late Map<String, String> _streamingText;
   late List<QueuedSessionSubmission> _queuedMessages;
   late List<QueuedSessionPrompt> _bridgeQueuedPrompts;
-  QueuedSessionSubmission? _sendingSubmission;
+  LocalSendPhase _localSend = const LocalSendPhase.idle();
+  int retriedFailedSends = 0;
+  List<QueuedSessionSubmission> _awaitingBridgeSubmissions = const [];
+  Map<String, List<ComposerAttachment>> _bridgePromptAttachments = const {};
   final List<String> cancelledBridgePromptIds = [];
   late String? _retryErrorMessage;
+  bool _isBusy = false;
   bool _isLoadingOlderMessages = false;
+  bool _transcriptFolded = false;
   int? lastCancelledQueuedMessageIndex;
 
   @override
@@ -67,12 +76,28 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     setState(() => _messages = [..._messages.where((m) => m.info.id != messageId)]);
   }
 
+  void replaceMessages(List<MessageWithParts> messages) {
+    setState(() => _messages = messages);
+  }
+
   void updateStreamingText({required String partId, required String text}) {
     setState(() => _streamingText = {..._streamingText, partId: text});
   }
 
+  void setBusy(bool isBusy) {
+    setState(() => _isBusy = isBusy);
+  }
+
+  void clearStreamingText() {
+    setState(() => _streamingText = const {});
+  }
+
   void setRetryErrorMessage(String? message) {
     setState(() => _retryErrorMessage = message);
+  }
+
+  void setTranscriptFolded({required bool folded}) {
+    setState(() => _transcriptFolded = folded);
   }
 
   void cancelQueuedMessage(int index) {
@@ -85,13 +110,46 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   }
 
   void sendDirectly(QueuedSessionSubmission submission) {
-    setState(() => _sendingSubmission = submission);
+    setState(() => _localSend = LocalSendPhase.sending(submission: submission));
   }
 
   void beginSending() {
     setState(() {
-      _sendingSubmission = _queuedMessages.first;
+      _localSend = LocalSendPhase.sending(submission: _queuedMessages.first);
       _queuedMessages = _queuedMessages.sublist(1);
+    });
+  }
+
+  void failSending() {
+    if (_localSend case LocalSendSending(:final submission)) {
+      setState(() => _localSend = LocalSendPhase.failed(submission: submission, failure: PromptSendFailure.rejected));
+    }
+  }
+
+  void acceptSendingSubmission() {
+    if (_localSend case LocalSendSending(:final submission)) {
+      setState(() {
+        _awaitingBridgeSubmissions = [..._awaitingBridgeSubmissions, submission];
+        _localSend = const LocalSendPhase.idle();
+      });
+    }
+  }
+
+  void updateBridgeQueue({
+    required List<QueuedSessionPrompt> prompts,
+    required Map<String, List<ComposerAttachment>> attachments,
+  }) {
+    setState(() {
+      _bridgeQueuedPrompts = prompts;
+      _bridgePromptAttachments = attachments;
+      final bridgeIds = prompts.map((prompt) => prompt.id).toSet();
+      _queuedMessages = _queuedMessages.where((submission) => !bridgeIds.contains(submission.promptId)).toList();
+      _awaitingBridgeSubmissions = _awaitingBridgeSubmissions
+          .where((submission) => !bridgeIds.contains(submission.promptId))
+          .toList();
+      if (_localSend case LocalSendSending(:final submission) when bridgeIds.contains(submission.promptId)) {
+        _localSend = const LocalSendPhase.idle();
+      }
     });
   }
 
@@ -126,6 +184,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       home: Scaffold(
         body: SessionDetailMessageList(
           bridgeQueuedPrompts: _bridgeQueuedPrompts,
+          bridgePromptAttachments: _bridgePromptAttachments,
           onCancelBridgeQueuedPrompt: (promptId) {
             cancelledBridgePromptIds.add(promptId);
             setState(
@@ -135,12 +194,27 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           projectId: null,
           onLoadOlderMessages: widget.onLoadOlderMessages,
           messages: _messages,
-          sendingSubmission: _sendingSubmission,
+          localSend: _localSend,
+          harnessName: "OpenCode",
+          onRetryFailedSend: () {
+            if (_localSend case LocalSendFailed(:final submission)) {
+              setState(() {
+                retriedFailedSends++;
+                _localSend = LocalSendPhase.sending(submission: submission);
+              });
+            }
+          },
+          onRemoveFailedSend: () => setState(() => _localSend = const LocalSendPhase.idle()),
+          awaitingBridgeSubmissions: _awaitingBridgeSubmissions,
           queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
+          transcriptFolded: _transcriptFolded,
+          onTranscriptFoldedChanged: setTranscriptFolded,
+          topInset: widget.topInset,
           streamingText: _streamingText,
           children: const <Session>[],
           childStatuses: const <String, SessionStatus>{},
+          isBusy: _isBusy,
           retryErrorMessage: _retryErrorMessage,
           onCancelQueuedMessage: cancelQueuedMessage,
         ),
@@ -256,6 +330,68 @@ Future<void> _sendPointerScroll({required WidgetTester tester, required Finder t
   await tester.sendEventToBinding(pointer.scroll(delta));
 }
 
+const _topInset = 40.0;
+
+/// [count] turns, each a prompt of [promptLines] lines answered by [answers]
+/// messages of [paragraphs] paragraphs.
+List<MessageWithParts> _turns({
+  required int count,
+  required int promptLines,
+  required int answers,
+  required int paragraphs,
+}) => [
+  for (var turn = 0; turn < count; turn++) ...[
+    _message(
+      messageId: "u$turn",
+      role: "user",
+      text: _multilineText(label: "Prompt $turn", lines: promptLines),
+    ),
+    for (var answer = 0; answer < answers; answer++)
+      _message(
+        messageId: "a$turn-$answer",
+        role: "assistant",
+        text: List.generate(paragraphs, (index) => "Answer $turn.$answer, paragraph $index").join("\n\n"),
+      ),
+  ],
+];
+
+Future<_SessionDetailMessageListHarnessState> _pumpTurns(
+  WidgetTester tester, {
+  required List<MessageWithParts> messages,
+  required bool folded,
+}) async {
+  await tester.pumpWidget(
+    _SessionDetailMessageListHarness(initialMessages: messages, initialStreamingText: const {}, topInset: _topInset),
+  );
+  final harness = tester.state<_SessionDetailMessageListHarnessState>(find.byType(_SessionDetailMessageListHarness));
+  harness.setTranscriptFolded(folded: folded);
+  await tester.pumpAndSettle();
+  return harness;
+}
+
+double _topOf(WidgetTester tester, String rowId) => tester.getTopLeft(_messageKey(rowId)).dy;
+
+/// Every scroll offset the list takes from now on.
+List<double> _recordMoves(WidgetTester tester) {
+  final position = _position(tester);
+  final moves = <double>[];
+  position.addListener(() => moves.add(position.pixels));
+  return moves;
+}
+
+/// Scrolls up to the older row [rowId], less than a viewport at a time, and
+/// rests its top at [top]. Scrolling away from the latest edge detaches.
+Future<void> _scrollRowTo(WidgetTester tester, {required String rowId, required double top}) async {
+  final position = _position(tester);
+  while (_messageKey(rowId).evaluate().isEmpty) {
+    position.jumpTo(position.pixels + 500);
+    await tester.pump();
+  }
+  position.jumpTo(position.pixels + top - _topOf(tester, rowId));
+  await tester.pumpAndSettle();
+  expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+}
+
 Future<void> _detachViewport(WidgetTester tester) async {
   await tester.drag(find.byKey(_listViewKey), const Offset(0, -500));
   await tester.pumpAndSettle();
@@ -323,6 +459,173 @@ void main() {
     expect(find.text("/review src"), findsOneWidget);
   });
 
+  for (final text in ["Review these images", ""]) {
+    testWidgets("keeps local thumbnails through bridge sending with ${text.isEmpty ? 'no text' : 'text'}", (
+      tester,
+    ) async {
+      final attachments = [
+        for (var i = 0; i < 2; i++)
+          ComposerAttachment(
+            mime: "image/png",
+            bytes: base64Decode(
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+            ),
+            filename: "Fixture $i.png",
+          ),
+      ];
+      final submission = QueuedSessionSubmission.text(
+        promptId: "image-prompt",
+        text: text,
+        inputMode: ComposerInputMode.typed,
+        attachments: attachments,
+        agent: null,
+        agentModel: null,
+        fastMode: false,
+      );
+      final prompt = QueuedSessionPrompt(
+        id: submission.promptId,
+        text: submission.displayText,
+        command: null,
+        attachmentCount: attachments.length,
+        createdAt: 100,
+      );
+      final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: harnessKey,
+          initialMessages: const [],
+          initialStreamingText: const {},
+          initialQueuedMessages: [submission],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      void expectThumbnails() {
+        final previews = tester.widgetList<Image>(find.byType(Image)).toList();
+        expect(previews, hasLength(attachments.length));
+        for (var i = 0; i < previews.length; i++) {
+          final provider = previews[i].image as ResizeImage;
+          expect((provider.imageProvider as MemoryImage).bytes, same(attachments[i].bytes));
+        }
+        expect(tester.takeException(), isNull);
+      }
+
+      expectThumbnails();
+      harnessKey.currentState!.beginSending();
+      await tester.pump();
+      expect(find.text("Sending"), findsOneWidget);
+      expectThumbnails();
+
+      harnessKey.currentState!.acceptSendingSubmission();
+      await tester.pumpAndSettle();
+      expectThumbnails();
+
+      harnessKey.currentState!.updateBridgeQueue(prompts: [prompt], attachments: {submission.promptId: attachments});
+      await tester.pumpAndSettle();
+      expectThumbnails();
+
+      harnessKey.currentState!.updateBridgeQueue(
+        prompts: [prompt.copyWith(dispatchState: QueuedPromptDispatchState.dispatched)],
+        attachments: {submission.promptId: attachments},
+      );
+      await tester.pump();
+      expectThumbnails();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("Sending"), findsOneWidget);
+      expectThumbnails();
+      expect(find.byType(QueuedMessageBubble), findsOneWidget);
+
+      harnessKey.currentState!.deliverBridgePrompt(
+        promptId: submission.promptId,
+        message: _message(
+          messageId: "delivered-image-prompt",
+          role: "user",
+          text: "Delivered prompt",
+          promptId: submission.promptId,
+        ),
+        insertionIndex: 0,
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(QueuedMessageBubble), findsNothing);
+      expect(find.byType(Image), findsNothing);
+      expect(find.text("Delivered prompt"), findsOneWidget);
+    });
+  }
+
+  testWidgets("coalesced handoff and scrolling keep previews while absent preview data falls back to counts", (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final attachment = ComposerAttachment(
+      mime: "image/png",
+      bytes: base64Decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+      ),
+      filename: "Fixture.png",
+    );
+    final submission = QueuedSessionSubmission.text(
+      promptId: "image-prompt",
+      text: "Review this image",
+      inputMode: ComposerInputMode.typed,
+      attachments: [attachment],
+      agent: null,
+      agentModel: null,
+      fastMode: false,
+    );
+    const prompt = QueuedSessionPrompt(
+      id: "image-prompt",
+      text: "Review this image",
+      command: null,
+      attachmentCount: 1,
+      createdAt: 100,
+      dispatchState: QueuedPromptDispatchState.dispatched,
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 30),
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    harnessKey.currentState!.sendDirectly(submission);
+    // No pump: a fast bridge handoff can coalesce both local states away.
+    harnessKey.currentState!.updateBridgeQueue(
+      prompts: [prompt],
+      attachments: {
+        submission.promptId: [attachment],
+      },
+    );
+    await _pumpListUpdate(tester);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(Image), findsOneWidget);
+
+    await _sendPointerScroll(tester: tester, target: find.byKey(_listViewKey), delta: const Offset(0, -1600));
+    await _pumpListUpdate(tester);
+    expect(_position(tester).pixels, greaterThan(1000));
+    expect(find.byType(QueuedMessageBubble), findsNothing);
+    await tester.tap(find.byKey(_jumpToLatestKey));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
+    expect(find.byType(Image), findsOneWidget);
+    expect(
+      tester.widget<QueuedMessageBubble>(find.byType(QueuedMessageBubble)).localAttachments.single,
+      same(attachment),
+    );
+
+    // The bounded owner may evict an older preview while its row is pending.
+    harnessKey.currentState!.updateBridgeQueue(prompts: [prompt], attachments: const {});
+    await _pumpListUpdate(tester);
+    expect(find.text("Sending"), findsOneWidget);
+    expect(find.text("1 image"), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets("renders an unavailable local command as removable instead of queued", (tester) async {
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -337,6 +640,7 @@ void main() {
             command: "review",
             agent: "coder",
             agentModel: null,
+            fastMode: false,
           ),
         ],
       ),
@@ -353,6 +657,127 @@ void main() {
 
     expect(harnessKey.currentState?.lastCancelledQueuedMessageIndex, 0);
     expect(find.text("/review src"), findsNothing);
+  });
+
+  testWidgets("a failed send shows Couldn't send with Retry while later messages stay queued", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        initialQueuedMessages: [
+          _textSubmission(promptId: "prm_failed", text: "first"),
+          _textSubmission(promptId: "prm_later", text: "second"),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    harnessKey.currentState!.beginSending();
+    await tester.pump();
+    harnessKey.currentState!.failSending();
+    await tester.pumpAndSettle();
+
+    expect(find.text("Couldn’t send"), findsOneWidget);
+    expect(find.text("Queued"), findsOneWidget);
+    expect(find.widgetWithText(TextButton, "Remove"), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, "Retry"));
+    await tester.pumpAndSettle();
+
+    expect(harnessKey.currentState!.retriedFailedSends, 1);
+    expect(find.text("Couldn’t send"), findsNothing);
+    expect(find.text("Sending"), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  group("in a narrow pane at large text", () {
+    Future<void> pumpNarrowBubble(
+      WidgetTester tester, {
+      required QueuedMessageBubblePresentation presentation,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topRight,
+              child: SizedBox(
+                width: 280,
+                child: QueuedMessageBubble(
+                  displayText: "first",
+                  isCommand: false,
+                  attachmentCount: 0,
+                  localAttachments: const [],
+                  presentation: presentation,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets("a failed send's actions wrap instead of overflowing", (tester) async {
+      var retries = 0;
+      var removals = 0;
+      await pumpNarrowBubble(
+        tester,
+        presentation: QueuedMessageBubblePresentation.failed(
+          onRetry: () => retries++,
+          onRemove: () => removals++,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.widgetWithText(TextButton, "Retry"));
+      await tester.tap(find.widgetWithText(TextButton, "Remove"));
+      expect(retries, 1);
+      expect(removals, 1);
+    });
+
+    testWidgets("a slow send's harness label wraps instead of overflowing", (tester) async {
+      const harnessName = "A Very Long Custom Harness Name";
+      await pumpNarrowBubble(
+        tester,
+        presentation: const QueuedMessageBubblePresentation.sending(harnessName: harnessName),
+      );
+      await tester.pump(const Duration(seconds: 3));
+
+      expect(tester.takeException(), isNull);
+      expect(find.text("Sending to $harnessName…"), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  });
+
+  testWidgets("a slow send names the harness after a short delay", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        initialQueuedMessages: [_textSubmission(promptId: "prm_slow", text: "slow")],
+      ),
+    );
+    await tester.pumpAndSettle();
+    harnessKey.currentState!.beginSending();
+    await tester.pump();
+
+    expect(find.text("Sending"), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 1900));
+    expect(find.text("Sending to OpenCode…"), findsNothing);
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text("Sending"), findsNothing);
+    expect(find.text("Sending to OpenCode…"), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets("a bridge-queued prompt transforms into its message without a blank frame", (tester) async {
@@ -769,6 +1194,207 @@ void main() {
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
   });
 
+  testWidgets("the jump button names the step running now while the rows hold still", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    MessageWithParts toolMessage({required String id, required ToolStatus status}) => MessageWithParts(
+      info: Message.assistant(
+        id: id,
+        sessionID: "session-1",
+        agent: null,
+        modelID: null,
+        providerID: null,
+        time: null,
+      ),
+      parts: [
+        MessagePart.tool(
+          id: "$id-tool",
+          sessionID: "session-1",
+          messageID: id,
+          tool: "bash",
+          state: ToolState(status: status, title: null, shellCommand: "make check", output: null, error: null),
+        ),
+      ],
+    );
+
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _detachViewport(tester);
+    expect(find.text("Jump to latest"), findsOneWidget);
+
+    harnessKey.currentState!.appendNewestMessage(toolMessage(id: "run-1", status: ToolStatus.running));
+    await _pumpListUpdate(tester);
+    final pill = find.byKey(_jumpToLatestKey);
+    expect(find.descendant(of: pill, matching: find.text(r"Running $ make check")), findsOneWidget);
+    expect(find.descendant(of: pill, matching: find.byType(PregoShimmer)), findsOneWidget);
+
+    harnessKey.currentState!.removeMessage("run-1");
+    harnessKey.currentState!.appendNewestMessage(toolMessage(id: "queued", status: ToolStatus.pending));
+    await _pumpListUpdate(tester);
+    expect(find.descendant(of: pill, matching: find.text(r"Pending $ make check")), findsOneWidget);
+
+    harnessKey.currentState!.removeMessage("queued");
+    harnessKey.currentState!.appendNewestMessage(toolMessage(id: "run-2", status: ToolStatus.completed));
+    await _pumpListUpdate(tester);
+    expect(find.descendant(of: pill, matching: find.text("Jump to latest")), findsOneWidget);
+    expect(find.descendant(of: pill, matching: find.byType(PregoShimmer)), findsNothing);
+  });
+
+  testWidgets("a busy session with no live step or streaming text ends in a Working row that a live step replaces", (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    MessageWithParts toolMessage({required ToolStatus status}) => MessageWithParts(
+      info: const Message.assistant(
+        id: "assistant-1",
+        sessionID: "session-1",
+        agent: null,
+        modelID: null,
+        providerID: null,
+        time: null,
+      ),
+      parts: [
+        MessagePart.tool(
+          id: "assistant-1-tool",
+          sessionID: "session-1",
+          messageID: "assistant-1",
+          tool: "read",
+          state: ToolState(status: status, title: "notes.md", shellCommand: null, output: null, error: null),
+        ),
+      ],
+    );
+    // The first frame starts the row's ease in or out; the second ends it.
+    Future<void> settle() async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    // The sparkle leads its row's label.
+    void expectSparkleLeads(Finder label) {
+      final row = find.ancestor(of: label, matching: find.byType(Row)).first;
+      final sparkle = find.descendant(of: row, matching: find.byType(PregoAiLoader));
+      expect(sparkle, findsOneWidget);
+      expect(tester.getTopLeft(sparkle).dx, lessThan(tester.getTopLeft(label).dx));
+    }
+
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 2),
+        initialStreamingText: const {},
+      ),
+    );
+    await settle();
+    expect(find.text("Working…"), findsNothing);
+
+    harnessKey.currentState!.setBusy(true);
+    await settle();
+    expect(find.text("Working…"), findsOneWidget);
+    expectSparkleLeads(find.text("Working…"));
+
+    harnessKey.currentState!.appendNewestMessage(toolMessage(status: ToolStatus.running));
+    await settle();
+    expect(find.text("Working…"), findsNothing);
+    expectSparkleLeads(find.text("Read notes.md"));
+
+    harnessKey.currentState!
+      ..removeMessage("assistant-1")
+      ..appendNewestMessage(toolMessage(status: ToolStatus.completed));
+    await settle();
+    expect(find.text("Working…"), findsOneWidget);
+
+    // Streaming text already shows progress.
+    harnessKey.currentState!.updateStreamingText(partId: "assistant-1-text", text: "Reading the");
+    await settle();
+    expect(find.text("Working…"), findsNothing);
+
+    harnessKey.currentState!.clearStreamingText();
+    await settle();
+    expect(find.text("Working…"), findsOneWidget);
+
+    harnessKey.currentState!.setBusy(false);
+    await settle();
+    expect(find.text("Working…"), findsNothing);
+
+    // A retry row already says the session works.
+    harnessKey.currentState!
+      ..setBusy(true)
+      ..setRetryErrorMessage("Rate limited");
+    await settle();
+    expect(find.text("Working…"), findsNothing);
+  });
+
+  testWidgets("a reader pinned at the bottom stays pinned while a finished step folds into its group", (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    MessagePart tool({required String id, required ToolStatus status}) => MessagePart.tool(
+      id: id,
+      sessionID: "session-1",
+      messageID: "assistant-1",
+      tool: "read",
+      state: ToolState(status: status, title: id, shellCommand: null, output: null, error: null),
+    );
+    MessageWithParts assistant({required ToolStatus last}) => MessageWithParts(
+      info: const Message.assistant(
+        id: "assistant-1",
+        sessionID: "session-1",
+        agent: null,
+        modelID: null,
+        providerID: null,
+        time: null,
+      ),
+      parts: [
+        tool(id: "first", status: ToolStatus.completed),
+        tool(id: "second", status: last),
+      ],
+    );
+
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 10),
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    harnessKey.currentState!
+      ..setBusy(true)
+      ..appendNewestMessage(assistant(last: ToolStatus.running));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("Read second"), findsOneWidget);
+    expect(_position(tester).pixels, 0);
+
+    harnessKey.currentState!
+      ..removeMessage("assistant-1")
+      ..appendNewestMessage(assistant(last: ToolStatus.completed));
+    // Every frame of the fold, and of the Working row easing in, keeps the
+    // newest edge in view.
+    for (var frame = 0; frame < 10; frame++) {
+      await tester.pump(const Duration(milliseconds: 30));
+      expect(_position(tester).pixels, 0);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
+    }
+    expect(find.text("Read second"), findsNothing);
+    expect(find.text("2 steps"), findsOneWidget);
+    expect(find.text("Working…"), findsOneWidget);
+  });
+
   testWidgets("following mode stays pinned to latest", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -888,6 +1514,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -928,6 +1555,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -959,6 +1587,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -999,6 +1628,7 @@ void main() {
       command: "review",
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     const unavailable = QueuedSessionSubmission.unavailableCommand(
       promptId: "prompt-1",
@@ -1006,6 +1636,7 @@ void main() {
       command: "review",
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -1043,6 +1674,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -1238,9 +1870,196 @@ void main() {
 
     harnessKey.currentState!.setRetryErrorMessage(null);
     await _pumpListUpdate(tester);
+    // The card folds away rather than vanishing in one frame.
+    expect(find.byType(RetryErrorMessageCard), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(RetryErrorMessageCard), findsNothing);
     expect(_messageKey("user-2"), findsOneWidget);
+  });
+
+  testWidgets("folded, each turn shows its prompt and one stub while the synthetic rows stay", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 1200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    // RetryErrorMessageCard shimmers forever, so this test never settles.
+    const queued = QueuedSessionSubmission.text(
+      promptId: "queued-1",
+      text: "Queued behind the turn",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+      fastMode: false,
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _automatedMessage(messageId: "setup", text: "Automation report", sender: MessageSender.system),
+          _message(messageId: "u1", role: "user", text: "First prompt"),
+          _message(messageId: "a1", role: "assistant", text: "First answer"),
+          _message(messageId: "u2", role: "user", text: "Second prompt", promptId: "p2"),
+          _message(messageId: "a2", role: "assistant", text: "Second answer"),
+        ],
+        initialStreamingText: const {},
+        initialQueuedMessages: const [queued],
+        initialRetryErrorMessage: "Provider is overloaded",
+      ),
+    );
+    await tester.pump();
+
+    harnessKey.currentState?.setTranscriptFolded(folded: true);
+    await _pumpListUpdate(tester);
+
+    // Oldest first: the leading segment's stub, then each prompt and its stub.
+    final tops = [
+      for (final row in [
+        "session-detail-turn-head",
+        "u1",
+        "session-detail-turn-u1",
+        "session-detail-prompt-p2",
+        "session-detail-turn-u2",
+      ])
+        tester.getTopLeft(_messageKey(row)).dy,
+    ];
+    expect(tops, [...tops]..sort());
+    expect(find.text("Before the first prompt · No steps"), findsOneWidget);
+    expect(find.text("No steps — First answer"), findsOneWidget);
+    expect(find.text("No steps — Second answer"), findsOneWidget);
+    for (final hidden in ["setup", "a1", "a2"]) {
+      expect(_messageKey(hidden), findsNothing);
+    }
+    final lastStubBottom = tester.getBottomLeft(_messageKey("session-detail-turn-u2")).dy;
+    expect(tester.getTopLeft(find.byType(RetryErrorMessageCard)).dy, greaterThanOrEqualTo(lastStubBottom));
+    expect(tester.getTopLeft(find.text("Queued behind the turn")).dy, greaterThan(lastStubBottom));
+
+    harnessKey.currentState?.setTranscriptFolded(folded: false);
+    await _pumpListUpdate(tester);
+
+    for (final shown in ["setup", "u1", "a1", "session-detail-prompt-p2", "a2"]) {
+      expect(_messageKey(shown), findsOneWidget);
+    }
+    expect(find.byType(TranscriptTurnStub), findsNothing);
+    expect(find.byType(RetryErrorMessageCard), findsOneWidget);
+    expect(find.text("Queued behind the turn"), findsOneWidget);
+  });
+
+  testWidgets("a fold switch eases no row in", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _message(messageId: "u1", role: "user", text: "First prompt"),
+          _message(messageId: "a1", role: "assistant", text: "First answer"),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    Iterable<String> moving() => tester
+        .stateList(find.byType(TranscriptPresence, skipOffstage: false))
+        .map((state) => "$state")
+        .where((state) => state.contains("tracking 1 ticker"));
+
+    for (final folded in [true, false]) {
+      harnessKey.currentState?.setTranscriptFolded(folded: folded);
+      await tester.pump();
+      expect(moving(), isEmpty);
+      expect(_messageKey("session-detail-turn-u1"), folded ? findsOneWidget : findsNothing);
+      expect(_messageKey("a1"), folded ? findsNothing : findsOneWidget);
+    }
+  });
+
+  group("a fold switch keeps the reader's turn in place", () {
+    // Folded, the 20 turns still overflow the 600 px viewport.
+    final shortTurns = _turns(count: 20, promptLines: 1, answers: 1, paragraphs: 12);
+    // Every prompt and answer is taller than the viewport.
+    final tallTurns = _turns(count: 16, promptLines: 40, answers: 4, paragraphs: 24);
+
+    testWidgets("mid-turn, that turn's prompt lands at the top edge", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+      expect(tester.getBottomLeft(_messageKey("a8-0")).dy, greaterThan(_topInset));
+
+      harness.setTranscriptFolded(folded: true);
+      await tester.pumpAndSettle();
+
+      expect(_messageKey("session-detail-turn-u8"), findsOneWidget);
+      expect(_topOf(tester, "u8"), moreOrLessEquals(_topInset, epsilon: 1));
+    });
+
+    testWidgets("a prompt on screen keeps its distance from the top edge", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: true);
+      await _scrollRowTo(tester, rowId: "u8", top: _topInset - 10);
+
+      harness.setTranscriptFolded(folded: false);
+      await tester.pumpAndSettle();
+
+      expect(_messageKey("a8-0"), findsOneWidget);
+      expect(_topOf(tester, "u8"), moreOrLessEquals(_topInset - 10, epsilon: 1));
+    });
+
+    testWidgets("tapping a folded turn unfolds every turn and keeps that one in place", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: true);
+      final top = _topOf(tester, "u17");
+
+      await tester.tap(_messageKey("session-detail-turn-u17"));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TranscriptTurnStub), findsNothing);
+      expect(_messageKey("a17-0"), findsOneWidget);
+      expect(_topOf(tester, "u17"), moreOrLessEquals(top, epsilon: 1));
+    });
+
+    testWidgets("a prompt pushed out of the built rows is searched for from below it", (tester) async {
+      final harness = await _pumpTurns(tester, messages: tallTurns, folded: true);
+      await _scrollRowTo(tester, rowId: "session-detail-turn-u12", top: _topInset - 20);
+      final moves = _recordMoves(tester);
+
+      harness.setTranscriptFolded(folded: false);
+      await tester.pump();
+      // Unfolding grew the rows below the prompt past the built ones.
+      expect(find.byKey(const ValueKey("u12"), skipOffstage: false), findsNothing);
+      await tester.pumpAndSettle();
+
+      // Up through several rows, one frame each, and never past the prompt.
+      expect(moves, hasLength(greaterThan(4)));
+      expect(moves, orderedEquals([...moves]..sort()));
+      expect(_topOf(tester, "u12"), moreOrLessEquals(_topInset, epsilon: 1));
+      expect(tester.getSize(_messageKey("u12")).height, greaterThan(600));
+    });
+
+    testWidgets("a prompt pushed out of the built rows is searched for from above it", (tester) async {
+      final harness = await _pumpTurns(tester, messages: tallTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a6-1", top: _topInset - 100);
+      final moves = _recordMoves(tester);
+
+      harness.setTranscriptFolded(folded: true);
+      await tester.pump();
+      // Folding far up rebuilt the list from its oldest row.
+      expect(find.byKey(const ValueKey("u6"), skipOffstage: false), findsNothing);
+      await tester.pumpAndSettle();
+
+      expect(moves, hasLength(greaterThan(4)));
+      expect(moves, orderedEquals(<double>[...moves]..sort((a, b) => b.compareTo(a))));
+      expect(_topOf(tester, "u6"), moreOrLessEquals(_topInset, epsilon: 1));
+    });
+
+    testWidgets("an anchor whose row goes ends, so the row coming back moves nothing", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: true);
+
+      await tester.tap(_messageKey("session-detail-turn-u17"));
+      harness.removeMessage("u17");
+      await tester.pumpAndSettle();
+      harness.replaceMessages(shortTurns);
+      await tester.pumpAndSettle();
+
+      expect(_position(tester).pixels, 0);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
+    });
   });
 
   testWidgets("removing a message while following drops its row and stays pinned", (tester) async {
@@ -1783,3 +2602,14 @@ void main() {
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   });
 }
+
+QueuedSessionSubmission _textSubmission({required String promptId, required String text}) =>
+    QueuedSessionSubmission.text(
+      promptId: promptId,
+      text: text,
+      inputMode: ComposerInputMode.typed,
+      attachments: const [],
+      agent: null,
+      agentModel: null,
+      fastMode: false,
+    );

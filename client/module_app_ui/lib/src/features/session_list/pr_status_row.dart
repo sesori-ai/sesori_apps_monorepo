@@ -6,10 +6,8 @@ import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 import "session_row_metrics.dart";
 
-// GitHub-inspired semantic status colors, chosen for light/dark contrast.
-const _kPrGreen = Color(0xFF3FB950);
-const _kPrPurple = Color(0xFFA371F7);
-const _kPrAmber = Color(0xFFD29922);
+// GitHub's merged purple: Prego has no status token that means "merged".
+const _kPrMergedPurple = Color(0xFFA371F7);
 
 /// Compact row showing PR number, state label, and review/check status dots.
 ///
@@ -23,59 +21,65 @@ class const PrStatusRow({super.key, required final PullRequestInfo pr}) extends 
     final mergeIcon = _mergeIcon(status: pr.mergeableStatus);
     final mergeColor = _mergeColor(colors: context.prego.colors, status: pr.mergeableStatus) ?? stateColor;
 
-    return Row(
-      // Hugs its content: the row sits inline among the session footer's other
-      // details, so it must not claim the whole line.
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Tooltip(
-          message: _mergeTooltip(loc: loc, status: pr.mergeableStatus),
-          // The same slot the footer's other detail marks sit in, so the two
-          // details keep one rhythm across the line.
-          child: SizedBox(
-            width: kSessionRowIconSlotWidth,
-            child: Center(
-              child: Icon(mergeIcon, size: kSessionRowDetailIconSize, color: mergeColor),
+    // Squeezed by a narrow pane, the fixed indicators clip rather than overflow.
+    return UnconstrainedBox(
+      constrainedAxis: Axis.vertical,
+      alignment: AlignmentDirectional.centerStart,
+      clipBehavior: Clip.hardEdge,
+      child: Row(
+        // Hugs its content: the row sits inline among the session footer's other
+        // details, so it must not claim the whole line.
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Tooltip(
+            message: _mergeTooltip(loc: loc, status: pr.mergeableStatus),
+            // The same slot the footer's other detail marks sit in, so the two
+            // details keep one rhythm across the line.
+            child: SizedBox(
+              width: kSessionRowIconSlotWidth,
+              child: Center(
+                child: Icon(mergeIcon, size: kSessionRowDetailIconSize, color: mergeColor),
+              ),
             ),
           ),
-        ),
-        Flexible(
-          child: Text(
-            loc.prLabel(pr.number),
-            style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textSecondary),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(
-            _stateText(loc: loc, state: pr.state),
-            style: context.prego.textTheme.textXs.regular.copyWith(color: stateColor),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        // Review/check indicators are only relevant for open PRs.
-        if (pr.state == PrState.open) ...[
-          if (_reviewIndicator(colors: context.prego.colors, loc: loc, decision: pr.reviewDecision)
-              case (:final icon, :final color, :final tooltip)?) ...[
-            const SizedBox(width: 8),
-            Tooltip(
-              message: tooltip,
-              child: Icon(icon, size: 12, color: color),
+          Flexible(
+            child: Text(
+              loc.prLabel(pr.number),
+              style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
-          ],
-          if (_checkIndicator(colors: context.prego.colors, loc: loc, status: pr.checkStatus)
-              case (:final icon, :final color, :final tooltip)?) ...[
-            const SizedBox(width: 4),
-            Tooltip(
-              message: tooltip,
-              child: Icon(icon, size: 12, color: color),
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              _stateText(loc: loc, state: pr.state),
+              style: context.prego.textTheme.textXs.regular.copyWith(color: stateColor),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
+          ),
+          // Review/check indicators are only relevant for open PRs.
+          if (pr.state == PrState.open) ...[
+            if (_reviewIndicator(colors: context.prego.colors, loc: loc, decision: pr.reviewDecision)
+                case (:final icon, :final color, :final tooltip)?) ...[
+              const SizedBox(width: 8),
+              Tooltip(
+                message: tooltip,
+                child: Icon(icon, size: PregoIconSize.sm, color: color),
+              ),
+            ],
+            if (_checkIndicator(colors: context.prego.colors, loc: loc, status: pr.checkStatus)
+                case (:final icon, :final color, :final tooltip)?) ...[
+              const SizedBox(width: 4),
+              Tooltip(
+                message: tooltip,
+                child: Icon(icon, size: PregoIconSize.sm, color: color),
+              ),
+            ],
           ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -85,8 +89,8 @@ class const PrStatusRow({super.key, required final PullRequestInfo pr}) extends 
 // ---------------------------------------------------------------------------
 
 Color _stateColor({required PregoColors colors, required PrState state}) => switch (state) {
-  PrState.open => _kPrGreen,
-  PrState.merged => _kPrPurple,
+  PrState.open => colors.fgSuccessPrimary,
+  PrState.merged => _kPrMergedPurple,
   PrState.closed => colors.borderPrimary,
   PrState.unknown => colors.borderPrimary,
 };
@@ -104,15 +108,15 @@ String _stateText({required AppLocalizations loc, required PrState state}) => sw
 
 /// Returns a color for the merge icon, or null to fall back to the state color.
 Color? _mergeColor({required PregoColors colors, required PrMergeableStatus status}) => switch (status) {
-  PrMergeableStatus.mergeable => _kPrGreen,
+  PrMergeableStatus.mergeable => colors.fgSuccessPrimary,
   PrMergeableStatus.conflicting => colors.fgErrorPrimary,
   PrMergeableStatus.unknown => null,
 };
 
 IconData _mergeIcon({required PrMergeableStatus status}) => switch (status) {
-  PrMergeableStatus.mergeable => Icons.merge_type,
-  PrMergeableStatus.conflicting => Icons.warning_amber_rounded,
-  PrMergeableStatus.unknown => Icons.merge_type,
+  PrMergeableStatus.mergeable => TablerRegular.git_merge,
+  PrMergeableStatus.conflicting => TablerRegular.alert_triangle,
+  PrMergeableStatus.unknown => TablerRegular.git_merge,
 };
 
 String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus status}) => switch (status) {
@@ -131,14 +135,18 @@ String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus 
   required AppLocalizations loc,
   required PrReviewDecision decision,
 }) => switch (decision) {
-  PrReviewDecision.approved => (icon: Icons.check_circle_outline, color: _kPrGreen, tooltip: loc.prReviewApproved),
+  PrReviewDecision.approved => (
+    icon: TablerRegular.circle_check,
+    color: colors.fgSuccessPrimary,
+    tooltip: loc.prReviewApproved,
+  ),
   PrReviewDecision.changesRequested => (
-    icon: Icons.cancel_outlined,
+    icon: TablerRegular.circle_x,
     color: colors.fgErrorPrimary,
     tooltip: loc.prReviewChangesRequested,
   ),
   PrReviewDecision.reviewRequired => (
-    icon: Icons.pending_outlined,
+    icon: TablerRegular.dots_circle_horizontal,
     color: colors.borderPrimary,
     tooltip: loc.prReviewRequired,
   ),
@@ -155,9 +163,17 @@ String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus 
   required AppLocalizations loc,
   required PrCheckStatus status,
 }) => switch (status) {
-  PrCheckStatus.success => (icon: Icons.check_circle_outline, color: _kPrGreen, tooltip: loc.prChecksSuccess),
-  PrCheckStatus.failure => (icon: Icons.error_outline, color: colors.fgErrorPrimary, tooltip: loc.prChecksFailing),
-  PrCheckStatus.pending => (icon: Icons.schedule, color: _kPrAmber, tooltip: loc.prChecksPending),
+  PrCheckStatus.success => (
+    icon: TablerRegular.circle_check,
+    color: colors.fgSuccessPrimary,
+    tooltip: loc.prChecksSuccess,
+  ),
+  PrCheckStatus.failure => (
+    icon: TablerRegular.alert_circle,
+    color: colors.fgErrorPrimary,
+    tooltip: loc.prChecksFailing,
+  ),
+  PrCheckStatus.pending => (icon: TablerRegular.clock, color: colors.fgWarningPrimary, tooltip: loc.prChecksPending),
   PrCheckStatus.none => null,
   PrCheckStatus.unknown => null,
 };

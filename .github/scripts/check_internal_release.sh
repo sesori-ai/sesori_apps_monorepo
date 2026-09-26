@@ -45,14 +45,17 @@ if [[ "$AUTOMATIC" == true ]]; then
   fi
 
   if [[ -n "$BASELINE" ]]; then
-    # Preserve mobile-product scoping: desktop-only and unrelated documentation
-    # changes must not spend a store upload. Compare the whole batch, not only the tip.
-    # Release automation fixes also qualify, so a fixed pipeline can try again.
+    # Desktop now shares the product cycle. Compare the whole batch, not only the tip.
+    # Documentation still skips; release automation fixes can trigger a fresh attempt.
     if git diff --quiet "$BASELINE" "$GITHUB_SHA" -- \
-      client/app/ client/module_core/ client/module_auth/ client/module_prego/ client/module_app_ui/ \
+      client/app/ client/desktop/ client/module_desktop_core/ \
+      client/module_core/ client/module_auth/ client/module_prego/ client/module_app_ui/ \
       client/pubspec.yaml client/pubspec.lock client/analysis_options.yaml client/Makefile \
       shared/ bridge/ .tool-versions tool/generate_release_notes.dart \
       .github/actions/ .github/scripts/check_internal_release.sh .github/workflows/release-all-platforms.yml \
+      .github/workflows/desktop-qualification.yml .github/scripts/qualify_desktop.py \
+      .github/scripts/package_desktop_macos.py .github/scripts/macos_signing_ci.sh \
+      .github/scripts/prepare_desktop_release.py .github/scripts/publish_desktop_release.py \
       '.github/workflows/_reusable-*.yml'; then
       skip_release "No release-relevant changes since ${BASELINE}."
     else
@@ -67,7 +70,8 @@ fi
 
 # Write BEFORE version checks, store queries or builds: failure/cancellation
 # needs no cleanup job, and inability to persist the marker prevents uploads.
-# Manual branch builds stay supported but cannot overwrite main's checkpoint.
+# Defense in depth: the owning workflow rejects non-main dispatches before this
+# script. Only main may own the rolling checkpoint.
 if [[ "$GITHUB_REF" == "refs/heads/main" ]]; then
   git push --force origin "${GITHUB_SHA}:refs/tags/${ATTEMPT_TAG}"
 fi

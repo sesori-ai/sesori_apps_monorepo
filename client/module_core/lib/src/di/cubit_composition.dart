@@ -3,7 +3,6 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../capabilities/server_connection/connection_service.dart";
 import "../cubits/new_session/new_session_cubit.dart";
-import "../cubits/project_list/project_list_cubit.dart";
 import "../cubits/session_detail/session_detail_cubit.dart";
 import "../cubits/session_list/session_list_cubit.dart";
 import "../cubits/session_list/session_list_mode.dart";
@@ -14,17 +13,17 @@ import "../repositories/composer_draft_repository.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
+import "../services/bridge_settings_service.dart";
 import "../services/catalog_rescan_service.dart";
-import "../services/loaded_state_analytics_reporter.dart";
 import "../services/new_session_options_service.dart";
 import "../services/new_session_plugin_service.dart";
 import "../services/new_session_selection_tracker.dart";
 import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
-import "../services/project_list_service.dart";
 import "../services/project_viewing_service.dart";
-import "../services/registered_bridges_service.dart";
 import "../services/session_abort_service.dart";
+import "../services/session_approval_service.dart";
+import "../services/session_auto_continuation_service.dart";
 import "../services/session_detail_load_service.dart";
 import "../services/session_interaction_calculator.dart";
 import "../services/session_list_service.dart";
@@ -52,6 +51,8 @@ SessionDetailCubit createSessionDetailCubit({
     pluginManagementService: locator<PluginManagementService>(),
     interactionCalculator: locator<SessionInteractionCalculator>(),
     sessionAbortService: locator<SessionAbortService>(),
+    autoContinuationService: locator<SessionAutoContinuationService>(),
+    approvalService: locator<SessionApprovalService>(),
     promptDispatcher: locator<SessionRepository>(),
     permissionRepository: locator<PermissionRepository>(),
     sessionViewingService: locator<SessionViewingService>(),
@@ -63,24 +64,7 @@ SessionDetailCubit createSessionDetailCubit({
     projectId: projectId,
     notificationCanceller: locator<NotificationCanceller>(),
     failureReporter: locator<FailureReporter>(),
-  );
-}
-
-ProjectListCubit createProjectListCubit({required GetIt locator}) {
-  return ProjectListCubit(
-    locator<ProjectRepository>(),
-    locator<ConnectionService>(),
-    locator<SseEventTracker>(),
-    locator<RouteSource>(),
-    projectListService: locator<ProjectListService>(),
-    sessionUnseenTracker: locator<SessionUnseenTracker>(),
-    registeredBridgesService: locator<RegisteredBridgesService>(),
-    productAnalyticsService: locator<ProductAnalyticsService>(),
-    loadedStateAnalyticsReporter: LoadedStateAnalyticsReporter.projectInventory(
-      productAnalyticsService: locator<ProductAnalyticsService>(),
-    ),
-    failureReporter: locator<FailureReporter>(),
-    catalogRescanService: locator<CatalogRescanService>(),
+    bridgeSettingsService: locator<BridgeSettingsService>(),
   );
 }
 

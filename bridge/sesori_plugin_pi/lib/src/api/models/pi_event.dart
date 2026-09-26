@@ -69,6 +69,10 @@ sealed class const PiEvent({required final Map<String, Object?> raw}) {
         aborted: boolOrFalse(json["aborted"]),
         willRetry: boolOrFalse(json["willRetry"]),
         errorMessage: stringOrNull(json["errorMessage"]),
+        summary: switch (stringOrNull(mapOrEmpty(json["result"])["summary"])) {
+          final summary? when summary.isNotEmpty => summary,
+          _ => null,
+        },
         raw: json,
       ),
       "entry_appended" => PiEntryAppendedEvent(entry: mapOrEmpty(json["entry"]), raw: json),
@@ -211,6 +215,9 @@ final class const PiCompactionEndEvent({
   required final bool aborted,
   required final bool willRetry,
   required final String? errorMessage,
+
+  /// The continuation summary of a successful compaction.
+  required final String? summary,
   required super.raw,
 }) extends PiEvent;
 

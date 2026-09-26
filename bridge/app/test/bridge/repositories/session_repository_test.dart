@@ -38,6 +38,7 @@ void main() {
       const projectId = "family-project";
       await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "root",
         backendSessionId: "backend-root",
         projectId: projectId,
@@ -132,6 +133,7 @@ void main() {
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["proj-tomb"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: plugin.id,
         preservePullRequestScope: false,
         sessionId: "sess-tomb",
@@ -308,6 +310,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
 
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: plugin.id,
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -403,6 +406,8 @@ void main() {
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
+            approvalOverride: null,
+            autoContinuation: null,
             branchName: null,
             id: "s1",
             pluginId: "fake",
@@ -444,6 +449,8 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       const staleSession = Session(
+        approvalOverride: null,
+        autoContinuation: null,
         branchName: "feature/private",
         id: "stale-session",
         pluginId: "fake",
@@ -502,6 +509,7 @@ void main() {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
 
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: plugin.id,
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -557,6 +565,8 @@ void main() {
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
+            approvalOverride: null,
+            autoContinuation: null,
             branchName: null,
             id: "s1",
             pluginId: "fake",
@@ -570,6 +580,8 @@ void main() {
             lastUserActivityAt: null,
           ),
           Session(
+            approvalOverride: null,
+            autoContinuation: null,
             branchName: null,
             id: "s2",
             pluginId: "fake",
@@ -611,6 +623,7 @@ void main() {
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["stored-native", "stored-derived"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: plugin.id,
         preservePullRequestScope: false,
         sessionId: "native-session",
@@ -626,6 +639,7 @@ void main() {
         lastAgentModel: null,
       );
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: derivedPlugin.id,
         preservePullRequestScope: false,
         sessionId: "derived-session",
@@ -644,6 +658,8 @@ void main() {
       final result = await repository.enrichSessions(
         sessions: const [
           Session(
+            approvalOverride: null,
+            autoContinuation: null,
             branchName: null,
             id: "native-session",
             pluginId: "fake",
@@ -657,6 +673,8 @@ void main() {
             lastUserActivityAt: null,
           ),
           Session(
+            approvalOverride: null,
+            autoContinuation: null,
             branchName: null,
             id: "derived-session",
             pluginId: "codex",
@@ -741,6 +759,7 @@ void main() {
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: plugin.id,
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -793,6 +812,7 @@ void main() {
 
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p-stored"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: plugin.id,
         preservePullRequestScope: false,
         sessionId: "s-target",
@@ -870,6 +890,7 @@ void main() {
       );
 
       final created = await repository.createSession(
+        fastMode: false,
         pluginId: plugin.id,
         projectId: "stable-project",
         directory: "/repo/.worktrees/blue-otter",
@@ -929,6 +950,7 @@ void main() {
         updatedAt: 1,
       );
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "stable-parent",
         backendSessionId: "backend-parent",
         projectId: "parent-project",
@@ -945,6 +967,7 @@ void main() {
       );
 
       final created = await repository.createSession(
+        fastMode: false,
         pluginId: derivedPlugin.id,
         projectId: "child-project",
         directory: "/child",
@@ -984,6 +1007,7 @@ void main() {
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["stable-project"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "stable-session",
         backendSessionId: "created-session",
         projectId: "stable-project",
@@ -1014,6 +1038,7 @@ void main() {
       );
 
       final created = await repository.createSession(
+        fastMode: false,
         pluginId: plugin.id,
         projectId: "stable-project",
         directory: "/stable/project",
@@ -1055,6 +1080,7 @@ void main() {
 
       for (final variant in cases) {
         await repository.createSession(
+          fastMode: false,
           pluginId: plugin.id,
           projectId: "/repo",
           directory: "/repo",
@@ -1094,6 +1120,7 @@ void main() {
 
       await expectLater(
         repository.createSession(
+          fastMode: false,
           pluginId: "other-plugin",
           projectId: "/repo",
           directory: "/repo",
@@ -1283,6 +1310,7 @@ void main() {
 
       for (final variant in cases) {
         await repository.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "stable-s1",
           parts: const [PromptPart.text(text: "Prompt")],
@@ -1294,6 +1322,7 @@ void main() {
         expect(plugin.lastSendPromptSessionId, equals("backend-s1"));
 
         await repository.sendCommand(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "stable-s1",
           command: "review",
@@ -1321,6 +1350,7 @@ void main() {
 
       await expectLater(
         repository.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "missing",
           parts: const [],
@@ -1347,6 +1377,7 @@ void main() {
       );
       await expectLater(
         repository.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "wrong-plugin",
           parts: const [],
@@ -1357,6 +1388,67 @@ void main() {
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 503)),
       );
       expect(plugin.sendPromptCalls, isZero);
+    });
+
+    test("history defaults preserve stored fast mode and fall back when history has no selection", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+      await insertTestSession(
+        db: db,
+        sessionId: "stable-s1",
+        backendSessionId: "backend-s1",
+        pluginId: plugin.id,
+        projectId: "/repo",
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        agent: null,
+        agentModel: null,
+      );
+      const storedModel = AgentModel(providerID: "provider", modelID: "stored-model", variant: "high");
+      await repository.updateRequestedPromptDefaults(
+        sessionId: "stable-s1",
+        agent: "stored-agent",
+        agentModel: storedModel,
+        fastMode: true,
+      );
+      expect(
+        (await repository.getSessionMessages(sessionId: "stable-s1")).promptDefaults,
+        const SessionPromptDefaults(agent: "stored-agent", model: storedModel, fastMode: true),
+      );
+      plugin.messagesResult = const [
+        PluginMessageWithParts(
+          info: PluginMessageAssistant(
+            id: "message-1",
+            sessionID: "backend-s1",
+            agent: "native-agent",
+            modelID: "native-model",
+            providerID: "provider",
+            variant: "low",
+            sender: PluginMessageSender.agent,
+            time: null,
+          ),
+          parts: [],
+        ),
+      ];
+      expect(
+        (await repository.getSessionMessages(sessionId: "stable-s1")).promptDefaults,
+        const SessionPromptDefaults(
+          agent: "native-agent",
+          model: AgentModel(providerID: "provider", modelID: "native-model", variant: "low"),
+          fastMode: true,
+        ),
+      );
     });
 
     test("messages and statuses map backend identities back to stable session ids", () async {
@@ -1505,6 +1597,7 @@ void main() {
       const projectId = "abort-project";
       await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "root",
         backendSessionId: "backend-root",
         projectId: projectId,
@@ -1968,6 +2061,7 @@ void main() {
       // project plus the worktree the bridge created for it.
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: sessionId,
         backendSessionId: sessionId,
         projectId: parent,
@@ -2089,6 +2183,7 @@ void main() {
       // One dedicated-worktree session and one plain in-project session.
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "p1",
         backendSessionId: "p1",
         projectId: parent,
@@ -2106,6 +2201,7 @@ void main() {
 
       // The worktree session primes with its worktree path...
       await repository.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "w1",
         parts: const [],
@@ -2120,6 +2216,7 @@ void main() {
       expect(plugin.primedDirectories.last, (sessionId: "p1", directory: parent));
 
       await repository.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "w1",
         command: "review",
@@ -2136,6 +2233,7 @@ void main() {
       final sendsBefore = plugin.sendPromptCalls;
       await expectLater(
         repository.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "ghost",
           parts: const [],
@@ -2273,6 +2371,7 @@ void main() {
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: parent,
@@ -2387,6 +2486,7 @@ void main() {
 
       final guardedOperations = <Future<void> Function()>[
         () => repository.sendCommand(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "gone",
           command: "test",
@@ -2397,6 +2497,7 @@ void main() {
           model: null,
         ),
         () => repository.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "gone",
           parts: const [],
@@ -2444,6 +2545,7 @@ void main() {
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "stable-parent",
         backendSessionId: "live-parent",
         projectId: "/repo",
@@ -2773,6 +2875,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -2787,6 +2890,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -2803,6 +2907,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -2881,6 +2986,7 @@ class _CountingSessionDao({required final Set<String> tombstones, required final
   @override
   Future<SessionDto?> getSession({required String sessionId}) async {
     return SessionDto(
+      fastMode: false,
       sessionId: sessionId,
       backendSessionId: sessionId,
       projectId: "project",
@@ -2905,6 +3011,7 @@ class _CountingSessionDao({required final Set<String> tombstones, required final
       pluginId: "fake",
       title: null,
       catalogTitle: null,
+      approvalOverride: null,
     );
   }
 
@@ -2965,6 +3072,7 @@ class _FakeDerivedPlugin({
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -3009,6 +3117,7 @@ class _FakeDerivedPlugin({
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -3023,6 +3132,7 @@ class _FakeDerivedPlugin({
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}

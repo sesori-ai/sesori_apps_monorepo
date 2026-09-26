@@ -3,6 +3,7 @@ import "dart:async";
 import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
 
+import "../../icons/tabler_icons.g.dart";
 import "../../theme/prego_theme.dart";
 
 typedef PregoCopyAction = Future<bool> Function();
@@ -64,7 +65,7 @@ class _PregoCopyIconButtonState() extends State<PregoCopyIconButton> {
       constraints: const BoxConstraints(),
       visualDensity: VisualDensity.compact,
       icon: Icon(
-        _copied ? Icons.check : Icons.copy,
+        _copied ? TablerRegular.check : TablerRegular.copy,
         size: widget.iconSize,
         color: _copied ? prego.colors.fgSuccessPrimary : prego.colors.textSecondary,
       ),

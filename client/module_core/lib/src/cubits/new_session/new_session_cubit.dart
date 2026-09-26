@@ -16,6 +16,7 @@ import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../repositories/session_repository.dart";
+import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/models/new_session_selection_intent.dart";
@@ -23,6 +24,8 @@ import "../../services/new_session_options_service.dart";
 import "../../services/new_session_plugin_service.dart";
 import "../../services/new_session_selection_tracker.dart";
 import "../../services/product_analytics_service.dart";
+import "../../services/session_selection_calculator.dart";
+import "new_session_composer_presentation.dart";
 import "new_session_state.dart";
 import "new_session_submission_snapshot.dart";
 
@@ -56,6 +59,9 @@ class NewSessionCubit({
     unawaited(_discoverPlugins());
     unawaited(_loadProjectCapability());
   }
+
+  static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
+  static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
 
   ComposerDraft _composerDraft = _composerDraftRepository.readForNewSession(projectId: _projectId);
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
@@ -320,7 +326,13 @@ class NewSessionCubit({
     // way forward is to install one on that machine, so the same action goes
     // back to discovery instead — that is where a newly installed harness (or
     // one a failed discovery never got to see) shows up.
-    if (needsHarnessDiscovery) {
+    // A missing or unroutable harness, or a bridge not yet verified, has no
+    // options to load; discovery may have recovered since it last looked.
+    final plugin = state.agentModelData?.plugin;
+    if (needsHarnessDiscovery ||
+        plugin == null ||
+        !plugin.isRoutable ||
+        !(state.agentModelData?.backendScope.isVerified ?? false)) {
       await _discoverPlugins();
       return;
     }
@@ -332,20 +344,29 @@ class NewSessionCubit({
 
     final current = state;
     final data = current.agentModelData;
-    final plugin = data?.plugin;
     final source = data?.optionsState.source;
     if (current.phase is NewSessionPhaseSending ||
         current is NewSessionCreated ||
         !(data?.backendScope.isVerified ?? false) ||
         data == null ||
         data.isLoading ||
-        source == null ||
-        plugin == null ||
-        !plugin.isRoutable) {
+        source == null) {
       return;
     }
 
     final previousOptions = data.optionsState.data;
+    // A recheck of a harness known to need a login keeps that state on screen —
+    // the login card, and creation blocked — until the bridge answers.
+    void showLoading() {
+      if (data.optionsState.authenticationRequired) return;
+      _emitStateUpdate(
+        options: _loadingState(previousOptions: previousOptions, source: source),
+        backendScope: null,
+        isPluginDiscoveryInFlight: false,
+        projectWorktreeCapability: null,
+      );
+    }
+
     // A background refresh that can still deliver is already asking the bridge
     // for exactly this list. Surface it instead of starting a second discovery
     // that would race it. One that can no longer apply — a superseded selection,
@@ -353,23 +374,13 @@ class NewSessionCubit({
     // forever, so start a fresh one instead.
     final pending = _silentRefresh;
     if (pending != null && pending.generation == _loadGeneration && identical(pending.startedFrom, previousOptions)) {
-      _emitStateUpdate(
-        options: _loadingState(previousOptions: previousOptions, source: source),
-        backendScope: null,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: null,
-      );
+      showLoading();
       await pending.refresh;
       return;
     }
 
     final generation = ++_loadGeneration;
-    _emitStateUpdate(
-      options: _loadingState(previousOptions: previousOptions, source: source),
-      backendScope: null,
-      isPluginDiscoveryInFlight: false,
-      projectWorktreeCapability: null,
-    );
+    showLoading();
     await _loadOptions(
       pluginId: plugin.id,
       generation: generation,
@@ -542,10 +553,17 @@ class NewSessionCubit({
     return pluginId == null || state.agentModelData?.plugin?.id == pluginId;
   }
 
+  /// Whether the option pills accept a selection. Only options already on
+  /// screen can be picked from, and not while a load would replace them with
+  /// answers resolved before the choice. A silent refresh shows no loading
+  /// state and drops its own answer when the user has chosen since.
   bool get _canEditComposer {
     if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return false;
     final data = state.agentModelData;
-    return data != null && !data.isLoading && (data.plugin?.isRoutable ?? false);
+    return data != null &&
+        !data.optionsState.isLoading &&
+        data.optionsState.data != null &&
+        (data.plugin?.isRoutable ?? false);
   }
 
   /// Whether the screen has no harness to work with — the bridge answered with
@@ -564,17 +582,99 @@ class NewSessionCubit({
   /// honest explanation, and retrying is still the way forward.
   bool get hasNoHarnesses => needsHarnessDiscovery && (state.agentModelData?.backendScope.isVerified ?? false);
 
-  bool get canRefreshOptions =>
-      needsHarnessDiscovery ||
-      state.agentModelData?.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable ||
-      ((state.agentModelData?.backendScope.isVerified ?? false) && _canEditComposer);
-
-  bool get canCreateSession {
+  bool get canRefreshOptions {
     final data = state.agentModelData;
-    return (data?.backendScope.isVerified ?? false) &&
-        data?.projectWorktreeCapability != NewSessionProjectWorktreeCapability.unavailable &&
-        !(data?.optionsState.authenticationRequired ?? false) &&
-        _canEditComposer;
+    if (state.phase is NewSessionPhaseSending || state is NewSessionCreated || data == null) return false;
+    return needsHarnessDiscovery ||
+        !(data.plugin?.isRoutable ?? true) ||
+        data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable ||
+        (data.backendScope.isVerified && !data.optionsState.isLoading && data.optionsState.source != null);
+  }
+
+  /// Whether a session can start now. Options are not waited for: a session
+  /// sent before they arrive runs on the harness' defaults. The project check
+  /// is, since it decides whether the requested worktree can be honoured.
+  bool get canCreateSession {
+    if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return false;
+    final data = state.agentModelData;
+    return data != null &&
+        data.backendScope.isVerified &&
+        (data.plugin?.isRoutable ?? false) &&
+        data.projectWorktreeCapability != NewSessionProjectWorktreeCapability.loading &&
+        data.projectWorktreeCapability != NewSessionProjectWorktreeCapability.unavailable &&
+        !data.optionsState.authenticationRequired;
+  }
+
+  NewSessionComposerPresentation get composerPresentation {
+    final data = state.agentModelData;
+    if (data == null) return const NewSessionComposerPending();
+    if (hasNoHarnesses) return const NewSessionComposerNoHarnesses();
+    if (needsHarnessDiscovery) return const NewSessionComposerRetry();
+    final plugin = data.plugin;
+    if (plugin == null) {
+      return data.isPluginDiscoveryInFlight ? const NewSessionComposerPending() : const NewSessionComposerRetry();
+    }
+    // A failed rediscovery keeps the options on screen but cannot send.
+    if (!data.backendScope.isVerified && !data.isPluginDiscoveryInFlight) return const NewSessionComposerRetry();
+    // The project check comes first because Recheck retries it first.
+    if (data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable) {
+      return const NewSessionComposerProjectUnavailable();
+    }
+    if (data.optionsState
+        case NewSessionOptionsAuthenticationRequiredUnavailableState(:final actionHint) ||
+            NewSessionOptionsAuthenticationRequiredRetainedState(:final actionHint)) {
+      return NewSessionComposerLoginRequired(harnessName: plugin.displayName, actionHint: actionHint);
+    }
+    return switch (data.optionsState) {
+      NewSessionOptionsLoadingState() => const NewSessionComposerPending(),
+      NewSessionOptionsRefreshingState() ||
+      NewSessionOptionsAvailableState() ||
+      NewSessionOptionsFailureRetainedState() ||
+      NewSessionOptionsAuthenticationRequiredRetainedState() => const NewSessionComposerReady(),
+      NewSessionOptionsUnsupportedState() => const NewSessionComposerLoadOnDemand(),
+      NewSessionOptionsUnavailableState() ||
+      NewSessionOptionsLoadFailureUnavailableState() ||
+      NewSessionOptionsFailureState() ||
+      NewSessionOptionsRefreshFailureUnavailableState() ||
+      NewSessionOptionsAuthenticationRequiredUnavailableState() => const NewSessionComposerRetry(),
+    };
+  }
+
+  /// The login requirement [current] reports when [previous] still had usable
+  /// options for the same harness — the harness logged out since it was last
+  /// checked, so the page says so once. A requirement already known when the
+  /// options first arrive is shown in the composer's place instead.
+  static NewSessionComposerLoginRequired? newlyRequiredLogin({
+    required NewSessionState previous,
+    required NewSessionState current,
+  }) {
+    final before = previous.agentModelData;
+    final after = current.agentModelData;
+    final plugin = after?.plugin;
+    if (before == null || after == null || plugin == null || before.plugin?.id != plugin.id) return null;
+    // Only a settled page counts: a load the user started (a recheck, a
+    // reconnect) that ends in a login requirement is answered by the card.
+    if (before.optionsState.isLoading ||
+        before.optionsState.authenticationRequired ||
+        before.optionsState.data == null) {
+      return null;
+    }
+    return switch (after.optionsState) {
+      NewSessionOptionsAuthenticationRequiredUnavailableState(:final actionHint) ||
+      NewSessionOptionsAuthenticationRequiredRetainedState(:final actionHint) => NewSessionComposerLoginRequired(
+        harnessName: plugin.displayName,
+        actionHint: actionHint,
+      ),
+      NewSessionOptionsLoadingState() ||
+      NewSessionOptionsRefreshingState() ||
+      NewSessionOptionsAvailableState() ||
+      NewSessionOptionsUnsupportedState() ||
+      NewSessionOptionsUnavailableState() ||
+      NewSessionOptionsLoadFailureUnavailableState() ||
+      NewSessionOptionsFailureState() ||
+      NewSessionOptionsFailureRetainedState() ||
+      NewSessionOptionsRefreshFailureUnavailableState() => null,
+    };
   }
 
   void _emitStateUpdate({
@@ -655,11 +755,7 @@ class NewSessionCubit({
     );
   }
 
-  String? get _selectedPluginId {
-    final data = state.agentModelData;
-    final pluginId = data?.plugin?.id;
-    return data == null || pluginId == null || data.isLoading ? null : pluginId;
-  }
+  String? get _selectedPluginId => state.agentModelData?.plugin?.id;
 
   void selectAgent(String agent) {
     if (!_canEditComposer) return;
@@ -722,6 +818,34 @@ class NewSessionCubit({
     }
   }
 
+  /// What tapping the fast-mode control should do, or null while no options
+  /// are loaded. A new session has no prompt cache to drop, so a tap never
+  /// needs confirming.
+  FastModeToggleDecision? fastModeToggleDecision() {
+    final data = state.agentModelData;
+    if (data == null || data.optionsState.data == null) return null;
+    return _fastModeToggle.decide(
+      support: _selection.fastModeSupport(providers: data.providers, model: data.agentModel),
+      fastMode: data.runsFastMode,
+      hasHistory: false,
+      lastModelActivity: null,
+      now: DateTime.now(),
+    );
+  }
+
+  void setFastMode(bool fastMode) {
+    if (!_canEditComposer) return;
+    final options = state.agentModelData?.optionsState.data;
+    if (options == null) return;
+    _replaceOptionsData(
+      options: _newSessionOptionsService.selectFastMode(options: options, fastMode: fastMode),
+    );
+    final pluginId = _selectedPluginId;
+    if (pluginId != null) {
+      _selectionTracker.recordFastMode(projectId: _projectId, pluginId: pluginId, fastMode: fastMode);
+    }
+  }
+
   void stageCommand(CommandInfo command) {
     if (!_canEditComposer) return;
     final options = state.agentModelData?.optionsState.data;
@@ -746,18 +870,10 @@ class NewSessionCubit({
     required String? command,
     required List<ComposerAttachment> attachments,
   }) async {
-    final current = state;
-    if (current.phase is NewSessionPhaseSending || current is NewSessionCreated) return;
-    final config = current.agentModelData;
+    if (!canCreateSession) return;
+    final config = state.agentModelData;
     final selectedPlugin = config?.plugin;
-    if (config == null ||
-        !config.backendScope.isVerified ||
-        config.isLoading ||
-        config.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable ||
-        selectedPlugin == null ||
-        !selectedPlugin.isRoutable) {
-      return;
-    }
+    if (config == null || selectedPlugin == null) return;
 
     final normalizedCommand = command?.trim();
     final hasCommand = normalizedCommand != null && normalizedCommand.isNotEmpty;
@@ -830,6 +946,7 @@ class NewSessionCubit({
           ? null
           : PromptModel(providerID: selectedAgentModel.providerID, modelID: selectedAgentModel.modelID),
       variant: selectedVariant == null ? null : SessionVariant(id: selectedVariant),
+      fastMode: config.runsFastMode,
       command: switch (submission) {
         NewSessionTextSubmissionSnapshot() => null,
         NewSessionCommandSubmissionSnapshot(:final command) => command,

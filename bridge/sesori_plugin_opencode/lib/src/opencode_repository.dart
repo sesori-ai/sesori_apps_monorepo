@@ -161,34 +161,6 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     );
   }
 
-  /// Asks OpenCode to allocate an ordered user-message id on its own host.
-  /// The empty message is not renderable; the real prompt or command reuses it
-  /// immediately after the caller records its correlation.
-  Future<String> reserveMessage({
-    required String sessionId,
-    required String? directory,
-    required String? agent,
-    required PluginSessionVariant? variant,
-    required ({String providerID, String modelID})? model,
-  }) async {
-    final response = await _sendPrompt(
-      sessionId: sessionId,
-      directory: directory,
-      messageId: null,
-      parts: const [],
-      agent: agent,
-      variant: variant,
-      model: model,
-      noReply: true,
-      syntheticText: false,
-    );
-    final info = response?.info;
-    if (info is! UserMessage) {
-      throw StateError("OpenCode did not return the reserved user message for session $sessionId");
-    }
-    return info.id;
-  }
-
   /// Reserves a server-named message with an inert part that can be converted
   /// into OpenCode's native manual-compaction task before the turn starts.
   Future<({String messageId, String partId})> reserveCompactionMessage({

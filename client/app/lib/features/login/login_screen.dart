@@ -14,14 +14,12 @@ import "package:sign_in_with_apple/sign_in_with_apple.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
-import "../../core/extensions/login_failed_reason_x.dart";
 import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/legal_document_sheet.dart";
-import "../../core/widgets/sesori_background_widget.dart";
-import "../../core/widgets/sesori_logo.dart";
 import "email_login_sheet.dart";
 import "login_provider_buttons.dart";
+import "login_waiting_line.dart";
 
 class const LoginScreen({super.key}) extends StatelessWidget {
   @override
@@ -235,16 +233,7 @@ class _LoginScreenBodyState() extends State<_LoginScreenBody> {
                                       textAlign: TextAlign.center,
                                     ),
                                   ),
-                                  LoginPolling() => Padding(
-                                    padding: const EdgeInsetsDirectional.only(top: 16),
-                                    child: Text(
-                                      loc.loginPolling,
-                                      style: prego.textTheme.textSm.regular.copyWith(
-                                        color: prego.colors.textSecondary,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
+                                  LoginPolling(:final handoff) => LoginWaitingLine(browser: handoff.browser),
                                   LoginTimeout() => Padding(
                                     padding: const EdgeInsetsDirectional.only(top: 16),
                                     child: Text(
@@ -270,7 +259,7 @@ class _LoginScreenBodyState() extends State<_LoginScreenBody> {
                                         child: Row(
                                           children: [
                                             Icon(
-                                              Icons.error_outline,
+                                              TablerRegular.alert_circle,
                                               color: prego.colors.fgErrorPrimary,
                                             ),
                                             const SizedBox(width: 12),
@@ -380,7 +369,7 @@ class _LoginErrorBannerState() extends State<_LoginErrorBanner> {
                   ? const SizedBox.shrink()
                   : PregoPopupAlertsNotifications(
                       title: loc.loginAuthenticationFailedTitle,
-                      message: reason.localizedMessage(loc),
+                      message: reason.localizedMessage(loc: loc),
                       variant: PregoPopupAlertsNotificationsVariant.error,
                       onClose: () => context.read<LoginCubit>().onDismissedLoginFailureError(),
                     ),

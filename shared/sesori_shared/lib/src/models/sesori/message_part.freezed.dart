@@ -313,7 +313,7 @@ as String,
 @JsonSerializable()
 
 class MessagePartTool extends MessagePart {
-  const MessagePartTool({required this.id, required this.sessionID, required this.messageID, this.tool = "", this.state = const ToolState(status: ToolStatus.pending, title: null, shellCommand: null, output: null, error: null),  String? $type}): $type = $type ?? 'tool',super._();
+  const MessagePartTool({required this.id, required this.sessionID, required this.messageID, this.tool = "", this.state = const ToolState(status: ToolStatus.pending, title: null, shellCommand: null, output: null, error: null), @JsonKey(unknownEnumValue: ToolKind.unknown) this.kind = ToolKind.unknown,  String? $type}): $type = $type ?? 'tool',super._();
   factory MessagePartTool.fromJson(Map<String, dynamic> json) => _$MessagePartToolFromJson(json);
 
 @override final  String id;
@@ -321,6 +321,7 @@ class MessagePartTool extends MessagePart {
 @override final  String messageID;
 @JsonKey() final  String tool;
 @JsonKey() final  ToolState state;
+@JsonKey(unknownEnumValue: ToolKind.unknown) final  ToolKind kind;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -339,18 +340,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartTool&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartTool&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state)&&(identical(other.kind, kind) || other.kind == kind));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,sessionID,messageID,tool,state);
+    return Object.hash(runtimeType,id,sessionID,messageID,tool,state,kind);
 }
 
 @override
 String toString() {
-    return 'MessagePart.tool(id: $id, sessionID: $sessionID, messageID: $messageID, tool: $tool, state: $state)';
+    return 'MessagePart.tool(id: $id, sessionID: $sessionID, messageID: $messageID, tool: $tool, state: $state, kind: $kind)';
 }
 
 
@@ -361,7 +362,7 @@ abstract mixin class $MessagePartToolCopyWith<$Res> implements $MessagePartCopyW
   factory $MessagePartToolCopyWith(MessagePartTool value, $Res Function(MessagePartTool) _then) = _$MessagePartToolCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, String tool, ToolState state
+ String id, String sessionID, String messageID, String tool, ToolState state,@JsonKey(unknownEnumValue: ToolKind.unknown) ToolKind kind
 });
 
 
@@ -378,14 +379,15 @@ class _$MessagePartToolCopyWithImpl<$Res>
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? tool = null,Object? state = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? tool = null,Object? state = null,Object? kind = null,}) {
   return _then(MessagePartTool(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
 as String,tool: null == tool ? _self.tool : tool // ignore: cast_nullable_to_non_nullable
 as String,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
-as ToolState,
+as ToolState,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as ToolKind,
   ));
 }
 
@@ -1081,12 +1083,15 @@ as String,
 @JsonSerializable()
 
 class MessagePartCompaction extends MessagePart {
-  const MessagePartCompaction({required this.id, required this.sessionID, required this.messageID,  String? $type}): $type = $type ?? 'compaction',super._();
+  const MessagePartCompaction({required this.id, required this.sessionID, required this.messageID, required this.summary,  String? $type}): $type = $type ?? 'compaction',super._();
   factory MessagePartCompaction.fromJson(Map<String, dynamic> json) => _$MessagePartCompactionFromJson(json);
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
+/// The continuation summary the harness carried forward, when it exposes
+/// one. Null when the harness keeps it private.
+ final  String? summary;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1105,18 +1110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.summary, summary) || other.summary == summary));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,sessionID,messageID);
+    return Object.hash(runtimeType,id,sessionID,messageID,summary);
 }
 
 @override
 String toString() {
-    return 'MessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID)';
+    return 'MessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID, summary: $summary)';
 }
 
 
@@ -1127,7 +1132,7 @@ abstract mixin class $MessagePartCompactionCopyWith<$Res> implements $MessagePar
   factory $MessagePartCompactionCopyWith(MessagePartCompaction value, $Res Function(MessagePartCompaction) _then) = _$MessagePartCompactionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID
+ String id, String sessionID, String messageID, String? summary
 });
 
 
@@ -1144,12 +1149,13 @@ class _$MessagePartCompactionCopyWithImpl<$Res>
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? summary = freezed,}) {
   return _then(MessagePartCompaction(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
-as String,
+as String,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

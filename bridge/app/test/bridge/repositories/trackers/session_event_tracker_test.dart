@@ -169,6 +169,8 @@ void main() {
         event: _pendingTranslation(pluginId: "a", backendSessionId: "child"),
       );
       const successor = Session(
+        approvalOverride: null,
+        autoContinuation: null,
         id: "child",
         pluginId: "a",
         projectID: "project",
@@ -239,6 +241,8 @@ PendingSessionEvent _pending({
   bool updated = false,
 }) {
   final session = Session(
+    approvalOverride: null,
+    autoContinuation: null,
     id: sessionId,
     pluginId: pluginId,
     projectID: "project",

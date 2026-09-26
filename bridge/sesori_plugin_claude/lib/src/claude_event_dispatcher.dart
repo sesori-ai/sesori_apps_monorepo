@@ -1,6 +1,8 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/claude_stream_message.dart";
+import "models/claude_agent_selection.dart";
+import "models/claude_message_origin_kind.dart";
 import "models/claude_task_notification.dart";
 import "models/claude_tool_use_result.dart";
 import "repositories/mappers/claude_api_error_mapper.dart";
@@ -30,6 +32,9 @@ final class ClaudeEventDispatcher({
   final Map<String, Map<int, PluginMessagePart>> _completedStreamedParts = {};
   final Map<String, Set<String>> _streamedMessageIds = {};
   final Set<String> _mappedApiErrorSessions = {};
+
+  /// Sessions whose next synthetic `user` frame is a compaction summary.
+  final Set<String> _awaitingCompactionSummary = {};
 
   /// Content blocks already carried by `assistant` frames, per message id.
   ///
@@ -114,6 +119,7 @@ final class ClaudeEventDispatcher({
     _mappedApiErrorSessions.remove(sessionId);
     _models.remove(sessionId);
     _turnSelections.remove(sessionId);
+    _awaitingCompactionSummary.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.forgetSession(sessionId: sessionId);
   }
@@ -193,6 +199,7 @@ final class ClaudeEventDispatcher({
         ClaudeResultMessage() => _mapResult(sessionId: sessionId, message: message),
         ClaudeTaskStartedMessage() => _mapTaskStarted(message: message),
         ClaudeTaskNotificationMessage() => _mapTaskNotification(message: message),
+        ClaudeCompactBoundaryMessage() => _awaitCompactionSummary(sessionId: sessionId),
         ClaudeInitMessage() ||
         ClaudeStatusMessage() ||
         // ponytail: parsed but not surfaced — no client UI consumes thinking
@@ -370,7 +377,7 @@ final class ClaudeEventDispatcher({
           info: PluginMessage.error(
             id: messageId,
             sessionID: sessionId,
-            agent: "claude",
+            agent: ClaudeAgentSelection.messageAgent,
             modelID: _modelId(sessionId: sessionId),
             providerID: "anthropic",
             variant: _variant(sessionId: sessionId),
@@ -432,11 +439,34 @@ final class ClaudeEventDispatcher({
     return events;
   }
 
+  List<BridgeSseEvent> _awaitCompactionSummary({required String sessionId}) {
+    _awaitingCompactionSummary.add(sessionId);
+    return const [];
+  }
+
   List<BridgeSseEvent> _mapUser({
     required String sessionId,
     required ClaudeUserMessage message,
     required String? promptId,
   }) {
+    // The summary frame's uuid is the transcript record's id, so live and
+    // replayed rows share one message id.
+    if (message.originKind != ClaudeMessageOriginKind.peer &&
+        _awaitingCompactionSummary.remove(sessionId) &&
+        message.isSynthetic) {
+      if (_nonEmptyString(message.uuid) case final messageId?) {
+        final compaction = _content.compactionMessage(
+          sessionId: sessionId,
+          messageId: messageId,
+          time: _messageTime(message.timestamp),
+          content: message.message["content"],
+        );
+        return [
+          BridgeSseMessageUpdated(info: compaction.info),
+          for (final part in compaction.parts) BridgeSseMessagePartUpdated(part: part),
+        ];
+      }
+    }
     final mapped = _content.map(content: message.message["content"]);
     if (_content.containsInternalCommandOutput(blocks: mapped)) return const [];
     final results = mapped.whereType<ClaudeMappedToolResultContentBlock>().toList();
@@ -461,35 +491,53 @@ final class ClaudeEventDispatcher({
       }
       return events;
     }
-    if (mapped.whereType<ClaudeMappedTaskNotificationContentBlock>().firstOrNull case final block?) {
-      final events = _applyTaskNotification(sessionId: sessionId, notification: block.notification);
-      if (events != null) return events;
+    final messageId = _nonEmptyString(message.uuid);
+    if (_content.isTaskNotification(blocks: mapped, originKind: message.originKind)) {
+      final notifications = [
+        for (final block in mapped)
+          if (block is ClaudeMappedTaskNotificationContentBlock) block.notification,
+      ];
+      final events = <BridgeSseEvent>[];
+      final unclaimed = <ClaudeTaskNotification>[];
+      for (final notification in notifications) {
+        // A known task absorbs its envelope into its tile, hiding the text.
+        final tool = _tools.envelopeNotified(notification: notification);
+        if (tool == null) {
+          unclaimed.add(notification);
+        } else {
+          events.addAll(_partEvents(tool: tool));
+        }
+      }
+      if ((notifications.isNotEmpty && unclaimed.isEmpty) || messageId == null) return events;
+      final automation = _content.taskNotificationMessage(
+        sessionId: sessionId,
+        messageId: messageId,
+        time: _messageTime(message.timestamp),
+        content: message.message["content"],
+        notifications: unclaimed,
+      );
+      if (automation == null) return events;
+      return [
+        ...events,
+        BridgeSseMessageUpdated(info: automation.info),
+        for (final part in automation.parts) BridgeSseMessagePartUpdated(part: part),
+      ];
     }
 
-    final messageId = _nonEmptyString(message.uuid);
     if (messageId == null) return const [];
-    // Replayed stdin turns echo the exact execution payload, so the
-    // bridge-owned worktree context is stripped the same way the transcript
-    // history path strips it.
-    final parts = _content.mapParts(
-      content: _content.visibleUserContent(content: message.message["content"]),
+    final user = _content.userMessage(
+      content: message.message["content"],
       sessionId: sessionId,
       messageId: messageId,
+      time: _messageTime(message.timestamp),
+      originKind: message.originKind,
+      promptId: promptId,
     );
-    if (!parts.any((part) => part.type.isVisible)) return const [];
-    final events = [
-      BridgeSseMessageUpdated(
-        info: PluginMessage.user(
-          id: messageId,
-          sessionID: sessionId,
-          agent: null,
-          time: _messageTime(message.timestamp),
-          promptId: promptId,
-        ),
-      ),
-      for (final part in parts) BridgeSseMessagePartUpdated(part: part),
+    if (user == null) return const [];
+    return [
+      BridgeSseMessageUpdated(info: user.info),
+      for (final part in user.parts) BridgeSseMessagePartUpdated(part: part),
     ];
-    return events;
   }
 
   List<BridgeSseEvent> _mapTaskStarted({
@@ -518,23 +566,6 @@ final class ClaudeEventDispatcher({
         result: null,
       ),
     );
-  }
-
-  /// Finalizes the task a `<task-notification>` user text names, hiding the
-  /// text; null when it names no task this session knows, so the caller
-  /// renders it as ordinary user text.
-  List<BridgeSseEvent>? _applyTaskNotification({
-    required String sessionId,
-    required ClaudeTaskNotification notification,
-  }) {
-    final tool = _tools.taskNotified(
-      toolUseId: notification.toolUseId,
-      taskId: notification.taskId,
-      status: notification.status,
-      summary: notification.summary,
-      result: notification.result,
-    );
-    return tool == null ? null : _partEvents(tool: tool);
   }
 
   List<BridgeSseEvent> _mapRetry({
@@ -574,7 +605,7 @@ final class ClaudeEventDispatcher({
         info: PluginMessage.error(
           id: messageId,
           sessionID: sessionId,
-          agent: "claude",
+          agent: ClaudeAgentSelection.messageAgent,
           modelID: _modelId(sessionId: sessionId),
           providerID: "anthropic",
           variant: _variant(sessionId: sessionId),
@@ -593,7 +624,7 @@ final class ClaudeEventDispatcher({
   }) => PluginMessage.assistant(
     id: messageId,
     sessionID: sessionId,
-    agent: "claude",
+    agent: ClaudeAgentSelection.messageAgent,
     modelID: _modelId(sessionId: sessionId),
     providerID: "anthropic",
     variant: _variant(sessionId: sessionId),

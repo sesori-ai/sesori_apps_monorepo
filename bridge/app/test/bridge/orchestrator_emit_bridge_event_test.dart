@@ -2,12 +2,18 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:clock/clock.dart";
 import "package:cryptography/cryptography.dart";
+import "package:drift/native.dart";
 import "package:http/http.dart" as http;
+import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
 import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
+import "package:sesori_bridge/src/repositories/mappers/session_continuation_mapper.dart";
+import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
 import "package:sesori_bridge/src/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart" as runtime show PluginRuntimeState;
@@ -257,6 +263,7 @@ void main() {
     await harness.activatePlugins();
     await harness.database.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
     await harness.database.sessionDao.insertSession(
+      fastMode: false,
       sessionId: "session",
       backendSessionId: "session",
       projectId: "project",
@@ -372,6 +379,385 @@ void main() {
 
     await harness.composition.session.cancel();
     await runFuture.timeout(const Duration(seconds: 5));
+  });
+
+  test("quota projection commits before handoff and native activity cancels it in source order", () async {
+    final relayServer = await TestRelayServer.start();
+    final harness = await _OrchestratorHarness.create(
+      pluginIds: const ["one"],
+      relayUrl: "ws://127.0.0.1:${relayServer.port}",
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    await relayServer.nextClient();
+    await harness.activatePlugins();
+    await _insertEventSession(database: harness.database, pluginId: "one");
+    final pluginRuntime = runtimeForLifecycleService(service: harness.lifecycleService) as TestPluginRuntime;
+    final updates = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriSessionUpdated)
+        .cast<SesoriSessionUpdated>();
+    final reported = updates.firstWhere(
+      (event) => event.info.autoContinuation?.status is SessionAutoContinuationResetKnown,
+    );
+    final observed = DateTime.now().toUtc();
+    final reset = observed.add(const Duration(hours: 1));
+
+    Future<void> handoff() {
+      final consumed = Completer<void>();
+      pluginRuntime.emitRuntimeEvent(
+        pluginId: "one",
+        event: const BridgeSseTerminalHandoff(event: BridgeSseVcsBranchUpdated()),
+        allowDuringStop: true,
+        terminalHandoffConsumed: consumed,
+      );
+      return consumed.future.timeout(const Duration(seconds: 2));
+    }
+
+    pluginRuntime.emitRuntimeEvent(
+      pluginId: "one",
+      allowDuringStop: false,
+      terminalHandoffConsumed: null,
+      event: BridgeSseSessionQuotaBlocked(
+        sessionID: "backend-session",
+        interruption: PluginQuotaInterruption(
+          errorMessageId: "quota-error",
+          observedAt: observed,
+          reset: PluginQuotaResetKnown(resetAt: reset),
+        ),
+      ),
+    );
+    await handoff();
+
+    final response = await _dispatch(
+      dispatcher: harness.composition.routedRequestDispatcher,
+      request: makeRequest(
+        "PATCH",
+        "/session/auto-continuation",
+        body: jsonEncode(
+          const SetSessionAutoContinuationRequest(sessionId: "stable-session", enabled: false).toJson(),
+        ),
+      ),
+    );
+    expect(response.status, 200);
+    expect(
+      Session.fromJson(jsonDecodeMap(response.body!)).autoContinuation!.status,
+      isA<SessionAutoContinuationResetKnown>(),
+    );
+    final projected = await reported.timeout(const Duration(seconds: 2));
+    expect(projected.info.id, "stable-session");
+    expect(
+      Session.fromJson(jsonDecodeMap(response.body!)).autoContinuation!.status,
+      projected.info.autoContinuation!.status,
+    );
+
+    final cancelled = updates.firstWhere((event) => event.info.autoContinuation?.status is SessionAutoContinuationIdle);
+    pluginRuntime.emitRuntimeEvent(
+      pluginId: "one",
+      allowDuringStop: false,
+      terminalHandoffConsumed: null,
+      event: const BridgeSseSessionPromptDefaultsChanged(sessionID: "backend-session", agent: "Default", model: null),
+    );
+    await handoff();
+    expect((await cancelled.timeout(const Duration(seconds: 2))).info.autoContinuation!.enabled, isFalse);
+    await harness.composition.session.cancel();
+    await running.stopped.timeout(const Duration(seconds: 5));
+  });
+
+  test("quota continuation shares relay state and sends through the ordinary prompt service without clients", () async {
+    final relayServer = await TestRelayServer.start();
+    final observed = DateTime.utc(2026, 9, 24, 9);
+    final reset = observed.add(const Duration(hours: 3));
+    var now = observed;
+    final harness = await withClock(
+      Clock(() => now),
+      () => _OrchestratorHarness.create(
+        pluginIds: const ["one"],
+        relayUrl: "ws://127.0.0.1:${relayServer.port}",
+      ),
+    );
+    addTearDown(() async {
+      await harness.close();
+      await relayServer.close();
+    });
+    final pluginRuntime = runtimeForLifecycleService(service: harness.lifecycleService) as TestPluginRuntime;
+    pluginRuntime.quotaReportingSupportByPlugin["one"] = PluginQuotaReportingSupport.conditional;
+    final plugin = harness.plugins.single..quotaReadiness = PluginQuotaContinuationReadiness.idle;
+    final running = await startTestOrchestratorSession(session: harness.composition.session);
+    final socket = await relayServer.nextClient();
+    final messages = StreamIterator<dynamic>(socket);
+    addTearDown(messages.cancel);
+    await harness.activatePlugins();
+    await _insertEventSession(database: harness.database, pluginId: "one");
+    await harness.database.sessionDao.updateRequestedPromptDefaults(
+      sessionId: "stable-session",
+      agent: "fixture-agent",
+      agentModel: const AgentModel(providerID: "fixture-provider", modelID: "fixture-model", variant: "high"),
+      fastMode: true,
+    );
+    final roomKey = await _exchangeRoomKey(socket: socket, messages: messages, connID: 101);
+    await _resumePhone(socket: socket, messages: messages, connID: 202, roomKey: roomKey);
+    for (final connId in [101, 202]) {
+      await _sendEncryptedRelayMessage(
+        socket: socket,
+        connID: connId,
+        roomKey: roomKey,
+        message: const RelayMessage.sseSubscribe(path: "/events"),
+      );
+      await _sendEncryptedRelayMessage(
+        socket: socket,
+        connID: connId,
+        roomKey: roomKey,
+        message: const RelayMessage.projectView(projectId: "project"),
+      );
+    }
+    await _waitFor(
+      () => harness.composition.projectViewTracker.activeProjectIds.contains("project"),
+      reason: "relay clients subscribed",
+    );
+    final updates = harness.composition.session.localWireEvents
+        .where((event) => event is SesoriSessionUpdated)
+        .cast<SesoriSessionUpdated>();
+    Future<void> observe({required String errorId}) async {
+      final reported = updates.firstWhere(
+        (event) => event.info.autoContinuation?.status is SessionAutoContinuationResetKnown,
+      );
+      plugin.messagesResult = [
+        PluginMessageWithParts(
+          info: PluginMessage.error(
+            id: errorId,
+            sessionID: "backend-session",
+            agent: null,
+            modelID: null,
+            providerID: null,
+            variant: null,
+            errorName: "quota_exhausted",
+            errorMessage: "Fixture quota interruption",
+            time: null,
+          ),
+          parts: const [],
+        ),
+      ];
+      pluginRuntime.emitRuntimeEvent(
+        pluginId: "one",
+        allowDuringStop: false,
+        terminalHandoffConsumed: null,
+        event: BridgeSseSessionQuotaBlocked(
+          sessionID: "backend-session",
+          interruption: PluginQuotaInterruption(
+            errorMessageId: errorId,
+            observedAt: observed,
+            reset: PluginQuotaResetKnown(resetAt: reset),
+          ),
+        ),
+      );
+      await reported.timeout(const Duration(seconds: 2));
+    }
+
+    await observe(errorId: "first-quota");
+    final dao = SessionContinuationDao(database: harness.database);
+    expect((await dao.read(sessionId: "stable-session"))!.enabled, isFalse);
+    final enabled = await _setContinuationOverRelay(
+      socket: socket,
+      messages: messages,
+      roomKey: roomKey,
+      connId: 101,
+      enabled: true,
+      requestId: "enable",
+    );
+    expect(
+      enabled.status,
+      SessionAutoContinuationStatus.resetKnown(
+        resetAt: reset.millisecondsSinceEpoch,
+        continueAt: reset.add(const Duration(minutes: 2)).millisecondsSinceEpoch,
+      ),
+    );
+    expect(plugin.sentPromptIds, isEmpty);
+
+    await _setContinuationOverRelay(
+      socket: socket,
+      messages: messages,
+      roomKey: roomKey,
+      connId: 202,
+      enabled: false,
+      requestId: "disable",
+    );
+    final disabledRow = (await dao.read(sessionId: "stable-session"))!;
+    expect(disabledRow.enabled, isFalse);
+    expect(
+      SessionContinuationOutcome.fromJson(jsonDecodeMap(disabledRow.outcomeJson)),
+      SessionContinuationOutcome.resetKnown(errorMessageId: "first-quota", observedAt: observed, resetAt: reset),
+    );
+
+    await observe(errorId: "second-quota");
+    await _setContinuationOverRelay(
+      socket: socket,
+      messages: messages,
+      roomKey: roomKey,
+      connId: 101,
+      enabled: true,
+      requestId: "reenable",
+    );
+    socket.add(jsonEncode({"type": "phone_disconnected", "connId": 101}));
+    socket.add(jsonEncode({"type": "phone_disconnected", "connId": 202}));
+    await _waitFor(
+      () => harness.composition.projectViewTracker.activeProjectIds.isEmpty,
+      reason: "both clients disconnected before quota reset",
+    );
+    final submitted = updates.firstWhere(
+      (event) => event.info.autoContinuation?.status is SessionAutoContinuationSubmitted,
+    );
+    // The production timer stays real; only the reset-policy clock advances.
+    now = reset.add(const Duration(minutes: 2));
+    final finalView = (await submitted.timeout(const Duration(seconds: 35))).info.autoContinuation!;
+    expect(finalView.enabled, isTrue);
+    expect(plugin.sentPromptIds, hasLength(1));
+    expect(plugin.lastSendPromptSessionId, "backend-session");
+    expect(plugin.lastSendPromptParts, const [PluginPromptPart.text(text: "Continue.")]);
+    expect(plugin.lastSendPromptAgent, "fixture-agent");
+    expect(plugin.lastSendPromptModel, (providerID: "fixture-provider", modelID: "fixture-model"));
+    expect(plugin.lastSendPromptVariant, "high");
+    expect(plugin.lastSendPromptFastMode, isTrue);
+    expect(
+      await AcceptedPromptsDao(database: harness.database).hasRow(
+        sessionId: "stable-session",
+        promptId: plugin.sentPromptIds.single,
+      ),
+      isTrue,
+    );
+    final outcome = SessionContinuationOutcome.fromJson(
+      jsonDecodeMap((await dao.read(sessionId: "stable-session"))!.outcomeJson),
+    ) as SessionContinuationSubmitted;
+    expect(outcome.errorMessageId, "second-quota");
+    expect(outcome.promptId, plugin.sentPromptIds.single);
+    expect(outcome.acceptedAt, now);
+
+    await harness.composition.session.cancel();
+    await running.stopped.timeout(const Duration(seconds: 5));
+  }, timeout: const Timeout(Duration(seconds: 45)));
+
+  test("quota startup resumes persisted work and does not replay it after another restart", () async {
+    final directory = await Directory.systemTemp.createTemp("sesori-quota-restart-");
+    final databaseFile = File("${directory.path}/bridge.db");
+    final relayServer = await TestRelayServer.start();
+    addTearDown(() async {
+      await relayServer.close();
+      await directory.delete(recursive: true);
+    });
+    final observed = DateTime.utc(2026, 9, 24, 9);
+    final reset = observed.add(const Duration(hours: 3));
+    Future<_OrchestratorHarness> open({required DateTime now}) async {
+      final harness = await withClock(
+        Clock.fixed(now),
+        () => _OrchestratorHarness.createWithDatabase(
+          pluginIds: const ["one"],
+          relayUrl: "ws://127.0.0.1:${relayServer.port}",
+          database: AppDatabase(NativeDatabase(databaseFile)),
+        ),
+      );
+      final runtime = runtimeForLifecycleService(service: harness.lifecycleService) as TestPluginRuntime;
+      runtime.quotaReportingSupportByPlugin["one"] = PluginQuotaReportingSupport.conditional;
+      harness.plugins.single
+        ..quotaReadiness = PluginQuotaContinuationReadiness.idle
+        ..messagesResult = [
+          const PluginMessageWithParts(
+            info: PluginMessage.error(
+              id: "persisted-quota",
+              sessionID: "backend-session",
+              agent: null,
+              modelID: null,
+              providerID: null,
+              variant: null,
+              errorName: "quota_exhausted",
+              errorMessage: "Fixture quota interruption",
+              time: null,
+            ),
+            parts: [],
+          ),
+        ];
+      return harness;
+    }
+
+    final beforeRestart = await open(now: observed);
+    try {
+      await _insertEventSession(database: beforeRestart.database, pluginId: "one");
+      // Seed the same durable outcome produced by a terminal live event. The
+      // preceding relay test exercises that event-to-DAO boundary directly.
+      await SessionContinuationDao(database: beforeRestart.database).upsert(
+        row: const SessionContinuationMapper().toDto(
+          record: SessionContinuationRecord(
+            sessionId: "stable-session",
+            enabled: false,
+            outcome: SessionContinuationOutcome.resetKnown(
+              errorMessageId: "persisted-quota",
+              observedAt: observed,
+              resetAt: reset,
+            ),
+          ),
+        ),
+      );
+      final response = await _dispatch(
+        dispatcher: beforeRestart.composition.routedRequestDispatcher,
+        request: makeRequest(
+          "PATCH",
+          "/session/auto-continuation",
+          body: jsonEncode(
+            const SetSessionAutoContinuationRequest(sessionId: "stable-session", enabled: true).toJson(),
+          ),
+        ),
+      );
+      expect(response.status, 200);
+      expect(Session.fromJson(jsonDecodeMap(response.body!)).autoContinuation!.enabled, isTrue);
+    } finally {
+      await beforeRestart.close();
+    }
+
+    String? acceptedPromptId;
+    for (final restart in [1, 2]) {
+      final harness = await open(now: reset.add(Duration(minutes: restart * 2)));
+      final plugin = harness.plugins.single;
+      try {
+        final submitted = restart == 1
+            ? harness.composition.session.localWireEvents
+                  .where(
+                    (event) =>
+                        event is SesoriSessionUpdated &&
+                        event.info.autoContinuation?.status is SessionAutoContinuationSubmitted,
+                  )
+                  .first
+            : null;
+        final running = await startTestOrchestratorSession(session: harness.composition.session);
+        await relayServer.nextClient();
+        if (submitted != null) await submitted.timeout(const Duration(seconds: 5));
+        // Disposal drains the actual startup tick, including on the restart
+        // where a persisted accepted outcome must not schedule another send.
+        await harness.composition.session.cancel();
+        await running.stopped.timeout(const Duration(seconds: 5));
+        final row = (await SessionContinuationDao(database: harness.database).read(sessionId: "stable-session"))!;
+        expect(row.enabled, isTrue);
+        final outcome =
+            SessionContinuationOutcome.fromJson(jsonDecodeMap(row.outcomeJson)) as SessionContinuationSubmitted;
+        if (restart == 1) {
+          expect(plugin.sentPromptIds, hasLength(1));
+          acceptedPromptId = plugin.sentPromptIds.single;
+        } else {
+          expect(plugin.sentPromptIds, isEmpty);
+        }
+        expect(outcome.promptId, acceptedPromptId);
+        expect(outcome.acceptedAt, reset.add(const Duration(minutes: 2)));
+        expect(
+          await AcceptedPromptsDao(database: harness.database).hasRow(
+            sessionId: "stable-session",
+            promptId: acceptedPromptId!,
+          ),
+          isTrue,
+        );
+      } finally {
+        await harness.close();
+      }
+    }
   });
 
   test("post-normalization work is concurrent across plugins and ordered within each plugin", () async {
@@ -859,6 +1245,58 @@ Future<RelayResponse> _dispatch({
   throw StateError("route was rejected during test setup");
 }
 
+Future<SessionAutoContinuationView> _setContinuationOverRelay({
+  required WebSocket socket,
+  required StreamIterator<dynamic> messages,
+  required List<int> roomKey,
+  required int connId,
+  required bool enabled,
+  required String requestId,
+}) async {
+  await _sendEncryptedRelayMessage(
+    socket: socket,
+    connID: connId,
+    roomKey: roomKey,
+    message: RelayMessage.request(
+      id: requestId,
+      method: "PATCH",
+      path: "/session/auto-continuation",
+      headers: const {},
+      body: jsonEncode(SetSessionAutoContinuationRequest(sessionId: "stable-session", enabled: enabled).toJson()),
+    ),
+  );
+  SessionAutoContinuationView? responseView;
+  final clientViews = <int, SessionAutoContinuationView>{};
+  while (responseView == null || clientViews.length < 2) {
+    if (!await messages.moveNext().timeout(const Duration(seconds: 5))) {
+      fail("Relay closed before both clients received the continuation update");
+    }
+    final frame = messages.current;
+    if (frame is! List<int> || frame.length < 2) continue;
+    final recipient = frame[0] << 8 | frame[1];
+    final message = await _decryptRelayMessage(payload: frame.sublist(2), key: SecretKey(roomKey));
+    if (message is RelayResponse && message.id == requestId) {
+      expect(recipient, connId);
+      expect(message.status, 200);
+      responseView = Session.fromJson(jsonDecodeMap(message.body!)).autoContinuation!;
+    } else if (message is RelaySseEvent) {
+      final payload = jsonDecodeMap(message.data)["payload"] as Map<String, dynamic>;
+      final event = SesoriSseEvent.fromJson({
+        ...payload["properties"] as Map<String, dynamic>,
+        "type": payload["type"],
+      });
+      if (event is SesoriSessionUpdated && event.info.id == "stable-session") {
+        final view = event.info.autoContinuation!;
+        if (view.enabled == enabled) clientViews[recipient] = view;
+      }
+    }
+  }
+  expect(responseView.enabled, enabled);
+  expect(clientViews.keys.toSet(), {101, 202});
+  expect(clientViews.values, everyElement(responseView));
+  return responseView;
+}
+
 Future<RelayResponse> _deleteEventSession({required RoutedRequestDispatcher dispatcher}) {
   return _dispatch(
     dispatcher: dispatcher,
@@ -880,6 +1318,7 @@ Future<RelayResponse> _deleteEventSession({required RoutedRequestDispatcher disp
 Future<void> _insertEventSession({required AppDatabase database, required String pluginId}) async {
   await database.projectsDao.insertProjectsIfMissing(projectIds: ["project"]);
   await database.sessionDao.insertSession(
+    fastMode: false,
     pluginId: pluginId,
     preservePullRequestScope: false,
     sessionId: "stable-session",
@@ -899,6 +1338,8 @@ Future<void> _insertEventSession({required AppDatabase database, required String
 BridgeSseSessionUpdated _lateSessionUpdate({required String pluginId}) {
   return BridgeSseSessionUpdated(
     info: Session(
+      approvalOverride: null,
+      autoContinuation: null,
       id: "backend-session",
       pluginId: pluginId,
       projectID: "project",
@@ -1081,10 +1522,15 @@ class const _OrchestratorHarness({
   static Future<_OrchestratorHarness> create({
     required List<String> pluginIds,
     String relayUrl = "ws://127.0.0.1:1",
+  }) => createWithDatabase(pluginIds: pluginIds, relayUrl: relayUrl, database: createTestDatabase());
+
+  static Future<_OrchestratorHarness> createWithDatabase({
+    required List<String> pluginIds,
+    required String relayUrl,
+    required AppDatabase database,
   }) async {
     final plugins = [for (final id in pluginIds) _SourcedPlugin(id)];
     final lifecycleService = await createPluginLifecycleService(plugins: plugins);
-    final database = createTestDatabase();
     final httpClient = http.Client();
     final failureReporter = FakeFailureReporter();
     final restartService = buildTestRestartService();
@@ -1179,9 +1625,37 @@ class _SourcedPlugin(final String pluginId) extends FakeBridgePlugin {
   Completer<void>? deleteSessionStarted;
   Completer<void>? deleteSessionGate;
   List<PluginProjectActivitySummary> activitySummaries = const [];
+  PluginQuotaContinuationReadiness quotaReadiness = PluginQuotaContinuationReadiness.unavailable;
+  final List<String> sentPromptIds = [];
 
   @override
   String get id => pluginId;
+
+  @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      quotaReadiness;
+
+  @override
+  Future<void> sendPrompt({
+    required String promptId,
+    required String sessionId,
+    required List<PluginPromptPart> parts,
+    required PluginSessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required ({String providerID, String modelID})? model,
+  }) async {
+    await super.sendPrompt(
+      promptId: promptId,
+      sessionId: sessionId,
+      parts: parts,
+      variant: variant,
+      fastMode: fastMode,
+      agent: agent,
+      model: model,
+    );
+    sentPromptIds.add(promptId);
+  }
 
   @override
   Future<PluginProject> getProject(String projectId) async {

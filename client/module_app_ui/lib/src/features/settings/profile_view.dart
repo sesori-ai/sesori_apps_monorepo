@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -10,6 +11,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../extensions/build_context_x.dart";
 import "widgets/account_row.dart";
 import "widgets/settings_section.dart";
+import "widgets/settings_window_page.dart";
 
 /// Vertical inset between the nav bar and the first card.
 const double _contentTopPadding = 10.0;
@@ -22,10 +24,7 @@ const double _contentTopPadding = 10.0;
 class const ProfileView({
   super.key,
   required final AuthUser? account,
-  required final String title,
-  required final bool automaticallyImplyLeading,
-  required final Widget? connectionBanner,
-  required final VoidCallback onClose,
+  required final SettingsPageChrome chrome,
   required final Future<bool> Function() logout,
 }) extends StatefulWidget {
   @override
@@ -37,6 +36,13 @@ class _ProfileViewState() extends State<ProfileView> {
 
   Future<void> _logout() async {
     if (_isLoggingOut) return;
+    // One stray tap must not sign the user out, so logging out asks first.
+    final confirmed = await showPregoModal<bool>(
+      context: context,
+      title: context.loc.settingsLogoutConfirmTitle,
+      builder: (_) => const _LogoutConfirmation(),
+    );
+    if (!mounted || confirmed != true || _isLoggingOut) return;
     setState(() => _isLoggingOut = true);
 
     final bool succeeded;
@@ -67,18 +73,8 @@ class _ProfileViewState() extends State<ProfileView> {
     final loc = context.loc;
     final account = widget.account;
 
-    return PregoGlassScaffold(
-      title: widget.title,
-      titleMode: PregoTopNavigationTitleMode.inline,
-      automaticallyImplyLeading: widget.automaticallyImplyLeading,
-      banner: widget.connectionBanner,
-      actions: [
-        PregoButtonsIconGlass(
-          icon: TablerRegular.x,
-          semanticLabel: loc.settingsClose,
-          onPressed: widget.onClose,
-        ),
-      ],
+    return SettingsChromePage(
+      chrome: widget.chrome,
       slivers: [
         SliverToBoxAdapter(
           child: Padding(
@@ -124,6 +120,48 @@ class _ProfileViewState() extends State<ProfileView> {
           child: SizedBox(height: MediaQuery.paddingOf(context).bottom + PregoSpacing.xl),
         ),
       ],
+    );
+  }
+}
+
+/// The log-out question's body: what logging out means, then Cancel and a
+/// destructive Log out. Pops `true` only for Log out.
+class const _LogoutConfirmation() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            loc.settingsLogoutConfirmMessage,
+            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+          ),
+          const SizedBox(height: PregoSpacing.x2l),
+          PregoSheetActions(
+            secondary: PregoButtonsSolid(
+              key: const Key("logout_confirm_cancel"),
+              label: loc.settingsLogoutConfirmCancel,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => context.pop(false),
+            ),
+            primary: PregoButtonsSolid(
+              key: const Key("logout_confirm_action"),
+              label: loc.settingsLogout,
+              hierarchy: PregoButtonsSolidHierarchy.primary,
+              type: PregoButtonsSolidType.destructive,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => context.pop(true),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

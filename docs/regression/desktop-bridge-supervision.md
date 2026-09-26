@@ -99,7 +99,7 @@ and keep native close/quit behavior safe.
   session unchanged, while a failed start or stop leaves the next action
   targeted at retrying that failed operation.
 - The signed-in window opens on project/session guidance and recovery. Its
-  pinned Bridge popover presents local process status and relevant controls;
+  pinned This computer popover presents local process status and relevant controls;
   account information remains in Settings, and the tray retains active-session
   counts, application Quit and launch-at-login. Explicit Start/Stop actions
   preserve their intent even if process state changes before dispatch; failed
@@ -110,9 +110,11 @@ and keep native close/quit behavior safe.
   controls, projects, and settings, while exceptional login-required, crash-give-up, and
   takeover recovery appears in the sidebar footer across cockpit destinations. Recovery starts or retries the supervised helper or
   opens its logs and never offers mobile CLI-install instructions.
-- The window routes between shared project/session inventory, settings,
-  profile, and harness-management surfaces without creating another
-  auth/session owner. Desktop injects account state, navigation, external-link/
+- The window keeps its project/session route mounted beneath the root Settings modal. Account and harness
+  management live in that modal, without creating another auth/session owner.
+  General owns launch-at-login and app-update guidance; Bridge separates connected-bridge configuration from
+  This computer supervision. Native Quit stays application-scoped.
+  Desktop injects account state, navigation, external-link/
   package metadata, and its coordinated logout workflow; it deliberately omits
   the mobile push-notification preference surface and instead exposes one
   desktop-owned native attention switch. Desktop derives permission/question
@@ -309,7 +311,7 @@ verify the actual relocated helper, not merely the presence of its binary.
   logout clears auth before analytics preparation and fails to resume analytics
   when token clearing fails. A desktop session row cannot reach its typed detail
   route, Back cannot return to the session list, a child-session link loses its
-  typed route data, New task or file changes cannot reach their typed routes, or
+  typed route data, New session or file changes cannot reach their typed routes, or
   desktop renders unsupported voice/attachment controls, Enter inserts a newline
   instead of sending, Shift+Enter sends, an IME candidate-confirmation Enter
   submits the draft, Escape pops an ordinary cockpit page or steals a closer

@@ -8,6 +8,44 @@ variant, and worktree mode, and creating the session with its first input.
 
 ## Required Behavior
 
+- Desktop's project New session action, the sidebar's New session button and Cmd+N (Ctrl+N on Windows/Linux)
+  open the same typed setup route. The button and shortcut use the open project, else the most recently active
+  one; with no project yet they open the New project dialog.
+  It opens setup rather than creating a backend session, ignores held-key repeats and respects root popup focus.
+- On phone and desktop the setup page opens with the heading "What should we work on?" and a project
+  selector naming the session's project. The selector opens only when another project exists; choosing one
+  replaces the page with that project's setup page, so a session is never created in the project that was
+  left, and a draft stays with the project it was typed in. The phone lists projects itself for this and
+  names only the current project when that fails. On the phone the header sits above the options and hides
+  while the keyboard is open, so the options stay in view while typing.
+- The composer shows the agent entry only when the harness advertises more than one selectable agent.
+  Claude, Codex, Copilot, Cursor and OMP advertise only their default mode as one agent, so their composer
+  shows model and effort alone; OpenCode lists its real agents. A released mode name such as Plan or Ask
+  that still arrives is honoured by the plugin, and naming the advertised default returns a session left in
+  another mode to the default with its next prompt.
+- The agent, model and effort selectors sit in one strip above the input on every surface, each a pill
+  with a leading glyph and an unfold caret. A label too long for its pill keeps its end behind a leading
+  ellipsis, "…Opus 5" rather than "Claude Op…", and screen readers hear the whole name. On a pointer
+  surface the pills size to their labels; on touch they share the width. On a pointer surface the attach
+  and command buttons are always visible and the box grows with the draft instead of opening an editor
+  sheet. It stops at a third of the window and the draft scrolls, so even the minimum window keeps the
+  selectors on screen.
+- A session that cannot prompt, a sub-agent's page or an archived session, shows what it ran with in the
+  composer's place: the same agent, model and effort pills, sized as on that surface, with no caret, no
+  press feedback and no picker; screen readers hear values, not buttons. The bridge's prompt defaults
+  decide them, else the newest agent reply's agent and model. A value the session cannot know is left out,
+  never guessed: the agent shows only where the harness lists more than one, and the effort only where the
+  harness reported it (per-harness gaps in `docs/HARNESS_CAPABILITIES.md`). Archiving clears the defaults,
+  so an archived session never shows an effort; its options come from the bridge's cache only, never from
+  discovery. A harness notice sits above the pills, and with nothing known there is no strip.
+- A session with sub-agents shows a pill at the strip's trailing edge. While any sub-agent works it leads
+  with a spinner and the running count, then the sub-agent glyph and the total, muted; idle, it shows the
+  glyph and the total only. It never claims sub-agents are finished, since an idle one can be resumed.
+  It stays while a staged command, the recording hint or the saved-recording actions take the selectors'
+  place. Tapping it opens the sub-agent list above the pill, running first, without changing the
+  composer's height; a tap elsewhere closes it. With more room below, as under a tall draft in a short
+  window, the list opens below instead, and it scrolls rather than leaving the screen. The tooltip and
+  screen-reader label read "N sub-agents, M working", and a screen reader can open the list from it.
 - Options are discovered per plugin and cached under the plugin's declared
   coherence scope; retention and replacement are bridge-owned.
 - Claude's plugin-scoped discovery runs in its host-created state directory,
@@ -131,7 +169,9 @@ variant, and worktree mode, and creating the session with its first input.
   a cache-only read never discovers and reports cache-unavailable, and an
   explicit refresh forces fresh discovery.
 - A normal load reports whether the cache it served has aged past the bridge's
-  freshness window, and the client then refreshes it in the background: the
+  ten-minute freshness window or was captured before the current bridge process started
+  (so an upgraded bridge fills in catalog fields an older build did not map,
+  such as fast mode), and the client then refreshes it in the background: the
   options stay on screen and usable, with no loading state, and simply change if
   the backend's answer did. The failure fallback never reports staleness, so a
   failed refresh is not retried at once. Both the New Session screen and a live
@@ -150,19 +190,18 @@ variant, and worktree mode, and creating the session with its first input.
 - A choice made while a background refresh runs outranks it. The refresh was
   resolved against the agent, model, variant, and staged command as they stood
   when it started, so it is dropped rather than reverting the user.
-- The refresh action stays on screen for as long as the press it started is
-  still running, and the line explaining where the options came from keeps
-  describing the options still on screen. It spins only while the answers on
-  screen are unsettled: the harness chooser stays live during a refresh, so a
-  press abandoned for another harness must not leave a spinner over that
-  harness's settled options. When the viewport has room, the action rests above
-  the composer; when the keyboard or a multiline draft cramps that viewport,
-  it follows the option rows in their scroll content and never covers the
-  dedicated-workspace control.
-- It is one action under one name in every state. Whether a press repeats
-  harness discovery, the project check, or the options themselves is decided
-  behind it; the surface never names that split, because the user cannot act on
-  it and the line above the composer already says what is missing.
+- New Session never waits on options. The composer stays typeable throughout, and a
+  session can be created before options arrive: agent, model, and variant are then
+  omitted and the harness uses its defaults. Creation still waits for a verified
+  bridge, a routable harness, and the project's worktree check.
+- The page never describes where options came from. While they load, the agent and
+  model pills shimmer at their final height, the harness pill shimmers until
+  discovery answers, and the "New worktree" row keeps its height while the project
+  is checked, so nothing shifts as answers arrive. When options cannot be loaded,
+  one "Retry loading models" button stands in the pills' place; a bridge that can
+  load options only by starting the harness offers "Load models" there instead.
+  Whether a press repeats harness discovery, the project check, or the options
+  themselves is decided behind it.
 - Concurrent requests coalesce; an incomplete observation never replaces a
   complete cached one, and a moved project invalidates its entries. Completeness
   decides replacement only at capture time; the stored row holds just the
@@ -184,7 +223,8 @@ variant, and worktree mode, and creating the session with its first input.
   and is given a longer read timeout for the same reason.
 - Failure with a valid cache still serves it; failure without one is an explicit
   error, never an empty option set. Automatic refresh never starts a stopped
-  backend and no-ops for a superseded generation.
+  backend and no-ops for a superseded generation. A backend started only to
+  discover options idles out within five minutes unless a session uses it.
 - Creation resolves and validates the project handle before checking plugin
   routability, so an unknown project causes no plugin, metadata, git, or session
   persistence effect. Plugin startup, git/worktree preparation, backend creation,
@@ -192,7 +232,9 @@ variant, and worktree mode, and creating the session with its first input.
   synchronous. Metadata starts only after those gates and does not delay the
   canonical, immediately queryable session response.
 - Dedicated mode creates a branch and worktree from the resolved base branch
-  using a bridge-generated lowercase `color-animal` name. It checks both branch
+  using a bridge-generated lowercase `color-animal` name; the branch is
+  `sesori/color-animal` and the worktree directory is the bare slug. Generated
+  branch refinement keeps the `sesori/` prefix. It checks both branch
   and filesystem-path occupancy across three distinct pairs, then makes bounded
   attempts with a secure hexadecimal suffix. It falls back to the project
   directory when the repository is absent, commitless, or creation fails, and
@@ -202,13 +244,24 @@ variant, and worktree mode, and creating the session with its first input.
   local-only Git projects can create dedicated worktrees without a fetch warning.
   A configured origin that cannot be fetched still logs the failure and uses
   existing refs.
-- The shared slash-command picker uses the Prego labelled input, rounded command
-  rows, and source tags in both themes. Long names and tags wrap within narrow
-  layouts, descriptions and argument hints remain readable, and large catalogs
-  stay lazy. Search matches names, descriptions, and hints, including a query
-  entered during loading; clearing it restores the catalog. Selecting a row
-  returns that exact command, with the last row reachable above the keyboard
-  and home indicator.
+- The model and slash-command pickers open as popovers anchored to their
+  composer button on phone and desktop, above it, inside the window edge, and
+  no taller than 380 px; their rows scroll inside. Each has a search field.
+  The model picker groups models under uppercase provider headings, shows each
+  provider's representative models until a search reveals the rest, and checks
+  the selected model, following a selection or catalog change while open. The
+  command picker shows source tags in both themes; long names and tags wrap
+  within narrow layouts, descriptions and argument hints remain readable, and
+  large catalogs stay lazy. Search matches names,
+  descriptions, and hints, including a query entered during loading; clearing
+  it restores the catalog. Selecting a row returns that exact model or command
+  and closes the popover.
+- On desktop the search field takes focus as the picker opens, so typing
+  filters at once. Up and Down move one highlight across the options, skipping
+  headings and holding at either end; the mouse moves the same highlight.
+  Enter picks the highlighted option and Esc closes the picker without a
+  choice. On the phone nothing is highlighted and the keyboard stays down
+  until the field is tapped.
 - Prompt and slash-command starts are exclusive; only user-authored text is
   user-visible, and attachments appear only where declared. The session keys on
   the stable project identifier and carries title, defaults, and worktree facts.
@@ -267,18 +320,58 @@ variant, and worktree mode, and creating the session with its first input.
   provider diagnostics and local paths never enter that guidance.
 - Authentication-required discovery preserves any last-good durable options without
   reporting them as a successful refresh. `/session/options` carries the condition as a
-  typed response. New Session keeps retained options visible but disables creation, keeps
-  refresh available, and shows inline and warning-popup guidance titled from the selected
-  plugin's display name. A session-detail stale-option recovery also shows the bounded
+  typed response. New Session replaces the composer with a login card
+  titled from the selected plugin's display name, carrying the plugin's guidance, "Open
+  harness settings", and "Recheck", and creation is blocked. A warning popup adds the same
+  guidance only when the login requirement is newly discovered, after the page already had
+  usable options for that harness; a requirement known on arrival shows only the card. A session-detail stale-option recovery also shows the bounded
   guidance and parks the prompt instead of retrying with unavailable options.
+
+### Fast mode
+
+- A model advertises fast mode through `ProviderModel.fastMode`. The composer
+  shows the ⚡ pill next to the effort pill, in New Session and in session
+  detail, only when that support is available or unavailable. An absent or
+  unknown value (older bridge, harness without fast mode, a model without it)
+  shows no pill.
+- Available: the pill's bolt is yellow while on, in both themes, and neutral
+  while off. Prompts,
+  slash commands, and session creation carry the choice as `fastMode`; a model
+  without available fast mode always sends `fastMode: false`, whatever was chosen.
+- Unavailable: the pill is dimmed. A tap changes nothing and shows the standard
+  error popup with the closed reason (extra usage turned off, not on the plan,
+  turned off by the organization, or unknown).
+- Switching speed drops the backend's prompt cache. When the session has
+  history and the model was last active less than the model's cache lifetime
+  ago (Codex 30 minutes, Claude 60 minutes), a confirmation explains the full
+  re-read, and in both directions; turning fast mode on also mentions the extra
+  usage. A session without history, or one whose cache has expired, switches
+  at once. Last activity is the newest assistant message's completion time
+  (its start time while it streams), else the session's last update.
+- The choice is part of the session's prompt defaults. Reopening the session,
+  or a `session.prompt_defaults_changed` event from another surface, restores
+  it. New Session remembers the last choice per project and plugin like the
+  variant, and seeds it from the plugin's last-used prompt defaults.
+- Codex sends the choice as the `priority` service tier (`default` when off) on
+  every turn, and on `thread/start` for a session created fast. Claude applies
+  it through the `apply_flag_settings` control request before a turn whose
+  choice differs from the resident process; the catalog probe opts in first so
+  the account's real availability reason is reported. See
+  `docs/HARNESS_CAPABILITIES.md` for the harness details.
+- Coverage: the toggle calculator's visibility, forced-off, and confirmation
+  matrix (including the exact cache-lifetime boundary) and the cubits' send and
+  reconciliation paths run as unit tests. The pill's hidden, dimmed, and on
+  states and its popup and confirmation dispatch run as widget tests. Release
+  coverage (L3) toggles fast mode on a live Codex and Claude session with a
+  warm and a cold cache and reopens the session to confirm the choice persists.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
-| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. |
-| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; refreshing on the New Session screen updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render. Scoped authentication-required discovery keeps Refresh available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
+| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window or captured before the bridge process started is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `sesori/color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. |
+| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; loading keeps the layout with shimmering pills and a failure shows one retry; a New Session options refresh (background, Retry, Load, or Recheck) updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render; a sub-agent's page and an archived session show only the run details their harness knows, as read-only pills. Scoped authentication-required discovery replaces the composer with the login card, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
@@ -308,13 +401,15 @@ options start visible at the bottom, the lowest remain reachable above, and
 selection still dispatches the exact variant that was tapped.
 For the command picker, vary light/dark mode, narrow widths, large text, long
 command names, every source label, missing descriptions/hints, empty/no-match
-results, and scrolling a large catalog with the keyboard open.
+results, and scrolling a large catalog with the keyboard open. For both
+pickers on desktop, vary a trigger near the window edge, keyboard versus mouse
+highlight, Enter and Esc.
 
 ## Failure Signals
 
 - Options are empty or reported successfully where authentication-required
   discovery should be explicit, a partial observation overwrites a complete
-  cache, Create remains enabled, Refresh becomes unavailable, the plugin runtime
+  cache, Create remains enabled, Recheck becomes unavailable, the plugin runtime
   becomes globally blocked, or Pi reports no models without local `/login` guidance.
 - Options are stale where a discovery failure should be an explicit error.
 - Hermes model discovery falls back solely because an empty, unpersisted scratch
@@ -324,7 +419,10 @@ results, and scrolling a large catalog with the keyboard open.
   below the fold, makes the lowest levels unreachable by scrolling toward the
   top, or selects a different level from the tapped row.
 - Command rows overflow at larger text sizes, source tags disappear, search
-  loses an early query, or the last command cannot be selected above the keyboard.
+  loses an early query, or the last command cannot be selected.
+- A picker opens as a full-screen sheet, detaches from its button, crosses the
+  window edge, or grows past its height cap; on desktop, typing does not reach
+  the search, the arrows land on a heading, or Esc applies a choice.
 - A model the backend reports unavailable is selectable or offers variants on
   one surface but not another, an agent's declared model is adopted without
   being checked against the catalog, or a screen's variant list describes a
@@ -333,9 +431,11 @@ results, and scrolling a large catalog with the keyboard open.
   creation replaces it, one plugin's selection leaks into another, or a removed
   saved value prevents current catalog defaults from loading.
 - A cache-only read starts a backend, or automatic refresh wakes a stopped one.
-- The refresh action disappears while its own load runs, gives no sign it was
-  pressed, renames itself after which load it happens to be repeating, or
-  covers an option row in a cramped viewport.
+- The composer or its typing is blocked while options load, sending waits for
+  options, the page changes height as options arrive, a status line describes
+  the options' origin, or a load failure leaves no retry.
+- A known login requirement leaves the composer usable instead of the login
+  card, or the popup appears for a requirement already known on arrival.
 - A background refresh of a stale cache blocks the composer, shows a loading
   state, runs twice, reverts a choice made while it ran, or leaves an explicit
   refresh waiting on work that can no longer apply.
@@ -349,7 +449,7 @@ results, and scrolling a large catalog with the keyboard open.
   silently leaves the previous catalog in place.
 - Recorded worktree, branch, base branch, or base commit disagrees with git.
 - A dedicated workspace name comes from generated metadata, is not lowercase
-  `color-animal` form, or collides with an existing branch or path.
+  `sesori/color-animal` form, or collides with an existing branch or path.
 - Bridge-owned context renders as the user's own message or command arguments.
 - DeepSeek's default catalog omits V4.1 Flash after installing the target runtime,
   or selecting it sends a different upstream model ID.
@@ -384,6 +484,12 @@ results, and scrolling a large catalog with the keyboard open.
 - Desktop cannot open the typed new-session route, constructs voice capture,
   hides a supported dedicated-workspace option, or bypasses the shared creation
   view and its restoration/launch semantics.
+- A sub-agent's or archived session's run-detail pills open a picker, show a caret or press feedback, name
+  a placeholder agent or a guessed effort, or make the harness discover options.
+- The ⚡ pill shows for a model without fast-mode support, hides for an
+  unavailable one, sends `fastMode: true` for a model that cannot run it, or
+  switches without confirmation while the prompt cache is warm; the choice is
+  lost on reopen or not synchronized from another surface.
 
 ## Known Limitations
 
@@ -424,6 +530,8 @@ results, and scrolling a large catalog with the keyboard open.
 - Client: `client/module_core/lib/src/services/session_selection_calculator.dart`
   (the single owner of selection reconciliation),
   `client/module_core/lib/src/services/new_session_options_service.dart`,
+  `client/module_core/lib/src/services/fast_mode_toggle_calculator.dart`,
+  `client/module_app_ui/lib/src/features/session_detail/widgets/agent_model_buttons.dart`,
   `client/module_core/lib/src/services/session_detail_load_service.dart`,
   `client/module_core/lib/src/cubits/session_detail/session_detail_cubit.dart`,
   `client/module_app_ui/lib/src/features/new_session/`,
@@ -432,6 +540,9 @@ results, and scrolling a large catalog with the keyboard open.
 - Client tests: `client/app/test/core/widgets/agent_model_buttons_test.dart`,
   `client/app/test/features/new_session/new_session_screen_test.dart`,
   `client/desktop/test/features/new_session/desktop_new_session_screen_test.dart`,
-  and `client/desktop/test/core/routing/desktop_router_test.dart`
+  `client/desktop/test/core/routing/desktop_router_test.dart`, and, for read-only run details,
+  `client/app/test/features/session_detail/widgets/session_detail_body_test.dart`,
+  `client/desktop/test/features/sessions/desktop_session_detail_screen_test.dart` and
+  `client/module_core/test/cubits/session_detail/session_detail_resolvers_test.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,
   `setup-aware-plugin-lifecycle`

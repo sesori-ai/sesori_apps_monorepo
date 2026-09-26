@@ -3,8 +3,8 @@
 Status values: `pending` / `in-progress` / `done` / `blocked`. Evidence for a
 finished step lives in `steps/step-NN.md` (created when the step executes);
 this table records state only and never mirrors PR review status. MT gates are
-checkpoints, not PRs. At the user's request the agent will execute MT Gate C and
-record a recommendation, but only the user marks it passed.
+checkpoints, not PRs. A gate marked done may be explicitly retired with accepted
+coverage gaps; that closure is not a claim that unexecuted checks passed.
 
 | Step | Title | Status |
 |---|---|---|
@@ -30,16 +30,17 @@ record a recommendation, but only the user marks it passed.
 | 18 | 🚧 Composer slice + voice/media seams (R2) | done |
 | 19 | ⚙️ Diffs + new-session slice | done |
 | 20 | 🚧 Desktop cockpit composition + attention notifications | done |
-| — | MT gate C: cockpit parity + mobile regression (agent-run by user request) | pending |
+| — | MT gate C: retired by user with accepted coverage gaps | done |
 | 21 | 🌿 Regression documentation reconciliation | pending |
 | 22 | 🌿 Coverage run, retirement, `desktop-distribution` handoff | pending |
 
 ## Distribution planning — 2026-09-15
 
 The user requested [desktop-distribution planning](../desktop-distribution/PLAN.md)
-before parent retirement. Gate C and steps 21–22 remain pending. The successor
-owns distribution decisions and six-target packaged coverage; it does not mark
-this plan's missing evidence or user gate acceptance as complete.
+before parent retirement. The user retired Gate C on 2026-09-26; steps 21–22 remain
+separately tracked and do not block admitted macOS publication. The successor still
+owns distribution decisions and six-target packaged coverage; unrun checks are not
+recorded as passes.
 
 ## Step 20 replacement series
 
@@ -57,25 +58,24 @@ Slice 1 merged in PR #1267, slice 2 in PR #1269, and slice 3 in PR #1274.
 Step 20 is complete. Slice 3 passed implementation verification, full relevant
 client suites, clean macOS build/codesign, CI, and both architecture reviews.
 
-## Desktop UX overhaul starts before retirement — 2026-09-15
+## Desktop UX started while the parent remained active — 2026-09-15
 
-`.plan/active/desktop-ux/` (two-pane sidebar cockpit, settings modal, bridge
-popover, connection pill, autostart defaults, app log files) starts now at the
-user's request, before Gate C runs and before this plan retires. Gate C stays
-pending. Its shell and navigation checks (`MT_GATE_C.md` sections C2/C5) are
-superseded by the `desktop-ux` step-12 checklist; the harness, attention,
-mobile-regression and release-safety sections are unaffected and can run on any
-build after `desktop-ux` step 7. Steps 21–22 here proceed independently.
+`.plan/completed/desktop-ux/` (two-pane sidebar cockpit, settings modal, bridge
+popover, connection pill, autostart defaults, app log files) started at the
+user's request while Gate C and desktop-app retirement were pending. Its shell and
+navigation checks moved to the `desktop-ux` step-12 checklist. The UX plan retired on
+2026-09-19 with accepted coverage gaps, not passing native evidence. The separate
+Gate C was subsequently retired as recorded below; steps 21–22 proceed independently.
 
-## MT Gate C — planned 2026-09-03
+## MT Gate C — retired by user 2026-09-26
 
-The user delegated the manual run to the agent for the next working session.
-The baseline-first test matrix, safety checkpoints, live Codex/fixture strategy,
-mobile-device requirement, evidence rules, fix/retest policy, and completion
-criteria live in [`MT_GATE_C.md`](MT_GATE_C.md). Planning preflight found one
-active standalone bridge and no connected physical iOS device; neither was
-modified. Recheck both at execution time. The gate remains `pending` until the
-agent reports the result and the user accepts it.
+After the missing macOS 12, phone/live-harness and manual-build-attribution evidence
+was explained, the user directed **“retire this gate and continue”**. The checkpoint
+is done by explicit acceptance of limitations, not a complete fresh-build L3 pass.
+[`MT_GATE_C.md`](MT_GATE_C.md) retains the decision and optional reference scenarios.
+Do not reopen the gate or repeat the already-passing M4 and 82-test shutdown checks.
+MacOS publication may proceed through the shared cycle; existing production approval,
+native trust, public integrity and Windows/Linux requirements remain unchanged.
 
 ## MT Gate A — accepted 2026-08-30
 

@@ -237,9 +237,16 @@ void main() {
       expect((result as SessionDetailLoadResultLoaded).snapshot.supportsPromptAttachments, isNull);
     });
 
-    test("load marks archived sessions in the snapshot", () async {
+    test("load marks archived sessions and names their options from the cache alone", () async {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);
+      when(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.cacheOnly,
+        ),
+      ).thenAnswer((_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog(), isStale: false));
       stubSessionRepositoryGetSession(
         repository: repository,
         sessionId: "session-1",
@@ -255,18 +262,38 @@ void main() {
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
       expect(snapshot.isArchived, isTrue);
-      expect(snapshot.agents, isEmpty);
-      expect(snapshot.providerData, isNull);
-      expect(snapshot.commands, isEmpty);
+      expect(snapshot.agents, hasLength(1));
+      expect(snapshot.providerData?.items, hasLength(1));
       expect(snapshot.supportsPromptAttachments, isNull);
       verifyNever(
         () => repository.loadSessionOptions(
           projectId: any(named: "projectId"),
           pluginId: any(named: "pluginId"),
-          mode: any(named: "mode"),
+          mode: SessionOptionsRequestMode.dynamic,
         ),
       );
       verifyNever(pluginRepository.listPlugins);
+    });
+
+    test("an archived reload without a cached catalog still loads", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      when(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.cacheOnly,
+        ),
+      ).thenAnswer((_) async => const SessionOptionsRepositoryCacheUnavailable());
+
+      final result = await service.reload(
+        session: testSession(id: "session-1", title: "Archived", archivedAt: DateTime.utc(2026)),
+        projectId: "project-1",
+      );
+
+      final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
+      expect(snapshot.agents, isEmpty);
+      expect(snapshot.providerData, isNull);
     });
 
     test("load gives the route project id precedence over session metadata", () async {
@@ -543,6 +570,7 @@ SessionOptionsCatalog _sessionOptionsCatalog() {
         defaultModelID: "gpt-4.1",
         models: {
           "gpt-4.1": ProviderModel(
+            fastMode: null,
             id: "gpt-4.1",
             providerID: "openai",
             name: "GPT-4.1",

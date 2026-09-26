@@ -397,6 +397,10 @@ class _TestHarness._({
 
 class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
   @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      PluginQuotaContinuationReadiness.unavailable;
+
+  @override
   Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
 
   @override
@@ -443,6 +447,7 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async => const PluginSession(
@@ -502,6 +507,7 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -577,6 +583,7 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}

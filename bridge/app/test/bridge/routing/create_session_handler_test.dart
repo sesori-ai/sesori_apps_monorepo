@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/routing/create_session_handler.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_bridge/src/services/session_view_service.dart";
 import "package:sesori_bridge/src/services/stale_session_prompt_options_exception.dart";
 import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -22,6 +23,7 @@ import "package:test/test.dart";
 
 import "../../helpers/fake_process_runner.dart";
 import "../../helpers/fake_session_options_service.dart";
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -106,7 +108,10 @@ void main() {
         sessionMutationDispatcher: sessionMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
       );
-      handler = CreateSessionHandler(sessionCreationService: sessionCreationService);
+      handler = CreateSessionHandler(
+        sessionViews: const PassThroughSessionViews(),
+        sessionCreationService: sessionCreationService,
+      );
     });
 
     tearDown(() async {
@@ -123,6 +128,37 @@ void main() {
 
     test("does not handle GET /session/create", () {
       expect(handler.canHandle(makeRequest("GET", "/session/create")), isFalse);
+    });
+
+    test("keeps the created session response when continuation projection fails", () async {
+      final localHandler = CreateSessionHandler(
+        sessionViews: const _FailingSessionViews(),
+        sessionCreationService: sessionCreationService,
+      );
+      final response = await localHandler.routeForTest(
+        makeRequest(
+          "POST",
+          "/session/create",
+          body: jsonEncode(
+            const CreateSessionRequest(
+              projectId: "/repo",
+              pluginId: legacyMissingPluginId,
+              dedicatedWorktree: false,
+              parts: [PromptPart.text(text: "Start")],
+              variant: null,
+              agent: null,
+              model: null,
+              command: null,
+            ).toJson(),
+          ),
+        ),
+      );
+
+      expect(response.status, 200);
+      final created = Session.fromJson(jsonDecodeMap(response.body!));
+      expect(await db.sessionDao.getSession(sessionId: created.id), isNotNull);
+      expect(created.autoContinuation, isNull);
+      expect(plugin.lastCreateSessionParts, [const PluginPromptPart.text(text: "Start")]);
     });
 
     test("accepts a request body without pluginId", () async {
@@ -170,6 +206,7 @@ void main() {
           dedicatedWorktree: true,
           parts: [PromptPart.text(text: "Start")],
           variant: SessionVariant(id: "xhigh"),
+          fastMode: true,
           agent: null,
           model: null,
           command: null,
@@ -178,6 +215,7 @@ void main() {
 
       _expectRandomSesoriId(sessionId: result.id, backendSessionId: "s1");
       expect(worktreeService.prepareCallCount, equals(1));
+      expect(plugin.lastCreateSessionFastMode, isTrue);
       expect(plugin.lastCreateSessionDirectory, equals("/repo/.worktrees/session-001"));
       expect(plugin.lastCreateSessionParts, isNotNull);
       expect(plugin.lastCreateSessionParts, hasLength(2));
@@ -209,6 +247,7 @@ void main() {
       expect(dbSession.branchName, equals("session-001"));
       expect(dbSession.baseBranch, equals("main"));
       expect(dbSession.baseCommit, equals("abc123def456"));
+      expect(dbSession.fastMode, isTrue);
       expect(dbSession.createdAt, greaterThan(0));
     });
 
@@ -487,7 +526,10 @@ void main() {
         sessionMutationDispatcher: localMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
       );
-      final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
+      final localHandler = CreateSessionHandler(
+        sessionViews: const PassThroughSessionViews(),
+        sessionCreationService: localCreationService,
+      );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
         branchName: "session-001",
@@ -1001,7 +1043,10 @@ void main() {
         sessionMutationDispatcher: orderedMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
       );
-      final localHandler = CreateSessionHandler(sessionCreationService: orderedCreationService);
+      final localHandler = CreateSessionHandler(
+        sessionViews: const PassThroughSessionViews(),
+        sessionCreationService: orderedCreationService,
+      );
 
       await localHandler.handle(
         makeRequest("POST", "/session/create"),
@@ -1186,7 +1231,10 @@ void main() {
         sessionMutationDispatcher: throwingDispatcher,
         sessionOptionsService: sessionOptionsService,
       );
-      final localHandler = CreateSessionHandler(sessionCreationService: localCreationService);
+      final localHandler = CreateSessionHandler(
+        sessionViews: const PassThroughSessionViews(),
+        sessionCreationService: localCreationService,
+      );
 
       final result = await localHandler.handle(
         makeRequest("POST", "/session/create"),
@@ -1283,6 +1331,7 @@ class _ThrowingCreateSessionPlugin({required final Object error}) extends _OpenC
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) {
@@ -1311,6 +1360,7 @@ class _OrderCheckingCommandPlugin({required final AppDatabase _database}) extend
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -1320,6 +1370,7 @@ class _OrderCheckingCommandPlugin({required final AppDatabase _database}) extend
     );
     hadStoredRowWhenCommandSent = session != null;
     await super.sendCommand(
+      fastMode: false,
       promptId: "prompt-1",
       sessionId: sessionId,
       command: command,
@@ -1338,4 +1389,12 @@ class _FakeBridgePlugin() extends _OpenCodeFakeBridgePlugin {
     required String projectId,
     required String worktreePath,
   }) async {}
+}
+
+final class const _FailingSessionViews() implements SessionViewService {
+  @override
+  Future<Session> enrich({required Session session}) async => throw StateError("continuation projection failed");
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

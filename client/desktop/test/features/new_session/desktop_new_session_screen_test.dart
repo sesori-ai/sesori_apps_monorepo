@@ -7,8 +7,10 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
+import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
 import "package:sesori_desktop/features/new_session/desktop_new_session_screen.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -44,6 +46,7 @@ void main() {
     when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
     when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
     when(() => newSessionCubit.canCreateSession).thenReturn(true);
+    when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.voiceFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
@@ -62,8 +65,11 @@ void main() {
             projectId: "project-1",
             projectName: "Sesori",
             onBack: () {},
+            onOpenProject: () {},
             onOpenHarnessSettings: () {},
             onSessionCreated: ({required session}) {},
+            onProjectSelected: ({required projectId, required projectName}) {},
+            projects: const [],
           ),
         ),
       ),
@@ -71,7 +77,7 @@ void main() {
     await tester.pump();
 
     expect(find.text("New session"), findsOneWidget);
-    expect(find.text("Dedicated workspace"), findsOneWidget);
+    expect(find.text("New worktree"), findsOneWidget);
     expect(find.text("Ask anything..."), findsOneWidget);
     expect(find.bySemanticsLabel("Start recording"), findsNothing);
     expect(
@@ -83,6 +89,84 @@ void main() {
     await tester.pump();
     expect(find.byType(EditableText), findsOneWidget);
   });
+  testWidgets("the page is one centred column under the toolbar, and choosing another project reports it", (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final newSessionCubit = _MockNewSessionCubit();
+    final inputModeCubit = _MockChatInputModeCubit();
+    when(() => newSessionCubit.state).thenReturn(_state);
+    whenListen(newSessionCubit, const Stream<NewSessionState>.empty(), initialState: _state);
+    when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
+    when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
+    when(() => newSessionCubit.canCreateSession).thenReturn(true);
+    when(() => newSessionCubit.canRefreshOptions).thenReturn(true);
+    when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
+    when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+    when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
+    whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
+    final selected = <String>[];
+
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<NewSessionCubit>.value(value: newSessionCubit),
+          BlocProvider<ChatInputModeCubit>.value(value: inputModeCubit),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: DesktopNewSessionView(
+            projectId: "project-1",
+            // The route can lack the name; the loaded list supplies it.
+            projectName: null,
+            onBack: () {},
+            onOpenProject: () {},
+            onOpenHarnessSettings: () {},
+            onSessionCreated: ({required session}) {},
+            onProjectSelected: ({required projectId, required projectName}) => selected.add("$projectId $projectName"),
+            projects: [
+              testProjectSummary(id: "project-1", name: "Sesori"),
+              testProjectSummary(id: "project-2", name: "Landing"),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final toolbar = tester.getRect(find.byType(DesktopPageToolbar));
+    final heading = tester.getRect(find.text("What should we work on?"));
+    final input = tester.getRect(find.byType(PromptInput));
+    final workspace = tester.getRect(find.text("New worktree"));
+    expect(toolbar.top, 0);
+    expect(heading.top, greaterThan(toolbar.bottom));
+    expect(input.width, DesktopNewSessionView.maxContentWidth);
+    expect(input.center.dx, 700);
+    expect(workspace.top, greaterThan(heading.bottom));
+    expect(input.top, greaterThan(workspace.bottom));
+    // Centred, not anchored: the pane keeps room below the column.
+    expect(input.bottom, lessThan(800));
+
+    expect(
+      find.descendant(of: find.byKey(const Key("new_session_project")), matching: find.text("Sesori")),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: find.byKey(const Key("desktop-page-breadcrumb")), matching: find.text("Sesori")),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key("new_session_project")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Landing"));
+    await tester.pumpAndSettle();
+    expect(selected, ["project-2 Landing"]);
+  });
+
   for (final closeFromDetail in [false, true]) {
     testWidgets("desktop harness modal X preserves the live composer draft (detail: $closeFromDetail)", (tester) async {
       await getIt.reset();
@@ -107,6 +191,7 @@ void main() {
       when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
       when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
       when(() => newSessionCubit.canCreateSession).thenReturn(true);
+      when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
       var draft = ComposerDraft.typed(text: "");
       when(() => newSessionCubit.composerDraft).thenAnswer((_) => draft);
       when(() => newSessionCubit.saveComposerDraft(draft: any(named: "draft"))).thenAnswer((invocation) {
@@ -159,12 +244,18 @@ void main() {
                 (route) => route.path == AppRouteDef.newSession.path,
               );
               final screen = route.builder!(context, state) as DesktopNewSessionScreen;
+              // Replacing the route reuses the page, so only this key gives
+              // another project its own cubit.
+              expect(screen.key, const ValueKey("desktop-new-session-p"));
               return DesktopNewSessionView(
                 projectId: "p",
                 projectName: "Project",
                 onBack: () {},
+                onOpenProject: () {},
                 onOpenHarnessSettings: screen.onOpenHarnessSettings,
                 onSessionCreated: ({required session}) {},
+                onProjectSelected: ({required projectId, required projectName}) {},
+                projects: const [],
               );
             },
           ),

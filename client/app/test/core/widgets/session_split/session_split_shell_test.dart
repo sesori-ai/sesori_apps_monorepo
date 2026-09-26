@@ -6,7 +6,6 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/core/widgets/sesori_background_widget.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -225,6 +224,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
           dedicatedWorktree: any(named: "dedicatedWorktree"),
         ),
@@ -240,7 +240,7 @@ void main() {
 
       // Open the new-session composer — pushed imperatively onto the pane
       // navigator (mirrors the list pane's "New session" button).
-      await tester.tap(find.descendant(of: leftPane, matching: find.byIcon(Icons.add)));
+      await tester.tap(find.descendant(of: leftPane, matching: find.byIcon(TablerRegular.plus)));
       await tester.pumpAndSettle();
       expect(find.byType(NewSessionScreen), findsOneWidget);
 
@@ -316,14 +316,17 @@ void main() {
       await tester.pumpWidget(
         BlocProvider<ConnectionOverlayCubit>.value(
           value: cubit,
-          child: MaterialApp(
-            theme: ThemeData(extensions: [PregoDesignSystem.light]),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Builder(
-              builder: (context) => EmptySessionDetailPanel(
-                background: const SesoriBackgroundWidget(),
-                connectionBanner: ConnectionBanner.maybeFor(context),
+          child: BlocProvider(
+            create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+            child: MaterialApp(
+              theme: ThemeData(extensions: [PregoDesignSystem.light]),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Builder(
+                builder: (context) => EmptySessionDetailPanel(
+                  background: const SesoriBackgroundWidget(),
+                  connectionBanner: ConnectionBanner.maybeFor(context),
+                ),
               ),
             ),
           ),

@@ -216,6 +216,7 @@ Future<void> _insertRoot({
   String? catalogTitle,
 }) async {
   await database.sessionDao.insertSession(
+    fastMode: false,
     sessionId: sessionId,
     backendSessionId: backendSessionId ?? "backend-$sessionId",
     projectId: "project-X",

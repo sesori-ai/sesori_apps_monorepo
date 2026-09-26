@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <!-- Neither restore route carries the Keystore keys protecting these values. -->
+    <cloud-backup>
+        <exclude domain="file" path="persistence/" />
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureKeyStorage.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration:FlutterSecureStorage.xml" />
+        <exclude domain="sharedpref" path="com.sesori.client.persistence.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureKeyStorage:com.sesori.client.persistence.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration:com.sesori.client.persistence.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="persistence/" />
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureKeyStorage.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration:FlutterSecureStorage.xml" />
+        <exclude domain="sharedpref" path="com.sesori.client.persistence.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureKeyStorage:com.sesori.client.persistence.xml" />
+        <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration:com.sesori.client.persistence.xml" />
+    </device-transfer>
+</data-extraction-rules>

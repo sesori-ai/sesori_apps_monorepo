@@ -11,7 +11,7 @@ import "../../../platform/external_link_opener.dart";
 import "../../../widgets/markdown_styles.dart";
 import "pending_request_auto_dismiss.dart";
 
-/// Bottom sheet that presents all server-driven questions within a single
+/// Modal that presents all server-driven questions within a single
 /// [SesoriQuestionAsked] event, one at a time.
 ///
 /// Each question keeps an editable local draft. The user can move freely
@@ -30,12 +30,12 @@ class const QuestionModal({
   required final double topInset,
   required final ExternalLinkOpener openExternalLink,
 }) extends StatefulWidget {
-  /// Opens the question modal as a content-sized bottom sheet and returns a
-  /// [Future] that completes when the sheet is dismissed (by answer, reject,
-  /// or swipe).
+  /// Opens the question modal as a content-sized bottom sheet on touch, or a
+  /// dialog on pointer, and returns a [Future] that completes when it is
+  /// dismissed (by answer, reject, swipe or Esc).
   ///
-  /// Presents a [PregoBottomSheet] directly (not via [showPregoBottomSheet])
-  /// because the sheet title tracks the question currently being answered.
+  /// Presents a [PregoModalSurface] (not via [showPregoModal]) because the
+  /// title tracks the question currently being answered.
   static Future<void> show(
     BuildContext context, {
     required SesoriQuestionAsked question,
@@ -47,13 +47,8 @@ class const QuestionModal({
   }) {
     // Capture before presenting: inside the route the top inset reads as 0.
     final topInset = MediaQuery.paddingOf(context).top;
-    return showModalBottomSheet<void>(
+    return showPregoModalRoute<void>(
       context: context,
-      isScrollControlled: true,
-      // PregoBottomSheet paints the rounded surface; keep the route
-      // transparent. The sheet caps itself below the status bar.
-      backgroundColor: Colors.transparent,
-      useSafeArea: false,
       builder: (_) => PendingRequestAutoDismiss(
         isPendingStream: isPendingStream,
         isPending: isPending,
@@ -285,7 +280,7 @@ class _QuestionModalState() extends State<QuestionModal> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && _confirmingRequestDecline) _cancelDeclineRequest();
       },
-      child: PregoBottomSheet(
+      child: PregoModalSurface(
         title: _confirmingRequestDecline
             ? loc.questionModalDeclineAllTitle
             : (info.header.isNotEmpty ? info.header : loc.questionModalTitle),
@@ -300,8 +295,9 @@ class _QuestionModalState() extends State<QuestionModal> {
             ? _cancelDeclineRequest
             : (_currentIndex > 0 ? () => _navigateTo(index: _currentIndex - 1) : null),
         onClose: _dismissModal,
+        width: PregoModalWidth.request,
+        handleBottomSafeArea: true,
         // Full-bleed body; the step indicator, list, and actions pad themselves.
-        contentPadding: EdgeInsetsDirectional.zero,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: math.max(maxBody, screenHeight * 0.3)),
           child: _confirmingRequestDecline
@@ -686,12 +682,12 @@ class const _QuestionStep({
             ),
             _QuestionResolution.answered => Icon(
               TablerRegular.check,
-              size: 16,
+              size: PregoIconSize.sm,
               color: foregroundColor,
             ),
             _QuestionResolution.declined => Icon(
               TablerRegular.minus,
-              size: 16,
+              size: PregoIconSize.sm,
               color: foregroundColor,
             ),
           };
@@ -708,6 +704,7 @@ class const _QuestionStep({
           child: Material(
             color: Colors.transparent,
             child: InkWell(
+              mouseCursor: WidgetStateMouseCursor.clickable,
               customBorder: const CircleBorder(),
               onTap: onTap,
               child: Center(
@@ -752,6 +749,7 @@ class const _ChoiceTile({
       shape: shape,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
         customBorder: shape,
         onTap: onTap,
         child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), child: child),
@@ -781,14 +779,14 @@ class const _OptionTile({
       // bgSurface1 so the card reads as raised against the sheet's
       // bgSecondary surface (bgSecondary here would vanish into it).
       color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xl)),
       onTap: onTap,
       child: Row(
         children: [
           Icon(
             isMultiple
-                ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
-                : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+                ? (isSelected ? TablerSolid.square_rounded_check : TablerRegular.square_rounded)
+                : (isSelected ? TablerRegular.circle_dot : TablerRegular.circle),
             color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
           ),
           const SizedBox(width: 12),
@@ -840,7 +838,7 @@ class const _DeclineQuestionTile({
         materialKey: const Key("decline-current-question"),
         color: isSelected ? prego.colors.bgQuaternary : prego.colors.bgSurface1,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(PregoRadius.xl),
           side: BorderSide(
             color: isSelected ? prego.colors.borderPrimary : prego.colors.borderSecondary,
           ),
@@ -901,7 +899,7 @@ class const _CustomAnswerTile({
       // bgSurface1 so the card reads as raised against the sheet's
       // bgSecondary surface (bgSecondary here would vanish into it).
       color: isSelected ? prego.colors.bgBrandPrimary : prego.colors.bgSurface1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xl)),
       onTap: onTap,
       child: Row(
         // The indicator stays level with the first answer line rather than the
@@ -911,8 +909,8 @@ class const _CustomAnswerTile({
           Icon(
             key: const Key("custom-answer-toggle"),
             isMultiple
-                ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
-                : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+                ? (isSelected ? TablerSolid.square_rounded_check : TablerRegular.square_rounded)
+                : (isSelected ? TablerRegular.circle_dot : TablerRegular.circle),
             color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
           ),
           const SizedBox(width: 12),

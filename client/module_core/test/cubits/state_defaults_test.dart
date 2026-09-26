@@ -1,36 +1,42 @@
-import "package:sesori_dart_core/src/cubits/project_list/project_list_state.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
 import "package:sesori_dart_core/src/foundation/models/session_interaction_state.dart";
+import "package:sesori_dart_core/src/services/models/project_list_state.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
   test("SessionDetailLoaded.isRefreshing defaults to false", () {
     const state = SessionDetailState.loaded(
-      interaction: SessionInteractionState.available(refreshError: null),
+      interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
       messages: [],
       olderMessagesCursor: null,
+      transcriptFolded: false,
       streamingText: {},
       sessionStatus: SessionStatus.idle(),
       pendingQuestions: [],
       pendingPermissions: [],
       sessionTitle: null,
+      session: testConstSession,
       pluginId: "opencode",
       supportsPromptAttachments: false,
-      agent: null,
       assistantAgentModel: null,
       children: [],
       childStatuses: {},
       isRootSession: true,
       isArchived: false,
       queuedMessages: [],
-      sendingSubmission: null,
+      bridgePromptAttachments: {},
+      localSend: LocalSendPhase.idle(),
       availableAgents: [],
       availableProviders: [],
       availableCommands: [],
       selectedAgent: "build",
       selectedAgentModel: null,
+      promptDefaults: null,
+      fastMode: false,
       stagedCommand: null,
       isRefreshing: false,
     );
@@ -51,7 +57,7 @@ void main() {
   });
 
   test("ProjectListLoaded.isRefreshing defaults to false", () {
-    const state = ProjectListState.loaded(projects: [], activityById: {});
+    const state = ProjectListState.loaded(projects: []);
     expect((state as ProjectListLoaded).isRefreshing, isFalse);
   });
 }

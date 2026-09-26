@@ -3,14 +3,14 @@ part of "../project_list_screen.dart";
 // ===========================================================================
 // "Why is this needed?" info sheet
 //
-// The onboarding "Why is this needed?" button opens this as a PregoBottomSheet.
+// The onboarding "Why is this needed?" button opens this through showPregoModal.
 // It explains why the Bridge sits between the phone and the developer's machine:
 // a lede paragraph, the connection graphic, three reassurance rows, and an FAQ.
 // ===========================================================================
 
 /// Content of the onboarding "Why is this needed?" bottom sheet. Pure
 /// presentation with only per-row FAQ expand/collapse state; opened via
-/// [showPregoBottomSheet] from [_WhyBridgeButton].
+/// [showPregoModal] from [_WhyBridgeButton].
 class const _WhyBridgeInfoSheet() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -119,7 +119,7 @@ class const _WhyFeatureRow({
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(icon, size: 16, color: colors.textPrimary),
+            Icon(icon, size: PregoIconSize.sm, color: colors.textPrimary),
             const SizedBox(width: PregoSpacing.lg),
             Expanded(
               child: Column(
@@ -177,6 +177,7 @@ class _WhyFaqItemState() extends State<_WhyFaqItem> {
             child: Material(
               type: MaterialType.transparency,
               child: InkWell(
+                mouseCursor: WidgetStateMouseCursor.clickable,
                 onTap: _toggle,
                 child: Padding(
                   padding: const EdgeInsetsDirectional.symmetric(
@@ -196,7 +197,7 @@ class _WhyFaqItemState() extends State<_WhyFaqItem> {
                         // Chevron points down when collapsed, up when expanded.
                         turns: _expanded ? 0.5 : 0.0,
                         duration: const Duration(milliseconds: 200),
-                        child: Icon(TablerRegular.chevron_down, size: 20, color: colors.textSecondary),
+                        child: Icon(TablerRegular.chevron_down, size: PregoIconSize.md, color: colors.textSecondary),
                       ),
                     ],
                   ),

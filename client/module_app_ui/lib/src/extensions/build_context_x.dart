@@ -1,5 +1,6 @@
 import "package:intl/intl.dart";
 import "package:material_ui/material_ui.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../l10n/app_localizations.dart";
 
@@ -19,14 +20,13 @@ extension BuildContextLocalization on BuildContext {
   /// True when OS accessibility settings ask to minimize motion; used to
   /// skip decorative animations.
   ///
-  /// Backed solely by the OS reduce-motion preference
-  /// (`MediaQuery.disableAnimations`). Screen-reader presence
+  /// Backed solely by the OS reduce-motion preference, through
+  /// [prefersReducedMotion]: Android's "Remove animations" and iOS's "Reduce
+  /// Motion" arrive through different sources. Screen-reader presence
   /// (`accessibleNavigation`) is intentionally excluded: it is a separate
   /// preference, and screen-reader users may rely on motion for spatial
   /// orientation.
-  bool get isReducedMotion {
-    return MediaQuery.maybeDisableAnimationsOf(this) ?? false;
-  }
+  bool get isReducedMotion => prefersReducedMotion(this);
 
   AppLocalizations get loc {
     final localizations = AppLocalizations.of(this);
@@ -42,6 +42,11 @@ extension BuildContextLocalization on BuildContext {
   /// generic English month/day order.
   String get _dateFormattingLocale => View.of(this).platformDispatcher.locale.toString();
 
+  /// The OS pattern for [skeleton] where the platform locale misses the
+  /// region (see [PregoSystemDatePatterns]), else intl's pattern for it.
+  DateFormat _dateFormat(String skeleton) =>
+      DateFormat(PregoSystemDatePatterns.patterns[skeleton] ?? skeleton, _dateFormattingLocale);
+
   String formatTimestamp(int ms) {
     final date = DateTime.fromMillisecondsSinceEpoch(ms);
     final now = DateTime.now();
@@ -51,7 +56,8 @@ extension BuildContextLocalization on BuildContext {
     if (diff.inHours < 1) return loc.timestampMinutesAgo(diff.inMinutes);
     if (diff.inDays < 1) return loc.timestampHoursAgo(diff.inHours);
     if (diff.inDays < 30) return loc.timestampDaysAgo(diff.inDays);
-    return DateFormat.yMd(_dateFormattingLocale).format(date);
+    // "15 Aug" reads faster than "15/08/2026"; the year only when it differs.
+    return (date.year == now.year ? _dateFormat("MMMd") : _dateFormat("yMMMd")).format(date);
   }
 
   /// The same instant as [formatTimestamp], shortened to what a list row's
@@ -76,9 +82,16 @@ extension BuildContextLocalization on BuildContext {
     if (diff.inDays < 30) return loc.timestampCompactDays(diff.inDays);
 
     final pattern = date.year == now.year
-        ? DateFormat.Md(_dateFormattingLocale)
-        : DateFormat.yMd(_dateFormattingLocale);
+        ? _dateFormat("Md")
+        : _dateFormat("yMd");
     return pattern.format(date);
+  }
+
+  /// A date and time with the year, in the viewer's zone and date patterns:
+  /// "Sep 25, 2026 6:22 PM".
+  String formatDateTime({required int ms}) {
+    final date = DateTime.fromMillisecondsSinceEpoch(ms);
+    return "${_dateFormat("yMMMd").format(date)} ${_dateFormat("jm").format(date)}";
   }
 
   /// Compact, glanceable timestamp for an individual chat message
@@ -90,14 +103,13 @@ extension BuildContextLocalization on BuildContext {
   String formatMessageTimestamp(int ms) {
     final date = DateTime.fromMillisecondsSinceEpoch(ms);
     final now = DateTime.now();
-    final locale = _dateFormattingLocale;
-    final time = DateFormat.jm(locale).format(date);
+    final time = _dateFormat("jm").format(date);
 
     final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
     if (isToday) return time;
     // Include the year for previous-year messages so "Jun 14" can't be
     // mistaken for the current year.
-    final datePattern = date.year == now.year ? DateFormat.MMMd(locale) : DateFormat.yMMMd(locale);
+    final datePattern = date.year == now.year ? _dateFormat("MMMd") : _dateFormat("yMMMd");
     return "${datePattern.format(date)}, $time";
   }
 }

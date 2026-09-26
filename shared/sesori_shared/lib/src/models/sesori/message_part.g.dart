@@ -56,6 +56,13 @@ MessagePartTool _$MessagePartToolFromJson(Map json) => MessagePartTool(
           error: null,
         )
       : ToolState.fromJson(Map<String, dynamic>.from(json['state'] as Map)),
+  kind:
+      $enumDecodeNullable(
+        _$ToolKindEnumMap,
+        json['kind'],
+        unknownValue: ToolKind.unknown,
+      ) ??
+      ToolKind.unknown,
   $type: json['type'] as String?,
 );
 
@@ -66,8 +73,18 @@ Map<String, dynamic> _$MessagePartToolToJson(MessagePartTool instance) =>
       'messageID': instance.messageID,
       'tool': instance.tool,
       'state': instance.state.toJson(),
+      'kind': _$ToolKindEnumMap[instance.kind]!,
       'type': instance.$type,
     };
+
+const _$ToolKindEnumMap = {
+  ToolKind.read: 'read',
+  ToolKind.edit: 'edit',
+  ToolKind.command: 'command',
+  ToolKind.search: 'search',
+  ToolKind.other: 'other',
+  ToolKind.unknown: 'unknown',
+};
 
 MessagePartSubtask _$MessagePartSubtaskFromJson(Map json) => MessagePartSubtask(
   id: json['id'] as String,
@@ -222,6 +239,7 @@ MessagePartCompaction _$MessagePartCompactionFromJson(Map json) =>
       id: json['id'] as String,
       sessionID: json['sessionID'] as String,
       messageID: json['messageID'] as String,
+      summary: json['summary'] as String?,
       $type: json['type'] as String?,
     );
 
@@ -231,6 +249,7 @@ Map<String, dynamic> _$MessagePartCompactionToJson(
   'id': instance.id,
   'sessionID': instance.sessionID,
   'messageID': instance.messageID,
+  'summary': ?instance.summary,
   'type': instance.$type,
 };
 

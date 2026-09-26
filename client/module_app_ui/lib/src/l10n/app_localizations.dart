@@ -103,6 +103,18 @@ abstract class AppLocalizations {
   /// **'Sesori Mobile'**
   String get appTitle;
 
+  /// No description provided for @persistenceStartupFailureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage upgrade paused'**
+  String get persistenceStartupFailureTitle;
+
+  /// No description provided for @persistenceStartupFailureDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori couldn’t finish upgrading your local storage. Close and reopen Sesori to try again.'**
+  String get persistenceStartupFailureDescription;
+
   /// No description provided for @connectErrorUnexpectedFormat.
   ///
   /// In en, this message translates to:
@@ -175,23 +187,41 @@ abstract class AppLocalizations {
   /// **'Access could not be confirmed'**
   String get desktopFileAccessUnknown;
 
-  /// Desktop home guidance when projects are available but no session is open.
+  /// Desktop home section heading for sessions waiting on the user's answer.
   ///
   /// In en, this message translates to:
-  /// **'Pick a session from the sidebar to get started.'**
-  String get desktopHomePickSession;
+  /// **'Needs you'**
+  String get desktopHomeNeedsYou;
 
-  /// Label for the prominent desktop sidebar action that opens the add-project dialog.
+  /// Desktop home section heading for the latest sessions across projects that are neither running nor waiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get desktopHomeRecent;
+
+  /// Tooltip and label for the small desktop sidebar action that opens the add-project dialog.
   ///
   /// In en, this message translates to:
   /// **'New project'**
   String get desktopSidebarNewProject;
 
-  /// Sidebar link to a project's full session list, with its active visible session count.
+  /// Sidebar button that reveals up to {count} more of a project's sessions in place.
   ///
   /// In en, this message translates to:
-  /// **'All sessions · {count}'**
-  String desktopSidebarAllSessions(int count);
+  /// **'Show {count} more'**
+  String desktopSidebarShowMore(int count);
+
+  /// Collapsible desktop sidebar section of sessions in motion across every project, with how many.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity · {count}'**
+  String desktopSidebarActivity(int count);
+
+  /// Accessible identity of a priority sidebar session with its project context.
+  ///
+  /// In en, this message translates to:
+  /// **'{sessionTitle} in {projectName}'**
+  String desktopSidebarActivitySession(String sessionTitle, String projectName);
 
   /// Tooltip for the sidebar project's new-session button, revealed on hover or keyboard focus.
   ///
@@ -211,6 +241,12 @@ abstract class AppLocalizations {
   /// **'Expand {projectName}'**
   String desktopSidebarExpandProject(String projectName);
 
+  /// Desktop control tooltip with its available platform-specific keyboard shortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} ({shortcut})'**
+  String desktopShortcutHint(String label, String shortcut);
+
   /// Tooltip for switching desktop navigation to the compact project rail.
   ///
   /// In en, this message translates to:
@@ -229,6 +265,138 @@ abstract class AppLocalizations {
   /// **'Resize sidebar; double-click to reset'**
   String get desktopSidebarResize;
 
+  /// Desktop sidebar row that opens the command palette.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get desktopSearch;
+
+  /// Placeholder of the desktop command palette's search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Search sessions, projects and commands'**
+  String get desktopCommandPaletteHint;
+
+  /// Desktop command palette heading over the app-wide commands.
+  ///
+  /// In en, this message translates to:
+  /// **'Commands'**
+  String get desktopCommandPaletteCommands;
+
+  /// Desktop command palette command that collapses or expands the sidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle sidebar'**
+  String get desktopToggleSidebar;
+
+  /// Desktop command palette command that leaves a pushed page.
+  ///
+  /// In en, this message translates to:
+  /// **'Go back'**
+  String get desktopGoBack;
+
+  /// Desktop project page toolbar toggle that switches the list to the project's archived sessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived'**
+  String get desktopProjectPageArchived;
+
+  /// Session list filter chip showing every active session, with their count.
+  ///
+  /// In en, this message translates to:
+  /// **'All · {count}'**
+  String sessionListFilterAll(int count);
+
+  /// Heading of the new session page, above the project selector and the prompt input.
+  ///
+  /// In en, this message translates to:
+  /// **'What should we work on?'**
+  String get newSessionHeading;
+
+  /// Desktop session page toolbar button that opens the session's file changes.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes'**
+  String get desktopSessionPageChanges;
+
+  /// Desktop subtask toolbar breadcrumb that returns to the session that started the subtask.
+  ///
+  /// In en, this message translates to:
+  /// **'Main session'**
+  String get desktopSessionParentBreadcrumb;
+
+  /// Shown under a list's search field when no loaded title matches the query.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get listSearchNoMatches;
+
+  /// Accessibility label of the button that empties a list's search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get listSearchClear;
+
+  /// Placeholder of the search field above the phone's projects list.
+  ///
+  /// In en, this message translates to:
+  /// **'Search projects and sessions'**
+  String get projectListSearchHint;
+
+  /// Placeholder of the search field above the phone's session list.
+  ///
+  /// In en, this message translates to:
+  /// **'Search sessions'**
+  String get sessionListSearchHint;
+
+  /// Shown in the session list when the Running or Unread filter leaves no session.
+  ///
+  /// In en, this message translates to:
+  /// **'No sessions match this filter'**
+  String get sessionListFilterEmpty;
+
+  /// Session list filter chip showing only sessions an agent is working in, with their count.
+  ///
+  /// In en, this message translates to:
+  /// **'Running · {count}'**
+  String sessionListFilterRunning(int count);
+
+  /// Session list filter chip showing only sessions with unopened activity, with their count.
+  ///
+  /// In en, this message translates to:
+  /// **'Unread · {count}'**
+  String sessionListFilterUnread(int count);
+
+  /// Desktop project page overflow menu action that reloads the project's session list.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh sessions'**
+  String get desktopProjectPageRefresh;
+
+  /// Tooltip for explicitly refreshing both desktop sidebar inventories.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh projects and sessions'**
+  String get desktopSidebarRefresh;
+
+  /// Accessible busy label while both desktop sidebar inventories refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing projects and sessions'**
+  String get desktopSidebarRefreshing;
+
+  /// Confirmation after both desktop sidebar inventories refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects and sessions updated'**
+  String get desktopSidebarRefreshSuccess;
+
+  /// Failure notice when either desktop sidebar inventory could not refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh projects and sessions'**
+  String get desktopSidebarRefreshFailed;
+
   /// Sidebar recovery notice when bridge ownership can be reclaimed.
   ///
   /// In en, this message translates to:
@@ -238,7 +406,7 @@ abstract class AppLocalizations {
   /// Action to reclaim local or relay bridge ownership.
   ///
   /// In en, this message translates to:
-  /// **'Take Over'**
+  /// **'Take over'**
   String get desktopBridgeTakeOver;
 
   /// Sidebar notice for supervised bridge authentication recovery.
@@ -250,7 +418,7 @@ abstract class AppLocalizations {
   /// Action to recover authentication and start the local bridge.
   ///
   /// In en, this message translates to:
-  /// **'Start Bridge'**
+  /// **'Start bridge'**
   String get desktopBridgeStart;
 
   /// Sidebar notice when automatic bridge crash recovery stops.
@@ -262,7 +430,7 @@ abstract class AppLocalizations {
   /// Action to open the local bridge's diagnostic logs.
   ///
   /// In en, this message translates to:
-  /// **'Open Logs'**
+  /// **'Open logs'**
   String get desktopBridgeOpenLogs;
 
   /// Heading for controls of the bridge supervised on this computer, not the desktop relay client.
@@ -274,7 +442,7 @@ abstract class AppLocalizations {
   /// Action that turns off the supervised local bridge without quitting Sesori.
   ///
   /// In en, this message translates to:
-  /// **'Stop Bridge'**
+  /// **'Stop bridge'**
   String get desktopBridgeStop;
 
   /// Secondary popover action opening bridge configuration.
@@ -319,17 +487,17 @@ abstract class AppLocalizations {
   /// **'This computer'**
   String get desktopSettingsThisComputer;
 
-  /// Label of the pinned desktop navigation entry for local bridge controls.
-  ///
-  /// In en, this message translates to:
-  /// **'Bridge'**
-  String get desktopBridgeTitle;
-
   /// No description provided for @projectListTitle.
   ///
   /// In en, this message translates to:
   /// **'Projects'**
   String get projectListTitle;
+
+  /// Heading over the sessions waiting for the user or running, across projects, at the top of Projects.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get projectListActivity;
 
   /// No description provided for @projectListLoadingSemantics.
   ///
@@ -340,7 +508,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectListDefaultName.
   ///
   /// In en, this message translates to:
-  /// **'Default Project'**
+  /// **'Default project'**
   String get projectListDefaultName;
 
   /// No description provided for @projectListRefreshSuccess.
@@ -378,6 +546,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New activity'**
   String get projectListNewActivity;
+
+  /// Amber status on a project row whose folder was moved or deleted on the bridge's computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder not found'**
+  String get projectListFolderNotFound;
+
+  /// Action that removes a project whose folder no longer exists from the project list.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get projectListRemove;
 
   /// Message under the folders graphic on the connected-but-empty Projects screen.
   ///
@@ -517,17 +697,23 @@ abstract class AppLocalizations {
   /// **'More information'**
   String get projectsOnboardingStepInfoSemantics;
 
-  /// Status caption under the machine name on the bridge-offline Projects screen, used when the bridge has never reported a last-seen time.
+  /// Status under the machine name on the desktop's bridge-offline home.
   ///
   /// In en, this message translates to:
   /// **'Disconnected'**
   String get projectsBridgeOfflineDisconnected;
 
-  /// Status caption under the machine name on the bridge-offline Projects screen, pairing the disconnected state with when the bridge was last seen, e.g. 'Disconnected · 5h ago'. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.
+  /// Heading of the bridge-offline Projects screen, under the connection graphic. The bar's bridge line above already names the computer.
   ///
   /// In en, this message translates to:
-  /// **'Disconnected · {lastSeen}'**
-  String projectsBridgeOfflineDisconnectedSince(String lastSeen);
+  /// **'Bridge offline'**
+  String get projectsBridgeOfflineTitle;
+
+  /// Quiet line under the 'Bridge offline' heading saying when the bridge was last seen, e.g. 'Last seen 5h ago'. Omitted when the bridge has never reported a last-seen time. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.
+  ///
+  /// In en, this message translates to:
+  /// **'Last seen {lastSeen}'**
+  String projectsBridgeOfflineLastSeen(String lastSeen);
 
   /// Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands.
   ///
@@ -540,12 +726,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Make sure the Bridge is running'**
   String get projectsBridgeOfflineStartBridge;
-
-  /// Popover text explaining the start-the-bridge command on the bridge-offline Projects screen, opened from the info icon next to that label. Kept in the same untitled single-sentence style as the onboarding step popovers.
-  ///
-  /// In en, this message translates to:
-  /// **'Leave it running while you use Sesori from your phone.'**
-  String get projectsBridgeOfflineStartBridgeInfo;
 
   /// Desktop project recovery action that starts or retries the supervised local bridge.
   ///
@@ -562,7 +742,7 @@ abstract class AppLocalizations {
   /// No description provided for @connectionLostTitle.
   ///
   /// In en, this message translates to:
-  /// **'Connection Lost'**
+  /// **'Connection lost'**
   String get connectionLostTitle;
 
   /// No description provided for @connectionLostReconnect.
@@ -598,8 +778,32 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLogout.
   ///
   /// In en, this message translates to:
-  /// **'Log Out'**
+  /// **'Log out'**
   String get settingsLogout;
+
+  /// Title of the confirmation dialog shown before the user logs out.
+  ///
+  /// In en, this message translates to:
+  /// **'Log out?'**
+  String get settingsLogoutConfirmTitle;
+
+  /// Body of the log-out confirmation dialog: logging out removes this device's access to the user's bridges until they sign in again.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll need to sign in again to reach your bridges from this device.'**
+  String get settingsLogoutConfirmMessage;
+
+  /// Button that closes the log-out confirmation dialog and keeps the user signed in.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get settingsLogoutConfirmCancel;
+
+  /// One line above the bridge settings group while no bridge is connected; the rows below it are dimmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a bridge to change these settings.'**
+  String get settingsBridgeOffline;
 
   /// No description provided for @settingsSectionAccount.
   ///
@@ -631,23 +835,17 @@ abstract class AppLocalizations {
   /// **'YOLO mode'**
   String get settingsYoloTitle;
 
-  /// No description provided for @settingsYoloWarning.
+  /// Plain statement of what YOLO mode does, under its Settings toggle and in the session page's YOLO explanation.
   ///
   /// In en, this message translates to:
-  /// **'Automatically approves all permission requests. Use with caution.'**
-  String get settingsYoloWarning;
+  /// **'Sesori approves every permission request for you, so the agent never stops to ask.'**
+  String get settingsYoloDescription;
 
   /// No description provided for @settingsYoloLoading.
   ///
   /// In en, this message translates to:
   /// **'Loading the bridge setting…'**
   String get settingsYoloLoading;
-
-  /// No description provided for @settingsYoloDisconnected.
-  ///
-  /// In en, this message translates to:
-  /// **'Connect to a bridge to configure this setting.'**
-  String get settingsYoloDisconnected;
 
   /// No description provided for @settingsYoloUnsupported.
   ///
@@ -697,12 +895,6 @@ abstract class AppLocalizations {
   /// **'Loading the bridge setting…'**
   String get settingsPluginWarmupLoading;
 
-  /// No description provided for @settingsPluginWarmupDisconnected.
-  ///
-  /// In en, this message translates to:
-  /// **'Connect to a bridge to configure this setting.'**
-  String get settingsPluginWarmupDisconnected;
-
   /// No description provided for @settingsPluginWarmupUnsupported.
   ///
   /// In en, this message translates to:
@@ -751,12 +943,6 @@ abstract class AppLocalizations {
   /// **'Loading the bridge setting…'**
   String get settingsPullRequestRefreshLoading;
 
-  /// No description provided for @settingsPullRequestRefreshDisconnected.
-  ///
-  /// In en, this message translates to:
-  /// **'Connect to a bridge to configure this setting.'**
-  String get settingsPullRequestRefreshDisconnected;
-
   /// No description provided for @settingsPullRequestRefreshUnsupported.
   ///
   /// In en, this message translates to:
@@ -792,12 +978,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unavailable'**
   String get settingsPullRequestRefreshUnavailable;
-
-  /// No description provided for @settingsPullRequestRefreshOffline.
-  ///
-  /// In en, this message translates to:
-  /// **'Offline'**
-  String get settingsPullRequestRefreshOffline;
 
   /// No description provided for @settingsPullRequestRefreshRetry.
   ///
@@ -1336,7 +1516,7 @@ abstract class AppLocalizations {
   /// No description provided for @harnessesRegisteredSection.
   ///
   /// In en, this message translates to:
-  /// **'Registered Harnesses'**
+  /// **'Registered harnesses'**
   String get harnessesRegisteredSection;
 
   /// No description provided for @harnessesEmptyTitle.
@@ -1561,17 +1741,17 @@ abstract class AppLocalizations {
   /// **'Busy'**
   String get harnessesWorkBusy;
 
-  /// No description provided for @settingsProfileTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Profile'**
-  String get settingsProfileTitle;
-
   /// No description provided for @settingsSectionAppearance.
   ///
   /// In en, this message translates to:
   /// **'Appearance'**
   String get settingsSectionAppearance;
+
+  /// No description provided for @desktopSettingsTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get desktopSettingsTheme;
 
   /// No description provided for @settingsSectionAnalytics.
   ///
@@ -1582,7 +1762,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBasicUsageAnalyticsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Basic Usage Analytics'**
+  /// **'Basic usage analytics'**
   String get settingsBasicUsageAnalyticsTitle;
 
   /// No description provided for @settingsBasicUsageAnalyticsDescription.
@@ -1714,13 +1894,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsLegalTerms.
   ///
   /// In en, this message translates to:
-  /// **'Terms of Service'**
+  /// **'Terms of service'**
   String get settingsLegalTerms;
 
   /// No description provided for @settingsLegalPrivacy.
   ///
   /// In en, this message translates to:
-  /// **'Privacy Policy'**
+  /// **'Privacy policy'**
   String get settingsLegalPrivacy;
 
   /// Button that re-fetches a legal document after the load failed
@@ -1750,7 +1930,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationSectionAi.
   ///
   /// In en, this message translates to:
-  /// **'AI Notifications'**
+  /// **'AI notifications'**
   String get notificationSectionAi;
 
   /// No description provided for @notificationSectionSystem.
@@ -1798,7 +1978,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationCategoryAiInteraction.
   ///
   /// In en, this message translates to:
-  /// **'AI Interactions'**
+  /// **'AI interactions'**
   String get notificationCategoryAiInteraction;
 
   /// No description provided for @notificationCategoryAiInteractionDescription.
@@ -1810,7 +1990,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationCategorySessionMessage.
   ///
   /// In en, this message translates to:
-  /// **'Session Messages'**
+  /// **'Session messages'**
   String get notificationCategorySessionMessage;
 
   /// No description provided for @notificationCategorySessionMessageDescription.
@@ -1822,7 +2002,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationCategoryConnectionStatus.
   ///
   /// In en, this message translates to:
-  /// **'Connection Status'**
+  /// **'Connection status'**
   String get notificationCategoryConnectionStatus;
 
   /// No description provided for @notificationCategoryConnectionStatusDescription.
@@ -1834,7 +2014,7 @@ abstract class AppLocalizations {
   /// No description provided for @notificationCategorySystemUpdate.
   ///
   /// In en, this message translates to:
-  /// **'System Updates'**
+  /// **'System updates'**
   String get notificationCategorySystemUpdate;
 
   /// No description provided for @sessionListTitle.
@@ -1842,12 +2022,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sessions'**
   String get sessionListTitle;
-
-  /// Screen-reader label for the sessions-list bar subtitle row, which opens a popover with the untruncated repository name.
-  ///
-  /// In en, this message translates to:
-  /// **'Show full repository name'**
-  String get sessionListRepoInfoSemantics;
 
   /// No description provided for @sessionListTitleWithName.
   ///
@@ -1864,7 +2038,7 @@ abstract class AppLocalizations {
   /// Headline on the sessions list when a project has no active sessions yet, inviting the user to begin.
   ///
   /// In en, this message translates to:
-  /// **'Start your first task'**
+  /// **'Start your first session'**
   String get sessionListEmptyTitle;
 
   /// No description provided for @sessionListUntitled.
@@ -1903,17 +2077,11 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get sessionListRetry;
 
-  /// No description provided for @sessionListNewSession.
+  /// Label of the primary action that starts a new session: the sessions list button and the desktop sidebar button.
   ///
   /// In en, this message translates to:
   /// **'New session'**
   String get sessionListNewSession;
-
-  /// Label of the primary button on the sessions list that starts a new task (session).
-  ///
-  /// In en, this message translates to:
-  /// **'New task'**
-  String get sessionListNewTask;
 
   /// No description provided for @sessionDetailTitle.
   ///
@@ -2053,6 +2221,12 @@ abstract class AppLocalizations {
   /// **'Images can\'t be sent with slash commands.'**
   String get sessionDetailAttachmentsNotWithCommands;
 
+  /// Under a long code block in a chat message that shows only its first lines; opens the whole block in a modal.
+  ///
+  /// In en, this message translates to:
+  /// **'Open all {count} lines'**
+  String codeBlockOpenAll(int count);
+
   /// Body of a queued-message bubble whose submission has image attachments but no text, e.g. '1 image'.
   ///
   /// In en, this message translates to:
@@ -2088,12 +2262,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search commands'**
   String get sessionDetailCommandSearch;
-
-  /// Placeholder describing the searchable fields in the slash-command picker.
-  ///
-  /// In en, this message translates to:
-  /// **'Name, description, or arguments'**
-  String get sessionDetailCommandSearchHint;
 
   /// No description provided for @sessionDetailNoCommands.
   ///
@@ -2172,6 +2340,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Thinking...'**
   String get sessionDetailThinking;
+
+  /// No description provided for @sessionDetailWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Working…'**
+  String get sessionDetailWorking;
 
   /// No description provided for @sessionDetailThought.
   ///
@@ -2281,12 +2455,6 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get sessionDetailToolRunning;
 
-  /// No description provided for @sessionDetailToolCompleted.
-  ///
-  /// In en, this message translates to:
-  /// **'Done'**
-  String get sessionDetailToolCompleted;
-
   /// No description provided for @sessionDetailToolError.
   ///
   /// In en, this message translates to:
@@ -2299,11 +2467,125 @@ abstract class AppLocalizations {
   /// **'Cancelled'**
   String get sessionDetailToolCancelled;
 
+  /// No description provided for @sessionDetailShell.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell'**
+  String get sessionDetailShell;
+
+  /// No description provided for @sessionDetailCommandRan.
+  ///
+  /// In en, this message translates to:
+  /// **'Ran'**
+  String get sessionDetailCommandRan;
+
   /// No description provided for @sessionDetailFollowOutput.
   ///
   /// In en, this message translates to:
   /// **'Follow'**
   String get sessionDetailFollowOutput;
+
+  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript, present when the agent thought at least once, e.g. 'Thought · 3 steps'.
+  ///
+  /// In en, this message translates to:
+  /// **'Thought'**
+  String get transcriptSummaryThought;
+
+  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many other tool calls the agent made, e.g. 'Thought · read 1 file · 3 steps'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 step} other{{count} steps}}'**
+  String transcriptSummarySteps(int count);
+
+  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file reads the agent made, counted per call, e.g. 'Thought · read 2 files · ran 1 command'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{read 1 file} other{read {count} files}}'**
+  String transcriptSummaryRead(int count);
+
+  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file edits the agent made, counted per call, e.g. 'read 2 files · edited 1 file'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{edited 1 file} other{edited {count} files}}'**
+  String transcriptSummaryEdited(int count);
+
+  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many shell commands the agent ran, e.g. 'Thought · ran 3 commands'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{ran 1 command} other{ran {count} commands}}'**
+  String transcriptSummaryRan(int count);
+
+  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file or web searches the agent made, e.g. 'Thought · 2 searches · read 1 file'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 search} other{{count} searches}}'**
+  String transcriptSummarySearches(int count);
+
+  /// Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many sub-agents the agent ran, e.g. '3 steps · 2 sub-agents'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 sub-agent} other{{count} sub-agents}}'**
+  String transcriptSummarySubAgents(int count);
+
+  /// Last part of the one-line summary of a collapsed group of agent steps in a session transcript: how many of the steps failed, e.g. '3 steps · 1 failed'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 failed} other{{count} failed}}'**
+  String transcriptSummaryFailed(int count);
+
+  /// Part of the one line a folded turn of a session transcript shows: how many steps the agent took in it, e.g. '3 steps · 1m 02s — Fixed the failing test'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No steps} =1{1 step} other{{count} steps}}'**
+  String transcriptTurnSteps(int count);
+
+  /// The line a folded turn of a session transcript shows while the agent works on it and has taken no step yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get transcriptTurnRunning;
+
+  /// The line a folded turn of a session transcript shows while the agent works on it: how many steps it has taken so far, e.g. 'Running · step 3'.
+  ///
+  /// In en, this message translates to:
+  /// **'Running · step {step}'**
+  String transcriptTurnRunningStep(int step);
+
+  /// Start of the line a folded turn of a session transcript shows when the turn ended in an error, followed by the error's first line when there is one, e.g. 'Ended with an error · Rate limit reached'.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended with an error'**
+  String get transcriptTurnFailed;
+
+  /// Start of the line a folded session transcript shows for the messages before the first loaded prompt, whose own prompt may be on an older page that has not loaded, followed by the step count, e.g. 'Earlier turn, partly loaded · 3 steps'.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier turn, partly loaded'**
+  String get transcriptTurnPartlyLoaded;
+
+  /// Start of the line a folded session transcript shows for the messages before the user's first prompt, such as automation, followed by the step count, e.g. 'Before the first prompt · 2 steps'.
+  ///
+  /// In en, this message translates to:
+  /// **'Before the first prompt'**
+  String get transcriptTurnBeforeFirstPrompt;
+
+  /// How long a folded turn of a session transcript took, under a minute, e.g. '42s'.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds}s'**
+  String transcriptTurnSeconds(int seconds);
+
+  /// How long a folded turn of a session transcript took, under an hour. The seconds always have two digits, e.g. '1m 02s'.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m {seconds}s'**
+  String transcriptTurnMinutes(int minutes, String seconds);
+
+  /// How long a folded turn of a session transcript took, an hour or more. The minutes always have two digits, e.g. '1h 05m'.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h {minutes}m'**
+  String transcriptTurnHours(int hours, String minutes);
 
   /// Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages.
   ///
@@ -2479,6 +2761,18 @@ abstract class AppLocalizations {
   /// **'Sending'**
   String get sessionDetailSendingMessage;
 
+  /// Status under a message whose send is still in flight after a short delay; names the harness, e.g. OpenCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending to {harnessName}…'**
+  String sessionDetailSendingToHarness(String harnessName);
+
+  /// Status under a message whose send failed; Retry and Remove buttons follow it.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t send'**
+  String get sessionDetailSendFailed;
+
   /// No description provided for @sessionDetailPromptOptionsUpdated.
   ///
   /// In en, this message translates to:
@@ -2527,11 +2821,113 @@ abstract class AppLocalizations {
   /// **'Variant'**
   String get sessionDetailPickerVariant;
 
-  /// No description provided for @sessionDetailSelectModel.
+  /// No description provided for @sessionDetailFastMode.
   ///
   /// In en, this message translates to:
-  /// **'Select Model'**
-  String get sessionDetailSelectModel;
+  /// **'Fast mode'**
+  String get sessionDetailFastMode;
+
+  /// Label of the chip beside the session's model picker while YOLO mode is on for the session. Keep the product term YOLO.
+  ///
+  /// In en, this message translates to:
+  /// **'YOLO'**
+  String get sessionDetailYoloChip;
+
+  /// Session approval menu option, and the tooltip of the composer's approval chip, for a session where every permission request waits for the user.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask for approval'**
+  String get sessionApprovalAsk;
+
+  /// Session approval menu option that makes Sesori approve every permission request for this session. Keep the product term YOLO.
+  ///
+  /// In en, this message translates to:
+  /// **'Approve everything (YOLO)'**
+  String get sessionApprovalYolo;
+
+  /// Marks the session approval menu option that matches the bridge-wide setting, which sessions follow unless changed.
+  ///
+  /// In en, this message translates to:
+  /// **'{option} (default)'**
+  String sessionApprovalDefaultOption(String option);
+
+  /// Error alert when the bridge did not acknowledge a change to the session's approval mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not change approval for this session. Try again.'**
+  String get sessionApprovalUpdateFailed;
+
+  /// Title of the sheet or dialog opened by tapping the YOLO chip on the session page.
+  ///
+  /// In en, this message translates to:
+  /// **'YOLO mode is on'**
+  String get sessionDetailYoloTitle;
+
+  /// Button in the YOLO explanation that opens the settings where YOLO mode is turned off.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get sessionDetailYoloOpenSettings;
+
+  /// No description provided for @sessionDetailFastModeConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch speed?'**
+  String get sessionDetailFastModeConfirmTitle;
+
+  /// No description provided for @sessionDetailFastModeConfirmEnableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching speed drops the prompt cache, so the next message re-reads the whole conversation. Fast mode also uses more of your usage.'**
+  String get sessionDetailFastModeConfirmEnableBody;
+
+  /// No description provided for @sessionDetailFastModeConfirmDisableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Switching speed drops the prompt cache, so the next message re-reads the whole conversation.'**
+  String get sessionDetailFastModeConfirmDisableBody;
+
+  /// No description provided for @sessionDetailFastModeConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get sessionDetailFastModeConfirmAction;
+
+  /// No description provided for @sessionDetailFastModeCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get sessionDetailFastModeCancel;
+
+  /// No description provided for @sessionDetailFastModeUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast mode is unavailable'**
+  String get sessionDetailFastModeUnavailableTitle;
+
+  /// No description provided for @sessionDetailFastModeUnavailableExtraUsageDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn on extra usage for your account to use fast mode.'**
+  String get sessionDetailFastModeUnavailableExtraUsageDisabled;
+
+  /// No description provided for @sessionDetailFastModeUnavailableNotOnPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Your plan doesn\'t include fast mode.'**
+  String get sessionDetailFastModeUnavailableNotOnPlan;
+
+  /// No description provided for @sessionDetailFastModeUnavailableDisabledByOrganization.
+  ///
+  /// In en, this message translates to:
+  /// **'Your organization has turned off fast mode.'**
+  String get sessionDetailFastModeUnavailableDisabledByOrganization;
+
+  /// No description provided for @sessionDetailFastModeUnavailableUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast mode can\'t be used with this account right now.'**
+  String get sessionDetailFastModeUnavailableUnknown;
 
   /// No description provided for @sessionDetailModelSearch.
   ///
@@ -2539,22 +2935,22 @@ abstract class AppLocalizations {
   /// **'Search models...'**
   String get sessionDetailModelSearch;
 
-  /// No description provided for @backgroundTasksRunning.
+  /// No description provided for @subAgentsTitle.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{1 Task Running} other{{count} Tasks Running}}'**
-  String backgroundTasksRunning(int count);
+  /// **'Sub-agents'**
+  String get subAgentsTitle;
 
-  /// No description provided for @backgroundTasksCompleted.
+  /// Tooltip and screen-reader label of the sub-agents pill in the composer.
   ///
   /// In en, this message translates to:
-  /// **'All tasks completed'**
-  String get backgroundTasksCompleted;
+  /// **'{count, plural, =1{1 sub-agent} other{{count} sub-agents}}, {running} working'**
+  String subAgentsSummary(int count, int running);
 
   /// No description provided for @backgroundTaskStatusIdle.
   ///
   /// In en, this message translates to:
-  /// **'Completed'**
+  /// **'Idle'**
   String get backgroundTaskStatusIdle;
 
   /// No description provided for @backgroundTaskStatusBusy.
@@ -2568,18 +2964,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retrying'**
   String get backgroundTaskStatusRetry;
-
-  /// No description provided for @backgroundTasksShowCompleted.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =1{Show 1 completed task} other{Show {count} completed tasks}}'**
-  String backgroundTasksShowCompleted(int count);
-
-  /// No description provided for @backgroundTasksHideCompleted.
-  ///
-  /// In en, this message translates to:
-  /// **'Hide completed'**
-  String get backgroundTasksHideCompleted;
 
   /// No description provided for @sessionListToggleArchived.
   ///
@@ -2622,6 +3006,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Session archived'**
   String get sessionListArchived;
+
+  /// Action on the desktop 'Session archived' alert that cancels the archive before it is sent.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get sessionListArchiveUndo;
+
+  /// Desktop session menu entry, and the default button of the refusal alert, that archives a session without deleting its worktree.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive, keep worktree'**
+  String get sessionListArchiveKeepWorktree;
+
+  /// Title of the desktop alert shown before archiving a session that is still running.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive a running session?'**
+  String get sessionListArchiveRunningTitle;
+
+  /// Body of the desktop alert shown before archiving a running session.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” is still running. Archiving makes it permanently read-only.'**
+  String sessionListArchiveRunningMessage(String title);
+
+  /// Title of the desktop alert shown when the bridge refuses to delete a session's worktree while archiving.
+  ///
+  /// In en, this message translates to:
+  /// **'The worktree can’t be deleted safely'**
+  String get sessionListArchiveRefusedTitle;
+
+  /// Desktop refusal alert button that archives the session and force-deletes its worktree.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete it anyway'**
+  String get sessionListArchiveDeleteAnyway;
+
+  /// Title of the desktop delete alert, naming the session.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{title}”?'**
+  String sessionListDeleteNamedTitle(String title);
+
+  /// Checkbox in the desktop delete alert.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the worktree too (the branch is kept)'**
+  String get sessionListDeleteWorktreeKeepsBranch;
 
   /// No description provided for @sessionListDeleted.
   ///
@@ -2698,7 +3130,7 @@ abstract class AppLocalizations {
   /// No description provided for @signInWithEmail.
   ///
   /// In en, this message translates to:
-  /// **'Sign in with Email'**
+  /// **'Sign in with email'**
   String get signInWithEmail;
 
   /// No description provided for @emailLabel.
@@ -2791,23 +3223,179 @@ abstract class AppLocalizations {
   /// **'Could not open browser'**
   String get loginBrowserOpenFailed;
 
+  /// Shown when the user declined a browser sign-in on the confirmation page or at the provider.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in was declined. The browser page did not confirm this sign-in.'**
+  String get loginDeclined;
+
+  /// Link that abandons a browser sign-in that is waiting for the user.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get loginCancel;
+
+  /// Link under the email sign-in form that returns to the provider buttons.
+  ///
+  /// In en, this message translates to:
+  /// **'Other ways to sign in'**
+  String get loginOtherWaysToSignIn;
+
+  /// One-line pitch on the desktop sign-in window's brand panel.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch and steer your coding sessions from your desk or your phone.'**
+  String get desktopLoginTagline;
+
+  /// No description provided for @desktopLoginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get desktopLoginTitle;
+
+  /// No description provided for @desktopLoginSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the same account as on your phone.'**
+  String get desktopLoginSubtitle;
+
+  /// No description provided for @desktopLoginContinueWithGithub.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with GitHub'**
+  String get desktopLoginContinueWithGithub;
+
+  /// No description provided for @desktopLoginContinueWithApple.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Apple'**
+  String get desktopLoginContinueWithApple;
+
+  /// No description provided for @desktopLoginContinueWithGoogle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get desktopLoginContinueWithGoogle;
+
+  /// Marker on the desktop sign-in method this device signed in with last.
+  ///
+  /// In en, this message translates to:
+  /// **'Last used'**
+  String get desktopLoginLastUsed;
+
+  /// Subtitle above the desktop email sign-in form.
+  ///
+  /// In en, this message translates to:
+  /// **'For accounts created with an email and password.'**
+  String get desktopLoginEmailSubtitle;
+
+  /// No description provided for @desktopLoginWaitingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue in your browser'**
+  String get desktopLoginWaitingTitle;
+
+  /// Desktop card shown while a browser sign-in waits. The device is the name the browser page asks the user to confirm.
+  ///
+  /// In en, this message translates to:
+  /// **'We opened {provider} sign-in in your browser. The page will ask you to confirm “{device}”. Come back here when it is done.'**
+  String desktopLoginWaitingMessage(String provider, String device);
+
+  /// Countdown on the desktop browser sign-in card, in minutes and seconds.
+  ///
+  /// In en, this message translates to:
+  /// **'The link expires in {time}'**
+  String desktopLoginExpiresIn(String time);
+
+  /// No description provided for @desktopLoginOpenAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Open again'**
+  String get desktopLoginOpenAgain;
+
+  /// No description provided for @desktopLoginCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get desktopLoginCopyLink;
+
+  /// No description provided for @desktopLoginLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied to clipboard'**
+  String get desktopLoginLinkCopied;
+
+  /// No description provided for @desktopLoginCancelHandoff.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel and choose another way'**
+  String get desktopLoginCancelHandoff;
+
+  /// No description provided for @desktopLoginBrowserFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t open your browser'**
+  String get desktopLoginBrowserFailedTitle;
+
+  /// No description provided for @desktopLoginBrowserFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy the link, open it in any browser on this computer, and finish signing in there. We are still waiting.'**
+  String get desktopLoginBrowserFailedMessage;
+
+  /// Button that tries again to open the sign-in page in the browser.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get desktopLoginTryAgain;
+
+  /// No description provided for @desktopLoginExpiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in link expired'**
+  String get desktopLoginExpiredTitle;
+
+  /// No description provided for @desktopLoginExpiredMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing was confirmed in the browser within 5 minutes. Choose a way to sign in again.'**
+  String get desktopLoginExpiredMessage;
+
+  /// No description provided for @desktopLoginDeclinedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in was declined'**
+  String get desktopLoginDeclinedTitle;
+
+  /// No description provided for @desktopLoginDeclinedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser page did not confirm this sign-in. Choose a way to sign in again.'**
+  String get desktopLoginDeclinedMessage;
+
   /// Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle
   ///
   /// In en, this message translates to:
   /// **'Running'**
   String get sessionListRunning;
 
+  /// Shown on a session row, in place of its last-activity time, while the bridge has scheduled an automatic continuation after a quota reset. The time is local, with the date only when it is not today.
+  ///
+  /// In en, this message translates to:
+  /// **'Resumes {time}'**
+  String sessionListResumes(String time);
+
+  /// Screen-reader and tooltip wording for a session row whose automatic continuation is scheduled; the time includes the date.
+  ///
+  /// In en, this message translates to:
+  /// **'Resumes at {time}'**
+  String sessionListResumesAtDescription(String time);
+
   /// Screen-reader label for a session with unopened agent activity; the visual signal is the resting sparkle
   ///
   /// In en, this message translates to:
   /// **'New activity'**
   String get sessionListNewActivity;
-
-  /// Screen-reader label for the harness driving a session; the visual signal is the brand logo leading the row. The harness name is a brand and is not translated.
-  ///
-  /// In en, this message translates to:
-  /// **'{harness} session'**
-  String sessionListHarness(String harness);
 
   /// Label shown next to the red dot for sessions that are active but in a retry/error state
   ///
@@ -2820,6 +3408,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Awaiting input'**
   String get sessionListAwaitingInput;
+
+  /// Amber word leading a session row's meta line while the session waits for the user's answer or permission
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get sessionListWaiting;
 
   /// Label showing the number of active background tasks for a session
   ///
@@ -2920,14 +3514,14 @@ abstract class AppLocalizations {
   /// No description provided for @addProject.
   ///
   /// In en, this message translates to:
-  /// **'Add Project'**
+  /// **'Add project'**
   String get addProject;
 
   /// Primary action of the add-project sheet: registers the folder the browser is currently showing as a Sesori project.
   ///
   /// In en, this message translates to:
-  /// **'Add as new project'**
-  String get addAsNewProject;
+  /// **'Add {folder}'**
+  String addFolderAsProject(String folder);
 
   /// Secondary action of the add-project sheet: makes a new folder inside the one being browsed.
   ///
@@ -2971,29 +3565,35 @@ abstract class AppLocalizations {
   /// **'Update Sesori Bridge on your computer to create folders from here.'**
   String get newFolderUnsupported;
 
-  /// No description provided for @emptyDirectory.
+  /// Add-project browser: the folder being browsed has no subfolders to list.
   ///
   /// In en, this message translates to:
-  /// **'This directory is empty'**
-  String get emptyDirectory;
+  /// **'No folders here'**
+  String get folderBrowserNoFolders;
 
-  /// Accessibility label for the arrow button that navigates to the parent folder in the add-project browser.
+  /// Second line under folderBrowserNoFolders. The browser lists folders only, so the folder may still hold files.
   ///
   /// In en, this message translates to:
-  /// **'Parent directory'**
-  String get parentDirectory;
+  /// **'Only folders are listed, so any files in it stay hidden.'**
+  String get folderBrowserNoFoldersDetail;
 
-  /// Shortcut button that jumps to the host user's home directory in the add-project browser.
+  /// Breadcrumb segment and shortcut button in the add-project browser that stand for the host user's home folder.
   ///
   /// In en, this message translates to:
-  /// **'~ Home'**
+  /// **'Home'**
   String get folderPickerHome;
 
-  /// Shortcut button that jumps to the host filesystem root in the add-project browser.
+  /// Shortcut button that jumps to the host filesystem root in the add-project browser. Shown on hosts without drive letters.
   ///
   /// In en, this message translates to:
-  /// **'/ Root'**
+  /// **'Root'**
   String get folderPickerRoot;
+
+  /// Accessibility label for the up-arrow button at the start of the add-project browser's breadcrumb, which opens the parent of the folder being browsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Parent folder'**
+  String get folderBrowserParentFolder;
 
   /// No description provided for @fetchDirectoryFailed.
   ///
@@ -3028,7 +3628,7 @@ abstract class AppLocalizations {
   /// No description provided for @hideProject.
   ///
   /// In en, this message translates to:
-  /// **'Hide Project'**
+  /// **'Hide project'**
   String get hideProject;
 
   /// Label on the swipe-revealed hide button of a project row. Kept short — the button is a compact pill.
@@ -3070,7 +3670,7 @@ abstract class AppLocalizations {
   /// No description provided for @addProjectContinueWithoutGit.
   ///
   /// In en, this message translates to:
-  /// **'Continue Without Git'**
+  /// **'Continue without Git'**
   String get addProjectContinueWithoutGit;
 
   /// No description provided for @addProjectEnableGit.
@@ -3145,6 +3745,18 @@ abstract class AppLocalizations {
   /// **'Failed to send permission response. Please try again.'**
   String get permissionReplyFailed;
 
+  /// No description provided for @needsYouAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Answer'**
+  String get needsYouAnswer;
+
+  /// No description provided for @needsYouReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get needsYouReview;
+
   /// No description provided for @permissionBannerSingle.
   ///
   /// In en, this message translates to:
@@ -3166,13 +3778,13 @@ abstract class AppLocalizations {
   /// No description provided for @renameSessionTitle.
   ///
   /// In en, this message translates to:
-  /// **'Rename Session'**
+  /// **'Rename session'**
   String get renameSessionTitle;
 
   /// No description provided for @renameProjectTitle.
   ///
   /// In en, this message translates to:
-  /// **'Rename Project'**
+  /// **'Rename project'**
   String get renameProjectTitle;
 
   /// No description provided for @renameSessionHint.
@@ -3208,7 +3820,7 @@ abstract class AppLocalizations {
   /// No description provided for @newSessionDedicatedWorkspace.
   ///
   /// In en, this message translates to:
-  /// **'Dedicated workspace'**
+  /// **'New worktree'**
   String get newSessionDedicatedWorkspace;
 
   /// No description provided for @newSessionPluginChooserLabel.
@@ -3259,11 +3871,17 @@ abstract class AppLocalizations {
   /// **'Loading session options'**
   String get newSessionOptionsLoadingSemantics;
 
-  /// No description provided for @newSessionOptionsRefresh.
+  /// No description provided for @newSessionOptionsRetry.
   ///
   /// In en, this message translates to:
-  /// **'Refresh options'**
-  String get newSessionOptionsRefresh;
+  /// **'Retry loading models'**
+  String get newSessionOptionsRetry;
+
+  /// No description provided for @newSessionOptionsLoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Load models'**
+  String get newSessionOptionsLoad;
 
   /// Warning title shown when the selected coding harness has no authenticated provider/model available for this project.
   ///
@@ -3274,44 +3892,8 @@ abstract class AppLocalizations {
   /// No description provided for @newSessionProjectUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.'**
+  /// **'Couldn’t verify whether this project supports worktrees. Try again before creating the session.'**
   String get newSessionProjectUnavailable;
-
-  /// No description provided for @newSessionOptionsCached.
-  ///
-  /// In en, this message translates to:
-  /// **'Using cached coding tool options.'**
-  String get newSessionOptionsCached;
-
-  /// No description provided for @newSessionOptionsUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'No cached options are available. You can create with defaults or refresh now.'**
-  String get newSessionOptionsUnavailable;
-
-  /// No description provided for @newSessionOptionsLoadFailedUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn’t load options. You can create with defaults or try again.'**
-  String get newSessionOptionsLoadFailedUnavailable;
-
-  /// No description provided for @newSessionOptionsLegacyBridge.
-  ///
-  /// In en, this message translates to:
-  /// **'This bridge can load options only by starting the selected coding tool. You can create with defaults or refresh now.'**
-  String get newSessionOptionsLegacyBridge;
-
-  /// No description provided for @newSessionOptionsUpdateFailedRetained.
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn’t update options. Previously cached options are still available.'**
-  String get newSessionOptionsUpdateFailedRetained;
-
-  /// No description provided for @newSessionOptionsRefreshFailedUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Refresh failed and no valid cached options remain. You can create with defaults.'**
-  String get newSessionOptionsRefreshFailedUnavailable;
 
   /// No description provided for @sessionListDeleteWorktreeCheckbox.
   ///
@@ -3412,20 +3994,8 @@ abstract class AppLocalizations {
   /// No description provided for @sessionDetailOpenHarnessSettings.
   ///
   /// In en, this message translates to:
-  /// **'Open Harness Settings'**
+  /// **'Open harness settings'**
   String get sessionDetailOpenHarnessSettings;
-
-  /// No description provided for @sessionListArchiveConfirmTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Archive session?'**
-  String get sessionListArchiveConfirmTitle;
-
-  /// No description provided for @sessionListArchiveConfirmMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.'**
-  String get sessionListArchiveConfirmMessage;
 
   /// No description provided for @sessionListArchiveConfirmAction.
   ///
@@ -3439,12 +4009,6 @@ abstract class AppLocalizations {
   /// **'Force delete?'**
   String get sessionListForceDeleteTitle;
 
-  /// No description provided for @sessionListForceArchiveTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Force archive?'**
-  String get sessionListForceArchiveTitle;
-
   /// No description provided for @sessionListForceMessage.
   ///
   /// In en, this message translates to:
@@ -3454,14 +4018,8 @@ abstract class AppLocalizations {
   /// No description provided for @sessionListForceDeleteAction.
   ///
   /// In en, this message translates to:
-  /// **'Force Delete'**
+  /// **'Force delete'**
   String get sessionListForceDeleteAction;
-
-  /// No description provided for @sessionListForceArchiveAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Force Archive'**
-  String get sessionListForceArchiveAction;
 
   /// No description provided for @sessionListCleanupIssueUnstagedChanges.
   ///
@@ -3592,14 +4150,14 @@ abstract class AppLocalizations {
   /// No description provided for @diffFileChangesTitle.
   ///
   /// In en, this message translates to:
-  /// **'File Changes'**
+  /// **'File changes'**
   String get diffFileChangesTitle;
 
   /// No description provided for @diffFilesChangedCount.
   ///
   /// In en, this message translates to:
-  /// **'{count} file{count, plural, =1{} other{s}} changed  +{additions} -{deletions}'**
-  String diffFilesChangedCount(int count, int additions, int deletions);
+  /// **'{count} file{count, plural, =1{} other{s}} changed'**
+  String diffFilesChangedCount(int count);
 
   /// No description provided for @diffNoFileChanges.
   ///
@@ -3769,23 +4327,23 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get sessionDetailRetryLabel;
 
+  /// Quiet transcript row marking where the coding agent summarized its earlier conversation to free context space.
+  ///
+  /// In en, this message translates to:
+  /// **'Context compacted'**
+  String get sessionDetailContextCompacted;
+
+  /// Title of the modal showing the summary the coding agent carried forward when it compacted its context.
+  ///
+  /// In en, this message translates to:
+  /// **'Compaction summary'**
+  String get sessionDetailCompactionSummaryTitle;
+
   /// No description provided for @sessionDetailCopy.
   ///
   /// In en, this message translates to:
   /// **'Copy'**
   String get sessionDetailCopy;
-
-  /// No description provided for @sessionDetailShowMore.
-  ///
-  /// In en, this message translates to:
-  /// **'Show more'**
-  String get sessionDetailShowMore;
-
-  /// No description provided for @sessionDetailShowLess.
-  ///
-  /// In en, this message translates to:
-  /// **'Show less'**
-  String get sessionDetailShowLess;
 
   /// No description provided for @emptySessionDetailTitle.
   ///
@@ -3844,7 +4402,7 @@ abstract class AppLocalizations {
   /// Subtitle of the 'get notified' reassurance row.
   ///
   /// In en, this message translates to:
-  /// **'Know when a task needs you.'**
+  /// **'Know when a session needs you.'**
   String get projectsOnboardingWhyNotifiedSubtitle;
 
   /// Section header above the FAQ list in the 'Why is this needed?' sheet.
@@ -4264,7 +4822,7 @@ abstract class AppLocalizations {
   /// No description provided for @archivedSessionsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Archived tasks'**
+  /// **'Archived sessions'**
   String get archivedSessionsTitle;
 
   /// No description provided for @archivedSessionsClose.
@@ -4273,41 +4831,173 @@ abstract class AppLocalizations {
   /// **'Close archived sessions'**
   String get archivedSessionsClose;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'Today'**
   String get archivedSessionsToday;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'Yesterday'**
   String get archivedSessionsYesterday;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'This week'**
   String get archivedSessionsThisWeek;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'Last week'**
   String get archivedSessionsLastWeek;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'This month'**
   String get archivedSessionsThisMonth;
 
-  /// Date heading shared by regular and archived task lists.
+  /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:
   /// **'One month ago'**
   String get archivedSessionsLastMonth;
+
+  /// No description provided for @sessionAutoContinuationMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto continuation'**
+  String get sessionAutoContinuationMenu;
+
+  /// No description provided for @sessionAutoContinuationAfterQuotaResets.
+  ///
+  /// In en, this message translates to:
+  /// **'After quota resets'**
+  String get sessionAutoContinuationAfterQuotaResets;
+
+  /// No description provided for @sessionAutoContinuationEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable auto continuation'**
+  String get sessionAutoContinuationEnable;
+
+  /// No description provided for @sessionAutoContinuationDisable.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get sessionAutoContinuationDisable;
+
+  /// No description provided for @sessionAutoContinuationOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto continuation on'**
+  String get sessionAutoContinuationOn;
+
+  /// Label of the quiet chip beside the session's model picker while auto continuation is enabled and nothing is due. Tapping it offers Disable.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-continue'**
+  String get sessionAutoContinuationChip;
+
+  /// No description provided for @sessionAutoContinuationQuotaReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Quota reached'**
+  String get sessionAutoContinuationQuotaReached;
+
+  /// No description provided for @sessionAutoContinuationOlderBridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your bridge to use auto continuation.'**
+  String get sessionAutoContinuationOlderBridge;
+
+  /// No description provided for @sessionAutoContinuationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto continuation is unavailable for this harness or provider.'**
+  String get sessionAutoContinuationUnavailable;
+
+  /// No description provided for @sessionAutoContinuationOffer.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue at {time} and two minutes after each later quota reset. Keep your bridge running.'**
+  String sessionAutoContinuationOffer(String time);
+
+  /// No description provided for @sessionAutoContinuationScheduled.
+  ///
+  /// In en, this message translates to:
+  /// **'Continues at {time}. Keep your bridge running.'**
+  String sessionAutoContinuationScheduled(String time);
+
+  /// No description provided for @sessionAutoContinuationResetUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset time unavailable. Auto continuation cannot be scheduled.'**
+  String get sessionAutoContinuationResetUnknown;
+
+  /// No description provided for @sessionAutoContinuationPausedWork.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused while this session has active or queued work. Checks resume automatically.'**
+  String get sessionAutoContinuationPausedWork;
+
+  /// No description provided for @sessionAutoContinuationPausedInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused until you answer the pending question or permission request.'**
+  String get sessionAutoContinuationPausedInput;
+
+  /// No description provided for @sessionAutoContinuationPausedUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused while the harness is unavailable. Checks resume automatically.'**
+  String get sessionAutoContinuationPausedUnavailable;
+
+  /// No description provided for @sessionAutoContinuationPausedUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Paused because the session could not be checked. Checks resume automatically.'**
+  String get sessionAutoContinuationPausedUnknown;
+
+  /// No description provided for @sessionAutoContinuationUnconfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'The last attempt could not be confirmed. It will not be sent again automatically.'**
+  String get sessionAutoContinuationUnconfirmed;
+
+  /// No description provided for @sessionAutoContinuationSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Continuation sent at {time}. Enabled for future quota resets.'**
+  String sessionAutoContinuationSubmitted(String time);
+
+  /// No description provided for @sessionAutoContinuationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The continuation could not be sent. This attempt will not be retried automatically.'**
+  String get sessionAutoContinuationFailed;
+
+  /// No description provided for @sessionAutoContinuationStatusUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Status unavailable. A scheduled time cannot be confirmed.'**
+  String get sessionAutoContinuationStatusUnknown;
+
+  /// No description provided for @sessionAutoContinuationUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not confirm the change. Reconnect and check auto continuation before trying again.'**
+  String get sessionAutoContinuationUpdateFailed;
+
+  /// No description provided for @sessionAutoContinuationAlreadySubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto continuation disabled. The previous continuation was already sent; future automatic sends are disabled.'**
+  String get sessionAutoContinuationAlreadySubmitted;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

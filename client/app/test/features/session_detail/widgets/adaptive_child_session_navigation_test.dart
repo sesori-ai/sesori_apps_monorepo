@@ -19,6 +19,7 @@ class _MockImageSharer() extends Mock implements ImageSharer;
 Widget _presentationScope({required BuildContext context, required Widget child}) {
   return SessionDetailPresentationScope(
     openHarnessSettings: () {},
+    openBridgeSettings: () {},
     messageImageRepository: _MockMessageImageRepository.new,
     imageSaver: _MockImageSaver.new,
     imageClipboard: _MockImageClipboard.new,
@@ -84,6 +85,8 @@ Widget _buildApp({
 
 Session _childSession({required String id, String? title}) {
   return Session(
+    approvalOverride: null,
+    autoContinuation: null,
     branchName: null,
     id: id,
     pluginId: "plugin-1",
@@ -98,7 +101,7 @@ Session _childSession({required String id, String? title}) {
   );
 }
 
-MessagePartSubtask _subtaskPart({String? description, String? childSessionID, ToolStatus? status}) {
+MessagePartSubtask _subtaskPart({String? description, String? childSessionID}) {
   final part = MessagePart.subtask(
     id: "part-1",
     sessionID: "session-parent",
@@ -106,9 +109,7 @@ MessagePartSubtask _subtaskPart({String? description, String? childSessionID, To
     prompt: description ?? "",
     description: description ?? "",
     agent: "",
-    taskState: status == null
-        ? null
-        : ToolState(status: status, title: null, shellCommand: null, output: null, error: null),
+    taskState: null,
     childSessionID: childSessionID,
   );
   if (part case final MessagePartSubtask subtask) return subtask;
@@ -125,15 +126,15 @@ void main() {
             body: SubtaskPartWidget(
               projectId: "project-1",
               part: _subtaskPart(description: "Child Session"),
-              children: [child],
-              childStatuses: const {},
+              childSession: child,
+              status: TranscriptStepStatus.finished,
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("Child Session"));
+      await tester.tap(find.text("Agent Child Session"));
       await tester.pumpAndSettle();
 
       // Push adds to stack, so canPop should be true.
@@ -153,8 +154,8 @@ void main() {
               child: SubtaskPartWidget(
                 projectId: "project-1",
                 part: _subtaskPart(description: "Child Session"),
-                children: [child],
-                childStatuses: const {},
+                childSession: child,
+                status: TranscriptStepStatus.finished,
               ),
             ),
           ),
@@ -162,7 +163,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("Child Session"));
+      await tester.tap(find.text("Agent Child Session"));
       await tester.pumpAndSettle();
 
       expect(find.text("canPop=true"), findsOneWidget);
@@ -172,25 +173,23 @@ void main() {
     });
   });
 
-  group("SubtaskPartWidget child resolution", () {
-    testWidgets("a named child session is opened by id, not by matching titles", (tester) async {
+  group("SubtaskPartWidget target", () {
+    testWidgets("a named child session is opened by id, not by the resolved child", (tester) async {
       await tester.pumpWidget(
         _buildApp(
           child: Scaffold(
             body: SubtaskPartWidget(
               projectId: "project-1",
-              // The only known child has a matching title, so the heuristic
-              // would open it; the named child must win.
               part: _subtaskPart(description: "Child Session", childSessionID: "agent-42"),
-              children: [_childSession(id: "child-1", title: "Child Session")],
-              childStatuses: const {},
+              childSession: _childSession(id: "child-1", title: "Child Session"),
+              status: TranscriptStepStatus.finished,
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("Child Session"));
+      await tester.tap(find.text("Agent Child Session"));
       await tester.pumpAndSettle();
 
       expect(find.text("sessionId=agent-42"), findsOneWidget);
@@ -204,39 +203,36 @@ void main() {
             body: SubtaskPartWidget(
               projectId: "project-1",
               part: _subtaskPart(description: "Explore the plugin", childSessionID: "agent-42"),
-              children: const [],
-              childStatuses: const {},
+              childSession: null,
+              status: TranscriptStepStatus.finished,
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("Explore the plugin"));
+      await tester.tap(find.text("Agent Explore the plugin"));
       await tester.pumpAndSettle();
 
       expect(find.text("sessionId=agent-42"), findsOneWidget);
     });
 
-    testWidgets("an unnamed child with no title match stays closed", (tester) async {
+    testWidgets("an unnamed, unresolved child stays closed", (tester) async {
       await tester.pumpWidget(
         _buildApp(
           child: Scaffold(
             body: SubtaskPartWidget(
               projectId: "project-1",
               part: _subtaskPart(description: "Explore the plugin"),
-              children: [
-                _childSession(id: "child-1", title: "Something else"),
-                _childSession(id: "child-2", title: "Another thing"),
-              ],
-              childStatuses: const {},
+              childSession: null,
+              status: TranscriptStepStatus.finished,
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("Explore the plugin"));
+      await tester.tap(find.text("Agent Explore the plugin"));
       await tester.pumpAndSettle();
 
       expect(find.textContaining("sessionId="), findsNothing);
@@ -246,15 +242,15 @@ void main() {
   group("SubtaskPartWidget status", () {
     // A running tile animates forever, so these pump one frame instead of
     // settling.
-    Future<void> pumpStatus(WidgetTester tester, {required ToolStatus? status}) async {
+    Future<void> pumpStatus(WidgetTester tester, {required TranscriptStepStatus status}) async {
       await tester.pumpWidget(
         _buildApp(
           child: Scaffold(
             body: SubtaskPartWidget(
               projectId: "project-1",
-              part: _subtaskPart(description: "Explore the plugin", childSessionID: "agent-42", status: status),
-              children: const [],
-              childStatuses: const {},
+              part: _subtaskPart(description: "Explore the plugin", childSessionID: "agent-42"),
+              childSession: null,
+              status: status,
             ),
           ),
         ),
@@ -262,73 +258,88 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets("a running subtask reports its own lifecycle", (tester) async {
-      await pumpStatus(tester, status: ToolStatus.running);
+    testWidgets("a running sub-agent's label shimmers", (tester) async {
+      await pumpStatus(tester, status: TranscriptStepStatus.running);
 
-      expect(find.text("Running"), findsOneWidget);
-      expect(find.byType(PregoActivityIndicator), findsOneWidget);
+      expect(find.byType(PregoShimmer), findsOneWidget);
+      expect(find.byType(PregoActivityIndicator), findsNothing);
     });
 
-    testWidgets("a completed subtask reports its own lifecycle", (tester) async {
-      await pumpStatus(tester, status: ToolStatus.completed);
+    testWidgets("a finished sub-agent says nothing", (tester) async {
+      await pumpStatus(tester, status: TranscriptStepStatus.finished);
 
-      expect(find.text("Done"), findsOneWidget);
-      expect(find.byIcon(Icons.check_circle), findsOneWidget);
+      expect(find.text("Done"), findsNothing);
+      expect(find.byType(PregoShimmer), findsNothing);
+      expect(find.byIcon(TablerSolid.alert_circle), findsNothing);
     });
 
-    testWidgets("a failed subtask reports its own lifecycle", (tester) async {
-      await pumpStatus(tester, status: ToolStatus.error);
+    testWidgets("a failed sub-agent keeps one signal", (tester) async {
+      await pumpStatus(tester, status: TranscriptStepStatus.failed);
 
-      expect(find.text("Failed"), findsOneWidget);
-      expect(find.byIcon(Icons.error), findsOneWidget);
+      expect(find.text("Failed"), findsNothing);
+      expect(find.byIcon(TablerSolid.alert_circle), findsOneWidget);
     });
+  });
 
-    testWidgets("a cancelled subtask reports its own lifecycle", (tester) async {
-      await pumpStatus(tester, status: ToolStatus.cancelled);
-
-      expect(find.text("Cancelled"), findsOneWidget);
-      expect(find.byIcon(Icons.cancel), findsOneWidget);
-    });
-
-    testWidgets("a subtask without its own lifecycle keeps following its child session", (tester) async {
+  group("BackgroundTasksBar", () {
+    testWidgets("counts sub-agents, signals work, and never calls an idle one completed", (tester) async {
       await tester.pumpWidget(
         _buildApp(
           child: Scaffold(
-            body: SubtaskPartWidget(
-              projectId: "project-1",
-              part: _subtaskPart(description: "Child Session"),
-              children: [_childSession(id: "child-1", title: "Child Session")],
-              childStatuses: const {"child-1": SessionStatus.busy()},
+            body: Align(
+              alignment: Alignment.bottomRight,
+              child: BackgroundTasksBar(
+                surfaceStyle: PregoComposerSurfaceStyle.subtle,
+                projectId: "project-1",
+                children: [
+                  _childSession(id: "task-1", title: "Idle one"),
+                  _childSession(id: "task-2", title: "Working one"),
+                ],
+                childStatuses: const {"task-2": SessionStatus.busy()},
+              ),
             ),
           ),
         ),
       );
       await tester.pump();
 
+      expect(find.text("2"), findsOneWidget);
       expect(find.byType(PregoActivityIndicator), findsOneWidget);
-      // No lifecycle of its own means no status label to report.
-      expect(find.text("Running"), findsNothing);
-    });
-  });
+      expect(find.byTooltip("2 sub-agents, 1 working"), findsOneWidget);
 
-  group("BackgroundTasksBar", () {
+      await tester.tap(find.byKey(const ValueKey("sub_agents_pill")));
+      await tester.pump();
+
+      // Working first; the idle one stays listed because it can be resumed.
+      expect(
+        tester.getTopLeft(find.text("Working one")).dy,
+        lessThan(tester.getTopLeft(find.text("Idle one")).dy),
+      );
+      expect(find.textContaining("Idle"), findsWidgets);
+      expect(find.textContaining("ompleted"), findsNothing);
+    });
+
     testWidgets("tapping task row pushes route with readOnly=true outside split scope", (tester) async {
       final child = _childSession(id: "task-1", title: "Task One");
       await tester.pumpWidget(
         _buildApp(
           child: Scaffold(
-            body: BackgroundTasksBar(
-              surfaceStyle: PregoComposerSurfaceStyle.subtle,
-              projectId: "project-1",
-              children: [child],
-              childStatuses: const {},
+            // The pill lives at the composer's trailing edge; its list grows up.
+            body: Align(
+              alignment: Alignment.bottomRight,
+              child: BackgroundTasksBar(
+                surfaceStyle: PregoComposerSurfaceStyle.subtle,
+                projectId: "project-1",
+                children: [child],
+                childStatuses: const {},
+              ),
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("All tasks completed"));
+      await tester.tap(find.byKey(const ValueKey("sub_agents_pill")));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text("Task One"));
@@ -347,11 +358,14 @@ void main() {
           child: Scaffold(
             body: SessionSplitScope(
               isSplit: true,
-              child: BackgroundTasksBar(
-                surfaceStyle: PregoComposerSurfaceStyle.subtle,
-                projectId: "project-1",
-                children: [child],
-                childStatuses: const {},
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: BackgroundTasksBar(
+                  surfaceStyle: PregoComposerSurfaceStyle.subtle,
+                  projectId: "project-1",
+                  children: [child],
+                  childStatuses: const {},
+                ),
               ),
             ),
           ),
@@ -359,7 +373,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text("All tasks completed"));
+      await tester.tap(find.byKey(const ValueKey("sub_agents_pill")));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text("Task One"));

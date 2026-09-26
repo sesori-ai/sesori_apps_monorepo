@@ -457,6 +457,11 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   String? get baseCommit;
   String? get lastAgent;
   AgentModel? get lastAgentModel;
+
+  /// Whether the session's turns run in the backend's fast mode. The bridge
+  /// owns this choice: only client create/prompt/command requests write it;
+  /// backend-reported prompt defaults never do.
+  bool get fastMode;
   int get createdAt;
   int get updatedAt;
   int get projectionUpdatedAt;
@@ -474,6 +479,10 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   /// catalog title for every plugin. Null means the catalog title is rendered.
   String? get title;
   String? get catalogTitle;
+
+  /// How this session answers permission requests when it differs from the
+  /// bridge-wide YOLO setting. Null follows that setting.
+  SessionApprovalMode? get approvalOverride;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -516,6 +525,7 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
         $SessionTableTable.$converterlastAgentModeln.toSql(lastAgentModel),
       );
     }
+    map['fast_mode'] = Variable<bool>(fastMode);
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
     map['projection_updated_at'] = Variable<int>(projectionUpdatedAt);
@@ -534,6 +544,11 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
     }
     if (!nullToAbsent || catalogTitle != null) {
       map['catalog_title'] = Variable<String>(catalogTitle);
+    }
+    if (!nullToAbsent || approvalOverride != null) {
+      map['approval_override'] = Variable<String>(
+        $SessionTableTable.$converterapprovalOverriden.toSql(approvalOverride),
+      );
     }
     return map;
   }
@@ -718,6 +733,21 @@ class $SessionTableTable extends SessionTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   ).withConverter<AgentModel?>($SessionTableTable.$converterlastAgentModeln);
+  static const VerificationMeta _fastModeMeta = const VerificationMeta(
+    'fastMode',
+  );
+  @override
+  late final GeneratedColumn<bool> fastMode = GeneratedColumn<bool>(
+    'fast_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("fast_mode" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -815,6 +845,18 @@ class $SessionTableTable extends SessionTable
     requiredDuringInsert: false,
   );
   @override
+  late final GeneratedColumnWithTypeConverter<SessionApprovalMode?, String>
+  approvalOverride =
+      GeneratedColumn<String>(
+        'approval_override',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<SessionApprovalMode?>(
+        $SessionTableTable.$converterapprovalOverriden,
+      );
+  @override
   List<GeneratedColumn> get $columns => [
     sessionId,
     backendSessionId,
@@ -831,6 +873,7 @@ class $SessionTableTable extends SessionTable
     baseCommit,
     lastAgent,
     lastAgentModel,
+    fastMode,
     createdAt,
     updatedAt,
     projectionUpdatedAt,
@@ -840,6 +883,7 @@ class $SessionTableTable extends SessionTable
     pluginId,
     title,
     catalogTitle,
+    approvalOverride,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -963,6 +1007,12 @@ class $SessionTableTable extends SessionTable
       context.handle(
         _lastAgentMeta,
         lastAgent.isAcceptableOrUnknown(data['last_agent']!, _lastAgentMeta),
+      );
+    }
+    if (data.containsKey('fast_mode')) {
+      context.handle(
+        _fastModeMeta,
+        fastMode.isAcceptableOrUnknown(data['fast_mode']!, _fastModeMeta),
       );
     }
     if (data.containsKey('created_at')) {
@@ -1113,6 +1163,10 @@ class $SessionTableTable extends SessionTable
           data['${effectivePrefix}last_agent_model'],
         ),
       ),
+      fastMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}fast_mode'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -1149,6 +1203,12 @@ class $SessionTableTable extends SessionTable
         DriftSqlType.string,
         data['${effectivePrefix}catalog_title'],
       ),
+      approvalOverride: $SessionTableTable.$converterapprovalOverriden.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}approval_override'],
+        ),
+      ),
     );
   }
 
@@ -1161,6 +1221,14 @@ class $SessionTableTable extends SessionTable
       const AgentModelConverter();
   static TypeConverter<AgentModel?, String?> $converterlastAgentModeln =
       NullAwareTypeConverter.wrap($converterlastAgentModel);
+  static JsonTypeConverter2<SessionApprovalMode, String, String>
+  $converterapprovalOverride = const EnumNameConverter<SessionApprovalMode>(
+    SessionApprovalMode.values,
+  );
+  static JsonTypeConverter2<SessionApprovalMode?, String?, String?>
+  $converterapprovalOverriden = JsonTypeConverter2.asNullable(
+    $converterapprovalOverride,
+  );
   @override
   bool get withoutRowId => true;
 }
@@ -1181,6 +1249,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<String?> baseCommit;
   final Value<String?> lastAgent;
   final Value<AgentModel?> lastAgentModel;
+  final Value<bool> fastMode;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<int> projectionUpdatedAt;
@@ -1190,6 +1259,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<String> pluginId;
   final Value<String?> title;
   final Value<String?> catalogTitle;
+  final Value<SessionApprovalMode?> approvalOverride;
   const SessionTableCompanion({
     this.sessionId = const Value.absent(),
     this.backendSessionId = const Value.absent(),
@@ -1206,6 +1276,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.baseCommit = const Value.absent(),
     this.lastAgent = const Value.absent(),
     this.lastAgentModel = const Value.absent(),
+    this.fastMode = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.projectionUpdatedAt = const Value.absent(),
@@ -1215,6 +1286,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.pluginId = const Value.absent(),
     this.title = const Value.absent(),
     this.catalogTitle = const Value.absent(),
+    this.approvalOverride = const Value.absent(),
   });
   SessionTableCompanion.insert({
     required String sessionId,
@@ -1232,6 +1304,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.baseCommit = const Value.absent(),
     this.lastAgent = const Value.absent(),
     this.lastAgentModel = const Value.absent(),
+    this.fastMode = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     required int projectionUpdatedAt,
@@ -1241,6 +1314,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     required String pluginId,
     this.title = const Value.absent(),
     this.catalogTitle = const Value.absent(),
+    this.approvalOverride = const Value.absent(),
   }) : sessionId = Value(sessionId),
        backendSessionId = Value(backendSessionId),
        projectId = Value(projectId),
@@ -1266,6 +1340,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<String>? baseCommit,
     Expression<String>? lastAgent,
     Expression<String>? lastAgentModel,
+    Expression<bool>? fastMode,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<int>? projectionUpdatedAt,
@@ -1275,6 +1350,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<String>? pluginId,
     Expression<String>? title,
     Expression<String>? catalogTitle,
+    Expression<String>? approvalOverride,
   }) {
     return RawValuesInsertable({
       if (sessionId != null) 'session_id': sessionId,
@@ -1293,6 +1369,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (baseCommit != null) 'base_commit': baseCommit,
       if (lastAgent != null) 'last_agent': lastAgent,
       if (lastAgentModel != null) 'last_agent_model': lastAgentModel,
+      if (fastMode != null) 'fast_mode': fastMode,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (projectionUpdatedAt != null)
@@ -1303,6 +1380,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (pluginId != null) 'plugin_id': pluginId,
       if (title != null) 'title': title,
       if (catalogTitle != null) 'catalog_title': catalogTitle,
+      if (approvalOverride != null) 'approval_override': approvalOverride,
     });
   }
 
@@ -1322,6 +1400,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<String?>? baseCommit,
     Value<String?>? lastAgent,
     Value<AgentModel?>? lastAgentModel,
+    Value<bool>? fastMode,
     Value<int>? createdAt,
     Value<int>? updatedAt,
     Value<int>? projectionUpdatedAt,
@@ -1331,6 +1410,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<String>? pluginId,
     Value<String?>? title,
     Value<String?>? catalogTitle,
+    Value<SessionApprovalMode?>? approvalOverride,
   }) {
     return SessionTableCompanion(
       sessionId: sessionId ?? this.sessionId,
@@ -1350,6 +1430,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       baseCommit: baseCommit ?? this.baseCommit,
       lastAgent: lastAgent ?? this.lastAgent,
       lastAgentModel: lastAgentModel ?? this.lastAgentModel,
+      fastMode: fastMode ?? this.fastMode,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       projectionUpdatedAt: projectionUpdatedAt ?? this.projectionUpdatedAt,
@@ -1359,6 +1440,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       pluginId: pluginId ?? this.pluginId,
       title: title ?? this.title,
       catalogTitle: catalogTitle ?? this.catalogTitle,
+      approvalOverride: approvalOverride ?? this.approvalOverride,
     );
   }
 
@@ -1416,6 +1498,9 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
         ),
       );
     }
+    if (fastMode.present) {
+      map['fast_mode'] = Variable<bool>(fastMode.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -1443,6 +1528,13 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     if (catalogTitle.present) {
       map['catalog_title'] = Variable<String>(catalogTitle.value);
     }
+    if (approvalOverride.present) {
+      map['approval_override'] = Variable<String>(
+        $SessionTableTable.$converterapprovalOverriden.toSql(
+          approvalOverride.value,
+        ),
+      );
+    }
     return map;
   }
 
@@ -1466,6 +1558,7 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('baseCommit: $baseCommit, ')
           ..write('lastAgent: $lastAgent, ')
           ..write('lastAgentModel: $lastAgentModel, ')
+          ..write('fastMode: $fastMode, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('projectionUpdatedAt: $projectionUpdatedAt, ')
@@ -1474,7 +1567,8 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('lastUserMessageAt: $lastUserMessageAt, ')
           ..write('pluginId: $pluginId, ')
           ..write('title: $title, ')
-          ..write('catalogTitle: $catalogTitle')
+          ..write('catalogTitle: $catalogTitle, ')
+          ..write('approvalOverride: $approvalOverride')
           ..write(')'))
         .toString();
   }
@@ -3222,6 +3316,7 @@ mixin $NewSessionDefaultsTableTableToColumns
   String get pluginId;
   String? get agent;
   AgentModel? get agentModel;
+  bool get fastMode;
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -3234,6 +3329,7 @@ mixin $NewSessionDefaultsTableTableToColumns
         $NewSessionDefaultsTableTable.$converteragentModeln.toSql(agentModel),
       );
     }
+    map['fast_mode'] = Variable<bool>(fastMode);
     return map;
   }
 }
@@ -3275,8 +3371,23 @@ class $NewSessionDefaultsTableTable extends NewSessionDefaultsTable
       ).withConverter<AgentModel?>(
         $NewSessionDefaultsTableTable.$converteragentModeln,
       );
+  static const VerificationMeta _fastModeMeta = const VerificationMeta(
+    'fastMode',
+  );
   @override
-  List<GeneratedColumn> get $columns => [pluginId, agent, agentModel];
+  late final GeneratedColumn<bool> fastMode = GeneratedColumn<bool>(
+    'fast_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("fast_mode" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [pluginId, agent, agentModel, fastMode];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -3301,6 +3412,12 @@ class $NewSessionDefaultsTableTable extends NewSessionDefaultsTable
       context.handle(
         _agentMeta,
         agent.isAcceptableOrUnknown(data['agent']!, _agentMeta),
+      );
+    }
+    if (data.containsKey('fast_mode')) {
+      context.handle(
+        _fastModeMeta,
+        fastMode.isAcceptableOrUnknown(data['fast_mode']!, _fastModeMeta),
       );
     }
     return context;
@@ -3329,6 +3446,10 @@ class $NewSessionDefaultsTableTable extends NewSessionDefaultsTable
           data['${effectivePrefix}agent_model'],
         ),
       ),
+      fastMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}fast_mode'],
+      )!,
     );
   }
 
@@ -3353,10 +3474,13 @@ class NewSessionDefaultsTableData extends DataClass
   final String? agent;
   @override
   final AgentModel? agentModel;
+  @override
+  final bool fastMode;
   const NewSessionDefaultsTableData({
     required this.pluginId,
     this.agent,
     this.agentModel,
+    required this.fastMode,
   });
   NewSessionDefaultsTableCompanion toCompanion(bool nullToAbsent) {
     return NewSessionDefaultsTableCompanion(
@@ -3367,6 +3491,7 @@ class NewSessionDefaultsTableData extends DataClass
       agentModel: agentModel == null && nullToAbsent
           ? const Value.absent()
           : Value(agentModel),
+      fastMode: Value(fastMode),
     );
   }
 
@@ -3379,6 +3504,7 @@ class NewSessionDefaultsTableData extends DataClass
       pluginId: serializer.fromJson<String>(json['pluginId']),
       agent: serializer.fromJson<String?>(json['agent']),
       agentModel: serializer.fromJson<AgentModel?>(json['agentModel']),
+      fastMode: serializer.fromJson<bool>(json['fastMode']),
     );
   }
   @override
@@ -3388,6 +3514,7 @@ class NewSessionDefaultsTableData extends DataClass
       'pluginId': serializer.toJson<String>(pluginId),
       'agent': serializer.toJson<String?>(agent),
       'agentModel': serializer.toJson<AgentModel?>(agentModel),
+      'fastMode': serializer.toJson<bool>(fastMode),
     };
   }
 
@@ -3395,10 +3522,12 @@ class NewSessionDefaultsTableData extends DataClass
     String? pluginId,
     Value<String?> agent = const Value.absent(),
     Value<AgentModel?> agentModel = const Value.absent(),
+    bool? fastMode,
   }) => NewSessionDefaultsTableData(
     pluginId: pluginId ?? this.pluginId,
     agent: agent.present ? agent.value : this.agent,
     agentModel: agentModel.present ? agentModel.value : this.agentModel,
+    fastMode: fastMode ?? this.fastMode,
   );
   NewSessionDefaultsTableData copyWithCompanion(
     NewSessionDefaultsTableCompanion data,
@@ -3409,6 +3538,7 @@ class NewSessionDefaultsTableData extends DataClass
       agentModel: data.agentModel.present
           ? data.agentModel.value
           : this.agentModel,
+      fastMode: data.fastMode.present ? data.fastMode.value : this.fastMode,
     );
   }
 
@@ -3417,20 +3547,22 @@ class NewSessionDefaultsTableData extends DataClass
     return (StringBuffer('NewSessionDefaultsTableData(')
           ..write('pluginId: $pluginId, ')
           ..write('agent: $agent, ')
-          ..write('agentModel: $agentModel')
+          ..write('agentModel: $agentModel, ')
+          ..write('fastMode: $fastMode')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(pluginId, agent, agentModel);
+  int get hashCode => Object.hash(pluginId, agent, agentModel, fastMode);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is NewSessionDefaultsTableData &&
           other.pluginId == this.pluginId &&
           other.agent == this.agent &&
-          other.agentModel == this.agentModel);
+          other.agentModel == this.agentModel &&
+          other.fastMode == this.fastMode);
 }
 
 class NewSessionDefaultsTableCompanion
@@ -3438,25 +3570,30 @@ class NewSessionDefaultsTableCompanion
   final Value<String> pluginId;
   final Value<String?> agent;
   final Value<AgentModel?> agentModel;
+  final Value<bool> fastMode;
   const NewSessionDefaultsTableCompanion({
     this.pluginId = const Value.absent(),
     this.agent = const Value.absent(),
     this.agentModel = const Value.absent(),
+    this.fastMode = const Value.absent(),
   });
   NewSessionDefaultsTableCompanion.insert({
     required String pluginId,
     this.agent = const Value.absent(),
     this.agentModel = const Value.absent(),
+    this.fastMode = const Value.absent(),
   }) : pluginId = Value(pluginId);
   static Insertable<NewSessionDefaultsTableData> custom({
     Expression<String>? pluginId,
     Expression<String>? agent,
     Expression<String>? agentModel,
+    Expression<bool>? fastMode,
   }) {
     return RawValuesInsertable({
       if (pluginId != null) 'plugin_id': pluginId,
       if (agent != null) 'agent': agent,
       if (agentModel != null) 'agent_model': agentModel,
+      if (fastMode != null) 'fast_mode': fastMode,
     });
   }
 
@@ -3464,11 +3601,13 @@ class NewSessionDefaultsTableCompanion
     Value<String>? pluginId,
     Value<String?>? agent,
     Value<AgentModel?>? agentModel,
+    Value<bool>? fastMode,
   }) {
     return NewSessionDefaultsTableCompanion(
       pluginId: pluginId ?? this.pluginId,
       agent: agent ?? this.agent,
       agentModel: agentModel ?? this.agentModel,
+      fastMode: fastMode ?? this.fastMode,
     );
   }
 
@@ -3488,6 +3627,9 @@ class NewSessionDefaultsTableCompanion
         ),
       );
     }
+    if (fastMode.present) {
+      map['fast_mode'] = Variable<bool>(fastMode.value);
+    }
     return map;
   }
 
@@ -3496,7 +3638,572 @@ class NewSessionDefaultsTableCompanion
     return (StringBuffer('NewSessionDefaultsTableCompanion(')
           ..write('pluginId: $pluginId, ')
           ..write('agent: $agent, ')
-          ..write('agentModel: $agentModel')
+          ..write('agentModel: $agentModel, ')
+          ..write('fastMode: $fastMode')
+          ..write(')'))
+        .toString();
+  }
+}
+
+mixin $AcceptedPromptsTableTableToColumns
+    implements Insertable<AcceptedPromptsTableData> {
+  String get sessionId;
+  String get promptId;
+  int get acceptedAt;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['session_id'] = Variable<String>(sessionId);
+    map['prompt_id'] = Variable<String>(promptId);
+    map['accepted_at'] = Variable<int>(acceptedAt);
+    return map;
+  }
+}
+
+class $AcceptedPromptsTableTable extends AcceptedPromptsTable
+    with TableInfo<$AcceptedPromptsTableTable, AcceptedPromptsTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AcceptedPromptsTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _promptIdMeta = const VerificationMeta(
+    'promptId',
+  );
+  @override
+  late final GeneratedColumn<String> promptId = GeneratedColumn<String>(
+    'prompt_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _acceptedAtMeta = const VerificationMeta(
+    'acceptedAt',
+  );
+  @override
+  late final GeneratedColumn<int> acceptedAt = GeneratedColumn<int>(
+    'accepted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [sessionId, promptId, acceptedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'accepted_prompts_table';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AcceptedPromptsTableData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('prompt_id')) {
+      context.handle(
+        _promptIdMeta,
+        promptId.isAcceptableOrUnknown(data['prompt_id']!, _promptIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_promptIdMeta);
+    }
+    if (data.containsKey('accepted_at')) {
+      context.handle(
+        _acceptedAtMeta,
+        acceptedAt.isAcceptableOrUnknown(data['accepted_at']!, _acceptedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_acceptedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {sessionId, promptId};
+  @override
+  AcceptedPromptsTableData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AcceptedPromptsTableData(
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      promptId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prompt_id'],
+      )!,
+      acceptedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}accepted_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AcceptedPromptsTableTable createAlias(String alias) {
+    return $AcceptedPromptsTableTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class AcceptedPromptsTableData extends DataClass
+    with $AcceptedPromptsTableTableToColumns {
+  @override
+  final String sessionId;
+  @override
+  final String promptId;
+  @override
+  final int acceptedAt;
+  const AcceptedPromptsTableData({
+    required this.sessionId,
+    required this.promptId,
+    required this.acceptedAt,
+  });
+  AcceptedPromptsTableCompanion toCompanion(bool nullToAbsent) {
+    return AcceptedPromptsTableCompanion(
+      sessionId: Value(sessionId),
+      promptId: Value(promptId),
+      acceptedAt: Value(acceptedAt),
+    );
+  }
+
+  factory AcceptedPromptsTableData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AcceptedPromptsTableData(
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      promptId: serializer.fromJson<String>(json['promptId']),
+      acceptedAt: serializer.fromJson<int>(json['acceptedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'sessionId': serializer.toJson<String>(sessionId),
+      'promptId': serializer.toJson<String>(promptId),
+      'acceptedAt': serializer.toJson<int>(acceptedAt),
+    };
+  }
+
+  AcceptedPromptsTableData copyWith({
+    String? sessionId,
+    String? promptId,
+    int? acceptedAt,
+  }) => AcceptedPromptsTableData(
+    sessionId: sessionId ?? this.sessionId,
+    promptId: promptId ?? this.promptId,
+    acceptedAt: acceptedAt ?? this.acceptedAt,
+  );
+  AcceptedPromptsTableData copyWithCompanion(
+    AcceptedPromptsTableCompanion data,
+  ) {
+    return AcceptedPromptsTableData(
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      promptId: data.promptId.present ? data.promptId.value : this.promptId,
+      acceptedAt: data.acceptedAt.present
+          ? data.acceptedAt.value
+          : this.acceptedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AcceptedPromptsTableData(')
+          ..write('sessionId: $sessionId, ')
+          ..write('promptId: $promptId, ')
+          ..write('acceptedAt: $acceptedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(sessionId, promptId, acceptedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AcceptedPromptsTableData &&
+          other.sessionId == this.sessionId &&
+          other.promptId == this.promptId &&
+          other.acceptedAt == this.acceptedAt);
+}
+
+class AcceptedPromptsTableCompanion
+    extends UpdateCompanion<AcceptedPromptsTableData> {
+  final Value<String> sessionId;
+  final Value<String> promptId;
+  final Value<int> acceptedAt;
+  const AcceptedPromptsTableCompanion({
+    this.sessionId = const Value.absent(),
+    this.promptId = const Value.absent(),
+    this.acceptedAt = const Value.absent(),
+  });
+  AcceptedPromptsTableCompanion.insert({
+    required String sessionId,
+    required String promptId,
+    required int acceptedAt,
+  }) : sessionId = Value(sessionId),
+       promptId = Value(promptId),
+       acceptedAt = Value(acceptedAt);
+  static Insertable<AcceptedPromptsTableData> custom({
+    Expression<String>? sessionId,
+    Expression<String>? promptId,
+    Expression<int>? acceptedAt,
+  }) {
+    return RawValuesInsertable({
+      if (sessionId != null) 'session_id': sessionId,
+      if (promptId != null) 'prompt_id': promptId,
+      if (acceptedAt != null) 'accepted_at': acceptedAt,
+    });
+  }
+
+  AcceptedPromptsTableCompanion copyWith({
+    Value<String>? sessionId,
+    Value<String>? promptId,
+    Value<int>? acceptedAt,
+  }) {
+    return AcceptedPromptsTableCompanion(
+      sessionId: sessionId ?? this.sessionId,
+      promptId: promptId ?? this.promptId,
+      acceptedAt: acceptedAt ?? this.acceptedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (promptId.present) {
+      map['prompt_id'] = Variable<String>(promptId.value);
+    }
+    if (acceptedAt.present) {
+      map['accepted_at'] = Variable<int>(acceptedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AcceptedPromptsTableCompanion(')
+          ..write('sessionId: $sessionId, ')
+          ..write('promptId: $promptId, ')
+          ..write('acceptedAt: $acceptedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+mixin $SessionContinuationTableTableToColumns
+    implements Insertable<SessionContinuationDto> {
+  String get sessionId;
+  bool get enabled;
+  String get outcomeJson;
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['session_id'] = Variable<String>(sessionId);
+    map['enabled'] = Variable<bool>(enabled);
+    map['outcome_json'] = Variable<String>(outcomeJson);
+    return map;
+  }
+}
+
+class $SessionContinuationTableTable extends SessionContinuationTable
+    with TableInfo<$SessionContinuationTableTable, SessionContinuationDto> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SessionContinuationTableTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _sessionIdMeta = const VerificationMeta(
+    'sessionId',
+  );
+  @override
+  late final GeneratedColumn<String> sessionId = GeneratedColumn<String>(
+    'session_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES sessions_table (session_id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+  );
+  static const VerificationMeta _outcomeJsonMeta = const VerificationMeta(
+    'outcomeJson',
+  );
+  @override
+  late final GeneratedColumn<String> outcomeJson = GeneratedColumn<String>(
+    'outcome_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [sessionId, enabled, outcomeJson];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'session_continuations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SessionContinuationDto> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('session_id')) {
+      context.handle(
+        _sessionIdMeta,
+        sessionId.isAcceptableOrUnknown(data['session_id']!, _sessionIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionIdMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_enabledMeta);
+    }
+    if (data.containsKey('outcome_json')) {
+      context.handle(
+        _outcomeJsonMeta,
+        outcomeJson.isAcceptableOrUnknown(
+          data['outcome_json']!,
+          _outcomeJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_outcomeJsonMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {sessionId};
+  @override
+  SessionContinuationDto map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SessionContinuationDto(
+      sessionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_id'],
+      )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+      outcomeJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}outcome_json'],
+      )!,
+    );
+  }
+
+  @override
+  $SessionContinuationTableTable createAlias(String alias) {
+    return $SessionContinuationTableTable(attachedDatabase, alias);
+  }
+
+  @override
+  bool get withoutRowId => true;
+}
+
+class SessionContinuationDto extends DataClass
+    with $SessionContinuationTableTableToColumns {
+  @override
+  final String sessionId;
+  @override
+  final bool enabled;
+  @override
+  final String outcomeJson;
+  const SessionContinuationDto({
+    required this.sessionId,
+    required this.enabled,
+    required this.outcomeJson,
+  });
+  SessionContinuationTableCompanion toCompanion(bool nullToAbsent) {
+    return SessionContinuationTableCompanion(
+      sessionId: Value(sessionId),
+      enabled: Value(enabled),
+      outcomeJson: Value(outcomeJson),
+    );
+  }
+
+  factory SessionContinuationDto.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SessionContinuationDto(
+      sessionId: serializer.fromJson<String>(json['sessionId']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      outcomeJson: serializer.fromJson<String>(json['outcomeJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'sessionId': serializer.toJson<String>(sessionId),
+      'enabled': serializer.toJson<bool>(enabled),
+      'outcomeJson': serializer.toJson<String>(outcomeJson),
+    };
+  }
+
+  SessionContinuationDto copyWith({
+    String? sessionId,
+    bool? enabled,
+    String? outcomeJson,
+  }) => SessionContinuationDto(
+    sessionId: sessionId ?? this.sessionId,
+    enabled: enabled ?? this.enabled,
+    outcomeJson: outcomeJson ?? this.outcomeJson,
+  );
+  SessionContinuationDto copyWithCompanion(
+    SessionContinuationTableCompanion data,
+  ) {
+    return SessionContinuationDto(
+      sessionId: data.sessionId.present ? data.sessionId.value : this.sessionId,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      outcomeJson: data.outcomeJson.present
+          ? data.outcomeJson.value
+          : this.outcomeJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionContinuationDto(')
+          ..write('sessionId: $sessionId, ')
+          ..write('enabled: $enabled, ')
+          ..write('outcomeJson: $outcomeJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(sessionId, enabled, outcomeJson);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SessionContinuationDto &&
+          other.sessionId == this.sessionId &&
+          other.enabled == this.enabled &&
+          other.outcomeJson == this.outcomeJson);
+}
+
+class SessionContinuationTableCompanion
+    extends UpdateCompanion<SessionContinuationDto> {
+  final Value<String> sessionId;
+  final Value<bool> enabled;
+  final Value<String> outcomeJson;
+  const SessionContinuationTableCompanion({
+    this.sessionId = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.outcomeJson = const Value.absent(),
+  });
+  SessionContinuationTableCompanion.insert({
+    required String sessionId,
+    required bool enabled,
+    required String outcomeJson,
+  }) : sessionId = Value(sessionId),
+       enabled = Value(enabled),
+       outcomeJson = Value(outcomeJson);
+  static Insertable<SessionContinuationDto> custom({
+    Expression<String>? sessionId,
+    Expression<bool>? enabled,
+    Expression<String>? outcomeJson,
+  }) {
+    return RawValuesInsertable({
+      if (sessionId != null) 'session_id': sessionId,
+      if (enabled != null) 'enabled': enabled,
+      if (outcomeJson != null) 'outcome_json': outcomeJson,
+    });
+  }
+
+  SessionContinuationTableCompanion copyWith({
+    Value<String>? sessionId,
+    Value<bool>? enabled,
+    Value<String>? outcomeJson,
+  }) {
+    return SessionContinuationTableCompanion(
+      sessionId: sessionId ?? this.sessionId,
+      enabled: enabled ?? this.enabled,
+      outcomeJson: outcomeJson ?? this.outcomeJson,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (sessionId.present) {
+      map['session_id'] = Variable<String>(sessionId.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (outcomeJson.present) {
+      map['outcome_json'] = Variable<String>(outcomeJson.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SessionContinuationTableCompanion(')
+          ..write('sessionId: $sessionId, ')
+          ..write('enabled: $enabled, ')
+          ..write('outcomeJson: $outcomeJson')
           ..write(')'))
         .toString();
   }
@@ -3517,6 +4224,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $SessionOptionsCacheTableTable(this);
   late final $NewSessionDefaultsTableTable newSessionDefaultsTable =
       $NewSessionDefaultsTableTable(this);
+  late final $AcceptedPromptsTableTable acceptedPromptsTable =
+      $AcceptedPromptsTableTable(this);
+  late final $SessionContinuationTableTable sessionContinuationTable =
+      $SessionContinuationTableTable(this);
   late final Index idxProjectsPath = Index(
     'idx_projects_path',
     'CREATE INDEX idx_projects_path ON projects_table (path)',
@@ -3565,6 +4276,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     catalogHydrationsTable,
     sessionOptionsCacheTable,
     newSessionDefaultsTable,
+    acceptedPromptsTable,
+    sessionContinuationTable,
     idxProjectsPath,
     idxProjectsUpdated,
     idxSessionsPluginBackend,
@@ -3595,6 +4308,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('pull_requests_table', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'sessions_table',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('session_continuations', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -4112,6 +4832,7 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       Value<String?> baseCommit,
       Value<String?> lastAgent,
       Value<AgentModel?> lastAgentModel,
+      Value<bool> fastMode,
       required int createdAt,
       required int updatedAt,
       required int projectionUpdatedAt,
@@ -4121,6 +4842,7 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       required String pluginId,
       Value<String?> title,
       Value<String?> catalogTitle,
+      Value<SessionApprovalMode?> approvalOverride,
     });
 typedef $$SessionTableTableUpdateCompanionBuilder =
     SessionTableCompanion Function({
@@ -4139,6 +4861,7 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<String?> baseCommit,
       Value<String?> lastAgent,
       Value<AgentModel?> lastAgentModel,
+      Value<bool> fastMode,
       Value<int> createdAt,
       Value<int> updatedAt,
       Value<int> projectionUpdatedAt,
@@ -4148,6 +4871,7 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<String> pluginId,
       Value<String?> title,
       Value<String?> catalogTitle,
+      Value<SessionApprovalMode?> approvalOverride,
     });
 
 final class $$SessionTableTableReferences
@@ -4188,6 +4912,37 @@ final class $$SessionTableTableReferences
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $SessionContinuationTableTable,
+    List<SessionContinuationDto>
+  >
+  _sessionContinuationTableRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.sessionContinuationTable,
+        aliasName:
+            'sessions_table__session_id__session_continuations__session_id',
+      );
+
+  $$SessionContinuationTableTableProcessedTableManager
+  get sessionContinuationTableRefs {
+    final manager =
+        $$SessionContinuationTableTableTableManager(
+          $_db,
+          $_db.sessionContinuationTable,
+        ).filter(
+          (f) => f.sessionId.sessionId.sqlEquals(
+            $_itemColumn<String>('session_id')!,
+          ),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _sessionContinuationTableRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
     );
   }
 }
@@ -4268,6 +5023,11 @@ class $$SessionTableTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
+  ColumnFilters<bool> get fastMode => $composableBuilder(
+    column: $table.fastMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -4311,6 +5071,16 @@ class $$SessionTableTableFilterComposer
   ColumnFilters<String> get catalogTitle => $composableBuilder(
     column: $table.catalogTitle,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<
+    SessionApprovalMode?,
+    SessionApprovalMode,
+    String
+  >
+  get approvalOverride => $composableBuilder(
+    column: $table.approvalOverride,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
   $$ProjectsTableTableFilterComposer get projectId {
@@ -4357,6 +5127,33 @@ class $$SessionTableTableFilterComposer
           ),
     );
     return composer;
+  }
+
+  Expression<bool> sessionContinuationTableRefs(
+    Expression<bool> Function($$SessionContinuationTableTableFilterComposer f)
+    f,
+  ) {
+    final $$SessionContinuationTableTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionContinuationTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionContinuationTableTableFilterComposer(
+                $db: $db,
+                $table: $db.sessionContinuationTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
   }
 }
 
@@ -4435,6 +5232,11 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get fastMode => $composableBuilder(
+    column: $table.fastMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4477,6 +5279,11 @@ class $$SessionTableTableOrderingComposer
 
   ColumnOrderings<String> get catalogTitle => $composableBuilder(
     column: $table.catalogTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get approvalOverride => $composableBuilder(
+    column: $table.approvalOverride,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4597,6 +5404,9 @@ class $$SessionTableTableAnnotationComposer
         builder: (column) => column,
       );
 
+  GeneratedColumn<bool> get fastMode =>
+      $composableBuilder(column: $table.fastMode, builder: (column) => column);
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -4631,6 +5441,12 @@ class $$SessionTableTableAnnotationComposer
 
   GeneratedColumn<String> get catalogTitle => $composableBuilder(
     column: $table.catalogTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<SessionApprovalMode?, String>
+  get approvalOverride => $composableBuilder(
+    column: $table.approvalOverride,
     builder: (column) => column,
   );
 
@@ -4679,6 +5495,33 @@ class $$SessionTableTableAnnotationComposer
     );
     return composer;
   }
+
+  Expression<T> sessionContinuationTableRefs<T extends Object>(
+    Expression<T> Function($$SessionContinuationTableTableAnnotationComposer a)
+    f,
+  ) {
+    final $$SessionContinuationTableTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.sessionId,
+          referencedTable: $db.sessionContinuationTable,
+          getReferencedColumn: (t) => t.sessionId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$SessionContinuationTableTableAnnotationComposer(
+                $db: $db,
+                $table: $db.sessionContinuationTable,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$SessionTableTableTableManager
@@ -4694,7 +5537,11 @@ class $$SessionTableTableTableManager
           $$SessionTableTableUpdateCompanionBuilder,
           (SessionDto, $$SessionTableTableReferences),
           SessionDto,
-          PrefetchHooks Function({bool projectId, bool parentSessionId})
+          PrefetchHooks Function({
+            bool projectId,
+            bool parentSessionId,
+            bool sessionContinuationTableRefs,
+          })
         > {
   $$SessionTableTableTableManager(_$AppDatabase db, $SessionTableTable table)
     : super(
@@ -4725,6 +5572,7 @@ class $$SessionTableTableTableManager
                 Value<String?> baseCommit = const Value.absent(),
                 Value<String?> lastAgent = const Value.absent(),
                 Value<AgentModel?> lastAgentModel = const Value.absent(),
+                Value<bool> fastMode = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
                 Value<int> projectionUpdatedAt = const Value.absent(),
@@ -4734,6 +5582,8 @@ class $$SessionTableTableTableManager
                 Value<String> pluginId = const Value.absent(),
                 Value<String?> title = const Value.absent(),
                 Value<String?> catalogTitle = const Value.absent(),
+                Value<SessionApprovalMode?> approvalOverride =
+                    const Value.absent(),
               }) => SessionTableCompanion(
                 sessionId: sessionId,
                 backendSessionId: backendSessionId,
@@ -4751,6 +5601,7 @@ class $$SessionTableTableTableManager
                 baseCommit: baseCommit,
                 lastAgent: lastAgent,
                 lastAgentModel: lastAgentModel,
+                fastMode: fastMode,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 projectionUpdatedAt: projectionUpdatedAt,
@@ -4760,6 +5611,7 @@ class $$SessionTableTableTableManager
                 pluginId: pluginId,
                 title: title,
                 catalogTitle: catalogTitle,
+                approvalOverride: approvalOverride,
               ),
           createCompanionCallback:
               ({
@@ -4779,6 +5631,7 @@ class $$SessionTableTableTableManager
                 Value<String?> baseCommit = const Value.absent(),
                 Value<String?> lastAgent = const Value.absent(),
                 Value<AgentModel?> lastAgentModel = const Value.absent(),
+                Value<bool> fastMode = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
                 required int projectionUpdatedAt,
@@ -4788,6 +5641,8 @@ class $$SessionTableTableTableManager
                 required String pluginId,
                 Value<String?> title = const Value.absent(),
                 Value<String?> catalogTitle = const Value.absent(),
+                Value<SessionApprovalMode?> approvalOverride =
+                    const Value.absent(),
               }) => SessionTableCompanion.insert(
                 sessionId: sessionId,
                 backendSessionId: backendSessionId,
@@ -4805,6 +5660,7 @@ class $$SessionTableTableTableManager
                 baseCommit: baseCommit,
                 lastAgent: lastAgent,
                 lastAgentModel: lastAgentModel,
+                fastMode: fastMode,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 projectionUpdatedAt: projectionUpdatedAt,
@@ -4814,6 +5670,7 @@ class $$SessionTableTableTableManager
                 pluginId: pluginId,
                 title: title,
                 catalogTitle: catalogTitle,
+                approvalOverride: approvalOverride,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -4824,10 +5681,17 @@ class $$SessionTableTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({projectId = false, parentSessionId = false}) {
+              ({
+                projectId = false,
+                parentSessionId = false,
+                sessionContinuationTableRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
-                  explicitlyWatchedTables: [],
+                  explicitlyWatchedTables: [
+                    if (sessionContinuationTableRefs)
+                      db.sessionContinuationTable,
+                  ],
                   addJoins:
                       <
                         T extends TableManagerState<
@@ -4870,7 +5734,29 @@ class $$SessionTableTableTableManager
                         return state;
                       },
                   getPrefetchedDataCallback: (items) async {
-                    return [];
+                    return [
+                      if (sessionContinuationTableRefs)
+                        await $_getPrefetchedData<
+                          SessionDto,
+                          $SessionTableTable,
+                          SessionContinuationDto
+                        >(
+                          currentTable: table,
+                          referencedTable: $$SessionTableTableReferences
+                              ._sessionContinuationTableRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$SessionTableTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).sessionContinuationTableRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.sessionId == item.sessionId,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
                 );
               },
@@ -4890,7 +5776,11 @@ typedef $$SessionTableTableProcessedTableManager =
       $$SessionTableTableUpdateCompanionBuilder,
       (SessionDto, $$SessionTableTableReferences),
       SessionDto,
-      PrefetchHooks Function({bool projectId, bool parentSessionId})
+      PrefetchHooks Function({
+        bool projectId,
+        bool parentSessionId,
+        bool sessionContinuationTableRefs,
+      })
     >;
 typedef $$DeletedSessionsTableTableCreateCompanionBuilder =
     DeletedSessionsTableCompanion Function({
@@ -6124,12 +7014,14 @@ typedef $$NewSessionDefaultsTableTableCreateCompanionBuilder =
       required String pluginId,
       Value<String?> agent,
       Value<AgentModel?> agentModel,
+      Value<bool> fastMode,
     });
 typedef $$NewSessionDefaultsTableTableUpdateCompanionBuilder =
     NewSessionDefaultsTableCompanion Function({
       Value<String> pluginId,
       Value<String?> agent,
       Value<AgentModel?> agentModel,
+      Value<bool> fastMode,
     });
 
 class $$NewSessionDefaultsTableTableFilterComposer
@@ -6156,6 +7048,11 @@ class $$NewSessionDefaultsTableTableFilterComposer
     column: $table.agentModel,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
+
+  ColumnFilters<bool> get fastMode => $composableBuilder(
+    column: $table.fastMode,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$NewSessionDefaultsTableTableOrderingComposer
@@ -6181,6 +7078,11 @@ class $$NewSessionDefaultsTableTableOrderingComposer
     column: $table.agentModel,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get fastMode => $composableBuilder(
+    column: $table.fastMode,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$NewSessionDefaultsTableTableAnnotationComposer
@@ -6203,6 +7105,9 @@ class $$NewSessionDefaultsTableTableAnnotationComposer
         column: $table.agentModel,
         builder: (column) => column,
       );
+
+  GeneratedColumn<bool> get fastMode =>
+      $composableBuilder(column: $table.fastMode, builder: (column) => column);
 }
 
 class $$NewSessionDefaultsTableTableTableManager
@@ -6254,20 +7159,24 @@ class $$NewSessionDefaultsTableTableTableManager
                 Value<String> pluginId = const Value.absent(),
                 Value<String?> agent = const Value.absent(),
                 Value<AgentModel?> agentModel = const Value.absent(),
+                Value<bool> fastMode = const Value.absent(),
               }) => NewSessionDefaultsTableCompanion(
                 pluginId: pluginId,
                 agent: agent,
                 agentModel: agentModel,
+                fastMode: fastMode,
               ),
           createCompanionCallback:
               ({
                 required String pluginId,
                 Value<String?> agent = const Value.absent(),
                 Value<AgentModel?> agentModel = const Value.absent(),
+                Value<bool> fastMode = const Value.absent(),
               }) => NewSessionDefaultsTableCompanion.insert(
                 pluginId: pluginId,
                 agent: agent,
                 agentModel: agentModel,
+                fastMode: fastMode,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -6310,6 +7219,492 @@ typedef $$NewSessionDefaultsTableTableProcessedTableManager =
       NewSessionDefaultsTableData,
       PrefetchHooks Function()
     >;
+typedef $$AcceptedPromptsTableTableCreateCompanionBuilder =
+    AcceptedPromptsTableCompanion Function({
+      required String sessionId,
+      required String promptId,
+      required int acceptedAt,
+    });
+typedef $$AcceptedPromptsTableTableUpdateCompanionBuilder =
+    AcceptedPromptsTableCompanion Function({
+      Value<String> sessionId,
+      Value<String> promptId,
+      Value<int> acceptedAt,
+    });
+
+class $$AcceptedPromptsTableTableFilterComposer
+    extends Composer<_$AppDatabase, $AcceptedPromptsTableTable> {
+  $$AcceptedPromptsTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get sessionId => $composableBuilder(
+    column: $table.sessionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get promptId => $composableBuilder(
+    column: $table.promptId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get acceptedAt => $composableBuilder(
+    column: $table.acceptedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AcceptedPromptsTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $AcceptedPromptsTableTable> {
+  $$AcceptedPromptsTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get sessionId => $composableBuilder(
+    column: $table.sessionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get promptId => $composableBuilder(
+    column: $table.promptId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get acceptedAt => $composableBuilder(
+    column: $table.acceptedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AcceptedPromptsTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AcceptedPromptsTableTable> {
+  $$AcceptedPromptsTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get sessionId =>
+      $composableBuilder(column: $table.sessionId, builder: (column) => column);
+
+  GeneratedColumn<String> get promptId =>
+      $composableBuilder(column: $table.promptId, builder: (column) => column);
+
+  GeneratedColumn<int> get acceptedAt => $composableBuilder(
+    column: $table.acceptedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$AcceptedPromptsTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AcceptedPromptsTableTable,
+          AcceptedPromptsTableData,
+          $$AcceptedPromptsTableTableFilterComposer,
+          $$AcceptedPromptsTableTableOrderingComposer,
+          $$AcceptedPromptsTableTableAnnotationComposer,
+          $$AcceptedPromptsTableTableCreateCompanionBuilder,
+          $$AcceptedPromptsTableTableUpdateCompanionBuilder,
+          (
+            AcceptedPromptsTableData,
+            BaseReferences<
+              _$AppDatabase,
+              $AcceptedPromptsTableTable,
+              AcceptedPromptsTableData
+            >,
+          ),
+          AcceptedPromptsTableData,
+          PrefetchHooks Function()
+        > {
+  $$AcceptedPromptsTableTableTableManager(
+    _$AppDatabase db,
+    $AcceptedPromptsTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AcceptedPromptsTableTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AcceptedPromptsTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AcceptedPromptsTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> sessionId = const Value.absent(),
+                Value<String> promptId = const Value.absent(),
+                Value<int> acceptedAt = const Value.absent(),
+              }) => AcceptedPromptsTableCompanion(
+                sessionId: sessionId,
+                promptId: promptId,
+                acceptedAt: acceptedAt,
+              ),
+          createCompanionCallback:
+              ({
+                required String sessionId,
+                required String promptId,
+                required int acceptedAt,
+              }) => AcceptedPromptsTableCompanion.insert(
+                sessionId: sessionId,
+                promptId: promptId,
+                acceptedAt: acceptedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $AcceptedPromptsTableTable,
+                    AcceptedPromptsTableData
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $AcceptedPromptsTableTable,
+                    AcceptedPromptsTableData
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AcceptedPromptsTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AcceptedPromptsTableTable,
+      AcceptedPromptsTableData,
+      $$AcceptedPromptsTableTableFilterComposer,
+      $$AcceptedPromptsTableTableOrderingComposer,
+      $$AcceptedPromptsTableTableAnnotationComposer,
+      $$AcceptedPromptsTableTableCreateCompanionBuilder,
+      $$AcceptedPromptsTableTableUpdateCompanionBuilder,
+      (
+        AcceptedPromptsTableData,
+        BaseReferences<
+          _$AppDatabase,
+          $AcceptedPromptsTableTable,
+          AcceptedPromptsTableData
+        >,
+      ),
+      AcceptedPromptsTableData,
+      PrefetchHooks Function()
+    >;
+typedef $$SessionContinuationTableTableCreateCompanionBuilder =
+    SessionContinuationTableCompanion Function({
+      required String sessionId,
+      required bool enabled,
+      required String outcomeJson,
+    });
+typedef $$SessionContinuationTableTableUpdateCompanionBuilder =
+    SessionContinuationTableCompanion Function({
+      Value<String> sessionId,
+      Value<bool> enabled,
+      Value<String> outcomeJson,
+    });
+
+final class $$SessionContinuationTableTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $SessionContinuationTableTable,
+          SessionContinuationDto
+        > {
+  $$SessionContinuationTableTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $SessionTableTable _sessionIdTable(_$AppDatabase db) =>
+      db.sessionTable.createAlias(
+        'session_continuations__session_id__sessions_table__session_id',
+      );
+
+  $$SessionTableTableProcessedTableManager get sessionId {
+    final $_column = $_itemColumn<String>('session_id')!;
+
+    final manager = $$SessionTableTableTableManager(
+      $_db,
+      $_db.sessionTable,
+    ).filter((f) => f.sessionId.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sessionIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$SessionContinuationTableTableFilterComposer
+    extends Composer<_$AppDatabase, $SessionContinuationTableTable> {
+  $$SessionContinuationTableTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get outcomeJson => $composableBuilder(
+    column: $table.outcomeJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$SessionTableTableFilterComposer get sessionId {
+    final $$SessionTableTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableFilterComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionContinuationTableTableOrderingComposer
+    extends Composer<_$AppDatabase, $SessionContinuationTableTable> {
+  $$SessionContinuationTableTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get outcomeJson => $composableBuilder(
+    column: $table.outcomeJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$SessionTableTableOrderingComposer get sessionId {
+    final $$SessionTableTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableOrderingComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionContinuationTableTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SessionContinuationTableTable> {
+  $$SessionContinuationTableTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<String> get outcomeJson => $composableBuilder(
+    column: $table.outcomeJson,
+    builder: (column) => column,
+  );
+
+  $$SessionTableTableAnnotationComposer get sessionId {
+    final $$SessionTableTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.sessionId,
+      referencedTable: $db.sessionTable,
+      getReferencedColumn: (t) => t.sessionId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$SessionTableTableAnnotationComposer(
+            $db: $db,
+            $table: $db.sessionTable,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$SessionContinuationTableTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SessionContinuationTableTable,
+          SessionContinuationDto,
+          $$SessionContinuationTableTableFilterComposer,
+          $$SessionContinuationTableTableOrderingComposer,
+          $$SessionContinuationTableTableAnnotationComposer,
+          $$SessionContinuationTableTableCreateCompanionBuilder,
+          $$SessionContinuationTableTableUpdateCompanionBuilder,
+          (SessionContinuationDto, $$SessionContinuationTableTableReferences),
+          SessionContinuationDto,
+          PrefetchHooks Function({bool sessionId})
+        > {
+  $$SessionContinuationTableTableTableManager(
+    _$AppDatabase db,
+    $SessionContinuationTableTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SessionContinuationTableTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$SessionContinuationTableTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SessionContinuationTableTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> sessionId = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<String> outcomeJson = const Value.absent(),
+              }) => SessionContinuationTableCompanion(
+                sessionId: sessionId,
+                enabled: enabled,
+                outcomeJson: outcomeJson,
+              ),
+          createCompanionCallback:
+              ({
+                required String sessionId,
+                required bool enabled,
+                required String outcomeJson,
+              }) => SessionContinuationTableCompanion.insert(
+                sessionId: sessionId,
+                enabled: enabled,
+                outcomeJson: outcomeJson,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $SessionContinuationTableTable,
+                    SessionContinuationDto
+                  >(table),
+                  $$SessionContinuationTableTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({sessionId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (sessionId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.sessionId,
+                        referencedTable:
+                            $$SessionContinuationTableTableReferences
+                                ._sessionIdTable(db),
+                        referencedColumn:
+                            $$SessionContinuationTableTableReferences
+                                ._sessionIdTable(db)
+                                .sessionId,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$SessionContinuationTableTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SessionContinuationTableTable,
+      SessionContinuationDto,
+      $$SessionContinuationTableTableFilterComposer,
+      $$SessionContinuationTableTableOrderingComposer,
+      $$SessionContinuationTableTableAnnotationComposer,
+      $$SessionContinuationTableTableCreateCompanionBuilder,
+      $$SessionContinuationTableTableUpdateCompanionBuilder,
+      (SessionContinuationDto, $$SessionContinuationTableTableReferences),
+      SessionContinuationDto,
+      PrefetchHooks Function({bool sessionId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6336,5 +7731,12 @@ class $AppDatabaseManager {
       $$NewSessionDefaultsTableTableTableManager(
         _db,
         _db.newSessionDefaultsTable,
+      );
+  $$AcceptedPromptsTableTableTableManager get acceptedPromptsTable =>
+      $$AcceptedPromptsTableTableTableManager(_db, _db.acceptedPromptsTable);
+  $$SessionContinuationTableTableTableManager get sessionContinuationTable =>
+      $$SessionContinuationTableTableTableManager(
+        _db,
+        _db.sessionContinuationTable,
       );
 }

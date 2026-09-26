@@ -121,7 +121,7 @@ class const UserMessageBubble({
     final handleLink = buildSessionDetailMarkdownLinkTapHandler(context: context);
     return TextButton.icon(
       onPressed: () => handleLink(label, uri.toString(), ""),
-      icon: const Icon(TablerRegular.photo, size: 16),
+      icon: const Icon(TablerRegular.photo, size: PregoIconSize.sm),
       label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       style: TextButton.styleFrom(
         foregroundColor: prego.colors.textPrimary,

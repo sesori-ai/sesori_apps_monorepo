@@ -30,6 +30,7 @@ class ProjectRepository({
   static const GitRemoteIdentityParser _remoteIdentityParser = GitRemoteIdentityParser();
   static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
   static const int _maxConcurrentWorktreeInspections = 8;
+  static const Duration _directoryProbeTimeout = Duration(seconds: 2);
   final ParallelLock _worktreeInspectionLock = ParallelLock(
     maxParallelOperations: _maxConcurrentWorktreeInspections,
   );
@@ -39,11 +40,13 @@ class ProjectRepository({
     final unseenById = await unseenByProjectId(
       projectIds: [for (final row in rows) row.projectId],
     );
+    final directoryMissing = await Future.wait([for (final row in rows) _directoryMissing(row.path)]);
     return [
-      for (final row in rows)
+      for (final (index, row) in rows.indexed)
         _projectCatalogMapper.mapSummary(
           row: row,
           hasUnseenChanges: unseenById[row.projectId] ?? false,
+          directoryMissing: directoryMissing[index],
         ),
     ];
   }
@@ -172,7 +175,7 @@ class ProjectRepository({
     return project.copyWith(
       time: committedActivity,
       hasUnseenChanges: await projectHasUnseenChanges(projectId: project.id),
-      directoryMissing: _directoryMissing(project.path),
+      directoryMissing: await _directoryMissing(project.path),
     );
   }
 
@@ -191,7 +194,7 @@ class ProjectRepository({
     return _projectCatalogMapper.mapProject(
       row: row,
       hasUnseenChanges: await projectHasUnseenChanges(projectId: projectId),
-      directoryMissing: _directoryMissing(row.path),
+      directoryMissing: await _directoryMissing(row.path),
       supportsDedicatedWorktrees: supportsDedicatedWorktrees,
     );
   }
@@ -248,9 +251,21 @@ class ProjectRepository({
   Future<void> writeActivity({required String projectId, required ProjectTime activity}) =>
       _projectsDao.setActivity(projectId: projectId, createdAt: activity.created, updatedAt: activity.updated);
 
-  bool _directoryMissing(String path) {
+  /// Probes asynchronously, bounded by [_directoryProbeTimeout], so a folder on
+  /// a stalled network or removable drive cannot block the isolate or hold up
+  /// the project list; an unanswered probe reads as present.
+  Future<bool> _directoryMissing(String path) async {
     try {
-      return !_filesystemApi.directoryExists(path);
+      final exists = await _filesystemApi
+          .directoryExistsAsync(path)
+          .timeout(
+            _directoryProbeTimeout,
+            onTimeout: () {
+              Log.w("ProjectRepository: probing whether $path exists timed out; treating as present");
+              return true;
+            },
+          );
+      return !exists;
     } on FileSystemException catch (error, stackTrace) {
       Log.w("ProjectRepository: could not determine whether $path exists; treating as present", error, stackTrace);
       return false;

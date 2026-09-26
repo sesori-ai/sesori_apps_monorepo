@@ -71,7 +71,7 @@ void main() {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("AI Interactions"));
+    await tester.tap(find.text("AI interactions"));
     await tester.pumpAndSettle();
 
     verify(
@@ -84,8 +84,8 @@ void main() {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
-    final node = tester.getSemantics(find.text("AI Interactions"));
-    expect(node.label, contains("AI Interactions"));
+    final node = tester.getSemantics(find.text("AI interactions"));
+    expect(node.label, contains("AI interactions"));
     expect(node.label, contains("Questions and permission requests from active AI sessions"));
     expect(node, isSemantics(hasToggledState: true, isToggled: true, hasTapAction: true));
 
@@ -116,15 +116,15 @@ void main() {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("AI Interactions"));
+    await tester.tap(find.text("AI interactions"));
     await tester.pump();
 
     expect(find.byKey(const ValueKey("notification_preference_loading_aiInteraction")), findsOneWidget);
     expect(find.byKey(const ValueKey("notification_preference_switch_aiInteraction")), findsNothing);
     expect(find.byKey(const ValueKey("notification_preference_switch_sessionMessage")), findsOneWidget);
 
-    await tester.tap(find.text("AI Interactions"));
-    await tester.tap(find.text("Session Messages"));
+    await tester.tap(find.text("AI interactions"));
+    await tester.tap(find.text("Session messages"));
     await tester.pump();
 
     verify(
@@ -163,7 +163,7 @@ void main() {
     await tester.tap(find.byKey(const Key("notification_preferences_retry")));
     await tester.pumpAndSettle();
 
-    expect(find.text("AI Interactions"), findsOneWidget);
+    expect(find.text("AI interactions"), findsOneWidget);
     verify(() => service.getAll()).called(2);
   });
 }

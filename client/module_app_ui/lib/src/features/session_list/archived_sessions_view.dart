@@ -36,6 +36,9 @@ class const ArchivedSessionsView({
         if (state is SessionListLoaded && state.isRefreshing)
           const SliverToBoxAdapter(child: LinearProgressIndicator()),
         SessionListContent(
+          quickFilter: SessionListQuickFilter.all,
+          query: "",
+          hiddenSessionIds: const {},
           projectName: null,
           onSessionTap: onSessionTap,
           actionDispatcher: actionDispatcher,

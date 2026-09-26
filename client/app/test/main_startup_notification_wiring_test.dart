@@ -75,13 +75,14 @@ void main() {
       expect(scope.initialQuality, GlassQuality.standard);
       expect(scope.maxQuality, GlassQuality.standard);
       expect(scope.allowStepUp, isTrue);
-      expect(scope.targetFrameMs, 8);
+      expect(scope.targetFrameMs, 16);
       expect(scope.onQualityChanged, isNotNull);
     }
 
     await bootstrapSesoriApp(
       shouldInitializeFirebase: true,
       configureDependenciesFn: configureDependencies,
+      disposeDependenciesFn: () async => fail("Successful startup must keep its graph"),
       prepareSingularAttributionFn: prepareSingularAttribution,
       applySingularCrawlGateFn: applySingularCrawlGate,
       initializeDeepLinks: initializeDeepLinks,
@@ -172,6 +173,7 @@ void main() {
           crawlGate: Future.value(AnalyticsStoreCrawlGate.allow),
         );
       },
+      disposeDependenciesFn: () async => fail("Successful startup must keep its graph"),
       prepareSingularAttributionFn: () => events.add("singularAttribution.prepare"),
       applySingularCrawlGateFn: ({required crawlGate}) {
         events.add("singularAttribution.${crawlGate.name}");

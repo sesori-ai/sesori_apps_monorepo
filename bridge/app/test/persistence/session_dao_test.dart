@@ -31,6 +31,7 @@ void main() {
     test("insert dedicated session then retrieve by sessionId returns matching row", () async {
       final createdAt = DateTime.now().millisecondsSinceEpoch;
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "ses-1",
@@ -64,6 +65,7 @@ void main() {
     test("insert simple session supports null worktree fields", () async {
       final createdAt = DateTime.now().millisecondsSinceEpoch;
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "ses-simple",
@@ -93,6 +95,7 @@ void main() {
 
     test("replaceGeneratedBranch conditionally updates durable and current branch names", () async {
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "ses-generated-branch",
@@ -132,6 +135,7 @@ void main() {
 
     test("replaceGeneratedBranch preserves a concurrently switched current branch", () async {
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "ses-switched-branch",
@@ -205,6 +209,7 @@ void main() {
 
     test("insertSession persists optional prompt defaults", () async {
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "ses-insert-defaults",
@@ -235,6 +240,7 @@ void main() {
 
     test("updatePromptDefaults overwrites all prompt default fields", () async {
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "ses-update-defaults",
@@ -275,6 +281,7 @@ void main() {
 
     test("setTitleIfNull ignores catalog title and does not replace a bridge title", () async {
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "ses-generated-title",
@@ -339,6 +346,7 @@ void main() {
 
     test("delete session then get returns null", () async {
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "ses-2",
@@ -363,6 +371,7 @@ void main() {
 
     test("deleteSession is no-op for unknown sessionId", () async {
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "ses-3",
@@ -420,6 +429,7 @@ void main() {
 
     test("setArchived updates archivedAt", () async {
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "ses-4",
@@ -448,6 +458,7 @@ void main() {
 
     test("getSessionsByProject and getSessionsByIds return expected sessions", () async {
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "ses-a",
@@ -464,6 +475,7 @@ void main() {
         lastAgentModel: null,
       );
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "ses-b",
@@ -480,6 +492,7 @@ void main() {
         lastAgentModel: null,
       );
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "ses-c",
@@ -510,6 +523,7 @@ void main() {
     group("getOtherActiveSessionsSharing", () {
       test("returns empty when both params are null", () async {
         await dao.insertSession(
+          fastMode: false,
           pluginId: "opencode",
           preservePullRequestScope: false,
           sessionId: "ses-1",
@@ -538,6 +552,7 @@ void main() {
 
       test("finds other session sharing worktreePath", () async {
         await dao.insertSession(
+          fastMode: false,
           pluginId: "opencode",
           preservePullRequestScope: false,
           sessionId: "ses-a",
@@ -554,6 +569,7 @@ void main() {
           lastAgentModel: null,
         );
         await dao.insertSession(
+          fastMode: false,
           pluginId: "opencode",
           preservePullRequestScope: false,
           sessionId: "ses-b",
@@ -583,6 +599,7 @@ void main() {
 
       test("finds other session sharing branchName", () async {
         await dao.insertSession(
+          fastMode: false,
           pluginId: "opencode",
           preservePullRequestScope: false,
           sessionId: "ses-a",
@@ -599,6 +616,7 @@ void main() {
           lastAgentModel: null,
         );
         await dao.insertSession(
+          fastMode: false,
           pluginId: "opencode",
           preservePullRequestScope: false,
           sessionId: "ses-b",
@@ -628,6 +646,7 @@ void main() {
 
       test("excludes the current session from results", () async {
         await dao.insertSession(
+          fastMode: false,
           pluginId: "opencode",
           preservePullRequestScope: false,
           sessionId: "ses-a",
@@ -656,6 +675,7 @@ void main() {
 
       test("excludes archived sessions", () async {
         await dao.insertSession(
+          fastMode: false,
           pluginId: "opencode",
           preservePullRequestScope: false,
           sessionId: "ses-a",
@@ -672,6 +692,7 @@ void main() {
           lastAgentModel: null,
         );
         await dao.insertSession(
+          fastMode: false,
           pluginId: "opencode",
           preservePullRequestScope: false,
           sessionId: "ses-b",
@@ -706,6 +727,7 @@ void main() {
 
       test("uses OR logic when both worktreePath and branchName provided", () async {
         await dao.insertSession(
+          fastMode: false,
           pluginId: "opencode",
           preservePullRequestScope: false,
           sessionId: "ses-a",
@@ -722,6 +744,7 @@ void main() {
           lastAgentModel: null,
         );
         await dao.insertSession(
+          fastMode: false,
           pluginId: "opencode",
           preservePullRequestScope: false,
           sessionId: "ses-b",
@@ -738,6 +761,7 @@ void main() {
           lastAgentModel: null,
         );
         await dao.insertSession(
+          fastMode: false,
           pluginId: "opencode",
           preservePullRequestScope: false,
           sessionId: "ses-c",
@@ -769,6 +793,7 @@ void main() {
         // Two sessions in different projects accidentally share the same branch
         // name. Cleanup of one must not be blocked by the other.
         await dao.insertSession(
+          fastMode: false,
           pluginId: "opencode",
           preservePullRequestScope: false,
           sessionId: "ses-a",
@@ -785,6 +810,7 @@ void main() {
           lastAgentModel: null,
         );
         await dao.insertSession(
+          fastMode: false,
           pluginId: "opencode",
           preservePullRequestScope: false,
           sessionId: "ses-b",
@@ -868,6 +894,7 @@ void main() {
     test("insertSessionsIfMissing is no-op when session exists, preserving worktreePath and branchName", () async {
       // Pre-insert a full session with worktree state.
       await dao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: "sess-existing",
@@ -1046,6 +1073,7 @@ void main() {
         // Proves the v5 FK constraint catches BOTH session insert paths.
         expect(
           () async => await dao.insertSession(
+            fastMode: false,
             pluginId: "opencode",
             preservePullRequestScope: false,
             sessionId: "s2",

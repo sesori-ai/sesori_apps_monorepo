@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:collection";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
@@ -90,6 +89,10 @@ abstract class AcpPlugin({
   required final AcpSessionOptionsService _sessionOptionsService,
   required final AcpProcessFactory _processFactory,
 }) extends BridgeDerivedProjectsPluginApi {
+  @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      PluginQuotaContinuationReadiness.unavailable;
+
   this : _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>() {
     _childSessionChanges = childSessionTracker.changes.listen(_onChildSessionsChanged);
   }
@@ -1013,6 +1016,7 @@ abstract class AcpPlugin({
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -1138,16 +1142,14 @@ abstract class AcpPlugin({
     required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     // Acceptance gate: an unreachable agent fails the send itself; the turn
     // re-resolves the client at dispatch time (see [_runTurn]).
     await _connectedClient();
     await validateTurnSelection(operation: "sendPrompt", model: model, variant: variant, agent: agent);
-    // Another matching send may have been admitted while connection awaited.
-    if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     _recordSessionActivity(sessionId);
     final text = parts
         .whereType<PluginPromptPartText>()
@@ -1189,10 +1191,10 @@ abstract class AcpPlugin({
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     await _connectedClient();
     await validateTurnSelection(operation: "sendCommand", model: model, variant: variant, agent: agent);
     final backendCommand = commandForDispatch(command: command);
@@ -1201,8 +1203,6 @@ abstract class AcpPlugin({
     final visibleBody = visibleArguments == null || visibleArguments.isEmpty
         ? "/$command"
         : "/$command $userVisibleArguments";
-    // Another matching send may have been admitted while connection awaited.
-    if (_turnStates[sessionId]?.hasAcceptedPrompt(promptId: promptId) ?? false) return;
     _recordSessionActivity(sessionId);
     final blocks = _contentBlocks([PluginPromptPart.text(text: body)]);
     if (blocks.isEmpty) return;
@@ -1654,10 +1654,7 @@ abstract class AcpPlugin({
           createdAtMs: DateTime.now().millisecondsSinceEpoch,
         )
         .forEach(_eventBuffer.add);
-    if (state.queue.remove(queuedPrompt)) {
-      state.recordDispatchedPrompt(promptId: queuedPrompt.presentation.id);
-      _emitQueueUpdate(sessionId: sessionId, state: state);
-    }
+    if (state.queue.remove(queuedPrompt)) _emitQueueUpdate(sessionId: sessionId, state: state);
     _flushPromptWriteEvents(sessionId: sessionId);
   }
 
@@ -2586,8 +2583,6 @@ abstract class AcpPlugin({
 /// count of unfinished turns, and the abort generation used to drop
 /// queued-but-undispatched turns.
 class _SessionTurnState() {
-  static const int _recentPromptLimit = 64;
-
   /// Completion of the session's most recently queued turn.
   Future<void> tail = Future<void>.value();
 
@@ -2601,18 +2596,6 @@ class _SessionTurnState() {
 
   /// Existing-session prompts accepted but not yet dispatched to ACP.
   final List<_QueuedAcpPrompt> queue = [];
-
-  final Queue<String> _recentPromptIds = Queue<String>();
-
-  bool hasAcceptedPrompt({required String promptId}) =>
-      queue.any((entry) => entry.presentation.id == promptId) || _recentPromptIds.contains(promptId);
-
-  void recordDispatchedPrompt({required String promptId}) {
-    _recentPromptIds.addLast(promptId);
-    while (_recentPromptIds.length > _recentPromptLimit) {
-      _recentPromptIds.removeFirst();
-    }
-  }
 
   /// Bumped by abort/delete; a queued turn dispatches only if the generation
   /// it captured at enqueue time is still current.

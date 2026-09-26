@@ -185,6 +185,7 @@ void main() {
     test("async-mapped session events preserve order for SSE clients", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: plugin.id,
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -417,6 +418,7 @@ void main() {
         ),
       ];
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: plugin.id,
         preservePullRequestScope: false,
         sessionId: "stable-s1",
@@ -468,6 +470,7 @@ void main() {
         ),
       ];
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: plugin.id,
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -526,6 +529,7 @@ void main() {
       final plugin = _BlockingRoutesPlugin();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/test"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: plugin.id,
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -625,6 +629,7 @@ void main() {
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/test"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: plugin.id,
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -1072,6 +1077,10 @@ abstract interface class _SubscriptionAwarePlugin() {
 
 class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
   @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      PluginQuotaContinuationReadiness.unavailable;
+
+  @override
   Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
 
   @override
@@ -1119,6 +1128,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async => const PluginSession(
@@ -1176,6 +1186,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -1250,6 +1261,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -1332,6 +1344,10 @@ class _BlockingRoutesPlugin() extends _FakeBridgePlugin {
 /// Plugin that tracks subscribe/unsubscribe counts via a wrapping stream.
 class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAwarePlugin {
   @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      PluginQuotaContinuationReadiness.unavailable;
+
+  @override
   Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
 
   @override
@@ -1382,6 +1398,7 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async => const PluginSession(
@@ -1436,6 +1453,7 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}
@@ -1503,6 +1521,7 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {}

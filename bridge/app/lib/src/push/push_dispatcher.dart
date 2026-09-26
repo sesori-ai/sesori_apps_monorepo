@@ -72,8 +72,8 @@ class PushDispatcher({
     required String? sessionId,
     required String? projectId,
   }) {
-    // Rate limiting stays per category + session so a throttled completion never
-    // suppresses a more urgent question (or vice versa) for the same session.
+    // Completion cooldowns stay per category + session. Blocking questions and
+    // permissions bypass cooldowns in the limiter.
     final rateLimitKey = "${category.id}-${sessionId ?? "global"}";
     if (!_rateLimiter.shouldSend(
       category: category,

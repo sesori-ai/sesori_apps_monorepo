@@ -8,17 +8,17 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef;
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
-import "package:sesori_dart_core/src/cubits/project_list/add_project_outcome.dart";
-import "package:sesori_dart_core/src/cubits/project_list/project_list_cubit.dart";
-import "package:sesori_dart_core/src/cubits/project_list/project_list_state.dart";
+import "package:sesori_dart_core/src/cubits/project_inventory/project_list_cubit.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
-import "package:sesori_dart_core/src/services/loaded_state_analytics_reporter.dart";
+import "package:sesori_dart_core/src/services/models/add_project_outcome.dart";
 import "package:sesori_dart_core/src/services/models/catalog_rescan_state.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
+import "package:sesori_dart_core/src/services/models/project_list_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
+import "package:sesori_dart_core/src/services/project_inventory_service.dart";
 import "package:sesori_dart_core/src/services/project_list_service.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -128,24 +128,98 @@ void main() {
       await analyticsStateController.close();
     });
 
-    /// Creates a fresh [ProjectListCubit] with the route source seeded to
-    /// null (auto-refresh inactive). All mock stubs MUST be configured before
-    /// calling this because the constructor immediately starts initial loading.
-    ProjectListCubit buildCubit() => ProjectListCubit(
-      mockProjectRepository,
-      mockConnectionService,
-      mockSseEventTracker,
-      mockRouteSource,
-      projectListService: projectListService,
-      sessionUnseenTracker: fakeSessionUnseenTracker,
-      registeredBridgesService: mockRegisteredBridgesService,
-      productAnalyticsService: mockProductAnalyticsService,
-      loadedStateAnalyticsReporter: LoadedStateAnalyticsReporter.projectInventory(
+    // All stubs must be configured before the independently owned service starts.
+    ProjectInventoryService buildInventory() {
+      final inventory = ProjectInventoryService(
+        projectRepository: mockProjectRepository,
+        connectionService: mockConnectionService,
+        sseEventTracker: mockSseEventTracker,
+        routeSource: mockRouteSource,
+        projectListService: projectListService,
+        sessionUnseenTracker: fakeSessionUnseenTracker,
+        registeredBridgesService: mockRegisteredBridgesService,
         productAnalyticsService: mockProductAnalyticsService,
-      ),
-      failureReporter: mockFailureReporter,
-      catalogRescanService: fakeCatalogRescanService,
-    );
+        failureReporter: mockFailureReporter,
+        catalogRescanService: fakeCatalogRescanService,
+      );
+      addTearDown(inventory.dispose);
+      return inventory;
+    }
+
+    ProjectListCubit buildCubit() => ProjectListCubit(inventoryService: buildInventory());
+
+    test("inventory loads headlessly and outlives replacement presentation consumers", () async {
+      when(mockProjectRepository.listProjects).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
+      final inventory = buildInventory();
+      await inventory.stateStream.firstWhere((state) => state is ProjectListLoaded);
+      expect((inventory.state as ProjectListLoaded).projects, [projectA]);
+      final first = ProjectListCubit(inventoryService: inventory);
+      expect(first.state, same(inventory.state));
+      await first.close();
+      final second = ProjectListCubit(inventoryService: inventory);
+      expect(second.state, same(inventory.state));
+      await second.close();
+      verify(mockProjectRepository.listProjects).called(1);
+    });
+
+    for (final succeeds in [true, false]) {
+      test("headless refresh follows the later owner after its successor applied: $succeeds", () async {
+        final replies = List.generate(3, (_) => Completer<ApiResponse<Projects>>());
+        var reads = 0;
+        when(mockProjectRepository.listProjects).thenAnswer((_) {
+          final index = reads++;
+          return index == 0 ? Future.value(ApiResponse.success(Projects(data: [projectA]))) : replies[index - 1].future;
+        });
+        final inventory = buildInventory();
+        await inventory.stateStream.firstWhere((state) => state is ProjectListLoaded);
+        var settled = false;
+        final refresh = inventory.refreshProjects().then((result) {
+          settled = true;
+          return result;
+        });
+        unawaited(inventory.loadProjects());
+        replies[0].complete(ApiResponse.success(Projects(data: [projectA])));
+        await Future<void>.delayed(Duration.zero);
+        final subscription = inventory.stateStream
+            .where(
+              (state) => state is ProjectListLoaded && state.projects.single.id == projectB.id,
+            )
+            .take(1)
+            .listen((_) => unawaited(inventory.refreshProjects()));
+        addTearDown(subscription.cancel);
+        // Attach the retained-stream observer before the successor publishes.
+        await Future<void>.delayed(Duration.zero);
+        replies[1].complete(ApiResponse.success(Projects(data: [projectB])));
+        await Future<void>.delayed(Duration.zero);
+        expect(reads, 4);
+        expect(settled, isFalse);
+        replies[2].complete(
+          succeeds ? ApiResponse.success(Projects(data: [projectC])) : ApiResponse.error(ApiError.generic()),
+        );
+        expect(await refresh, succeeds);
+        expect(reads, 4);
+      });
+    }
+
+    test("disposing a headless inventory fences a pending result and unseen seeding", () async {
+      final response = Completer<ApiResponse<Projects>>();
+      when(mockProjectRepository.listProjects).thenAnswer((_) => response.future);
+      final inventory = buildInventory();
+      await Future<void>.delayed(Duration.zero);
+      verify(mockProjectRepository.listProjects).called(1);
+      final previous = inventory.state;
+      await inventory.dispose();
+      response.complete(ApiResponse.success(Projects(data: [projectA])));
+      await Future<void>.delayed(Duration.zero);
+      expect(inventory.state, same(previous));
+      expect(fakeSessionUnseenTracker.currentProjectUnseen, isEmpty);
+      verifyNever(
+        () => mockProductAnalyticsService.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+    });
 
     test("onboarding outcome intents report the seven bounded events", () async {
       when(
@@ -850,7 +924,7 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<ProjectListCubit, ProjectListState>(
-      "hideProject: removes project from state and calls repository.hideProject",
+      "hideProject: removes and publishes the accepted local inventory",
       build: () {
         when(() => mockProjectRepository.listProjects()).thenAnswer(
           (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
@@ -862,7 +936,9 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        await cubit.hideProject("B");
+        final published = projectListService.listedProjects.first;
+        expect(await cubit.hideProject(projectId: "B"), isTrue);
+        expect((await published).map((project) => project.id), ["A", "C"]);
       },
       skip: 1,
       expect: () => [
@@ -888,6 +964,53 @@ void main() {
       },
     );
 
+    test("hideProject starts a winning successor when accepted during a full load", () async {
+      final hideResponse = Completer<ApiResponse<void>>();
+      final staleLoadResponse = Completer<ApiResponse<Projects>>();
+      final successorResponse = Completer<ApiResponse<Projects>>();
+      var projectRead = 0;
+      when(() => mockProjectRepository.listProjects()).thenAnswer((_) {
+        projectRead++;
+        return switch (projectRead) {
+          1 => Future.value(ApiResponse.success(Projects(data: [projectA, projectB]))),
+          2 => staleLoadResponse.future,
+          _ => successorResponse.future,
+        };
+      });
+      when(
+        () => mockProjectRepository.hideProject(projectId: any(named: "projectId")),
+      ).thenAnswer((_) => hideResponse.future);
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      if (cubit.state is! ProjectListLoaded) {
+        await cubit.stream.firstWhere((state) => state is ProjectListLoaded);
+      }
+      final published = <List<ProjectSummary>>[];
+      final subscription = projectListService.listedProjects.listen(published.add);
+      addTearDown(subscription.cancel);
+
+      final hide = cubit.hideProject(projectId: "B");
+      final staleLoad = cubit.loadProjects();
+      expect(cubit.state, isA<ProjectListLoading>());
+      hideResponse.complete(ApiResponse.success(null));
+      expect(await hide, isTrue);
+      expect(projectRead, 3);
+      final refresh = cubit.refreshProjects();
+      expect(projectRead, 3);
+
+      staleLoadResponse.complete(ApiResponse.success(Projects(data: [projectA, projectB])));
+      await staleLoad;
+      expect(cubit.state, isA<ProjectListLoading>());
+      expect(published, isEmpty);
+
+      successorResponse.complete(ApiResponse.success(Projects(data: [projectA])));
+      expect(await refresh, isTrue);
+      expect((cubit.state as ProjectListLoaded).projects.map((project) => project.id), ["A"]);
+      expect(published.map((projects) => projects.map((project) => project.id)), [
+        ["A"],
+      ]);
+    });
+
     blocTest<ProjectListCubit, ProjectListState>(
       "hideProject: reports failure and keeps the project when the bridge rejects the hide",
       build: () {
@@ -901,7 +1024,7 @@ void main() {
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
-        final hidden = await cubit.hideProject("B");
+        final hidden = await cubit.hideProject(projectId: "B");
         expect(hidden, isFalse);
       },
       skip: 1,
@@ -1102,7 +1225,12 @@ void main() {
             path: any(named: "path"),
             gitAction: OpenProjectGitAction.promptIfNeeded,
           ),
-        ).thenAnswer((_) async => ApiResponse.success(testProject(id: "B", path: "/home/user/B")));
+        ).thenAnswer(
+          (_) async => ApiResponse.success((
+            project: testProjectSummary(id: "B", path: "/home/user/B"),
+            supportsDedicatedWorktrees: true,
+          )),
+        );
         return buildCubit();
       },
       act: (cubit) async {
@@ -1114,7 +1242,7 @@ void main() {
           path: "/dev/B",
           gitAction: OpenProjectGitAction.promptIfNeeded,
         );
-        expect(result, OpenProjectOutcome.success);
+        expect(result, isA<OpenProjectAdded>().having((outcome) => outcome.project.id, "project id", "B"));
       },
       skip: 1,
       expect: () => [
@@ -1164,7 +1292,7 @@ void main() {
           path: "/dev/plain",
           gitAction: OpenProjectGitAction.promptIfNeeded,
         );
-        expect(result, OpenProjectOutcome.gitChoiceRequired);
+        expect(result, isA<OpenProjectGitChoiceRequired>());
       },
       skip: 1,
       expect: () => <ProjectListState>[],
@@ -1182,9 +1310,10 @@ void main() {
             gitAction: OpenProjectGitAction.initializeGit,
           ),
         ).thenAnswer(
-          (_) async => ApiResponse.success(
-            testProject(id: "B", path: "/home/user/B").copyWith(supportsDedicatedWorktrees: false),
-          ),
+          (_) async => ApiResponse.success((
+            project: testProjectSummary(id: "B", path: "/home/user/B"),
+            supportsDedicatedWorktrees: false,
+          )),
         );
         return buildCubit();
       },
@@ -1194,7 +1323,7 @@ void main() {
           path: "/dev/plain",
           gitAction: OpenProjectGitAction.initializeGit,
         );
-        expect(result, OpenProjectOutcome.gitSetupIncomplete);
+        expect(result, isA<OpenProjectGitSetupIncomplete>().having((outcome) => outcome.project.id, "project id", "B"));
       },
       skip: 1,
       expect: () => <ProjectListState>[],
@@ -1224,7 +1353,7 @@ void main() {
           path: "/dev/protected",
           gitAction: OpenProjectGitAction.openWithoutGit,
         );
-        expect(result, OpenProjectOutcome.permissionDenied);
+        expect(result, isA<OpenProjectPermissionDenied>());
       },
       skip: 1,
       expect: () => <ProjectListState>[],
@@ -1613,29 +1742,6 @@ void main() {
       expect: () => <ProjectListState>[],
     );
 
-    // -------------------------------------------------------------------------
-    // Test 10: activity stream update propagates to state
-    // -------------------------------------------------------------------------
-
-    blocTest<ProjectListCubit, ProjectListState>(
-      "projectActivity update: emits loaded state with updated activityById",
-      build: () {
-        when(
-          () => mockProjectRepository.listProjects(),
-        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProjectSummary()])));
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        mockSseEventTracker.emitProjectActivity({_projectId: 3});
-        await Future<void>.delayed(Duration.zero);
-      },
-      skip: 1,
-      expect: () => [
-        isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", {_projectId: 3}),
-      ],
-    );
-
     blocTest<ProjectListCubit, ProjectListState>(
       "running activity received after REST creates an activity-ordered prefix",
       build: () {
@@ -1705,66 +1811,6 @@ void main() {
 
       expect((cubit.state as ProjectListLoaded).projects.map((project) => project.id), ["B", "A"]);
     });
-
-    // -------------------------------------------------------------------------
-    // Test 11: activity update ignored when not loaded
-    // -------------------------------------------------------------------------
-
-    blocTest<ProjectListCubit, ProjectListState>(
-      "projectActivity update: ignored when state is not ProjectListLoaded",
-      build: () {
-        final completer = Completer<ApiResponse<Projects>>();
-        when(() => mockProjectRepository.listProjects()).thenAnswer((_) => completer.future);
-        return buildCubit();
-      },
-      act: (cubit) async {
-        mockSseEventTracker.emitProjectActivity({_projectId: 2});
-        await Future<void>.delayed(Duration.zero);
-      },
-      expect: () => <ProjectListState>[],
-    );
-
-    // -------------------------------------------------------------------------
-    // Test 12: load preserves existing activity from repository
-    // -------------------------------------------------------------------------
-
-    blocTest<ProjectListCubit, ProjectListState>(
-      "_fetchProjects: seeds activityById from repository at load time",
-      build: () {
-        mockSseEventTracker.emitProjectActivity({_projectId: 2});
-        when(
-          () => mockProjectRepository.listProjects(),
-        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProjectSummary()])));
-        return buildCubit();
-      },
-      expect: () => [
-        isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", {_projectId: 2}),
-      ],
-    );
-
-    // -------------------------------------------------------------------------
-    // Test 13: activity clears when no projects are active
-    // -------------------------------------------------------------------------
-
-    blocTest<ProjectListCubit, ProjectListState>(
-      "projectActivity update: activity clears when repository emits empty map",
-      build: () {
-        mockSseEventTracker.emitProjectActivity({_projectId: 1});
-        when(
-          () => mockProjectRepository.listProjects(),
-        ).thenAnswer((_) async => ApiResponse.success(Projects(data: [testProjectSummary()])));
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        mockSseEventTracker.emitProjectActivity(const {});
-        await Future<void>.delayed(Duration.zero);
-      },
-      skip: 1,
-      expect: () => [
-        isA<ProjectListLoaded>().having((s) => s.activityById, "activityById", isEmpty),
-      ],
-    );
 
     // =========================================================================
     // Project timestamp updates (no fetch)

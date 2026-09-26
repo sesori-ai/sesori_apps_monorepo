@@ -19,8 +19,6 @@ import "../../features/settings/profile_screen.dart";
 import "../../features/settings/settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
 import "../di/injection.dart";
-import "../widgets/sesori_background_widget.dart";
-import "../widgets/sesori_logo.dart";
 import "imperative_pane_route.dart";
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -406,7 +404,12 @@ class const _SessionListPane({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    const actionDispatcher = SessionListActionDispatcher(onSessionDeleted: closeDeletedSessionRoute);
+    const actionDispatcher = SessionListActionDispatcher(
+      deleteConfirmation: SessionDeleteConfirmation.sheet,
+      onSessionArchived: null,
+      onSessionDeleted: closeDeletedSessionRoute,
+      onSessionMarkedUnread: null,
+    );
     // ignore: no_slop_linter/avoid_navigator_of, root navigator pop is required here so shell chrome exits the whole shell instead of the nested pane route
     final rootNavigator = Navigator.of(context);
 
@@ -487,7 +490,7 @@ ShellRoute buildHarnessSettingsRoute() {
           final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters)
               .presentation;
           return HarnessesSettingsView(
-            presentation: presentation,
+            chrome: _harnessChrome(presentation: presentation),
             connectionBanner: ConnectionBanner.maybeFor(context),
             onClose: () => close(context: context),
             onBack: () => close(context: context),
@@ -506,7 +509,7 @@ ShellRoute buildHarnessSettingsRoute() {
               );
               return HarnessSettingsDetailView(
                 pluginId: route.pluginId,
-                presentation: route.presentation,
+                chrome: _harnessChrome(presentation: route.presentation),
                 connectionBanner: ConnectionBanner.maybeFor(context),
                 onBack: () => context.pop(),
                 onClose: () => close(context: context),
@@ -568,8 +571,11 @@ ShellRoute buildArchivedSessionsRoute() {
               ),
             ),
             actionDispatcher: SessionListActionDispatcher(
+              deleteConfirmation: SessionDeleteConfirmation.sheet,
+              onSessionArchived: null,
               onSessionDeleted: ({required context, required sessionId}) =>
                   closeDeletedArchivedSessionRoute(context: context, projectId: route.projectId, sessionId: sessionId),
+              onSessionMarkedUnread: null,
             ),
           );
         },
@@ -600,6 +606,26 @@ ShellRoute buildArchivedSessionsRoute() {
   );
 }
 
+/// Leaves a deleted session's detail/diffs route when that session is still
+/// the current mobile location. In a narrow list route this is a no-op.
+void closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {
+  // Deletion can finish outside a route-local context. Inspect the current
+  // router location, including any navigation while the request was in flight.
+  // ignore: no_slop_linter/avoid_raw_go_router, reads current route state; navigation below uses the typed extension
+  final routeState = GoRouter.of(context).state;
+  if (routeState.pathParameters[sessionIdPathParam] != sessionId) return;
+
+  final projectId = routeState.pathParameters[projectIdPathParam];
+  if (projectId == null) return;
+
+  context.goRoute(
+    AppRoute.sessions(
+      projectId: projectId,
+      projectName: routeState.uri.queryParameters[projectNameQueryParam],
+    ),
+  );
+}
+
 /// A stale deletion must not move a different audit record or the live opener.
 void closeDeletedArchivedSessionRoute({
   required BuildContext context,
@@ -618,3 +644,8 @@ void closeDeletedArchivedSessionRoute({
   // ignore: no_slop_linter/avoid_navigator_of, pop owned audit pages without replacing the root stack
   Navigator.of(context).popUntil((route) => route.isFirst);
 }
+
+HarnessSettingsChrome _harnessChrome({required HarnessSettingsPresentation presentation}) => switch (presentation) {
+  HarnessSettingsPresentation.modal => HarnessSettingsChrome.modal,
+  HarnessSettingsPresentation.pushed => HarnessSettingsChrome.pushed,
+};

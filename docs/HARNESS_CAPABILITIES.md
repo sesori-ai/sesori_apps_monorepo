@@ -18,6 +18,119 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 | ⬜ | Not implemented: the harness and the seam Sesori drives can provide it, Sesori does not yet. |
 | 🚫 | Not supported: the harness or the protocol seam Sesori drives cannot provide it. The footnote names the verified version. |
 
+## Automation transcript attribution
+
+| Harness | Native evidence | Sesori availability |
+|---|---|---|
+| Pi | Visible `custom` messages / `custom_message` entries | ✅ Automation attribution live and after history load. |
+| Claude Code | User-role frames, transcript records and `queued_command` attachments with `origin.kind: peer` | ✅ Automation attribution live and after history load, including `isMeta` peer records and peers queued mid-turn. |
+| Claude Code (task notifications) | User-role `<task-notification>` turns with `origin.kind: task-notification`, `queued_command` attachments in `task-notification` mode, or a whole envelope on CLIs without origin | ✅ A notification no known Agent/Bash task absorbs renders as an Automation step live and after history load, including one queued mid-turn. |
+| OpenCode (task notifications) | Unknown | Unverified: needs a probe of whether a background child's completion is injected as a user turn. |
+| Codex (task notifications) | None | Not applicable: no background-task completion arrives as a user turn. |
+
+Claude attribution uses host provenance, not plugin names or text matching. It
+covers any sender using that peer/socket path, but `origin.from: unknown` does
+not identify which plugin sent it. Missing/unmodelled origins and channels that
+may forward human input are not promoted to automation. Existing task-outcome,
+tool-result, compaction and hidden-metadata behavior remains separate.
+
+Claude task notifications fold into the launching Agent/Bash tile when the
+tracker knows the envelope's tool-use id. Otherwise (a SendMessage-resumed
+agent, an unknown id or no tool-use id) the turn becomes one completed
+Automation step labelled by the envelope's summary, with its result as output
+and the summary as error on failure; note, usage and output-file are dropped.
+An envelope that does not parse still renders as Automation text, never as a
+user bubble. Only a text block that is a whole envelope counts as one without
+provenance, so a prompt quoting the protocol stays user input.
+
+Verified on **2026-09-25** with native Claude Code **2.1.281**, an isolated MCP
+socket sender and a loopback model fixture: idle wake-up, live stdout provenance
+and persisted records. Native captured frames/history also pass through the
+production Claude parsers/mappers. Shared client fixture tests cover the existing
+Automation surface; authenticated-provider and full client/relay journeys were
+not exercised for this change.
+
+A command Claude queues while a turn runs (a follow-up, a peer message or a
+task outcome) is persisted as a `queued_command` attachment instead of a user
+record. History maps it like its live replay frame: the attachment's
+`source_uuid` (the record's own `uuid` on CLIs that omit it) as the id, the same
+sender and parts, at the point the model received it. Verified on
+**2026-09-26** with native Claude Code **2.1.281** captures and live rows the
+bridge stored from CLIs 2.1.237 to 2.1.281.
+
+## Quota-reset auto continuation
+
+Claude/Pi also implement named-session readiness for idle, retry, queued work
+and pending input, including known persisted sessions without a resident process.
+Other harnesses return unavailable readiness. The bridge implements durable,
+session-level opt-in through `PATCH /session/auto-continuation`, scheduled sending,
+and the authoritative setting/outcome in session responses and updates. Phone
+and desktop chat share opt-in, a persistent menu toggle and outcome notices.
+
+Audit date: **2026-09-24**. Internal terminal quota reporting is implemented for
+the Claude Code and Pi cases below. Scheduled continuation is implemented through
+the headless API for those reporting formats; live post-reset provider recovery
+remains unverified. The
+[active plan](../.plan/active/quota-auto-continuation/PLAN.md) tracks remaining
+live-provider and platform verification.
+The [evidence record](../.plan/active/quota-auto-continuation/EVIDENCE.md)
+distinguishes observed local errors from upstream contracts and open checks.
+
+Eligibility depends on a terminal quota interruption **and** a usable reset
+time for the selected provider/account/model. Native transient retries are a
+different capability. “Not implemented; unverified” means the control is
+unavailable and protocol support has not yet been established. It is not a claim that
+the harness cannot support this feature; do not mark it 🚫 without verification.
+
+| Harness | Reset evidence | Sesori availability |
+|---|---|---|
+| Claude Code | Tagged session-limit error with IANA zone | ✅ Conditional; root terminal error only. |
+| Pi | Recognized `openai-codex` error text | ✅ Conditional; final RPC settlement verified on 0.85.1 / 0.84.1. |
+| Codex | Local and documented reset timestamps | Not implemented; failed-turn bucket binding unverified. |
+| OpenCode | Raw error data reaches mapper | Not implemented; reset payload/provider attribution unverified. |
+| GitHub Copilot | ACP payload needs inspection | Not implemented; reset reporting unverified. |
+| Cursor | Headless payload needs inspection | Not implemented; reset reporting unverified. |
+| Hermes Agent | ACP payload needs inspection | Not implemented; reset reporting unverified. |
+| Oh My Pi | ACP seam differs from Pi RPC | Not implemented; reset reporting unverified. |
+| DeepSeek | ACP payload needs inspection | Not implemented; reset reporting unverified. |
+| Grok Build | ACP payload needs inspection | Not implemented; reset reporting unverified. |
+| Antigravity | Official ACP payload needs inspection | Not implemented; reset reporting unverified. |
+
+- Claude recognizes the tagged `rate_limit` assistant error beginning “You've
+  hit your session limit”. The observed time/zone format yields a UTC reset
+  only when it identifies one future time on the original local date. Unrecognized
+  dates, past times, unknown zones, and ambiguous/nonexistent DST times remain
+  unknown. Root errors report only after an unsuccessful, non-aborted result;
+  forwarded subagent traffic cannot arm or replace the root candidate.
+  Process-wide SDK rate-limit frames remain ignored because their rejected
+  window has no verified message attribution.
+- Pi's local `openai-codex` assistant errors sometimes report a relative retry
+  duration; others give no reset. Other providers/formats remain unverified.
+  A positive duration is anchored to the original assistant timestamp. Unknown
+  or malformed resets remain unknown. Synthetic-provider RPC probes on the
+  managed target (0.85.1) and PATH floor (0.84.1) confirmed that `agent_settled`
+  follows final retry resolution. Those probes did not exhaust a real account;
+  provider-format evidence comes from local errors and pinned upstream source.
+  This evidence does not establish support for Oh My Pi's ACP seam.
+- Codex local rollouts and documented app-server account limits contain reset
+  timestamps; terminal usage-limit errors are already rendered. Bind the failed
+  turn to its applicable exhausted buckets; an account snapshot cannot schedule.
+- OpenCode raw backend errors reach the mapper before presentation flattening.
+  Generic 429 responses and native retries do not establish quota exhaustion.
+- Generic ACP has no universal reset field. Inspect each adapter's actual error
+  data/extensions; provider behavior can differ. Billing/credit exhaustion with
+  no reset is unschedulable. Native application UI or displayed text alone does
+  not establish a usable timestamp through Sesori's driven protocol.
+
+Existing error messages remain visible, including errors with unknown resets.
+Other descriptors report quota support as unavailable until their provider and
+terminal-turn binding are verified. There is no shared model-name allowlist.
+Enabling an unavailable harness returns 501; disabling an existing preference
+remains available. Known resets use a two-minute buffer and one ordinary
+`Continue.` attempt. Non-idle readiness pauses checks for five minutes; unknown
+resets never schedule. Manual send, Stop, archive and newer native activity cancel
+the current wait while retaining the preference for later quota interruptions.
+
 ## Individual queued-prompt cancellation
 
 | Harness / boundary | Status |
@@ -80,6 +193,30 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 | Codex | ✅ Argument-derived title (`cmd`, `command`, `path`, `filePath`, `query`, else bounded raw arguments). |
 | Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ Agent-supplied ACP `tool_call` title, when the agent sends one; Sesori does not derive titles from ACP inputs. A call without `kind` uses its title as the tool name and drops the title, so the card does not say it twice. |
 
+## Tool kinds
+
+Each plugin classifies its own tool names into read, edit, command, search or
+other, and the transcript summary names calls by kind (“read 2 files · ran 1
+command”). Other calls count as plain steps.
+
+| Harness | Status and kind source |
+|---|---|
+| Claude | ✅ Built-in names: `Read`/`NotebookRead`; `Edit`/`MultiEdit`/`NotebookEdit`/`Write`; `Bash`; `Grep`/`Glob`/`LS`/`WebSearch`. MCP and other tools are other. |
+| OpenCode | ✅ Built-in names: `read`; `edit`/`multiedit`/`write`/`patch`/`apply_patch`; `bash`; `grep`/`glob`/`list`/`codesearch`/`websearch`. |
+| Pi | ✅ Built-in names: `read`; `edit`/`write`; `bash`; `grep`/`find`/`ls`. Extension tools are other. |
+| Codex | ✅ Partial: shell calls are commands, file changes are edits and web searches are searches. Codex reads and searches files through shell commands, so those count as commands, not reads. |
+| Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ The ACP tool `kind`: `read`; `edit`/`delete`/`move`; `execute`; `search`. A call without a `kind`, or with `fetch`, `think` or `other`, counts as a plain step. |
+
+## OpenCode v2 adapter (not yet active)
+
+The staged adapter targets the public 2.0.11–2.0.16 API; active v1 behavior is unchanged.
+
+| Capability | Status |
+|---|---|
+| Explicit parent-linked creation | Not supported by the native create API; refused before mutation. Native forks remain standalone roots, never children of their source. |
+| Conditional/external form rendering | Not implemented; native-only. Visible replies preserve native keys/types and numeric bounds; native validation remains authoritative. |
+| Native archival | Not supported; archival stays in the bridge database. |
+
 ## Managed runtime
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
@@ -90,12 +227,16 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 
 Antigravity can explicitly download Google's proprietary official runtime pair directly from `dl.google.com`. Before
 choosing Install, review [Google's terms](https://antigravity.google/terms) and
-[Antigravity documentation](https://antigravity.google/docs/). Sesori independently pins and verifies the five
-published archives: macOS arm64, Linux x64/arm64, and Windows x64/arm64. Google publishes no macOS x64 archive, so
-managed installation is unavailable there. Every archive keeps the server and local harness as siblings, uses a
-conservative two-minute bound for each archive listing/extraction command, and must pass the isolated initialize-only
+[Antigravity documentation](https://antigravity.google/docs/). Sesori independently pins and verifies six
+archives: macOS x64/arm64, Linux x64/arm64, and Windows x64/arm64. macOS x64 support is **implemented** for
+package `1.2.1`, including managed installation and explicit/PATH pair selection. Every archive keeps the server
+and local harness as siblings, uses a conservative two-minute bound for each archive listing/extraction command,
+and must pass the isolated initialize-only
 identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install. Native
-managed-pipeline correctness has run on macOS arm64; Linux and Windows native correctness remains unverified.
+managed-pipeline correctness previously ran on macOS arm64 for `1.1.1`; `1.2.1` has native initialize/teardown
+coverage but no completed managed-pipeline run. macOS x64 has verified archive integrity, hardened extraction,
+executable modes and binary architecture; native execution and installation on Intel Macs remain unverified.
+Linux and Windows native correctness remains unverified.
 Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
 The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual setup, remote personal login and
 retained-history behavior. Implemented marks here do not claim completed authenticated end-to-end verification.
@@ -138,8 +279,8 @@ read-only snapshot. The reader consumes the pinned v1.18.19 project,
 project-directory, and session schema and safely falls back to live import when
 that contract is absent or invalid. Other harnesses retain their existing
 plugin-backed import; no pre-start capability claim is made for them.
-All harnesses cold-started only by import fallback use the shared five-minute
-import-only idle residency cap.
+All harnesses cold-started only by import fallback or by session options
+discovery use the shared five-minute transient idle residency cap.
 
 ## Option pickers
 
@@ -156,6 +297,116 @@ Exact account IDs ending in `-high`, `-medium`, or `-low` become strongest-first
 variants only when labels carry the matching suffix. Its pre-chat catalog uses
 one retained hidden no-prompt native session because the pinned runtime exposes
 models only from new/resume responses and has no deletion capability.
+
+## Fast mode
+
+| Harness | Status |
+|---|---|
+| Codex | ✅ Implemented. |
+| Claude | ✅ Implemented for the Opus models the CLI reports as supporting it; fast turns draw on the account's extra usage. |
+| OpenCode, Antigravity, Copilot, Cursor, Hermes, Pi, OMP, DeepSeek, Grok | ⬜ Not implemented (not assessed). |
+
+Codex advertises fast mode per model as a `model/list` service tier: a model
+offering a `serviceTiers` entry with id `"priority"` (Codex's "Fast" tier, e.g.
+"2x speed, increased usage") reports `PluginModel.fastMode` as available with
+a 30-minute prompt-cache lifetime; Codex has no account-level availability
+signal. A selected
+session's `fastMode` is sent as `serviceTier` on every `turn/start` —
+`"priority"` when on, `"default"` when off, which explicitly returns the
+thread to standard speed rather than leaving it on whatever tier a prior turn
+set (verified against codex-cli 0.156.1's `generate-json-schema` output: the
+sibling `TurnStartParams.serviceTierForTurn` field documents 'Use "default"
+for standard speed', and `serviceTier` shares the same tier vocabulary) — and
+on `thread/start` when a new session is created with fast mode on, so its
+first turn already runs fast.
+
+Claude Code reports fast-mode support per model as `supportsFastMode: true` in
+the stream-json `initialize` response (omitted for models without it; in CLI
+2.1.281 only some Opus models carry it), which sets `PluginModel.fastMode` with a
+60-minute prompt-cache lifetime. Fast mode is not a launch flag: a fresh process
+starts with it off, and the plugin sends the `apply_flag_settings`
+control request (`{"subtype":"apply_flag_settings","settings":{"fastMode":…}}`, the shape the Agent SDK's `applyFlagSettings` sends) before a turn whenever the session's choice
+differs from what the resident process last applied. The CLI acknowledges the
+setting even when the model or account cannot use fast mode (for example, extra
+usage turned off) and then serves at standard speed. The plugin reads the
+handshake's account-level `fast_mode_disabled_reason` and reports those models
+as unavailable with a closed reason: extra usage disabled (`extra_usage_disabled`),
+not on the plan (`free`), disabled by the organization (`preference`,
+`model_not_allowed`), or unknown (`not_first_party`, `disabled_by_env`,
+`unknown`, and unmapped values, which are logged). In CLI 2.1.281 the
+`sdk_opt_in_required` reason precedes the account checks and masks them, so the
+global catalog probe opts in with `apply_flag_settings {fastMode: true}` and
+sends a second `initialize`, whose reason is the real account state (verified
+live: `sdk_opt_in_required` became `extra_usage_disabled`). The flag is
+process-scoped (no settings file changes) and the probe is torn down afterwards.
+Only the probe feeds the catalog; user-session handshakes are never used for
+availability. If the opt-in or re-read fails, the failure is logged and fast
+mode stays offered. The transient `network_error` and `pending` reasons also
+keep it offered, with a log. Per-turn reasons from result messages are not tracked.
+
+## Agent selection and harness modes
+
+| Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Agent choice offered in the composer | 🚫 | ✅ | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 | 🚫 |
+| Harness mode control (for example Plan or Ask) | ⬜ | ✅ | 🚫 | ⬜ | ⬜ | ⬜ | 🚫 | 🚫 | ⬜ | 🚫 | 🚫 |
+
+Only OpenCode has real agents, and its plan agent is how its mode is chosen.
+The composer shows the agent entry only when a harness advertises more than
+one selectable agent, so it appears for OpenCode alone. Claude, Codex,
+Copilot, Cursor and OMP have modes such as Plan and Ask that Sesori used to
+list as agents; since 2026-09-21 each advertises only its default mode
+(Cursor always its Agent mode) and Sesori offers no mode control. A mode name
+that still arrives from a catalog captured earlier is honoured, never run in
+the default mode. Naming the advertised default returns a session left in
+another mode to the default with its next prompt.
+
+## Read-only run details
+
+Child sessions and archived sessions cannot prompt, so where the composer would
+sit they show the agent, model and effort variant the session ran with as
+read-only pills. A value Sesori does not know leaves its pill out. The agent
+pill follows the composer's rule and appears only for a harness with an agent
+choice; every other harness stamps a placeholder agent. What a child session
+shows (verified from plugin code on 2026-09-26):
+
+| Harness | Agent | Model | Variant |
+|---|---|---|---|
+| Claude | ⬜ placeholder | ✅ | ✅ after a history read |
+| OpenCode | ✅ | ✅ | ✅ |
+| Codex | ⬜ placeholder | ✅ from history | ✅ from history |
+| DeepSeek | 🚫 | ✅ live, 🚫 after a restart | 🚫 |
+| Grok | ⬜ placeholder | ✅ live, unverified from history | Unverified from history, 🚫 live |
+| Pi (forks) | 🚫 | ✅ | ✅ |
+
+Antigravity, Copilot, Cursor, Hermes and OMP produce no child sessions.
+
+- Claude, Codex and Grok record the sub-agent's type natively, but it only
+  labels the parent's subtask tile.
+- Claude streams no effort, so a child seen only live names no variant until
+  the bridge reads its history. A model the catalog does not list shows its raw
+  id.
+- OpenCode leaves the variant pill out when the child ran without one. Right
+  after a child compacts, its agent reads `compaction` until its next reply.
+- Codex takes a child's model and effort from its rollout's `turn_context`. A
+  running child whose rollout is not flushed yet is stamped live with the
+  `config.toml` default model until its history is read again. A turn that
+  recorded no effort shows no variant.
+- DeepSeek's protocol records no model or effort for a child. A child seen live
+  carries the root's model at spawn, which is the model the adapter runs it on.
+  After a bridge restart its history is stamped with the process default, so
+  the model pill shows a guess.
+- Grok names a child's model at spawn. History values come from the child's
+  `session/load` and have not been checked against a live child.
+- Pi has no sub-agents. A session forked in Pi records its parent, so it opens
+  as a child session.
+
+Archived sessions of every harness show the agent and model of their newest
+agent reply. Archiving clears the bridge's stored defaults and a reply records
+no variant, so the variant pill never shows (⬜). Display names and the
+OpenCode agent choice come from the cached option catalog, so opening an
+archived session never wakes its harness. Without a cached catalog the model
+shows its id and the agent pill is left out.
 
 ## ACP multi-select form questions
 
@@ -268,6 +519,23 @@ Local login/configuration must apply to the profile/environment used by that
 bridge's harness. Provider keys and local/free models may make a backend usable
 without an OAuth login. Setup detection above does **not** imply that Sesori
 can initiate login, and managed installation does **not** authenticate a harness.
+
+## Context compaction row
+
+The transcript marks a finished context compaction with a "Context compacted"
+row, which opens the carried-forward summary when the harness exposes it.
+
+| Harness | Compaction row | Summary |
+|---|---|---|
+| Claude | ✅ | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.281). |
+| OpenCode | ✅ | ✅ The text of the `summary: true` assistant message. |
+| Pi | ✅ | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |
+| Codex | ✅ | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
+| DeepSeek | ⬜ | ⬜ The runtime reports a live `compaction_completed` status without message identity or a replayable history record, so Sesori maps it only to a session-compacted event; a live-only row would vanish on reload. |
+| Antigravity, Copilot, Cursor, Hermes, OMP, Grok | ⬜ | ⬜ The ACP session updates Sesori consumes (message, thought and user chunks, tool calls, plan, commands, session info) have no compaction variant, so a compaction, such as Cursor's `/summarize` behind Sesori's `compact` command, arrives as ordinary agent text. A row needs a harness extension signal; none was probed live. |
+
+A row without a summary is inert. Older clients ignore the summary field and
+show no row.
 
 ## Command limitations
 

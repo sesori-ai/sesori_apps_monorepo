@@ -1,6 +1,8 @@
 import "dart:convert";
 
+import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/accepted_prompts_repository.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
@@ -14,6 +16,7 @@ import "package:test/test.dart";
 
 import "../../helpers/fake_session_options_service.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -605,9 +608,15 @@ void main() {
 }
 
 SessionPromptService _buildPromptService(SessionRepository repository) {
+  final database = createTestDatabase();
+  addTearDown(database.close);
   final dispatcher = SessionOperationDispatcher(sessionRepository: repository);
   final service = SessionPromptService(
+    continuations: const EmptySessionContinuations(),
+    mutations: const UnusedContinuationMutations(),
+    views: const PassThroughSessionViews(),
     sessionRepository: repository,
+    acceptedPromptsRepository: AcceptedPromptsRepository(dao: AcceptedPromptsDao(database: database)),
     dispatcher: dispatcher,
     archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
     sessionOptionsService: FakeSessionOptionsService(),
@@ -649,6 +658,7 @@ class _ThrowingSendPromptPlugin() extends FakeBridgePlugin {
     required String sessionId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) {
@@ -665,6 +675,7 @@ class _ThrowingSendCommandPlugin() extends FakeBridgePlugin {
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) {
@@ -690,13 +701,14 @@ class _ThrowingUpdateSessionRepository({
       );
 
   @override
-  Future<void> updatePromptDefaults({
+  Future<void> updateRequestedPromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
+    required bool fastMode,
   }) {
     updatePromptDefaultsCallCount++;
-    throw StateError("updatePromptDefaults failed");
+    throw StateError("updateRequestedPromptDefaults failed");
   }
 
   @override

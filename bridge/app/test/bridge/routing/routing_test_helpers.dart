@@ -15,6 +15,7 @@ import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dar
 import "package:sesori_bridge/src/repositories/models/pull_request_selection.dart";
 import "package:sesori_bridge/src/repositories/models/pull_request_target.dart";
 import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
+import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
@@ -155,6 +156,7 @@ class FakeSessionDao() {
     required String pluginId,
   }) async {
     _sessions[sessionId] = SessionDto(
+      fastMode: false,
       sessionId: sessionId,
       backendSessionId: backendSessionId,
       projectId: projectId,
@@ -179,6 +181,7 @@ class FakeSessionDao() {
       pluginId: pluginId,
       title: null,
       catalogTitle: null,
+      approvalOverride: null,
     );
   }
 
@@ -310,6 +313,8 @@ DeletedSessionSubtree _deletedSession(String sessionId) =>
     (session: _deletedSessionInfo(sessionId), sessionIds: [sessionId]);
 
 Session _deletedSessionInfo(String sessionId) => Session(
+  approvalOverride: null,
+  autoContinuation: null,
   branchName: null,
   id: sessionId,
   pluginId: "fake",
@@ -334,6 +339,7 @@ Future<void> recordSessionBinding({
   await database.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   if (parentSessionId == null) {
     await database.sessionDao.insertSession(
+      fastMode: false,
       sessionId: sessionId,
       backendSessionId: backendSessionId,
       projectId: projectId,
@@ -367,6 +373,14 @@ Future<void> recordSessionBinding({
 
 class _NoopSessionRepository() implements SessionRepository {
   @override
+  AutoContinuationAvailability quotaReportingAvailability({required String pluginId}) =>
+      AutoContinuationAvailability.unavailable;
+
+  @override
+  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      SessionContinuationReadiness.unavailable;
+
+  @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
 
   @override
@@ -392,6 +406,18 @@ class _NoopSessionRepository() implements SessionRepository {
 
   @override
   Future<bool> setSessionTitleIfStored({required String sessionId, required String? title}) async => true;
+
+  @override
+  Future<Session?> setApprovalOverride({
+    required String sessionId,
+    required SessionApprovalMode? approvalOverride,
+  }) async => null;
+
+  @override
+  Future<SessionApprovalMode?> resolveApprovalOverride({required String sessionId}) async => null;
+
+  @override
+  Future<bool> hasYoloApprovalOverride() async => false;
 
   @override
   Future<Session?> setGeneratedSessionTitleIfAbsent({required String sessionId, required String title}) async => null;
@@ -439,6 +465,7 @@ class _NoopSessionRepository() implements SessionRepository {
     required List<PromptPart> parts,
     required String? userVisibleText,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
     required bool isDedicated,
@@ -449,6 +476,8 @@ class _NoopSessionRepository() implements SessionRepository {
     required String? lastAgent,
     required AgentModel? lastAgentModel,
   }) async => const Session(
+    approvalOverride: null,
+    autoContinuation: null,
     branchName: null,
     id: "",
     pluginId: "fake",
@@ -575,10 +604,18 @@ class _NoopSessionRepository() implements SessionRepository {
   }) async {}
 
   @override
-  Future<void> updatePromptDefaults({
+  Future<SessionPromptDefaults?> updatePromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
+  }) async => null;
+
+  @override
+  Future<void> updateRequestedPromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+    required bool fastMode,
   }) async {}
 
   @override
@@ -602,6 +639,7 @@ class _NoopSessionRepository() implements SessionRepository {
     required String arguments,
     required String? userVisibleArguments,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) async {}
@@ -616,6 +654,7 @@ class _NoopSessionRepository() implements SessionRepository {
     required String sessionId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) async {}
@@ -629,6 +668,8 @@ class _NoopSessionRepository() implements SessionRepository {
 
 Session _sharedSessionFromPlugin(PluginSession session, String pluginId) {
   return Session(
+    approvalOverride: null,
+    autoContinuation: null,
     branchName: null,
     id: session.id,
     pluginId: pluginId,
@@ -659,6 +700,14 @@ class FakeSessionRepository({
   FakePullRequestRepository? pullRequestRepository,
   final AppDatabase? _persistenceDatabase,
 }) implements SessionRepository {
+  @override
+  AutoContinuationAvailability quotaReportingAvailability({required String pluginId}) =>
+      AutoContinuationAvailability.unavailable;
+
+  @override
+  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
+      SessionContinuationReadiness.unavailable;
+
   @override
   Stream<SessionBindingsCommitted> get bindingCommits => const Stream.empty();
 
@@ -713,10 +762,24 @@ class FakeSessionRepository({
   }
 
   @override
+  Future<Session?> setApprovalOverride({
+    required String sessionId,
+    required SessionApprovalMode? approvalOverride,
+  }) async => null;
+
+  @override
+  Future<SessionApprovalMode?> resolveApprovalOverride({required String sessionId}) async => null;
+
+  @override
+  Future<bool> hasYoloApprovalOverride() async => false;
+
+  @override
   Future<Session?> setGeneratedSessionTitleIfAbsent({required String sessionId, required String title}) async {
     final stored = await _sessionDao.getSession(sessionId: sessionId);
     if (stored == null || stored.title != null) return null;
     return Session(
+      approvalOverride: null,
+      autoContinuation: null,
       branchName: stored.branchName,
       id: stored.sessionId,
       pluginId: stored.pluginId,
@@ -782,6 +845,7 @@ class FakeSessionRepository({
     required List<PromptPart> parts,
     required String? userVisibleText,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
     required bool isDedicated,
@@ -792,6 +856,8 @@ class FakeSessionRepository({
     required String? lastAgent,
     required AgentModel? lastAgentModel,
   }) async => const Session(
+    approvalOverride: null,
+    autoContinuation: null,
     branchName: null,
     id: "",
     pluginId: "fake",
@@ -1078,10 +1144,18 @@ class FakeSessionRepository({
   }) async {}
 
   @override
-  Future<void> updatePromptDefaults({
+  Future<SessionPromptDefaults?> updatePromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
+  }) async => SessionPromptDefaults(agent: agent, model: agentModel);
+
+  @override
+  Future<void> updateRequestedPromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+    required bool fastMode,
   }) async {}
 
   @override
@@ -1122,10 +1196,12 @@ class FakeSessionRepository({
     required String arguments,
     required String? userVisibleArguments,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) async {
     await _plugin.sendCommand(
+      fastMode: fastMode,
       promptId: "prompt-1",
       sessionId: sessionId,
       command: command,
@@ -1157,10 +1233,12 @@ class FakeSessionRepository({
     required String sessionId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) async {
     await _plugin.sendPrompt(
+      fastMode: fastMode,
       promptId: "prompt-1",
       sessionId: sessionId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),

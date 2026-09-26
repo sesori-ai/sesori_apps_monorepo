@@ -26,7 +26,7 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
   static const String minVersion = "1.0.5";
 
   /// Latest stable Grok Build release targeted by this plugin.
-  static const String targetVersion = "1.0.30";
+  static const String targetVersion = "1.0.41";
 
   static final SemanticVersion _minimumVersion = SemanticVersion.parse(value: minVersion);
 

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Keystore keys do not transfer with ciphertext, sidecars or native envelopes. -->
+    <exclude domain="file" path="persistence/" />
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+    <exclude domain="sharedpref" path="FlutterSecureKeyStorage.xml" />
+    <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration.xml" />
+    <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration:FlutterSecureStorage.xml" />
+    <exclude domain="sharedpref" path="com.sesori.client.persistence.xml" />
+    <exclude domain="sharedpref" path="FlutterSecureKeyStorage:com.sesori.client.persistence.xml" />
+    <exclude domain="sharedpref" path="FlutterSecureStorageConfiguration:com.sesori.client.persistence.xml" />
+</full-backup-content>

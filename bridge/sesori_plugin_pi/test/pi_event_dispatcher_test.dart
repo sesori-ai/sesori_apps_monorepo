@@ -806,7 +806,11 @@ void main() {
     );
     final compacted = dispatcher.map(
       sessionId: sessionId,
-      event: _event("compaction_end", {"aborted": false, "willRetry": false}),
+      event: _event("compaction_end", {
+        "aborted": false,
+        "willRetry": false,
+        "result": {"summary": "Continue the auth work.", "firstKeptEntryId": "e1", "tokensBefore": 100},
+      }),
     );
     final settled = dispatcher.map(sessionId: sessionId, event: _event("agent_settled"));
 
@@ -828,8 +832,10 @@ void main() {
     expect(compacted.whereType<BridgeSseMessageUpdated>().single.info.id, runningMessage.info.id);
     final completedPart = compacted.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(completedPart.id, runningPart.id);
-    expect(completedPart.state.status, PluginToolStatus.completed);
-    expect(completedPart.state.title, isNull);
+    expect(
+      completedPart,
+      isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", "Continue the auth work."),
+    );
     expect(settled.whereType<BridgeSseSessionIdle>(), hasLength(1));
   });
 
@@ -872,8 +878,8 @@ void main() {
       compacting.whereType<BridgeSseMessageUpdated>().single.info.id,
     );
     expect(
-      compacted.whereType<BridgeSseMessagePartUpdated>().single.part.state.status,
-      PluginToolStatus.completed,
+      compacted.whereType<BridgeSseMessagePartUpdated>().single.part,
+      isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", isNull),
     );
   });
 
@@ -973,6 +979,7 @@ void main() {
             id: "compact",
             parentId: "prior",
             timestamp: DateTime.utc(2026),
+            summary: null,
           ),
         ],
         leafId: "compact",

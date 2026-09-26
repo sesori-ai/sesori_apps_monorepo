@@ -12,6 +12,7 @@ void main() {
       await _pumpAccordion(
         tester: tester,
         brightness: brightness,
+        alwaysOpen: false,
         actionsEnabled: true,
         showAttachImage: true,
         onAttachImageTap: () => attachmentPicks++,
@@ -70,6 +71,7 @@ void main() {
     await _pumpAccordion(
       tester: tester,
       brightness: Brightness.light,
+      alwaysOpen: false,
       actionsEnabled: true,
       showAttachImage: false,
       onAttachImageTap: () => fail("Unsupported attachment action was invoked"),
@@ -88,10 +90,69 @@ void main() {
     expect(find.byTooltip("More actions"), findsOneWidget);
   });
 
+  testWidgets("an always-open pill shows its actions without an opener and keeps them after a pick", (tester) async {
+    var attachmentPicks = 0;
+    var commandPicks = 0;
+    await _pumpAccordion(
+      tester: tester,
+      brightness: Brightness.light,
+      alwaysOpen: true,
+      actionsEnabled: true,
+      showAttachImage: true,
+      onAttachImageTap: () => attachmentPicks++,
+      onSlashCommandsTap: () => commandPicks++,
+    );
+    expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
+    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.slash), findsOneWidget);
+
+    await tester.tap(find.byTooltip("Attach image"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.slash));
+    await tester.pumpAndSettle();
+
+    expect(attachmentPicks, 1);
+    expect(commandPicks, 1);
+    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.slash), findsOneWidget);
+    expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
+  });
+
+  testWidgets("typing folds the actions away and the chevron still reopens them", (tester) async {
+    Future<void> pump({required bool alwaysOpen, required bool isTyping}) => _pumpAccordion(
+      tester: tester,
+      brightness: Brightness.light,
+      alwaysOpen: alwaysOpen,
+      isTyping: isTyping,
+      actionsEnabled: true,
+      showAttachImage: true,
+      onAttachImageTap: () {},
+      onSlashCommandsTap: () {},
+    );
+
+    await pump(alwaysOpen: true, isTyping: false);
+    expect(find.byTooltip("Attach image"), findsOneWidget);
+    await pump(alwaysOpen: true, isTyping: true);
+    expect(find.byTooltip("Attach image"), findsNothing);
+    expect(find.byTooltip("More actions"), findsOneWidget);
+
+    await tester.tap(find.byTooltip("More actions"));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip("Attach image"), findsOneWidget);
+
+    // A pill opened by hand, here while typing, folds when typing starts again.
+    await pump(alwaysOpen: false, isTyping: false);
+    expect(find.byTooltip("Attach image"), findsOneWidget);
+    await pump(alwaysOpen: false, isTyping: true);
+    expect(find.byTooltip("Attach image"), findsNothing);
+    expect(find.byTooltip("More actions"), findsOneWidget);
+  });
+
   testWidgets("disabled actions remain inert while the opener still works", (tester) async {
     await _pumpAccordion(
       tester: tester,
       brightness: Brightness.light,
+      alwaysOpen: false,
       actionsEnabled: false,
       showAttachImage: true,
       onAttachImageTap: () => fail("Disabled attachment action was invoked"),
@@ -111,6 +172,8 @@ void main() {
 Future<void> _pumpAccordion({
   required WidgetTester tester,
   required Brightness brightness,
+  required bool alwaysOpen,
+  bool isTyping = false,
   required bool actionsEnabled,
   required bool showAttachImage,
   required VoidCallback onAttachImageTap,
@@ -129,6 +192,8 @@ Future<void> _pumpAccordion({
           child: ComposerOptionsAccordion(
             actionsEnabled: actionsEnabled,
             showAttachImage: showAttachImage,
+            alwaysOpen: alwaysOpen,
+            isTyping: isTyping,
             onAttachImageTap: onAttachImageTap,
             onSlashCommandsTap: onSlashCommandsTap,
           ),

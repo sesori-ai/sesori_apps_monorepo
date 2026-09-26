@@ -10,6 +10,7 @@ import "../../widgets/catalog_scan_row_motion.dart";
 import "../../widgets/project_nav_subtitle.dart";
 import "session_list_action_dispatcher.dart";
 import "session_list_content.dart";
+import "session_list_filtered_content.dart";
 import "session_tile.dart";
 
 class const SessionListScaffold({
@@ -75,7 +76,7 @@ class const SessionListScaffold({
       floatingActionButton: onNewSession == null
           ? null
           : PregoButtonsSolid(
-              label: loc.sessionListNewTask,
+              label: loc.sessionListNewSession,
               leadingIcon: TablerRegular.plus,
               hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
               size: PregoButtonsSolidSize.xl,
@@ -99,12 +100,13 @@ class const SessionListScaffold({
             onDismiss: () => context.read<SessionListCubit>().dismissCatalogScan(),
           ),
         ),
-        SessionListContent(
+        SessionListFilteredContent(
           projectName: projectName,
           selectedSessionId: selectedSessionId,
           onSessionTap: onSessionTap,
           actionDispatcher: actionDispatcher,
           archivedEmptyState: archivedEmptyState,
+          searchable: true,
         ),
         if (onNewSession != null && state is SessionListLoaded && state.sessions.isNotEmpty)
           // Clear the floating new-task button and the home indicator.

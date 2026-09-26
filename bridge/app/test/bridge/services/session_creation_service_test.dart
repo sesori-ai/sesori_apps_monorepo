@@ -661,6 +661,7 @@ void main() {
         updatedAt: 1,
       );
       await db.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "backend-session",
         backendSessionId: "backend-session",
         pluginId: "other",
@@ -856,6 +857,7 @@ class _FakePlugin() implements NativeProjectsPluginApi {
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -900,6 +902,7 @@ class _FakePlugin() implements NativeProjectsPluginApi {
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {

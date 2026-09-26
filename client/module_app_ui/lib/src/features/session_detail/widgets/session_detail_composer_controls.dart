@@ -1,15 +1,22 @@
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../composer_presentation_scope.dart";
+import "../session_detail_presentation_scope.dart";
 import "agent_model_buttons.dart";
 import "background_tasks_bar.dart";
 import "composer_surface_style.dart";
 import "prompt_input.dart";
 import "session_abort_scope_dialog.dart";
+import "session_approval_chip.dart";
+import "session_auto_continuation_chip.dart";
+import "session_auto_continuation_notice.dart";
 import "session_detail_loaded_view.dart";
+import "yolo_chip.dart";
 
 /// Shared session composer controls injected below the transcript view.
 ///
@@ -53,16 +60,6 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (state.children.isNotEmpty)
-          ValueListenableBuilder<PregoComposerSurfaceStyle>(
-            valueListenable: _composerSurfaceStyle,
-            builder: (context, surfaceStyle, _) => BackgroundTasksBar(
-              surfaceStyle: surfaceStyle,
-              projectId: widget.projectId,
-              children: state.children,
-              childStatuses: state.childStatuses,
-            ),
-          ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: PromptInput(
@@ -76,7 +73,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
             // even before the first message lands in the list.
             hasMessages:
                 state.hasRenderableMessages ||
-                state.sendingSubmission != null ||
+                state.localSend is! LocalSendIdle ||
                 state.queuedMessages.isNotEmpty ||
                 state.awaitingBridgeSubmissions.isNotEmpty ||
                 state.bridgeQueuedPrompts.isNotEmpty,
@@ -85,6 +82,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
               sessionStatus: state.sessionStatus,
               childStatuses: state.childStatuses,
             ),
+            canSend: true,
             onSend: ({required draft, required command, required attachments}) =>
                 context.read<SessionDetailCubit>().sendMessage(
                   text: draft.text,
@@ -115,8 +113,28 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
                 onModelSelected: context.read<SessionDetailCubit>().selectModel,
                 availableVariants: state.availableVariants,
                 onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
+                fastModeControl: state.fastModeControl,
+                decideFastModeToggle: context.read<SessionDetailCubit>().fastModeToggleDecision,
+                onFastModeChanged: context.read<SessionDetailCubit>().setFastMode,
+                compact: composerCapabilities.presentation == ComposerPresentation.pointer,
+                trailing: _statusChips(
+                  state: state,
+                  surfaceStyle: surfaceStyle,
+                  pointer: composerCapabilities.presentation == ComposerPresentation.pointer,
+                ),
               ),
             ),
+            composerTrailing: state.children.isEmpty
+                ? null
+                : ValueListenableBuilder<PregoComposerSurfaceStyle>(
+                    valueListenable: _composerSurfaceStyle,
+                    builder: (context, surfaceStyle, _) => BackgroundTasksBar(
+                      surfaceStyle: surfaceStyle,
+                      projectId: widget.projectId,
+                      children: state.children,
+                      childStatuses: state.childStatuses,
+                    ),
+                  ),
             availableCommands: state.availableCommands,
             stagedCommand: state.stagedCommand,
             onCommandSelected: context.read<SessionDetailCubit>().stageCommand,
@@ -125,5 +143,45 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
         ),
       ],
     );
+  }
+
+  /// Quiet session states beside the pickers: the session's approval mode, and
+  /// auto-continuation while it is enabled but not due.
+  List<Widget> _statusChips({
+    required SessionDetailLoaded state,
+    required PregoComposerSurfaceStyle surfaceStyle,
+    required bool pointer,
+  }) {
+    final view = state.session.autoContinuation;
+    // Enabled with nothing due: the chip stands in for the hidden card.
+    final continuation = view != null && view.enabled && !sessionAutoContinuationNoticeVisible(view: view)
+        ? view
+        : null;
+    return [
+      // Touch status chips stay glyphs so the shared-width pickers keep their labels.
+      ?switch (state.approvalControl) {
+        SessionApprovalHidden() => null,
+        SessionApprovalBridgeWideYolo() => YoloChip(
+          surfaceStyle: surfaceStyle,
+          showLabel: pointer,
+          onOpenSettings: () => SessionDetailPresentationScope.read(context).openBridgeSettings(),
+        ),
+        final SessionApprovalPerSession control => SessionApprovalChip(
+          surfaceStyle: surfaceStyle,
+          control: control,
+          showLabel: pointer,
+          updating: state.isUpdatingApproval,
+          onSelect: (mode) => unawaited(context.read<SessionDetailCubit>().setApprovalMode(mode: mode)),
+        ),
+      },
+      if (continuation != null)
+        SessionAutoContinuationChip(
+          surfaceStyle: surfaceStyle,
+          view: continuation,
+          showLabel: pointer,
+          updating: state.isUpdatingAutoContinuation,
+          onDisable: () => unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: false)),
+        ),
+    ];
   }
 }

@@ -2,6 +2,8 @@
   "@@locale": "en",
   "sessionDetailHarnessLegacyWarning": "Update your bridge to check harness availability.",
   "appTitle": "Sesori Mobile",
+  "persistenceStartupFailureTitle": "Storage upgrade paused",
+  "persistenceStartupFailureDescription": "Sesori couldn’t finish upgrading your local storage. Close and reopen Sesori to try again.",
   "connectErrorUnexpectedFormat": "Unexpected response format",
   "connectErrorUnknown": "An unknown error occurred",
   "apiErrorNotAuthenticated": "Not authenticated — check your connection",
@@ -16,14 +18,29 @@
   "desktopFileAccessGranted": "Protected files are accessible",
   "desktopFileAccessDenied": "Not granted — folder prompts may pause agents",
   "desktopFileAccessUnknown": "Access could not be confirmed",
-  "desktopHomePickSession": "Pick a session from the sidebar to get started.",
-  "@desktopHomePickSession": {"description": "Desktop home guidance when projects are available but no session is open."},
+  "desktopHomeNeedsYou": "Needs you",
+  "@desktopHomeNeedsYou": {"description": "Desktop home section heading for sessions waiting on the user's answer."},
+  "desktopHomeRecent": "Recent",
+  "@desktopHomeRecent": {"description": "Desktop home section heading for the latest sessions across projects that are neither running nor waiting."},
   "desktopSidebarNewProject": "New project",
-  "@desktopSidebarNewProject": {"description": "Label for the prominent desktop sidebar action that opens the add-project dialog."},
-  "desktopSidebarAllSessions": "All sessions · {count}",
-  "@desktopSidebarAllSessions": {
-    "description": "Sidebar link to a project's full session list, with its active visible session count.",
+  "@desktopSidebarNewProject": {"description": "Tooltip and label for the small desktop sidebar action that opens the add-project dialog."},
+  "desktopSidebarShowMore": "Show {count} more",
+  "@desktopSidebarShowMore": {
+    "description": "Sidebar button that reveals up to {count} more of a project's sessions in place.",
     "placeholders": {"count": {"type": "int"}}
+  },
+  "desktopSidebarActivity": "Activity · {count}",
+  "@desktopSidebarActivity": {
+    "description": "Collapsible desktop sidebar section of sessions in motion across every project, with how many.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "desktopSidebarActivitySession": "{sessionTitle} in {projectName}",
+  "@desktopSidebarActivitySession": {
+    "description": "Accessible identity of a priority sidebar session with its project context.",
+    "placeholders": {
+      "sessionTitle": {"type": "String"},
+      "projectName": {"type": "String"}
+    }
   },
   "desktopSidebarNewSession": "New session in {projectName}",
   "@desktopSidebarNewSession": {
@@ -40,27 +57,79 @@
     "description": "Tooltip for showing a project's recent-session rows in the desktop sidebar.",
     "placeholders": {"projectName": {"type": "String"}}
   },
+  "desktopShortcutHint": "{label} ({shortcut})",
+  "@desktopShortcutHint": {
+    "description": "Desktop control tooltip with its available platform-specific keyboard shortcut.",
+    "placeholders": {
+      "label": {"type": "String"},
+      "shortcut": {"type": "String"}
+    }
+  },
   "desktopSidebarCollapse": "Collapse sidebar",
   "@desktopSidebarCollapse": {"description": "Tooltip for switching desktop navigation to the compact project rail."},
   "desktopSidebarExpand": "Expand sidebar",
   "@desktopSidebarExpand": {"description": "Tooltip for restoring the expanded desktop navigation sidebar."},
   "desktopSidebarResize": "Resize sidebar; double-click to reset",
   "@desktopSidebarResize": {"description": "Tooltip on the expanded desktop sidebar's drag handle."},
+  "desktopSearch": "Search",
+  "@desktopSearch": {"description": "Desktop sidebar row that opens the command palette."},
+  "desktopCommandPaletteHint": "Search sessions, projects and commands",
+  "@desktopCommandPaletteHint": {"description": "Placeholder of the desktop command palette's search field."},
+  "desktopCommandPaletteCommands": "Commands",
+  "@desktopCommandPaletteCommands": {"description": "Desktop command palette heading over the app-wide commands."},
+  "desktopToggleSidebar": "Toggle sidebar",
+  "@desktopToggleSidebar": {"description": "Desktop command palette command that collapses or expands the sidebar."},
+  "desktopGoBack": "Go back",
+  "@desktopGoBack": {"description": "Desktop command palette command that leaves a pushed page."},
+  "desktopProjectPageArchived": "Archived",
+  "@desktopProjectPageArchived": {"description": "Desktop project page toolbar toggle that switches the list to the project's archived sessions."},
+  "sessionListFilterAll": "All · {count}",
+  "@sessionListFilterAll": {"description": "Session list filter chip showing every active session, with their count.", "placeholders": {"count": {"type": "int"}}},
+  "newSessionHeading": "What should we work on?",
+  "@newSessionHeading": {"description": "Heading of the new session page, above the project selector and the prompt input."},
+  "desktopSessionPageChanges": "Changes",
+  "@desktopSessionPageChanges": {"description": "Desktop session page toolbar button that opens the session's file changes."},
+  "desktopSessionParentBreadcrumb": "Main session",
+  "@desktopSessionParentBreadcrumb": {"description": "Desktop subtask toolbar breadcrumb that returns to the session that started the subtask."},
+  "listSearchNoMatches": "No matches",
+  "@listSearchNoMatches": {"description": "Shown under a list's search field when no loaded title matches the query."},
+  "listSearchClear": "Clear search",
+  "@listSearchClear": {"description": "Accessibility label of the button that empties a list's search field."},
+  "projectListSearchHint": "Search projects and sessions",
+  "@projectListSearchHint": {"description": "Placeholder of the search field above the phone's projects list."},
+  "sessionListSearchHint": "Search sessions",
+  "@sessionListSearchHint": {"description": "Placeholder of the search field above the phone's session list."},
+  "sessionListFilterEmpty": "No sessions match this filter",
+  "@sessionListFilterEmpty": {"description": "Shown in the session list when the Running or Unread filter leaves no session."},
+  "sessionListFilterRunning": "Running · {count}",
+  "@sessionListFilterRunning": {"description": "Session list filter chip showing only sessions an agent is working in, with their count.", "placeholders": {"count": {"type": "int"}}},
+  "sessionListFilterUnread": "Unread · {count}",
+  "@sessionListFilterUnread": {"description": "Session list filter chip showing only sessions with unopened activity, with their count.", "placeholders": {"count": {"type": "int"}}},
+  "desktopProjectPageRefresh": "Refresh sessions",
+  "@desktopProjectPageRefresh": {"description": "Desktop project page overflow menu action that reloads the project's session list."},
+  "desktopSidebarRefresh": "Refresh projects and sessions",
+  "@desktopSidebarRefresh": {"description": "Tooltip for explicitly refreshing both desktop sidebar inventories."},
+  "desktopSidebarRefreshing": "Refreshing projects and sessions",
+  "@desktopSidebarRefreshing": {"description": "Accessible busy label while both desktop sidebar inventories refresh."},
+  "desktopSidebarRefreshSuccess": "Projects and sessions updated",
+  "@desktopSidebarRefreshSuccess": {"description": "Confirmation after both desktop sidebar inventories refresh."},
+  "desktopSidebarRefreshFailed": "Could not refresh projects and sessions",
+  "@desktopSidebarRefreshFailed": {"description": "Failure notice when either desktop sidebar inventory could not refresh."},
   "desktopBridgeTakenOver": "Another bridge currently owns this account connection.",
   "@desktopBridgeTakenOver": {"description": "Sidebar recovery notice when bridge ownership can be reclaimed."},
-  "desktopBridgeTakeOver": "Take Over",
+  "desktopBridgeTakeOver": "Take over",
   "@desktopBridgeTakeOver": {"description": "Action to reclaim local or relay bridge ownership."},
   "desktopBridgeLoginRequired": "Your Sesori account is required before the local bridge can start.",
   "@desktopBridgeLoginRequired": {"description": "Sidebar notice for supervised bridge authentication recovery."},
-  "desktopBridgeStart": "Start Bridge",
+  "desktopBridgeStart": "Start bridge",
   "@desktopBridgeStart": {"description": "Action to recover authentication and start the local bridge."},
   "desktopBridgeCrashGiveUp": "The local bridge stopped after repeated crashes.",
   "@desktopBridgeCrashGiveUp": {"description": "Sidebar notice when automatic bridge crash recovery stops."},
-  "desktopBridgeOpenLogs": "Open Logs",
+  "desktopBridgeOpenLogs": "Open logs",
   "@desktopBridgeOpenLogs": {"description": "Action to open the local bridge's diagnostic logs."},
   "desktopLocalBridgeTitle": "Local bridge",
   "@desktopLocalBridgeTitle": {"description": "Heading for controls of the bridge supervised on this computer, not the desktop relay client."},
-  "desktopBridgeStop": "Stop Bridge",
+  "desktopBridgeStop": "Stop bridge",
   "@desktopBridgeStop": {"description": "Action that turns off the supervised local bridge without quitting Sesori."},
   "desktopBridgeSettings": "Bridge settings…",
   "@desktopBridgeSettings": {"description": "Secondary popover action opening bridge configuration."},
@@ -76,11 +145,13 @@
   "@desktopSettingsConnectedBridgeDescription": {"description": "Scope explanation above connected-bridge configuration."},
   "desktopSettingsThisComputer": "This computer",
   "@desktopSettingsThisComputer": {"description": "Separates local supervised-bridge status and diagnostics from connected-bridge settings."},
-  "desktopBridgeTitle": "Bridge",
-  "@desktopBridgeTitle": {"description": "Label of the pinned desktop navigation entry for local bridge controls."},
   "projectListTitle": "Projects",
+  "projectListActivity": "Activity",
+  "@projectListActivity": {
+    "description": "Heading over the sessions waiting for the user or running, across projects, at the top of Projects."
+  },
   "projectListLoadingSemantics": "Loading projects",
-  "projectListDefaultName": "Default Project",
+  "projectListDefaultName": "Default project",
   "projectListRefreshSuccess": "Projects updated",
   "projectListRefreshFailed": "Could not refresh projects",
   "projectListErrorTitle": "Failed to load projects",
@@ -97,6 +168,14 @@
   "projectListNewActivity": "New activity",
   "@projectListNewActivity": {
     "description": "Status shown beside a static sparkle on a project row with unseen agent activity the user hasn't opened yet."
+  },
+  "projectListFolderNotFound": "Folder not found",
+  "@projectListFolderNotFound": {
+    "description": "Amber status on a project row whose folder was moved or deleted on the bridge's computer."
+  },
+  "projectListRemove": "Remove",
+  "@projectListRemove": {
+    "description": "Action that removes a project whose folder no longer exists from the project list."
   },
   "projectsEmptyMessage": "You don't have any projects created or opened yet.",
   "@projectsEmptyMessage": {
@@ -186,11 +265,15 @@
   },
   "projectsBridgeOfflineDisconnected": "Disconnected",
   "@projectsBridgeOfflineDisconnected": {
-    "description": "Status caption under the machine name on the bridge-offline Projects screen, used when the bridge has never reported a last-seen time."
+    "description": "Status under the machine name on the desktop's bridge-offline home."
   },
-  "projectsBridgeOfflineDisconnectedSince": "Disconnected · {lastSeen}",
-  "@projectsBridgeOfflineDisconnectedSince": {
-    "description": "Status caption under the machine name on the bridge-offline Projects screen, pairing the disconnected state with when the bridge was last seen, e.g. 'Disconnected · 5h ago'. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.",
+  "projectsBridgeOfflineTitle": "Bridge offline",
+  "@projectsBridgeOfflineTitle": {
+    "description": "Heading of the bridge-offline Projects screen, under the connection graphic. The bar's bridge line above already names the computer."
+  },
+  "projectsBridgeOfflineLastSeen": "Last seen {lastSeen}",
+  "@projectsBridgeOfflineLastSeen": {
+    "description": "Quiet line under the 'Bridge offline' heading saying when the bridge was last seen, e.g. 'Last seen 5h ago'. Omitted when the bridge has never reported a last-seen time. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.",
     "placeholders": {
       "lastSeen": {
         "type": "String",
@@ -206,10 +289,6 @@
   "@projectsBridgeOfflineStartBridge": {
     "description": "Label above the command box on the bridge-offline Projects screen that shows the command to start an already-installed bridge; carries a trailing info icon."
   },
-  "projectsBridgeOfflineStartBridgeInfo": "Leave it running while you use Sesori from your phone.",
-  "@projectsBridgeOfflineStartBridgeInfo": {
-    "description": "Popover text explaining the start-the-bridge command on the bridge-offline Projects screen, opened from the info icon next to that label. Kept in the same untitled single-sentence style as the onboarding step popovers."
-  },
   "projectsDesktopStartBridge": "Start the bridge",
   "@projectsDesktopStartBridge": {
     "description": "Desktop project recovery action that starts or retries the supervised local bridge."
@@ -218,7 +297,7 @@
   "@projectsDesktopStartBridgeInfo": {
     "description": "Desktop-only explanation shown while the local supervised bridge is unavailable."
   },
-  "connectionLostTitle": "Connection Lost",
+  "connectionLostTitle": "Connection lost",
   "connectionLostReconnect": "Reconnect",
   "connectionReconnectingTitle": "Reconnecting…",
   "bridgeDisconnectedTitle": "Bridge disconnected",
@@ -231,15 +310,31 @@
       }
     }
   },
-  "settingsLogout": "Log Out",
+  "settingsLogout": "Log out",
+  "settingsLogoutConfirmTitle": "Log out?",
+  "@settingsLogoutConfirmTitle": {
+    "description": "Title of the confirmation dialog shown before the user logs out."
+  },
+  "settingsLogoutConfirmMessage": "You'll need to sign in again to reach your bridges from this device.",
+  "@settingsLogoutConfirmMessage": {
+    "description": "Body of the log-out confirmation dialog: logging out removes this device's access to the user's bridges until they sign in again."
+  },
+  "settingsLogoutConfirmCancel": "Cancel",
+  "@settingsLogoutConfirmCancel": {
+    "description": "Button that closes the log-out confirmation dialog and keeps the user signed in."
+  },
+  "settingsBridgeOffline": "Connect to a bridge to change these settings.",
+  "@settingsBridgeOffline": {
+    "description": "One line above the bridge settings group while no bridge is connected; the rows below it are dimmed."
+  },
   "settingsSectionAccount": "Account",
   "settingsNotificationsTitle": "Notifications",
   "settingsHarnessesTitle": "Harnesses",
   "settingsSectionBridge": "Bridge",
   "settingsYoloTitle": "YOLO mode",
-  "settingsYoloWarning": "Automatically approves all permission requests. Use with caution.",
+  "settingsYoloDescription": "Sesori approves every permission request for you, so the agent never stops to ask.",
+  "@settingsYoloDescription": {"description": "Plain statement of what YOLO mode does, under its Settings toggle and in the session page's YOLO explanation."},
   "settingsYoloLoading": "Loading the bridge setting…",
-  "settingsYoloDisconnected": "Connect to a bridge to configure this setting.",
   "settingsYoloUnsupported": "Update the connected bridge to configure this setting.",
   "settingsYoloLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
   "settingsYoloUncertain": "The update status is unknown. Refresh before trying again.",
@@ -248,7 +343,6 @@
   "settingsPluginWarmupTitle": "Warm harness on session open",
   "settingsPluginWarmupDescription": "Starts the session's harness when you open it to reduce delays on your first action.",
   "settingsPluginWarmupLoading": "Loading the bridge setting…",
-  "settingsPluginWarmupDisconnected": "Connect to a bridge to configure this setting.",
   "settingsPluginWarmupUnsupported": "Update the connected bridge to configure this setting.",
   "settingsPluginWarmupLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
   "settingsPluginWarmupUncertain": "The update status is unknown. Refresh before trying again.",
@@ -257,14 +351,12 @@
   "settingsPullRequestRefreshTitle": "Pull request refresh",
   "settingsPullRequestRefreshDescription": "How often viewed projects refresh pull request status.",
   "settingsPullRequestRefreshLoading": "Loading the bridge setting…",
-  "settingsPullRequestRefreshDisconnected": "Connect to a bridge to configure this setting.",
   "settingsPullRequestRefreshUnsupported": "Update the connected bridge to configure this setting.",
   "settingsPullRequestRefreshLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
   "settingsPullRequestRefreshUncertain": "The update status is unknown. Refresh before trying again.",
   "settingsPullRequestRefreshUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
   "settingsPullRequestRefreshStateChanged": "The bridge setting changed while you were editing. Try again.",
   "settingsPullRequestRefreshUnavailable": "Unavailable",
-  "settingsPullRequestRefreshOffline": "Offline",
   "settingsPullRequestRefreshRetry": "Retry pull request refresh setting",
   "settingsPullRequestRefreshDialogTitle": "Pull request refresh interval",
   "settingsPullRequestRefreshSecondsLabel": "Seconds",
@@ -395,7 +487,7 @@
   "harnessAuthenticationSubmitCode": "Submit code",
   "harnessAuthenticationPastedCodeInvalid": "Paste the complete code shown after approval, without spaces.",
   "harnessAuthenticationPastedCodeNotConfirmed": "The code could not be confirmed. Submit it again.",
-  "harnessesRegisteredSection": "Registered Harnesses",
+  "harnessesRegisteredSection": "Registered harnesses",
   "harnessesEmptyTitle": "No harnesses registered",
   "harnessesEmptyDescription": "The connected bridge hasn't registered any coding harnesses.",
   "harnessesLoading": "Loading harnesses",
@@ -440,10 +532,10 @@
   "harnessesStatusUnknown": "Unknown",
   "harnessesWorkIdle": "Idle",
   "harnessesWorkBusy": "Busy",
-  "settingsProfileTitle": "Profile",
   "settingsSectionAppearance": "Appearance",
+  "desktopSettingsTheme": "Theme",
   "settingsSectionAnalytics": "Analytics",
-  "settingsBasicUsageAnalyticsTitle": "Basic Usage Analytics",
+  "settingsBasicUsageAnalyticsTitle": "Basic usage analytics",
   "settingsBasicUsageAnalyticsDescription": "Share basic feature usage — never your code or messages.",
   "settingsBasicUsageAnalyticsLoading": "Loading preference…",
   "settingsBasicUsageAnalyticsSaving": "Saving preference…",
@@ -486,8 +578,8 @@
   "settingsSupportDiscord": "Discord",
   "settingsSupportX": "DM on X",
   "settingsSectionLegal": "Legal",
-  "settingsLegalTerms": "Terms of Service",
-  "settingsLegalPrivacy": "Privacy Policy",
+  "settingsLegalTerms": "Terms of service",
+  "settingsLegalPrivacy": "Privacy policy",
   "legalDocumentRetry": "Retry",
   "@legalDocumentRetry": {
     "description": "Button that re-fetches a legal document after the load failed"
@@ -509,7 +601,7 @@
       }
     }
   },
-  "notificationSectionAi": "AI Notifications",
+  "notificationSectionAi": "AI notifications",
   "notificationSectionSystem": "System",
   "notificationPreferencesUnavailableTitle": "Notification preferences unavailable",
   "notificationPreferencesUnavailableDescription": "Sign in to manage notification preferences.",
@@ -517,18 +609,14 @@
   "notificationPreferencesLoadFailedDescription": "Check your connection and try again.",
   "notificationPreferencesRetry": "Retry",
   "notificationPreferenceUpdating": "Updating notification preference",
-  "notificationCategoryAiInteraction": "AI Interactions",
+  "notificationCategoryAiInteraction": "AI interactions",
   "notificationCategoryAiInteractionDescription": "Questions and permission requests from active AI sessions",
-  "notificationCategorySessionMessage": "Session Messages",
+  "notificationCategorySessionMessage": "Session messages",
   "notificationCategorySessionMessageDescription": "New assistant messages from running sessions",
-  "notificationCategoryConnectionStatus": "Connection Status",
+  "notificationCategoryConnectionStatus": "Connection status",
   "notificationCategoryConnectionStatusDescription": "Bridge online and offline status changes",
-  "notificationCategorySystemUpdate": "System Updates",
+  "notificationCategorySystemUpdate": "System updates",
   "sessionListTitle": "Sessions",
-  "sessionListRepoInfoSemantics": "Show full repository name",
-  "@sessionListRepoInfoSemantics": {
-    "description": "Screen-reader label for the sessions-list bar subtitle row, which opens a popover with the untruncated repository name."
-  },
   "sessionListTitleWithName": "{name} — Sessions",
   "@sessionListTitleWithName": {
     "placeholders": {
@@ -538,7 +626,7 @@
     }
   },
   "sessionListLoadingSemantics": "Loading sessions",
-  "sessionListEmptyTitle": "Start your first task",
+  "sessionListEmptyTitle": "Start your first session",
   "@sessionListEmptyTitle": {
     "description": "Headline on the sessions list when a project has no active sessions yet, inviting the user to begin."
   },
@@ -552,9 +640,8 @@
   "sessionListErrorTitle": "Failed to load sessions",
   "sessionListRetry": "Retry",
   "sessionListNewSession": "New session",
-  "sessionListNewTask": "New task",
-  "@sessionListNewTask": {
-    "description": "Label of the primary button on the sessions list that starts a new task (session)."
+  "@sessionListNewSession": {
+    "description": "Label of the primary action that starts a new session: the sessions list button and the desktop sidebar button."
   },
   "sessionDetailTitle": "Session",
   "sessionDetailLoadingSemantics": "Loading session",
@@ -631,6 +718,15 @@
   "@sessionDetailAttachmentsNotWithCommands": {
     "description": "Snackbar shown when sending while both a slash command and image attachments are staged; the backend command paths carry only text, so the send is refused instead of silently dropping the images."
   },
+  "codeBlockOpenAll": "Open all {count} lines",
+  "@codeBlockOpenAll": {
+    "description": "Under a long code block in a chat message that shows only its first lines; opens the whole block in a modal.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "sessionDetailQueuedAttachmentCount": "{count, plural, =1{1 image} other{{count} images}}",
   "@sessionDetailQueuedAttachmentCount": {
     "description": "Body of a queued-message bubble whose submission has image attachments but no text, e.g. '1 image'.",
@@ -651,10 +747,6 @@
   "sessionDetailCommandArgumentsHint": "Optional arguments",
   "sessionDetailCommandPickerTitle": "Slash commands",
   "sessionDetailCommandSearch": "Search commands",
-  "sessionDetailCommandSearchHint": "Name, description, or arguments",
-  "@sessionDetailCommandSearchHint": {
-    "description": "Placeholder describing the searchable fields in the slash-command picker."
-  },
   "sessionDetailNoCommands": "No slash commands are available for this project.",
   "sessionDetailSend": "Send",
   "sessionDetailAbort": "Stop",
@@ -696,6 +788,7 @@
     }
   },
   "sessionDetailThinking": "Thinking...",
+  "sessionDetailWorking": "Working…",
   "sessionDetailThought": "Thought",
   "sessionDetailToolUnknown": "Tool",
   "sessionDetailImageOpen": "Open image",
@@ -720,10 +813,145 @@
   "sessionDetailImageSaveAccessDenied": "Permission denied while saving this image",
   "sessionDetailToolPending": "Pending",
   "sessionDetailToolRunning": "Running",
-  "sessionDetailToolCompleted": "Done",
   "sessionDetailToolError": "Failed",
   "sessionDetailToolCancelled": "Cancelled",
+  "sessionDetailShell": "Shell",
+  "sessionDetailCommandRan": "Ran",
   "sessionDetailFollowOutput": "Follow",
+  "transcriptSummaryThought": "Thought",
+  "@transcriptSummaryThought": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript, present when the agent thought at least once, e.g. 'Thought · 3 steps'."
+  },
+  "transcriptSummarySteps": "{count, plural, =1{1 step} other{{count} steps}}",
+  "@transcriptSummarySteps": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many other tool calls the agent made, e.g. 'Thought · read 1 file · 3 steps'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptSummaryRead": "{count, plural, =1{read 1 file} other{read {count} files}}",
+  "@transcriptSummaryRead": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file reads the agent made, counted per call, e.g. 'Thought · read 2 files · ran 1 command'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptSummaryEdited": "{count, plural, =1{edited 1 file} other{edited {count} files}}",
+  "@transcriptSummaryEdited": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file edits the agent made, counted per call, e.g. 'read 2 files · edited 1 file'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptSummaryRan": "{count, plural, =1{ran 1 command} other{ran {count} commands}}",
+  "@transcriptSummaryRan": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many shell commands the agent ran, e.g. 'Thought · ran 3 commands'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptSummarySearches": "{count, plural, =1{1 search} other{{count} searches}}",
+  "@transcriptSummarySearches": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file or web searches the agent made, e.g. 'Thought · 2 searches · read 1 file'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptSummarySubAgents": "{count, plural, =1{1 sub-agent} other{{count} sub-agents}}",
+  "@transcriptSummarySubAgents": {
+    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many sub-agents the agent ran, e.g. '3 steps · 2 sub-agents'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptSummaryFailed": "{count, plural, =1{1 failed} other{{count} failed}}",
+  "@transcriptSummaryFailed": {
+    "description": "Last part of the one-line summary of a collapsed group of agent steps in a session transcript: how many of the steps failed, e.g. '3 steps · 1 failed'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptTurnSteps": "{count, plural, =0{No steps} =1{1 step} other{{count} steps}}",
+  "@transcriptTurnSteps": {
+    "description": "Part of the one line a folded turn of a session transcript shows: how many steps the agent took in it, e.g. '3 steps · 1m 02s — Fixed the failing test'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptTurnRunning": "Running",
+  "@transcriptTurnRunning": {
+    "description": "The line a folded turn of a session transcript shows while the agent works on it and has taken no step yet."
+  },
+  "transcriptTurnRunningStep": "Running · step {step}",
+  "@transcriptTurnRunningStep": {
+    "description": "The line a folded turn of a session transcript shows while the agent works on it: how many steps it has taken so far, e.g. 'Running · step 3'.",
+    "placeholders": {
+      "step": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptTurnFailed": "Ended with an error",
+  "@transcriptTurnFailed": {
+    "description": "Start of the line a folded turn of a session transcript shows when the turn ended in an error, followed by the error's first line when there is one, e.g. 'Ended with an error · Rate limit reached'."
+  },
+  "transcriptTurnPartlyLoaded": "Earlier turn, partly loaded",
+  "@transcriptTurnPartlyLoaded": {
+    "description": "Start of the line a folded session transcript shows for the messages before the first loaded prompt, whose own prompt may be on an older page that has not loaded, followed by the step count, e.g. 'Earlier turn, partly loaded · 3 steps'."
+  },
+  "transcriptTurnBeforeFirstPrompt": "Before the first prompt",
+  "@transcriptTurnBeforeFirstPrompt": {
+    "description": "Start of the line a folded session transcript shows for the messages before the user's first prompt, such as automation, followed by the step count, e.g. 'Before the first prompt · 2 steps'."
+  },
+  "transcriptTurnSeconds": "{seconds}s",
+  "@transcriptTurnSeconds": {
+    "description": "How long a folded turn of a session transcript took, under a minute, e.g. '42s'.",
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptTurnMinutes": "{minutes}m {seconds}s",
+  "@transcriptTurnMinutes": {
+    "description": "How long a folded turn of a session transcript took, under an hour. The seconds always have two digits, e.g. '1m 02s'.",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "String"
+      }
+    }
+  },
+  "transcriptTurnHours": "{hours}h {minutes}m",
+  "@transcriptTurnHours": {
+    "description": "How long a folded turn of a session transcript took, an hour or more. The minutes always have two digits, e.g. '1h 05m'.",
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
   "sessionDetailJumpToLatest": "Jump to latest",
   "@sessionDetailJumpToLatest": {
     "description": "Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages."
@@ -786,6 +1014,19 @@
   "sessionDetailUnavailableCommand": "Command unavailable",
   "sessionDetailQueueCancellationFailed": "Cancellation was not confirmed. The message may already have been sent.",
   "sessionDetailSendingMessage": "Sending",
+  "sessionDetailSendingToHarness": "Sending to {harnessName}…",
+  "@sessionDetailSendingToHarness": {
+    "description": "Status under a message whose send is still in flight after a short delay; names the harness, e.g. OpenCode.",
+    "placeholders": {
+      "harnessName": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionDetailSendFailed": "Couldn’t send",
+  "@sessionDetailSendFailed": {
+    "description": "Status under a message whose send failed; Retry and Remove buttons follow it."
+  },
   "sessionDetailPromptOptionsUpdated": "Prompt options changed. Updated settings and retrying your message.",
   "sessionDetailPromptOptionsRecoveryFailed": "Couldn’t apply updated prompt options. Your message remains queued.",
   "sessionDetailAuthenticationRequired": "Provider login required",
@@ -794,29 +1035,51 @@
   "sessionDetailRemoveQueued": "Remove",
   "sessionDetailPickerAgent": "Agent",
   "sessionDetailPickerVariant": "Variant",
-  "sessionDetailSelectModel": "Select Model",
+  "sessionDetailFastMode": "Fast mode",
+  "sessionDetailYoloChip": "YOLO",
+  "@sessionDetailYoloChip": {"description": "Label of the chip beside the session's model picker while YOLO mode is on for the session. Keep the product term YOLO."},
+  "sessionApprovalAsk": "Ask for approval",
+  "@sessionApprovalAsk": {"description": "Session approval menu option, and the tooltip of the composer's approval chip, for a session where every permission request waits for the user."},
+  "sessionApprovalYolo": "Approve everything (YOLO)",
+  "@sessionApprovalYolo": {"description": "Session approval menu option that makes Sesori approve every permission request for this session. Keep the product term YOLO."},
+  "sessionApprovalDefaultOption": "{option} (default)",
+  "@sessionApprovalDefaultOption": {
+    "description": "Marks the session approval menu option that matches the bridge-wide setting, which sessions follow unless changed.",
+    "placeholders": {"option": {"type": "String"}}
+  },
+  "sessionApprovalUpdateFailed": "Could not change approval for this session. Try again.",
+  "@sessionApprovalUpdateFailed": {"description": "Error alert when the bridge did not acknowledge a change to the session's approval mode."},
+  "sessionDetailYoloTitle": "YOLO mode is on",
+  "@sessionDetailYoloTitle": {"description": "Title of the sheet or dialog opened by tapping the YOLO chip on the session page."},
+  "sessionDetailYoloOpenSettings": "Open Settings",
+  "@sessionDetailYoloOpenSettings": {"description": "Button in the YOLO explanation that opens the settings where YOLO mode is turned off."},
+  "sessionDetailFastModeConfirmTitle": "Switch speed?",
+  "sessionDetailFastModeConfirmEnableBody": "Switching speed drops the prompt cache, so the next message re-reads the whole conversation. Fast mode also uses more of your usage.",
+  "sessionDetailFastModeConfirmDisableBody": "Switching speed drops the prompt cache, so the next message re-reads the whole conversation.",
+  "sessionDetailFastModeConfirmAction": "Switch",
+  "sessionDetailFastModeCancel": "Cancel",
+  "sessionDetailFastModeUnavailableTitle": "Fast mode is unavailable",
+  "sessionDetailFastModeUnavailableExtraUsageDisabled": "Turn on extra usage for your account to use fast mode.",
+  "sessionDetailFastModeUnavailableNotOnPlan": "Your plan doesn't include fast mode.",
+  "sessionDetailFastModeUnavailableDisabledByOrganization": "Your organization has turned off fast mode.",
+  "sessionDetailFastModeUnavailableUnknown": "Fast mode can't be used with this account right now.",
   "sessionDetailModelSearch": "Search models...",
-  "backgroundTasksRunning": "{count, plural, =1{1 Task Running} other{{count} Tasks Running}}",
-  "@backgroundTasksRunning": {
+  "subAgentsTitle": "Sub-agents",
+  "subAgentsSummary": "{count, plural, =1{1 sub-agent} other{{count} sub-agents}}, {running} working",
+  "@subAgentsSummary": {
+    "description": "Tooltip and screen-reader label of the sub-agents pill in the composer.",
     "placeholders": {
       "count": {
+        "type": "int"
+      },
+      "running": {
         "type": "int"
       }
     }
   },
-  "backgroundTasksCompleted": "All tasks completed",
-  "backgroundTaskStatusIdle": "Completed",
+  "backgroundTaskStatusIdle": "Idle",
   "backgroundTaskStatusBusy": "Running",
   "backgroundTaskStatusRetry": "Retrying",
-  "backgroundTasksShowCompleted": "{count, plural, =1{Show 1 completed task} other{Show {count} completed tasks}}",
-  "@backgroundTasksShowCompleted": {
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "backgroundTasksHideCompleted": "Hide completed",
   "sessionListToggleArchived": "Show archived",
   "sessionListEmptyArchived": "No archived sessions",
   "sessionListArchive": "Archive",
@@ -824,6 +1087,22 @@
   "sessionListMarkUnread": "Mark as unread",
   "sessionListDelete": "Delete",
   "sessionListArchived": "Session archived",
+  "sessionListArchiveUndo": "Undo",
+  "@sessionListArchiveUndo": {"description": "Action on the desktop 'Session archived' alert that cancels the archive before it is sent."},
+  "sessionListArchiveKeepWorktree": "Archive, keep worktree",
+  "@sessionListArchiveKeepWorktree": {"description": "Desktop session menu entry, and the default button of the refusal alert, that archives a session without deleting its worktree."},
+  "sessionListArchiveRunningTitle": "Archive a running session?",
+  "@sessionListArchiveRunningTitle": {"description": "Title of the desktop alert shown before archiving a session that is still running."},
+  "sessionListArchiveRunningMessage": "“{title}” is still running. Archiving makes it permanently read-only.",
+  "@sessionListArchiveRunningMessage": {"description": "Body of the desktop alert shown before archiving a running session.", "placeholders": {"title": {"type": "String"}}},
+  "sessionListArchiveRefusedTitle": "The worktree can’t be deleted safely",
+  "@sessionListArchiveRefusedTitle": {"description": "Title of the desktop alert shown when the bridge refuses to delete a session's worktree while archiving."},
+  "sessionListArchiveDeleteAnyway": "Delete it anyway",
+  "@sessionListArchiveDeleteAnyway": {"description": "Desktop refusal alert button that archives the session and force-deletes its worktree."},
+  "sessionListDeleteNamedTitle": "Delete “{title}”?",
+  "@sessionListDeleteNamedTitle": {"description": "Title of the desktop delete alert, naming the session.", "placeholders": {"title": {"type": "String"}}},
+  "sessionListDeleteWorktreeKeepsBranch": "Delete the worktree too (the branch is kept)",
+  "@sessionListDeleteWorktreeKeepsBranch": {"description": "Checkbox in the desktop delete alert."},
   "sessionListDeleted": "Session deleted",
   "sessionListDeleteConfirmTitle": "Delete session?",
   "sessionListDeleteConfirmMessage": "This will permanently remove the session and all its messages. This cannot be undone.",
@@ -836,7 +1115,7 @@
   "appleIdTokenMissing": "Apple Sign-In failed. Please try again.",
   "loginWithApple": "Sign in with Apple",
   "loginWithGoogle": "Sign in with Google",
-  "signInWithEmail": "Sign in with Email",
+  "signInWithEmail": "Sign in with email",
   "emailLabel": "Email",
   "emailHint": "you@example.com",
   "emailRequired": "Email is required",
@@ -858,22 +1137,90 @@
   "loginPolling": "Confirm the sign-in in your browser to continue.",
   "loginTimeout": "Authorization timed out. Please try again.",
   "loginBrowserOpenFailed": "Could not open browser",
+  "loginDeclined": "Sign-in was declined. The browser page did not confirm this sign-in.",
+  "@loginDeclined": {
+    "description": "Shown when the user declined a browser sign-in on the confirmation page or at the provider."
+  },
+  "loginCancel": "Cancel",
+  "@loginCancel": {
+    "description": "Link that abandons a browser sign-in that is waiting for the user."
+  },
+  "loginOtherWaysToSignIn": "Other ways to sign in",
+  "@loginOtherWaysToSignIn": {
+    "description": "Link under the email sign-in form that returns to the provider buttons."
+  },
+  "desktopLoginTagline": "Watch and steer your coding sessions from your desk or your phone.",
+  "@desktopLoginTagline": {
+    "description": "One-line pitch on the desktop sign-in window's brand panel."
+  },
+  "desktopLoginTitle": "Sign in",
+  "desktopLoginSubtitle": "Use the same account as on your phone.",
+  "desktopLoginContinueWithGithub": "Continue with GitHub",
+  "desktopLoginContinueWithApple": "Continue with Apple",
+  "desktopLoginContinueWithGoogle": "Continue with Google",
+  "desktopLoginLastUsed": "Last used",
+  "@desktopLoginLastUsed": {
+    "description": "Marker on the desktop sign-in method this device signed in with last."
+  },
+  "desktopLoginEmailSubtitle": "For accounts created with an email and password.",
+  "@desktopLoginEmailSubtitle": {
+    "description": "Subtitle above the desktop email sign-in form."
+  },
+  "desktopLoginWaitingTitle": "Continue in your browser",
+  "desktopLoginWaitingMessage": "We opened {provider} sign-in in your browser. The page will ask you to confirm “{device}”. Come back here when it is done.",
+  "@desktopLoginWaitingMessage": {
+    "description": "Desktop card shown while a browser sign-in waits. The device is the name the browser page asks the user to confirm.",
+    "placeholders": {
+      "provider": {"type": "String", "example": "GitHub"},
+      "device": {"type": "String", "example": "MacBook Pro"}
+    }
+  },
+  "desktopLoginExpiresIn": "The link expires in {time}",
+  "@desktopLoginExpiresIn": {
+    "description": "Countdown on the desktop browser sign-in card, in minutes and seconds.",
+    "placeholders": {
+      "time": {"type": "String", "example": "4:32"}
+    }
+  },
+  "desktopLoginOpenAgain": "Open again",
+  "desktopLoginCopyLink": "Copy link",
+  "desktopLoginLinkCopied": "Link copied to clipboard",
+  "desktopLoginCancelHandoff": "Cancel and choose another way",
+  "desktopLoginBrowserFailedTitle": "Couldn’t open your browser",
+  "desktopLoginBrowserFailedMessage": "Copy the link, open it in any browser on this computer, and finish signing in there. We are still waiting.",
+  "desktopLoginTryAgain": "Try again",
+  "@desktopLoginTryAgain": {
+    "description": "Button that tries again to open the sign-in page in the browser."
+  },
+  "desktopLoginExpiredTitle": "The sign-in link expired",
+  "desktopLoginExpiredMessage": "Nothing was confirmed in the browser within 5 minutes. Choose a way to sign in again.",
+  "desktopLoginDeclinedTitle": "Sign-in was declined",
+  "desktopLoginDeclinedMessage": "The browser page did not confirm this sign-in. Choose a way to sign in again.",
   "sessionListRunning": "Running",
   "@sessionListRunning": {
     "description": "Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle"
   },
-  "sessionListNewActivity": "New activity",
-  "@sessionListNewActivity": {
-    "description": "Screen-reader label for a session with unopened agent activity; the visual signal is the resting sparkle"
-  },
-  "sessionListHarness": "{harness} session",
-  "@sessionListHarness": {
-    "description": "Screen-reader label for the harness driving a session; the visual signal is the brand logo leading the row. The harness name is a brand and is not translated.",
+  "sessionListResumes": "Resumes {time}",
+  "@sessionListResumes": {
+    "description": "Shown on a session row, in place of its last-activity time, while the bridge has scheduled an automatic continuation after a quota reset. The time is local, with the date only when it is not today.",
     "placeholders": {
-      "harness": {
+      "time": {
         "type": "String"
       }
     }
+  },
+  "sessionListResumesAtDescription": "Resumes at {time}",
+  "@sessionListResumesAtDescription": {
+    "description": "Screen-reader and tooltip wording for a session row whose automatic continuation is scheduled; the time includes the date.",
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "sessionListNewActivity": "New activity",
+  "@sessionListNewActivity": {
+    "description": "Screen-reader label for a session with unopened agent activity; the visual signal is the resting sparkle"
   },
   "sessionListRunningRetrying": "Running (retrying)",
   "@sessionListRunningRetrying": {
@@ -882,6 +1229,10 @@
   "sessionListAwaitingInput": "Awaiting input",
   "@sessionListAwaitingInput": {
     "description": "Label shown next to the amber dot for sessions that are waiting for user input (question or permission)"
+  },
+  "sessionListWaiting": "Waiting",
+  "@sessionListWaiting": {
+    "description": "Amber word leading a session row's meta line while the session waits for the user's answer or permission"
   },
   "sessionListBackgroundTasks": "{count, plural, =1{1 background task} other{{count} background tasks}}",
   "@sessionListBackgroundTasks": {
@@ -919,10 +1270,16 @@
   "voiceErrorSavedRecordingMissing": "The saved recording is no longer available. Record again or type instead.",
   "voiceErrorNotAuthenticated": "Sign in to use voice input",
   "voiceRecordingLimitReached": "Recording limit reached (15 minutes)",
-  "addProject": "Add Project",
-  "addAsNewProject": "Add as new project",
-  "@addAsNewProject": {
-    "description": "Primary action of the add-project sheet: registers the folder the browser is currently showing as a Sesori project."
+  "addProject": "Add project",
+  "addFolderAsProject": "Add {folder}",
+  "@addFolderAsProject": {
+    "description": "Primary action of the add-project sheet: registers the folder the browser is currently showing as a Sesori project.",
+    "placeholders": {
+      "folder": {
+        "type": "String",
+        "example": "my-app"
+      }
+    }
   },
   "createNewFolder": "Create new folder",
   "@createNewFolder": {
@@ -934,18 +1291,25 @@
   "newFolderExists": "A file or folder with that name already exists here",
   "newFolderFailed": "Could not create the folder",
   "newFolderUnsupported": "Update Sesori Bridge on your computer to create folders from here.",
-  "emptyDirectory": "This directory is empty",
-  "parentDirectory": "Parent directory",
-  "@parentDirectory": {
-    "description": "Accessibility label for the arrow button that navigates to the parent folder in the add-project browser."
+  "folderBrowserNoFolders": "No folders here",
+  "@folderBrowserNoFolders": {
+    "description": "Add-project browser: the folder being browsed has no subfolders to list."
   },
-  "folderPickerHome": "~ Home",
+  "folderBrowserNoFoldersDetail": "Only folders are listed, so any files in it stay hidden.",
+  "@folderBrowserNoFoldersDetail": {
+    "description": "Second line under folderBrowserNoFolders. The browser lists folders only, so the folder may still hold files."
+  },
+  "folderPickerHome": "Home",
   "@folderPickerHome": {
-    "description": "Shortcut button that jumps to the host user's home directory in the add-project browser."
+    "description": "Breadcrumb segment and shortcut button in the add-project browser that stand for the host user's home folder."
   },
-  "folderPickerRoot": "/ Root",
+  "folderPickerRoot": "Root",
   "@folderPickerRoot": {
-    "description": "Shortcut button that jumps to the host filesystem root in the add-project browser."
+    "description": "Shortcut button that jumps to the host filesystem root in the add-project browser. Shown on hosts without drive letters."
+  },
+  "folderBrowserParentFolder": "Parent folder",
+  "@folderBrowserParentFolder": {
+    "description": "Accessibility label for the up-arrow button at the start of the add-project browser's breadcrumb, which opens the parent of the folder being browsed."
   },
   "fetchDirectoryFailed": "Could not load directory contents",
   "fetchDirectoryRetry": "Retry",
@@ -955,7 +1319,7 @@
   },
   "projectHidden": "Project hidden",
   "projectHideFailed": "Failed to hide project",
-  "hideProject": "Hide Project",
+  "hideProject": "Hide project",
   "hide": "Hide",
   "@hide": {
     "description": "Label on the swipe-revealed hide button of a project row. Kept short — the button is a compact pill."
@@ -965,7 +1329,7 @@
   "projectDiscovered": "Project discovered",
   "addProjectEnableGitTitle": "Enable Git tracking?",
   "addProjectEnableGitBody": "Sesori will commit all non-ignored files to enable history and parallel sessions with dedicated worktrees.",
-  "addProjectContinueWithoutGit": "Continue Without Git",
+  "addProjectContinueWithoutGit": "Continue without Git",
   "addProjectEnableGit": "Enable Git",
   "addProjectGitSetupIncompleteTitle": "Project opened, Git setup incomplete",
   "addProjectGitSetupIncompleteBody": "The folder is open and ready for sessions, but Sesori could not finish Git setup. Git files may have been created. Dedicated worktrees stay unavailable until the repository has an initial commit.",
@@ -978,6 +1342,8 @@
   "questionReplyFailed": "Failed to send answer. Please try again.",
   "questionRejectFailed": "Failed to reject question. Please try again.",
   "permissionReplyFailed": "Failed to send permission response. Please try again.",
+  "needsYouAnswer": "Answer",
+  "needsYouReview": "Review",
   "permissionBannerSingle": "1 permission request pending",
   "permissionBannerMultiple": "{count} permission requests pending",
   "@permissionBannerMultiple": {
@@ -988,14 +1354,14 @@
     }
   },
   "rename": "Rename",
-  "renameSessionTitle": "Rename Session",
-  "renameProjectTitle": "Rename Project",
+  "renameSessionTitle": "Rename session",
+  "renameProjectTitle": "Rename project",
   "renameSessionHint": "Session title",
   "renameProjectHint": "Project name",
   "renameSave": "Save",
   "renameSessionFailed": "Failed to rename session",
   "renameProjectFailed": "Failed to rename project",
-  "newSessionDedicatedWorkspace": "Dedicated workspace",
+  "newSessionDedicatedWorkspace": "New worktree",
   "newSessionPluginChooserLabel": "Coding tool",
   "newSessionPluginDegraded": "Needs attention",
   "newSessionPluginUnavailable": "Unavailable",
@@ -1004,7 +1370,8 @@
   "newSessionNoHarnessTitle": "No coding harness installed",
   "newSessionNoHarnessDescription": "The connected bridge has no coding harness it can run. Install one from Harness settings.",
   "newSessionOptionsLoadingSemantics": "Loading session options",
-  "newSessionOptionsRefresh": "Refresh options",
+  "newSessionOptionsRetry": "Retry loading models",
+  "newSessionOptionsLoad": "Load models",
   "newSessionAuthenticationRequiredTitle": "{plugin} login required",
   "@newSessionAuthenticationRequiredTitle": {
     "description": "Warning title shown when the selected coding harness has no authenticated provider/model available for this project.",
@@ -1014,13 +1381,7 @@
       }
     }
   },
-  "newSessionProjectUnavailable": "Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.",
-  "newSessionOptionsCached": "Using cached coding tool options.",
-  "newSessionOptionsUnavailable": "No cached options are available. You can create with defaults or refresh now.",
-  "newSessionOptionsLoadFailedUnavailable": "Couldn’t load options. You can create with defaults or try again.",
-  "newSessionOptionsLegacyBridge": "This bridge can load options only by starting the selected coding tool. You can create with defaults or refresh now.",
-  "newSessionOptionsUpdateFailedRetained": "Couldn’t update options. Previously cached options are still available.",
-  "newSessionOptionsRefreshFailedUnavailable": "Refresh failed and no valid cached options remain. You can create with defaults.",
+  "newSessionProjectUnavailable": "Couldn’t verify whether this project supports worktrees. Try again before creating the session.",
   "sessionListDeleteWorktreeCheckbox": "Delete worktree",
   "sessionDetailArchivedNotice": "This session is archived and read-only.",
   "sessionDetailHarnessFallbackName": "This harness",
@@ -1044,15 +1405,11 @@
   "sessionDetailHarnessCheckingReason": "Checking whether this session’s harness is available…",
   "sessionDetailHarnessHistoryUnavailable": "Chat history for this session still needs the harness. Enable it to load the transcript.",
   "sessionDetailHarnessRefreshWarning": "Harness status could not be refreshed. The last known status is shown.",
-  "sessionDetailOpenHarnessSettings": "Open Harness Settings",
-  "sessionListArchiveConfirmTitle": "Archive session?",
-  "sessionListArchiveConfirmMessage": "Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.",
+  "sessionDetailOpenHarnessSettings": "Open harness settings",
   "sessionListArchiveConfirmAction": "Archive",
   "sessionListForceDeleteTitle": "Force delete?",
-  "sessionListForceArchiveTitle": "Force archive?",
   "sessionListForceMessage": "The following issues were found:",
-  "sessionListForceDeleteAction": "Force Delete",
-  "sessionListForceArchiveAction": "Force Archive",
+  "sessionListForceDeleteAction": "Force delete",
   "sessionListCleanupIssueUnstagedChanges": "Worktree has unstaged changes",
   "sessionListCleanupIssueSharedWorktree": "Another active session uses this worktree",
   "sessionListCleanupIssueBranchMismatch": "Worktree is on branch '{actual}' instead of expected '{expected}'",
@@ -1091,17 +1448,11 @@
   "diffPermissionReject": "Don’t allow",
   "diffPermissionOnce": "Allow",
   "diffPermissionAlwaysAllow": "Always approve",
-  "diffFileChangesTitle": "File Changes",
-  "diffFilesChangedCount": "{count} file{count, plural, =1{} other{s}} changed  +{additions} -{deletions}",
+  "diffFileChangesTitle": "File changes",
+  "diffFilesChangedCount": "{count} file{count, plural, =1{} other{s}} changed",
   "@diffFilesChangedCount": {
     "placeholders": {
       "count": {
-        "type": "int"
-      },
-      "additions": {
-        "type": "int"
-      },
-      "deletions": {
         "type": "int"
       }
     }
@@ -1189,9 +1540,11 @@
   "sessionDetailModelFallback": "Model",
   "sessionDetailAgentFallback": "Agent",
   "sessionDetailRetryLabel": "Retry",
+  "sessionDetailContextCompacted": "Context compacted",
+  "@sessionDetailContextCompacted": {"description": "Quiet transcript row marking where the coding agent summarized its earlier conversation to free context space."},
+  "sessionDetailCompactionSummaryTitle": "Compaction summary",
+  "@sessionDetailCompactionSummaryTitle": {"description": "Title of the modal showing the summary the coding agent carried forward when it compacted its context."},
   "sessionDetailCopy": "Copy",
-  "sessionDetailShowMore": "Show more",
-  "sessionDetailShowLess": "Show less",
   "emptySessionDetailTitle": "Select a session",
   "emptySessionDetailSubtitle": "Choose a session from the list to view details",
   "projectsOnboardingWhyLede": "Your LLM of choice runs on your computer.",
@@ -1222,7 +1575,7 @@
   "@projectsOnboardingWhyNotifiedTitle": {
     "description": "Title of the 'get notified' reassurance row in the 'Why is this needed?' sheet."
   },
-  "projectsOnboardingWhyNotifiedSubtitle": "Know when a task needs you.",
+  "projectsOnboardingWhyNotifiedSubtitle": "Know when a session needs you.",
   "@projectsOnboardingWhyNotifiedSubtitle": {
     "description": "Subtitle of the 'get notified' reassurance row."
   },
@@ -1542,18 +1895,62 @@
   "harnessesForceRestartAction": "Force restart",
   "harnessesStatusIdle": "Idle",
   "harnessesStatusRunning": "Running",
-  "archivedSessionsTitle": "Archived tasks",
+  "archivedSessionsTitle": "Archived sessions",
   "archivedSessionsClose": "Close archived sessions",
   "archivedSessionsToday": "Today",
-  "@archivedSessionsToday": {"description": "Date heading shared by regular and archived task lists."},
+  "@archivedSessionsToday": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsYesterday": "Yesterday",
-  "@archivedSessionsYesterday": {"description": "Date heading shared by regular and archived task lists."},
+  "@archivedSessionsYesterday": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsThisWeek": "This week",
-  "@archivedSessionsThisWeek": {"description": "Date heading shared by regular and archived task lists."},
+  "@archivedSessionsThisWeek": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsLastWeek": "Last week",
-  "@archivedSessionsLastWeek": {"description": "Date heading shared by regular and archived task lists."},
+  "@archivedSessionsLastWeek": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsThisMonth": "This month",
-  "@archivedSessionsThisMonth": {"description": "Date heading shared by regular and archived task lists."},
+  "@archivedSessionsThisMonth": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsLastMonth": "One month ago",
-  "@archivedSessionsLastMonth": {"description": "Date heading shared by regular and archived task lists."}
+  "@archivedSessionsLastMonth": {"description": "Date heading shared by regular and archived session lists."},
+  "sessionAutoContinuationMenu": "Auto continuation",
+  "sessionAutoContinuationAfterQuotaResets": "After quota resets",
+  "sessionAutoContinuationEnable": "Enable auto continuation",
+  "sessionAutoContinuationDisable": "Disable",
+  "sessionAutoContinuationOn": "Auto continuation on",
+  "sessionAutoContinuationChip": "Auto-continue",
+  "@sessionAutoContinuationChip": {"description": "Label of the quiet chip beside the session's model picker while auto continuation is enabled and nothing is due. Tapping it offers Disable."},
+  "sessionAutoContinuationQuotaReached": "Quota reached",
+  "sessionAutoContinuationOlderBridge": "Update your bridge to use auto continuation.",
+  "sessionAutoContinuationUnavailable": "Auto continuation is unavailable for this harness or provider.",
+  "sessionAutoContinuationOffer": "Continue at {time} and two minutes after each later quota reset. Keep your bridge running.",
+  "sessionAutoContinuationScheduled": "Continues at {time}. Keep your bridge running.",
+  "sessionAutoContinuationResetUnknown": "Reset time unavailable. Auto continuation cannot be scheduled.",
+  "sessionAutoContinuationPausedWork": "Paused while this session has active or queued work. Checks resume automatically.",
+  "sessionAutoContinuationPausedInput": "Paused until you answer the pending question or permission request.",
+  "sessionAutoContinuationPausedUnavailable": "Paused while the harness is unavailable. Checks resume automatically.",
+  "sessionAutoContinuationPausedUnknown": "Paused because the session could not be checked. Checks resume automatically.",
+  "sessionAutoContinuationUnconfirmed": "The last attempt could not be confirmed. It will not be sent again automatically.",
+  "sessionAutoContinuationSubmitted": "Continuation sent at {time}. Enabled for future quota resets.",
+  "sessionAutoContinuationFailed": "The continuation could not be sent. This attempt will not be retried automatically.",
+  "sessionAutoContinuationStatusUnknown": "Status unavailable. A scheduled time cannot be confirmed.",
+  "sessionAutoContinuationUpdateFailed": "Could not confirm the change. Reconnect and check auto continuation before trying again.",
+  "sessionAutoContinuationAlreadySubmitted": "Auto continuation disabled. The previous continuation was already sent; future automatic sends are disabled.",
+  "@sessionAutoContinuationOffer": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@sessionAutoContinuationScheduled": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@sessionAutoContinuationSubmitted": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  }
 }

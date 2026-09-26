@@ -25,6 +25,8 @@ import "../../../helpers/voice_test_helpers.dart";
 
 class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
+class MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
+
 class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
 class MockImageClipboard() extends Mock implements ImageClipboard;
@@ -51,7 +53,11 @@ Widget _buildApp({
   StubChatInputModeCubit? chatInputModeCubit,
   bool startAtPreviousScreen = false,
   VoidCallback? onOpenHarnessSettings,
+  VoidCallback? onOpenBridgeSettings,
   VoidCallback? onClose,
+  SessionDetailMenuEntriesBuilder? menuEntriesBuilder,
+  DiffSummaryState diffSummary = const DiffSummaryState.unknown(),
+  bool readOnly = false,
 }) {
   final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
@@ -74,6 +80,7 @@ Widget _buildApp({
           value: cubit,
           child: SessionDetailPresentationScope(
             openHarnessSettings: onOpenHarnessSettings ?? () {},
+            openBridgeSettings: onOpenBridgeSettings ?? () {},
             messageImageRepository: MockMessageImageRepository.new,
             imageSaver: MockImageSaver.new,
             imageClipboard: () => imageClipboard,
@@ -86,10 +93,12 @@ Widget _buildApp({
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Session",
-              readOnly: false,
+              readOnly: readOnly,
               banner: null,
               onBack: context.pop,
               onShowDiffs: () => context.push("/projects/project-1/sessions/session-1/diffs"),
+              pageChrome: null,
+              menuEntriesBuilder: menuEntriesBuilder,
               bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
                   MobileSessionDetailComposerControls(
                     projectId: projectId,
@@ -113,6 +122,7 @@ Widget _buildApp({
       BlocProvider<ChatInputModeCubit>(
         create: (_) => chatInputModeCubit ?? StubChatInputModeCubit(initialState: chatInputMode),
       ),
+      BlocProvider<DiffSummaryCubit>(create: (_) => StubDiffSummaryCubit(initialState: diffSummary)),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -136,24 +146,26 @@ SessionDetailLoaded _loadedState({
 }) {
   final provider = testProviderListResponse().items.first;
   return SessionDetailLoaded(
-    interaction: const SessionInteractionState.available(refreshError: null),
+    interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
     messages: messages,
     olderMessagesCursor: null,
+    transcriptFolded: false,
     streamingText: const {},
     sessionStatus: sessionStatus,
     pendingQuestions: pendingQuestions,
     pendingPermissions: pendingPermissions,
     sessionTitle: "Session",
+    session: testConstSession,
     pluginId: pluginId,
     supportsPromptAttachments: supportsPromptAttachments,
-    agent: null,
     assistantAgentModel: null,
     children: children,
     childStatuses: childStatuses,
     isRootSession: true,
     isArchived: false,
     queuedMessages: const [],
-    sendingSubmission: null,
+    bridgePromptAttachments: const {},
+    localSend: const LocalSendPhase.idle(),
     availableAgents: [testAgentInfo()],
     availableProviders: [provider],
     availableCommands: const [],
@@ -163,6 +175,8 @@ SessionDetailLoaded _loadedState({
       modelID: provider.defaultModelID!,
       variant: "xhigh",
     ),
+    promptDefaults: null,
+    fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
     availableVariants: const [
@@ -171,6 +185,9 @@ SessionDetailLoaded _loadedState({
     ],
   );
 }
+
+/// Tabler's `shield-exclamation`, the YOLO glyph (see `YoloChip.icon`).
+const _yoloIcon = IconData(0xF9C6, fontFamily: "TablerRegular", fontPackage: "theme_prego");
 
 const _question = SesoriQuestionAsked(
   id: "question-1",
@@ -191,6 +208,12 @@ const _permission = SesoriPermissionAsked(
   displaySessionId: null,
   tool: "write_release_notes",
   description: "Allow writing the release notes",
+);
+
+/// The question as the open modal shows it, not the needs-you card's preview.
+final _openQuestion = find.descendant(
+  of: find.byType(QuestionModal),
+  matching: find.text("Choose a release channel"),
 );
 
 Finder _pickerMenuItem(String label) => find.descendant(
@@ -292,6 +315,95 @@ void main() {
     });
   }
 
+  testWidgets("the chat menu enables auto continuation through the shared cubit", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      session: testConstSession.copyWith(
+        autoContinuation: const SessionAutoContinuationView(
+          enabled: false,
+          availability: AutoContinuationAvailability.conditional,
+          status: SessionAutoContinuationStatus.idle(),
+        ),
+      ),
+    );
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    when(() => cubit.setAutoContinuation(enabled: true)).thenAnswer((_) async {});
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("session-detail-more")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("session-auto-continuation-toggle")));
+    verify(() => cubit.setAutoContinuation(enabled: true)).called(1);
+  });
+
+  testWidgets("an archived chat without timestamps still hides auto continuation", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      isArchived: true,
+      session: testConstSession.copyWith(
+        time: null,
+        autoContinuation: const SessionAutoContinuationView(
+          enabled: true,
+          availability: AutoContinuationAvailability.conditional,
+          status: SessionAutoContinuationStatus.idle(),
+        ),
+      ),
+    );
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("session-detail-more")), findsNothing);
+    expect(find.byKey(const Key("session-auto-continuation-disable")), findsNothing);
+  });
+
+  testWidgets("the glass bar menu marks the open session unread whatever its local state says", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    // Locally still unseen: a toggle would offer "Mark as read" here.
+    final unseen = testConstSession.copyWith(unseen: true);
+    final sessions = MockSessionListCubit();
+    when(() => sessions.state).thenReturn(
+      SessionListState.loaded(sessions: [unseen], baseBranch: null, repoSlug: null),
+    );
+    when(
+      () => sessions.markSessionSeen(
+        sessionId: any(named: "sessionId"),
+        read: any(named: "read"),
+      ),
+    ).thenAnswer((_) async {});
+    final left = <String>[];
+    final dispatcher = SessionListActionDispatcher(
+      deleteConfirmation: SessionDeleteConfirmation.sheet,
+      onSessionArchived: null,
+      onSessionDeleted: null,
+      onSessionMarkedUnread: ({required context, required session}) => left.add(session.id),
+    );
+
+    await tester.pumpWidget(
+      _buildApp(
+        cubit: cubit,
+        menuEntriesBuilder: ({required context, required session}) => dispatcher.sessionMenuEntries(
+          context: context,
+          cubit: sessions,
+          session: unseen,
+          readEntry: SessionReadMenuEntry.markUnread,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key("session-detail-more")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Rename"), findsOneWidget);
+    expect(find.text("Archive"), findsOneWidget);
+    expect(find.text("Delete"), findsOneWidget);
+    expect(find.text("Mark as read"), findsNothing);
+    await tester.tap(find.text("Mark as unread"));
+    await tester.pumpAndSettle();
+
+    verify(() => sessions.markSessionSeen(sessionId: unseen.id, read: false)).called(1);
+    expect(left, [unseen.id]);
+  });
+
   testWidgets("PromptInput consumes initial attachments once per identity or restoration", (tester) async {
     final first = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "first.png");
     final second = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "second.png");
@@ -327,11 +439,13 @@ void main() {
               inputMode: ChatInputMode.voiceFirst,
               isKeyboardVisible: false,
               sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
+              presentation: ComposerPresentation.touch,
               attachmentDispatcher: GetIt.instance.get<ComposerAttachmentDispatcher>,
               imageClipboard: GetIt.instance.get<ImageClipboard>,
               child: PromptInput(
                 isBusy: false,
                 hasMessages: false,
+                canSend: true,
                 onSend: ({required draft, required command, required attachments}) {
                   submittedDraft = draft;
                   submitted = attachments;
@@ -342,6 +456,7 @@ void main() {
                 onAbort: () {},
                 surfaceStyleController: surfaceStyle,
                 composerHeader: null,
+                composerTrailing: null,
                 availableCommands: const [],
                 stagedCommand: null,
                 onCommandSelected: (_) {},
@@ -501,13 +616,16 @@ void main() {
 
   testWidgets("sending feedback replaces the empty transcript label", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
-      sendingSubmission: const QueuedSessionSubmission.text(
-        promptId: "prompt-1",
-        text: "Cold-start prompt",
-        inputMode: ComposerInputMode.typed,
-        attachments: [],
-        agent: "coder",
-        agentModel: null,
+      localSend: const LocalSendPhase.sending(
+        submission: QueuedSessionSubmission.text(
+          promptId: "prompt-1",
+          text: "Cold-start prompt",
+          inputMode: ComposerInputMode.typed,
+          attachments: [],
+          agent: "coder",
+          agentModel: null,
+          fastMode: false,
+        ),
       ),
     );
     when(() => cubit.state).thenReturn(state);
@@ -518,6 +636,22 @@ void main() {
 
     expect(find.text("No messages yet"), findsNothing);
     expect(find.text("Cold-start prompt"), findsOneWidget);
+  });
+
+  testWidgets("a busy session with no messages shows the Working row instead of the empty label", (tester) async {
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      sessionStatus: const SessionStatus.busy(),
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+
+    expect(find.text("No messages yet"), findsNothing);
+    expect(find.text("Working…"), findsOneWidget);
   });
 
   testWidgets("settled user text renders Markdown inside the shared neutral bubble", (tester) async {
@@ -646,58 +780,129 @@ void main() {
     expect(find.text("Follow up..."), findsNothing);
   });
 
-  testWidgets("header resolves an opaque assistant model ID through the provider catalog", (tester) async {
-    const modelID = "v1WyJkZWVwc2Vlay1vZmZpY2lhbCIsImRlZXBzZWVrLXY0LXBybyJd";
-    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
-      agent: "deepseek",
-      assistantAgentModel: const AgentModel(
-        providerID: "deepseek-official",
-        modelID: modelID,
-        variant: "high",
-      ),
-      availableProviders: const [
-        ProviderInfo(
-          id: "deepseek-official",
-          name: "DeepSeek Official",
-          models: {
-            modelID: ProviderModel(
-              id: modelID,
-              providerID: "deepseek-official",
-              name: "DeepSeek V4 Pro",
-              variants: ["high"],
-              defaultVariant: null,
-              family: null,
-              releaseDate: null,
-            ),
-          },
-          defaultModelID: modelID,
-        ),
-      ],
-      selectedAgent: "deepseek",
-      selectedAgentModel: const AgentModel(
-        providerID: "deepseek-official",
-        modelID: modelID,
-        variant: "high",
-      ),
-      availableVariants: const [SessionVariant(id: "high")],
-    );
+  testWidgets("an older bridge shows the read-only YOLO chip only while YOLO is on", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel("YOLO"), findsNothing);
+    expect(find.byKey(const Key("session-approval-chip")), findsNothing);
+
+    final state = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+    ).copyWith(bridgeYolo: const YoloSettingsResponse(enabled: true));
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    var bridgeSettingsOpened = 0;
+    await tester.pumpWidget(_buildApp(cubit: cubit, onOpenBridgeSettings: () => bridgeSettingsOpened++));
+    await tester.pumpAndSettle();
+    expect(find.byIcon(_yoloIcon), findsOneWidget);
 
+    await tester.tap(find.byIcon(_yoloIcon));
+    await tester.pumpAndSettle();
+    expect(find.text("YOLO mode is on"), findsOneWidget);
+    expect(
+      find.text("Sesori approves every permission request for you, so the agent never stops to ask."),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text("Open Settings"));
+    await tester.pumpAndSettle();
+    expect(bridgeSettingsOpened, 1);
+    expect(find.text("YOLO mode is on"), findsNothing);
+    expect(find.byKey(const Key("session-approval-chip")), findsNothing);
+  });
+
+  testWidgets("a per-session bridge shows the session's mode and picks it from the menu", (tester) async {
+    SessionDetailLoaded withOverride(SessionApprovalMode? approvalOverride) =>
+        _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+          bridgeYolo: const YoloSettingsResponse(enabled: false, supportsSessionOverride: true),
+          session: testConstSession.copyWith(approvalOverride: approvalOverride),
+        );
+    final asking = withOverride(null);
+    when(() => cubit.state).thenReturn(asking);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: asking);
+    when(() => cubit.setApprovalMode(mode: SessionApprovalMode.yolo)).thenAnswer((_) async {});
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    expect(find.text("deepseek · DeepSeek V4 Pro"), findsOneWidget);
-    expect(find.textContaining(modelID), findsNothing);
+    // Asking is a quiet outline shield, named by its tooltip.
+    final shield = tester.widget<Icon>(find.byIcon(TablerRegular.shield));
+    final prego = tester.element(find.byIcon(TablerRegular.shield)).prego;
+    expect(shield.color, prego.colors.textSecondary);
+    expect(find.bySemanticsLabel("Ask for approval"), findsOneWidget);
+    expect(find.byIcon(_yoloIcon), findsNothing);
+
+    await tester.tap(find.byKey(const Key("session-approval-chip")));
+    await tester.pumpAndSettle();
+    expect(find.text("Ask for approval (default)"), findsOneWidget);
+    expect(find.text("Approve everything (YOLO)"), findsOneWidget);
+    final yoloTitle = tester.widget<Text>(find.text("Approve everything (YOLO)"));
+    expect(yoloTitle.style?.color, prego.colors.textWarningPrimary);
+
+    await tester.tap(find.text("Approve everything (YOLO)"));
+    await tester.pumpAndSettle();
+    verify(() => cubit.setApprovalMode(mode: SessionApprovalMode.yolo)).called(1);
+
+    final yolo = withOverride(SessionApprovalMode.yolo);
+    when(() => cubit.state).thenReturn(yolo);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: yolo);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Icon>(find.byIcon(_yoloIcon)).color, prego.colors.fgWarningPrimary);
+    expect(find.bySemanticsLabel("YOLO"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.shield), findsNothing);
+  });
+
+  testWidgets("enabled auto continuation shows a model-row chip until a continuation is due", (tester) async {
+    SessionDetailLoaded withContinuation(SessionAutoContinuationStatus status) =>
+        _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+          bridgeYolo: const YoloSettingsResponse(enabled: true),
+          session: testConstSession.copyWith(
+            autoContinuation: SessionAutoContinuationView(
+              enabled: true,
+              availability: AutoContinuationAvailability.conditional,
+              status: status,
+            ),
+          ),
+        );
+    final idle = withContinuation(const SessionAutoContinuationStatus.idle());
+    when(() => cubit.state).thenReturn(idle);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: idle);
+    when(() => cubit.setAutoContinuation(enabled: false)).thenAnswer((_) async {});
+    // The narrowest supported phone row still fits both glyph chips beside the pickers.
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text("YOLO"), findsNothing);
+    expect(find.bySemanticsLabel("YOLO"), findsOneWidget);
+    expect(find.byIcon(_yoloIcon), findsOneWidget);
+    expect(find.byIcon(TablerRegular.bolt), findsNothing);
+    expect(find.bySemanticsLabel("Auto-continue"), findsOneWidget);
+    expect(find.text("Auto continuation on"), findsNothing);
+
+    await tester.tap(find.byKey(const Key("session-auto-continuation-chip")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Disable"));
+    await tester.pumpAndSettle();
+    verify(() => cubit.setAutoContinuation(enabled: false)).called(1);
+
+    final due = withContinuation(const SessionAutoContinuationStatus.resetKnown(resetAt: 100000, continueAt: 220000));
+    when(() => cubit.state).thenReturn(due);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: due);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("session-auto-continuation-chip")), findsNothing);
+    expect(find.bySemanticsLabel("YOLO"), findsOneWidget);
+    expect(find.text("Auto continuation on"), findsOneWidget);
+    expect(find.textContaining("Continues at"), findsOneWidget);
   });
 
   testWidgets("opens the variant picker and forwards the selection to the cubit", (tester) async {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
-
-    // Regression guard: the loaded state here has a null agent and model, so
-    // the bar subtitle must collapse to empty — never a literal "null".
-    expect(find.text("null"), findsNothing);
 
     await tester.tap(find.widgetWithText(PregoPickerButton, "xhigh"));
     await tester.pumpAndSettle();
@@ -713,24 +918,26 @@ void main() {
   testWidgets("selecting a different variant updates the displayed variant", (tester) async {
     final initialState = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     final updatedState = SessionDetailState.loaded(
-      interaction: const SessionInteractionState.available(refreshError: null),
+      interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
       messages: const [],
       olderMessagesCursor: null,
+      transcriptFolded: false,
       streamingText: const {},
       sessionStatus: const SessionStatus.idle(),
       pendingQuestions: const [],
       pendingPermissions: const [],
       sessionTitle: "Session",
+      session: testConstSession,
       pluginId: "opencode",
       supportsPromptAttachments: false,
-      agent: null,
       assistantAgentModel: null,
       children: const [],
       childStatuses: const {},
       isRootSession: true,
       isArchived: false,
       queuedMessages: const [],
-      sendingSubmission: null,
+      bridgePromptAttachments: const {},
+      localSend: const LocalSendPhase.idle(),
       availableAgents: [testAgentInfo()],
       availableProviders: testProviderListResponse().items,
       availableCommands: const [],
@@ -740,6 +947,8 @@ void main() {
         modelID: "claude-3-5-sonnet",
         variant: "low",
       ),
+      promptDefaults: null,
+      fastMode: false,
       stagedCommand: null,
       isRefreshing: false,
       availableVariants: const [
@@ -777,6 +986,17 @@ void main() {
     // The UI should now show the newly selected variant.
     expect(find.widgetWithText(PregoPickerButton, "low"), findsOneWidget);
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
+  });
+
+  testWidgets("diff button carries the session's line totals, leaving out a zero side", (tester) async {
+    when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
+    await tester.pumpWidget(
+      _buildApp(cubit: cubit, diffSummary: const DiffSummaryState.counts(additions: 12, deletions: 0)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text("+12"), findsOneWidget);
+    expect(find.textContaining("−"), findsNothing);
   });
 
   testWidgets("diff button navigates to diffs with the typed route", (tester) async {
@@ -865,6 +1085,7 @@ void main() {
               attachments: [],
               agent: null,
               agentModel: null,
+              fastMode: false,
             ),
           ],
         );
@@ -893,6 +1114,72 @@ void main() {
     await tester.tap(find.byKey(const Key("session_harness_settings")));
     expect(settingsOpened, 1);
     expect(tester.takeException(), isNull);
+  });
+
+  for (final hasHistory in [false, true]) {
+    testWidgets("blocked harness cannot enable continuation but can disable it (history: $hasHistory)", (
+      tester,
+    ) async {
+      for (final enabled in [false, true]) {
+        final session = testSession().copyWith(
+          autoContinuation: SessionAutoContinuationView(
+            enabled: enabled,
+            availability: AutoContinuationAvailability.conditional,
+            status: const SessionAutoContinuationStatus.resetKnown(resetAt: 100000, continueAt: 220000),
+          ),
+        );
+        final state = hasHistory
+            ? _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+                session: session,
+                interaction: authRequired,
+              )
+            : SessionDetailState.harnessUnavailable(session: session, interaction: authRequired);
+        whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+        when(() => cubit.setAutoContinuation(enabled: false)).thenAnswer((_) async {});
+        await tester.pumpWidget(_buildApp(cubit: cubit));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key("session-auto-continuation-enable")), findsNothing);
+        expect(find.textContaining("Continues at"), findsNothing);
+        if (enabled) {
+          await tester.tap(find.byKey(const Key("session-auto-continuation-disable")));
+          verify(() => cubit.setAutoContinuation(enabled: false)).called(1);
+        }
+        await tester.tap(find.byKey(const Key("session-detail-more")));
+        await tester.pumpAndSettle();
+        final menu = tester.widget<PregoAnchorMenu>(find.byType(PregoAnchorMenu).first);
+        final entry = menu.entriesBuilder().whereType<PregoMenuItem>().single;
+        expect(entry.isEnabled, enabled);
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    });
+  }
+
+  testWidgets("unavailable continuation controls scroll into view with enlarged text", (tester) async {
+    tester.view.physicalSize = const Size(320, 480);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    final session = testSession().copyWith(
+      autoContinuation: const SessionAutoContinuationView(
+        enabled: true,
+        availability: AutoContinuationAvailability.unavailable,
+        status: SessionAutoContinuationStatus.resetKnown(resetAt: 100000, continueAt: 220000),
+      ),
+    );
+    when(() => cubit.state).thenReturn(
+      SessionDetailState.harnessUnavailable(session: session, interaction: authRequired),
+    );
+    when(() => cubit.setAutoContinuation(enabled: false)).thenAnswer((_) async {});
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.ensureVisible(find.byKey(const Key("session-auto-continuation-disable")));
+    await tester.tap(find.byKey(const Key("session-auto-continuation-disable")));
+    verify(() => cubit.setAutoContinuation(enabled: false)).called(1);
+    await tester.ensureVisible(find.byKey(const Key("session_harness_recheck")));
+    await tester.tap(find.byKey(const Key("session_harness_recheck")));
+    verify(cubit.recheckHarnessAvailability).called(1);
   });
 
   testWidgets("unservable blocked history falls back to the full-screen notice", (tester) async {
@@ -961,6 +1248,40 @@ void main() {
     });
   }
 
+  testWidgets("needs-you cards dock above the composer at its width and open their modals", (tester) async {
+    final state = _loadedState(pendingQuestions: const [_question], pendingPermissions: const [_permission]);
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final cards = find.byType(SessionDetailNeedsYouCard);
+    expect(cards, findsNWidgets(2));
+    expect(find.text("1 pending question"), findsOneWidget);
+    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(find.text("1 permission request pending"), findsOneWidget);
+    expect(find.text("Allow writing the release notes"), findsOneWidget);
+
+    final composer = tester.getRect(find.byType(PromptInput));
+    final permission = tester.getRect(cards.last);
+    expect(tester.getRect(cards.first).bottom, lessThanOrEqualTo(permission.top));
+    expect(permission.bottom, lessThanOrEqualTo(composer.top));
+    final permissionCard = tester.getRect(
+      find.descendant(of: cards.last, matching: find.byType(DecoratedBox)).first,
+    );
+    expect(permissionCard.left, composer.left);
+    expect(permissionCard.right, composer.right);
+    final amber = tester.widget<DecoratedBox>(
+      find.descendant(of: cards.first, matching: find.byType(DecoratedBox)).first,
+    );
+    expect((amber.decoration as BoxDecoration).color, PregoDesignSystem.light.colors.bgWarningPrimary);
+
+    await tester.tap(find.text("Answer"));
+    await tester.pumpAndSettle();
+    expect(_openQuestion, findsOneWidget);
+  });
+
   testWidgets("harness block closes an open question without answering", (tester) async {
     final questions = StreamController<SesoriQuestionAsked>.broadcast();
     final states = StreamController<SessionDetailState>.broadcast();
@@ -975,11 +1296,11 @@ void main() {
     state = state.copyWith(pendingQuestions: const [_question]);
     questions.add(_question);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(_openQuestion, findsOneWidget);
     state = state.copyWith(interaction: authRequired);
     states.add(state);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsNothing);
+    expect(_openQuestion, findsNothing);
     expect(state.pendingQuestions, const [_question]);
     expect(find.byType(PromptInput), findsNothing);
     expect(tester.takeException(), isNull);
@@ -1001,6 +1322,7 @@ void main() {
               attachments: [],
               agent: "coder",
               agentModel: null,
+              fastMode: false,
             ),
           ],
         );
@@ -1021,11 +1343,98 @@ void main() {
       tester.widget<UserMessageBubble>(find.byType(UserMessageBubble)).outlined,
       isTrue,
     );
+    // Nothing names what it ran with, so no pill guesses from the composer's
+    // catalog fallbacks.
+    expect(find.byType(PregoPickerButton), findsNothing);
+  });
+
+  group("read-only run details", () {
+    const explore = AgentInfo(name: "explore", description: null, model: null, mode: AgentMode.subagent);
+    final pills = find.byType(ReadOnlyAgentModelPills);
+    Finder pill(String label) => find.descendant(of: pills, matching: find.text(label));
+
+    testWidgets("a child session shows what it ran with in pills that open nothing", (tester) async {
+      final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+        availableAgents: [testAgentInfo(), explore],
+        promptDefaults: const SessionPromptDefaults(
+          agent: "explore",
+          model: AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: "high"),
+        ),
+      );
+      when(() => cubit.state).thenReturn(state);
+
+      await tester.pumpWidget(_buildApp(cubit: cubit, readOnly: true));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PromptInput), findsNothing);
+      expect(pill("explore"), findsOneWidget);
+      expect(pill("Claude 3.5 Sonnet"), findsOneWidget);
+      expect(pill("high"), findsOneWidget);
+      // Quiet information: no caret, no press feedback, no button to announce.
+      expect(find.descendant(of: pills, matching: find.byIcon(TablerRegular.selector)), findsNothing);
+      expect(find.descendant(of: pills, matching: find.byType(InkWell)), findsNothing);
+      expect(tester.getSemantics(pill("high")), isSemantics(isButton: false, hasTapAction: false));
+      await tester.tap(find.ancestor(of: pill("explore"), matching: find.byType(PregoPickerButton)));
+      await tester.pumpAndSettle();
+      expect(find.text("Agent"), findsNothing);
+    });
+
+    testWidgets("an archived session names its latest reply's agent and model, never a variant", (tester) async {
+      final state =
+          _loadedState(
+            pendingQuestions: const [],
+            pendingPermissions: const [],
+            messages: const [
+              MessageWithParts(
+                info: Message.assistant(
+                  id: "reply",
+                  sessionID: "session-1",
+                  agent: "explore",
+                  modelID: "claude-3-5-sonnet",
+                  providerID: "anthropic",
+                  time: null,
+                ),
+                parts: [],
+              ),
+            ],
+          ).copyWith(
+            isArchived: true,
+            availableAgents: [testAgentInfo(), explore],
+          );
+      when(() => cubit.state).thenReturn(state);
+
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+
+      expect(pill("explore"), findsOneWidget);
+      expect(pill("Claude 3.5 Sonnet"), findsOneWidget);
+      // The composer's selection carries "xhigh"; a reply records no variant.
+      expect(find.descendant(of: pills, matching: find.byType(PregoPickerButton)), findsNWidgets(2));
+    });
+
+    testWidgets("a harness with one agent names none, and the harness notice stays above the pills", (tester) async {
+      final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+        interaction: authRequired,
+        promptDefaults: const SessionPromptDefaults(
+          agent: "coder",
+          model: AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: null),
+        ),
+      );
+      when(() => cubit.state).thenReturn(state);
+
+      await tester.pumpWidget(_buildApp(cubit: cubit, readOnly: true));
+      await tester.pumpAndSettle();
+
+      expect(find.descendant(of: pills, matching: find.byType(PregoPickerButton)), findsOneWidget);
+      expect(pill("Claude 3.5 Sonnet"), findsOneWidget);
+      final notice = tester.getRect(find.text("Sign in to Claude Code to continue."));
+      expect(notice.bottom, lessThanOrEqualTo(tester.getRect(pills).top));
+    });
   });
 
   for (final (name, interaction) in [
     ("legacy", const SessionInteractionState.legacyUnverified()),
-    ("refresh-error", SessionInteractionState.available(refreshError: ApiError.generic())),
+    ("refresh-error", SessionInteractionState.available(displayName: "Claude Code", refreshError: ApiError.generic())),
   ]) {
     testWidgets("archiving hides the $name harness warning", (tester) async {
       final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
@@ -1074,14 +1483,14 @@ void main() {
     permissions.add(_permission);
     notices.add(const SessionDetailPromptOptionsUpdated());
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsNothing);
+    expect(_openQuestion, findsNothing);
     expect(find.text("write_release_notes"), findsNothing);
     expect(find.text("Prompt options changed. Updated settings and retrying your message."), findsNothing);
 
     when(() => cubit.isRouteVisible).thenReturn(true);
     questions.add(_question);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(_openQuestion, findsOneWidget);
   });
 
   testWidgets("shows an alert when stale prompt options are refreshed automatically", (tester) async {
@@ -1164,12 +1573,12 @@ void main() {
     state = state.copyWith(pendingQuestions: const [_question]);
     questions.add(_question);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(_openQuestion, findsOneWidget);
 
     state = state.copyWith(pendingQuestions: const []);
     states.add(state);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsNothing);
+    expect(_openQuestion, findsNothing);
   });
 
   testWidgets("does not leave a question stale when resolved during presentation", (tester) async {
@@ -1188,7 +1597,7 @@ void main() {
     state = state.copyWith(pendingQuestions: const []);
     await tester.pumpAndSettle();
 
-    expect(find.text("Choose a release channel"), findsNothing);
+    expect(_openQuestion, findsNothing);
   });
 
   testWidgets("closes an open permission when it leaves pending state", (tester) async {
@@ -1250,7 +1659,7 @@ void main() {
     state = state.copyWith(pendingQuestions: const [_question]);
     questionController.add(_question);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(_openQuestion, findsOneWidget);
 
     state = state.copyWith(pendingPermissions: const [_permission]);
     permissionController.add(_permission);
@@ -1297,13 +1706,13 @@ void main() {
     state = state.copyWith(pendingQuestions: const [_question]);
     questionController.add(_question);
     await tester.pumpAndSettle();
-    expect(find.text("Choose a release channel"), findsNothing);
+    expect(_openQuestion, findsNothing);
 
     await tester.tap(find.text("Allow"));
     await tester.pump(const Duration(milliseconds: 250));
     await tester.pumpAndSettle();
 
-    expect(find.text("Choose a release channel"), findsOneWidget);
+    expect(_openQuestion, findsOneWidget);
   });
 
   // Only the input container is grouped with the text field via a
@@ -1540,7 +1949,7 @@ void main() {
     expect(find.text("Hold to talk"), findsOneWidget);
   });
 
-  testWidgets("picker pills and task card follow the composer surface style", (tester) async {
+  testWidgets("picker pills and the sub-agents pill follow the composer surface style", (tester) async {
     final state = _loadedState(
       pendingQuestions: const [],
       pendingPermissions: const [],
@@ -1553,10 +1962,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final picker = find.byType(PregoPickerButton).first;
-    final taskCard = find.descendant(
-      of: find.byType(BackgroundTasksBar),
-      matching: find.byType(PregoCard),
-    );
+    final taskCard = find.byType(BackgroundTasksBar);
     expect(
       composerSurfaceBorderColor(tester: tester, surface: picker),
       PregoColorsLight.borderSecondary,
@@ -1624,10 +2030,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final picker = find.byType(PregoPickerButton).first;
-    final taskCard = find.descendant(
-      of: find.byType(BackgroundTasksBar),
-      matching: find.byType(PregoCard),
-    );
+    final taskCard = find.byType(BackgroundTasksBar);
     expect(
       composerSurfaceBorderColor(tester: tester, surface: picker),
       PregoColorsLight.borderSecondary,
@@ -1642,6 +2045,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(EditableText), findsOneWidget);
+    // The staged-command chip takes the selectors' place, not the pill's.
     expect(
       composerSurfaceBorderColor(tester: tester, surface: taskCard),
       PregoColorsLight.borderPrimary,
@@ -2514,11 +2918,31 @@ void main() {
     expect(find.byIcon(TablerRegular.slash), findsOneWidget);
 
     await tester.tap(find.byIcon(TablerRegular.slash));
-    // Bounded pumps: the picker sheet shows a loading shimmer while its
-    // entries are prepared, which never settles.
+    // Bounded pumps: the picker shows a spinner while its entries are
+    // prepared, which never settles.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text("Slash commands"), findsOneWidget);
+    expect(find.byType(CommandPicker), findsOneWidget);
+  });
+
+  testWidgets("the picker's search taking focus keeps the empty typing composer under it", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    final composerField = find.descendant(of: find.byType(PromptInput), matching: find.byType(EditableText));
+    expect(composerField, findsOneWidget);
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(TablerRegular.slash));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.descendant(of: find.byType(CommandPicker), matching: find.byType(EditableText)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(CommandPicker), findsOneWidget);
+    expect(composerField, findsOneWidget);
   });
 
   testWidgets("expand button opens the fullscreen editor sharing the composer text", (tester) async {
@@ -2947,7 +3371,7 @@ void main() {
 
     expect(tester.getSize(find.byType(PregoImageAttachmentPreview)), const Size(52, 52));
     final removeButton = semanticsWithLabel("Remove attachment");
-    expect(tester.getSize(removeButton), const Size(44, 44));
+    expect(tester.getSize(removeButton), const Size(24, 24));
     await tester.tap(removeButton);
     await tester.pumpAndSettle();
     expect(semanticsWithLabel("screenshot.png"), findsNothing);
@@ -3518,6 +3942,7 @@ void main() {
       attachments: [],
       agent: null,
       agentModel: null,
+      fastMode: false,
     );
     var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       awaitingBridgeSubmissions: const [submission],
@@ -3573,6 +3998,7 @@ void main() {
           command: "review",
           agent: null,
           agentModel: null,
+          fastMode: false,
         ),
       ],
     );
@@ -3599,6 +4025,7 @@ void main() {
           ],
           agent: "coder",
           agentModel: null,
+          fastMode: false,
         ),
       ],
     );
@@ -3622,6 +4049,7 @@ void main() {
       ],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       queuedMessages: [submission],
@@ -3670,6 +4098,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     const followingSubmission = QueuedSessionSubmission.text(
       promptId: "prompt-2",
@@ -3678,6 +4107,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       queuedMessages: const [submission, followingSubmission],
@@ -3706,7 +4136,10 @@ void main() {
           .outlined,
       isTrue,
     );
-    state = state.copyWith(queuedMessages: const [followingSubmission], sendingSubmission: submission);
+    state = state.copyWith(
+      queuedMessages: const [followingSubmission],
+      localSend: const LocalSendPhase.sending(submission: submission),
+    );
     states.add(state);
     await tester.idle();
     await tester.pump();
@@ -3740,6 +4173,7 @@ void main() {
       attachments: [],
       agent: "coder",
       agentModel: null,
+      fastMode: false,
     );
     var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       queuedMessages: const [submission],
@@ -3752,7 +4186,10 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    state = state.copyWith(queuedMessages: const [], sendingSubmission: submission);
+    state = state.copyWith(
+      queuedMessages: const [],
+      localSend: const LocalSendPhase.sending(submission: submission),
+    );
     states.add(state);
     await tester.idle();
     await tester.pump();
@@ -3764,13 +4201,16 @@ void main() {
 
   testWidgets("an in-flight submission stays visible without a cancel action", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
-      sendingSubmission: const QueuedSessionSubmission.text(
-        promptId: "prompt-1",
-        text: "Cold-start prompt",
-        inputMode: ComposerInputMode.typed,
-        attachments: [],
-        agent: "coder",
-        agentModel: null,
+      localSend: const LocalSendPhase.sending(
+        submission: QueuedSessionSubmission.text(
+          promptId: "prompt-1",
+          text: "Cold-start prompt",
+          inputMode: ComposerInputMode.typed,
+          attachments: [],
+          agent: "coder",
+          agentModel: null,
+          fastMode: false,
+        ),
       ),
     );
     when(() => cubit.state).thenReturn(state);
@@ -3782,5 +4222,62 @@ void main() {
     expect(find.text("Cold-start prompt"), findsOneWidget);
     expect(find.text("Sending"), findsOneWidget);
     expect(find.text("Cancel"), findsNothing);
+  });
+
+  group("failed send actions", () {
+    const failedPrompt = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
+      text: "Failed prompt",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+      fastMode: false,
+    );
+
+    Future<void> pumpFailed(
+      WidgetTester tester, {
+      required PromptSendFailure failure,
+      required SessionInteractionState interaction,
+    }) async {
+      final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+        localSend: LocalSendPhase.failed(submission: failedPrompt, failure: failure),
+        interaction: interaction,
+      );
+      when(() => cubit.state).thenReturn(state);
+      whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pump();
+    }
+
+    testWidgets("a lost response offers Retry without Remove", (tester) async {
+      await pumpFailed(
+        tester,
+        failure: PromptSendFailure.uncertain,
+        interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
+      );
+
+      expect(find.text("Couldn’t send"), findsOneWidget);
+      expect(find.text("Retry"), findsOneWidget);
+      expect(find.text("Remove"), findsNothing);
+    });
+
+    testWidgets("a blocked harness hides Retry but keeps Remove", (tester) async {
+      await pumpFailed(
+        tester,
+        failure: PromptSendFailure.rejected,
+        interaction: const SessionInteractionState.blocked(
+          reason: SessionInteractionBlockedReason.authenticationRequired,
+          displayName: "Claude Code",
+          actionHint: null,
+          refreshError: null,
+        ),
+      );
+
+      expect(find.text("Couldn’t send"), findsOneWidget);
+      expect(find.text("Retry"), findsNothing);
+      await tester.tap(find.text("Remove"));
+      verify(() => cubit.removeFailedSend()).called(1);
+    });
   });
 }

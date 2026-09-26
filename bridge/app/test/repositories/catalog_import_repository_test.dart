@@ -1425,6 +1425,7 @@ SessionDto _sessionRow({
   int updatedAt = 20,
 }) {
   return SessionDto(
+    fastMode: false,
     sessionId: sessionId,
     backendSessionId: backendSessionId,
     projectId: projectId,
@@ -1449,6 +1450,7 @@ SessionDto _sessionRow({
     pluginId: pluginId,
     title: title,
     catalogTitle: catalogTitle,
+    approvalOverride: null,
   );
 }
 

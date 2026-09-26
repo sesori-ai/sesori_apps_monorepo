@@ -3,6 +3,7 @@ import "package:material_ui/material_ui.dart";
 
 import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
+import "prego_button_trailing.dart";
 
 // Horizontal padding for md size — not a named spacing token.
 // Figma specifies 14px for md (between spacing-lg=12 and spacing-xl=16).
@@ -12,8 +13,20 @@ const double _buttonHPaddingMd = 14.0;
 // Figma specifies 10px (between spacing-md=8 and spacing-lg=12).
 const double _buttonVPaddingMd = 10.0;
 
+// Horizontal padding for xs size — not a named spacing token. The compact size
+// has no Figma counterpart; 10px sits between spacing-md=8 and spacing-lg=12.
+const double _buttonHPaddingXs = 10.0;
+
+// Icon-only padding for xs size: 7px around the 16px icon keeps the square
+// button at the 30px text-button height.
+const double _buttonIconOnlyPaddingXs = 7.0;
+
 /// Size variants for [PregoButtonsSolid].
 enum PregoButtonsSolidSize() {
+  /// Height 30px — text-xs/medium, px=10, py=6, gap=4, 16px icon. For actions
+  /// inside compact notices, such as the desktop sidebar's recovery card.
+  xs,
+
   /// Height 36px — text-sm/medium, px=12, py=8, gap=4.
   sm,
 
@@ -115,6 +128,7 @@ class PregoButtonsSolid extends StatefulWidget {
     required this.onPressed,
     this.leadingIcon,
     this.trailingIcon,
+    this.labelTrailing,
     this.isLoading = false,
     this.type = PregoButtonsSolidType.regular,
     this.fullWidth = false,
@@ -156,7 +170,8 @@ class PregoButtonsSolid extends StatefulWidget {
        iconOnly = true,
        fullWidth = false,
        label = null,
-       trailingIcon = null;
+       trailingIcon = null,
+       labelTrailing = null;
 
   /// Button label text. Required for the standard constructor; null for icon-only.
   final String? label;
@@ -176,6 +191,11 @@ class PregoButtonsSolid extends StatefulWidget {
 
   /// Optional icon placed after the label. Ignored when [iconOnly] is `true`.
   final IconData? trailingIcon;
+
+  /// Optional content right after the label, such as counts in their own
+  /// colours. The button resizes smoothly as it arrives, changes or leaves.
+  /// Ignored when [iconOnly] is `true`.
+  final Widget? labelTrailing;
 
   /// When `true` the button shows a spinner and the button label instead of
   /// its normal content. The button is always non-interactive while loading,
@@ -215,10 +235,14 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final colors = prego.colors;
-    final button = Focus(
+    final onTap = widget.isLoading ? null : widget.onPressed;
+    // Enter and Space activate a focused button, as they do Material buttons.
+    final activate = CallbackAction<Intent>(onInvoke: (_) => onTap?.call());
+    final button = FocusableActionDetector(
       onFocusChange: (focused) => setState(() => _isFocused = focused),
+      actions: {ActivateIntent: activate, ButtonActivateIntent: activate},
       child: PregoTappable.stateAware(
-        onTap: widget.isLoading ? null : widget.onPressed,
+        onTap: onTap,
         borderRadius: BorderRadius.circular(PregoRadius.full),
         overlayColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.pressed)) return _resolvePressOverlayColor(colors: colors);
@@ -342,6 +366,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
         children.add(SizedBox(width: gap));
       }
       children.add(labelWidget);
+      children.add(PregoButtonTrailing(gap: gap, child: widget.labelTrailing));
       if (widget.trailingIcon != null) {
         children.add(SizedBox(width: gap));
         children.add(
@@ -660,8 +685,9 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   TextStyle _resolveTextStyle({required PregoDesignSystem prego, required Set<WidgetState> state}) {
     final colors = prego.colors;
     final textColor = _resolveTextColor(colors: colors, state: state);
-    // sm: Medium weight (w500) per Figma. md/lg/xl: Bold (w700).
+    // xs/sm: Medium weight (w500) per Figma. md/lg/xl: Bold (w700).
     final baseStyle = switch (widget.size) {
+      PregoButtonsSolidSize.xs => prego.textTheme.textXs.medium,
       PregoButtonsSolidSize.sm => prego.textTheme.textSm.medium,
       PregoButtonsSolidSize.md => prego.textTheme.textSm.bold,
       PregoButtonsSolidSize.lg || PregoButtonsSolidSize.xl => prego.textTheme.textMd.bold,
@@ -762,6 +788,10 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   }
 
   EdgeInsetsDirectional _resolvePadding() => switch (widget.size) {
+    PregoButtonsSolidSize.xs => const EdgeInsetsDirectional.symmetric(
+      horizontal: _buttonHPaddingXs,
+      vertical: PregoSpacing.sm,
+    ),
     // sm: 12px horizontal (spacing-lg) per Figma — differs from md's 14px.
     PregoButtonsSolidSize.sm => const EdgeInsetsDirectional.symmetric(
       horizontal: PregoSpacing.lg,
@@ -783,6 +813,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   };
 
   EdgeInsetsDirectional _resolveIconOnlyPadding() => switch (widget.size) {
+    PregoButtonsSolidSize.xs => const EdgeInsetsDirectional.all(_buttonIconOnlyPaddingXs),
     PregoButtonsSolidSize.sm => const EdgeInsetsDirectional.all(PregoSpacing.md),
     PregoButtonsSolidSize.md => const EdgeInsetsDirectional.all(_buttonVPaddingMd),
     PregoButtonsSolidSize.lg => const EdgeInsetsDirectional.all(PregoSpacing.lg),
@@ -790,11 +821,11 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   };
 
   double _resolveGap() => switch (widget.size) {
-    PregoButtonsSolidSize.sm || PregoButtonsSolidSize.md => PregoSpacing.xs,
+    PregoButtonsSolidSize.xs || PregoButtonsSolidSize.sm || PregoButtonsSolidSize.md => PregoSpacing.xs,
     PregoButtonsSolidSize.lg || PregoButtonsSolidSize.xl => PregoSpacing.sm,
   };
 
-  double _resolveIconSize() => 20.0;
+  double _resolveIconSize() => widget.size == PregoButtonsSolidSize.xs ? 16.0 : 20.0;
 }
 
 // ---------------------------------------------------------------------------

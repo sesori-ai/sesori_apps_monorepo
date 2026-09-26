@@ -146,6 +146,8 @@ class SessionOptionsRepository({
         final captured = await _runtime.useWithGeneration(
           pluginId: key.pluginId,
           operation: SessionOptionsRuntimeOperation.capture,
+          // A harness started only to answer for options shuts down sooner.
+          residency: PluginGenerationResidency.transient,
           body: (plugin) => plugin.getSessionOptions(
             projectId: projectPath,
             discoveryMode: discoveryMode,

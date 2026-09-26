@@ -35,6 +35,8 @@ void main() {
 
     test("serializes branchName to JSON", () {
       const session = Session(
+        approvalOverride: null,
+        autoContinuation: null,
         branchName: "sesori/add-search",
         id: "ses_1",
         pluginId: legacyMissingPluginId,

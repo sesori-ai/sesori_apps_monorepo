@@ -82,7 +82,17 @@ void main() {
     );
     // Seeded before the cubit loads, so the first rendered list already carries
     // the activity rather than flashing an idle row.
-    (getIt<SseEventTracker>() as MockSseEventTracker).emitProjectActivity(activeSessions);
+    (getIt<SseEventTracker>() as MockSseEventTracker).emitSessionActivity({
+      for (final MapEntry(key: projectId, value: count) in activeSessions.entries)
+        projectId: {
+          for (var i = 0; i < count; i++)
+            "$projectId-s$i": const SessionActivityInfo(
+              mainAgentRunning: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
+        },
+    });
 
     final router = GoRouter(
       routes: [
@@ -141,12 +151,13 @@ void main() {
   });
 
   group("a project with activity the user hasn't opened", () {
-    testWidgets("marks itself New activity, without moving", (tester) async {
+    testWidgets("marks itself with a resting sparkle that only a screen reader names", (tester) async {
       final project = testProjectSummary(id: "p1", name: "my-app").copyWith(hasUnseenChanges: true);
 
       await pumpList(tester, projects: [project]);
 
-      expect(find.text("New activity"), findsOneWidget);
+      expect(find.text("New activity"), findsNothing);
+      expect(find.bySemanticsLabel(RegExp("New activity")), findsOneWidget);
       expect(find.byType(PregoAiLoader), findsOneWidget);
       // Unopened activity is a state, not an event: the sparkle marks it but
       // must not animate, or a list nobody is working in would twinkle forever.
@@ -177,6 +188,38 @@ void main() {
     expect(find.text("Running"), findsOneWidget);
     expect(find.text("New activity"), findsNothing);
     expect(titleWeight(tester, "my-app"), FontWeight.w500);
+  });
+
+  group("a project whose folder is gone", () {
+    testWidgets("says Folder not found in amber, ahead of a live turn", (tester) async {
+      final project = testProjectSummary(id: "p1", name: "my-app").copyWith(directoryMissing: true);
+
+      await pumpList(tester, projects: [project], activeSessions: {"p1": 1});
+
+      expect(find.text("Running"), findsNothing);
+      expect(
+        tester.widget<Text>(find.text("Folder not found")).style?.color,
+        PregoDesignSystem.light.colors.textWarningPrimary,
+      );
+      expect(tester.getSize(find.byType(ProjectTile)).height, rowHeight);
+    });
+
+    testWidgets("offers Remove as its own button, which hides the project", (tester) async {
+      when(() => mockProjectRepository.hideProject(projectId: any(named: "projectId"))).thenAnswer(
+        (_) async => ApiResponse.success(null),
+      );
+      final handle = tester.ensureSemantics();
+      final project = testProjectSummary(id: "p1", name: "my-app").copyWith(directoryMissing: true);
+
+      await pumpList(tester, projects: [project]);
+
+      expect(find.bySemanticsLabel("Remove"), findsOneWidget);
+      await tester.tap(find.text("Remove"));
+      await tester.pump();
+
+      verify(() => mockProjectRepository.hideProject(projectId: "p1")).called(1);
+      handle.dispose();
+    });
   });
 
   testWidgets("a read, idle project says only when it last changed", (tester) async {
@@ -248,6 +291,7 @@ void main() {
               alignment: Alignment.topCenter,
               child: ProjectTile(
                 project: project,
+                pathLabel: project.path,
                 activeSessions: activeSessions,
                 unseen: unseen,
                 onOpen: ({required context, required project, required displayName}) {},
@@ -260,7 +304,9 @@ void main() {
     }
 
     testWidgets("the status line grows with the text instead of cropping it to the 1x line box", (tester) async {
-      final project = testProjectSummary(id: "p1", name: "my-app");
+      final project = testProjectSummary(id: "p1", name: "my-app").copyWith(
+        time: ProjectTime(created: 0, updated: DateTime.now().millisecondsSinceEpoch),
+      );
 
       await pumpScaledTile(tester, project: project, width: 520, activeSessions: 1);
 
@@ -274,14 +320,14 @@ void main() {
         time: ProjectTime(created: 0, updated: DateTime.now().millisecondsSinceEpoch),
       );
 
-      // Narrow enough that "New activity" plus "just now" cannot both fit —
+      // Narrow enough that "2 running" plus "just now" cannot both fit —
       // but wide enough for the timestamp alone, which the test font inflates
       // to a full fontSize per glyph.
-      await pumpScaledTile(tester, project: project, width: 480, unseen: true);
+      await pumpScaledTile(tester, project: project, width: 440, activeSessions: 2);
 
       // The ellipsized label is still the same Text; the timestamp keeps its
       // full width inside the row.
-      expect(find.text("New activity"), findsOneWidget);
+      expect(find.text("2 running"), findsOneWidget);
       final tile = tester.getRect(find.byType(ProjectTile));
       expect(tester.getRect(find.text("just now")).right, lessThanOrEqualTo(tile.right));
     });
@@ -318,7 +364,7 @@ void main() {
     expect(
       tester.getSemantics(find.descendant(of: find.byType(ProjectTile), matching: find.byType(MergeSemantics))),
       matchesSemantics(
-        label: "my-app\nwork/my-app\njust now",
+        label: "my-app\n/work/my-app\njust now",
         isButton: true,
         isFocusable: true,
         hasTapAction: true,

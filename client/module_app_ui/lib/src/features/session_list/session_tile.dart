@@ -4,9 +4,8 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
-import "../../extensions/status_colors.dart";
 import "pr_status_row.dart";
-import "session_row_metrics.dart";
+import "session_scheduled_resume.dart";
 
 /// Builds the long-press actions for a session row. It is a builder rather than
 /// a ready-made list because the entries are owned by the screen's action
@@ -17,18 +16,17 @@ import "session_row_metrics.dart";
 /// snackbar, closing a deleted session's detail route).
 typedef SessionOpenedCallback = void Function({required Session session});
 
-/// A single session row: a title line led by the harness driving the session
-/// and ended by how it is doing, over an indented footer with the workspace
-/// branch and pull-request status.
+/// A single session row: a status slot, the title and when the session last
+/// changed, over one tertiary meta line with the harness, branch and pull
+/// request.
 ///
-/// The title line's two ends answer different questions. The leading slot says
-/// which backend owns the session, so a list mixing harnesses stays readable
-/// at a glance. The trailing slot carries the liveness the old status line
-/// spelled out: the sparkle rotates while an agent works and rests solid —
-/// the same "new activity" mark the project list uses — when the session has
-/// activity the user hasn't opened, and gives way to when the session last
-/// changed once there is neither. Only states that need words keep them, as
-/// coloured footer labels.
+/// The leading slot says how the session is doing: the sparkle rotates while
+/// an agent works and rests solid — the same "new activity" mark the project
+/// list uses — when the session has activity the user hasn't opened; an amber
+/// dot means it waits for the user. A quiet session leaves the slot empty, so
+/// titles still line up. The time always shows at the trailing edge; a quiet
+/// session with a scheduled auto-continuation shows when it resumes. States
+/// that need words lead the meta line in their colour.
 ///
 /// Tapping opens the session; long-pressing — or right-clicking with a mouse —
 /// opens its actions in a [PregoAnchorMenu] anchored to the row, which blurs
@@ -43,11 +41,17 @@ typedef SessionOpenedCallback = void Function({required Session session});
 /// edge the row opens on the mail-style read toggle, committed by a full swipe
 /// likewise. The swipes are the quick paths; the menu stays the discoverable
 /// and assistive one.
+///
+/// Under a [PregoInteractionMode.pointer] scope the row is denser, and hovering
+/// or focusing it swaps the time for its read toggle and Archive.
 class const SessionTile({
   super.key,
   required final Session session,
   required final bool isArchived,
-  required final bool isActive,
+
+  /// The service-owned running classification: an active session that only
+  /// awaits input is not running.
+  required final bool isRunning,
   final bool unseen = false,
   final bool selected = false,
   final bool awaitingInput = false,
@@ -82,15 +86,29 @@ class const SessionTile({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: _menuWidth,
+      acquireOpenLease: null,
       // Holds this row sharp while the rest of the list blurs back, so which
       // session the actions will hit is unambiguous.
       spotlight: PregoMenuSpotlight.listRow,
       entriesBuilder: menuEntries,
-      triggerBuilder: (context, openMenu) => _buildRow(context: context, openMenu: openMenu),
+      triggerBuilder: (context, openMenu) {
+        if (PregoInteractionScope.of(context) != PregoInteractionMode.pointer) {
+          return _buildRow(context: context, openMenu: openMenu, pointer: false, revealActions: false);
+        }
+        return _PointerReveal(
+          builder: (context, revealed) =>
+              _buildRow(context: context, openMenu: openMenu, pointer: true, revealActions: revealed),
+        );
+      },
     );
   }
 
-  Widget _buildRow({required BuildContext context, required VoidCallback openMenu}) {
+  Widget _buildRow({
+    required BuildContext context,
+    required VoidCallback openMenu,
+    required bool pointer,
+    required bool revealActions,
+  }) {
     final prego = context.prego;
 
     return PregoSwipeActions(
@@ -119,19 +137,22 @@ class const SessionTile({
             child: Ink(
               color: selected ? prego.colors.bgBrandSolid.withValues(alpha: 0.08) : null,
               child: InkWell(
+                // Long-press keeps the ink enabled, so the arrow must be chosen when a click does nothing.
+                mouseCursor: onTap == null ? SystemMouseCursors.basic : WidgetStateMouseCursor.clickable,
                 onTap: onTap,
                 onLongPress: openMenu,
+                hoverColor: pointer ? prego.colors.bgSecondaryHover : null,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
+                  padding: EdgeInsets.symmetric(
                     horizontal: PregoSpacing.xl,
-                    vertical: PregoSpacing.lg,
+                    vertical: pointer ? PregoSpacing.xs : PregoSpacing.lg,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: PregoSpacing.xxs,
+                    spacing: pointer ? 0 : PregoSpacing.xxs,
                     children: [
-                      _titleRow(context: context),
-                      ?_footerRow(context: context),
+                      _titleRow(context: context, pointer: pointer, revealActions: revealActions),
+                      _metaLine(context: context, pointer: pointer),
                     ],
                   ),
                 ),
@@ -203,32 +224,34 @@ class const SessionTile({
     );
   }
 
-  Widget _titleRow({required BuildContext context}) {
-    final prego = context.prego;
-    return Row(
-      children: [
-        // Which harness is driving the session, in a fixed slot so titles line
-        // up down the list however many backends it mixes. The logo is the
-        // only thing on the row that says which one, so it is named in words
-        // too — the glyph itself stays decorative.
-        Semantics(
-          label: context.loc.sessionListHarness(PregoBrandLogo.displayNameFor(session.pluginId)),
-          child: SizedBox(
-            width: kSessionRowIconSlotWidth,
-            height: _titleLineHeight,
-            child: Center(
-              child: PregoBrandLogo(
-                pluginId: session.pluginId,
-                size: _brandLogoSize,
-                color: context.prego.colors.textSecondary,
+  Widget _titleRow({required BuildContext context, required bool pointer, required bool revealActions}) {
+    final lineHeight = pointer ? _pointerTitleLineHeight : _titleLineHeight;
+    // The row's width caps a resume time, which a narrow row with large text
+    // could not otherwise fit beside the title.
+    return LayoutBuilder(
+      builder: (context, constraints) => Row(
+        spacing: PregoSpacing.xs,
+        children: [
+          // Reserved when quiet, so titles line up down the list.
+          SizedBox(
+            width: _statusSlotSize,
+            height: lineHeight,
+            child: switch (_state(context: context)) {
+              final state? => Center(
+                child: Semantics(label: state.label, child: state.mark),
               ),
-            ),
+              null => null,
+            },
           ),
-        ),
-        SizedBox(width: prego.spacing.xs),
-        Expanded(child: _title(context: context)),
-        _trailingSlot(context: context),
-      ],
+          Expanded(
+            child: _title(context: context, pointer: pointer),
+          ),
+          if (revealActions)
+            _hoverActions(context: context)
+          else
+            ?_time(context: context, resumeMaxWidth: constraints.maxWidth / 2),
+        ],
+      ),
     );
   }
 
@@ -243,13 +266,14 @@ class const SessionTile({
   /// the titles that really did overflow, without a row paying to be measured
   /// twice. The ramp is an ellipsis wide rather than the design's, which is
   /// the price of that.
-  Widget _title({required BuildContext context}) {
+  Widget _title({required BuildContext context, required bool pointer}) {
     final prego = context.prego;
+    final size = pointer ? prego.textTheme.textSm : prego.textTheme.textMd;
 
     return Text(
       session.title ?? context.loc.sessionListUntitled,
       // Unopened activity leans on weight rather than a badge.
-      style: (unseen ? prego.textTheme.textMd.medium : prego.textTheme.textMd.regular).copyWith(
+      style: (unseen ? size.medium : size.regular).copyWith(
         color: prego.colors.textPrimary,
       ),
       maxLines: 1,
@@ -258,42 +282,33 @@ class const SessionTile({
     );
   }
 
-  /// The end of the title line: the state sparkle when the session has one to
-  /// show, otherwise when it last changed. They share the slot rather than
-  /// stack — a working session is the more urgent thing to say, so it takes
-  /// the space and the time rides along in the slot's spoken label instead.
-  Widget _trailingSlot({required BuildContext context}) {
+  /// When the session last changed, at the end of the title line, or when a
+  /// quiet session will continue on its own. Waiting and running outrank a
+  /// scheduled continuation.
+  Widget? _time({required BuildContext context, required double resumeMaxWidth}) {
+    if (!awaitingInput && !isRunning) {
+      if (sessionScheduledResumeAt(view: session.autoContinuation) case final continueAt?) {
+        // Half the row at most: the title keeps the other half, and both ellipsize.
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: resumeMaxWidth),
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+            child: SessionScheduledResume(continueAt: continueAt, labelled: true),
+          ),
+        );
+      }
+    }
     final prego = context.prego;
     final updatedAt = session.time?.updated;
-    final spokenTime = updatedAt == null ? null : context.formatTimestamp(updatedAt);
-    final state = _state(context: context);
-
-    if (state != null) {
-      return Padding(
-        padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
-        child: SizedBox(
-          width: kSessionRowIconSlotWidth,
-          height: _titleLineHeight,
-          // Nested rather than one composed string so the state is spoken
-          // first: it is why the time lost the slot, so it leads the pair.
-          child: Center(
-            child: Semantics(
-              label: state.label,
-              child: Semantics(label: spokenTime, child: state.sparkle),
-            ),
-          ),
-        ),
-      );
-    }
-    if (updatedAt == null) return const SizedBox.shrink();
+    if (updatedAt == null) return null;
 
     return Padding(
-      padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
+      padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
       child: Text(
         context.formatTimestampCompact(ms: updatedAt),
         // "2d" is a glance mark; assistive technology hears the phrase.
-        semanticsLabel: spokenTime,
-        style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+        semanticsLabel: context.formatTimestamp(updatedAt),
+        style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
         // Past the relative window this is a date, and some locales write
         // those with spaces; it holds the line rather than wrapping the row
         // open on the title's behalf.
@@ -303,67 +318,162 @@ class const SessionTile({
     );
   }
 
-  /// The session's state, told by the sparkle: rotating while an agent works,
-  /// resting solid when there is activity the user hasn't opened, absent for a
-  /// quiet session. A live turn is the more informative of the two, so it wins;
-  /// unseen still shows through the title's weight.
+  /// What a hovered or focused pointer row offers in place of its time: the
+  /// read toggle and, unless the row is already archived, Archive.
+  Widget _hoverActions({required BuildContext context}) {
+    final loc = context.loc;
+    Widget action({required Key key, required String tooltip, required IconData icon, required VoidCallback onTap}) =>
+        IconButton(
+          key: key,
+          tooltip: tooltip,
+          onPressed: onTap,
+          icon: Icon(icon, size: PregoIconSize.md),
+          // Inside the title's line box, so revealing them never moves the row.
+          style: IconButton.styleFrom(
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            padding: EdgeInsets.zero,
+            fixedSize: const Size(28, _pointerTitleLineHeight),
+            minimumSize: Size.zero,
+          ),
+        );
+    // The row's menu stays the assistive path; merged into the row these
+    // would fight its own tap action.
+    return ExcludeSemantics(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          action(
+            key: const Key("session-tile-hover-toggle-unread"),
+            tooltip: unseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,
+            icon: unseen ? TablerRegular.mail_opened : TablerRegular.mail,
+            onTap: onToggleUnread,
+          ),
+          if (!isArchived)
+            action(
+              key: const Key("session-tile-hover-archive"),
+              tooltip: loc.sessionListArchive,
+              icon: TablerRegular.archive,
+              onTap: onArchive,
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// The status slot's mark: an amber dot while the session waits for the
+  /// user, a rotating sparkle while an agent works, a resting sparkle for activity
+  /// the user hasn't opened, and nothing for a quiet session. Unseen still
+  /// shows through the title's weight when another state wins.
   ///
-  /// The sparkle is visual-only either way, so it never travels without the
-  /// words that say what it means — the caller has both or neither.
-  ({String label, Widget sparkle})? _state({required BuildContext context}) {
-    if (isActive) {
+  /// The mark is visual-only, so it never travels without the words that say
+  /// what it means — the caller has both or neither.
+  ({String label, Widget mark})? _state({required BuildContext context}) {
+    final loc = context.loc;
+    // Waiting wins: a turn blocked on the user can still count as running
+    // while it retries or has background tasks.
+    if (awaitingInput) {
       return (
-        label: context.loc.sessionListRunning,
-        sparkle: const PregoAiLoader(size: _stateIconSize),
+        label: loc.sessionListAwaitingInput,
+        mark: Container(
+          width: _waitingDotSize,
+          height: _waitingDotSize,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: context.prego.colors.fgWarningPrimary),
+        ),
       );
+    }
+    if (isRunning) {
+      return (label: loc.sessionListRunning, mark: const PregoAiLoader(size: _statusSlotSize));
     }
     if (unseen) {
       // Same contract as the project list: the resting sparkle carries the
       // unread meaning that title weight alone does not announce.
       return (
-        label: context.loc.sessionListNewActivity,
-        sparkle: const PregoAiLoader(size: _stateIconSize, animate: false),
+        label: loc.sessionListNewActivity,
+        mark: const PregoAiLoader(size: _statusSlotSize, animate: false),
       );
     }
     return null;
   }
 
-  /// The row's second line, indented under the title: branch, pull request and
-  /// any state that needs words. When the session last changed is told by the
-  /// title line's trailing slot, not here.
-  Widget? _footerRow({required BuildContext context}) {
+  /// The row's second line, under the title: any state that needs words, then
+  /// the harness, branch and pull request, apart by middle dots.
+  Widget _metaLine({required BuildContext context, required bool pointer}) {
+    final prego = context.prego;
+    final style = prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary);
     final status = _statusLabel(context: context);
-    if (session.branchName == null && session.pullRequest == null && status == null) return null;
+    final details = <({int flex, Widget child})>[
+      if (status != null) (flex: 1, child: status),
+      (
+        flex: 1,
+        child: Text(
+          PregoBrandLogo.displayNameFor(session.pluginId),
+          style: style,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      // Branch names are the one unbounded detail; both ends tell them apart.
+      if (session.branchName case final branch?)
+        (flex: 2, child: PregoEllipsisText(text: branch, style: style, ellipsis: PregoEllipsis.middle)),
+    ];
+
+    Widget separator() => ExcludeSemantics(
+      child: Text(_separator, style: style, maxLines: 1, softWrap: false, overflow: TextOverflow.clip),
+    );
 
     // A minimum rather than a fixed height: scaled-up accessibility text grows
-    // a populated footer instead of being cropped to the 1x line box.
+    // the line instead of being cropped to the 1x line box.
     return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: _footerLineHeight),
+      constraints: BoxConstraints(minHeight: pointer ? 0 : _metaLineHeight),
       child: Padding(
-        padding: const EdgeInsetsDirectional.only(start: PregoSpacing.x2l),
-        child: Row(
-          spacing: PregoSpacing.md,
-          children: [
-            // The branch yields and ellipsizes when the line runs out of width
-            // — branch names are the one unbounded detail — so it can't push
-            // the rest out of the row.
-            if (session.branchName case final branch?) Flexible(child: _BranchDetail(branch: branch)),
-            if (session.pullRequest case final pr?) Flexible(flex: 2, child: PrStatusRow(pr: pr)),
-            if (status != null) Flexible(child: status),
-          ],
+        padding: const EdgeInsetsDirectional.only(start: _statusSlotSize + PregoSpacing.xs),
+        child: LayoutBuilder(
+          builder: (context, constraints) => Row(
+            children: [
+              for (final (index, detail) in details.indexed)
+                // Each separator yields with the detail it leads, so scaled-up
+                // text shrinks details rather than overflowing the line.
+                Flexible(
+                  flex: detail.flex,
+                  child: index == 0
+                      ? detail.child
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(child: separator()),
+                            Flexible(flex: 3, child: detail.child),
+                          ],
+                        ),
+                ),
+              // The pull request is short and bounded, so it keeps its full width
+              // and the other details share what is left. The cap keeps a narrow
+              // pane from handing it the whole line.
+              if (session.pullRequest case final pr?)
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: constraints.maxWidth * _pullRequestMaxShare),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      separator(),
+                      Flexible(child: PrStatusRow(pr: pr)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  /// The states that still need words after the sparkle has said "working":
-  /// input wanted, a retry loop, tasks running behind the turn. A plain
-  /// running session carries no label — the rotation is the signal.
+  /// The states that need words: waiting for the user, a retry loop, tasks
+  /// running behind the turn. A plain running session carries no label — the
+  /// rotation is the signal.
   Widget? _statusLabel({required BuildContext context}) {
     final loc = context.loc;
     final prego = context.prego;
     final (label, color) = switch ((awaitingInput, isRetrying)) {
-      (true, _) => (loc.sessionListAwaitingInput, kStatusAmber),
+      (true, _) => (loc.sessionListWaiting, prego.colors.textWarningPrimary),
       (_, true) => (loc.sessionListRunningRetrying, prego.colors.fgErrorPrimary),
       _ when backgroundTaskCount > 0 => (
         loc.sessionListBackgroundTasks(backgroundTaskCount),
@@ -373,52 +483,52 @@ class const SessionTile({
     };
     if (label == null || color == null) return null;
 
-    return Text(
+    final text = Text(
       label,
-      style: prego.textTheme.textXs.regular.copyWith(color: color),
+      style: prego.textTheme.textXs.medium.copyWith(color: color),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
+    // The status slot already speaks the waiting state.
+    return awaitingInput ? ExcludeSemantics(child: text) : text;
   }
 }
 
-/// The branch the session's workspace is checked out on: a git-branch mark in
-/// a fixed slot, then the name.
-class const _BranchDetail({required final String branch}) extends StatelessWidget {
+/// Whether the pointer is over the row or keyboard focus is inside it.
+class const _PointerReveal({required final Widget Function(BuildContext context, bool revealed) builder})
+    extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    return Row(
-      // Hugs its content: inside the footer's Flexible slot a max-sized Row
-      // would claim the whole allotment and strand its neighbours at the far
-      // end.
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ExcludeSemantics(
-          child: SizedBox(
-            width: kSessionRowIconSlotWidth,
-            child: Center(
-              child: Icon(TablerRegular.git_branch, size: kSessionRowDetailIconSize, color: prego.colors.textSecondary),
-            ),
-          ),
-        ),
-        Flexible(
-          child: Text(
-            branch,
-            style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
+  State<_PointerReveal> createState() => _PointerRevealState();
+}
+
+class _PointerRevealState() extends State<_PointerReveal> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+    onEnter: (_) => setState(() => _hovered = true),
+    onExit: (_) => setState(() => _hovered = false),
+    child: Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (focused) => setState(() => _focused = focused),
+      child: widget.builder(context, _hovered || _focused),
+    ),
+  );
 }
 
 /// The row's line boxes, from the type scale it renders: a 16/24 title over a
-/// 12/18 footer line with 20px minimum height.
+/// 12/18 meta line with 20px minimum height.
 const double _titleLineHeight = 24;
-const double _footerLineHeight = 20;
+const double _pointerTitleLineHeight = 20;
+const double _metaLineHeight = 20;
 
-const double _brandLogoSize = 12;
-const double _stateIconSize = 20;
+const double _statusSlotSize = 16;
+const double _waitingDotSize = 8;
+
+/// The most of the meta line the pull request may take before it clips.
+const double _pullRequestMaxShare = 0.8;
+
+/// Between the meta line's details; a glyph, not words, so it is not translated.
+const String _separator = " · ";

@@ -9,6 +9,7 @@ import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
 import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" show SessionApprovalMode;
 import "package:test/test.dart";
 
 import "../../helpers/fakes/fake_derived_bridge_plugin.dart";
@@ -383,6 +384,54 @@ void main() {
         ),
         throwsStateError,
       );
+    });
+
+    test("stores an approval override and announces the updated session", () async {
+      await insertSession();
+      final mutations = <LocalSessionMutation>[];
+      final subscription = dispatcher.mutations.listen(mutations.add);
+
+      final updated = await dispatcher.setApprovalOverride(sessionId: "s1", approvalOverride: SessionApprovalMode.ask);
+
+      expect(updated.approvalOverride, SessionApprovalMode.ask);
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.approvalOverride, SessionApprovalMode.ask);
+      expect(
+        mutations.single,
+        isA<SessionApprovalOverrideUpdated>().having(
+          (mutation) => mutation.session.approvalOverride,
+          "approvalOverride",
+          SessionApprovalMode.ask,
+        ),
+      );
+
+      final cleared = await dispatcher.setApprovalOverride(sessionId: "s1", approvalOverride: null);
+
+      expect(cleared.approvalOverride, isNull);
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.approvalOverride, isNull);
+      await subscription.cancel();
+    });
+
+    test("rejects an approval override for a missing session", () async {
+      await expectLater(
+        dispatcher.setApprovalOverride(sessionId: "missing", approvalOverride: SessionApprovalMode.yolo),
+        throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
+      );
+    });
+
+    test("a child session follows its nearest ancestor's approval override", () async {
+      await insertSession();
+      await insertChild();
+
+      expect(await repository.resolveApprovalOverride(sessionId: "child"), isNull);
+      expect(await repository.hasYoloApprovalOverride(), isFalse);
+
+      await dispatcher.setApprovalOverride(sessionId: "s1", approvalOverride: SessionApprovalMode.yolo);
+      expect(await repository.resolveApprovalOverride(sessionId: "child"), SessionApprovalMode.yolo);
+      expect(await repository.hasYoloApprovalOverride(), isTrue);
+
+      await dispatcher.setApprovalOverride(sessionId: "child", approvalOverride: SessionApprovalMode.ask);
+      expect(await repository.resolveApprovalOverride(sessionId: "child"), SessionApprovalMode.ask);
+      expect(await repository.resolveApprovalOverride(sessionId: "missing"), isNull);
     });
   });
 }

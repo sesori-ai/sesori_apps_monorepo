@@ -16,19 +16,28 @@ class const FilePartWidget({
   required final String sessionId,
   required final MessageAttachment attachment,
 }) extends StatelessWidget {
+  static const double previewSize = 100;
   static const previewImageKey = ValueKey("filePartWidget.previewImage");
   static const previewTapTargetKey = ValueKey("filePartWidget.previewTapTarget");
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      key: ValueKey((sessionId, attachment)),
-      create: (_) => MessageImageCubit(
-        repository: SessionDetailPresentationScope.read(context).messageImageRepository(),
-        sessionId: sessionId,
-        attachment: attachment,
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      widthFactor: 1,
+      heightFactor: 1,
+      child: SizedBox(
+        width: previewSize,
+        child: BlocProvider(
+          key: ValueKey((sessionId, attachment)),
+          create: (_) => MessageImageCubit(
+            repository: SessionDetailPresentationScope.read(context).messageImageRepository(),
+            sessionId: sessionId,
+            attachment: attachment,
+          ),
+          child: _FilePartContent(attachment: attachment),
+        ),
       ),
-      child: _FilePartContent(attachment: attachment),
     );
   }
 }
@@ -48,7 +57,6 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
           actionFilename: actionFilename,
           originalUri: originalUri,
           filename: _displayFilename(filename: _attachmentFilename),
-          byteLength: _attachmentByteLength,
         ),
       MessageImagePreviewUnsupported() => _buildFallbackAttachment(
         context: context,
@@ -91,7 +99,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         filename: _displayFilename(filename: filename),
         mime: _displayMime(mime: mime),
         uri: null,
-        icon: Icons.image_outlined,
+        icon: TablerRegular.photo,
         loading: true,
         retryable: false,
         byteLength: null,
@@ -101,7 +109,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         filename: _displayFilename(filename: filename),
         mime: _displayMime(mime: mime),
         uri: attachment.safeRemoteUri,
-        icon: Icons.image_outlined,
+        icon: TablerRegular.photo,
         loading: true,
         retryable: false,
         byteLength: null,
@@ -111,7 +119,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         filename: _displayFilename(filename: filename),
         mime: _displayMime(mime: mime),
         uri: null,
-        icon: Icons.image_outlined,
+        icon: TablerRegular.photo,
         loading: true,
         retryable: false,
         byteLength: _attachmentByteLength,
@@ -135,7 +143,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         filename: _displayFilename(filename: filename),
         mime: _displayMime(mime: mime),
         uri: attachment.safeRemoteUri,
-        icon: imageLoadFailed ? Icons.broken_image : Icons.insert_drive_file,
+        icon: imageLoadFailed ? TablerRegular.photo_off : TablerRegular.file,
         loading: false,
         retryable: retryable,
         byteLength: null,
@@ -145,7 +153,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         filename: _displayFilename(filename: filename),
         mime: _displayMime(mime: mime),
         uri: null,
-        icon: Icons.insert_drive_file,
+        icon: TablerRegular.file,
         loading: false,
         retryable: false,
         byteLength: null,
@@ -155,7 +163,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         filename: _displayFilename(filename: filename),
         mime: _displayMime(mime: mime),
         uri: null,
-        icon: imageLoadFailed ? Icons.broken_image : Icons.insert_drive_file,
+        icon: imageLoadFailed ? TablerRegular.photo_off : TablerRegular.file,
         loading: false,
         retryable: retryable,
         byteLength: _attachmentByteLength,
@@ -165,7 +173,7 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
         filename: _displayFilename(filename: filename),
         mime: _displayMime(mime: mime),
         uri: null,
-        icon: Icons.broken_image,
+        icon: TablerRegular.photo_off,
         loading: false,
         retryable: retryable,
         byteLength: null,
@@ -203,69 +211,46 @@ class const _FilePartContent({required final MessageAttachment attachment}) exte
     return Semantics(
       button: onTap != null,
       label: label,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: AspectRatio(
-          aspectRatio: 1,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(prego.radius.lg),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ColoredBox(
-                  color: prego.colors.bgSurface2,
-                  child: Center(
-                    child: loading
-                        ? const PregoActivityIndicator(color: null)
-                        : Icon(icon, size: prego.spacing.x6l, color: prego.colors.textSecondary),
-                  ),
-                ),
-                ExcludeSemantics(
-                  child: _AttachmentMetadataOverlay(
-                    filename: filename,
-                    mime: mime,
-                    byteLength: byteLength,
-                  ),
-                ),
-                if (retryable)
-                  Center(
-                    child: Semantics(
-                      button: true,
-                      label: context.loc.sessionDetailRetry,
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => unawaited(context.read<MessageImageCubit>().retryPreview()),
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: prego.colors.bgSurface1.withValues(alpha: 0.88),
-                            borderRadius: BorderRadius.circular(prego.radius.full),
-                          ),
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: prego.spacing.lg,
-                              vertical: prego.spacing.sm,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.refresh, size: prego.spacing.x2l, color: prego.colors.textPrimary),
-                                SizedBox(width: prego.spacing.xs),
-                                Text(context.loc.sessionDetailRetry, style: prego.textTheme.textXs.medium),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
+      child: MouseRegion(
+        cursor: onTap == null ? MouseCursor.defer : SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(prego.radius.xs),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ColoredBox(
+                    color: prego.colors.bgSurface2,
+                    child: Center(
+                      child: loading
+                          ? const PregoActivityIndicator(color: null)
+                          : Icon(icon, size: prego.spacing.x6l, color: prego.colors.textSecondary),
                     ),
                   ),
-                if (uri != null)
-                  PositionedDirectional(
-                    top: prego.spacing.md,
-                    end: prego.spacing.md,
-                    child: Icon(Icons.open_in_new, size: prego.spacing.x2l, color: prego.colors.textPrimary),
+                  ExcludeSemantics(
+                    child: _AttachmentMetadataOverlay(
+                      filename: filename,
+                      mime: mime,
+                      byteLength: byteLength,
+                    ),
                   ),
-              ],
+                  if (retryable) Center(child: _retryButton(context: context)),
+                  if (uri != null)
+                    PositionedDirectional(
+                      top: prego.spacing.md,
+                      end: prego.spacing.md,
+                      child: Icon(
+                        TablerRegular.external_link,
+                        size: prego.spacing.x2l,
+                        color: prego.colors.textPrimary,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -312,20 +297,24 @@ class const _AttachmentMetadataOverlay({
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (filename case final filename?)
-                    Text(
-                      filename,
-                      style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textWhite),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Flexible(
+                      child: Text(
+                        filename,
+                        style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textWhite),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   if (details.isNotEmpty)
-                    Text(
-                      details,
-                      style: prego.textTheme.textXs.regular.copyWith(
-                        color: prego.colors.textWhite.withValues(alpha: 0.7),
+                    Flexible(
+                      child: Text(
+                        details,
+                        style: prego.textTheme.textXs.regular.copyWith(
+                          color: prego.colors.textWhite.withValues(alpha: 0.7),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                 ],
               ),
@@ -343,7 +332,6 @@ class const _LoadedImageAttachment({
   required final String actionFilename,
   required final Uri? originalUri,
   required final String? filename,
-  required final int? byteLength,
 }) extends StatefulWidget {
   @override
   State<_LoadedImageAttachment> createState() => _LoadedImageAttachmentState();
@@ -409,48 +397,39 @@ class _LoadedImageAttachmentState() extends State<_LoadedImageAttachment> {
     return Semantics(
       button: _isDecoded,
       label: context.loc.sessionDetailImageOpen,
-      child: GestureDetector(
-        key: FilePartWidget.previewTapTargetKey,
-        behavior: HitTestBehavior.opaque,
-        onTap: !_isDecoded
-            ? null
-            : () => unawaited(
-                showImageAttachmentViewer(
-                  context: context,
-                  image: viewerImage,
-                  heroPresentation: ImageAttachmentHeroPresentation.cropped,
-                  filename: widget.filename,
-                  heroTag: _heroTag,
+      child: MouseRegion(
+        cursor: _isDecoded ? SystemMouseCursors.click : MouseCursor.defer,
+        child: GestureDetector(
+          key: FilePartWidget.previewTapTargetKey,
+          behavior: HitTestBehavior.opaque,
+          onTap: !_isDecoded
+              ? null
+              : () => unawaited(
+                  showImageAttachmentViewer(
+                    context: context,
+                    image: viewerImage,
+                    heroPresentation: ImageAttachmentHeroPresentation.cropped,
+                    filename: widget.filename,
+                    heroTag: _heroTag,
+                  ),
                 ),
-              ),
-        child: Hero(
-          tag: _heroTag,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(prego.radius.lg),
-            child: AspectRatio(
-              aspectRatio: 1,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image(
-                    key: FilePartWidget.previewImageKey,
-                    image: _image.provider,
-                    fit: BoxFit.cover,
-                    semanticLabel: widget.filename ?? context.loc.sessionDetailAttachedImage,
-                    frameBuilder: (_, child, frame, _) {
-                      if (frame != null) _markImageDecoded();
-                      return child;
-                    },
-                    errorBuilder: (_, _, _) => const _ImageDecodeFailure(),
-                  ),
-                  ExcludeSemantics(
-                    child: _AttachmentMetadataOverlay(
-                      filename: widget.filename,
-                      mime: widget.mime,
-                      byteLength: widget.byteLength,
-                    ),
-                  ),
-                ],
+          child: Hero(
+            tag: _heroTag,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(prego.radius.xs),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: Image(
+                  key: FilePartWidget.previewImageKey,
+                  image: _image.provider,
+                  fit: BoxFit.cover,
+                  semanticLabel: widget.filename ?? context.loc.sessionDetailAttachedImage,
+                  frameBuilder: (_, child, frame, _) {
+                    if (frame != null) _markImageDecoded();
+                    return child;
+                  },
+                  errorBuilder: (_, _, _) => const _ImageDecodeFailure(),
+                ),
               ),
             ),
           ),
@@ -459,6 +438,17 @@ class _LoadedImageAttachmentState() extends State<_LoadedImageAttachment> {
     );
   }
 }
+
+Widget _retryButton({required BuildContext context}) => IconButton.filled(
+  onPressed: () => unawaited(context.read<MessageImageCubit>().retryPreview()),
+  tooltip: context.loc.sessionDetailRetry,
+  style: IconButton.styleFrom(
+    minimumSize: const Size.square(44),
+    backgroundColor: context.prego.colors.bgSurface1.withValues(alpha: 0.88),
+    foregroundColor: context.prego.colors.textPrimary,
+  ),
+  icon: const Icon(TablerRegular.refresh, size: PregoIconSize.md),
+);
 
 class const _ImageDecodeFailure() extends StatelessWidget {
   @override
@@ -469,35 +459,9 @@ class const _ImageDecodeFailure() extends StatelessWidget {
       children: [
         ColoredBox(
           color: prego.colors.bgSurface2,
-          child: Icon(Icons.broken_image, size: prego.spacing.x6l, color: prego.colors.textTertiary),
+          child: Icon(TablerRegular.photo_off, size: prego.spacing.x6l, color: prego.colors.textTertiary),
         ),
-        Center(
-          child: Semantics(
-            button: true,
-            label: context.loc.sessionDetailRetry,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: () => unawaited(context.read<MessageImageCubit>().retryPreview()),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: prego.colors.bgSurface1.withValues(alpha: 0.88),
-                  borderRadius: BorderRadius.circular(prego.radius.full),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: prego.spacing.lg, vertical: prego.spacing.sm),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.refresh, size: prego.spacing.x2l, color: prego.colors.textPrimary),
-                      SizedBox(width: prego.spacing.xs),
-                      Text(context.loc.sessionDetailRetry, style: prego.textTheme.textXs.medium),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+        Center(child: _retryButton(context: context)),
       ],
     );
   }

@@ -97,7 +97,6 @@ void main() {
         cause: StateError("unreadable PATH entry"),
         stackTrace: StackTrace.empty,
       ),
-      const AntigravityRuntimeCandidateUnsupported(target: target),
     ];
 
     for (final candidate in candidates) {

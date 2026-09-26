@@ -1,10 +1,10 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
-import "../../../extensions/text_style_x.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "../models/diff_file_view_model.dart";
 import "../utils/diff_theme.dart";
+import "diff_file_list.dart";
 
 /// Renders a single file diff header with file name, +/- stats,
 /// status badge, and expand/collapse chevron.
@@ -17,9 +17,12 @@ class const DiffFileWidget({
   @override
   Widget build(BuildContext context) {
     return SelectionContainer.disabled(
-      child: GestureDetector(
-        onTap: onToggle,
-        child: _buildHeader(context),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          onTap: onToggle,
+          child: _buildHeader(context),
+        ),
       ),
     );
   }
@@ -27,6 +30,8 @@ class const DiffFileWidget({
   Widget _buildHeader(BuildContext context) {
     final vm = viewModel;
     final theme = DiffTheme.of(context);
+    final prego = context.prego;
+    final code = prego.textTheme.code;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
@@ -36,71 +41,26 @@ class const DiffFileWidget({
         ),
       ),
       child: Row(
+        spacing: PregoSpacing.xs,
         children: [
-          // File name
           Expanded(
             child: Text(
               vm.fileName,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ).monospace,
+              style: code.copyWith(fontWeight: FontWeight.w500, color: prego.colors.textPrimary),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 8),
-          // +N stats
-          Text(
-            "+${vm.additions}",
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.green.shade700,
-            ).monospace,
-          ),
-          const SizedBox(width: 4),
-          // -M stats
-          Text(
-            "-${vm.deletions}",
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.red.shade700,
-            ).monospace,
-          ),
-          const SizedBox(width: 8),
-          // Status badge
-          _buildStatusBadge(vm.status),
-          const SizedBox(width: 4),
-          // Chevron
+          // A skipped file has no counts, and an empty slot would still take a gap.
+          if (vm.additions > 0 || vm.deletions > 0)
+            DiffCounts(additions: vm.additions, deletions: vm.deletions, style: code),
+          DiffStatusLetter(status: vm.status),
           Icon(
-            isExpanded ? Icons.expand_less : Icons.expand_more,
-            size: 18,
+            isExpanded ? TablerRegular.chevron_up : TablerRegular.chevron_down,
+            size: PregoIconSize.md,
             color: theme.chevronColor,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(FileDiffStatus? status) {
-    final (label, color) = switch (status) {
-      FileDiffStatus.added => ("A", Colors.green),
-      FileDiffStatus.deleted => ("D", Colors.red),
-      FileDiffStatus.modified || null => ("M", Colors.orange),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-      decoration: BoxDecoration(
-        color: color.shade100,
-        borderRadius: BorderRadius.circular(3),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color.shade800,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }

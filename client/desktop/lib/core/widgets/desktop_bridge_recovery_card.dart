@@ -4,12 +4,18 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 typedef _RecoveryAction = ({String label, VoidCallback onPressed});
 
 /// Exceptional supervision stays beside navigation, never above routed content.
-class const DesktopBridgeRecoveryCard({super.key, required final double expansion}) extends StatelessWidget {
+class const DesktopBridgeRecoveryCard({
+  super.key,
+
+  /// Shown as one icon button, while the sidebar is not fully open.
+  required final bool compact,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BridgeControlCubit>().state;
@@ -59,20 +65,28 @@ class const DesktopBridgeRecoveryCard({super.key, required final double expansio
     final colors = context.prego.colors;
     final foreground = notice.isError ? colors.textErrorPrimary : colors.textWarningPrimary;
     final onPrimary = state.activity.locksCommands ? null : notice.primary.onPressed;
-    if (expansion < 1) {
+    if (compact) {
       return IconButton(
         key: const Key("desktop-bridge-recovery"),
         tooltip: "${notice.message} ${notice.primary.label}",
         onPressed: onPrimary,
-        icon: Icon(notice.icon, color: foreground, size: 20),
+        icon: Icon(notice.icon, color: foreground, size: PregoIconSize.md),
       );
     }
+    final messageStyle = context.prego.textTheme.textSm.regular.copyWith(color: colors.textPrimary);
+    final firstLineHeight = switch (messageStyle) {
+      TextStyle(:final fontSize?, :final height?) => fontSize * height,
+      _ => null,
+    };
     return Padding(
       padding: const EdgeInsets.all(PregoSpacing.md),
       child: DecoratedBox(
         key: const Key("desktop-bridge-recovery"),
+        // Neutral surface: only the icon and border carry the status colour, so
+        // the message and actions stay legible in both themes.
         decoration: BoxDecoration(
-          color: notice.isError ? colors.bgErrorSecondary : colors.bgWarningSecondary,
+          color: colors.bgSecondary,
+          border: Border.all(color: notice.isError ? colors.borderErrorSubtle : colors.borderSecondary),
           borderRadius: BorderRadius.circular(PregoRadius.lg),
         ),
         // Long bundle-repair guidance stays usable at the 480px window minimum.
@@ -86,22 +100,35 @@ class const DesktopBridgeRecoveryCard({super.key, required final double expansio
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(notice.icon, size: 18, color: foreground),
-                    const SizedBox(width: PregoSpacing.sm),
-                    Expanded(
-                      child: Text(
-                        notice.message,
-                        style: context.prego.textTheme.textXs.medium.copyWith(color: foreground),
-                      ),
+                    // Centred on the first line, the 13px glyph's ink spans the
+                    // message's cap top to its baseline; a larger icon towers
+                    // over the text.
+                    SizedBox(
+                      height: firstLineHeight,
+                      child: Icon(notice.icon, size: 13, color: foreground),
                     ),
+                    const SizedBox(width: PregoSpacing.sm),
+                    Expanded(child: Text(notice.message, style: messageStyle)),
                   ],
                 ),
+                const SizedBox(height: PregoSpacing.lg),
                 Wrap(
-                  spacing: PregoSpacing.sm,
+                  spacing: PregoSpacing.xs,
+                  runSpacing: PregoSpacing.sm,
                   children: [
-                    TextButton(onPressed: onPrimary, child: Text(notice.primary.label)),
+                    PregoButtonsSolid(
+                      label: notice.primary.label,
+                      hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                      size: PregoButtonsSolidSize.xs,
+                      onPressed: onPrimary,
+                    ),
                     if (notice.secondary case final action?)
-                      TextButton(onPressed: action.onPressed, child: Text(action.label)),
+                      PregoButtonsSolid(
+                        label: action.label,
+                        hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                        size: PregoButtonsSolidSize.xs,
+                        onPressed: action.onPressed,
+                      ),
                   ],
                 ),
               ],

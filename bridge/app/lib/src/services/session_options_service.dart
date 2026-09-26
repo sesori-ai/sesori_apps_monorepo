@@ -12,7 +12,7 @@ import "../repositories/session_options_repository.dart";
 /// cache immediately and reports it stale, so a client can refresh in the
 /// background instead of making the user wait on discovery. The entry itself
 /// lives until retention expires it.
-const Duration _staleAfter = Duration(days: 1);
+const Duration _staleAfter = Duration(minutes: 10);
 
 sealed class const SessionOptionsOutcome();
 
@@ -68,7 +68,13 @@ class SessionOptionsService({
     if (_retention.isNegative) {
       throw ArgumentError.value(_retention, "retention", "must not be negative");
     }
+    _startedAt = _clock.now().toUtc();
   }
+
+  /// When this bridge process began serving options. A snapshot captured
+  /// before it came from an earlier bridge build, which may have mapped fewer
+  /// catalog fields than this one reports.
+  late final DateTime _startedAt;
 
   final Map<String, PluginSessionOptionsScope> _pluginScopes = Map<String, PluginSessionOptionsScope>.unmodifiable(
     pluginScopes,
@@ -153,13 +159,16 @@ class SessionOptionsService({
   }
 
   /// A valid cache [loadDynamic] served instead of discovering, told whether
-  /// the snapshot has aged past [_staleAfter] so the client can refresh it in
-  /// the background. The failure fallback below deliberately does not: the
+  /// the snapshot has aged past [_staleAfter] or predates this bridge process,
+  /// so the client can refresh it in the background. The failure fallback below deliberately does not: the
   /// bridge just failed to refresh this very cache, so asking again at once
   /// would only repeat the failure.
   SessionOptionsAvailable _servedFromCache({required SessionOptionsCacheEntry entry}) {
     final age = _clock.now().toUtc().difference(entry.capturedAt.toUtc());
-    return SessionOptionsAvailable(response: entry.response.copyWith(stale: age > _staleAfter));
+    final capturedByEarlierBridge = entry.capturedAt.toUtc().isBefore(_startedAt);
+    return SessionOptionsAvailable(
+      response: entry.response.copyWith(stale: age > _staleAfter || capturedByEarlierBridge),
+    );
   }
 
   Future<SessionOptionsOutcome> loadCacheOnly({

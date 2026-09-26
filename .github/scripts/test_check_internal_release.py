@@ -134,8 +134,6 @@ class InternalReleaseGateTest(unittest.TestCase):
         attempted = self.attempt_sha()
         for path in [
             "docs/notes.md",
-            "client/desktop/lib/app.dart",
-            "client/module_desktop_core/lib/core.dart",
             ".github/workflows/desktop-ci.yml",
         ]:
             with self.subTest(path=path):
@@ -143,6 +141,15 @@ class InternalReleaseGateTest(unittest.TestCase):
                 output, _ = self.run_gate()
                 self.assertEqual(output, "should_release=false\n")
                 self.assertEqual(self.attempt_sha(), attempted)
+
+    def test_desktop_changes_join_the_shared_release_cycle(self) -> None:
+        self.run_gate()
+        for path in ("client/desktop/lib/app.dart", "client/module_desktop_core/lib/core.dart"):
+            with self.subTest(path=path):
+                sha = self.commit(path=path)
+                output, _ = self.run_gate()
+                self.assertEqual(output, "should_release=true\n")
+                self.assertEqual(self.attempt_sha(), sha)
 
     def test_bootstrap_from_release_skips_unrelated_changes(self) -> None:
         self.tag(name="v1.2.3-internal.42", annotated=True)
@@ -162,6 +169,10 @@ class InternalReleaseGateTest(unittest.TestCase):
         for path in [
             ".github/workflows/release-all-platforms.yml",
             ".github/workflows/_reusable-ios-testflight.yml",
+            ".github/workflows/desktop-qualification.yml",
+            ".github/scripts/package_desktop_macos.py",
+            ".github/scripts/prepare_desktop_release.py",
+            ".github/scripts/publish_desktop_release.py",
             ".github/actions/setup-flutter/action.yml",
             ".github/actions/resolve-flutter-dart-version/action.yml",
             ".github/scripts/check_internal_release.sh",

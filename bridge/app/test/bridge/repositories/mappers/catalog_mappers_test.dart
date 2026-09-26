@@ -20,17 +20,20 @@ void main() {
     );
 
     expect(
-      mapper.mapSummary(row: base, hasUnseenChanges: true),
+      mapper.mapSummary(row: base, hasUnseenChanges: true, directoryMissing: true),
       const ProjectSummary(
         id: "project-1",
         name: "repository",
         path: "/projects/repository",
         time: ProjectTime(created: 10, updated: 20),
         hasUnseenChanges: true,
+        directoryMissing: true,
       ),
     );
     expect(
-      mapper.mapSummary(row: base.copyWith(displayName: "Renamed"), hasUnseenChanges: false).name,
+      mapper
+          .mapSummary(row: base.copyWith(displayName: "Renamed"), hasUnseenChanges: false, directoryMissing: false)
+          .name,
       "Renamed",
     );
   });
@@ -63,6 +66,7 @@ void main() {
   test("SessionCatalogMapper maps stable identity and projection metadata", () {
     const mapper = SessionCatalogMapper();
     const row = SessionDto(
+      fastMode: false,
       sessionId: "sesori-id",
       backendSessionId: "backend-id",
       projectId: "project-1",
@@ -87,6 +91,7 @@ void main() {
       pluginId: "codex",
       title: null,
       catalogTitle: "Observed title",
+      approvalOverride: null,
     );
 
     final session = mapper.map(row: row, pullRequest: null, unseen: true);
@@ -105,6 +110,7 @@ void main() {
   test("SessionCatalogMapper reports live activity newer than the backend's updated time", () {
     const mapper = SessionCatalogMapper();
     const base = SessionDto(
+      fastMode: false,
       sessionId: "sesori-id",
       backendSessionId: "backend-id",
       projectId: "project-1",
@@ -129,6 +135,7 @@ void main() {
       pluginId: "claude",
       title: null,
       catalogTitle: null,
+      approvalOverride: null,
     );
 
     Session mapped(SessionDto row) => mapper.map(row: row, pullRequest: null, unseen: false);
@@ -149,6 +156,7 @@ void main() {
 
   test("StoredSessionMapper projects the fields repository consumers need", () {
     const row = SessionDto(
+      fastMode: false,
       sessionId: "sesori-id",
       backendSessionId: "backend-id",
       projectId: "project-1",
@@ -173,6 +181,7 @@ void main() {
       pluginId: "codex",
       title: "Override",
       catalogTitle: "Observed",
+      approvalOverride: null,
     );
 
     final stored = row.toStoredSession();

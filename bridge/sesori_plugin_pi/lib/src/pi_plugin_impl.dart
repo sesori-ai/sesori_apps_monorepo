@@ -9,6 +9,7 @@ import "models/pi_notification_type.dart";
 import "models/pi_thinking_level.dart";
 import "pi_identity.dart";
 import "repositories/mappers/pi_history_mapper.dart";
+import "repositories/mappers/pi_quota_interruption_mapper.dart";
 import "repositories/pi_backend_catalog_repository.dart";
 import "repositories/pi_session_catalog_repository.dart";
 import "repositories/pi_session_process_repository.dart";
@@ -81,6 +82,7 @@ final class PiPlugin._({
       editorTimeout: editorTimeout,
     );
     final sessionService = PiSessionService(
+      quotaMapper: PiQuotaInterruptionMapper(historyMapper: history),
       processRepository: processRepository,
       catalogRepository: catalogRepository,
       eventDispatcher: PiEventDispatcher(
@@ -163,7 +165,7 @@ final class PiPlugin._({
       discoveryMode: discoveryMode,
     );
     return switch (result) {
-      PiOptionsObserved(:final options) => PluginSessionOptionsDiscoveryResult.observed(options: options),
+      PiOptionsObserved(:final snapshot) => PluginSessionOptionsDiscoveryResult.observed(options: snapshot.options),
       PiOptionsNoModels() => const PluginSessionOptionsDiscoveryResult.authenticationRequired(
         actionHint: _missingModelActionHint,
       ),
@@ -178,6 +180,7 @@ final class PiPlugin._({
     required List<PluginPromptPart> parts,
     required String? userVisibleText,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -290,6 +293,10 @@ final class PiPlugin._({
   Future<Map<String, PluginSessionStatus>> getSessionStatuses() async => _sessionService.sessionStatuses;
 
   @override
+  Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) =>
+      _sessionService.getQuotaContinuationReadiness(sessionId: sessionId);
+
+  @override
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
     final session = await _requiredSession(sessionId: sessionId, operation: "getSessionMessages");
     if (session.time == null) return const [];
@@ -319,6 +326,7 @@ final class PiPlugin._({
     required String promptId,
     required List<PluginPromptPart> parts,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -361,6 +369,7 @@ final class PiPlugin._({
     required String arguments,
     required String? userVisibleArguments,
     required PluginSessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
@@ -373,7 +382,7 @@ final class PiPlugin._({
       operation: "sendCommand",
       staleOptions: true,
     );
-    final options = await _catalogService.requireOptions(projectId: session.directory);
+    final options = (await _catalogService.requireCatalog(projectId: session.directory)).options;
     if (command.trim() != command || command.isEmpty) {
       throw const PluginOperationException("sendCommand", statusCode: 400, message: "Invalid Pi command.");
     }
@@ -440,7 +449,7 @@ final class PiPlugin._({
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async =>
-      (await _catalogService.requireOptions(projectId: projectId)).agents;
+      (await _catalogService.requireCatalog(projectId: projectId)).options.agents;
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async =>
@@ -482,7 +491,7 @@ final class PiPlugin._({
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async =>
-      (await _catalogService.requireOptions(projectId: projectId)).providers;
+      (await _catalogService.requireCatalog(projectId: projectId)).options.providers;
 
   @override
   List<PluginProjectActivitySummary> getActiveSessionsSummary() => _sessionService.getActiveSessionsSummary();
@@ -542,14 +551,20 @@ final class PiPlugin._({
       );
     }
     if (model == null) return;
-    final options = await _catalogService.requireOptions(projectId: projectId);
+    final catalog = await _catalogService.requireCatalog(projectId: projectId);
+    final options = catalog.options;
     final provider = options.providers.providers.where((candidate) => candidate.id == model.providerID).firstOrNull;
     if (provider == null || !provider.models.any((candidate) => candidate.id == model.modelID)) {
       throw _unsupportedSelection(operation: operation, message: "Unsupported Pi model.", staleOptions: staleOptions);
     }
     if (variant != null) {
       final selected = provider.models.firstWhere((candidate) => candidate.id == model.modelID);
-      if (!selected.variants.contains(variant.id)) {
+      // Pi persists off even for models without a thinking selector. History
+      // restoration must accept that native default on the next prompt.
+      // Use the native model capability, independent of command discovery or
+      // a reasoning model's failed thinking-level discovery.
+      final implicitOff = catalog.nonReasoningModels.contains(model) && variant.id == PiThinkingLevel.off.wireValue;
+      if (!implicitOff && !selected.variants.contains(variant.id)) {
         throw _unsupportedSelection(
           operation: operation,
           message: "Unsupported Pi thinking level.",

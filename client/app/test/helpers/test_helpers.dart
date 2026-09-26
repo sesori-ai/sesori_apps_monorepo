@@ -1,7 +1,6 @@
 import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
-import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:flutter_svg/flutter_svg.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:http/http.dart" as http;
@@ -18,6 +17,7 @@ import "package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
 import "package:sesori_mobile/core/di/injection.dart";
+import "package:sesori_shared/sesori_shared.dart" show FailureReporter;
 export "package:sesori_dart_core/testing.dart";
 
 // ---------------------------------------------------------------------------
@@ -52,6 +52,20 @@ class StubChatInputModeCubit({ChatInputMode initialState = ChatInputMode.voiceFi
   Future<void> select({required ChatInputMode mode}) async => emit(mode);
 }
 
+/// The session page's Changes button reads its line totals from
+/// [DiffSummaryCubit], so any harness that pumps that button must provide one.
+class StubDiffSummaryCubit({DiffSummaryState initialState = const DiffSummaryState.unknown()})
+    extends Cubit<DiffSummaryState>
+    implements DiffSummaryCubit {
+  this : super(initialState);
+
+  @override
+  String get sessionId => "session-1";
+
+  @override
+  Duration get refreshInterval => Duration.zero;
+}
+
 class MockAudioRecorder() extends Mock implements AudioRecorder;
 
 class MockRecorderPrewarmClient() extends Mock implements RecorderPrewarmClient;
@@ -61,8 +75,6 @@ class MockRecordingFileProvider() extends Mock implements RecordingFileProvider;
 class MockWakeLockService() extends Mock implements WakeLockService;
 
 class MockAudioFormatConfig() extends Mock implements AudioFormatConfig;
-
-class MockFlutterSecureStorage() extends Mock implements FlutterSecureStorage;
 
 void stubProductAnalyticsService({required MockProductAnalyticsService service}) {
   final states = BehaviorSubject<ProductAnalyticsState>.seeded(ProductAnalyticsState.initial);
@@ -128,6 +140,39 @@ void _registerListServices({
     getIt.unregister<CatalogRescanService>();
   }
   getIt.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
+  if (getIt.isRegistered<ProjectInventoryService>()) {
+    getIt.unregister<ProjectInventoryService>();
+  }
+  getIt.registerFactory<ProjectInventoryService>(
+    () => ProjectInventoryService(
+      projectRepository: getIt<ProjectRepository>(),
+      connectionService: getIt<ConnectionService>(),
+      sseEventTracker: getIt<SseEventTracker>(),
+      routeSource: getIt<RouteSource>(),
+      projectListService: getIt<ProjectListService>(),
+      sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+      registeredBridgesService: getIt<RegisteredBridgesService>(),
+      productAnalyticsService: getIt<ProductAnalyticsService>(),
+      failureReporter: getIt<FailureReporter>(),
+      catalogRescanService: getIt<CatalogRescanService>(),
+    ),
+  );
+  // Projects reads every project's recent sessions for its Activity group.
+  // Screens under test see none unless a test registers its own inventory.
+  if (!getIt.isRegistered<RecentSessionInventoryService>()) {
+    getIt.registerFactory<RecentSessionInventoryService>(() => stubRecentSessionInventory(entries: const {}));
+  }
+}
+
+class MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
+
+/// A recent-session inventory that holds [entries] and never reads.
+MockRecentSessionInventoryService stubRecentSessionInventory({required Map<String, RecentSessionsEntry> entries}) {
+  final inventory = MockRecentSessionInventoryService();
+  when(() => inventory.state).thenAnswer((_) => BehaviorSubject.seeded(entries).stream);
+  when(inventory.refresh).thenAnswer((_) async => true);
+  when(inventory.dispose).thenAnswer((_) async {});
+  return inventory;
 }
 
 class MockFirebaseCrashlytics() extends Mock implements FirebaseCrashlytics;

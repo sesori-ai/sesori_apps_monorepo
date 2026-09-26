@@ -26,6 +26,35 @@ concrete problem can justify a documented temporary hold with a resolution path.
   Inspect `bridge/sesori_plugin_opencode/tool/opencode_v1_surface.json` and the
   plugin's DB-first import before promising that a new API can replace it. Keep
   minimum-surface metadata aligned only if a floor increase is approved.
+- **Regenerate models on every target update:** from
+  `bridge/sesori_plugin_opencode/`, run the matching commands below with the
+  selected release tag (replace the `X.Y` placeholders; use `--commit <sha>`
+  instead of `--tag` when pinning its resolved immutable revision):
+
+  ```bash
+  # OpenCode 1.x: packages/sdk/openapi.json -> lib/src/models/openapi/
+  dart run tool/generate_opencode_client.dart --tag v1.X.Y
+  dart run tool/generate_sse_events.dart
+
+  # OpenCode 2.x: packages/protocol/openapi.json -> lib/src/v2/models/openapi/
+  dart run tool/generate_opencode_client.dart --tag v2.X.Y \
+    --surface tool/opencode_v2_surface.json --out-dir lib/src/v2
+  dart run tool/generate_sse_events.dart --manifest tool/opencode_events_v2.json \
+    --out lib/src/v2/models/v2_event.g.dart
+  ```
+
+  Audit `tool/opencode_events_v1.json` or `tool/opencode_events_v2.json` against
+  the selected release's emitted event shapes **before** regenerating SSE:
+  these manifests are hand-curated, so rerunning the generator alone cannot
+  discover upstream event changes. Update the matching surface allowlist when
+  the driven API changes, review the model diff, and commit manifests/generator
+  changes with their generated output in the same update PR. Record the
+  release/revision and an explicit no-diff result when output is unchanged.
+  A v2 target update must not overwrite v1 models with v2 schemas; regenerate
+  each supported adapter only against its own protocol-compatible source.
+  Run affected model/union round-trip, API and SSE tests plus the package
+  analyzer. Never hand-edit generated output or treat generation alone as
+  live-protocol verification.
 - **Probe:** production current-host managed install, exact version, isolated
   loopback `opencode serve`, and the REST/SSE startup paths the plugin actually
   drives. Read the current runtime policy/client and use disposable database and
@@ -49,17 +78,22 @@ concrete problem can justify a documented temporary hold with a resolution path.
   exact ACP identity/pair, not a free-standing semantic floor. Identify effects
   on previously accepted explicit/PATH pairs in the plan. Do not manufacture
   an independent minimum or silently change this exact-pin policy.
-- **Assets:** five ZIPs: macOS arm64, Linux arm64/x64, Windows arm64/x64.
-  No macOS x64. Independently hash official downloads; do not portray locally
-  computed checksums as Google's signed provenance. Preserve sibling
+- **Assets:** Sesori selects all six ZIPs from the
+  [official registry](https://github.com/agentclientprotocol/registry/blob/7384f5e98d28cbbeba10035d520bdb680b19b3d8/antigravity-acp/agent.json):
+  macOS arm64/x64, Linux arm64/x64 and Windows arm64/x64. Independently hash official downloads; do not portray
+  locally computed checksums as Google's signed provenance. Preserve sibling
   `agy_acp_server.par` + `localharness_external` (Windows `.exe` counterparts),
   launch environment, Linux `--uid=`, permissions and archive limits.
-- **Probe:** no supported standalone CLI version command. Use the owning
-  `AntigravityRuntimeVersionValidator` / runtime service's initialize-only ACP
-  contract with candidate release facts and isolated state. Confirm exact
-  identity, protocol, capabilities, auth-method set and process teardown before
-  placement; create no session and initiate no OAuth. Linux extraction requires
-  Info-ZIP `unzip` with ZipInfo support. Never substitute normal Google profiles.
+- **Probe:** `--version` prints a `Build label:` among unrelated build diagnostics;
+  setup consumes only the sanitized label. The 2026-09-24 native probe established
+  plain semantic labels and ACP identity for package 1.2.1, replacing the earlier
+  `agy_acp_server_` prefix. Do not derive an identity from the archive filename.
+  Use the owning `AntigravityRuntimeVersionValidator` / runtime service's
+  initialize-only ACP contract with candidate release facts and isolated state.
+  Confirm exact identity, protocol, capabilities, auth-method set and process
+  teardown before placement; create no session and initiate no OAuth. Linux
+  extraction requires Info-ZIP `unzip` with ZipInfo support. Never substitute
+  normal Google profiles.
 - **Opportunities:** inspect account/model discovery, auth, history, deletion and
   subagent gaps against the current matrix. The 2026-09-12 matrix assessment found
   only generic parent-local subagent tool calls, not child identity/lifecycle or

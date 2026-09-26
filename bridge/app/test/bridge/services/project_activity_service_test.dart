@@ -294,6 +294,8 @@ void main() {
     await service.handleEvent(
       const SesoriSseEvent.sessionCreated(
         info: Session(
+          approvalOverride: null,
+          autoContinuation: null,
           branchName: null,
           id: "new-session",
           pluginId: "fake",
@@ -426,6 +428,7 @@ Future<void> _storeSession({
 }) async {
   await database.projectsDao.setActivity(projectId: projectId, createdAt: 100, updatedAt: 100);
   await database.sessionDao.insertSession(
+    fastMode: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: projectId,

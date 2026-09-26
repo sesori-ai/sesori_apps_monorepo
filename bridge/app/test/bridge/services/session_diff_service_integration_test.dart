@@ -128,6 +128,24 @@ void main() {
       expect(untracked.additions, equals(1));
     });
 
+    test("summary totals the same line counts the diffs carry, untracked files included", () async {
+      File("${worktreeDir.path}/lib/second_untracked.dart").writeAsStringSync("a\nb\nc");
+      final diffs = await service.getDiffs(sessionId: "session-1");
+      final summary = await service.getSummary(sessionId: "session-1");
+
+      final contents = diffs.whereType<FileDiffContent>();
+      expect(summary.additions, contents.fold<int>(0, (sum, diff) => sum + diff.additions));
+      expect(summary.deletions, contents.fold<int>(0, (sum, diff) => sum + diff.deletions));
+      expect(summary, (additions: 5, deletions: 1));
+    });
+
+    test("summary of a missing session throws not found", () async {
+      await expectLater(
+        service.getSummary(sessionId: "missing"),
+        throwsA(isA<SessionDiffSessionNotFoundException>()),
+      );
+    });
+
     test("in-place session compares the current tree with its exact start commit", () async {
       final startCommit = (await _runGit(
         runner: processRunner,
@@ -362,6 +380,7 @@ Future<void> _insertStoredSession({
 }) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   await db.sessionDao.insertSession(
+    fastMode: false,
     pluginId: "opencode",
     preservePullRequestScope: false,
     sessionId: sessionId,
@@ -387,6 +406,7 @@ Future<void> _insertInPlaceStoredSession({
 }) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
   await db.sessionDao.insertSession(
+    fastMode: false,
     pluginId: "opencode",
     preservePullRequestScope: false,
     sessionId: sessionId,

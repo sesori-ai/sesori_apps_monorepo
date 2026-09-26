@@ -71,6 +71,10 @@ sealed class CodexRolloutLineDto with _$CodexRolloutLineDto {
   @FreezedUnionValue("compacted")
   const factory compacted({
     required String? timestamp,
+
+    /// `payload.message`: the continuation summary. Empty when the provider
+    /// compacted remotely and kept the summary encrypted.
+    @JsonKey(name: "payload", fromJson: _compactedSummaryOrNull) required String? summary,
   }) = CodexRolloutCompactedLineDto;
 
   const factory unknown({
@@ -201,13 +205,18 @@ sealed class CodexRolloutSessionMetadataPayloadDto with _$CodexRolloutSessionMet
 sealed class CodexRolloutTurnContextPayloadDto with _$CodexRolloutTurnContextPayloadDto {
   const factory({
     required String? model,
-    @JsonKey(name: "reasoning_effort", fromJson: _stringOrNull) required String? effort,
+    @JsonKey(fromJson: _stringOrNull) required String? effort,
   }) = _CodexRolloutTurnContextPayloadDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexRolloutTurnContextPayloadDtoFromJson(json);
 }
 
 String? _stringOrNull(Object? value) => value is String ? value : null;
+
+String? _compactedSummaryOrNull(Object? payload) => switch (payload) {
+  {"message": final String message} when message.isNotEmpty => message,
+  _ => null,
+};
 
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexRolloutItemMetadataDto with _$CodexRolloutItemMetadataDto {

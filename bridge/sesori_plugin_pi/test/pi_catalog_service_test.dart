@@ -27,21 +27,21 @@ void main() {
       discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
     );
 
-    final observedOptions = (observed as PiOptionsObserved).options;
-    final refreshOptions = (refresh as PiOptionsObserved).options;
+    final observedOptions = (observed as PiOptionsObserved).snapshot.options;
+    final refreshOptions = (refresh as PiOptionsObserved).snapshot.options;
     expect(observedOptions.commands.map((command) => command.name), ["first", PiCatalogService.compactionCommandName]);
     final compaction = observedOptions.commands.last;
     expect(compaction.description, "Summarize the conversation so far to free up the context window");
     expect(compaction.source, PluginCommandSource.command);
     expect(service.isNativeCompactionCommand(command: compaction), isTrue);
-    expect((reused as PiOptionsObserved).options, same(observedOptions));
+    expect((reused as PiOptionsObserved).snapshot, same(observed.snapshot));
     expect(refreshOptions.commands.map((command) => command.name), [
       "refreshed",
       PiCatalogService.compactionCommandName,
     ]);
     expect(refreshOptions.completeness, PluginSessionOptionsCompleteness.partial);
     expect(repository.projects, [path.normalize(project), path.normalize(project)]);
-    expect(tracker.snapshotFor(projectId: project), same(refreshOptions));
+    expect(tracker.snapshotFor(projectId: project), same(refresh.snapshot));
   });
 
   test("does not duplicate a compact command returned by Pi", () async {
@@ -57,7 +57,7 @@ void main() {
       tracker: PiCatalogTracker(),
     );
 
-    final options = await service.requireOptions(projectId: path.absolute("project"));
+    final options = (await service.requireCatalog(projectId: path.absolute("project"))).options;
 
     expect(options.commands, hasLength(1));
     expect(options.commands.single.name, PiCatalogService.compactionCommandName);
@@ -106,7 +106,7 @@ void main() {
       projectId: project,
       discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
     );
-    final trackedGood = (firstObserved as PiOptionsObserved).options;
+    final trackedGood = (firstObserved as PiOptionsObserved).snapshot;
     final failed = await service.getSessionOptions(
       projectId: project,
       discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
@@ -117,7 +117,7 @@ void main() {
     );
 
     expect(failed, isA<PiOptionsDiscoveryFailed>());
-    expect((fallback as PiOptionsObserved).options, same(trackedGood));
+    expect((fallback as PiOptionsObserved).snapshot, same(trackedGood));
     expect(tracker.snapshotFor(projectId: project), same(trackedGood));
     expect(repository.projects, hasLength(2));
   });
@@ -133,7 +133,7 @@ void main() {
       projectId: project,
       discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
     );
-    final trackedGood = (observed as PiOptionsObserved).options;
+    final trackedGood = (observed as PiOptionsObserved).snapshot;
     final noModels = await service.getSessionOptions(
       projectId: project,
       discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
@@ -144,7 +144,7 @@ void main() {
     );
 
     expect(noModels, isA<PiOptionsNoModels>());
-    expect((fallback as PiOptionsObserved).options, same(trackedGood));
+    expect((fallback as PiOptionsObserved).snapshot, same(trackedGood));
     expect(tracker.snapshotFor(projectId: project), same(trackedGood));
   });
 
@@ -155,7 +155,7 @@ void main() {
     );
 
     await expectLater(
-      service.requireOptions(projectId: path.absolute("project")),
+      service.requireCatalog(projectId: path.absolute("project")),
       throwsA(
         isA<PluginOperationException>().having(
           (error) => error.cause,
@@ -174,7 +174,7 @@ void main() {
     );
 
     await expectLater(
-      service.requireOptions(projectId: path.absolute("project")),
+      service.requireCatalog(projectId: path.absolute("project")),
       throwsA(
         isA<PluginOperationException>().having((error) => error.cause, "cause", same(failure)),
       ),
@@ -228,6 +228,7 @@ class _FakeCatalogRepository({required final List<Object> results}) implements P
           agents: options.agents,
           providers: options.providers,
           commands: options.commands,
+          nonReasoningModels: const {},
           complete: options.completeness == PluginSessionOptionsCompleteness.complete,
         ),
       );

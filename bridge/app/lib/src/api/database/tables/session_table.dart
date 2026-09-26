@@ -46,6 +46,11 @@ class SessionTable() extends Table {
   TextColumn get baseCommit => text().nullable()();
   TextColumn get lastAgent => text().nullable()();
   TextColumn get lastAgentModel => text().nullable().map(const AgentModelConverter())();
+
+  /// Whether the session's turns run in the backend's fast mode. The bridge
+  /// owns this choice: only client create/prompt/command requests write it;
+  /// backend-reported prompt defaults never do.
+  BoolColumn get fastMode => boolean().withDefault(const Constant(false))();
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
   IntColumn get projectionUpdatedAt => integer()();
@@ -74,6 +79,10 @@ class SessionTable() extends Table {
   TextColumn get title => text().nullable()();
   TextColumn get catalogTitle => text().nullable()();
 
+  /// How this session answers permission requests when it differs from the
+  /// bridge-wide YOLO setting. Null follows that setting.
+  TextColumn get approvalOverride => textEnum<SessionApprovalMode>().nullable()();
+
   @override
   bool get withoutRowId => true;
 
@@ -99,6 +108,7 @@ sealed class const SessionDto._() with _$SessionDto, $SessionTableTableToColumns
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
+    required bool fastMode,
     required int createdAt,
     required int updatedAt,
     required int projectionUpdatedAt,
@@ -108,5 +118,6 @@ sealed class const SessionDto._() with _$SessionDto, $SessionTableTableToColumns
     required String pluginId,
     required String? title,
     required String? catalogTitle,
+    required SessionApprovalMode? approvalOverride,
   }) = _SessionDto;
 }

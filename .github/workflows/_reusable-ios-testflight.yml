@@ -7,7 +7,7 @@ on:
         description: 'macOS runner to use for the build'
         required: false
         type: string
-        default: 'macos-latest'
+        default: 'xcode-27'
       build_number:
         description: 'Pre-computed TestFlight build number. When empty, the lane queries ASC itself.'
         required: false
@@ -35,9 +35,8 @@ on:
       SINGULAR_SDK_SECRET:
         required: true
 
-# Xcode and CocoaPods versions — update these when upgrading
+# Xcode is selected by the shared setup-xcode action; CocoaPods remains pinned here.
 env:
-  XCODE_VERSION: '26.6'
   COCOAPODS_VERSION: '1.16.2'
 
 jobs:
@@ -70,10 +69,9 @@ jobs:
           # Store notes need every commit since the previous successful release.
           fetch-depth: 0
 
-      - name: Set up Xcode ${{ env.XCODE_VERSION }}
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: ${{ env.XCODE_VERSION }}
+      - name: Set up native Xcode
+        id: xcode
+        uses: ./.github/actions/setup-xcode
 
       - name: Install specific CocoaPods version
         run: |
@@ -82,8 +80,6 @@ jobs:
 
       - name: Setup Flutter
         uses: ./.github/actions/setup-flutter
-        with:
-          include-submodules: 'false'
 
       - name: Cache CocoaPods
         uses: actions/cache@v5
@@ -157,9 +153,11 @@ jobs:
         if: success()
         run: |
           source client/app/ios/build_info.env
-          echo "## iOS TestFlight Deploy Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: ${VERSION} (${BUILD_NUMBER})" >> $GITHUB_STEP_SUMMARY
-          echo "- **Xcode**: ${{ env.XCODE_VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **CocoaPods**: ${{ env.COCOAPODS_VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit**: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## iOS TestFlight Deploy Complete"
+            echo ""
+            echo "- **Version**: ${VERSION} (${BUILD_NUMBER})"
+            echo "- **Xcode**: ${{ steps.xcode.outputs.version }}"
+            echo "- **CocoaPods**: ${{ env.COCOAPODS_VERSION }}"
+            echo "- **Commit**: \`${{ github.sha }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

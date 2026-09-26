@@ -1,3 +1,5 @@
+import "dart:math";
+
 import "package:markdown/markdown.dart" as md;
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
@@ -5,6 +7,8 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../session_detail_presentation_scope.dart";
 import "reasoning_modal.dart";
+import "transcript_live_row.dart";
+import "transcript_motion.dart";
 
 class const ReasoningPartCard({
   super.key,
@@ -16,37 +20,20 @@ class const ReasoningPartCard({
   @override
   State<ReasoningPartCard> createState() => _ReasoningPartCardState();
 
-  /// The streaming preview is bottom-aligned and clipped to 56px, so only the
-  /// last few lines are ever visible — but laying out the whole accumulated
-  /// reasoning document costs O(text) under a saveLayer on every streaming
-  /// flush. Hand the layout only a tail slice that comfortably overfills the
-  /// viewport at the preview's small text size.
-  static const int _kStreamingTailChars = 700;
+  /// How much of the end of a streaming thought the live row considers; more
+  /// than one line holds, so the row stays full, without laying out the whole
+  /// accumulated document on every flush.
+  static const int _kLatestWordsChars = 160;
 
+  /// The latest words of a streaming thought, on one line.
   @visibleForTesting
-  static String streamingTail({required String text}) {
-    if (text.length <= _kStreamingTailChars) return text;
-    var start = text.length - _kStreamingTailChars;
-    // Never start the slice on the low half of a UTF-16 surrogate pair
-    // (emoji etc.): an orphaned low surrogate is malformed and renders as a
-    // replacement character. Dropping the split character entirely is
-    // invisible in a tail preview, and stays O(1) where grapheme-aware
-    // slicing would re-walk the whole document on every flush.
-    if (_isLowSurrogate(text.codeUnitAt(start))) start++;
-    final slice = text.substring(start);
-    // Start at a line boundary when one exists so the slice doesn't begin
-    // with a mid-line fragment that wraps differently from the real text —
-    // but only while enough text remains to fill the preview. A newline near
-    // the end of the window would otherwise collapse the preview to a nearly
-    // blank sliver, which reads far worse than a leading fragment.
-    final newline = slice.indexOf('\n');
-    final aligned = newline >= 0 ? slice.length - newline - 1 : 0;
-    return aligned >= _kMinAlignedTailChars ? slice.substring(newline + 1) : slice;
+  static String latestWords({required String text}) {
+    var start = max(0, text.length - _kLatestWordsChars);
+    // Never start on the low half of a UTF-16 surrogate pair (emoji etc.):
+    // an orphaned low surrogate renders as a replacement character.
+    if (start > 0 && _isLowSurrogate(text.codeUnitAt(start))) start++;
+    return text.substring(start).replaceAll(RegExp(r"\s+"), " ").trim();
   }
-
-  /// Minimum text kept after aligning the tail to a line boundary; half the
-  /// tail budget still comfortably overfills the 56px preview.
-  static const int _kMinAlignedTailChars = _kStreamingTailChars ~/ 2;
 
   static bool _isLowSurrogate(int codeUnit) => (codeUnit & 0xFC00) == 0xDC00;
 }
@@ -80,94 +67,40 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
 
     final prego = context.prego;
     final loc = context.loc;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _showFullText(context: context),
-        child: Container(
-          decoration: BoxDecoration(
-            color: prego.colors.bgSecondary,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: prego.colors.borderSecondary),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
+      child: MergeSemantics(
+        child: Semantics(
+          button: true,
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              mouseCursor: WidgetStateMouseCursor.clickable,
+              onTap: () => _showFullText(context: context),
+              borderRadius: BorderRadius.circular(PregoRadius.xs),
+              child: TranscriptStepRow(
+                leading: PregoAiLoader(
+                  animate: widget.isStreaming,
+                  fillMode: .outline,
+                  color: prego.colors.textSecondary,
                 ),
-                child: Row(
+                label: widget.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
+                detail: widget.isStreaming || widget.text.isEmpty ? null : TextSpan(text: _previewText),
+                live: widget.isStreaming,
+                color: null,
+                // The tail eases in with the first streamed words.
+                below: TranscriptPresenceColumn(
                   children: [
-                    Icon(
-                      Icons.psychology,
-                      size: 18,
-                      color: prego.colors.textSecondary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        widget.isStreaming ? loc.sessionDetailThinking : loc.sessionDetailThought,
-                        style: prego.textTheme.textXs.regular.copyWith(
-                          color: prego.colors.textSecondary,
-                          fontStyle: FontStyle.italic,
-                        ),
+                    if (widget.isStreaming && widget.text.isNotEmpty)
+                      _LatestWords(
+                        key: const ValueKey("reasoning.latestWords"),
+                        text: ReasoningPartCard.latestWords(text: widget.text),
+                        style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
                       ),
-                    ),
-                    Icon(
-                      Icons.unfold_more,
-                      size: 16,
-                      color: prego.colors.textSecondary,
-                    ),
                   ],
                 ),
               ),
-              if (widget.isStreaming && widget.text.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 10),
-                  child: ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.transparent, Colors.white],
-                      stops: [0.0, 0.35],
-                    ).createShader(bounds),
-                    blendMode: BlendMode.dstIn,
-                    child: Container(
-                      height: 56,
-                      width: double.infinity,
-                      clipBehavior: Clip.hardEdge,
-                      decoration: const BoxDecoration(),
-                      child: OverflowBox(
-                        alignment: Alignment.bottomLeft,
-                        maxHeight: double.infinity,
-                        child: Text(
-                          ReasoningPartCard.streamingTail(text: widget.text),
-                          style: prego.textTheme.textXs.regular.copyWith(
-                            color: prego.colors.textSecondary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              else if (!widget.isStreaming && widget.text.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(12, 0, 12, 10),
-                  child: Text(
-                    _previewText,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textXs.regular.copyWith(
-                      color: prego.colors.textSecondary,
-                    ),
-                  ),
-                ),
-            ],
+            ),
           ),
         ),
       ),
@@ -231,5 +164,30 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
         _extractText(child, buffer: buffer);
       }
     }
+  }
+}
+
+/// One line holding the end of [text]: the newest words stay in view and the
+/// older start fades out at the leading edge.
+class const _LatestWords({super.key, required final String text, required final TextStyle style})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final direction = Directionality.of(context);
+    return ShaderMask(
+      shaderCallback: (bounds) => const LinearGradient(
+        begin: AlignmentDirectional.centerStart,
+        end: AlignmentDirectional.centerEnd,
+        colors: [Colors.transparent, Colors.white],
+        stops: [0.0, 0.15],
+      ).createShader(bounds, textDirection: direction),
+      blendMode: BlendMode.dstIn,
+      child: UnconstrainedBox(
+        constrainedAxis: Axis.vertical,
+        alignment: AlignmentDirectional.centerEnd,
+        clipBehavior: Clip.hardEdge,
+        child: Text(text, maxLines: 1, softWrap: false, style: style),
+      ),
+    );
   }
 }

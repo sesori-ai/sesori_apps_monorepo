@@ -39,6 +39,7 @@ void main() {
     test("resolves live project paths and stable backend-session bindings", () async {
       await _insertProject(database, projectId: "project-1", path: "/projects/current");
       await database.sessionDao.insertSession(
+        fastMode: false,
         sessionId: "bridge-session-1",
         backendSessionId: "backend-session-1",
         projectId: "project-1",
@@ -91,6 +92,7 @@ void main() {
       );
 
       expect(runtime.activatingCalls, 1);
+      expect(runtime.lastResidency, PluginGenerationResidency.transient);
       expect(runtime.activeOnlyCalls, 0);
       expect(runtime.lastOperation, SessionOptionsRuntimeOperation.capture);
       expect(plugin.callCount, 1);
@@ -348,6 +350,7 @@ PluginSessionOptions _pluginOptions({required String marker}) {
           authType: PluginProviderAuthType.unknown,
           models: [
             PluginModel(
+              fastMode: null,
               id: "model-1",
               name: "Model $marker",
               variants: const ["high"],
@@ -392,6 +395,7 @@ SessionOptionsResponse _response({required String marker}) {
           name: "Provider $marker",
           models: {
             "model-1": ProviderModel(
+              fastMode: null,
               id: "model-1",
               providerID: "provider-1",
               name: "Model $marker",
@@ -465,6 +469,7 @@ class _RecordingPluginRuntime({required final BridgePluginApi plugin}) implement
   int activeOnlyCalls = 0;
   int commitCalls = 0;
   Enum? lastOperation;
+  PluginGenerationResidency? lastResidency;
 
   @override
   Set<String> get activePluginIds => active ? {plugin.id} : const {};
@@ -478,10 +483,12 @@ class _RecordingPluginRuntime({required final BridgePluginApi plugin}) implement
   Future<({T value, int generation})> useWithGeneration<T>({
     required String pluginId,
     required Enum operation,
+    required PluginGenerationResidency residency,
     required Future<T> Function(BridgePluginApi api) body,
   }) async {
     activatingCalls++;
     lastOperation = operation;
+    lastResidency = residency;
     final value = await body(plugin);
     return (value: value, generation: currentGeneration);
   }

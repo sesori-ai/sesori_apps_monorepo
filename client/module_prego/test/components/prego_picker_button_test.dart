@@ -15,23 +15,71 @@ void main() {
     await tester.pumpWidget(
       _harness(
         PregoPickerButton(
-          leadingIcon: Icons.smart_toy_outlined,
+          leadingIcon: TablerRegular.robot,
           label: "Agent",
           surfaceStyle: PregoComposerSurfaceStyle.subtle,
           onPressed: () => taps++,
+          showLabel: true,
         ),
       ),
     );
 
     expect(find.text("Agent"), findsOneWidget);
-    expect(find.byIcon(Icons.smart_toy_outlined), findsOneWidget);
+    expect(find.byIcon(TablerRegular.robot), findsOneWidget);
     // The trailing caret signals the pill opens a menu.
-    expect(find.byIcon(Icons.unfold_more), findsOneWidget);
+    expect(find.byIcon(TablerRegular.selector), findsOneWidget);
 
     await tester.tap(find.byType(PregoPickerButton));
     await tester.pumpAndSettle();
 
     expect(taps, 1);
+  });
+
+  testWidgets("without its label the pill keeps only the glyph and names itself", (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        SizedBox(
+          width: 44,
+          child: PregoPickerButton(
+            leadingIcon: TablerRegular.robot,
+            label: "Agent",
+            surfaceStyle: PregoComposerSurfaceStyle.subtle,
+            onPressed: () {},
+            showLabel: false,
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text("Agent"), findsNothing);
+    expect(find.byIcon(TablerRegular.selector), findsNothing);
+    expect(find.byIcon(TablerRegular.robot), findsOneWidget);
+    expect(find.bySemanticsLabel("Agent"), findsOneWidget);
+  });
+
+  testWidgets("without onPressed the pill only shows its value", (tester) async {
+    Widget pill({required bool showLabel}) => _harness(
+      SizedBox(
+        width: showLabel ? 200 : 44,
+        child: PregoPickerButton(
+          leadingIcon: TablerRegular.cpu,
+          label: "Model",
+          surfaceStyle: PregoComposerSurfaceStyle.subtle,
+          onPressed: null,
+          showLabel: showLabel,
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(pill(showLabel: true));
+    expect(find.text("Model"), findsOneWidget);
+    // No caret and no press feedback: there is nothing to open.
+    expect(find.byIcon(TablerRegular.selector), findsNothing);
+    expect(find.byType(InkWell), findsNothing);
+
+    await tester.pumpWidget(pill(showLabel: false));
+    expect(tester.getSemantics(find.bySemanticsLabel("Model")), isSemantics(label: "Model", isButton: false));
   });
 
   testWidgets(
@@ -40,10 +88,11 @@ void main() {
       await tester.pumpWidget(
         _harness(
           PregoPickerButton(
-            leadingIcon: Icons.memory_outlined,
+            leadingIcon: TablerRegular.cpu,
             label: "Model",
             surfaceStyle: PregoComposerSurfaceStyle.subtle,
             onPressed: () {},
+            showLabel: true,
           ),
         ),
       );
@@ -83,10 +132,11 @@ void main() {
           children: [
             Expanded(
               child: PregoPickerButton(
-                leadingIcon: Icons.memory_outlined,
+                leadingIcon: TablerRegular.cpu,
                 label: "An extremely long model name that cannot possibly fit in one pill" * 3,
                 surfaceStyle: PregoComposerSurfaceStyle.subtle,
                 onPressed: () {},
+                showLabel: true,
               ),
             ),
           ],
@@ -94,10 +144,12 @@ void main() {
       ),
     );
 
-    // No overflow error: the label clamps to one ellipsized line inside the pill.
+    // No overflow error: the label keeps its end on one line inside the pill.
     expect(tester.takeException(), isNull);
-    final text = tester.widget<Text>(find.byType(Text));
-    expect(text.maxLines, 1);
-    expect(text.overflow, TextOverflow.ellipsis);
+    expect(find.byType(PregoEllipsisText), findsOneWidget);
+    expect(
+      tester.getRect(find.byType(PregoEllipsisText)).right,
+      lessThanOrEqualTo(tester.getRect(find.byType(PregoPickerButton)).right),
+    );
   });
 }

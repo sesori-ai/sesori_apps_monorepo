@@ -55,6 +55,7 @@ void main() {
           inputMode: ChatInputMode.textFirst,
           isKeyboardVisible: false,
           sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+          presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => dispatcher,
           imageClipboard: () => clipboard,
           child: Scaffold(
@@ -64,6 +65,7 @@ void main() {
                 child: PromptInput(
                   isBusy: false,
                   hasMessages: false,
+                  canSend: true,
                   onSend: ({required draft, required command, required attachments}) => sent = attachments,
                   onVoiceTranscriptionCompleted: null,
                   onDraftChanged: (_) {},
@@ -71,6 +73,7 @@ void main() {
                   onAbort: () {},
                   surfaceStyleController: surfaceStyle,
                   composerHeader: null,
+                  composerTrailing: null,
                   availableCommands: const [],
                   stagedCommand: null,
                   onCommandSelected: (_) {},
@@ -95,6 +98,14 @@ void main() {
     final firstImage = tester.widget<Image>(find.descendant(of: strip, matching: find.byType(Image)).first);
     expect(firstImage.fit, BoxFit.cover);
     expect((firstImage.image as ResizeImage).width, 156);
+    // Like the new session page, no session scope: a staged image still opens.
+    await tester.tap(find.byKey(ObjectKey(images.first)));
+    await tester.pumpAndSettle();
+    expect(find.byType(ImageAttachmentViewer), findsOneWidget);
+    await tester.tap(find.byTooltip("Close image"));
+    await tester.pumpAndSettle();
+    expect(find.byType(ImageAttachmentViewer), findsNothing);
+    expect(find.byType(PregoImageAttachmentPreview), findsNWidgets(8));
     await tester.drag(strip, const Offset(-500, 0));
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(of: find.byKey(ObjectKey(images.last)), matching: find.byIcon(TablerRegular.x)));
@@ -138,8 +149,11 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(tester.widget<TextField>(find.byType(TextField)).focusNode!.hasFocus, isTrue);
+    // The trailing slot stays while the chip stands in for the header.
+    expect(find.text("Picker header"), findsNothing);
+    expect(find.text("Sub-agents"), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.close));
+    await tester.tap(find.byIcon(TablerRegular.x));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 80));
     expect(command.value, isNull);
@@ -158,6 +172,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 80));
     expect(find.byKey(const ValueKey("release-hint")), findsOneWidget);
+    expect(find.text("Sub-agents"), findsOneWidget);
     expect(
       find.ancestor(
         of: find.byKey(const ValueKey("release-hint")),
@@ -172,6 +187,7 @@ void main() {
     voiceStates.add(VoiceInputState.retryPending(error: VoiceTranscriptionError.networkError()));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey("saved-recording-actions")), findsOneWidget);
+    expect(find.text("Sub-agents"), findsOneWidget);
     expect(find.byType(GlassMaterializeTransition), findsNothing);
     expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, "Keep this draft");
   }, variant: const TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS, TargetPlatform.macOS}));
@@ -205,7 +221,7 @@ void main() {
         ),
         findsNothing,
       );
-      await tester.tap(find.byIcon(Icons.close));
+      await tester.tap(find.byIcon(TablerRegular.x));
       await tester.pump();
       await tester.pump();
       expect(find.byType(GlassChip), findsNothing);
@@ -231,12 +247,14 @@ void main() {
           inputMode: ChatInputMode.voiceFirst,
           isKeyboardVisible: false,
           sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+          presentation: ComposerPresentation.touch,
           attachmentDispatcher: () => attachmentDispatcher,
           imageClipboard: () => imageClipboard,
           child: Scaffold(
             body: PromptInput(
               isBusy: false,
               hasMessages: false,
+              canSend: true,
               onSend: ({required draft, required command, required attachments}) {},
               onVoiceTranscriptionCompleted: null,
               onDraftChanged: (_) {},
@@ -244,6 +262,7 @@ void main() {
               onAbort: () {},
               surfaceStyleController: surfaceStyle,
               composerHeader: null,
+              composerTrailing: null,
               availableCommands: const [],
               stagedCommand: null,
               onCommandSelected: (_) {},
@@ -299,6 +318,7 @@ void main() {
               inputMode: mode,
               isKeyboardVisible: false,
               sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
+              presentation: ComposerPresentation.touch,
               attachmentDispatcher: () => attachmentDispatcher,
               imageClipboard: () => imageClipboard,
               child: Scaffold(
@@ -311,6 +331,7 @@ void main() {
                     PromptInput(
                       isBusy: false,
                       hasMessages: false,
+                      canSend: true,
                       onSend: ({required draft, required command, required attachments}) {},
                       onVoiceTranscriptionCompleted: null,
                       onDraftChanged: (_) {},
@@ -318,6 +339,7 @@ void main() {
                       onAbort: () {},
                       surfaceStyleController: surfaceStyle,
                       composerHeader: null,
+                      composerTrailing: null,
                       availableCommands: const [],
                       stagedCommand: null,
                       onCommandSelected: (_) {},
@@ -377,12 +399,14 @@ Future<void> _pumpCommandComposer({
       inputMode: ChatInputMode.textFirst,
       isKeyboardVisible: false,
       sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+      presentation: ComposerPresentation.touch,
       attachmentDispatcher: () => attachmentDispatcher,
       imageClipboard: () => imageClipboard,
       child: Scaffold(
         body: PromptInput(
           isBusy: false,
           hasMessages: false,
+          canSend: true,
           onSend: ({required draft, required command, required attachments}) {},
           onVoiceTranscriptionCompleted: null,
           onDraftChanged: (_) {},
@@ -390,6 +414,7 @@ Future<void> _pumpCommandComposer({
           onAbort: () {},
           surfaceStyleController: surfaceStyle,
           composerHeader: const Text("Picker header"),
+          composerTrailing: const Text("Sub-agents"),
           availableCommands: const [_stagedCommand],
           stagedCommand: staged,
           onCommandSelected: (_) {},

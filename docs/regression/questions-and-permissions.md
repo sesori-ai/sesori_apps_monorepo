@@ -36,15 +36,16 @@ reaches the backend so the turn continues.
   must never appear as ordinary plain-text input.
 - Allow once, allow always, and reject each reach the backend with the meaning
   the user chose. Once is never escalated to a broader grant.
-- Permission dialogs use the shared floating Prego action sheet in both themes:
-  a generic action heading, the complete backend tool label and selectable,
+- Permission dialogs use the shared Prego action sheet in both themes. Like
+  the question form, it floats on phone and is a centred dialog on desktop. It
+  shows a generic action heading, the complete backend tool label and selectable,
   copyable Markdown description, then full-width stacked **Allow**, optional
   **Always approve**, and **Don’t allow** actions. **Allow** means once only.
   Long details normally scroll above visible actions. When the viewport is
   cramped relative to the text scale, the whole sheet scrolls so every decision
   remains reachable; enlarged text can cause this breakpoint to be crossed.
   Keyboard and safe-area insets keep the floating surface clear of system UI.
-  Scrim/swipe dismissal leaves the request pending; external settlement closes
+  Scrim, swipe, or Escape dismissal leaves the request pending; external settlement closes
   it without a reply.
 - A plugin advertising ACP form elicitation maps supported string, string-enum,
   boolean, and finite string-choice array properties to questions and returns
@@ -173,7 +174,15 @@ reaches the backend so the turn continues.
   that session, sends replies through the owning session cubit, and dismisses it
   when the pending request settles; shell routing must not duplicate or bypass
   that ownership.
-- When management blocks the session's harness, pending banners and new response
+- While a session waits on the user, a pale amber needs-you card docks above
+  its composer, as wide as the composer. There is one card per request type:
+  questions, then permissions. Each names the pending count, shows the first
+  request's opening line, and its Answer or Review button opens the existing
+  modal. Light uses a cream warning fill and dark a faint amber tint, each with a
+  soft amber border, an amber icon and label over primary text, and a white
+  button pill. Read-only, archived and
+  blocked sessions show no card.
+- When management blocks the session's harness, needs-you cards and new response
   dialogs are hidden. A dialog already open on either surface closes without
   answering or rejecting; its pending model remains until an authoritative
   refresh or settlement event. Cubit reply and rejection seams independently
@@ -184,7 +193,7 @@ reaches the backend so the turn continues.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated shared presentation and desktop shell coverage: question and permission modals render through the shared session-detail owner, and a pending desktop question opens over its session. A blocked fixture exposes no pending banner/dialog; changing a loaded state to blocked closes an open dialog without a response. Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
+| L1 Smoke | Automated shared presentation and desktop shell coverage: question and permission modals render through the shared session-detail owner, and a pending desktop question opens over its session. A blocked fixture exposes no needs-you card or dialog; changing a loaded state to blocked closes an open dialog without a response. Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
 | L2 Routine | Automated client: blocked question-answer and permission-reply entry points return refusal without remote dispatch. Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar and finite string-choice array forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Codex coverage: structured multi-question choices, explicit secret-input refusal, async answers during a turn and after completion, retry after failed submission, child routing, teardown, and async acknowledgement omission from history. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, old-input → cancel → later-input ordering with reused question IDs and held prompt writes, abort, late reply, and disposal. |
 | L3 Release | Client end to end on each release-target client surface that exposes session detail, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. Grok covers a real ask-mode tool request, Once and Reject plus every advertised scope, exact session/tool correlation, abort cleanup, and no implicit auto-approval. |
 | L4 Extended | Client end to end on both product surfaces: disable/restart or invalidate authentication from the other surface while a question or permission dialog is open; no answer is sent, both surfaces converge on read-only, and refreshed pending state returns only after recovery. Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
@@ -224,7 +233,9 @@ the prompt write is held, proving cancellation does not remove the later request
 
 ## Failure Signals
 
-- A blocked chat shows a pending banner, opens a response dialog, or accepts a
+- A needs-you card floats at the top of the chat, hides the composer or the
+  newest message, or its button fails to open the modal.
+- A blocked chat shows a needs-you card, opens a response dialog, or accepts a
   late answer/rejection callback. A dialog remains open through the transition,
   closes by answering, clears pending data before either an authoritative
   settlement event or refresh, or reappears before interaction prerequisites

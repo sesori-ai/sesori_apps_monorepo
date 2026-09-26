@@ -66,6 +66,26 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
+  /// Sets the approval override for [sessionId] (null clears it). Returns
+  /// whether a row was written.
+  Future<bool> setApprovalOverride({
+    required String sessionId,
+    required SessionApprovalMode? approvalOverride,
+  }) async {
+    final updatedRows = await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
+      SessionTableCompanion(approvalOverride: Value(approvalOverride)),
+    );
+    return updatedRows == 1;
+  }
+
+  Future<bool> hasApprovalOverride({required SessionApprovalMode approvalOverride}) async {
+    final query = selectOnly(sessionTable)
+      ..addColumns([sessionTable.sessionId])
+      ..where(sessionTable.approvalOverride.equalsValue(approvalOverride))
+      ..limit(1);
+    return await query.getSingleOrNull() != null;
+  }
+
   Future<bool> setTitleIfNull({
     required String sessionId,
     required String title,
@@ -163,6 +183,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
+    required bool fastMode,
     required String pluginId,
     required bool preservePullRequestScope,
   }) async {
@@ -188,6 +209,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
         baseCommit: Value(baseCommit),
         lastAgent: Value(lastAgent),
         lastAgentModel: Value(lastAgentModel),
+        fastMode: Value(fastMode),
         createdAt: Value(createdAt),
         updatedAt: Value(createdAt),
         projectionUpdatedAt: Value(createdAt),
@@ -215,21 +237,39 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
           baseCommit: Value(baseCommit),
           lastAgent: Value(lastAgent),
           lastAgentModel: Value(lastAgentModel),
+          fastMode: Value(fastMode),
         ),
         target: [sessionTable.sessionId],
       ),
     );
   }
 
-  Future<void> updatePromptDefaults({
+  /// Returns the updated row, or null when [sessionId] has none.
+  Future<SessionDto?> updatePromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
+  }) async {
+    final rows = await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).writeReturning(
+      SessionTableCompanion(
+        lastAgent: Value(agent),
+        lastAgentModel: Value(agentModel),
+      ),
+    );
+    return rows.firstOrNull;
+  }
+
+  Future<void> updateRequestedPromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+    required bool fastMode,
   }) async {
     await (update(sessionTable)..where((t) => t.sessionId.equals(sessionId))).write(
       SessionTableCompanion(
         lastAgent: Value(agent),
         lastAgentModel: Value(agentModel),
+        fastMode: Value(fastMode),
       ),
     );
   }

@@ -22,22 +22,20 @@ typedef ProjectOpenedCallback = void Function({
 /// fallback when the project has no stored name. The directory comes from the
 /// bridge's host platform, not the phone's, so both separator styles must
 /// parse — the platform-local basename would return a Windows path unchanged.
-String projectDirectoryBasename(ProjectSummary project) => p.posix.basename(_toPosix(project.path));
+String projectDirectoryBasename(ProjectSummary project) => hostPathBasename(path: project.path);
 
-/// [project]'s directory, shortened to the part that tells projects apart.
-///
-/// A row is far too narrow for a real path, and clipping one with an ellipsis
-/// would eat the tail — the only segments that differ between projects — and
-/// leave every row reading `/Users/someone/workspace/clien…`. So the head is
-/// dropped instead of the tail: the last two segments survive, marked with a
-/// leading ellipsis when anything was actually removed.
-String projectShortPath(ProjectSummary project) {
-  final segments = _toPosix(project.path).split("/").where((s) => s.isNotEmpty).toList();
-  if (segments.length <= _shortPathSegments) return segments.join("/");
-  return "…/${segments.sublist(segments.length - _shortPathSegments).join("/")}";
+/// The last segment of a bridge host [path], whichever separator it uses. A
+/// Windows drive root such as `C:\` keeps its full path, not a bare `C:`.
+String hostPathBasename({required String path}) {
+  final basename = p.posix.basename(_toPosix(path));
+  return basename.endsWith(":") ? path : basename;
 }
 
-const int _shortPathSegments = 2;
+/// The name shown for [project]: its stored name, else its directory.
+String projectDisplayName({required AppLocalizations loc, required ProjectSummary project}) {
+  final basename = projectDirectoryBasename(project);
+  return project.name ?? (basename.isEmpty ? loc.projectListDefaultName : basename);
+}
 
 /// Bridges run on the phone's host or a Windows machine, so both separator
 /// styles reach us; the path libraries only parse one of them.
@@ -64,6 +62,9 @@ class const ProjectTile({
   super.key,
   required final ProjectSummary project,
 
+  /// [project]'s path as `projectPathLabels` shortened it against the list.
+  required final String pathLabel,
+
   /// How many of the project's sessions an agent is working in right now.
   required final int activeSessions,
 
@@ -82,6 +83,7 @@ class const ProjectTile({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: _menuWidth,
+      acquireOpenLease: null,
       // While the menu is open the rest of the list blurs back and this row
       // stays sharp, so which project the actions will hit is unambiguous.
       spotlight: PregoMenuSpotlight.listRow,
@@ -101,13 +103,16 @@ class const ProjectTile({
         title: loc.rename,
         subtitle: null,
         isSelected: false,
+        shortcutLabel: null,
         onTap: () => _renameProject(context: context, project: project),
       ),
       PregoMenuItem(
         leadingIcon: TablerRegular.eye_off,
-        title: loc.hideProject,
+        // A project whose folder is gone has nothing left to come back to.
+        title: project.directoryMissing ? loc.projectListRemove : loc.hideProject,
         subtitle: null,
         isSelected: false,
+        shortcutLabel: null,
         onTap: () => unawaited(_hideProject(context: context, project: project)),
       ),
     ];
@@ -131,7 +136,7 @@ class const ProjectTile({
   static Future<void> _hideProject({required BuildContext context, required ProjectSummary project}) async {
     final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
     final loc = context.loc;
-    final hidden = await context.read<ProjectListCubit>().hideProject(project.id);
+    final hidden = await context.read<ProjectListCubit>().hideProject(projectId: project.id);
     popupAlertPresenter.show(
       title: hidden ? loc.projectHidden : loc.projectHideFailed,
       variant: hidden ? PregoPopupAlertsNotificationsVariant.success : PregoPopupAlertsNotificationsVariant.error,
@@ -141,7 +146,7 @@ class const ProjectTile({
   Widget _buildRow({required BuildContext context, required VoidCallback openMenu}) {
     final loc = context.loc;
     final prego = context.prego;
-    final displayName = project.name ?? _fallbackName(loc: loc);
+    final displayName = projectDisplayName(loc: loc, project: project);
 
     return PregoSwipeActions(
       showBottomHairline: true,
@@ -155,53 +160,78 @@ class const ProjectTile({
       // ListTile, whereas an InkWell contributes only the actions, not the
       // role, and leaves the row's three lines as three separate nodes to
       // swipe past.
-      child: GestureDetector(
-        onSecondaryTap: openMenu,
-        child: MergeSemantics(
-          child: Semantics(
-            button: true,
-            child: InkWell(
-              onTap: () => _open(context: context, displayName: displayName),
-              onLongPress: openMenu,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: PregoSpacing.xl,
-                  vertical: PregoSpacing.lg,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        spacing: PregoSpacing.xs,
-                        children: [
-                          _titleRow(prego: prego, displayName: displayName),
-                          Text(
-                            projectShortPath(project),
-                            style: prego.textTheme.textSm.regular.copyWith(
-                              color: prego.colors.textSecondary,
+      child: _withRemoveButton(
+        context: context,
+        row: GestureDetector(
+          onSecondaryTap: openMenu,
+          child: MergeSemantics(
+            child: Semantics(
+              button: true,
+              child: InkWell(
+                mouseCursor: WidgetStateMouseCursor.clickable,
+                onTap: () => _open(context: context, displayName: displayName),
+                onLongPress: openMenu,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: PregoSpacing.xl,
+                    vertical: PregoSpacing.lg,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: PregoSpacing.xs,
+                          children: [
+                            _titleRow(prego: prego, displayName: displayName),
+                            Text(
+                              pathLabel,
+                              style: prego.textTheme.textSm.regular.copyWith(
+                                color: prego.colors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            _StatusRow(project: project, activeSessions: activeSessions, unseen: unseen),
+                          ],
+                        ),
+                      ),
+                      if (!project.directoryMissing)
+                        ExcludeSemantics(
+                          child: Icon(
+                            TablerLight.chevron_right,
+                            size: _chevronSize,
+                            color: prego.colors.textSecondary,
                           ),
-                          _StatusRow(project: project, activeSessions: activeSessions, unseen: unseen),
-                        ],
-                      ),
-                    ),
-                    ExcludeSemantics(
-                      child: Icon(
-                        TablerLight.chevron_right,
-                        size: _chevronSize,
-                        color: prego.colors.textSecondary,
-                      ),
-                    ),
-                  ],
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// A row whose folder is gone gets Remove in place of its chevron, outside
+  /// the row's merged semantics so it stays its own button.
+  Widget _withRemoveButton({required BuildContext context, required Widget row}) {
+    if (!project.directoryMissing) return row;
+    return Row(
+      children: [
+        Expanded(child: row),
+        Padding(
+          padding: const EdgeInsetsDirectional.only(end: PregoSpacing.xl),
+          child: PregoButtonsSolid(
+            label: context.loc.projectListRemove,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.sm,
+            onPressed: () => unawaited(_hide(context: context)),
+          ),
+        ),
+      ],
     );
   }
 
@@ -222,7 +252,7 @@ class const ProjectTile({
   /// centered content rides the stretch. Not `fullWidth`: that needs a
   /// bounded parent, and at rest the strip's width is open-ended.
   Widget _hideAction({required BuildContext context, required VoidCallback close}) => _actionPill(
-    label: context.loc.hide,
+    label: project.directoryMissing ? context.loc.projectListRemove : context.loc.hide,
     icon: TablerRegular.eye_off,
     hierarchy: PregoButtonsSolidHierarchy.primary,
     type: PregoButtonsSolidType.warning,
@@ -297,11 +327,6 @@ class const ProjectTile({
     );
   }
 
-  String _fallbackName({required AppLocalizations loc}) {
-    final lastSegment = projectDirectoryBasename(project);
-    return lastSegment.isNotEmpty ? lastSegment : loc.projectListDefaultName;
-  }
-
   void _open({required BuildContext context, required String displayName}) {
     onOpen(context: context, project: project, displayName: displayName);
   }
@@ -336,21 +361,34 @@ class const _StatusRow({
           // The label yields and ellipsizes when the line runs out of width —
           // a narrow screen under a large text size — so it can't push the
           // timestamp out of the row.
-          if (activeSessions > 0)
+          // A missing folder needs the user, so it outranks everything else.
+          if (project.directoryMissing)
+            Flexible(
+              child: _StatusLabel(
+                icon: const Icon(TablerRegular.folder_off, size: PregoIconSize.sm),
+                label: loc.projectListFolderNotFound,
+                color: prego.colors.textWarningPrimary,
+              ),
+            )
+          else if (activeSessions > 0)
             Flexible(
               child: _StatusLabel(
                 icon: const PregoAiLoader(),
                 label: loc.projectListRunning(activeSessions),
+                color: prego.colors.textTertiary,
               ),
             )
           else if (unseen)
-            Flexible(
-              child: _StatusLabel(
-                // Unopened activity is a state, not an event: the sparkle marks
-                // it without moving, and the label carries the emphasis instead.
-                icon: const PregoAiLoader(animate: false),
-                label: loc.projectListNewActivity,
-                emphasis: true,
+            // Unopened activity is a state, not an event: the sparkle marks it
+            // without moving, and says it only to a screen reader.
+            Semantics(
+              label: loc.projectListNewActivity,
+              child: IconTheme.merge(
+                data: IconThemeData(color: prego.colors.textTertiary),
+                child: const SizedBox(
+                  width: _statusSlotWidth,
+                  child: Center(child: PregoAiLoader(animate: false)),
+                ),
               ),
             ),
           if (updatedAt != null)
@@ -368,9 +406,7 @@ class const _StatusRow({
 class const _StatusLabel({
   required final Widget icon,
   required final String label,
-
-  /// Whether the label is the row's headline rather than a quiet aside.
-  final bool emphasis = false,
+  required final Color color,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -382,7 +418,7 @@ class const _StatusLabel({
       spacing: PregoSpacing.xs,
       children: [
         IconTheme.merge(
-          data: IconThemeData(color: prego.colors.textTertiary),
+          data: IconThemeData(color: color),
           child: SizedBox(
             width: _statusSlotWidth,
             child: Center(child: icon),
@@ -391,9 +427,7 @@ class const _StatusLabel({
         Flexible(
           child: Text(
             label,
-            style: prego.textTheme.textSm.regular.copyWith(
-              color: emphasis ? prego.colors.textPrimary : prego.colors.textTertiary,
-            ),
+            style: prego.textTheme.textSm.regular.copyWith(color: color),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),

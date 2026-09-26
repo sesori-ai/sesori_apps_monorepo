@@ -6,6 +6,7 @@ import "../api/models/pi_session_history_dto.dart";
 import "../models/pi_assistant_stop_reason.dart";
 import "../repositories/mappers/pi_history_mapper.dart";
 import "../repositories/mappers/pi_message_identity_builder.dart";
+import "../repositories/mappers/pi_tool_kind_mapper.dart";
 import "../trackers/pi_message_identity_tracker.dart";
 import "../trackers/pi_tool_tracker.dart";
 
@@ -120,13 +121,15 @@ final class PiEventDispatcher({
     PiAutoRetryEndEvent() ||
     PiSummarizationRetryAttemptStartEvent() => _status(sessionId: sessionId, event: event, now: now),
     PiCompactionStartEvent() => _compactionStart(sessionId: sessionId, event: event, now: now),
-    PiCompactionEndEvent(:final reason, :final aborted, :final willRetry, :final errorMessage) => _compactionEnd(
-      sessionId: sessionId,
-      reason: reason,
-      aborted: aborted,
-      willRetry: willRetry,
-      errorMessage: errorMessage,
-    ),
+    PiCompactionEndEvent(:final reason, :final aborted, :final willRetry, :final errorMessage, :final summary) =>
+      _compactionEnd(
+        sessionId: sessionId,
+        reason: reason,
+        aborted: aborted,
+        willRetry: willRetry,
+        errorMessage: errorMessage,
+        summary: summary,
+      ),
     PiExtensionErrorEvent(:final extensionPath, event: final operation, :final error) => _extensionError(
       extensionPath: extensionPath,
       operation: operation,
@@ -671,6 +674,7 @@ final class PiEventDispatcher({
     required bool aborted,
     required bool willRetry,
     required String? errorMessage,
+    required String? summary,
   }) {
     if (errorMessage != null) {
       Log.w(
@@ -688,7 +692,7 @@ final class PiEventDispatcher({
     final state = _session(sessionId);
     final messageId = state.identities.commitCompaction();
     state.compactionMessageId = null;
-    final mapped = _historyMapper.mapCompaction(sessionId: sessionId, messageId: messageId);
+    final mapped = _historyMapper.mapCompaction(sessionId: sessionId, messageId: messageId, summary: summary);
     return [
       BridgeSseSessionCompacted(sessionID: sessionId),
       BridgeSseMessageUpdated(info: mapped.info),
@@ -783,6 +787,7 @@ PluginMessagePart _toolPart({required String sessionId, required PiTrackedTool t
   sessionID: sessionId,
   messageID: tool.messageId,
   tool: tool.name,
+  kind: PiToolKindMapper.map(name: tool.name),
   state: tool.state,
 );
 

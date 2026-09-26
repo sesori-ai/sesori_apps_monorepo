@@ -1,3 +1,4 @@
+import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_permission_mode.dart";
 import "../../models/claude_task_notification.dart";
 import "../../models/claude_task_status.dart";
@@ -62,6 +63,7 @@ sealed class const ClaudeStreamMessage({
             raw: json,
           ),
           "task_progress" => ClaudeTaskProgressMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
+          "compact_boundary" => ClaudeCompactBoundaryMessage(sessionId: sessionId, uuid: uuid, raw: json),
           "task_started" => ClaudeTaskStartedMessage(
             taskId: _stringOrNull(json["task_id"]),
             toolUseId: _stringOrNull(json["tool_use_id"]),
@@ -111,6 +113,8 @@ sealed class const ClaudeStreamMessage({
           // from spells it camelCase, and replayed frames have carried both.
           toolUseResult: ClaudeToolUseResult.parse(json["tool_use_result"] ?? json["toolUseResult"]),
           taskNotifications: _taskNotifications(message["content"]),
+          originKind: ClaudeMessageOriginKind.parse(kind: _mapOrEmpty(json["origin"])["kind"]),
+          isSynthetic: json["isSynthetic"] == true,
           timestamp: _dateTimeOrNull(json["timestamp"]),
           sessionId: sessionId,
           uuid: uuid,
@@ -210,6 +214,14 @@ final class const ClaudeInitMessage({
 
   bool supports(String capability) => capabilities.contains(capability);
 }
+
+/// `system`/`compact_boundary` — the CLI compacted the context. The next
+/// synthetic `user` frame carries the continuation summary.
+final class const ClaudeCompactBoundaryMessage({
+  required super.sessionId,
+  required super.uuid,
+  required super.raw,
+}) extends ClaudeStreamMessage;
 
 /// `system`/`status` — a coarse work-state signal such as `requesting`.
 final class const ClaudeStatusMessage({
@@ -488,6 +500,13 @@ final class const ClaudeUserMessage({
   /// `<task-notification>` text, parsed here so lifecycle consumers never read
   /// the wire content shape.
   required final List<ClaudeTaskNotification> taskNotifications,
+
+  /// Host-stamped provenance, independent of this frame's `user` role.
+  required final ClaudeMessageOriginKind originKind,
+
+  /// The CLI generated this frame rather than the user typing it, such as the
+  /// summary that follows a `compact_boundary`.
+  required final bool isSynthetic,
   required final DateTime? timestamp,
   required super.sessionId,
   required super.uuid,

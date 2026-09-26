@@ -10,8 +10,9 @@ mobile and desktop shells without turning solid content or product menus into gl
 - Both shells initialize standard shaders before their UI starts, skipping unused
   premium preload. Desktop does so only after the primary-launch gate succeeds.
 - Adaptive quality starts at standard, stays between minimal and standard, and
-  can recover to standard. Mobile retains its 8 ms runtime target; desktop uses
-  the package's default 16 ms target. These are policies, not measured GPU results.
+  can recover to standard. Both shells use a 16 ms target, so quality steps
+  down only when P95 raster time exceeds 24 ms and frames miss 60 fps. These are
+  policies, not measured GPU results.
 - Glass follows the app's Material appearance even when it differs from the OS.
   Package accessibility defaults remain enabled. The package's high-contrast
   fallback must not be described as actual iOS Reduce Transparency detection.
@@ -22,6 +23,9 @@ mobile and desktop shells without turning solid content or product menus into gl
 - The scroll-capable Prego glass menu uses tap-only glow, anchors in its nearest
   overlay coordinates, and permits custom rows to dismiss it. This is shared
   dormant-path correctness: all current product menu callers remain flat.
+- Spotlights belong to the touch presentation of a flat anchored menu; the
+  desktop app's pointer menus never dim the window (see
+  `desktop-cockpit-shell.md`).
 - Flat anchored-menu spotlights blur the page on iOS. macOS uses a deeper scrim
   instead because hybrid-composed AppKit views cannot join Flutter's backdrop
   sample and would remain sharp against blurred rows. Android uses the same
@@ -48,6 +52,7 @@ mobile and desktop shells without turning solid content or product menus into gl
   or the chip still scales/blurs under reduced motion.
 - A nested overlay applies its origin twice, a custom row cannot dismiss, or a
   scrolling gesture starts the glass menu's touch glow.
+- A desktop pointer menu dims or blurs the window, or lifts its row.
 - A macOS anchored menu blurs around an AppKit view, leaving its native activity
   indicator sharp against blurred Flutter rows, or loses the deeper scrim,
   selected-row cut-out, or outline.

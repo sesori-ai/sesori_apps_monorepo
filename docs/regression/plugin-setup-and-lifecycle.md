@@ -8,25 +8,27 @@ idle suspension, the management snapshot, and lifecycle commands.
 
 ## Runtime Target Coverage
 
-These targets were adopted during the 2026-09-12–13 refresh. Managed installs
-use their target's verified asset digests; direct-CLI targets are recommendation
-metadata, not forced upgrades. Compatible PATH binaries remain authoritative.
-Independent minimums are unchanged; Antigravity retains its exact-pair policy
-rather than an independent floor. DeepSeek was excluded from this refresh and
-is not assessed by this table.
+Targets audited on **2026-09-24**, covering all eleven registered harnesses.
+Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 6,
+Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. GitHub digests and available
+checksum lists agree; Cursor/Antigravity hashes are locally computed, not publisher
+attestations. Direct-CLI targets are recommendation metadata, not forced upgrades.
+Compatible PATH binaries remain authoritative. Independent minimums are unchanged;
+Antigravity retains its exact-pair policy rather than an independent floor.
 
-| Harness | Target | Minimum / exact policy | Native evidence and outstanding coverage |
+| Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
-| OpenCode | `1.18.30` | `1.14.0` | macOS ARM64 install/version, serve/health/SSE, typed reads, read-only catalog and shutdown passed. Database/WAL were unchanged; transient SQLite SHM bookkeeping changed. Provider/account behavior was not exercised. |
-| Antigravity | package `1.1.1`, server `agy_acp_server_1.1.1` | Exact package/server/ACP 1 | Five official archive hashes/layouts and the actual macOS ARM64 production validator/initialize/teardown passed. Current-target OAuth/session/model/delegation behavior was not exercised. |
-| Codex | `0.154.0` | `0.139.0` | macOS ARM64 package/install and both app-server transports were exercised; automatic probe teardown failed and remains unresolved. |
-| GitHub Copilot | `1.0.83` | `1.0.78` | macOS ARM64 install/version and exact ACP launch/initialize passed, including the advertised login method. No login or provider turn ran. |
-| Cursor | `2026.09.10-fd3934a` | date `2026.07.16` | macOS ARM64 package/install/initialize/cleanup were exercised; configured load/replay/model/mode remains unverified. |
-| Claude Code | `2.1.269` | `2.1.221` | Controlled-provider CLI permission/replay/interrupt/reuse and production transcript/event mapping passed. Real authentication/provider behavior and complete session-service orchestration are not claimed. |
-| Hermes Agent | `0.21.2` | `0.20.0` | A fresh-load attempt failed under an unaccepted launcher/isolation procedure; faithful CLI load/replay and configured persisted deletion remain unverified. |
-| Pi | `0.85.1` | `0.84.1` | macOS ARM64 package/RPC and production-plugin settlement, manual-compaction abort, ordering and fresh-process reuse passed. Real-provider/account coverage is not claimed. |
-| Oh My Pi | `18.1.19` | `17.2.13` | Eight direct-binary mappings, including Windows ARM64, have independently verified hashes. Native observations covered `18.1.18` only; current-target install/version/ACP and configured lifecycle/cleanup remain unverified. |
-| Grok Build | `1.0.30` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
+| OpenCode | `1.18.32` | `1.14.0` | Managed-pipeline probe blocked by the test controller's nested sandbox. Native serve/health/SSE, history and provider behavior remain unverified for this target. |
+| Antigravity | package/server `1.2.1` | Exact package/server/ACP 1 | Six archive layouts/hashes and hardened extraction of both macOS archives verified. Native macOS ARM64 `--version`, ACP initialize and teardown passed; native Intel execution remains unverified. ARM64 managed-pipeline probe blocked by the test controller's nested sandbox; OAuth/session/model/delegation behavior unverified. |
+| Codex | `0.156.1` | `0.139.0` | Current-target native package/install, stdio and WebSocket app-server checks remain unverified. |
+| GitHub Copilot | `1.0.88` | `1.0.78` | Current-target native install/version, ACP initialize and configured lifecycle remain unverified. |
+| Cursor | `2026.09.23-86fc751` | date `2026.07.16` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. |
+| Claude Code | `2.1.281` | `2.1.221` | Current-target native stream-json/permissions/replay/interrupt and real authentication/provider behavior remain unverified. |
+| Hermes Agent | `0.21.5` (`v2026.9.24`) | `0.20.0` | Current-target real CLI ACP initialize/list, configured new/load/replay and persisted deletion remain unverified. |
+| Pi | `0.87.1` | `0.84.1` | Current-target native package/RPC, settlement/retry/compaction, queue and fresh-process reuse remain unverified. |
+| Oh My Pi | `18.3.0` | `17.2.13` | Eight verified direct-binary mappings. Current-target native install/version/ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
+| DeepSeek | `0.1.7` (unchanged) | `0.1.5` | Latest stable owned adapter, embedding DeepSeek Harness `0.1.5-rc.2`. Six hashes rechecked; no fresh native or authenticated run. Newer upstream RCs require separate producer work, not an invented consumer release. |
+| Grok Build | `1.0.41` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
 
 Target/asset/descriptor unit coverage does not prove native or authenticated
 behavior. Other-platform native behavior is not inferred from macOS ARM64.
@@ -34,6 +36,15 @@ Launch, approval and authentication policies are unchanged. Configured checks re
 credentials; a completed helper must not hide failed load, replay or teardown.
 
 ## Required Behavior
+
+- Quota auto continuation uses declared reporting support and named-session
+  readiness; it cannot infer support from a harness name or a generic 429.
+  Missing, busy, retrying, queued or awaiting-input readiness never authorizes
+  a send. An unavailable harness keeps an existing preference disableable, and
+  an enabled due wait pauses with bounded rechecks. Stale runtime generations
+  cannot persist or cancel current observations. See
+  [Quota auto continuation](quota-auto-continuation.md) and the
+  [capability matrix](../HARNESS_CAPABILITIES.md#quota-reset-auto-continuation).
 
 - Existing chat interaction consumes the shared management snapshot, not a separate
   poller. It resolves the session's exact plugin ID rather than the default harness;
@@ -130,7 +141,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   inspection runs bounded `--version` without initializing ACP, reports personal-auth readiness from token-file presence
   without reading it, and advertises current-client browser login only when required. It never imports ambient
   credentials, opens a browser or downloads a runtime. Managed Install is explicit,
-  limited to macOS arm64, Linux x64/arm64 and Windows x64/arm64 (not macOS x64), absent with an override, and preceded
+  available on macOS x64/arm64, Linux x64/arm64 and Windows x64/arm64, absent with an override, and preceded
   by Google terms/documentation guidance visible on the detail screen before installation. The overview download icon
   opens that screen rather than starting a download. Preparation, exact identity/version probing, login and live start use the same isolated profile/environment
   with parent inheritance disabled.
@@ -143,6 +154,19 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   local and out of band; setup never reads credentials or runs `copilot login`.
   An unexpected owned-process exit degrades only Copilot, and demand reconnects
   it without affecting another harness.
+- OpenCode health requires a JSON 200: `/global/health` for v1, or `/api/info`
+  when the v1 route returns HTML or another invalid body. Each response retains
+  at most 64 KiB; oversized bodies are rejected without consuming the remaining
+  stream. A large v2 web UI response still permits the `/api/info` fallback.
+  HTML-only endpoints and a booting `/api/info` 503 remain unhealthy.
+- Until the v2 adapter lands, a reachable OpenCode 2.x server is detected through
+  `/api/info` and startup fails with its version and a warning not to downgrade
+  its already-migrated database. An owned runtime is stopped before refusal;
+  an attached server is never stopped. Cancellation during the probe wins over
+  refusal and releases any owned runtime. Managed v1 remains pinned to `1.18.32`.
+  If attach mode starts without a server, its existing degraded recovery is
+  v1-only; connecting to a later-started v2 server requires restarting the bridge
+  to obtain the explicit refusal. This does not yet claim usable v2 sessions.
 - A managed harness whose first handshake stalls does not hang bridge startup.
   Codex and OpenCode wait a bounded 15 seconds for that cold start: succeeding
   within it reports connected, failing within it reports degraded, and exceeding
@@ -231,7 +255,8 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   sessions pick it up at their next idle transition; no timeout invalidates the
   existing idle timer and keeps the child resident.
 - A harness generation cold-started solely because catalog snapshot import fell back
-  to the live plugin path uses an import-only idle residency cap of five minutes.
+  to the live plugin path, or solely to discover session options, uses a transient
+  idle residency cap of five minutes.
   A shorter positive configured timeout stays shorter and a non-positive timeout
   stays disabled. Any ordinary plugin acquisition, explicit/eager start, session
   warm-up, or session operation monotonically promotes that same generation to its
@@ -412,6 +437,66 @@ credentials; a completed helper must not hide failed load, replay or teardown.
 | L4 Extended | Client end to end for an existing chat: Claude authentication-required then restored, one managed runtime missing then restored, and one supporting ACP harness disabled then enabled; another harness remains usable throughout, and an unrelated-harness management change leaves the open chat untouched. Repeat one unavailable-to-usable transition from a second surface and one reconnect against a different bridge identity. Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, a pasted-code submission whose response is lost then resubmitted, peer harness login rows disabled throughout a retained authentication operation, an owning row reopening a dismissed or `cancellingUncertain` challenge, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Copilot live coverage includes an unexpected owned-process exit followed by demand reconnect and a deliberate clean shutdown that is not reported as a crash. Grok live coverage includes the same failure isolation and demand reconnect with a supported user-installed release. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. Automated client service ordering coverage separately exercises reversed command completion, bridge mismatch after an intervening GET, and disconnect/reconnect, replacement, unsupported management or disposal during reconciliation; old responses stay fenced and uncertain results stay uncertain despite active/idle metadata. Cubit/widget automation also covers same-harness duplicates, global-timeout exclusion, retained auth/install exclusion, both completion orders, reset/retry fencing, and two safe conflicts with explicit Review and stale dialog callbacks. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Compatibility pairs prove an older client treats `copilot` and `grok` as unknown raw-id/generic-icon harnesses without decode failure, while an older bridge simply supplies no corresponding entry to a newer client. Live plugin and client end to end as each entry requires. |
 
+OpenCode probe and descriptor automation additionally covers v1 JSON, v2 info
+behind HTML (including an oversized web UI page), HTML-only endpoints, a booting
+503, the 64 KiB boundary, streamed overflow cancellation, and a stalled body.
+Descriptor fixtures cover owned versus attached v2 refusal and cancellation
+while protocol detection is in flight. These checks do not prove live v2 session
+support or native process teardown.
+
+The inactive OpenCode v2 transport also has fixture coverage for authenticated
+REST requests, typed data envelopes and request bodies, location scoping,
+session/message cursor paging, active-session maps, and malformed response causes.
+Both `/global/event` and `/api/event` SSE paths are exercised against a loopback
+server, including authentication, heartbeat comments and multiline data. V2 event
+envelopes preserve frame identity/location; unknown or malformed events are logged
+and dropped without terminating later decoding. These tests do not claim an active
+v2 adapter or authenticated native-session parity.
+
+Inactive v2 catalog mapping adds sanitized native 2.0.16 catalog/session responses,
+display-ready agent names with plugin-local native-ID lookup, plugin-neutral session
+JSON, model/variant defaults and form field ordering. The form examples are
+source-derived; this coverage does not prove native turn or form execution.
+
+Inactive v2 transcript coverage retains ordinal text/reasoning IDs, native tool IDs,
+stable retry IDs, agent-switch notices and display-ready attribution. It verifies
+terminal tool/compaction/shell states, shell-only command projection, preserved error
+text, Unicode-scalar output truncation, inline-image byte limits and combined inline/remote
+candidate limits. Budget overflow logs once per collection. File and credentialed URLs
+remain metadata-only. These cases are source-derived, not native turns.
+
+Inactive v2 repository coverage composes the API and mappers: project-scoped root
+paging across worktrees, canonical identity versus opened directory, session-derived
+activity, directory-specific agent names, global active IDs and retained native form
+constraints. It checks stale-selection refusal, native defaults, typed write bodies,
+permission decisions and unchanged propagation of history failures. Fake-API and
+HTTP-boundary tests do not prove native write, turn or reconnect behavior.
+
+Inactive live-event projection keeps REST/stream part identities aligned, including
+retry and agent-switch notices. Typed interruption reasons distinguish shutdown
+from a settled run. Enqueue does not invent a delivered user message. Targeted
+message reads hydrate missing tool context and native compaction identity; tool
+and assistant-header updates do not replay unrelated text ahead of later deltas.
+Source checks cover the minimum 2.0.11 message-query and interruption shapes;
+mapper/parser fixtures are not evidence of a native event sequence.
+
+Inactive v2 activity/service coverage seeds global session metadata and active IDs,
+with pending inputs read once per observed directory. Root/direct-child summaries
+include input-only work and retain canonical project identity across worktrees.
+Failed refreshes preserve useful state but report unknown work state until a complete
+baseline succeeds. Deletion uses retained metadata without reading a deleted row.
+Metadata/snapshot failures remain logged and do not suppress native status/input
+signals or later events. Native creation retains a project-activity refresh signal
+when its full session metadata cannot be read; it does not fabricate a session row.
+This is fake-repository coverage, not live reconnect proof.
+
+Inactive v2 write tests cover pre-mutation child-creation refusal, standalone creation
+and first-prompt acceptance, explicit/stale selections, inherited defaults, commands,
+private compaction guidance and scoped stop without premature settlement. Form fixtures
+cover ordered label/value conversion, numeric bounds, native-only conditions and retaining
+requests after failed replies. No activation, native write execution or provider parity
+is claimed by these fake-repository and HTTP-boundary tests.
+
 ## Exploration Guidance
 
 Vary which harness runs first and which stays disabled, and the configuration: default
@@ -454,6 +539,10 @@ owned-process exit; and restart.
   in diagnostics, or interception preventing idle-process shutdown.
 - Setup inspection installing, logging in, starting a backend, or leaking secrets or raw
   output; resolution mutating runtime files; a disabled harness probed or started.
+- An HTML 200 passes OpenCode health, probe responses buffer beyond 64 KiB,
+  v2 startup reaches the v1 adapter after successful protocol detection, a refusal
+  recommends downgrading a migrated database, an owned v2 runtime survives refusal,
+  an attached runtime is signalled, or cancellation becomes an ordinary refusal.
 - A stalled first handshake holds bridge startup past the cold-start budget, a
   budget-exceeded harness reports connected instead of degraded, or its late
   cold-start failure surfaces as an unhandled error rather than a log line.
@@ -501,7 +590,7 @@ owned-process exit; and restart.
   being logged, failed, or restarted as an unexpected crash.
 - Antigravity inspection creates profile state, reads token contents, inherits ambient credentials, initializes ACP,
   opens a browser, falls through from explicit or non-absence PATH evidence, or downloads automatically. Offering
-  managed install with an override/on macOS x64, changing the OpenCode default, or adding a shared `Harness` enum case
+  managed install with an override, changing the OpenCode default, or adding a shared `Harness` enum case
   is also a regression.
 - A DeepSeek setup probe creates a session or mutates runtime state, accepts an
   old/malformed adapter version, selects managed runtime ahead of a supported

@@ -8,34 +8,31 @@ import "package:theme_prego/module_prego.dart";
 import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 import "new_folder_dialog.dart";
+import "widgets/project_tile.dart";
 
-/// Shows the Add Project modal bottom sheet.
+/// Shows the Add Project modal: a bottom sheet on touch, a dialog on pointer.
 ///
-/// Presented directly rather than through `showPregoBottomSheet` because the
-/// header is not fixed: its title and path subtitle follow the folder the
-/// browser is showing.
+/// Presented through [showPregoModalRoute] rather than [showPregoModal]
+/// because the browser body carries its own navigation header.
 ///
 /// The [cubit] is passed explicitly so the dialog can call `discoverProject` /
 /// `createDirectory` without relying on the widget tree's BlocProvider (which
-/// lives in the parent screen).
+/// lives in the parent screen). [onProjectAdded] opens the project once added.
 Future<void> showAddProjectDialog({
   required BuildContext context,
   required ProjectListCubit cubit,
   required ConnectionService connectionService,
+  required ProjectOpenedCallback onProjectAdded,
 }) {
   // Capture before presenting: inside the route the top inset reads as 0.
   final topInset = MediaQuery.paddingOf(context).top;
-  return showModalBottomSheet<void>(
+  return showPregoModalRoute<void>(
     context: context,
-    isScrollControlled: true,
-    // PregoBottomSheet paints the rounded surface; keep the route transparent.
-    backgroundColor: Colors.transparent,
-    // The sheet caps itself just below the status bar.
-    useSafeArea: false,
     builder: (_) => AddProjectDialog(
       cubit: cubit,
       connectionService: connectionService,
       topInset: topInset,
+      onProjectAdded: onProjectAdded,
     ),
   );
 }
@@ -43,7 +40,7 @@ Future<void> showAddProjectDialog({
 /// Browses the bridge host's folders and turns one of them into a project.
 ///
 /// The sheet is a single view with two actions over the listing:
-/// - **Add as new project** — registers the folder currently being browsed;
+/// - **Add `<folder>`** — registers the folder currently being browsed;
 /// - **Create new folder** — makes an empty folder here and steps into it, so
 ///   the user can then add *it*.
 @visibleForTesting
@@ -54,6 +51,7 @@ class const AddProjectDialog({
   /// The status-bar inset captured from the presenting context — the modal
   /// route strips it from the sheet's own MediaQuery.
   required final double topInset,
+  required final ProjectOpenedCallback onProjectAdded,
   super.key,
 }) extends StatefulWidget {
   @override
@@ -62,11 +60,16 @@ class const AddProjectDialog({
 
 class _AddProjectDialogState() extends State<AddProjectDialog> {
   /// The folder the bridge started us in. The bridge's default is the host
-  /// user's home directory, so this is also the Home shortcut target.
+  /// user's home directory, so this is also the breadcrumb's Home segment.
   String? _startingPath;
 
-  /// The host filesystem root resolved from [_startingPath].
+  /// The host filesystem root resolved from [_startingPath], listed beside
+  /// Home when the host names no drives.
   String? _rootPath;
+
+  /// A Windows host's drive roots, listed beside Home instead of Root. Empty
+  /// on other hosts and from a bridge that predates drive listing.
+  List<String> _driveRoots = const [];
 
   /// The folder being listed. Empty until the first fetch resolves the start.
   String _currentPath = "";
@@ -80,8 +83,6 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   /// same folder, so one at a time — and the button that is working is the one
   /// that shows it.
   _AddProjectAction? _inFlight;
-
-  String? get _parentPath => _currentPath.isEmpty ? null : widget.cubit.parentHostPath(path: _currentPath);
 
   @override
   void initState() {
@@ -116,11 +117,12 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
         case FilesystemSuggestionsSuccess(:final suggestions):
           final resolvedPath = suggestions.path;
           // The first fetch has no prefix, so the bridge names the host user's
-          // home folder. Keep both shortcut targets for this browsing session.
+          // home folder. Keep it as the Home segment for this browsing session.
           if (_currentPath.isEmpty && resolvedPath != null && resolvedPath.isNotEmpty) {
             _currentPath = resolvedPath;
             _startingPath = resolvedPath;
             _rootPath = _resolveRootPath(path: resolvedPath);
+            _driveRoots = suggestions.driveRoots;
           }
           _entries = suggestions.data;
           _hasError = false;
@@ -142,12 +144,6 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
     _fetchEntries();
   }
 
-  void _navigateUp() {
-    final parent = _parentPath;
-    if (parent == null) return;
-    _navigateInto(path: parent);
-  }
-
   String _resolveRootPath({required String path}) {
     var root = path;
     while (true) {
@@ -155,6 +151,27 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
       if (parent == null) return root;
       root = parent;
     }
+  }
+
+  /// Every folder from the host root down to the one being browsed. The root
+  /// keeps its own path as its label, so it stays reachable; the folders
+  /// between it and the starting folder collapse into one Home segment.
+  List<_Crumb> _breadcrumb({required AppLocalizations loc}) {
+    final chain = <String>[];
+    for (String? path = _currentPath; path != null; path = widget.cubit.parentHostPath(path: path)) {
+      chain.insert(0, path);
+    }
+    final startingPath = _startingPath;
+    final homeIndex = startingPath == null ? -1 : chain.indexOf(startingPath);
+    return [
+      for (final (index, path) in chain.indexed)
+        if (index == 0)
+          (label: path, path: path)
+        else if (index == homeIndex)
+          (label: loc.folderPickerHome, path: path)
+        else if (index > homeIndex)
+          (label: hostPathBasename(path: path), path: path),
+    ];
   }
 
   // ---------------------------------------------------------------------------
@@ -179,7 +196,7 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
 
     final loc = context.loc;
     switch (outcome) {
-      case OpenProjectOutcome.success:
+      case OpenProjectAdded(:final project):
         // Capture the route overlay before the pop so the alert outlives this
         // sheet and remains above the screen underneath it.
         final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
@@ -188,20 +205,22 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
           title: loc.projectDiscovered,
           variant: PregoPopupAlertsNotificationsVariant.success,
         );
-      case OpenProjectOutcome.gitChoiceRequired:
+        _openAdded(project: project);
+      case OpenProjectGitChoiceRequired():
         final choice = await _showGitChoiceDialog();
         if (!mounted || choice == null) return;
         await _onAdd(gitAction: choice);
-      case OpenProjectOutcome.gitSetupIncomplete:
+      case OpenProjectGitSetupIncomplete(:final project):
         await _showGitSetupIncompleteDialog();
         if (!mounted) return;
         _dismissDialog();
-      case OpenProjectOutcome.permissionDenied:
+        _openAdded(project: project);
+      case OpenProjectPermissionDenied():
         _showPopupAlert(
           message: loc.addProjectPermissionDenied,
           variant: PregoPopupAlertsNotificationsVariant.warning,
         );
-      case OpenProjectOutcome.otherError:
+      case OpenProjectFailed():
         _showPopupAlert(
           message: loc.projectDiscoverFailed,
           variant: PregoPopupAlertsNotificationsVariant.error,
@@ -209,9 +228,19 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
     }
   }
 
+  /// This context is still mounted while the sheet animates out; the
+  /// presenter's may not be, as the empty view gives way to the list.
+  void _openAdded({required ProjectSummary project}) {
+    widget.onProjectAdded(
+      context: context,
+      project: project,
+      displayName: projectDisplayName(loc: context.loc, project: project),
+    );
+  }
+
   /// Creates a folder here and steps into it. Only the directory is made —
   /// whether it becomes a project is the user's next decision, taken with the
-  /// "Add as new project" button now pointing at it.
+  /// "Add `<folder>`" button now pointing at it.
   Future<void> _onCreateFolder() async {
     final name = await showNewFolderDialog(context: context);
     if (!mounted || name == null) return;
@@ -250,41 +279,70 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
 
   Future<OpenProjectGitAction?> _showGitChoiceDialog() {
     final loc = context.loc;
-    return showDialog<OpenProjectGitAction>(
+    return showPregoModal<OpenProjectGitAction>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(loc.addProjectEnableGitTitle),
-        content: Text(loc.addProjectEnableGitBody),
-        actions: [
-          TextButton(
-            onPressed: () => dialogContext.pop(OpenProjectGitAction.openWithoutGit),
-            child: Text(loc.addProjectContinueWithoutGit),
-          ),
-          FilledButton(
-            onPressed: () => dialogContext.pop(OpenProjectGitAction.initializeGit),
-            child: Text(loc.addProjectEnableGit),
-          ),
-        ],
+      title: loc.addProjectEnableGitTitle,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              loc.addProjectEnableGitBody,
+              style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+            ),
+            const SizedBox(height: PregoSpacing.x2l),
+            PregoSheetActions(
+              secondary: PregoButtonsSolid(
+                label: loc.addProjectContinueWithoutGit,
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                onPressed: () => sheetContext.pop(OpenProjectGitAction.openWithoutGit),
+              ),
+              primary: PregoButtonsSolid(
+                label: loc.addProjectEnableGit,
+                hierarchy: PregoButtonsSolidHierarchy.primary,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                onPressed: () => sheetContext.pop(OpenProjectGitAction.initializeGit),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Future<void> _showGitSetupIncompleteDialog() {
     final loc = context.loc;
-    return showDialog<void>(
+    return showPregoModal<void>(
       context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => PopScope(
+      title: loc.addProjectGitSetupIncompleteTitle,
+      isDismissible: false,
+      builder: (sheetContext) => PopScope(
         canPop: false,
-        child: AlertDialog(
-          title: Text(loc.addProjectGitSetupIncompleteTitle),
-          content: Text(loc.addProjectGitSetupIncompleteBody),
-          actions: [
-            FilledButton(
-              onPressed: () => dialogContext.pop(),
-              child: Text(loc.addProjectGitSetupIncompleteAcknowledge),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                loc.addProjectGitSetupIncompleteBody,
+                style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
+              ),
+              const SizedBox(height: PregoSpacing.x2l),
+              PregoButtonsSolid(
+                label: loc.addProjectGitSetupIncompleteAcknowledge,
+                hierarchy: PregoButtonsSolidHierarchy.primary,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                onPressed: () => sheetContext.pop(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -307,22 +365,23 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final startingPath = _startingPath;
-    final rootPath = _rootPath;
     // The listing scrolls inside the body, so the body needs a bounded height.
     // Take the whole sheet: the browser keeps one height while folders of
     // different lengths come and go, instead of the sheet resizing under the
     // user's thumb as they navigate.
     final bodyHeight = MediaQuery.heightOf(context) - widget.topInset - PregoBottomSheet.contentTopInset;
+    final startingPath = _startingPath;
+    final rootPath = _rootPath;
 
-    return PregoBottomSheet(
-      // Navigation lives in the browser body; the sheet header only owns its
-      // close affordance and drag handle.
-      title: "",
+    return PregoModalSurface(
+      // Navigation lives in the browser body's breadcrumb.
+      title: loc.addProject,
+      subtitle: null,
+      onBack: null,
       topInset: widget.topInset,
       onClose: _dismissDialog,
+      width: PregoModalWidth.browser,
       // Full-bleed body; the banner, rows, and action menu pad themselves.
-      contentPadding: EdgeInsetsDirectional.zero,
       // The action menu clears the home indicator itself, so its background
       // reaches the bottom edge instead of stopping above it.
       handleBottomSafeArea: false,
@@ -336,16 +395,24 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
             child: Column(
               children: [
                 _FilesystemAccessBanner(connectionService: widget.connectionService),
-                if (_currentPath.isNotEmpty)
-                  _DirectoryNavigation(
+                if (startingPath != null)
+                  _Places(
+                    places: [
+                      (label: loc.folderPickerHome, path: startingPath),
+                      if (_driveRoots.isEmpty && rootPath != null) (label: loc.folderPickerRoot, path: rootPath),
+                      for (final root in _driveRoots) (label: root, path: root),
+                    ],
                     currentPath: _currentPath,
-                    onNavigateUp: _parentPath == null ? null : _navigateUp,
-                    onNavigateHome: startingPath == null || _currentPath == startingPath
-                        ? null
-                        : () => _navigateInto(path: startingPath),
-                    onNavigateRoot: rootPath == null || _currentPath == rootPath
-                        ? null
-                        : () => _navigateInto(path: rootPath),
+                    onNavigate: (path) => _navigateInto(path: path),
+                  ),
+                if (_currentPath.isNotEmpty)
+                  _Breadcrumb(
+                    crumbs: _breadcrumb(loc: loc),
+                    onNavigate: (path) => _navigateInto(path: path),
+                    onNavigateUp: switch (widget.cubit.parentHostPath(path: _currentPath)) {
+                      final parentPath? => () => _navigateInto(path: parentPath),
+                      null => null,
+                    },
                   ),
                 Expanded(
                   // The listing runs to the bottom edge and the actions float
@@ -364,6 +431,9 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
                         end: 0,
                         bottom: 0,
                         child: _ActionMenu(
+                          addLabel: _currentPath.isEmpty
+                              ? loc.addProject
+                              : loc.addFolderAsProject(hostPathBasename(path: _currentPath)),
                           onAdd: _inFlight != null || _currentPath.isEmpty ? null : _onAdd,
                           onCreateFolder: _inFlight != null || _currentPath.isEmpty ? null : _onCreateFolder,
                           inFlight: _inFlight,
@@ -400,14 +470,25 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
       );
     }
     if (_entries.isEmpty) {
+      final prego = context.prego;
       return Padding(
-        padding: EdgeInsetsDirectional.only(bottom: bottomInset),
+        padding: EdgeInsetsDirectional.fromSTEB(PregoSpacing.x4l, 0, PregoSpacing.x4l, bottomInset),
         child: Center(
-          child: Text(
-            loc.emptyDirectory,
-            style: context.prego.textTheme.textSm.regular.copyWith(
-              color: context.prego.colors.textSecondary,
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            spacing: PregoSpacing.xs,
+            children: [
+              Text(
+                loc.folderBrowserNoFolders,
+                textAlign: TextAlign.center,
+                style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textPrimary),
+              ),
+              Text(
+                loc.folderBrowserNoFoldersDetail,
+                textAlign: TextAlign.center,
+                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
+              ),
+            ],
           ),
         ),
       );
@@ -430,68 +511,156 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
 // Folder navigation and rows
 // ---------------------------------------------------------------------------
 
-class const _DirectoryNavigation({
-  required final String currentPath,
+/// One place on the breadcrumb: what it reads and the folder it opens.
+typedef _Crumb = ({String label, String path});
+
+/// Where the browser is, as a tappable path. The last segment is the folder
+/// being browsed, in bold; every one before it opens that folder. A deep path
+/// scrolls sideways and starts scrolled to its end, so the current folder
+/// always shows.
+///
+/// An up button ahead of the path opens the parent folder. It stays put while
+/// the path scrolls, and is disabled rather than hidden at a root, so the path
+/// does not shift.
+class const _Breadcrumb({
+  required final List<_Crumb> crumbs,
+  required final ValueChanged<String> onNavigate,
+
+  /// Null at the host root or a drive root, which have no parent.
   required final VoidCallback? onNavigateUp,
-  required final VoidCallback? onNavigateHome,
-  required final VoidCallback? onNavigateRoot,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final loc = context.loc;
     final prego = context.prego;
+    final segmentStyle = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
+    final touch = PregoInteractionScope.of(context) == PregoInteractionMode.touch;
+    // A short segment such as "/" still gets a finger- or pointer-sized target;
+    // it only shows while hovered or pressed.
+    final minTarget = touch ? _touchTarget : _pointerTarget;
+
+    final upButton = PregoButtonsSolid.iconOnly(
+      leadingIcon: TablerRegular.arrow_up,
+      hierarchy: PregoButtonsSolidHierarchy.secondary,
+      // md is 40 tall, with the touch target padded out below; sm is 36,
+      // over the pointer one.
+      size: touch ? PregoButtonsSolidSize.md : PregoButtonsSolidSize.sm,
+      onPressed: onNavigateUp,
+    );
 
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(
-        PregoSpacing.xl,
-        0,
-        PregoSpacing.xl,
-        PregoSpacing.lg,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xl, bottom: PregoSpacing.md),
+      child: Row(
         children: [
-          Row(
-            spacing: PregoSpacing.md,
-            children: [
-              PregoButtonsSolid(
-                label: loc.folderPickerHome,
-                hierarchy: PregoButtonsSolidHierarchy.secondary,
-                size: PregoButtonsSolidSize.sm,
-                onPressed: onNavigateHome,
-              ),
-              PregoButtonsSolid(
-                label: loc.folderPickerRoot,
-                hierarchy: PregoButtonsSolidHierarchy.secondary,
-                size: PregoButtonsSolidSize.sm,
-                onPressed: onNavigateRoot,
-              ),
-            ],
+          // Icon-only, so the label it drops travels in its semantics. Marked
+          // a button here too, so at a root it reads as a disabled button
+          // rather than as plain text. Wrapping the padded touch area makes
+          // the one semantics node as large as the tap target.
+          Semantics(
+            label: context.loc.folderBrowserParentFolder,
+            button: true,
+            enabled: onNavigateUp != null,
+            child: touch
+                // A tap just outside the drawn button still opens the parent.
+                ? GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    excludeFromSemantics: true,
+                    onTap: onNavigateUp,
+                    child: SizedBox.square(
+                      dimension: _touchTarget,
+                      child: Center(child: upButton),
+                    ),
+                  )
+                : upButton,
           ),
-          const SizedBox(height: PregoSpacing.xl),
-          Row(
-            children: [
-              Semantics(
-                label: loc.parentDirectory,
-                child: PregoButtonsSolid.iconOnly(
-                  leadingIcon: TablerRegular.arrow_up,
-                  hierarchy: PregoButtonsSolidHierarchy.secondary,
-                  size: PregoButtonsSolidSize.lg,
-                  onPressed: onNavigateUp,
-                ),
+          // Start-aligned while it fits; once it overflows, the scroll view
+          // fills the rest of the row and the reverse scroll keeps the current
+          // folder in view.
+          Flexible(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              reverse: true,
+              padding: const EdgeInsetsDirectional.only(start: PregoSpacing.sm, end: PregoSpacing.lg),
+              child: Row(
+                children: [
+                  for (final (index, crumb) in crumbs.indexed) ...[
+                    if (index > 0)
+                      ExcludeSemantics(
+                        child: Icon(
+                          TablerLight.chevron_right,
+                          size: _breadcrumbChevronSize,
+                          color: prego.colors.textTertiary,
+                        ),
+                      ),
+                    if (index == crumbs.length - 1)
+                      Padding(
+                        padding: const EdgeInsets.all(PregoSpacing.xs),
+                        child: Text(
+                          crumb.label,
+                          style: prego.textTheme.textSm.bold.copyWith(color: prego.colors.textPrimary),
+                        ),
+                      )
+                    else
+                      Semantics(
+                        button: true,
+                        child: InkWell(
+                          mouseCursor: WidgetStateMouseCursor.clickable,
+                          borderRadius: BorderRadius.circular(PregoRadius.sm),
+                          onTap: () => onNavigate(crumb.path),
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(minWidth: minTarget, minHeight: minTarget),
+                            child: Center(
+                              widthFactor: 1,
+                              heightFactor: 1,
+                              child: Padding(
+                                padding: const EdgeInsets.all(PregoSpacing.xs),
+                                child: Text(crumb.label, style: segmentStyle),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ],
               ),
-              const SizedBox(width: PregoSpacing.lg),
-              Expanded(
-                child: Text(
-                  "..$currentPath",
-                  style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A place the browser can jump to: what its button reads and the folder it opens.
+typedef _Place = ({String label, String path});
+
+/// Home plus Root, or a Windows host's drives, as a row of buttons above the
+/// breadcrumb: the breadcrumb only reaches the drive being browsed, so another
+/// drive is opened from here. The place already being browsed is disabled.
+class const _Places({
+  required final List<_Place> places,
+  required final String currentPath,
+  required final ValueChanged<String> onNavigate,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: AlignmentDirectional.centerStart,
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
+        child: Row(
+          spacing: PregoSpacing.md,
+          children: [
+            for (final place in places)
+              PregoButtonsSolid(
+                label: place.label,
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.sm,
+                onPressed: place.path == currentPath ? null : () => onNavigate(place.path),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -512,6 +681,7 @@ class const _FolderTile({
       child: Semantics(
         button: true,
         child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
           onTap: onTap,
           child: DecoratedBox(
             decoration: BoxDecoration(
@@ -670,6 +840,9 @@ class const _BrowseError({required final bool permissionDenied, required final V
 /// uses (`PromptInput`), and the mirror of the scroll-edge fade the sheet header
 /// paints at the top.
 class const _ActionMenu({
+  /// The add button's label, naming the folder it adds.
+  required final String addLabel,
+
   /// Null while an action is in flight or before the browser knows its folder.
   required final VoidCallback? onAdd,
 
@@ -738,7 +911,7 @@ class const _ActionMenu({
             ),
             Expanded(
               child: PregoButtonsSolid(
-                label: loc.addAsNewProject,
+                label: addLabel,
                 leadingIcon: TablerRegular.plus,
                 hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
                 size: PregoButtonsSolidSize.xl,
@@ -802,6 +975,12 @@ enum _AddProjectAction() {
 
 const double _folderIconSize = 16;
 const double _chevronSize = 16;
+const double _breadcrumbChevronSize = 13;
+
+/// The smallest tap target a breadcrumb segment gets under a finger and under
+/// a pointer.
+const double _touchTarget = 44;
+const double _pointerTarget = 32;
 const double _errorIconSize = 48;
 
 /// The line box a folder name renders into (16/24 text), so the skeleton holds

@@ -7,8 +7,15 @@ part of 'yolo_settings.dart';
 // **************************************************************************
 
 _YoloSettingsResponse _$YoloSettingsResponseFromJson(Map json) =>
-    _YoloSettingsResponse(enabled: json['enabled'] as bool);
+    _YoloSettingsResponse(
+      enabled: json['enabled'] as bool,
+      supportsSessionOverride:
+          json['supportsSessionOverride'] as bool? ?? false,
+    );
 
 Map<String, dynamic> _$YoloSettingsResponseToJson(
   _YoloSettingsResponse instance,
-) => <String, dynamic>{'enabled': instance.enabled};
+) => <String, dynamic>{
+  'enabled': instance.enabled,
+  'supportsSessionOverride': instance.supportsSessionOverride,
+};

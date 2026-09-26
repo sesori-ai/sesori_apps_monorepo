@@ -22,21 +22,28 @@ import "../../platform/notification_canceller.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/models/plugin_management_result.dart";
+import "../../repositories/models/prompt_send_failure.dart";
 import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
+import "../../services/bridge_settings_service.dart";
+import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_viewing_service.dart";
 import "../../services/session_abort_service.dart";
+import "../../services/session_approval_calculator.dart";
+import "../../services/session_approval_service.dart";
+import "../../services/session_auto_continuation_service.dart";
 import "../../services/session_detail_load_service.dart";
 import "../../services/session_interaction_calculator.dart";
 import "../../services/session_selection_calculator.dart";
 import "../../services/session_viewing_service.dart";
 import "../../services/transcript_snapshot_calculator.dart";
 import "deferred_part_event_buffer.dart";
+import "local_send_phase.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
 import "session_abort_outcome.dart";
@@ -84,6 +91,8 @@ class SessionDetailCubit(
   required final PluginManagementService _pluginManagementService,
   required final SessionInteractionCalculator _interactionCalculator,
   required final SessionAbortService _sessionAbortService,
+  required final SessionAutoContinuationService _autoContinuationService,
+  required final SessionApprovalService _approvalService,
   required SessionRepository promptDispatcher,
   required final PermissionRepository _permissionRepository,
   required final SessionViewingService _sessionViewingService,
@@ -96,12 +105,19 @@ class SessionDetailCubit(
   required final bool claimProjectView,
   required final NotificationCanceller? _notificationCanceller,
   required final FailureReporter _failureReporter,
+  required final BridgeSettingsService _bridgeSettingsService,
 
   /// Cooldown between silent refreshes triggered by staleness events.
   /// Overridable so tests can exercise the coalescing without real waits.
   final Duration eventRefreshMinInterval = const Duration(seconds: 5),
+
+  /// Reads the time a fast-mode tap is decided at. Overridable so tests can
+  /// place a tap inside or outside the prompt-cache lifetime.
+  final ClockProvider _clock = const ClockProvider(),
 }) extends Cubit<SessionDetailState> {
   static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
+  static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
+  static const SessionApprovalCalculator _approval = SessionApprovalCalculator();
   static const TranscriptSnapshotCalculator _transcript = TranscriptSnapshotCalculator();
 
   /// Shown when a catalog offers no agent at all, so the composer still names
@@ -155,6 +171,12 @@ class SessionDetailCubit(
   bool _stalePromptOptionsRefreshInFlight = false;
   bool _backgroundOptionsRefreshInFlight = false;
   bool _abortRequestInFlight = false;
+  bool _autoContinuationUpdateInFlight = false;
+  bool _approvalUpdateInFlight = false;
+
+  /// Whether the transcript is folded to one row per turn. Lives for the
+  /// cubit, so it survives a full reload, and another session starts unfolded.
+  bool _transcriptFolded = false;
 
   /// Route visibility is separate from app lifecycle visibility. Desktop can
   /// cover the nested session navigator with a root-level settings route while
@@ -216,9 +238,17 @@ class SessionDetailCubit(
           (_) => _onDataMayBeStale(trigger: _SessionRefreshTrigger.dataMayBeStale),
         ),
       )
-      ..add(_lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged));
+      ..add(_lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged))
+      ..add(_bridgeSettingsService.yoloSettings.listen(_onYoloSettings));
     unawaited(_pluginManagementService.refresh());
     unawaited(_loadMessages(isReload: false));
+  }
+
+  void _onYoloSettings(YoloSettingsResponse settings) {
+    if (isClosed) return;
+    if (state case final SessionDetailLoaded current when current.bridgeYolo != settings) {
+      emit(current.copyWith(bridgeYolo: settings));
+    }
   }
 
   SessionInteractionState _calculateInteraction({required Session session}) {
@@ -255,7 +285,13 @@ class SessionDetailCubit(
         if (next.canInteract) {
           unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.queuedEvent));
         } else {
-          emit(SessionDetailState.harnessUnavailable(session: session, interaction: next));
+          emit(
+            SessionDetailState.harnessUnavailable(
+              isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
+              session: session,
+              interaction: next,
+            ),
+          );
         }
       case SessionDetailLoading() || SessionDetailFailed():
         break;
@@ -347,7 +383,13 @@ class SessionDetailCubit(
         _waitingForConnection = false;
         loge("Session metadata load failed", error, stackTrace);
         if (previous is SessionDetailLoaded) {
-          emit(previous.copyWith(interaction: _interaction));
+          emit(
+            previous.copyWith(
+              interaction: _interaction,
+              isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
+              transcriptFolded: _transcriptFolded,
+            ),
+          );
           _drainPendingEvents();
           _drainDeferredPartsForLoadedMessages();
         } else {
@@ -375,11 +417,17 @@ class SessionDetailCubit(
             // Eligibility that arrived meanwhile makes it retryable instead,
             // and the recovery refresh below does exactly that.
             if (snapshot.awaitingHarnessSync && snapshot.messages.isEmpty && !_interaction.canInteract) {
-              _clearBufferedEvents();
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
               }
-              emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
+              emit(
+                SessionDetailState.harnessUnavailable(
+                  isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
+                  session: session,
+                  interaction: _interaction,
+                ),
+              );
+              _drainPendingEvents();
               return _SessionRefreshResult.applied;
             }
             _deferredPartEvents.discardForMessagesThrough(
@@ -393,6 +441,7 @@ class SessionDetailCubit(
             emit(
               _buildLoadedState(
                 snapshot: snapshot,
+                session: session,
                 parkEpochAtFetch: parkEpochAtFetch,
                 interaction: becameAvailable ? interactionAtLoad : _interaction,
               ),
@@ -451,16 +500,28 @@ class SessionDetailCubit(
               // transcript; only a session with nothing to keep falls back to
               // the unavailable-history state.
               if (previous is SessionDetailLoaded) {
-                emit(previous.copyWith(interaction: _interaction));
+                emit(
+                  previous.copyWith(
+                    interaction: _interaction,
+                    isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
+                    transcriptFolded: _transcriptFolded,
+                  ),
+                );
                 _drainPendingEvents();
                 _drainDeferredPartsForLoadedMessages();
                 return _SessionRefreshResult.applied;
               }
-              _clearBufferedEvents();
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
               }
-              emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
+              emit(
+                SessionDetailState.harnessUnavailable(
+                  isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
+                  session: session,
+                  interaction: _interaction,
+                ),
+              );
+              _drainPendingEvents();
               return _SessionRefreshResult.applied;
             }
             _clearBufferedEvents();
@@ -747,9 +808,10 @@ class SessionDetailCubit(
       current.copyWith(
         isRefreshing: true,
         isLoadingOlderMessages: false,
+        bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-        sendingSubmission: queue.sendingSubmission,
+        localSend: queue.localSend,
       ),
     );
 
@@ -844,9 +906,13 @@ class SessionDetailCubit(
           );
           // Assistant metadata describes the transcript actually installed,
           // not the raw fetched page a live assistant may have outrun.
-          final assistant = _assistantMetadata(messages: messages, agents: availableAgents);
+          final assistantAgentModel = _assistantAgentModel(messages: messages, agents: availableAgents);
           _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
 
+          // A live session update (such as an approval change) that landed
+          // while the fetch was in flight is newer than the fetched metadata.
+          final refreshedSession = identical(latest.session, current.session) ? session : latest.session;
+          _sessionMetadata = refreshedSession;
           final refreshedSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
           final queue = _queueView(bridgePrompts: snapshot.bridgeQueuedPrompts);
 
@@ -869,8 +935,8 @@ class SessionDetailCubit(
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
               bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
-              agent: assistant.latestAssistant?.agent,
-              assistantAgentModel: assistant.assistantAgentModel,
+              bridgePromptAttachments: queue.bridgePromptAttachments,
+              assistantAgentModel: assistantAgentModel,
               children: refreshedChildSessions,
               childStatuses: derived.childStatuses,
               isArchived: snapshot.isArchived,
@@ -879,15 +945,17 @@ class SessionDetailCubit(
               availableCommands: availableCommands,
               supportsPromptAttachments: snapshot.supportsPromptAttachments,
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
+              session: refreshedSession,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
+              promptDefaults: snapshot.promptDefaults,
               stagedCommand: _selection.resolveStagedCommand(
                 commands: availableCommands,
                 staged: preservedStagedCommand,
               ),
               queuedMessages: queue.queuedMessages,
               awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-              sendingSubmission: queue.sendingSubmission,
+              localSend: queue.localSend,
               isRefreshing: false,
               availableVariants: availableVariants,
             ),
@@ -942,9 +1010,10 @@ class SessionDetailCubit(
     emit(
       latest.copyWith(
         isRefreshing: false,
+        bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-        sendingSubmission: queue.sendingSubmission,
+        localSend: queue.localSend,
       ),
     );
   }
@@ -984,7 +1053,9 @@ class SessionDetailCubit(
   /// reconnect can re-read the same still-stale cache while the first is still
   /// in flight.
   void _refreshStaleOptions({required SessionDetailSnapshot snapshot}) {
-    if (!snapshot.areOptionsStale || _backgroundOptionsRefreshInFlight) return;
+    // An archived session's options only name what it ran with, which never
+    // justifies waking its harness.
+    if (snapshot.isArchived || !snapshot.areOptionsStale || _backgroundOptionsRefreshInFlight) return;
     _backgroundOptionsRefreshInFlight = true;
     unawaited(
       _reloadOptions(mode: SessionOptionsRequestMode.forceRefresh, notify: false).whenComplete(() {
@@ -1002,20 +1073,6 @@ class SessionDetailCubit(
     // A plugin-scoped catalog names no project and applies to every one of them.
     if (projectId != null && projectId.normalize() != _projectId.normalize()) return;
     unawaited(_reloadOptions(mode: SessionOptionsRequestMode.cacheOnly, notify: false));
-  }
-
-  /// Returns the latest agent-authored assistant or error [Message], or null if none.
-  Message? _latestAssistantOrErrorMessage(List<MessageWithParts> messages) {
-    for (var i = messages.length - 1; i >= 0; i--) {
-      final info = messages[i].info;
-      switch (info) {
-        case MessageAssistant(sender: MessageSender.agent) || MessageError():
-          return info;
-        case MessageAssistant() || MessageUser():
-          continue;
-      }
-    }
-    return null;
   }
 
   // ---------------------------------------------------------------------------
@@ -1280,6 +1337,14 @@ class SessionDetailCubit(
   /// Replays any SSE events that were buffered while the cubit was not in
   /// [SessionDetailLoaded] state. Called after a successful load/refresh.
   void _drainPendingEvents() {
+    if (state is SessionDetailHarnessUnavailable) {
+      // History is still unavailable, but session metadata and acknowledged
+      // setting changes received during the load remain authoritative.
+      final updated = _pendingSessionEvents.whereType<SesoriSessionUpdated>().lastOrNull;
+      _clearBufferedEvents();
+      if (updated != null) _onSessionUpdated(updated.info);
+      return;
+    }
     if (state is! SessionDetailLoaded) return;
     final sessionEvents = List<SesoriSessionEvent>.of(_pendingSessionEvents);
     _pendingSessionEvents.clear();
@@ -1291,16 +1356,101 @@ class SessionDetailCubit(
 
   void _onSessionUpdated(Session session) {
     final current = state;
+    if (isClosed) return;
+    _sessionMetadata = session;
+    // The unavailable shell still offers the session's actions, so a rename or
+    // an archive has to reach it too.
+    if (current is SessionDetailHarnessUnavailable) {
+      // A later availability change rebuilds this variant from the cache.
+      emit(current.copyWith(session: session));
+      return;
+    }
     if (current is! SessionDetailLoaded) return;
     final sessionTime = session.time;
 
-    if (isClosed) return;
     emit(
       current.copyWith(
         sessionTitle: session.title,
+        session: session,
         isArchived: sessionTime == null ? current.isArchived : sessionTime.archived != null,
       ),
     );
+  }
+
+  /// Folds or unfolds every turn of the transcript: the one intent behind
+  /// every fold control. A request that changes nothing emits nothing.
+  void setTranscriptFolded({required bool folded}) {
+    if (isClosed || folded == _transcriptFolded) return;
+    _transcriptFolded = folded;
+    if (state case final SessionDetailLoaded current) emit(current.copyWith(transcriptFolded: folded));
+  }
+
+  Future<void> setAutoContinuation({required bool enabled}) async {
+    final session = state.hydratedSession;
+    if (isClosed || _autoContinuationUpdateInFlight || session == null || session.time?.archived != null) return;
+    if (state case SessionDetailLoaded(isArchived: true)) return;
+    _setAutoContinuationProgress(pending: true);
+    try {
+      final updated = await _autoContinuationService.setEnabled(sessionId: _sessionId, enabled: enabled);
+      if (isClosed) return;
+      _handleEvent(SesoriSessionUpdated(info: updated));
+      if (!enabled && updated.autoContinuation?.status is SessionAutoContinuationSubmitted) {
+        _noticeStream.add(const SessionDetailAutoContinuationAlreadySubmitted());
+      }
+    } on SessionAutoContinuationUnavailableException catch (error, stackTrace) {
+      loge("Auto continuation unavailable for session $_sessionId", error.innerError, stackTrace);
+      if (!isClosed) _noticeStream.add(const SessionDetailAutoContinuationUnavailable());
+    } on Object catch (error, stackTrace) {
+      loge("Failed to update auto continuation for session $_sessionId", error, stackTrace);
+      if (!isClosed) _noticeStream.add(const SessionDetailAutoContinuationUpdateFailed());
+    } finally {
+      _setAutoContinuationProgress(pending: false);
+    }
+  }
+
+  /// Asks the bridge to answer this session's permission requests in [mode].
+  /// The acknowledged session carries the new override.
+  Future<void> setApprovalMode({required SessionApprovalMode mode}) async {
+    if (isClosed || _approvalUpdateInFlight) return;
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    final control = current.approvalControl;
+    if (control is! SessionApprovalPerSession) return;
+    final change = _approval.change(session: current.session, control: control, mode: mode);
+    if (change == null) return;
+    _setApprovalProgress(pending: true);
+    try {
+      final updated = await _approvalService.setOverride(
+        sessionId: _sessionId,
+        approvalOverride: change.approvalOverride,
+      );
+      if (isClosed) return;
+      _handleEvent(SesoriSessionUpdated(info: updated));
+    } on Object catch (error, stackTrace) {
+      loge("Failed to set the approval mode for session $_sessionId", error, stackTrace);
+      if (!isClosed) _noticeStream.add(const SessionDetailApprovalUpdateFailed());
+    } finally {
+      _setApprovalProgress(pending: false);
+    }
+  }
+
+  void _setApprovalProgress({required bool pending}) {
+    _approvalUpdateInFlight = pending;
+    if (isClosed) return;
+    if (state case final SessionDetailLoaded current) emit(current.copyWith(isUpdatingApproval: pending));
+  }
+
+  void _setAutoContinuationProgress({required bool pending}) {
+    _autoContinuationUpdateInFlight = pending;
+    if (isClosed) return;
+    switch (state) {
+      case final SessionDetailLoaded current:
+        emit(current.copyWith(isUpdatingAutoContinuation: pending));
+      case final SessionDetailHarnessUnavailable current:
+        emit(current.copyWith(isUpdatingAutoContinuation: pending));
+      case SessionDetailLoading() || SessionDetailFailed():
+        break;
+    }
   }
 
   void _onPromptDefaultsChanged(SessionPromptDefaults promptDefaults) {
@@ -1324,6 +1474,9 @@ class SessionDetailCubit(
         selectedAgent: reconciled.agentName ?? current.selectedAgent,
         selectedAgentModel: reconciled.model,
         availableVariants: reconciled.availableVariants,
+        promptDefaults: promptDefaults,
+        // The bridge owns the stored choice and sends it with every change.
+        fastMode: promptDefaults.fastMode,
       ),
     );
   }
@@ -1395,8 +1548,8 @@ class SessionDetailCubit(
     if (isClosed) return;
 
     if (message
-        case MessageAssistant(sender: MessageSender.agent, :final providerID, :final modelID, :final agent) ||
-            MessageError(:final providerID, :final modelID, :final agent)) {
+        case MessageAssistant(sender: MessageSender.agent, :final providerID, :final modelID) ||
+            MessageError(:final providerID, :final modelID)) {
       final assistantAgentModel = providerID != null && modelID != null
           ? _resolveAgentModel(
               agents: current.availableAgents,
@@ -1407,7 +1560,6 @@ class SessionDetailCubit(
       emit(
         current.copyWith(
           messages: messages,
-          agent: agent ?? current.agent,
           assistantAgentModel: assistantAgentModel,
         ),
       );
@@ -1465,9 +1617,10 @@ class SessionDetailCubit(
     emit(
       current.copyWith(
         bridgeQueuedPrompts: bridgePrompts,
+        bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-        sendingSubmission: queue.sendingSubmission,
+        localSend: queue.localSend,
       ),
     );
     // A settlement can outrun the send response. Keep the single-flight slot
@@ -1482,18 +1635,20 @@ class SessionDetailCubit(
     if (isClosed) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
-    for (final prompt in prompts) {
-      _promptQueue.removeByPromptId(prompt.id);
-    }
+    final hadFailedSend = _promptQueue.failed != null;
+    _promptQueue.reconcileBridgeQueue(promptIds: {for (final prompt in prompts) prompt.id});
     final queue = _queueView(bridgePrompts: prompts);
     emit(
       current.copyWith(
         bridgeQueuedPrompts: prompts,
+        bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-        sendingSubmission: queue.sendingSubmission,
+        localSend: queue.localSend,
       ),
     );
+    // The bridge owning the failed prompt releases the sends waiting behind it.
+    if (hadFailedSend && _promptQueue.failed == null) _tryDrainQueue();
   }
 
   /// Removes a prompt only after confirmed cancellation. A refusal can mean
@@ -1520,9 +1675,10 @@ class SessionDetailCubit(
       emit(
         current.copyWith(
           bridgeQueuedPrompts: bridgePrompts,
+          bridgePromptAttachments: queue.bridgePromptAttachments,
           queuedMessages: queue.queuedMessages,
           awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-          sendingSubmission: queue.sendingSubmission,
+          localSend: queue.localSend,
         ),
       );
     } finally {
@@ -1856,6 +2012,7 @@ class SessionDetailCubit(
 
     final selectedAgent = current is SessionDetailLoaded ? current.selectedAgent : null;
     final selectedAgentModel = current is SessionDetailLoaded ? current.selectedAgentModel : null;
+    final fastMode = current is SessionDetailLoaded && current.runsFastMode;
     // The id survives retries of the same submission, so a send whose
     // response was lost re-lands on the bridge as an idempotent no-op.
     final promptId = _generatePromptId();
@@ -1867,6 +2024,7 @@ class SessionDetailCubit(
             attachments: attachments,
             agent: selectedAgent,
             agentModel: selectedAgentModel,
+            fastMode: fastMode,
           )
         : QueuedSessionSubmission.command(
             promptId: promptId,
@@ -1874,6 +2032,7 @@ class SessionDetailCubit(
             command: normalizedCommand,
             agent: selectedAgent,
             agentModel: selectedAgentModel,
+            fastMode: fastMode,
           );
     _promptQueue.enqueue(submission);
     _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
@@ -1900,9 +2059,10 @@ class SessionDetailCubit(
     final queue = _queueView(bridgePrompts: current.bridgeQueuedPrompts);
     emit(
       current.copyWith(
+        bridgePromptAttachments: queue.bridgePromptAttachments,
         queuedMessages: queue.queuedMessages,
         awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-        sendingSubmission: queue.sendingSubmission,
+        localSend: queue.localSend,
       ),
     );
   }
@@ -1910,11 +2070,8 @@ class SessionDetailCubit(
   /// Drops staged copies a fresh snapshot proves the bridge already owns —
   /// listed in its queue or landed as a user message with the same prompt id.
   void _reconcileStagedWithSnapshot({required SessionDetailSnapshot snapshot, required int parkEpochAtFetch}) {
-    final owned = <String>{};
-    for (final prompt in snapshot.bridgeQueuedPrompts) {
-      owned.add(prompt.id);
-      _promptQueue.removeByPromptId(prompt.id);
-    }
+    final owned = {for (final prompt in snapshot.bridgeQueuedPrompts) prompt.id};
+    _promptQueue.reconcileBridgeQueue(promptIds: owned);
     for (final message in snapshot.messages) {
       if (message.info case MessageUser(promptId: final promptId?)) {
         // The snapshot holding the message at all proves the bridge owns the
@@ -1939,7 +2096,8 @@ class SessionDetailCubit(
   _QueueView _queueView({required List<QueuedSessionPrompt> bridgePrompts}) => (
     queuedMessages: _visibleStagedItems(bridgePrompts: bridgePrompts),
     awaitingBridgeSubmissions: _visibleAwaitingBridge(bridgePrompts: bridgePrompts),
-    sendingSubmission: _visibleStagedSending(bridgePrompts: bridgePrompts),
+    localSend: _visibleLocalSend(bridgePrompts: bridgePrompts),
+    bridgePromptAttachments: _promptQueue.bridgePromptAttachments,
   );
 
   List<QueuedSessionSubmission> _visibleStagedItems({required List<QueuedSessionPrompt> bridgePrompts}) {
@@ -1963,10 +2121,18 @@ class SessionDetailCubit(
     ];
   }
 
-  QueuedSessionSubmission? _visibleStagedSending({required List<QueuedSessionPrompt> bridgePrompts}) {
+  /// The in-flight or failed head, unless the bridge queue already lists it.
+  LocalSendPhase _visibleLocalSend({required List<QueuedSessionPrompt> bridgePrompts}) {
+    bool listed(QueuedSessionSubmission submission) => bridgePrompts.any((prompt) => prompt.id == submission.promptId);
     final active = _promptQueue.active;
-    if (active == null || _promptQueue.isActiveSettledElsewhere) return null;
-    return bridgePrompts.any((prompt) => prompt.id == active.promptId) ? null : active;
+    if (active != null) {
+      return _promptQueue.isActiveSettledElsewhere || listed(active)
+          ? const LocalSendPhase.idle()
+          : LocalSendPhase.sending(submission: active);
+    }
+    final failed = _promptQueue.failed;
+    if (failed == null || listed(failed.submission)) return const LocalSendPhase.idle();
+    return failed;
   }
 
   Future<void> _drainQueuedMessages() async {
@@ -2005,6 +2171,7 @@ class SessionDetailCubit(
           null => null,
           final variant => SessionVariant(id: variant),
         },
+        fastMode: submission.fastMode,
         command: submission.command,
       );
 
@@ -2034,11 +2201,17 @@ class SessionDetailCubit(
             }
           }
         case ErrorResponse(:final error):
-          sendSettledElsewhere = !_promptQueue.failSend();
+          sendSettledElsewhere = !_settleFailedSend(
+            sendConnectionGeneration: sendConnectionGeneration,
+            failure: SessionRepository.sendFailureFor(error: error),
+          );
           logw("Failed to send queued session submission", error);
       }
     } on Object catch (error, stackTrace) {
-      sendSettledElsewhere = !_promptQueue.failSend();
+      sendSettledElsewhere = !_settleFailedSend(
+        sendConnectionGeneration: sendConnectionGeneration,
+        failure: PromptSendFailure.uncertain,
+      );
       logw("Failed to send queued session submission", error, stackTrace);
     }
 
@@ -2064,6 +2237,33 @@ class SessionDetailCubit(
         unawaited(_drainQueuedMessages());
       }
     }
+  }
+
+  /// A failure on the connection the send started on is real: the head is
+  /// held with Retry and later submissions wait behind it. A failure after the
+  /// connection dropped is re-queued and re-sent automatically on reconnect.
+  /// Returns whether the submission was kept (false when the bridge settled
+  /// it while the send was in flight).
+  bool _settleFailedSend({required int sendConnectionGeneration, required PromptSendFailure failure}) =>
+      sendConnectionGeneration == _connectionGeneration
+      ? _promptQueue.holdFailedSend(failure: failure)
+      : _promptQueue.failSend();
+
+  /// Sends the failed head again under its original prompt id.
+  void retryFailedSend() {
+    if (_promptQueue.failed == null) return;
+    _promptQueue.retryFailedSend();
+    _emitQueueUpdate();
+    _tryDrainQueue();
+  }
+
+  /// Drops the failed head so the submissions behind it can send.
+  void removeFailedSend() {
+    final removed = _promptQueue.removeFailedSend();
+    if (removed == null) return;
+    _staleOptionsRecoveryAttemptedPromptIds.remove(removed.promptId);
+    _emitQueueUpdate();
+    _tryDrainQueue();
   }
 
   /// Rediscovers the catalog after the bridge rejected a send for naming an
@@ -2177,9 +2377,8 @@ class SessionDetailCubit(
         final selectedModel = reconciled.model;
 
         _promptQueue.replacePending(
-          update: (submission) => submission.withSelection(
-            agent: _validatedQueuedAgent(candidate: submission.agent, agents: agents),
-            agentModel: submission.agentModel == null
+          update: (submission) {
+            final agentModel = submission.agentModel == null
                 ? null
                 : _selection
                       .reconcile(
@@ -2189,8 +2388,17 @@ class SessionDetailCubit(
                         modelCandidates: [submission.agentModel],
                         retainedModel: null,
                       )
-                      .model,
-          ),
+                      .model;
+            return submission.withSelection(
+              agent: _validatedQueuedAgent(candidate: submission.agent, agents: agents),
+              agentModel: agentModel,
+              fastMode: _selection.resolvedFastMode(
+                providers: providers,
+                model: agentModel,
+                requested: submission.fastMode,
+              ),
+            );
+          },
         );
 
         emit(
@@ -2206,7 +2414,7 @@ class SessionDetailCubit(
               staged: latest.stagedCommand,
             ),
             queuedMessages: _visibleStagedItems(bridgePrompts: latest.bridgeQueuedPrompts),
-            sendingSubmission: _visibleStagedSending(bridgePrompts: latest.bridgeQueuedPrompts),
+            localSend: _visibleLocalSend(bridgePrompts: latest.bridgeQueuedPrompts),
           ),
         );
         _optionsGeneration++;
@@ -2617,6 +2825,29 @@ class SessionDetailCubit(
     emit(current.copyWith(selectedAgentModel: agentModel.copyWith(variant: variant.id)));
   }
 
+  /// What tapping the fast-mode control should do right now, or null before
+  /// the session has loaded.
+  FastModeToggleDecision? fastModeToggleDecision() {
+    final current = state;
+    if (current is! SessionDetailLoaded) return null;
+    return _fastModeToggle.decide(
+      support: current.fastModeSupport,
+      fastMode: current.runsFastMode,
+      hasHistory: current.messages.isNotEmpty,
+      lastModelActivity: _fastModeToggle.lastModelActivity(messages: current.messages, session: current.session),
+      now: _clock(),
+    );
+  }
+
+  void setFastMode(bool fastMode) {
+    if (_refuseWhenInteractionBlocked(action: "change fast mode")) return;
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+
+    if (isClosed) return;
+    emit(current.copyWith(fastMode: fastMode));
+  }
+
   void stageCommand(CommandInfo command) {
     if (_refuseWhenInteractionBlocked(action: "stage a command")) return;
     final current = state;
@@ -2671,7 +2902,13 @@ class SessionDetailCubit(
   }
 
   void _clearLocalPromptQueue() {
-    if (_promptQueue.isEmpty && !_promptQueue.isSending && _promptQueue.awaitingBridge.isEmpty) return;
+    if (_promptQueue.isEmpty &&
+        !_promptQueue.isSending &&
+        _promptQueue.failed == null &&
+        _promptQueue.awaitingBridge.isEmpty &&
+        _promptQueue.bridgePromptAttachments.isEmpty) {
+      return;
+    }
     _promptQueue.clear();
     _staleOptionsRecoveryAttemptedPromptIds.clear();
     final current = state;
@@ -2690,23 +2927,16 @@ class SessionDetailCubit(
     );
   }
 
-  /// The latest agent-authored assistant/error message of [messages] and the
-  /// model it ran on, resolved against the [agents] catalog in effect.
-  _AssistantMetadata _assistantMetadata({required List<MessageWithParts> messages, required List<AgentInfo> agents}) {
-    final latestAssistant = _latestAssistantOrErrorMessage(messages);
-    final assistantAgentModel = switch (latestAssistant) {
-      MessageAssistant(sender: MessageSender.agent, :final modelID, :final providerID) ||
-      MessageError(
-        :final modelID,
-        :final providerID,
-      ) => _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
-      MessageAssistant() || MessageUser() || null => null,
-    };
-    return (latestAssistant: latestAssistant, assistantAgentModel: assistantAgentModel);
+  /// The model the latest agent-authored assistant/error message of [messages]
+  /// ran on, resolved against the [agents] catalog in effect.
+  AgentModel? _assistantAgentModel({required List<MessageWithParts> messages, required List<AgentInfo> agents}) {
+    final reply = messages.latestAgentReply;
+    return _resolveAgentModel(agents: agents, providerID: reply?.providerID, modelID: reply?.modelID);
   }
 
   SessionDetailLoaded _buildLoadedState({
     required SessionDetailSnapshot snapshot,
+    required Session session,
     required int parkEpochAtFetch,
     required SessionInteractionState interaction,
   }) {
@@ -2716,9 +2946,7 @@ class SessionDetailCubit(
     final agents = derived.agents;
     final providers = derived.providers;
 
-    final assistant = _assistantMetadata(messages: snapshot.messages, agents: agents);
-    final latestAssistant = assistant.latestAssistant;
-    final assistantAgentModel = assistant.assistantAgentModel;
+    final assistantAgentModel = _assistantAgentModel(messages: snapshot.messages, agents: agents);
     // The transcript's own model is retained rather than validated: a session
     // imported from a terminal must not silently resume on a different provider
     // because a retained provider cache does not list what it ran on.
@@ -2735,18 +2963,21 @@ class SessionDetailCubit(
 
     _transcriptGeneration++;
     return SessionDetailLoaded(
+      isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
       interaction: interaction,
       messages: snapshot.messages,
       olderMessagesCursor: snapshot.olderMessagesCursor,
+      transcriptFolded: _transcriptFolded,
       streamingText: const {},
       sessionStatus: initialSessionStatus,
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
       pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
       bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
+      bridgePromptAttachments: queue.bridgePromptAttachments,
       sessionTitle: snapshot.canonicalSessionTitle,
+      session: session,
       pluginId: snapshot.pluginId,
       supportsPromptAttachments: snapshot.supportsPromptAttachments,
-      agent: latestAssistant?.agent,
       assistantAgentModel: assistantAgentModel,
       children: childSessions,
       childStatuses: derived.childStatuses,
@@ -2754,15 +2985,19 @@ class SessionDetailCubit(
       isArchived: snapshot.isArchived,
       queuedMessages: queue.queuedMessages,
       awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-      sendingSubmission: queue.sendingSubmission,
+      localSend: queue.localSend,
       availableAgents: agents,
       availableProviders: providers,
       availableCommands: snapshot.commands,
       selectedAgent: reconciled.agentName ?? _fallbackAgentName,
       selectedAgentModel: reconciled.model,
+      promptDefaults: snapshot.promptDefaults,
+      fastMode: snapshot.promptDefaults?.fastMode ?? false,
       stagedCommand: null,
       isRefreshing: false,
       availableVariants: reconciled.availableVariants,
+      bridgeYolo: _bridgeSettingsService.yoloSettings.value,
+      isUpdatingApproval: _approvalUpdateInFlight,
     );
   }
 
@@ -2826,12 +3061,11 @@ class SessionDetailCubit(
 }
 
 typedef _QueueView = ({
+  Map<String, List<ComposerAttachment>> bridgePromptAttachments,
   List<QueuedSessionSubmission> queuedMessages,
   List<QueuedSessionSubmission> awaitingBridgeSubmissions,
-  QueuedSessionSubmission? sendingSubmission,
+  LocalSendPhase localSend,
 });
-
-typedef _AssistantMetadata = ({Message? latestAssistant, AgentModel? assistantAgentModel});
 
 typedef _SnapshotDerivation = ({
   List<Session> children,

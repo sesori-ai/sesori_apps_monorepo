@@ -50,7 +50,7 @@ Future<_TimeoutResult?> _showTimeoutSheet({
   required _TimeoutChoice initialChoice,
   required int initialMinutes,
 }) {
-  return showPregoBottomSheet<_TimeoutResult>(
+  return showPregoModal<_TimeoutResult>(
     context: _flowPresentationContext(context: context),
     title: title,
     builder: (_) => _TimeoutSheet(
@@ -179,7 +179,6 @@ class _TimeoutSheetState() extends State<_TimeoutSheet> {
                 key: const Key("harness_management_timeout_input"),
                 controller: _controller,
                 label: loc.harnessManagementTimeoutMinutesLabel,
-                isRequired: true,
                 autofocus: true,
                 autocorrect: false,
                 keyboardType: const TextInputType.numberWithOptions(signed: true),
@@ -234,7 +233,7 @@ Future<void> _showForceConfirmation({
       !identical(current.harnessActions[confirmation.pluginId], confirmation)) {
     return;
   }
-  final confirmed = await showPregoBottomSheet<bool>(
+  final confirmed = await showPregoModal<bool>(
     context: _flowPresentationContext(context: context),
     title: confirmation.action == PluginManagementForceAction.disable
         ? context.loc.harnessManagementForceDisableTitle(confirmation.conflict.current.setup.displayName)
@@ -288,7 +287,7 @@ Future<void> _showAuthenticationSheet({
   required BuildContext context,
   required PluginManagementCubit cubit,
 }) async {
-  await showPregoBottomSheet<void>(
+  await showPregoModal<void>(
     context: _flowPresentationContext(context: context),
     title: context.loc.harnessAuthenticationSheetTitle,
     builder: (_) => BlocProvider<PluginManagementCubit>.value(

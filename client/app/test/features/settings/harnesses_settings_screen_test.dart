@@ -1830,7 +1830,7 @@ void main() {
     ).called(1);
   });
 
-  testWidgets("force cancel and close send zero force requests, then confirm sends exactly one", (tester) async {
+  testWidgets("force cancel sends zero force requests, then confirm sends exactly one", (tester) async {
     _useTallSurface(tester);
     var safeCalls = 0;
     when(
@@ -1899,12 +1899,12 @@ void main() {
 
     await tester.tap(_switchFor("future-harness"));
     await tester.pumpAndSettle();
-    final sheetClose = find.descendant(
-      of: find.byType(PregoBottomSheet),
-      matching: find.byType(PregoButtonsIconGlass),
+    // Not dismissible, so Cancel is the only way out.
+    expect(
+      find.descendant(of: find.byType(PregoBottomSheet), matching: find.byType(PregoButtonsIconGlass)),
+      findsNothing,
     );
-    expect(sheetClose, findsOneWidget);
-    await tester.tap(sheetClose);
+    await tester.tap(find.byKey(const Key("harness_management_force_cancel")));
     await tester.pumpAndSettle();
     expect(safeCalls, 2);
     verifyNever(

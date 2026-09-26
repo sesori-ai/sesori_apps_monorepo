@@ -242,11 +242,94 @@ void main() {
       expect(unresolved, [permission]);
       expect(permissionRepository.requestIds, isEmpty);
     });
+
+    group("per-session approval override", () {
+      const first = PendingPermission(
+        id: "first",
+        sessionID: "session-one",
+        displaySessionId: null,
+        tool: "tool",
+        description: "first",
+      );
+      const second = PendingPermission(
+        id: "second",
+        sessionID: "session-two",
+        displaySessionId: null,
+        tool: "tool",
+        description: "second",
+      );
+
+      setUp(() {
+        sessionRepository.activitySummaries = const [
+          ProjectActivitySummary(
+            id: "project",
+            activeSessions: [
+              ActiveSession(id: "session-one", awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
+              ActiveSession(id: "session-two", awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
+            ],
+          ),
+        ];
+        permissionRepository.pendingPermissions = const [first, second];
+        permissionRepository.onReply = ({required requestId, required sessionId, required reply}) async {
+          permissionRepository.requestIds.add(requestId);
+        };
+      });
+
+      test("the session's override wins over the bridge setting", () async {
+        expect(await autoApproval.isYolo(sessionId: "session-one"), isTrue);
+        sessionRepository.approvalOverrides["session-one"] = SessionApprovalMode.ask;
+        expect(await autoApproval.isYolo(sessionId: "session-one"), isFalse);
+
+        await settingsRepository.updateYolo(enabled: false);
+        expect(await autoApproval.isYolo(sessionId: "session-two"), isFalse);
+        sessionRepository.approvalOverrides["session-two"] = SessionApprovalMode.yolo;
+        expect(await autoApproval.isYolo(sessionId: "session-two"), isTrue);
+      });
+
+      test("an asking session under bridge YOLO is not approved", () async {
+        sessionRepository.approvalOverrides["session-two"] = SessionApprovalMode.ask;
+
+        await autoApproval.approvePending();
+        await autoApproval.approve(requestId: "live", sessionId: "session-two");
+
+        expect(permissionRepository.requestIds, ["first"]);
+        expect(await autoApproval.resolveSnapshot(permissions: const [second]), [second]);
+      });
+
+      test("a YOLO session is approved while the bridge setting is off", () async {
+        await settingsRepository.updateYolo(enabled: false);
+        sessionRepository.approvalOverrides["session-two"] = SessionApprovalMode.yolo;
+
+        await autoApproval.approvePending();
+
+        expect(permissionRepository.requestIds, ["second"]);
+        expect(await autoApproval.resolveSnapshot(permissions: const [first]), [first]);
+      });
+
+      test("with no session in YOLO the sweep reads nothing", () async {
+        await settingsRepository.updateYolo(enabled: false);
+        sessionRepository.approvalOverrides["session-one"] = SessionApprovalMode.ask;
+
+        await autoApproval.approvePending();
+
+        expect(sessionRepository.activitySummaryReads, isZero);
+        expect(permissionRepository.requestIds, isEmpty);
+      });
+    });
   });
 }
 
 class _FamilyRepository(final Map<String, SessionFamilyScope> scopes) implements SessionRepository {
   List<ProjectActivitySummary> activitySummaries = const [];
+  int activitySummaryReads = 0;
+  final Map<String, SessionApprovalMode> approvalOverrides = {};
+
+  @override
+  Future<SessionApprovalMode?> resolveApprovalOverride({required String sessionId}) async =>
+      approvalOverrides[sessionId];
+
+  @override
+  Future<bool> hasYoloApprovalOverride() async => approvalOverrides.containsValue(SessionApprovalMode.yolo);
 
   @override
   Future<SessionFamilyScope> resolveSessionFamily({
@@ -258,7 +341,10 @@ class _FamilyRepository(final Map<String, SessionFamilyScope> scopes) implements
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
-  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async => activitySummaries;
+  Future<List<ProjectActivitySummary>> getProjectActivitySummaries() async {
+    activitySummaryReads++;
+    return activitySummaries;
+  }
 
   @override
   Future<List<Session>> getChildSessions({required String sessionId}) async => const [];

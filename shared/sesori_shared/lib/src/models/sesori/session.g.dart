@@ -65,6 +65,16 @@ _Session _$SessionFromJson(Map json) => _Session(
   hasWorktree: json['hasWorktree'] as bool? ?? false,
   unseen: json['unseen'] as bool? ?? false,
   lastUserActivityAt: (json['lastUserActivityAt'] as num?)?.toInt(),
+  autoContinuation: json['autoContinuation'] == null
+      ? null
+      : SessionAutoContinuationView.fromJson(
+          Map<String, dynamic>.from(json['autoContinuation'] as Map),
+        ),
+  approvalOverride: $enumDecodeNullable(
+    _$SessionApprovalModeEnumMap,
+    json['approvalOverride'],
+    unknownValue: JsonKey.nullForUndefinedEnumValue,
+  ),
 );
 
 Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
@@ -84,6 +94,13 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'hasWorktree': instance.hasWorktree,
   'unseen': instance.unseen,
   'lastUserActivityAt': ?instance.lastUserActivityAt,
+  'autoContinuation': ?instance.autoContinuation?.toJson(),
+  'approvalOverride': ?_$SessionApprovalModeEnumMap[instance.approvalOverride],
+};
+
+const _$SessionApprovalModeEnumMap = {
+  SessionApprovalMode.ask: 'ask',
+  SessionApprovalMode.yolo: 'yolo',
 };
 
 _SessionPromptDefaults _$SessionPromptDefaultsFromJson(Map json) =>
@@ -94,6 +111,7 @@ _SessionPromptDefaults _$SessionPromptDefaultsFromJson(Map json) =>
           : AgentModel.fromJson(
               Map<String, dynamic>.from(json['model'] as Map),
             ),
+      fastMode: json['fastMode'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$SessionPromptDefaultsToJson(
@@ -101,6 +119,7 @@ Map<String, dynamic> _$SessionPromptDefaultsToJson(
 ) => <String, dynamic>{
   'agent': ?instance.agent,
   'model': ?instance.model?.toJson(),
+  'fastMode': instance.fastMode,
 };
 
 _SessionTime _$SessionTimeFromJson(Map json) => _SessionTime(

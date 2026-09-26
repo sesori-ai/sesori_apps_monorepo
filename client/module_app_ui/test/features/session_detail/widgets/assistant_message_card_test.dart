@@ -1,6 +1,8 @@
 import "dart:typed_data";
 import "dart:ui" show SemanticsAction;
 
+import "package:bloc_test/bloc_test.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:http/http.dart" as http;
@@ -23,6 +25,8 @@ class _MockImageSaver() extends Mock implements ImageSaver;
 class _MockImageClipboard() extends Mock implements ImageClipboard;
 
 class _MockImageSharer() extends Mock implements ImageSharer;
+
+class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
 late MessageImageRepository _messageImageRepository;
 
@@ -57,6 +61,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
       supportedLocales: AppLocalizations.supportedLocales,
       home: SessionDetailPresentationScope(
         openHarnessSettings: () {},
+        openBridgeSettings: () {},
         messageImageRepository: () => _messageImageRepository,
         imageSaver: _MockImageSaver.new,
         imageClipboard: _MockImageClipboard.new,
@@ -64,14 +69,22 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
         canShareImages: true,
         openExternalLink: ({required url, required mode}) async => false,
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
-        child: Scaffold(
-          body: AssistantMessageCard(
-            projectId: null,
-            message: widget.message,
-            streamingText: _streamingText,
-            children: const <Session>[],
-            childStatuses: const <String, SessionStatus>{},
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: BlocProvider<SessionDetailCubit>.value(
+          value: _MockSessionDetailCubit(),
+          child: Scaffold(
+            body: AssistantMessageCard(
+              projectId: null,
+              blocks: const TranscriptBuilder()
+                  .build(
+                    messages: [widget.message],
+                    streamingText: _streamingText,
+                    children: const [],
+                    childStatuses: const {},
+                  )
+                  .blocksFor(messageId: widget.message.info.id),
+              streamingText: _streamingText,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            ),
           ),
         ),
       ),
@@ -187,6 +200,33 @@ void main() {
     }
   });
 
+  testWidgets("an empty row takes no height and its first part eases in", (tester) async {
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(parts: const []),
+        streamingText: const {},
+      ),
+    );
+    expect(tester.getSize(find.byType(AssistantMessageCard)).height, 0);
+
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(
+          parts: [_textPart(id: "part-1", text: "First paragraph")],
+        ),
+        streamingText: const {},
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    final opacities = tester.widgetList<Opacity>(
+      find.ancestor(of: find.byType(MarkdownBody), matching: find.byType(Opacity)),
+    );
+    expect(opacities.any((opacity) => opacity.opacity > 0 && opacity.opacity < 1), isTrue);
+
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.byType(MarkdownBody), findsOneWidget);
+  });
+
   testWidgets("preserves mixed text-tool-text rendering inside one SelectionArea", (tester) async {
     await tester.pumpWidget(
       _AssistantMessageCardHarness(
@@ -230,9 +270,11 @@ void main() {
       ),
     );
 
+    // The pending tool is a live row; the sub-agent without a lifecycle has
+    // finished and, alone, keeps its own row.
     expect(find.text("Tool"), findsOneWidget);
-    expect(find.text("Pending"), findsOneWidget);
-    expect(find.text("Background task"), findsOneWidget);
+    expect(find.text("1 sub-agent"), findsNothing);
+    expect(find.text("Agent Background task"), findsOneWidget);
     expect(find.text("Agent"), findsOneWidget);
     expect(find.text("Retry"), findsOneWidget);
   });
@@ -245,8 +287,56 @@ void main() {
       ),
     );
 
-    expect(find.text("compact"), findsOneWidget);
-    expect(find.text("Running"), findsOneWidget);
+    expect(find.text("Compact"), findsOneWidget);
+    expect(find.byType(PregoShimmer), findsOneWidget);
+  });
+
+  testWidgets("renders a finished compaction as one row that opens its summary", (tester) async {
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(
+          parts: [
+            const MessagePart.compaction(
+              id: "compaction-tool",
+              sessionID: "session-1",
+              messageID: "assistant-1",
+              summary: "Carried-forward goal",
+            ),
+          ],
+        ),
+        streamingText: const {},
+      ),
+    );
+
+    expect(find.text("Context compacted"), findsOneWidget);
+    expect(find.text("Carried-forward goal"), findsNothing);
+
+    await tester.tap(find.text("Context compacted"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Compaction summary"), findsOneWidget);
+    expect(find.text("Carried-forward goal"), findsOneWidget);
+  });
+
+  testWidgets("renders a compaction without a summary as an inert row", (tester) async {
+    await tester.pumpWidget(
+      _AssistantMessageCardHarness(
+        message: _assistantMessage(
+          parts: [
+            const MessagePart.compaction(
+              id: "compaction-tool",
+              sessionID: "session-1",
+              messageID: "assistant-1",
+              summary: null,
+            ),
+          ],
+        ),
+        streamingText: const {},
+      ),
+    );
+
+    expect(find.text("Context compacted"), findsOneWidget);
+    expect(tester.widget<TextButton>(find.byType(TextButton)).onPressed, isNull);
   });
 
   testWidgets("streaming text updates the rendered markdown without breaking the SelectionArea", (tester) async {
@@ -294,6 +384,10 @@ void main() {
     final preview = tester.widget<Image>(find.descendant(of: markdownImage, matching: find.byType(Image)));
     expect(preview.image, isA<ResizeImage>());
     expect((preview.image as ResizeImage).imageProvider, isA<MemoryImage>());
+    expect(preview.fit, BoxFit.cover);
+    expect(tester.getSize(find.descendant(of: markdownImage, matching: find.byType(Image))), const Size(100, 100));
+    final clip = tester.widget<ClipRRect>(find.descendant(of: markdownImage, matching: find.byType(ClipRRect)));
+    expect(clip.borderRadius, BorderRadius.circular(4));
     await tester.runAsync(
       () => precacheImage(
         preview.image,
@@ -314,16 +408,16 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 130));
 
-    expect(find.byKey(ImageAttachmentViewer.flightCropImageKey), findsNothing);
+    expect(find.byKey(ImageAttachmentViewer.flightCropImageKey), findsOneWidget);
     expect(find.byKey(ImageAttachmentViewer.flightFullImageKey), findsOneWidget);
 
     await tester.pumpAndSettle();
 
     expect(find.byType(ImageAttachmentViewer), findsOneWidget);
     expect(find.byType(InteractiveViewer), findsOneWidget);
-    expect(find.byIcon(Icons.content_copy), findsNothing);
-    expect(find.byIcon(Icons.share_outlined), findsNothing);
-    expect(find.byIcon(Icons.download_outlined), findsNothing);
+    expect(find.byIcon(TablerRegular.copy), findsNothing);
+    expect(find.byIcon(TablerRegular.share), findsNothing);
+    expect(find.byIcon(TablerRegular.download), findsNothing);
     final fullscreen = tester.widget<Image>(find.byKey(ImageAttachmentViewer.imageKey));
     expect(identical(fullscreen.image, preview.image), isTrue);
     semantics.dispose();
@@ -376,7 +470,7 @@ void main() {
     );
 
     expect(find.byType(Image), findsNothing);
-    expect(find.byIcon(Icons.broken_image), findsOneWidget);
+    expect(find.byIcon(TablerRegular.photo_off), findsOneWidget);
     expect(find.byType(GestureDetector), findsNothing);
   });
 

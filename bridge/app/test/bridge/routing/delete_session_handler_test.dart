@@ -18,6 +18,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fakes/deletion_worktree_service_fake.dart";
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
@@ -53,6 +54,9 @@ void main() {
         worktreeService: worktreeService,
       );
       final sessionLifecycleService = SessionLifecycleService(
+        continuations: const EmptySessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         worktreeService: worktreeService,
         sessionRepository: sessionRepository,
         filesystemRepository: FilesystemRepository(
@@ -509,6 +513,7 @@ Future<void> _insertSession({
 }) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]); // satisfy v5 FK constraint
   await db.sessionDao.insertSession(
+    fastMode: false,
     pluginId: pluginId,
     preservePullRequestScope: false,
     sessionId: sessionId,

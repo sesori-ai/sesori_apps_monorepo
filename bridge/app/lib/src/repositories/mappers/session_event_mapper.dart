@@ -24,6 +24,15 @@ class const SessionEventMapper() {
     BridgeSseMessageUpdated(:final info) => NormalizedMessageEvent(
       message: info.toSharedMessage(sessionId: info.sessionID),
     ),
+    BridgeSseSessionQuotaBlocked(:final sessionID, :final interruption) => NormalizedQuotaInterruptionEvent(
+      sessionId: sessionID,
+      errorMessageId: interruption.errorMessageId,
+      observedAt: interruption.observedAt,
+      resetAt: switch (interruption.reset) {
+        PluginQuotaResetKnown(:final resetAt) => resetAt,
+        PluginQuotaResetUnknown() => null,
+      },
+    ),
     _ => NormalizedOtherEvent(event: event),
   };
 
@@ -46,6 +55,7 @@ class const SessionEventMapper() {
       BridgeSseTerminalHandoff(:final event) => backendSessionIds(event: event),
       BridgeSseSessionDiff(:final sessionID) ||
       BridgeSseSessionCompacted(:final sessionID) ||
+      BridgeSseSessionQuotaBlocked(:final sessionID) ||
       BridgeSsePromptSettled(:final sessionID) ||
       BridgeSseSessionPromptDefaultsChanged(:final sessionID) ||
       BridgeSseSessionStatus(:final sessionID) ||
@@ -138,6 +148,10 @@ class const SessionEventMapper() {
       },
       BridgeSseSessionDiff(:final sessionID) => switch (mapped(sessionID)) {
         final sessionId? => BridgeSseSessionDiff(sessionID: sessionId),
+        null => null,
+      },
+      BridgeSseSessionQuotaBlocked(:final sessionID, :final interruption) => switch (mapped(sessionID)) {
+        final sessionId? => BridgeSseSessionQuotaBlocked(sessionID: sessionId, interruption: interruption),
         null => null,
       },
       BridgeSseSessionError(:final sessionID) => switch (sessionID) {

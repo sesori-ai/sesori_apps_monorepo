@@ -2,9 +2,11 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
+import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/new_session_options_service.dart";
+import "../../services/session_selection_calculator.dart";
 import "new_session_submission_snapshot.dart";
 
 part "new_session_state.freezed.dart";
@@ -153,12 +155,26 @@ typedef AgentModelData = ({
   AgentModel? agentModel,
   CommandInfo? stagedCommand,
   List<SessionVariant> availableVariants,
+
+  /// Whether the session starts in fast mode.
+  bool runsFastMode,
+  FastModeControl fastModeControl,
   NewSessionProjectWorktreeCapability projectWorktreeCapability,
 });
 
 extension NewSessionComposeConfigAgentModel on NewSessionComposeConfig {
+  static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
+  static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
+
   AgentModelData get agentModelData {
     final data = options.data;
+    final providers = data?.providers ?? const <ProviderInfo>[];
+    final agentModel = data?.selectedAgentModel;
+    final runsFastMode = _selection.resolvedFastMode(
+      providers: providers,
+      model: agentModel,
+      requested: data?.fastMode ?? false,
+    );
     return (
       plugins: availablePlugins,
       plugin: selectedPlugin,
@@ -167,12 +183,17 @@ extension NewSessionComposeConfigAgentModel on NewSessionComposeConfig {
       isLoading: options.isLoading || projectWorktreeCapability == NewSessionProjectWorktreeCapability.loading,
       isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
       agents: data?.agents ?? const [],
-      providers: data?.providers ?? const [],
+      providers: providers,
       commands: data?.commands ?? const [],
       agent: data?.selectedAgent,
-      agentModel: data?.selectedAgentModel,
+      agentModel: agentModel,
       stagedCommand: data?.stagedCommand,
       availableVariants: data?.availableVariants ?? const [],
+      runsFastMode: runsFastMode,
+      fastModeControl: _fastModeToggle.control(
+        support: _selection.fastModeSupport(providers: providers, model: agentModel),
+        fastMode: runsFastMode,
+      ),
       projectWorktreeCapability: projectWorktreeCapability,
     );
   }

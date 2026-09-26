@@ -1,22 +1,17 @@
 import "dart:developer" as developer;
 
 import "package:injectable/injectable.dart";
-
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../platform/secure_storage.dart";
+import "../models/auth_secret_key.dart";
 
 @lazySingleton
-class OAuthStorageService(final SecureStorage _storage) {
-  static const _pkceVerifierKey = "pkce_verifier";
-  static const _oauthProviderKey = "oauth_provider";
-  static const _oauthSessionTokenKey = "oauth_session_token";
-  static const _oauthSessionExpiryKey = "oauth_session_expiry";
-
+class OAuthStorageService({required final SecureStorageRepository _storage}) {
   Future<void> saveAuthProviderAndPkceVerifier({required String codeVerifier, required AuthProvider provider}) async {
     try {
-      await _storage.write(key: _pkceVerifierKey, value: codeVerifier);
-      await _storage.write(key: _oauthProviderKey, value: provider.key);
+      await _storage.write(key: AuthSecretKey.pkceVerifier, value: codeVerifier);
+      await _storage.write(key: AuthSecretKey.oauthProvider, value: provider.key);
     } catch (error, stackTrace) {
       developer.log(
         "Failed to persist OAuth provider or PKCE verifier",
@@ -30,7 +25,7 @@ class OAuthStorageService(final SecureStorage _storage) {
 
   Future<String?> getPkceVerifier() async {
     try {
-      return await _storage.read(key: _pkceVerifierKey);
+      return await _storage.read(key: AuthSecretKey.pkceVerifier);
     } catch (error, stackTrace) {
       developer.log(
         "Failed to read PKCE verifier",
@@ -44,7 +39,7 @@ class OAuthStorageService(final SecureStorage _storage) {
 
   Future<void> clearPkceVerifier() async {
     try {
-      await _storage.delete(key: _pkceVerifierKey);
+      await _storage.delete(key: AuthSecretKey.pkceVerifier);
     } catch (error, stackTrace) {
       developer.log(
         "Failed to clear PKCE verifier",
@@ -58,7 +53,7 @@ class OAuthStorageService(final SecureStorage _storage) {
 
   Future<AuthProvider?> getAuthProvider() async {
     try {
-      final providerKey = await _storage.read(key: _oauthProviderKey);
+      final providerKey = await _storage.read(key: AuthSecretKey.oauthProvider);
       return AuthProvider.fromKey(providerKey);
     } catch (error, stackTrace) {
       developer.log(
@@ -73,7 +68,7 @@ class OAuthStorageService(final SecureStorage _storage) {
 
   Future<void> clearAuthProvider() async {
     try {
-      await _storage.delete(key: _oauthProviderKey);
+      await _storage.delete(key: AuthSecretKey.oauthProvider);
     } catch (error, stackTrace) {
       developer.log(
         "Failed to clear OAuth provider",
@@ -87,8 +82,8 @@ class OAuthStorageService(final SecureStorage _storage) {
 
   Future<void> saveOAuthSession({required String sessionToken, required DateTime expiresAt}) async {
     try {
-      await _storage.write(key: _oauthSessionTokenKey, value: sessionToken);
-      await _storage.write(key: _oauthSessionExpiryKey, value: expiresAt.toIso8601String());
+      await _storage.write(key: AuthSecretKey.oauthSessionToken, value: sessionToken);
+      await _storage.write(key: AuthSecretKey.oauthSessionExpiry, value: expiresAt.toIso8601String());
     } catch (error, stackTrace) {
       developer.log(
         "Failed to persist OAuth session",
@@ -102,15 +97,15 @@ class OAuthStorageService(final SecureStorage _storage) {
 
   Future<({String? sessionToken, DateTime? expiresAt})> getOAuthSession() async {
     try {
-      final sessionToken = await _storage.read(key: _oauthSessionTokenKey);
-      final expiryString = await _storage.read(key: _oauthSessionExpiryKey);
+      final sessionToken = await _storage.read(key: AuthSecretKey.oauthSessionToken);
+      final expiryString = await _storage.read(key: AuthSecretKey.oauthSessionExpiry);
       if (sessionToken == null || expiryString == null) {
         return (sessionToken: null, expiresAt: null);
       }
       final expiresAt = DateTime.tryParse(expiryString);
       if (expiresAt == null) {
-        await _storage.delete(key: _oauthSessionTokenKey);
-        await _storage.delete(key: _oauthSessionExpiryKey);
+        await _storage.delete(key: AuthSecretKey.oauthSessionToken);
+        await _storage.delete(key: AuthSecretKey.oauthSessionExpiry);
         return (sessionToken: null, expiresAt: null);
       }
       return (sessionToken: sessionToken, expiresAt: expiresAt);
@@ -127,8 +122,8 @@ class OAuthStorageService(final SecureStorage _storage) {
 
   Future<void> clearOAuthSession() async {
     try {
-      await _storage.delete(key: _oauthSessionTokenKey);
-      await _storage.delete(key: _oauthSessionExpiryKey);
+      await _storage.delete(key: AuthSecretKey.oauthSessionToken);
+      await _storage.delete(key: AuthSecretKey.oauthSessionExpiry);
     } catch (error, stackTrace) {
       developer.log(
         "Failed to clear OAuth session",

@@ -7,17 +7,21 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
+import "package:sesori_dart_core/src/services/session_approval_service.dart";
+import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -80,6 +84,7 @@ ProviderListResponse _providerDataWithVariants(List<String> variants) => Provide
       defaultModelID: "claude-opus",
       models: {
         "claude-opus": ProviderModel(
+          fastMode: null,
           id: "claude-opus",
           providerID: "anthropic",
           name: "Opus",
@@ -148,6 +153,8 @@ void main() {
       List<CommandInfo> commands = const [],
       SessionPromptDefaults? promptDefaults,
       bool areOptionsStale = false,
+      bool supportsPromptAttachments = false,
+      bool isArchived = false,
     }) async {
       final mockLoadService = MockSessionDetailLoadService();
       when(
@@ -161,7 +168,7 @@ void main() {
             areOptionsStale: areOptionsStale,
             projectId: "project-1",
             pluginId: "claude",
-            supportsPromptAttachments: false,
+            supportsPromptAttachments: supportsPromptAttachments,
             messages: const <MessageWithParts>[],
             olderMessagesCursor: null,
             awaitingHarnessSync: false,
@@ -176,7 +183,7 @@ void main() {
             canonicalSessionTitle: null,
             promptDefaults: promptDefaults,
             isRootSession: true,
-            isArchived: false,
+            isArchived: isArchived,
           ),
         ),
       );
@@ -191,7 +198,7 @@ void main() {
             areOptionsStale: false,
             projectId: "project-1",
             pluginId: "claude",
-            supportsPromptAttachments: false,
+            supportsPromptAttachments: supportsPromptAttachments,
             messages: reloadSnapshotMessages,
             olderMessagesCursor: null,
             awaitingHarnessSync: false,
@@ -222,6 +229,8 @@ void main() {
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: mockLoadService,
         sessionAbortService: SessionAbortService(repository: mockSessionRepository),
+        autoContinuationService: SessionAutoContinuationService(repository: mockSessionRepository),
+        approvalService: SessionApprovalService(repository: mockSessionRepository),
         promptDispatcher: mockSessionRepository,
         permissionRepository: MockPermissionRepository(),
         sessionViewingService: stubbedSessionViewingService(),
@@ -233,6 +242,7 @@ void main() {
         projectId: "project-1",
         notificationCanceller: MockNotificationCanceller(),
         failureReporter: MockFailureReporter(),
+        bridgeSettingsService: stubbedBridgeSettingsService(),
       );
       addTearDown(cubit.close);
       await cubit.stream.firstWhere((state) => state is SessionDetailLoaded);
@@ -267,19 +277,24 @@ void main() {
       expect(notices, isEmpty);
     });
 
-    test("a fresh snapshot refreshes nothing", () async {
-      final cubit = await createLoadedCubit();
-      await Future<void>.delayed(Duration.zero);
+    for (final (description, areOptionsStale, isArchived) in [
+      ("a fresh snapshot", false, false),
+      ("an archived session's stale snapshot", true, true),
+    ]) {
+      test("$description refreshes nothing", () async {
+        final cubit = await createLoadedCubit(areOptionsStale: areOptionsStale, isArchived: isArchived);
+        await Future<void>.delayed(Duration.zero);
 
-      expect(cubit.state, isA<SessionDetailLoaded>());
-      verifyNever(
-        () => mockSessionRepository.loadSessionOptions(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-          mode: any(named: "mode"),
-        ),
-      );
-    });
+        expect(cubit.state, isA<SessionDetailLoaded>());
+        verifyNever(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        );
+      });
+    }
 
     test("an options update re-reads the cache and drops a withdrawn agent", () async {
       when(
@@ -336,6 +351,7 @@ void main() {
                 defaultModelID: "opus",
                 models: {
                   "opus": ProviderModel(
+                    fastMode: null,
                     id: "opus",
                     providerID: "anthropic",
                     name: "Opus",
@@ -345,6 +361,7 @@ void main() {
                     releaseDate: null,
                   ),
                   "haiku": ProviderModel(
+                    fastMode: null,
                     id: "haiku",
                     providerID: "anthropic",
                     name: "Haiku",
@@ -384,6 +401,7 @@ void main() {
               defaultModelID: "opus",
               models: {
                 "opus": ProviderModel(
+                  fastMode: null,
                   id: "opus",
                   providerID: "anthropic",
                   name: "Opus",
@@ -461,6 +479,7 @@ void main() {
           agent: any(named: "agent"),
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((invocation) async {
@@ -500,6 +519,7 @@ void main() {
           agent: "Default",
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).called(1);
@@ -512,13 +532,14 @@ void main() {
           agent: "Agent",
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).called(1);
       final state = cubit.state as SessionDetailLoaded;
       expect(state.selectedAgent, "Agent");
       expect(state.queuedMessages, isEmpty);
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       expect(state.awaitingBridgeSubmissions.map((submission) => submission.promptId), [promptIds.first]);
       expect(notices, [const SessionDetailPromptOptionsUpdated()]);
     });
@@ -550,6 +571,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) async {
@@ -574,7 +596,7 @@ void main() {
       expect(state.availableCommands, isEmpty);
       expect(state.queuedMessages.single, isA<UnavailableQueuedCommandSubmission>());
       expect(state.queuedMessages.single.displayText, "/review src");
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       expect(sentCommands, ["review"]);
       expect(notices, [const SessionDetailCommandUnavailable()]);
 
@@ -637,6 +659,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) async {
@@ -669,7 +692,7 @@ void main() {
       expect(state.availableCommands, isEmpty);
       expect(state.queuedMessages.single, isA<UnavailableQueuedCommandSubmission>());
       expect(state.queuedMessages.single.displayText, "/review src");
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       expect(sentCommands, ["review"]);
       expect(notices, [const SessionDetailCommandUnavailable()]);
 
@@ -736,6 +759,7 @@ void main() {
           agent: any(named: "agent"),
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((_) async {
@@ -781,6 +805,7 @@ void main() {
           agent: "Agent",
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).called(1);
@@ -816,6 +841,7 @@ void main() {
           agent: any(named: "agent"),
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((_) async {
@@ -853,7 +879,7 @@ void main() {
       ).called(1);
       final state = cubit.state as SessionDetailLoaded;
       expect(state.queuedMessages.single.agent, "Agent");
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       expect(state.awaitingBridgeSubmissions, isEmpty);
       expect(
         notices,
@@ -888,6 +914,7 @@ void main() {
           agent: any(named: "agent"),
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((_) async {
@@ -925,7 +952,7 @@ void main() {
       ).called(1);
       final state = cubit.state as SessionDetailLoaded;
       expect(state.queuedMessages.map((submission) => submission.text), ["first", "second"]);
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       expect(state.awaitingBridgeSubmissions, isEmpty);
     });
 
@@ -959,6 +986,7 @@ void main() {
           agent: any(named: "agent"),
           model: null,
           variant: null,
+          fastMode: false,
           command: null,
         ),
       ).thenAnswer((_) async => ApiResponse.error(staleError));
@@ -1023,6 +1051,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: null,
         ),
       ).thenAnswer((invocation) async {
@@ -1070,6 +1099,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => sendCompleter.future);
@@ -1080,7 +1110,7 @@ void main() {
         cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
       );
       await Future<void>.delayed(Duration.zero);
-      final sending = (cubit.state as SessionDetailLoaded).sendingSubmission;
+      final sending = _sendingOf(state: cubit.state as SessionDetailLoaded);
       final promptId = sending?.promptId;
       expect(promptId, isNotNull);
 
@@ -1100,9 +1130,63 @@ void main() {
 
       final state = cubit.state as SessionDetailLoaded;
       expect(state.bridgeQueuedPrompts.single.id, promptId);
-      expect(state.sendingSubmission, isNull, reason: "the bridge owns the prompt now");
+      expect(_sendingOf(state: state), isNull, reason: "the bridge owns the prompt now");
       expect(state.queuedMessages, isEmpty);
       sendCompleter.complete(ApiResponse.success(null));
+    });
+
+    test("the bridge owning a failed send releases the sends waiting behind it", () async {
+      final sentTexts = <String>[];
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((invocation) async {
+        sentTexts.add(invocation.namedArguments[#text] as String);
+        return sentTexts.length == 1 ? ApiResponse.error(ApiError.generic()) : ApiResponse.success(null);
+      });
+      final cubit = await createLoadedCubit();
+
+      await cubit.sendMessage(text: "lost", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+      await cubit.sendMessage(
+        text: "waiting",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      final failed = _failedOf(state: cubit.state as SessionDetailLoaded);
+      expect(failed?.displayText, "lost");
+      expect(sentTexts, ["lost"]);
+
+      // The response was lost after the bridge accepted the prompt.
+      sessionEvents.add(
+        SesoriSseEvent.sessionQueuedPrompts(
+          sessionID: _sessionId,
+          prompts: [
+            QueuedSessionPrompt(
+              id: failed?.promptId ?? "",
+              text: "lost",
+              command: null,
+              attachmentCount: 0,
+              createdAt: 100,
+            ),
+          ],
+        ) as SesoriSessionEvent,
+      );
+      for (var attempt = 0; attempt < 20 && sentTexts.length < 2; attempt++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(_failedOf(state: cubit.state as SessionDetailLoaded), isNull);
+      expect(sentTexts, ["lost", "waiting"]);
     });
 
     test("keeps the queued entry through the bare envelope and releases it on the first part", () async {
@@ -1150,6 +1234,84 @@ void main() {
       await subscription.cancel();
     });
 
+    for (final acceptedFirst in [false, true]) {
+      test(
+        "queue handoff retains images ${acceptedFirst ? 'after' : 'before'} acceptance without a UI frame",
+        () async {
+          final send = Completer<ApiResponse<void>>();
+          when(
+            () => mockSessionRepository.sendMessage(
+              sessionId: _sessionId,
+              promptId: any(named: "promptId"),
+              text: any(named: "text"),
+              attachments: any(named: "attachments"),
+              agent: any(named: "agent"),
+              model: any(named: "model"),
+              variant: any(named: "variant"),
+              fastMode: any(named: "fastMode"),
+              command: any(named: "command"),
+            ),
+          ).thenAnswer((_) => send.future);
+          final cubit = await createLoadedCubit(supportsPromptAttachments: true);
+          final attachment = ComposerAttachment(
+            mime: "image/png",
+            bytes: base64Decode(
+              "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+            ),
+            filename: "Fixture.png",
+          );
+          final sending = cubit.sendMessage(
+            text: "Review image",
+            command: null,
+            inputMode: ComposerInputMode.typed,
+            attachments: [attachment],
+          );
+          final promptId = _sendingOf(state: cubit.state as SessionDetailLoaded)!.promptId;
+          if (acceptedFirst) {
+            send.complete(ApiResponse.success(null));
+            await sending;
+          }
+          final handedOff = cubit.stream.firstWhere(
+            (state) => state is SessionDetailLoaded && state.bridgeQueuedPrompts.isNotEmpty,
+          );
+          sessionEvents.add(
+            SesoriSseEvent.sessionQueuedPrompts(
+              sessionID: _sessionId,
+              prompts: [
+                QueuedSessionPrompt(
+                  id: promptId,
+                  text: "Review image",
+                  command: null,
+                  attachmentCount: 1,
+                  createdAt: 1,
+                  dispatchState: QueuedPromptDispatchState.dispatched,
+                ),
+              ],
+            ) as SesoriSessionEvent,
+          );
+          await handedOff;
+          if (!acceptedFirst) {
+            send.complete(ApiResponse.success(null));
+            await sending;
+          }
+          final state = cubit.state as SessionDetailLoaded;
+          expect(_sendingOf(state: state), isNull);
+          expect(state.queuedMessages, isEmpty);
+          expect(state.awaitingBridgeSubmissions, isEmpty);
+          expect(state.bridgePromptAttachments[promptId]!.single, same(attachment));
+
+          final settled = cubit.stream.firstWhere(
+            (state) => state is SessionDetailLoaded && state.bridgeQueuedPrompts.isEmpty,
+          );
+          sessionEvents.add(
+            SesoriSseEvent.sessionPromptSettled(sessionID: _sessionId, promptID: promptId) as SesoriSessionEvent,
+          );
+          await settled;
+          expect((cubit.state as SessionDetailLoaded).bridgePromptAttachments, isEmpty);
+        },
+      );
+    }
+
     test("an accepted send stays visible until the bridge queue lists it", () async {
       final send = Completer<ApiResponse<void>>();
       when(
@@ -1161,6 +1323,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => send.future);
@@ -1171,7 +1334,7 @@ void main() {
         cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
       );
       await Future<void>.delayed(Duration.zero);
-      final promptId = (cubit.state as SessionDetailLoaded).sendingSubmission?.promptId;
+      final promptId = _sendingOf(state: cubit.state as SessionDetailLoaded)?.promptId;
       expect(promptId, isNotNull);
 
       // The acceptance response lands before the session.queued-prompts
@@ -1179,7 +1342,7 @@ void main() {
       send.complete(ApiResponse.success(null));
       await Future<void>.delayed(Duration.zero);
       var state = cubit.state as SessionDetailLoaded;
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       expect(state.awaitingBridgeSubmissions.map((item) => item.promptId), [promptId]);
 
       sessionEvents.add(
@@ -1199,7 +1362,7 @@ void main() {
       // prompt from at least one surface.
       for (final emitted in emissions.whereType<SessionDetailLoaded>()) {
         final visible =
-            emitted.sendingSubmission?.promptId == promptId ||
+            _sendingOf(state: emitted)?.promptId == promptId ||
             emitted.queuedMessages.any((item) => item.promptId == promptId) ||
             emitted.awaitingBridgeSubmissions.any((item) => item.promptId == promptId) ||
             emitted.bridgeQueuedPrompts.any((prompt) => prompt.id == promptId);
@@ -1218,6 +1381,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1236,7 +1400,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       final state = cubit.state as SessionDetailLoaded;
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       expect(state.queuedMessages, isEmpty);
       expect(state.awaitingBridgeSubmissions, isEmpty);
       expect(state.bridgeQueuedPrompts, isEmpty);
@@ -1253,6 +1417,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) {
@@ -1270,7 +1435,7 @@ void main() {
         ),
       );
       await _awaitCondition(() => sends.length == 1);
-      final firstPromptId = (cubit.state as SessionDetailLoaded).sendingSubmission!.promptId;
+      final firstPromptId = _sendingOf(state: cubit.state as SessionDetailLoaded)!.promptId;
       unawaited(
         cubit.sendMessage(
           text: "next",
@@ -1287,7 +1452,7 @@ void main() {
       );
       await Future<void>.delayed(Duration.zero);
       var state = cubit.state as SessionDetailLoaded;
-      expect(state.sendingSubmission, isNull, reason: "settled in-flight prompt is hidden immediately");
+      expect(_sendingOf(state: state), isNull, reason: "settled in-flight prompt is hidden immediately");
       expect(state.queuedMessages.single.text, "next");
 
       final refreshStates = <SessionDetailLoaded>[];
@@ -1308,7 +1473,7 @@ void main() {
           [
             ...refreshState.queuedMessages.map((item) => item.promptId),
             ...refreshState.awaitingBridgeSubmissions.map((item) => item.promptId),
-            refreshState.sendingSubmission?.promptId,
+            _sendingOf(state: refreshState)?.promptId,
           ],
           isNot(contains(firstPromptId)),
           reason: "refresh emissions must retain the bridge-aware settlement projection",
@@ -1319,8 +1484,8 @@ void main() {
       sends.first.complete(ApiResponse.success(null));
       await _awaitCondition(() => sends.length == 2);
       state = cubit.state as SessionDetailLoaded;
-      final secondPromptId = state.sendingSubmission!.promptId;
-      expect(state.sendingSubmission!.text, "next");
+      final secondPromptId = _sendingOf(state: state)!.promptId;
+      expect(_sendingOf(state: state)!.text, "next");
 
       sends.last.complete(ApiResponse.success(null));
       await Future<void>.delayed(Duration.zero);
@@ -1342,6 +1507,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => send.future);
@@ -1350,7 +1516,7 @@ void main() {
         cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
       );
       await Future<void>.delayed(Duration.zero);
-      final promptId = (cubit.state as SessionDetailLoaded).sendingSubmission!.promptId;
+      final promptId = _sendingOf(state: cubit.state as SessionDetailLoaded)!.promptId;
 
       // An immediately dispatched steering send: the bridge consumed the entry
       // and published the resulting queue before the acceptance response
@@ -1383,7 +1549,7 @@ void main() {
         isEmpty,
         reason: "the delivered echo replaced the parked copy; leaving it strands a bubble",
       );
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       expect(state.queuedMessages, isEmpty);
     });
 
@@ -1397,6 +1563,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1443,6 +1610,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1487,6 +1655,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1529,6 +1698,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => send.future);
@@ -1537,7 +1707,7 @@ void main() {
         cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
       );
       await Future<void>.delayed(Duration.zero);
-      final inFlight = (cubit.state as SessionDetailLoaded).sendingSubmission!.promptId;
+      final inFlight = _sendingOf(state: cubit.state as SessionDetailLoaded)!.promptId;
 
       // A queue-less harness echoes at acceptance, so the stamped message can
       // land before the acceptance response completes.
@@ -1559,7 +1729,7 @@ void main() {
 
       final state = cubit.state as SessionDetailLoaded;
       expect(state.awaitingBridgeSubmissions, isEmpty, reason: "the echo already renders this prompt");
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       expect(state.messages.single.info.id, "echo-1");
     });
 
@@ -1573,6 +1743,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1599,6 +1770,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1640,6 +1812,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1669,6 +1842,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1703,6 +1877,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(null));
@@ -1858,6 +2033,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => sendCompleter.future);
@@ -1866,7 +2042,7 @@ void main() {
         cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
       );
       await Future<void>.delayed(Duration.zero);
-      final promptId = (cubit.state as SessionDetailLoaded).sendingSubmission?.promptId;
+      final promptId = _sendingOf(state: cubit.state as SessionDetailLoaded)?.promptId;
       expect(promptId, isNotNull);
 
       // A refresh whose snapshot already lists the prompt (the acceptance
@@ -1882,7 +2058,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       final state = cubit.state as SessionDetailLoaded;
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       expect(state.queuedMessages, isEmpty);
       expect(state.bridgeQueuedPrompts.single.id, promptId);
       sendCompleter.complete(ApiResponse.success(null));
@@ -1901,6 +2077,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) {
@@ -1917,7 +2094,7 @@ void main() {
         cubit.sendMessage(text: "second", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
       );
       await Future<void>.delayed(Duration.zero);
-      final firstPromptId = (cubit.state as SessionDetailLoaded).sendingSubmission?.promptId;
+      final firstPromptId = _sendingOf(state: cubit.state as SessionDetailLoaded)?.promptId;
       expect(firstPromptId, isNotNull);
 
       // The first send's response was lost, but its message lands via SSE:
@@ -1954,6 +2131,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => sendCompleter.future);
@@ -1968,7 +2146,7 @@ void main() {
         cubit.sendMessage(text: "steer it", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
       );
       await Future<void>.delayed(Duration.zero);
-      final promptId = (cubit.state as SessionDetailLoaded).sendingSubmission?.promptId;
+      final promptId = _sendingOf(state: cubit.state as SessionDetailLoaded)?.promptId;
       expect(promptId, isNotNull);
 
       // Accepted by the bridge while the response is still in flight...
@@ -1995,7 +2173,7 @@ void main() {
       final state = cubit.state as SessionDetailLoaded;
       expect(state.bridgeQueuedPrompts, isEmpty);
       expect(state.queuedMessages, isEmpty, reason: "the cancelled prompt must not requeue locally");
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       verify(
         () => mockSessionRepository.sendMessage(
           sessionId: _sessionId,
@@ -2005,6 +2183,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).called(1);
@@ -2023,6 +2202,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((invocation) {
@@ -2039,7 +2219,7 @@ void main() {
         cubit.sendMessage(text: "second", command: null, inputMode: ComposerInputMode.typed, attachments: const []),
       );
       await Future<void>.delayed(Duration.zero);
-      final promptId = (cubit.state as SessionDetailLoaded).sendingSubmission?.promptId;
+      final promptId = _sendingOf(state: cubit.state as SessionDetailLoaded)?.promptId;
       expect(promptId, isNotNull);
 
       // The prompt already dispatched: its message arrives (queue no longer
@@ -2057,7 +2237,7 @@ void main() {
       );
       sessionEvents.add(_textPartFor(messageId: "echo-1", text: "first"));
       await Future<void>.delayed(Duration.zero);
-      expect((cubit.state as SessionDetailLoaded).sendingSubmission, isNull);
+      expect(_sendingOf(state: cubit.state as SessionDetailLoaded), isNull);
       firstSend.completeError(Exception("response lost"));
       await Future<void>.delayed(Duration.zero);
       await Future<void>.delayed(Duration.zero);
@@ -2065,7 +2245,7 @@ void main() {
       expect(laterSends, ["second"], reason: "the staged send behind the settled one must dispatch");
       final state = cubit.state as SessionDetailLoaded;
       expect(state.queuedMessages, isEmpty);
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
     });
 
     test("abort drops locally staged sends", () async {
@@ -2085,6 +2265,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => sendCompleter.future);
@@ -2102,7 +2283,7 @@ void main() {
 
       final state = cubit.state as SessionDetailLoaded;
       expect(state.queuedMessages, isEmpty);
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       sendCompleter.complete(ApiResponse.success(null));
     });
   });
@@ -2115,3 +2296,13 @@ Future<void> _awaitCondition(bool Function() condition) async {
   }
   fail("Timed out waiting for condition");
 }
+
+QueuedSessionSubmission? _sendingOf({required SessionDetailLoaded state}) => switch (state.localSend) {
+  LocalSendSending(:final submission) => submission,
+  LocalSendIdle() || LocalSendFailed() => null,
+};
+
+QueuedSessionSubmission? _failedOf({required SessionDetailLoaded state}) => switch (state.localSend) {
+  LocalSendFailed(:final submission) => submission,
+  LocalSendIdle() || LocalSendSending() => null,
+};

@@ -34,6 +34,7 @@ void main() {
       required String branchName,
     }) async {
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: "opencode",
         preservePullRequestScope: false,
         sessionId: sessionId,

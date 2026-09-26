@@ -9,6 +9,7 @@ import "codex_sub_agent_tracker.dart";
 import "codex_tool_lifecycle_tracker.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
 import "mappers/codex_session_mapper.dart";
+import "mappers/codex_tool_kind_mapper.dart";
 import "mappers/codex_tool_part_mapper.dart";
 import "mappers/codex_user_content_mapper.dart";
 import "models/codex_projected_tool.dart";
@@ -569,22 +570,20 @@ class CodexMessageRepository({
           continue;
         case CodexRolloutInterAgentCommunicationMetadataLineDto():
           continue;
-        case CodexRolloutCompactedLineDto(:final timestamp):
+        case CodexRolloutCompactedLineDto(:final timestamp, :final summary):
           messageCounter += 1;
           final messageId = "codex-compaction-$messageCounter";
           messages.add(
-            _toolMessage(
-              messageId: messageId,
-              sessionId: sessionId,
-              info: assistantInfo(
-                id: messageId,
-                time: _messageTimeFrom(timestamp),
-              ),
-              tool: "compact",
-              title: null,
-              status: PluginToolStatus.completed,
-              output: null,
-              attachments: const [],
+            PluginMessageWithParts(
+              info: assistantInfo(id: messageId, time: _messageTimeFrom(timestamp)),
+              parts: [
+                PluginMessagePart.compaction(
+                  id: "$messageId-tool",
+                  sessionID: sessionId,
+                  messageID: messageId,
+                  summary: summary,
+                ),
+              ],
             ),
           );
           continue;
@@ -839,6 +838,7 @@ class CodexMessageRepository({
           sessionID: sessionId,
           messageID: messageId,
           tool: tool,
+          kind: CodexToolKindMapper.map(tool: tool),
           state: PluginToolState(
             status: status,
             title: title,

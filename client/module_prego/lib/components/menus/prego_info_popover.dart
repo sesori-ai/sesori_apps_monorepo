@@ -30,6 +30,9 @@ class const PregoInfoPopover({
   Widget build(BuildContext context) {
     return PregoPopover(
       popoverWidth: popoverWidth,
+      popoverMaxHeight: null,
+      contentScrolls: false,
+      onClosed: null,
       popoverBorderRadius: 20,
       triggerBuilder: triggerBuilder,
       // A single free-form text block instead of tappable rows: the popover is

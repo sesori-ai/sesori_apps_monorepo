@@ -5,6 +5,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/session_continuation_test_support.dart";
 import "routing_test_helpers.dart";
 
 void main() {
@@ -19,6 +20,9 @@ void main() {
       final dispatcher = SessionOperationDispatcher(sessionRepository: repository);
       addTearDown(dispatcher.dispose);
       sessionAbortService = SessionAbortService(
+        continuations: const EmptySessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         sessionRepository: repository,
         dispatcher: dispatcher,
       );

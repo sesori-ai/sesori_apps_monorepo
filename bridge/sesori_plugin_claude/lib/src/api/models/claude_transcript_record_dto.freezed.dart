@@ -17,10 +17,12 @@ T _$identity<T>(T value) => value;
 mixin _$ClaudeTranscriptRecordDto {
 
 @JsonKey(fromJson: _stringOrNull) String? get type;@JsonKey(fromJson: _stringOrNull) String? get sessionId;@JsonKey(fromJson: _stringOrNull) String? get cwd;@JsonKey(fromJson: _timestampOrNull) DateTime? get timestamp;@JsonKey(fromJson: _boolOrNull) bool? get isSidechain;/// The sub-agent that wrote the record; null on a root session's records.
-@JsonKey(fromJson: _stringOrNull) String? get agentId;@JsonKey(fromJson: _stringOrNull) String? get gitBranch;@JsonKey(fromJson: _stringOrNull) String? get version;@JsonKey(fromJson: _stringOrNull) String? get aiTitle;@JsonKey(fromJson: _stringOrNull) String? get uuid;@JsonKey(fromJson: _boolOrNull) bool? get isMeta;@JsonKey(fromJson: _boolOrNull) bool? get isVisibleInTranscriptOnly;@JsonKey(fromJson: _boolOrNull) bool? get isApiErrorMessage;@JsonKey(fromJson: _intOrNull) int? get apiErrorStatus;@JsonKey(fromJson: _stringOrNull) String? get effort;@JsonKey(fromJson: _messageOrNull) ClaudeTranscriptMessageDto? get message;/// The typed result persisted beside a `user` record's tool result.
-@JsonKey(fromJson: ClaudeToolUseResult.parse) ClaudeToolUseResult get toolUseResult;/// `origin.kind`: how the CLI injected a `user` record that the user did
-/// not author, e.g. `task-notification`.
-@JsonKey(name: "origin", fromJson: _originKindOrNull) String? get originKind;
+@JsonKey(fromJson: _stringOrNull) String? get agentId;@JsonKey(fromJson: _stringOrNull) String? get gitBranch;@JsonKey(fromJson: _stringOrNull) String? get version;@JsonKey(fromJson: _stringOrNull) String? get aiTitle;@JsonKey(fromJson: _stringOrNull) String? get uuid;@JsonKey(fromJson: _boolOrNull) bool? get isMeta;@JsonKey(fromJson: _boolOrNull) bool? get isVisibleInTranscriptOnly;/// Marks the continuation summary the CLI injects after a compaction.
+@JsonKey(fromJson: _boolOrNull) bool? get isCompactSummary;@JsonKey(fromJson: _boolOrNull) bool? get isApiErrorMessage;@JsonKey(fromJson: _intOrNull) int? get apiErrorStatus;@JsonKey(fromJson: _stringOrNull) String? get effort;@JsonKey(fromJson: _messageOrNull) ClaudeTranscriptMessageDto? get message;/// The typed result persisted beside a `user` record's tool result.
+@JsonKey(fromJson: ClaudeToolUseResult.parse) ClaudeToolUseResult get toolUseResult;/// Host-stamped provenance, independent of the record's `user` role.
+/// Unknown provenance never promotes ordinary user input to automation.
+@JsonKey(name: "origin", fromJson: _originKind) ClaudeMessageOriginKind get originKind;/// The payload of an `attachment` record.
+@JsonKey(fromJson: _attachmentOrNull) ClaudeTranscriptAttachmentDto? get attachment;
 /// Create a copy of ClaudeTranscriptRecordDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -32,14 +34,14 @@ $ClaudeTranscriptRecordDtoCopyWith<ClaudeTranscriptRecordDto> get copyWith => _$
 @override
 bool operator ==(Object other) {
   final _this = this as ClaudeTranscriptRecordDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeTranscriptRecordDto&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.cwd, _this.cwd) || other.cwd == _this.cwd)&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp)&&(identical(other.isSidechain, _this.isSidechain) || other.isSidechain == _this.isSidechain)&&(identical(other.agentId, _this.agentId) || other.agentId == _this.agentId)&&(identical(other.gitBranch, _this.gitBranch) || other.gitBranch == _this.gitBranch)&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.aiTitle, _this.aiTitle) || other.aiTitle == _this.aiTitle)&&(identical(other.uuid, _this.uuid) || other.uuid == _this.uuid)&&(identical(other.isMeta, _this.isMeta) || other.isMeta == _this.isMeta)&&(identical(other.isVisibleInTranscriptOnly, _this.isVisibleInTranscriptOnly) || other.isVisibleInTranscriptOnly == _this.isVisibleInTranscriptOnly)&&(identical(other.isApiErrorMessage, _this.isApiErrorMessage) || other.isApiErrorMessage == _this.isApiErrorMessage)&&(identical(other.apiErrorStatus, _this.apiErrorStatus) || other.apiErrorStatus == _this.apiErrorStatus)&&(identical(other.effort, _this.effort) || other.effort == _this.effort)&&(identical(other.message, _this.message) || other.message == _this.message)&&(identical(other.toolUseResult, _this.toolUseResult) || other.toolUseResult == _this.toolUseResult)&&(identical(other.originKind, _this.originKind) || other.originKind == _this.originKind));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeTranscriptRecordDto&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.cwd, _this.cwd) || other.cwd == _this.cwd)&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp)&&(identical(other.isSidechain, _this.isSidechain) || other.isSidechain == _this.isSidechain)&&(identical(other.agentId, _this.agentId) || other.agentId == _this.agentId)&&(identical(other.gitBranch, _this.gitBranch) || other.gitBranch == _this.gitBranch)&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.aiTitle, _this.aiTitle) || other.aiTitle == _this.aiTitle)&&(identical(other.uuid, _this.uuid) || other.uuid == _this.uuid)&&(identical(other.isMeta, _this.isMeta) || other.isMeta == _this.isMeta)&&(identical(other.isVisibleInTranscriptOnly, _this.isVisibleInTranscriptOnly) || other.isVisibleInTranscriptOnly == _this.isVisibleInTranscriptOnly)&&(identical(other.isCompactSummary, _this.isCompactSummary) || other.isCompactSummary == _this.isCompactSummary)&&(identical(other.isApiErrorMessage, _this.isApiErrorMessage) || other.isApiErrorMessage == _this.isApiErrorMessage)&&(identical(other.apiErrorStatus, _this.apiErrorStatus) || other.apiErrorStatus == _this.apiErrorStatus)&&(identical(other.effort, _this.effort) || other.effort == _this.effort)&&(identical(other.message, _this.message) || other.message == _this.message)&&(identical(other.toolUseResult, _this.toolUseResult) || other.toolUseResult == _this.toolUseResult)&&(identical(other.originKind, _this.originKind) || other.originKind == _this.originKind)&&(identical(other.attachment, _this.attachment) || other.attachment == _this.attachment));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as ClaudeTranscriptRecordDto;
-  return Object.hash(runtimeType,_this.type,_this.sessionId,_this.cwd,_this.timestamp,_this.isSidechain,_this.agentId,_this.gitBranch,_this.version,_this.aiTitle,_this.uuid,_this.isMeta,_this.isVisibleInTranscriptOnly,_this.isApiErrorMessage,_this.apiErrorStatus,_this.effort,_this.message,_this.toolUseResult,_this.originKind);
+  return Object.hashAll([runtimeType,_this.type,_this.sessionId,_this.cwd,_this.timestamp,_this.isSidechain,_this.agentId,_this.gitBranch,_this.version,_this.aiTitle,_this.uuid,_this.isMeta,_this.isVisibleInTranscriptOnly,_this.isCompactSummary,_this.isApiErrorMessage,_this.apiErrorStatus,_this.effort,_this.message,_this.toolUseResult,_this.originKind,_this.attachment]);
 }
 
 
@@ -51,11 +53,11 @@ abstract mixin class $ClaudeTranscriptRecordDtoCopyWith<$Res>  {
   factory $ClaudeTranscriptRecordDtoCopyWith(ClaudeTranscriptRecordDto value, $Res Function(ClaudeTranscriptRecordDto) _then) = _$ClaudeTranscriptRecordDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(fromJson: _stringOrNull) String? type,@JsonKey(fromJson: _stringOrNull) String? sessionId,@JsonKey(fromJson: _stringOrNull) String? cwd,@JsonKey(fromJson: _timestampOrNull) DateTime? timestamp,@JsonKey(fromJson: _boolOrNull) bool? isSidechain,@JsonKey(fromJson: _stringOrNull) String? agentId,@JsonKey(fromJson: _stringOrNull) String? gitBranch,@JsonKey(fromJson: _stringOrNull) String? version,@JsonKey(fromJson: _stringOrNull) String? aiTitle,@JsonKey(fromJson: _stringOrNull) String? uuid,@JsonKey(fromJson: _boolOrNull) bool? isMeta,@JsonKey(fromJson: _boolOrNull) bool? isVisibleInTranscriptOnly,@JsonKey(fromJson: _boolOrNull) bool? isApiErrorMessage,@JsonKey(fromJson: _intOrNull) int? apiErrorStatus,@JsonKey(fromJson: _stringOrNull) String? effort,@JsonKey(fromJson: _messageOrNull) ClaudeTranscriptMessageDto? message,@JsonKey(fromJson: ClaudeToolUseResult.parse) ClaudeToolUseResult toolUseResult,@JsonKey(name: "origin", fromJson: _originKindOrNull) String? originKind
+@JsonKey(fromJson: _stringOrNull) String? type,@JsonKey(fromJson: _stringOrNull) String? sessionId,@JsonKey(fromJson: _stringOrNull) String? cwd,@JsonKey(fromJson: _timestampOrNull) DateTime? timestamp,@JsonKey(fromJson: _boolOrNull) bool? isSidechain,@JsonKey(fromJson: _stringOrNull) String? agentId,@JsonKey(fromJson: _stringOrNull) String? gitBranch,@JsonKey(fromJson: _stringOrNull) String? version,@JsonKey(fromJson: _stringOrNull) String? aiTitle,@JsonKey(fromJson: _stringOrNull) String? uuid,@JsonKey(fromJson: _boolOrNull) bool? isMeta,@JsonKey(fromJson: _boolOrNull) bool? isVisibleInTranscriptOnly,@JsonKey(fromJson: _boolOrNull) bool? isCompactSummary,@JsonKey(fromJson: _boolOrNull) bool? isApiErrorMessage,@JsonKey(fromJson: _intOrNull) int? apiErrorStatus,@JsonKey(fromJson: _stringOrNull) String? effort,@JsonKey(fromJson: _messageOrNull) ClaudeTranscriptMessageDto? message,@JsonKey(fromJson: ClaudeToolUseResult.parse) ClaudeToolUseResult toolUseResult,@JsonKey(name: "origin", fromJson: _originKind) ClaudeMessageOriginKind originKind,@JsonKey(fromJson: _attachmentOrNull) ClaudeTranscriptAttachmentDto? attachment
 });
 
 
-$ClaudeTranscriptMessageDtoCopyWith<$Res>? get message;
+$ClaudeTranscriptMessageDtoCopyWith<$Res>? get message;$ClaudeTranscriptAttachmentDtoCopyWith<$Res>? get attachment;
 
 }
 /// @nodoc
@@ -68,7 +70,7 @@ class _$ClaudeTranscriptRecordDtoCopyWithImpl<$Res>
 
 /// Create a copy of ClaudeTranscriptRecordDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? type = freezed,Object? sessionId = freezed,Object? cwd = freezed,Object? timestamp = freezed,Object? isSidechain = freezed,Object? agentId = freezed,Object? gitBranch = freezed,Object? version = freezed,Object? aiTitle = freezed,Object? uuid = freezed,Object? isMeta = freezed,Object? isVisibleInTranscriptOnly = freezed,Object? isApiErrorMessage = freezed,Object? apiErrorStatus = freezed,Object? effort = freezed,Object? message = freezed,Object? toolUseResult = null,Object? originKind = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? type = freezed,Object? sessionId = freezed,Object? cwd = freezed,Object? timestamp = freezed,Object? isSidechain = freezed,Object? agentId = freezed,Object? gitBranch = freezed,Object? version = freezed,Object? aiTitle = freezed,Object? uuid = freezed,Object? isMeta = freezed,Object? isVisibleInTranscriptOnly = freezed,Object? isCompactSummary = freezed,Object? isApiErrorMessage = freezed,Object? apiErrorStatus = freezed,Object? effort = freezed,Object? message = freezed,Object? toolUseResult = null,Object? originKind = null,Object? attachment = freezed,}) {
   return _then(ClaudeTranscriptRecordDto(
 type: freezed == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String?,sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
@@ -82,13 +84,15 @@ as String?,aiTitle: freezed == aiTitle ? _self.aiTitle : aiTitle // ignore: cast
 as String?,uuid: freezed == uuid ? _self.uuid : uuid // ignore: cast_nullable_to_non_nullable
 as String?,isMeta: freezed == isMeta ? _self.isMeta : isMeta // ignore: cast_nullable_to_non_nullable
 as bool?,isVisibleInTranscriptOnly: freezed == isVisibleInTranscriptOnly ? _self.isVisibleInTranscriptOnly : isVisibleInTranscriptOnly // ignore: cast_nullable_to_non_nullable
+as bool?,isCompactSummary: freezed == isCompactSummary ? _self.isCompactSummary : isCompactSummary // ignore: cast_nullable_to_non_nullable
 as bool?,isApiErrorMessage: freezed == isApiErrorMessage ? _self.isApiErrorMessage : isApiErrorMessage // ignore: cast_nullable_to_non_nullable
 as bool?,apiErrorStatus: freezed == apiErrorStatus ? _self.apiErrorStatus : apiErrorStatus // ignore: cast_nullable_to_non_nullable
 as int?,effort: freezed == effort ? _self.effort : effort // ignore: cast_nullable_to_non_nullable
 as String?,message: freezed == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as ClaudeTranscriptMessageDto?,toolUseResult: null == toolUseResult ? _self.toolUseResult : toolUseResult // ignore: cast_nullable_to_non_nullable
-as ClaudeToolUseResult,originKind: freezed == originKind ? _self.originKind : originKind // ignore: cast_nullable_to_non_nullable
-as String?,
+as ClaudeToolUseResult,originKind: null == originKind ? _self.originKind : originKind // ignore: cast_nullable_to_non_nullable
+as ClaudeMessageOriginKind,attachment: freezed == attachment ? _self.attachment : attachment // ignore: cast_nullable_to_non_nullable
+as ClaudeTranscriptAttachmentDto?,
   ));
 }
 /// Create a copy of ClaudeTranscriptRecordDto
@@ -103,6 +107,18 @@ $ClaudeTranscriptMessageDtoCopyWith<$Res>? get message {
   return $ClaudeTranscriptMessageDtoCopyWith<$Res>(_self.message!, (value) {
     return _then(_self.copyWith(message: value));
   });
+}/// Create a copy of ClaudeTranscriptRecordDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ClaudeTranscriptAttachmentDtoCopyWith<$Res>? get attachment {
+    if (_self.attachment == null) {
+    return null;
+  }
+
+  return $ClaudeTranscriptAttachmentDtoCopyWith<$Res>(_self.attachment!, (value) {
+    return _then(_self.copyWith(attachment: value));
+  });
 }
 }
 
@@ -112,7 +128,7 @@ $ClaudeTranscriptMessageDtoCopyWith<$Res>? get message {
 @JsonSerializable(createToJson: false)
 
 class _ClaudeTranscriptRecordDto implements ClaudeTranscriptRecordDto {
-  const _ClaudeTranscriptRecordDto({@JsonKey(fromJson: _stringOrNull) required this.type, @JsonKey(fromJson: _stringOrNull) required this.sessionId, @JsonKey(fromJson: _stringOrNull) required this.cwd, @JsonKey(fromJson: _timestampOrNull) required this.timestamp, @JsonKey(fromJson: _boolOrNull) required this.isSidechain, @JsonKey(fromJson: _stringOrNull) required this.agentId, @JsonKey(fromJson: _stringOrNull) required this.gitBranch, @JsonKey(fromJson: _stringOrNull) required this.version, @JsonKey(fromJson: _stringOrNull) required this.aiTitle, @JsonKey(fromJson: _stringOrNull) required this.uuid, @JsonKey(fromJson: _boolOrNull) required this.isMeta, @JsonKey(fromJson: _boolOrNull) required this.isVisibleInTranscriptOnly, @JsonKey(fromJson: _boolOrNull) required this.isApiErrorMessage, @JsonKey(fromJson: _intOrNull) required this.apiErrorStatus, @JsonKey(fromJson: _stringOrNull) required this.effort, @JsonKey(fromJson: _messageOrNull) required this.message, @JsonKey(fromJson: ClaudeToolUseResult.parse) required this.toolUseResult, @JsonKey(name: "origin", fromJson: _originKindOrNull) required this.originKind});
+  const _ClaudeTranscriptRecordDto({@JsonKey(fromJson: _stringOrNull) required this.type, @JsonKey(fromJson: _stringOrNull) required this.sessionId, @JsonKey(fromJson: _stringOrNull) required this.cwd, @JsonKey(fromJson: _timestampOrNull) required this.timestamp, @JsonKey(fromJson: _boolOrNull) required this.isSidechain, @JsonKey(fromJson: _stringOrNull) required this.agentId, @JsonKey(fromJson: _stringOrNull) required this.gitBranch, @JsonKey(fromJson: _stringOrNull) required this.version, @JsonKey(fromJson: _stringOrNull) required this.aiTitle, @JsonKey(fromJson: _stringOrNull) required this.uuid, @JsonKey(fromJson: _boolOrNull) required this.isMeta, @JsonKey(fromJson: _boolOrNull) required this.isVisibleInTranscriptOnly, @JsonKey(fromJson: _boolOrNull) required this.isCompactSummary, @JsonKey(fromJson: _boolOrNull) required this.isApiErrorMessage, @JsonKey(fromJson: _intOrNull) required this.apiErrorStatus, @JsonKey(fromJson: _stringOrNull) required this.effort, @JsonKey(fromJson: _messageOrNull) required this.message, @JsonKey(fromJson: ClaudeToolUseResult.parse) required this.toolUseResult, @JsonKey(name: "origin", fromJson: _originKind) required this.originKind, @JsonKey(fromJson: _attachmentOrNull) required this.attachment});
   factory _ClaudeTranscriptRecordDto.fromJson(Map<String, dynamic> json) => _$ClaudeTranscriptRecordDtoFromJson(json);
 
 @override@JsonKey(fromJson: _stringOrNull) final  String? type;
@@ -128,15 +144,19 @@ class _ClaudeTranscriptRecordDto implements ClaudeTranscriptRecordDto {
 @override@JsonKey(fromJson: _stringOrNull) final  String? uuid;
 @override@JsonKey(fromJson: _boolOrNull) final  bool? isMeta;
 @override@JsonKey(fromJson: _boolOrNull) final  bool? isVisibleInTranscriptOnly;
+/// Marks the continuation summary the CLI injects after a compaction.
+@override@JsonKey(fromJson: _boolOrNull) final  bool? isCompactSummary;
 @override@JsonKey(fromJson: _boolOrNull) final  bool? isApiErrorMessage;
 @override@JsonKey(fromJson: _intOrNull) final  int? apiErrorStatus;
 @override@JsonKey(fromJson: _stringOrNull) final  String? effort;
 @override@JsonKey(fromJson: _messageOrNull) final  ClaudeTranscriptMessageDto? message;
 /// The typed result persisted beside a `user` record's tool result.
 @override@JsonKey(fromJson: ClaudeToolUseResult.parse) final  ClaudeToolUseResult toolUseResult;
-/// `origin.kind`: how the CLI injected a `user` record that the user did
-/// not author, e.g. `task-notification`.
-@override@JsonKey(name: "origin", fromJson: _originKindOrNull) final  String? originKind;
+/// Host-stamped provenance, independent of the record's `user` role.
+/// Unknown provenance never promotes ordinary user input to automation.
+@override@JsonKey(name: "origin", fromJson: _originKind) final  ClaudeMessageOriginKind originKind;
+/// The payload of an `attachment` record.
+@override@JsonKey(fromJson: _attachmentOrNull) final  ClaudeTranscriptAttachmentDto? attachment;
 
 /// Create a copy of ClaudeTranscriptRecordDto
 /// with the given fields replaced by the non-null parameter values.
@@ -148,13 +168,13 @@ _$ClaudeTranscriptRecordDtoCopyWith<_ClaudeTranscriptRecordDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeTranscriptRecordDto&&(identical(other.type, type) || other.type == type)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.isSidechain, isSidechain) || other.isSidechain == isSidechain)&&(identical(other.agentId, agentId) || other.agentId == agentId)&&(identical(other.gitBranch, gitBranch) || other.gitBranch == gitBranch)&&(identical(other.version, version) || other.version == version)&&(identical(other.aiTitle, aiTitle) || other.aiTitle == aiTitle)&&(identical(other.uuid, uuid) || other.uuid == uuid)&&(identical(other.isMeta, isMeta) || other.isMeta == isMeta)&&(identical(other.isVisibleInTranscriptOnly, isVisibleInTranscriptOnly) || other.isVisibleInTranscriptOnly == isVisibleInTranscriptOnly)&&(identical(other.isApiErrorMessage, isApiErrorMessage) || other.isApiErrorMessage == isApiErrorMessage)&&(identical(other.apiErrorStatus, apiErrorStatus) || other.apiErrorStatus == apiErrorStatus)&&(identical(other.effort, effort) || other.effort == effort)&&(identical(other.message, message) || other.message == message)&&(identical(other.toolUseResult, toolUseResult) || other.toolUseResult == toolUseResult)&&(identical(other.originKind, originKind) || other.originKind == originKind));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeTranscriptRecordDto&&(identical(other.type, type) || other.type == type)&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.isSidechain, isSidechain) || other.isSidechain == isSidechain)&&(identical(other.agentId, agentId) || other.agentId == agentId)&&(identical(other.gitBranch, gitBranch) || other.gitBranch == gitBranch)&&(identical(other.version, version) || other.version == version)&&(identical(other.aiTitle, aiTitle) || other.aiTitle == aiTitle)&&(identical(other.uuid, uuid) || other.uuid == uuid)&&(identical(other.isMeta, isMeta) || other.isMeta == isMeta)&&(identical(other.isVisibleInTranscriptOnly, isVisibleInTranscriptOnly) || other.isVisibleInTranscriptOnly == isVisibleInTranscriptOnly)&&(identical(other.isCompactSummary, isCompactSummary) || other.isCompactSummary == isCompactSummary)&&(identical(other.isApiErrorMessage, isApiErrorMessage) || other.isApiErrorMessage == isApiErrorMessage)&&(identical(other.apiErrorStatus, apiErrorStatus) || other.apiErrorStatus == apiErrorStatus)&&(identical(other.effort, effort) || other.effort == effort)&&(identical(other.message, message) || other.message == message)&&(identical(other.toolUseResult, toolUseResult) || other.toolUseResult == toolUseResult)&&(identical(other.originKind, originKind) || other.originKind == originKind)&&(identical(other.attachment, attachment) || other.attachment == attachment));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,type,sessionId,cwd,timestamp,isSidechain,agentId,gitBranch,version,aiTitle,uuid,isMeta,isVisibleInTranscriptOnly,isApiErrorMessage,apiErrorStatus,effort,message,toolUseResult,originKind);
+    return Object.hashAll([runtimeType,type,sessionId,cwd,timestamp,isSidechain,agentId,gitBranch,version,aiTitle,uuid,isMeta,isVisibleInTranscriptOnly,isCompactSummary,isApiErrorMessage,apiErrorStatus,effort,message,toolUseResult,originKind,attachment]);
 }
 
 
@@ -166,11 +186,11 @@ abstract mixin class _$ClaudeTranscriptRecordDtoCopyWith<$Res> implements $Claud
   factory _$ClaudeTranscriptRecordDtoCopyWith(_ClaudeTranscriptRecordDto value, $Res Function(_ClaudeTranscriptRecordDto) _then) = __$ClaudeTranscriptRecordDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(fromJson: _stringOrNull) String? type,@JsonKey(fromJson: _stringOrNull) String? sessionId,@JsonKey(fromJson: _stringOrNull) String? cwd,@JsonKey(fromJson: _timestampOrNull) DateTime? timestamp,@JsonKey(fromJson: _boolOrNull) bool? isSidechain,@JsonKey(fromJson: _stringOrNull) String? agentId,@JsonKey(fromJson: _stringOrNull) String? gitBranch,@JsonKey(fromJson: _stringOrNull) String? version,@JsonKey(fromJson: _stringOrNull) String? aiTitle,@JsonKey(fromJson: _stringOrNull) String? uuid,@JsonKey(fromJson: _boolOrNull) bool? isMeta,@JsonKey(fromJson: _boolOrNull) bool? isVisibleInTranscriptOnly,@JsonKey(fromJson: _boolOrNull) bool? isApiErrorMessage,@JsonKey(fromJson: _intOrNull) int? apiErrorStatus,@JsonKey(fromJson: _stringOrNull) String? effort,@JsonKey(fromJson: _messageOrNull) ClaudeTranscriptMessageDto? message,@JsonKey(fromJson: ClaudeToolUseResult.parse) ClaudeToolUseResult toolUseResult,@JsonKey(name: "origin", fromJson: _originKindOrNull) String? originKind
+@JsonKey(fromJson: _stringOrNull) String? type,@JsonKey(fromJson: _stringOrNull) String? sessionId,@JsonKey(fromJson: _stringOrNull) String? cwd,@JsonKey(fromJson: _timestampOrNull) DateTime? timestamp,@JsonKey(fromJson: _boolOrNull) bool? isSidechain,@JsonKey(fromJson: _stringOrNull) String? agentId,@JsonKey(fromJson: _stringOrNull) String? gitBranch,@JsonKey(fromJson: _stringOrNull) String? version,@JsonKey(fromJson: _stringOrNull) String? aiTitle,@JsonKey(fromJson: _stringOrNull) String? uuid,@JsonKey(fromJson: _boolOrNull) bool? isMeta,@JsonKey(fromJson: _boolOrNull) bool? isVisibleInTranscriptOnly,@JsonKey(fromJson: _boolOrNull) bool? isCompactSummary,@JsonKey(fromJson: _boolOrNull) bool? isApiErrorMessage,@JsonKey(fromJson: _intOrNull) int? apiErrorStatus,@JsonKey(fromJson: _stringOrNull) String? effort,@JsonKey(fromJson: _messageOrNull) ClaudeTranscriptMessageDto? message,@JsonKey(fromJson: ClaudeToolUseResult.parse) ClaudeToolUseResult toolUseResult,@JsonKey(name: "origin", fromJson: _originKind) ClaudeMessageOriginKind originKind,@JsonKey(fromJson: _attachmentOrNull) ClaudeTranscriptAttachmentDto? attachment
 });
 
 
-@override $ClaudeTranscriptMessageDtoCopyWith<$Res>? get message;
+@override $ClaudeTranscriptMessageDtoCopyWith<$Res>? get message;@override $ClaudeTranscriptAttachmentDtoCopyWith<$Res>? get attachment;
 
 }
 /// @nodoc
@@ -183,7 +203,7 @@ class __$ClaudeTranscriptRecordDtoCopyWithImpl<$Res>
 
 /// Create a copy of ClaudeTranscriptRecordDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? type = freezed,Object? sessionId = freezed,Object? cwd = freezed,Object? timestamp = freezed,Object? isSidechain = freezed,Object? agentId = freezed,Object? gitBranch = freezed,Object? version = freezed,Object? aiTitle = freezed,Object? uuid = freezed,Object? isMeta = freezed,Object? isVisibleInTranscriptOnly = freezed,Object? isApiErrorMessage = freezed,Object? apiErrorStatus = freezed,Object? effort = freezed,Object? message = freezed,Object? toolUseResult = null,Object? originKind = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? type = freezed,Object? sessionId = freezed,Object? cwd = freezed,Object? timestamp = freezed,Object? isSidechain = freezed,Object? agentId = freezed,Object? gitBranch = freezed,Object? version = freezed,Object? aiTitle = freezed,Object? uuid = freezed,Object? isMeta = freezed,Object? isVisibleInTranscriptOnly = freezed,Object? isCompactSummary = freezed,Object? isApiErrorMessage = freezed,Object? apiErrorStatus = freezed,Object? effort = freezed,Object? message = freezed,Object? toolUseResult = null,Object? originKind = null,Object? attachment = freezed,}) {
   return _then(_ClaudeTranscriptRecordDto(
 type: freezed == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
 as String?,sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
@@ -197,13 +217,15 @@ as String?,aiTitle: freezed == aiTitle ? _self.aiTitle : aiTitle // ignore: cast
 as String?,uuid: freezed == uuid ? _self.uuid : uuid // ignore: cast_nullable_to_non_nullable
 as String?,isMeta: freezed == isMeta ? _self.isMeta : isMeta // ignore: cast_nullable_to_non_nullable
 as bool?,isVisibleInTranscriptOnly: freezed == isVisibleInTranscriptOnly ? _self.isVisibleInTranscriptOnly : isVisibleInTranscriptOnly // ignore: cast_nullable_to_non_nullable
+as bool?,isCompactSummary: freezed == isCompactSummary ? _self.isCompactSummary : isCompactSummary // ignore: cast_nullable_to_non_nullable
 as bool?,isApiErrorMessage: freezed == isApiErrorMessage ? _self.isApiErrorMessage : isApiErrorMessage // ignore: cast_nullable_to_non_nullable
 as bool?,apiErrorStatus: freezed == apiErrorStatus ? _self.apiErrorStatus : apiErrorStatus // ignore: cast_nullable_to_non_nullable
 as int?,effort: freezed == effort ? _self.effort : effort // ignore: cast_nullable_to_non_nullable
 as String?,message: freezed == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as ClaudeTranscriptMessageDto?,toolUseResult: null == toolUseResult ? _self.toolUseResult : toolUseResult // ignore: cast_nullable_to_non_nullable
-as ClaudeToolUseResult,originKind: freezed == originKind ? _self.originKind : originKind // ignore: cast_nullable_to_non_nullable
-as String?,
+as ClaudeToolUseResult,originKind: null == originKind ? _self.originKind : originKind // ignore: cast_nullable_to_non_nullable
+as ClaudeMessageOriginKind,attachment: freezed == attachment ? _self.attachment : attachment // ignore: cast_nullable_to_non_nullable
+as ClaudeTranscriptAttachmentDto?,
   ));
 }
 
@@ -219,7 +241,163 @@ $ClaudeTranscriptMessageDtoCopyWith<$Res>? get message {
   return $ClaudeTranscriptMessageDtoCopyWith<$Res>(_self.message!, (value) {
     return _then(_self.copyWith(message: value));
   });
+}/// Create a copy of ClaudeTranscriptRecordDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ClaudeTranscriptAttachmentDtoCopyWith<$Res>? get attachment {
+    if (_self.attachment == null) {
+    return null;
+  }
+
+  return $ClaudeTranscriptAttachmentDtoCopyWith<$Res>(_self.attachment!, (value) {
+    return _then(_self.copyWith(attachment: value));
+  });
 }
+}
+
+
+/// @nodoc
+mixin _$ClaudeTranscriptAttachmentDto {
+
+@JsonKey(fromJson: _stringOrNull) String? get type;/// The queued content: a string or content blocks, like a user message's.
+ Object? get prompt;@JsonKey(fromJson: _stringOrNull) String? get commandMode;/// The id the live stream gave the command; older CLIs omit it.
+@JsonKey(name: "source_uuid", fromJson: _stringOrNull) String? get sourceUuid;@JsonKey(fromJson: _boolOrNull) bool? get isMeta;@JsonKey(name: "origin", fromJson: _originKind) ClaudeMessageOriginKind get originKind;
+/// Create a copy of ClaudeTranscriptAttachmentDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ClaudeTranscriptAttachmentDtoCopyWith<ClaudeTranscriptAttachmentDto> get copyWith => _$ClaudeTranscriptAttachmentDtoCopyWithImpl<ClaudeTranscriptAttachmentDto>(this as ClaudeTranscriptAttachmentDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as ClaudeTranscriptAttachmentDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeTranscriptAttachmentDto&&(identical(other.type, _this.type) || other.type == _this.type)&&const DeepCollectionEquality().equals(other.prompt, _this.prompt)&&(identical(other.commandMode, _this.commandMode) || other.commandMode == _this.commandMode)&&(identical(other.sourceUuid, _this.sourceUuid) || other.sourceUuid == _this.sourceUuid)&&(identical(other.isMeta, _this.isMeta) || other.isMeta == _this.isMeta)&&(identical(other.originKind, _this.originKind) || other.originKind == _this.originKind));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as ClaudeTranscriptAttachmentDto;
+  return Object.hash(runtimeType,_this.type,const DeepCollectionEquality().hash(_this.prompt),_this.commandMode,_this.sourceUuid,_this.isMeta,_this.originKind);
+}
+
+
+
+}
+
+/// @nodoc
+abstract mixin class $ClaudeTranscriptAttachmentDtoCopyWith<$Res>  {
+  factory $ClaudeTranscriptAttachmentDtoCopyWith(ClaudeTranscriptAttachmentDto value, $Res Function(ClaudeTranscriptAttachmentDto) _then) = _$ClaudeTranscriptAttachmentDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(fromJson: _stringOrNull) String? type, Object? prompt,@JsonKey(fromJson: _stringOrNull) String? commandMode,@JsonKey(name: "source_uuid", fromJson: _stringOrNull) String? sourceUuid,@JsonKey(fromJson: _boolOrNull) bool? isMeta,@JsonKey(name: "origin", fromJson: _originKind) ClaudeMessageOriginKind originKind
+});
+
+
+
+
+}
+/// @nodoc
+class _$ClaudeTranscriptAttachmentDtoCopyWithImpl<$Res>
+    implements $ClaudeTranscriptAttachmentDtoCopyWith<$Res> {
+  _$ClaudeTranscriptAttachmentDtoCopyWithImpl(this._self, this._then);
+
+  final ClaudeTranscriptAttachmentDto _self;
+  final $Res Function(ClaudeTranscriptAttachmentDto) _then;
+
+/// Create a copy of ClaudeTranscriptAttachmentDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? type = freezed,Object? prompt = freezed,Object? commandMode = freezed,Object? sourceUuid = freezed,Object? isMeta = freezed,Object? originKind = null,}) {
+  return _then(ClaudeTranscriptAttachmentDto(
+type: freezed == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as String?,prompt: freezed == prompt ? _self.prompt : prompt ,commandMode: freezed == commandMode ? _self.commandMode : commandMode // ignore: cast_nullable_to_non_nullable
+as String?,sourceUuid: freezed == sourceUuid ? _self.sourceUuid : sourceUuid // ignore: cast_nullable_to_non_nullable
+as String?,isMeta: freezed == isMeta ? _self.isMeta : isMeta // ignore: cast_nullable_to_non_nullable
+as bool?,originKind: null == originKind ? _self.originKind : originKind // ignore: cast_nullable_to_non_nullable
+as ClaudeMessageOriginKind,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _ClaudeTranscriptAttachmentDto implements ClaudeTranscriptAttachmentDto {
+  const _ClaudeTranscriptAttachmentDto({@JsonKey(fromJson: _stringOrNull) required this.type, required this.prompt, @JsonKey(fromJson: _stringOrNull) required this.commandMode, @JsonKey(name: "source_uuid", fromJson: _stringOrNull) required this.sourceUuid, @JsonKey(fromJson: _boolOrNull) required this.isMeta, @JsonKey(name: "origin", fromJson: _originKind) required this.originKind});
+  factory _ClaudeTranscriptAttachmentDto.fromJson(Map<String, dynamic> json) => _$ClaudeTranscriptAttachmentDtoFromJson(json);
+
+@override@JsonKey(fromJson: _stringOrNull) final  String? type;
+/// The queued content: a string or content blocks, like a user message's.
+@override final  Object? prompt;
+@override@JsonKey(fromJson: _stringOrNull) final  String? commandMode;
+/// The id the live stream gave the command; older CLIs omit it.
+@override@JsonKey(name: "source_uuid", fromJson: _stringOrNull) final  String? sourceUuid;
+@override@JsonKey(fromJson: _boolOrNull) final  bool? isMeta;
+@override@JsonKey(name: "origin", fromJson: _originKind) final  ClaudeMessageOriginKind originKind;
+
+/// Create a copy of ClaudeTranscriptAttachmentDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$ClaudeTranscriptAttachmentDtoCopyWith<_ClaudeTranscriptAttachmentDto> get copyWith => __$ClaudeTranscriptAttachmentDtoCopyWithImpl<_ClaudeTranscriptAttachmentDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeTranscriptAttachmentDto&&(identical(other.type, type) || other.type == type)&&const DeepCollectionEquality().equals(other.prompt, prompt)&&(identical(other.commandMode, commandMode) || other.commandMode == commandMode)&&(identical(other.sourceUuid, sourceUuid) || other.sourceUuid == sourceUuid)&&(identical(other.isMeta, isMeta) || other.isMeta == isMeta)&&(identical(other.originKind, originKind) || other.originKind == originKind));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,type,const DeepCollectionEquality().hash(prompt),commandMode,sourceUuid,isMeta,originKind);
+}
+
+
+
+}
+
+/// @nodoc
+abstract mixin class _$ClaudeTranscriptAttachmentDtoCopyWith<$Res> implements $ClaudeTranscriptAttachmentDtoCopyWith<$Res> {
+  factory _$ClaudeTranscriptAttachmentDtoCopyWith(_ClaudeTranscriptAttachmentDto value, $Res Function(_ClaudeTranscriptAttachmentDto) _then) = __$ClaudeTranscriptAttachmentDtoCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(fromJson: _stringOrNull) String? type, Object? prompt,@JsonKey(fromJson: _stringOrNull) String? commandMode,@JsonKey(name: "source_uuid", fromJson: _stringOrNull) String? sourceUuid,@JsonKey(fromJson: _boolOrNull) bool? isMeta,@JsonKey(name: "origin", fromJson: _originKind) ClaudeMessageOriginKind originKind
+});
+
+
+
+
+}
+/// @nodoc
+class __$ClaudeTranscriptAttachmentDtoCopyWithImpl<$Res>
+    implements _$ClaudeTranscriptAttachmentDtoCopyWith<$Res> {
+  __$ClaudeTranscriptAttachmentDtoCopyWithImpl(this._self, this._then);
+
+  final _ClaudeTranscriptAttachmentDto _self;
+  final $Res Function(_ClaudeTranscriptAttachmentDto) _then;
+
+/// Create a copy of ClaudeTranscriptAttachmentDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? type = freezed,Object? prompt = freezed,Object? commandMode = freezed,Object? sourceUuid = freezed,Object? isMeta = freezed,Object? originKind = null,}) {
+  return _then(_ClaudeTranscriptAttachmentDto(
+type: freezed == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as String?,prompt: freezed == prompt ? _self.prompt : prompt ,commandMode: freezed == commandMode ? _self.commandMode : commandMode // ignore: cast_nullable_to_non_nullable
+as String?,sourceUuid: freezed == sourceUuid ? _self.sourceUuid : sourceUuid // ignore: cast_nullable_to_non_nullable
+as String?,isMeta: freezed == isMeta ? _self.isMeta : isMeta // ignore: cast_nullable_to_non_nullable
+as bool?,originKind: null == originKind ? _self.originKind : originKind // ignore: cast_nullable_to_non_nullable
+as ClaudeMessageOriginKind,
+  ));
+}
+
+
 }
 
 

@@ -1,25 +1,31 @@
+import "package:flutter/gestures.dart" show PointerDeviceKind;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/app.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
+import "package:theme_prego/module_prego.dart";
 
-class _InMemorySecureStorage() implements SecureStorage {
-  final Map<String, String> _values = <String, String>{};
-
-  @override
-  Future<String?> read({required String key}) async => _values[key];
-
-  @override
-  Future<void> write({required String key, required String value}) async => _values[key] = value;
+class _InMemorySecrets() implements SecureStorageRepository {
+  final Map<SecretStorageKey, String> _values = {};
 
   @override
-  Future<void> delete({required String key}) async => _values.remove(key);
+  Future<String?> read({required SecretStorageKey key}) async => _values[key];
+
+  @override
+  Future<void> write({required SecretStorageKey key, required String value}) async => _values[key] = value;
+
+  @override
+  Future<void> delete({required SecretStorageKey key}) async => _values.remove(key);
 }
+
+class _MockPersister() extends Mock implements PersisterRepository;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -33,17 +39,22 @@ void main() {
       router: desktopRouter,
       routerReady: desktopRouterReady,
     );
-    // The secure-storage plugin has no platform channel under flutter_test;
-    // swap in an in-memory fake so the gate's local-session check completes.
-    getIt.unregister<SecureStorage>();
-    getIt.registerLazySingleton<SecureStorage>(_InMemorySecureStorage.new);
+    // Keep widget behavior isolated from real application files/native keys.
+    getIt.unregister<SecureStorageRepository>();
+    getIt.registerLazySingleton<SecureStorageRepository>(_InMemorySecrets.new);
+    final persister = _MockPersister();
+    when(() => persister.readBool(key: BoolPreferenceKey.hasRegisteredBridges)).thenAnswer((_) async => null);
+    when(() => persister.writeString(key: StringPreferenceKey.appearanceMode, value: "light")).thenAnswer((_) async {});
+    getIt.unregister<PersisterRepository>();
+    getIt.registerLazySingleton<PersisterRepository>(() => persister);
     final _UnavailableSystemTray systemTray = _UnavailableSystemTray();
     getIt.unregister<SystemTray>();
     getIt.registerLazySingleton<SystemTray>(() => systemTray);
     getIt.unregister<DesktopApplicationTerminator>();
     getIt.registerLazySingleton<DesktopApplicationTerminator>(_FakeApplicationTerminator.new);
+    final _FakeWindowHost windowHost = _FakeWindowHost();
     getIt.unregister<WindowHost>();
-    getIt.registerLazySingleton<WindowHost>(_FakeWindowHost.new);
+    getIt.registerLazySingleton<WindowHost>(() => windowHost);
     getIt.unregister<LaunchAtLogin>();
     getIt.registerLazySingleton<LaunchAtLogin>(_FakeLaunchAtLogin.new);
 
@@ -72,8 +83,10 @@ void main() {
     expect(scope.onQualityChanged, isNotNull);
 
     final loginContext = tester.element(find.text("Continue with GitHub"));
+    expect(PregoInteractionScope.of(loginContext), PregoInteractionMode.pointer);
     expect(MediaQuery.platformBrightnessOf(loginContext), Brightness.light);
     expect(GlassTheme.brightnessOf(loginContext), Brightness.dark);
+    expect(windowHost.brightnessPushes, [WindowBrightness.dark]);
 
     tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
     addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
@@ -81,7 +94,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(GlassTheme.brightnessOf(loginContext), Brightness.light);
     expect(MediaQuery.platformBrightnessOf(loginContext), Brightness.dark);
-  });
+    expect(windowHost.brightnessPushes, [WindowBrightness.dark, WindowBrightness.light]);
+
+    // Signed out there is no cockpit shell, and the top of the window still moves it.
+    await tester.dragFrom(const Offset(400, 20), const Offset(40, 0), kind: PointerDeviceKind.mouse);
+    expect(windowHost.dragStarts, 1);
+    // As macOS, where the app hides the title bar and moves the window itself.
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 }
 
 class _UnavailableSystemTray() implements SystemTray {
@@ -104,6 +123,9 @@ class _UnavailableSystemTray() implements SystemTray {
 }
 
 class _FakeWindowHost() implements WindowHost {
+  int dragStarts = 0;
+  final List<WindowBrightness> brightnessPushes = <WindowBrightness>[];
+
   @override
   Stream<WindowHostEvent> get events => const Stream<WindowHostEvent>.empty();
 
@@ -134,6 +156,15 @@ class _FakeWindowHost() implements WindowHost {
 
   @override
   Future<void> hide() async {}
+
+  @override
+  Future<void> startDragging() async => dragStarts++;
+
+  @override
+  Future<void> toggleZoom() async {}
+
+  @override
+  Future<void> setBrightness({required WindowBrightness brightness}) async => brightnessPushes.add(brightness);
 
   @override
   Future<void> dispose() async {}

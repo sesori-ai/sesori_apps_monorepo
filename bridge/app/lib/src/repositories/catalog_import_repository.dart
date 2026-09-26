@@ -630,6 +630,7 @@ class CatalogImportRepository({
       baseCommit: existing?.baseCommit,
       lastAgent: existing?.lastAgent,
       lastAgentModel: existing?.lastAgentModel,
+      fastMode: existing?.fastMode ?? false,
       createdAt: createdAt,
       updatedAt: max(time?.updated ?? createdAt, existing?.updatedAt ?? createdAt),
       projectionUpdatedAt: importStartedAt,
@@ -639,6 +640,7 @@ class CatalogImportRepository({
       pluginId: pluginId,
       title: existing?.title,
       catalogTitle: _usefulText(session.title) ?? existing?.catalogTitle,
+      approvalOverride: existing?.approvalOverride,
     );
   }
 

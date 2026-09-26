@@ -66,6 +66,7 @@ _$CodexRolloutInterAgentCommunicationMetadataLineDtoFromJson(Map json) =>
 CodexRolloutCompactedLineDto _$CodexRolloutCompactedLineDtoFromJson(Map json) =>
     CodexRolloutCompactedLineDto(
       timestamp: json['timestamp'] as String?,
+      summary: _compactedSummaryOrNull(json['payload']),
       $type: json['type'] as String?,
     );
 
@@ -213,7 +214,7 @@ _CodexRolloutTurnContextPayloadDto _$CodexRolloutTurnContextPayloadDtoFromJson(
   Map json,
 ) => _CodexRolloutTurnContextPayloadDto(
   model: json['model'] as String?,
-  effort: _stringOrNull(json['reasoning_effort']),
+  effort: _stringOrNull(json['effort']),
 );
 
 _CodexRolloutItemMetadataDto _$CodexRolloutItemMetadataDtoFromJson(Map json) =>

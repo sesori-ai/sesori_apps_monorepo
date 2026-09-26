@@ -11,24 +11,42 @@ import "../../platform/url_launcher.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../services/installation_analytics_service.dart";
 import "login_failed_reason.dart";
+import "login_handoff.dart";
 import "login_state.dart";
 
-enum _LoginAnalyticsOutcome() { open, terminal }
+enum _LoginAnalyticsOutcome() {
+  open,
+  terminal,
+}
 
-final class _LoginAttempt({required final AuthProvider provider}) {
+sealed class _LoginAttempt({required final AuthProvider provider}) {
   _LoginAnalyticsOutcome analyticsOutcome = _LoginAnalyticsOutcome.open;
+}
+
+/// An attempt with no browser handoff: email, native Apple, or a browser
+/// sign-in whose flow has not started yet.
+final class _PendingLoginAttempt({required super.provider}) extends _LoginAttempt;
+
+/// A browser sign-in waiting for the user; it replaces the pending attempt
+/// once the flow has started.
+final class _BrowserLoginAttempt({
+  required super.provider,
+  required var LoginHandoff handoff,
+}) extends _LoginAttempt {
+  /// Whether any launch of the sign-in page, first or reopened, succeeded.
+  bool browserEverOpened = false;
 }
 
 /// Opaque ownership token for one native Apple sign-in operation.
 final class AppleLoginAttempt._({required final _LoginAttempt _attempt});
 
 class LoginCubit({
-    required final OAuthFlowProvider _oAuthFlowProvider,
-    required final UrlLauncher _urlLauncher,
-    required final AuthSession _authSession,
-    required final LifecycleSource _lifecycleSource,
-    required final InstallationAnalyticsService _installationAnalyticsService,
-  }) extends Cubit<LoginState> {
+  required final OAuthFlowProvider _oAuthFlowProvider,
+  required final UrlLauncher _urlLauncher,
+  required final AuthSession _authSession,
+  required final LifecycleSource _lifecycleSource,
+  required final InstallationAnalyticsService _installationAnalyticsService,
+}) extends Cubit<LoginState> {
   StreamSubscription<LifecycleState>? _lifecycleSubscription;
   _LoginAttempt? _loginAttempt;
   bool _isPolling = false;
@@ -76,7 +94,7 @@ class LoginCubit({
     if (_isPolling) return;
     if (state is LoginPolling || state is LoginTimeout) {
       final attempt = _currentAttempt;
-      if (attempt == null) return;
+      if (attempt is! _BrowserLoginAttempt) return;
       late final bool hasActiveSession;
       try {
         hasActiveSession = await _oAuthFlowProvider.hasActiveOAuthSession();
@@ -97,7 +115,10 @@ class LoginCubit({
         // session has since expired/cleared, reset to idle instead of leaving
         // a permanently stuck spinner.
         if (state is LoginPolling) {
-          _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.timeout);
+          _reportFailedAttempt(
+            attempt: attempt,
+            cause: _unrecoveredCause(attempt: attempt, cause: .timeout),
+          );
           emit(const LoginState.idle());
         }
         return;
@@ -106,25 +127,16 @@ class LoginCubit({
 
       _didActivePollEnterBackground = _isInBackground;
       _isPolling = true;
-      emit(const LoginState.polling());
+      _emitPolling(attempt: attempt);
       try {
         final result = await _oAuthFlowProvider.resumeOAuthFlow();
         if (!_ownsAttempt(attempt: attempt)) return;
         _reportCompletedAttempt(attempt: attempt, accountStatus: result.accountStatus);
         emit(const LoginState.success());
-      } on TimeoutException catch (e, st) {
-        loge("OAuth resumed but timed out", e, st);
-        if (!_ownsAttempt(attempt: attempt)) return;
-        _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.timeout);
-        emit(const LoginState.timeout());
       } catch (e, st) {
-        if (_handlePollInterruption(error: e, attempt: attempt)) return;
-        loge("OAuth resumed but failed", e, st);
-        if (!_ownsAttempt(attempt: attempt)) return;
-        _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.unknown);
-        emit(const LoginState.failed(reason: LoginFailedReason.unknown));
+        _failOAuthAttempt(attempt: attempt, error: e, stackTrace: st, description: "Resumed OAuth login");
       } finally {
-        _isPolling = false;
+        _endPolling(attempt: attempt);
       }
     }
   }
@@ -141,13 +153,13 @@ class LoginCubit({
     required Object error,
     required _LoginAttempt attempt,
   }) {
-    if (!_ownsAttempt(attempt: attempt)) return false;
+    if (attempt is! _BrowserLoginAttempt || !_ownsAttempt(attempt: attempt)) return false;
     if (!_isRecoverablePollInterruption(error)) return false;
     if (!_isInBackground && !_didActivePollEnterBackground) return false;
     final alreadyForeground = !_isInBackground;
     _didActivePollEnterBackground = false;
     if (isClosed) return true;
-    emit(const LoginState.polling());
+    _emitPolling(attempt: attempt);
     if (alreadyForeground) {
       // The app already returned to the foreground before this abort surfaced,
       // so no further `resumed` lifecycle event will arrive to drive recovery.
@@ -174,58 +186,143 @@ class LoginCubit({
   bool _isRecoverablePollInterruption(Object error) => error is ClientException;
 
   Future<bool> loginWithProvider(OAuthProvider provider) async {
-    final attempt = _beginAttempt(provider: provider);
+    _LoginAttempt attempt = _beginAttempt(provider: provider);
     emit(const LoginState.authenticating());
 
     try {
-      final initResponse = await _oAuthFlowProvider.startOAuthFlow(provider: provider);
+      final oauth = await _oAuthFlowProvider.startOAuthFlow(provider: provider);
       if (!_ownsAttempt(attempt: attempt)) return false;
+      // The waiting attempt takes over ownership; its analytics outcome is
+      // still open because nothing ends an attempt while its flow starts.
+      final browserAttempt = _BrowserLoginAttempt(
+        provider: provider,
+        handoff: LoginHandoff(provider: provider, oauth: oauth, browser: LoginBrowserLaunch.opened),
+      );
+      _loginAttempt = browserAttempt;
+      attempt = browserAttempt;
 
       // Show the resumable polling UI and ARM the poll guard BEFORE launching
       // the browser. Opening the browser can suspend the app before launch()
       // returns; with _isPolling already set, a resume during that window is a
       // no-op (it won't start a second concurrent poll) — the pollForResult()
       // below owns the session. The finally resets the guard on every exit path
-      // (launch failure, success, or a thrown poll error), so the outer catch's
+      // (success or a thrown poll error), so the outer catch's
       // _handlePollInterruption still sees _isPolling == false.
-      emit(const LoginState.polling());
+      _emitPolling(attempt: browserAttempt);
       _didActivePollEnterBackground = _isInBackground;
       _isPolling = true;
       late final AuthLoginResult result;
       try {
         logd("Opening ${provider.label} auth URL in browser");
 
-        final launched = await _urlLauncher.launch(Uri.parse(initResponse.authUrl));
+        final launched = await _urlLauncher.launch(oauth.authUrl);
         if (!_ownsAttempt(attempt: attempt)) return false;
 
-        if (!launched) {
-          _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.launch);
-          emit(const LoginState.failed(reason: LoginFailedReason.browserOpenFailed));
-          return false;
-        }
+        // A failed launch keeps waiting: the sign-in page can still be opened
+        // by hand or by reopening it.
+        _recordLaunch(attempt: browserAttempt, launched: launched);
 
         result = await _oAuthFlowProvider.pollForResult();
       } finally {
-        _isPolling = false;
+        _endPolling(attempt: attempt);
       }
 
       if (!_ownsAttempt(attempt: attempt)) return false;
       _reportCompletedAttempt(attempt: attempt, accountStatus: result.accountStatus);
       emit(const LoginState.success());
       return true;
-    } on TimeoutException catch (e, st) {
-      loge("${provider.label} login timed out", e, st);
-      if (!_ownsAttempt(attempt: attempt)) return false;
-      _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.timeout);
-      emit(const LoginState.timeout());
-      return false;
     } catch (e, st) {
-      if (_handlePollInterruption(error: e, attempt: attempt)) return false;
-      loge("${provider.label} login failed", e, st);
-      if (!_ownsAttempt(attempt: attempt)) return false;
-      _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.unknown);
-      emit(const LoginState.failed(reason: LoginFailedReason.unknown));
+      _failOAuthAttempt(attempt: attempt, error: e, stackTrace: st, description: "${provider.label} login");
       return false;
+    }
+  }
+
+  /// Abandons the browser sign-in that is waiting for the user.
+  Future<void> cancel() async {
+    final attempt = _currentAttempt;
+    if (attempt is! _BrowserLoginAttempt || state is! LoginPolling) return;
+    _reportFailedAttempt(
+      attempt: attempt,
+      cause: _unrecoveredCause(attempt: attempt, cause: .cancelled),
+    );
+    _loginAttempt = null;
+    _isPolling = false;
+    // Called before any await so the flow is captured before a new one starts.
+    final cancellation = _oAuthFlowProvider.cancelOAuthFlow();
+    emit(const LoginState.idle());
+    try {
+      await cancellation;
+    } catch (e, st) {
+      loge("Failed to cancel the OAuth flow", e, st);
+    }
+  }
+
+  /// Opens the waiting browser sign-in page again.
+  Future<void> reopenBrowser() async {
+    final attempt = _currentAttempt;
+    if (attempt is! _BrowserLoginAttempt || state is! LoginPolling) return;
+    final launched = await _urlLauncher.launch(attempt.handoff.oauth.authUrl);
+    if (!_ownsAttempt(attempt: attempt) || state is! LoginPolling) return;
+    _recordLaunch(attempt: attempt, launched: launched);
+  }
+
+  void _recordLaunch({required _BrowserLoginAttempt attempt, required bool launched}) {
+    if (launched) attempt.browserEverOpened = true;
+    final handoff = attempt.handoff;
+    final browser = launched ? LoginBrowserLaunch.opened : LoginBrowserLaunch.failed;
+    if (handoff.browser == browser) return;
+    attempt.handoff = LoginHandoff(provider: handoff.provider, oauth: handoff.oauth, browser: browser);
+    _emitPolling(attempt: attempt);
+  }
+
+  void _emitPolling({required _BrowserLoginAttempt attempt}) {
+    emit(LoginState.polling(handoff: attempt.handoff));
+  }
+
+  /// Clears the poll guard unless a newer attempt (started after a cancel)
+  /// now owns it.
+  void _endPolling({required _LoginAttempt attempt}) {
+    if (_ownsAttempt(attempt: attempt)) _isPolling = false;
+  }
+
+  /// The terminal cause of a cancelled or timed-out attempt: one whose browser
+  /// never opened, on any launch, reports `launch` instead.
+  LoginAttemptFailureCause _unrecoveredCause({
+    required _LoginAttempt attempt,
+    required LoginAttemptFailureCause cause,
+  }) => switch (attempt) {
+    _BrowserLoginAttempt(:final browserEverOpened) => browserEverOpened ? cause : LoginAttemptFailureCause.launch,
+    _PendingLoginAttempt() => LoginAttemptFailureCause.launch,
+  };
+
+  /// Ends an OAuth attempt whose start or poll threw, unless the error is a
+  /// recoverable background interruption or the attempt was superseded.
+  void _failOAuthAttempt({
+    required _LoginAttempt attempt,
+    required Object error,
+    required StackTrace stackTrace,
+    required String description,
+  }) {
+    if (_handlePollInterruption(error: error, attempt: attempt)) return;
+    if (!_ownsAttempt(attempt: attempt)) {
+      // Cancelled or replaced: the error only reports the flow being abandoned.
+      logd("$description ended after it was superseded", error, stackTrace);
+      return;
+    }
+    loge("$description failed", error, stackTrace);
+    switch (error) {
+      case TimeoutException() || OAuthFlowExpired():
+        _reportFailedAttempt(
+          attempt: attempt,
+          cause: _unrecoveredCause(attempt: attempt, cause: .timeout),
+        );
+        emit(const LoginState.timeout());
+      case OAuthFlowDenied():
+        _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.cancelled);
+        emit(const LoginState.failed(reason: LoginFailedReason.declined));
+      default:
+        _reportFailedAttempt(attempt: attempt, cause: LoginAttemptFailureCause.unknown);
+        emit(const LoginState.failed(reason: LoginFailedReason.unknown));
     }
   }
 
@@ -332,7 +429,7 @@ class LoginCubit({
       attempt: _loginAttempt,
       cause: LoginAttemptFailureCause.unknown,
     );
-    final attempt = _LoginAttempt(provider: provider);
+    final attempt = _PendingLoginAttempt(provider: provider);
     _loginAttempt = attempt;
     _report(
       operation: _installationAnalyticsService.loginAttemptStarted(provider: provider),

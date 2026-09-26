@@ -38,8 +38,8 @@ class const BackgroundTaskRow({
         color: prego.colors.textSecondary,
       ),
       trailing: Icon(
-        Icons.chevron_right,
-        size: 20,
+        TablerRegular.chevron_right,
+        size: PregoIconSize.md,
         color: prego.colors.textSecondary,
       ),
     );
@@ -47,18 +47,20 @@ class const BackgroundTaskRow({
 
   Widget _statusIcon({required SessionStatus? status, required PregoDesignSystem prego}) => switch (status) {
     // The leading slot is a tight 32px wide but leaves its height free. Center
-    // re-loosens those constraints around a fixed 16px square.
+    // re-loosens those constraints around a fixed square, sized to the drawn
+    // glyph of the 14px idle icon rather than its box.
     SessionStatusBusy() || SessionStatusRetry() => const Center(
       heightFactor: 1,
       child: SizedBox.square(
-        dimension: 16,
+        dimension: 14,
         child: PregoActivityIndicator(color: null),
       ),
     ),
+    // Idle is not finished: a sub-agent can be resumed, so no check mark.
     SessionStatusIdle() || null => Icon(
-      Icons.check_circle,
-      size: 16,
-      color: prego.colors.bgBrandSolid,
+      TablerRegular.player_pause,
+      size: PregoIconSize.sm,
+      color: prego.colors.textSecondary,
     ),
   };
 

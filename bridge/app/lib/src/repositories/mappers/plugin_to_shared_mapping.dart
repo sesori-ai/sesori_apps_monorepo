@@ -16,6 +16,16 @@ extension PluginToolStatusMapping on PluginToolStatus {
   };
 }
 
+extension PluginToolKindMapping on PluginToolKind {
+  ToolKind toShared() => switch (this) {
+    PluginToolKind.read => ToolKind.read,
+    PluginToolKind.edit => ToolKind.edit,
+    PluginToolKind.command => ToolKind.command,
+    PluginToolKind.search => ToolKind.search,
+    PluginToolKind.other => ToolKind.other,
+  };
+}
+
 extension SessionAbortSubAgentPolicyMapping on SessionAbortSubAgentPolicy {
   PluginAbortSubAgentPolicy toPlugin() => switch (this) {
     SessionAbortSubAgentPolicy.confirm => PluginAbortSubAgentPolicy.confirm,
@@ -121,12 +131,13 @@ extension PluginMessagePartMapping on PluginMessagePart {
       messageID: messageID,
       text: text,
     ),
-    PluginMessagePartTool(:final id, :final messageID, :final tool, :final state) => MessagePart.tool(
+    PluginMessagePartTool(:final id, :final messageID, :final tool, :final kind, :final state) => MessagePart.tool(
       id: id,
       sessionID: sessionId,
       messageID: messageID,
       tool: tool ?? "",
       state: state.toShared(retainSummary: false),
+      kind: kind.toShared(),
     ),
     PluginMessagePartSubtask(
       :final id,
@@ -141,7 +152,9 @@ extension PluginMessagePartMapping on PluginMessagePart {
         id: id,
         sessionID: sessionId,
         messageID: messageID,
-        prompt: prompt,
+        prompt: String.fromCharCodes(prompt.runes.take(maxToolOutputLength)),
+        // Clients can match a child by its full title when a backend supplies
+        // no child session ID (OpenCode), so the description stays intact.
         description: description,
         agent: agent,
         taskState: taskState?.toShared(retainSummary: true),
@@ -188,10 +201,11 @@ extension PluginMessagePartMapping on PluginMessagePart {
       attempt: attempt,
       retryError: retryError,
     ),
-    PluginMessagePartCompaction(:final id, :final messageID) => MessagePart.compaction(
+    PluginMessagePartCompaction(:final id, :final messageID, :final summary) => MessagePart.compaction(
       id: id,
       sessionID: sessionId,
       messageID: messageID,
+      summary: summary,
     ),
     PluginMessagePartUnknown() => throw StateError(
       "PluginMessagePartUnknown must be filtered out before mapping to shared model",

@@ -1,6 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "login_failed_reason.dart";
+import "login_handoff.dart";
 
 part "login_state.freezed.dart";
 
@@ -10,7 +11,7 @@ sealed class LoginState with _$LoginState {
 
   const factory authenticating() = LoginAuthenticating;
 
-  const factory polling() = LoginPolling;
+  const factory polling({required LoginHandoff handoff}) = LoginPolling;
 
   const factory timeout() = LoginTimeout;
 

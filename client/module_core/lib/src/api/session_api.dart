@@ -88,6 +88,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? command,
     required bool dedicatedWorktree,
   }) {
@@ -102,6 +103,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
           agent: agent,
           model: model,
           variant: variant,
+          fastMode: fastMode,
           command: command,
           dedicatedWorktree: dedicatedWorktree,
         ),
@@ -116,6 +118,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       agent: agent,
       model: model,
       variant: variant,
+      fastMode: fastMode,
       command: command,
       dedicatedWorktree: dedicatedWorktree,
     );
@@ -129,6 +132,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? command,
     required bool dedicatedWorktree,
   }) async {
@@ -140,6 +144,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       agent: agent,
       model: model,
       variant: variant,
+      fastMode: fastMode,
       command: command,
       dedicatedWorktree: dedicatedWorktree,
     );
@@ -160,6 +165,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     required String? agent,
     required PromptModel? model,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? command,
   }) {
     return _client.post(
@@ -171,6 +177,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         agent: agent,
         model: model,
         variant: variant,
+        fastMode: fastMode,
         command: command,
         promptId: promptId,
       ),
@@ -244,6 +251,25 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<Session>> setAutoContinuation({required String sessionId, required bool enabled}) {
+    return _client.patch(
+      "/session/auto-continuation",
+      fromJson: Session.fromJson,
+      body: SetSessionAutoContinuationRequest(sessionId: sessionId, enabled: enabled),
+    );
+  }
+
+  Future<ApiResponse<Session>> setApprovalOverride({
+    required String sessionId,
+    required SessionApprovalMode? approvalOverride,
+  }) {
+    return _client.patch(
+      "/session/approval-override",
+      fromJson: Session.fromJson,
+      body: SetSessionApprovalOverrideRequest(sessionId: sessionId, approvalOverride: approvalOverride),
+    );
+  }
+
   Future<ApiResponse<void>> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
@@ -295,6 +321,14 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     return _client.get(
       "/session/status",
       fromJson: SessionStatusResponse.fromJson,
+    );
+  }
+
+  Future<ApiResponse<SessionDiffSummaryResponse>> getSessionDiffSummary({required String sessionId}) {
+    return _client.post(
+      "/session/diff-summary",
+      fromJson: SessionDiffSummaryResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
     );
   }
 

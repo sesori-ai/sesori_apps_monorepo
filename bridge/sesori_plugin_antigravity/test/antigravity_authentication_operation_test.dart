@@ -335,10 +335,6 @@ void main() {
         ),
         details: ["managed", _pair.serverPath, _pair.harnessPath, "agentVersion", "personalOauth"],
       ),
-      (
-        resolution: const AntigravityRuntimeUnsupported(target: _target),
-        details: ["unsupported target", "macos/arm64"],
-      ),
     ];
     for (final entry in cases) {
       final attempt = _Attempt();

@@ -1,6 +1,7 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:theme_prego/module_prego.dart";
 
 Future<BuildContext> _pumpContext(
   WidgetTester tester, {
@@ -27,6 +28,18 @@ Future<BuildContext> _pumpContext(
 }
 
 void main() {
+  testWidgets("formatTimestamp names the month past a month ago", (tester) async {
+    final lastYear = DateTime(DateTime.now().year - 1, 8, 15);
+
+    final context = await _pumpContext(tester, platformLocale: const Locale("en", "GB"));
+
+    expect(context.formatTimestamp(lastYear.millisecondsSinceEpoch), "15 Aug ${lastYear.year}");
+    final past = DateTime.now().subtract(const Duration(days: 40));
+    final label = context.formatTimestamp(past.millisecondsSinceEpoch);
+    expect(label, past.year == DateTime.now().year ? isNot(contains("${past.year}")) : contains("${past.year}"));
+    expect(label, isNot(contains("ago")));
+  });
+
   group("formatTimestampCompact", () {
     testWidgets("uses the user's full platform locale for old session dates", (tester) async {
       final date = DateTime(DateTime.now().year - 1, 7, 8);
@@ -41,6 +54,32 @@ void main() {
 
       expect(americanLabel, "7/8/${date.year}");
     });
+
+    testWidgets("follows the OS short date where the platform locale misses the region", (tester) async {
+      PregoSystemDatePatterns.debugSetPatterns({"yMd": "d/M/yy"});
+      addTearDown(() => PregoSystemDatePatterns.debugSetPatterns(const {}));
+      final now = DateTime.now();
+      final lastYear = DateTime(now.year - 1, 6, 29);
+      final older = now.subtract(const Duration(days: 40));
+      final olderYear = older.year == now.year ? "" : "/${older.year % 100}";
+
+      final context = await _pumpContext(tester);
+
+      expect(context.formatTimestampCompact(ms: lastYear.millisecondsSinceEpoch), "29/6/${(now.year - 1) % 100}");
+      expect(context.formatTimestampCompact(ms: older.millisecondsSinceEpoch), "${older.day}/${older.month}$olderYear");
+    });
+  });
+
+  test("the yearless OS pattern drops a leading or trailing year only", () {
+    String? monthDay(String shortDate) {
+      PregoSystemDatePatterns.debugSetPatterns({"yMd": shortDate});
+      return PregoSystemDatePatterns.patterns["Md"];
+    }
+
+    addTearDown(() => PregoSystemDatePatterns.debugSetPatterns(const {}));
+    expect(monthDay("d/M/yy"), "d/M");
+    expect(monthDay("y. MM. dd."), "MM. dd.");
+    expect(monthDay("d.MM.yy 'г'."), isNull);
   });
 
   group("formatMessageTimestamp", () {

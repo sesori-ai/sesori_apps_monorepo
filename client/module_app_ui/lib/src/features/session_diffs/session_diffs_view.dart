@@ -1,3 +1,5 @@
+import "dart:math";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -11,14 +13,36 @@ import "models/diff_view_model_builder.dart";
 import "widgets/diff_error_view.dart";
 import "widgets/diff_file_content_sliver.dart";
 import "widgets/diff_file_header_delegate.dart";
+import "widgets/diff_file_list.dart";
 
-/// Shared diff viewer: one pinned sticky header per file with expandable diff
-/// content underneath. Owns the expand/collapse state and post-collapse scroll
-/// compensation while the product shell owns navigation and banner policy.
-class const SessionDiffsView({
-  super.key,
+/// A desktop page's own header over the diffs, given the page title and the
+/// "3 files changed  +7 −2" summary (null until files load).
+typedef SessionDiffsHeaderBuilder = Widget Function({
+  required BuildContext context,
+  required String title,
+  required String? summary,
+});
+
+/// How the product shell frames the diffs.
+sealed class const SessionDiffsChrome();
+
+/// A phone page: a glass bar over every file, one pinned header per file with
+/// its diff expandable underneath.
+class const SessionDiffsGlassBar({
   required final VoidCallback? onBack,
   required final Widget? banner,
+}) extends SessionDiffsChrome;
+
+/// A wide page under the shell's own header: the file list on the left and
+/// the selected file's diff on the right.
+class const SessionDiffsSplit({required final SessionDiffsHeaderBuilder headerBuilder}) extends SessionDiffsChrome;
+
+/// Shared diff viewer. Owns the view models, the phone layout's expand/collapse
+/// state and scroll compensation, and the split layout's selection, while the
+/// product shell owns navigation, banner and header policy.
+class const SessionDiffsView({
+  super.key,
+  required final SessionDiffsChrome chrome,
 }) extends StatefulWidget {
   @override
   State<SessionDiffsView> createState() => _SessionDiffsViewState();
@@ -33,6 +57,10 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
   int _computeToken = 0;
   Brightness? _lastBrightness;
 
+  /// The split's file, by path so a refresh stays on it while it is still
+  /// changed; null, or a path no longer changed, selects the first file.
+  String? _selectedFile;
+
   /// Number of view-model computations started; lets regression tests assert
   /// that theme-brightness changes trigger a recompute.
   @visibleForTesting
@@ -43,6 +71,11 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
   /// Keys are created lazily as files are rendered.
   final Map<int, GlobalKey> _headerKeys = <int, GlobalKey>{};
 
+  /// Keys on each file's sliver group. Unlike a header, which is built only
+  /// near the viewport, the group is laid out even far offscreen, so the
+  /// file list can scroll to any file.
+  final Map<int, GlobalKey> _fileKeys = <int, GlobalKey>{};
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<DiffCubit, DiffState>(
@@ -51,68 +84,79 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
           (prev is DiffStateLoaded && curr is DiffStateLoaded && !identical(prev.files, curr.files)),
       builder: (context, state) {
         final (fileCount, additions, deletions) = _statsOf(state);
+        final title = context.loc.diffFileChangesTitle;
+        final summary = fileCount > 0
+            ? _summary(files: context.loc.diffFilesChangedCount(fileCount), additions: additions, deletions: deletions)
+            : null;
+        final placeholder = _placeholderSliver(context: context, state: state);
+        final viewModels = _viewModels;
         return PregoReadableSelectionArea(
           preserveEmptyLines: true,
-          child: PregoGlassScaffold(
-            title: context.loc.diffFileChangesTitle,
-            subtitleText: fileCount > 0 ? context.loc.diffFilesChangedCount(fileCount, additions, deletions) : null,
-            onBack: widget.onBack,
-            banner: widget.banner,
-            // The diff viewer's pinned per-file headers must pin directly below
-            // the bar, so the body cannot scroll behind a transparent bar.
-            extendBodyBehindBar: false,
-            slivers: _buildContentSlivers(context: context, state: state),
-          ),
+          child: switch (widget.chrome) {
+            SessionDiffsGlassBar(:final onBack, :final banner) => PregoGlassScaffold(
+              title: title,
+              titleMode: PregoTopNavigationTitleMode.inline,
+              subtitleText: summary,
+              onBack: onBack,
+              banner: banner,
+              // The diff viewer's pinned per-file headers must pin directly below
+              // the bar, so the body cannot scroll behind a transparent bar.
+              extendBodyBehindBar: false,
+              slivers: switch ((placeholder, viewModels)) {
+                (final placeholder?, _) => [placeholder],
+                (null, final viewModels?) => _buildSlivers(viewModels: viewModels),
+                (null, null) => const [],
+              },
+            ),
+            SessionDiffsSplit(:final headerBuilder) => Material(
+              color: context.prego.colors.bgSurface1,
+              child: Column(
+                children: [
+                  // The page's navigation stays out of copied diffs.
+                  SelectionContainer.disabled(
+                    child: headerBuilder(context: context, title: title, summary: summary),
+                  ),
+                  Expanded(
+                    child: switch ((placeholder, viewModels)) {
+                      (final placeholder?, _) => CustomScrollView(slivers: [placeholder]),
+                      (null, final viewModels?) => _buildSplit(viewModels: viewModels),
+                      (null, null) => const SizedBox.shrink(),
+                    },
+                  ),
+                ],
+              ),
+            ),
+          },
         );
       },
     );
   }
 
-  List<Widget> _buildContentSlivers({required BuildContext context, required DiffState state}) {
-    return switch (state) {
-      DiffStateLoading() => [
-        const SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(child: PregoActivityIndicator(color: null)),
-        ),
-      ],
-      DiffStateFailed(:final error) => [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: DiffErrorView(error: error, onRetry: () => context.read<DiffCubit>().refresh()),
-        ),
-      ],
-      DiffStateLoaded(:final files) when files.isEmpty => [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(child: Text(context.loc.diffNoFileChanges)),
-        ),
-      ],
-      DiffStateLoaded(:final files) => _buildLoadedSlivers(context: context, files: files),
-    };
+  /// "3 files changed  +7 −2", leaving out a side whose count is zero.
+  static String _summary({required String files, required int additions, required int deletions}) {
+    final counts = [if (additions > 0) "+$additions", if (deletions > 0) "−$deletions"].join(" ");
+    return counts.isEmpty ? files : "$files  $counts";
   }
 
-  List<Widget> _buildLoadedSlivers({required BuildContext context, required List<FileDiff> files}) {
-    _maybeComputeViewModels(files: files);
-    if (_computeError case final computeError?) {
-      return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: DiffErrorView(error: computeError, onRetry: () => context.read<DiffCubit>().refresh()),
-        ),
-      ];
+  /// The loading, failure or empty state shown instead of the files; null
+  /// once their view models are ready.
+  Widget? _placeholderSliver({required BuildContext context, required DiffState state}) {
+    Widget fill(Widget child) => SliverFillRemaining(hasScrollBody: false, child: child);
+    const loading = Center(child: PregoActivityIndicator(color: null));
+    void retry() => context.read<DiffCubit>().refresh();
+    switch (state) {
+      case DiffStateLoading():
+        return fill(loading);
+      case DiffStateFailed(:final error):
+        return fill(DiffErrorView(error: error, onRetry: retry));
+      case DiffStateLoaded(:final files) when files.isEmpty:
+        return fill(Center(child: Text(context.loc.diffNoFileChanges)));
+      case DiffStateLoaded(:final files):
+        _maybeComputeViewModels(files: files);
+        if (_computeError case final computeError?) return fill(DiffErrorView(error: computeError, onRetry: retry));
+        if (_isComputing || _viewModels == null) return fill(loading);
+        return null;
     }
-
-    final viewModels = _viewModels;
-    if (_isComputing || viewModels == null) {
-      return [
-        const SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(child: PregoActivityIndicator(color: null)),
-        ),
-      ];
-    }
-    return _buildSlivers(viewModels: viewModels);
   }
 
   /// Aggregates the changed-file count and total additions/deletions for the
@@ -132,8 +176,19 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
 
   List<Widget> _buildSlivers({required List<DiffFileViewModel> viewModels}) {
     return [
+      // One file needs no index.
+      if (viewModels.length > 1)
+        SliverPadding(
+          padding: const EdgeInsets.all(PregoSpacing.md),
+          sliver: SliverToBoxAdapter(
+            child: SelectionContainer.disabled(
+              child: DiffFileList(viewModels: viewModels, selectedIndex: null, onSelect: _jumpToFile),
+            ),
+          ),
+        ),
       for (var i = 0; i < viewModels.length; i++)
         SliverMainAxisGroup(
+          key: _fileKeys.putIfAbsent(i, GlobalKey.new),
           slivers: [
             SliverPersistentHeader(
               pinned: true,
@@ -151,6 +206,41 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
           ],
         ),
     ];
+  }
+
+  Widget _buildSplit({required List<DiffFileViewModel> viewModels}) {
+    final colors = context.prego.colors;
+    final selectedIndex = max(0, viewModels.indexWhere((vm) => vm.fileDiff.file == _selectedFile));
+    final selected = viewModels[selectedIndex];
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          width: 300,
+          child: SelectionContainer.disabled(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(PregoSpacing.md),
+              child: DiffFileList(
+                viewModels: viewModels,
+                selectedIndex: selectedIndex,
+                onSelect: (index) => setState(() => _selectedFile = viewModels[index].fileDiff.file),
+              ),
+            ),
+          ),
+        ),
+        VerticalDivider(width: 1, thickness: 1, color: colors.borderSecondary),
+        Expanded(
+          child: CustomScrollView(
+            // A new file starts at its top.
+            key: ValueKey(selected.fileDiff.file),
+            slivers: [
+              SliverToBoxAdapter(child: _SelectedFileHeader(viewModel: selected)),
+              DiffFileContentSliver(viewModel: selected),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   void _maybeComputeViewModels({required List<FileDiff> files}) {
@@ -180,6 +270,7 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
       // Drop stale GlobalKeys from the previous file list so they don't
       // accumulate when the user switches sessions or refreshes.
       _headerKeys.clear();
+      _fileKeys.clear();
     });
     try {
       final viewModels = await DiffViewModelBuilder.build(
@@ -196,6 +287,8 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
       setState(() {
         _viewModels = viewModels;
         _expandedFileIndices = expanded;
+        // A file no longer changed drops its selection, so it cannot come back selected later.
+        if (!viewModels.any((vm) => vm.fileDiff.file == _selectedFile)) _selectedFile = null;
         _isComputing = false;
       });
     } catch (error) {
@@ -228,8 +321,16 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
       // After the sliver rebuilds with file `fileIndex` collapsed (body
       // shrunk to zero), realign the viewport so the collapsed header stays
       // at the top and the next file becomes visible just below it.
-      _scheduleScrollCompensation(collapsedIndex: fileIndex);
+      _scheduleScrollToHeader(fileIndex: fileIndex);
     }
+  }
+
+  /// Opens the file if it is collapsed and scrolls its header to the top.
+  void _jumpToFile(int fileIndex) {
+    if (!_expandedFileIndices.contains(fileIndex)) {
+      setState(() => _expandedFileIndices = {..._expandedFileIndices, fileIndex});
+    }
+    _scheduleScrollToHeader(fileIndex: fileIndex);
   }
 
   /// Returns true if the header identified by [headerKey] is currently
@@ -255,19 +356,59 @@ class _SessionDiffsViewState() extends State<SessionDiffsView> {
     return headerTopInScrollable.abs() < 1.0;
   }
 
-  /// Schedules a post-frame adjustment that realigns the viewport so the
-  /// collapsed file's own header stays at the top, with the next file
-  /// visible just below it. The caller must have already verified (before
-  /// the rebuild) that the header was pinned at the top — we cannot
-  /// re-check after the collapse because the layout has shifted.
-  void _scheduleScrollCompensation({required int collapsedIndex}) {
-    final currentKey = _headerKeys[collapsedIndex];
+  /// Schedules a post-frame scroll that brings the file's header to the top:
+  /// after a collapse it keeps the collapsed header in place with the next
+  /// file just below it, and after a jump from the file list it shows that
+  /// file from its start. A collapse caller must have already verified (before the rebuild)
+  /// that the header was pinned at the top, since the layout then shifts.
+  void _scheduleScrollToHeader({required int fileIndex}) {
+    final currentKey = _fileKeys[fileIndex];
     if (currentKey == null) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    void reveal({required bool settle}) => WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final context = currentKey.currentContext;
       if (context == null) return;
       Scrollable.ensureVisible(context, alignment: 0.0, duration: Duration.zero);
+      // Diff bodies far from the viewport report estimated heights until they
+      // are built, so the first reveal can land short; once the jump builds
+      // them, a second reveal lands exactly.
+      if (!settle) {
+        WidgetsBinding.instance.scheduleFrame();
+        reveal(settle: true);
+      }
     });
+    reveal(settle: false);
+  }
+}
+
+/// The selected file's full path above its diff; its row in the list carries the counts, which
+/// would not fit beside a long path in a narrow pane with large text.
+class const _SelectedFileHeader({required final DiffFileViewModel viewModel}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final code = prego.textTheme.code;
+    return SelectionContainer.disabled(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md, vertical: PregoSpacing.sm),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: prego.colors.borderSecondary)),
+        ),
+        child: Row(
+          spacing: PregoSpacing.sm,
+          children: [
+            DiffStatusLetter(status: viewModel.status),
+            Expanded(
+              child: Text(
+                viewModel.fileDiff.file,
+                style: code.copyWith(fontWeight: FontWeight.w500, color: prego.colors.textPrimary),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

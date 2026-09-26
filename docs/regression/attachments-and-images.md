@@ -13,7 +13,9 @@ content the transcript renders live and after reload.
   replace the chevron, without a manual collapse control, and choosing either
   action automatically collapses the pill. Both themes use the flat bordered
   44pt surface; command-only harnesses retain a single centred action. Recording
-  and transcription still disable the revealed actions.
+  and transcription still disable the revealed actions. With a pointer the
+  actions show without the chevron. On both surfaces they fold back behind the
+  chevron once the composer holds text, and the chevron still reopens them.
 - The shared composer offers image staging only for a backend declaring prompt
   attachment support and only when its product shell supplies a real picker.
   Mobile opens its gallery adapter; desktop opens a filtered native file dialog.
@@ -30,8 +32,10 @@ content the transcript renders live and after reload.
   backend-produced images into a client-safe attachment; host paths never cross
   that boundary.
 - Selected images use the shared Prego preview: 52px square center crops, 10px
-  corners, a subtle border, and a 14px close badge with a 44px touch target in
-  both themes. New-session and existing-session composers keep one 52px-high
+  corners, a subtle border, and a 14px close badge whose 24px target stays in
+  the tile's corner in both themes. Tapping the rest of the tile opens the
+  staged image in the full-screen viewer, view-only, on the new session page
+  too. New-session and existing-session composers keep one 52px-high
   horizontal row with 8px gaps. Overflow scrolls, with edge fades indicating
   hidden images in either direction. The leading fade appears after scrolling
   and clears on returning to the start; the trailing fade clears at the end.
@@ -53,10 +57,16 @@ content the transcript renders live and after reload.
   settlement. A failed current-route launch restores those attachments together
   with text/voice/command intent before the composer remounts; failure after route
   exit never restores them. Reconnect and options refresh cannot erase a pending
-  one-shot restoration. While that local submission is sending or awaiting the
-  bridge queue, its transcript row previews its staged images; a bridge-owned
-  queued row exposes only its attachment count so image bytes are not rebroadcast
-  to other surfaces.
+  one-shot restoration. The submitting surface keeps its staged-image previews
+  through local sending, acceptance, bridge queuing, and dispatched “Sending”,
+  including fast handoffs that skip intermediate UI frames and scrolling away
+  and back. The prompt queue owns these memory-only references with a 50 MB
+  aggregate budget per session, evicting the oldest previews for newer ones.
+  Evicted previews use the attachment count; sending is unaffected. Retained
+  previews are released when the prompt leaves the bridge queue or the session
+  closes; delivered messages use their transcript attachments. Other surfaces
+  and reopened sessions show the bounded attachment count, without
+  rebroadcasting or persisting staged bytes.
 - Maximum-size staged input is encoded with bounded event-loop yields through
   attachment base64, request JSON, and relay-envelope JSON/UTF-8. Encoding
   preserves exact bytes without copying attachment buffers through an isolate.
@@ -112,14 +122,16 @@ content the transcript renders live and after reload.
   open, including when the Android back gesture delivers a second pop while the
   viewer is still fading out.
 - User, tool, and each maximal contiguous run of assistant file attachments use
-  the same left-aligned square collection, capped at 320 px and constrained by
-  the available parent width. One attachment spans the collection, two split a
-  row, three use one lead tile above a pair, and larger collections continue in
-  paired rows. Images center-crop within their square; metadata appears in a
-  bounded bottom gradient; loading, failure, retry, and metadata-only fallbacks
-  retain the same square geometry. Reduced-motion loading is static, retry is an
-  explicit accessible action, and non-file assistant parts retain chronology
-  between separate file runs.
+  the same compact collection: 100 px square previews with 4 px corners and
+  6 px gaps, wrapping within the parent width (and shrinking if the pane is
+  narrower than one preview). Attachment-only outgoing bubbles shrink to their
+  thumbnail run instead of filling the maximum bubble width. Loaded images center-crop without an obscuring
+  metadata overlay; filenames remain accessible and in the full-screen viewer.
+  Assistant Markdown images use the same compact crop and reveal the contained
+  image during the viewer transition. Loading, failure, retry, and metadata-only
+  fallbacks retain square geometry and bounded metadata. Reduced-motion loading
+  is static, retry is an accessible 44 px icon button, and non-file assistant
+  parts retain chronology between separate file runs.
 - History requests default to the released bounded inline shape. A client that
   explicitly requests stored references receives bridge-scoped image metadata
   in the same part and tool-attachment order, including after archive; a missing
@@ -141,7 +153,7 @@ content the transcript renders live and after reload.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes. |
+| L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes; local transcript thumbnails survive queue acceptance and dispatch with and without prompt text, coalesced UI frames, and row recycling; queue reconciliation and removal release references, aggregate retained bytes remain bounded, and evicted previews use count-only fallback; transcript previews stay compact and unobscured in both themes, wrap without reordering, and retain accessible retry and full-screen viewing at enlarged text sizes. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. The desktop picker filters to supported raster extensions and preflights oversized files, and desktop adapter coverage verifies file-pick and file-save success and cancellation, pasteboard writes, and system-share file lifecycle. |
 | L3 Release | Client end to end on mobile and desktop for new-session and existing-session composer input, and on every release-target session-detail surface for transcript output, every supporting production plugin: staged composer images are sent and echoed per attachment-capable plugin; a failed current-route mobile creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. |
 | L4 Extended | Client end to end on mobile and desktop: change availability from another surface while an existing-session picker is open or an attachment is staged; no blocked send lands, transcript images remain usable, and recovery presents a fresh composer. Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. Automated, no plugin: sensitive-response redaction, persistent thumbnail cache corruption recovery, bounded pruning, auth cleanup, viewer decode and load retry, and original eviction and release on close. |
@@ -164,6 +176,10 @@ account-level rejection without changing the descriptor's capability claim.
 - A blocked existing chat offers picker or paste submission; a late picker result
   reaches the bridge; staged bytes survive solely because availability
   recovered; or read-only mode prevents viewing existing transcript images.
+- A locally submitted image within the retained-preview budget becomes only an
+  attachment count during bridge queuing or “Sending”, disappears after
+  scrolling back to the pending row, or remains retained after the row leaves
+  the bridge queue; retained preview bytes exceed the session's aggregate budget.
 - An image renders live but is missing, duplicated, reordered, or re-identified
   after reload.
 - A host path, unsafe or unnormalized source URI, or raw attachment payload
@@ -179,7 +195,7 @@ account-level rejection without changing the descriptor's capability claim.
 - A thumbnail cache path exposes a raw identity, persists an original, remains
   above its per-account budget after a successful prune, or survives retirement
   of its authenticated account scope.
-- An attachment collection exceeds its parent or 320 px cap, loses square tile
+- A transcript preview exceeds its parent or 100 px cap, loses square tile
   geometry between states, reorders assistant content, or offers a failed image
   without an accessible retry action.
 - A stored viewer fetches an original before opening, blanks the cached

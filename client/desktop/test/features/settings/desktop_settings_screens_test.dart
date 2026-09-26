@@ -1,7 +1,7 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
-import "package:flutter/services.dart" show LogicalKeyboardKey;
+import "package:flutter/services.dart" show FontLoader, LogicalKeyboardKey, rootBundle;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -15,6 +15,7 @@ import "package:sesori_desktop/core/desktop_update_configuration.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
+import "package:sesori_desktop/core/widgets/desktop_command_palette.dart";
 import "package:sesori_desktop/core/widgets/desktop_escape_dismissal.dart";
 import "package:sesori_desktop/features/auth_gate/auth_gate.dart";
 import "package:sesori_desktop/features/settings/desktop_settings_modal.dart";
@@ -29,7 +30,7 @@ class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements
 class _MockFileAccessCubit() extends MockCubit<FileAccessState> implements FileAccessCubit;
 class _MockAppearanceStore() extends Mock implements AppearanceStore;
 class _MockChatInputModeStore() extends Mock implements ChatInputModeStore;
-class _MockBridgeSettingsRepository() extends Mock implements BridgeSettingsRepository;
+class _MockBridgeSettingsService() extends Mock implements BridgeSettingsService;
 class _MockConnectionService() extends Mock implements ConnectionService;
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 class _MockPluginManagementService() extends Mock implements PluginManagementService;
@@ -87,7 +88,13 @@ const _bridgeState = BridgeControlState(
 );
 
 void main() {
-  setUpAll(() {
+  setUpAll(() async {
+    // Ahem's uniform advances do not represent the packaged settings font at large text scales.
+    final font = FontLoader("packages/theme_prego/Satoshi Prego");
+    for (final weight in ["Regular", "Medium", "Bold"]) {
+      font.addFont(rootBundle.load("packages/theme_prego/assets/fonts/SatoshiPrego/SatoshiPrego-$weight.otf"));
+    }
+    await font.load();
     registerFallbackValue(AppearanceMode.system);
     registerFallbackValue(ChatInputMode.voiceFirst);
     registerFallbackValue(DesktopAttentionPreference.enabled);
@@ -98,7 +105,7 @@ void main() {
   late _MockAppearanceStore appearanceStore;
   late AppearanceCubit appearanceCubit;
   late ChatInputModeCubit chatInputModeCubit;
-  late _MockBridgeSettingsRepository repository;
+  late _MockBridgeSettingsService bridgeSettingsService;
   late _MockDesktopAttentionService desktopAttentionService;
   late _MockPluginManagementService pluginService;
   late BehaviorSubject<ConnectionStatus> connectionStatuses;
@@ -151,8 +158,8 @@ void main() {
     connectionStatuses = BehaviorSubject<ConnectionStatus>.seeded(_connected);
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatuses.value);
     when(() => connectionService.status).thenAnswer((_) => connectionStatuses.stream);
-    repository = _MockBridgeSettingsRepository();
-    when(repository.load).thenAnswer(
+    bridgeSettingsService = _MockBridgeSettingsService();
+    when(bridgeSettingsService.load).thenAnswer(
       (_) async => const BridgeSettingsLoadSupported(
         response: BridgeSettingsResponse(
           pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
@@ -161,7 +168,7 @@ void main() {
         ),
       ),
     );
-    getIt.registerSingleton<BridgeSettingsRepository>(repository);
+    getIt.registerSingleton<BridgeSettingsService>(bridgeSettingsService);
     getIt.registerSingleton<ConnectionService>(connectionService);
     attentionPreferences = BehaviorSubject<DesktopAttentionPreference>.seeded(DesktopAttentionPreference.enabled);
     desktopAttentionService = _MockDesktopAttentionService();
@@ -233,11 +240,11 @@ void main() {
                 // Exercise registered shortcuts without mounting production DI or the cockpit.
                 final shell = buildDesktopRoutes().single as ShellRoute;
                 final gate = shell.builder!(context, state, child) as AuthGate;
-                final shortcuts = (gate.child as Builder).builder(context) as CallbackShortcuts;
-                final provider = shortcuts.child as DesktopCockpitCubitProvider;
+                final provider = (gate.child as Builder).builder(context) as DesktopCockpitCubitProvider;
+                final cockpit = provider.child as DesktopCockpitShell;
                 return CallbackShortcuts(
-                  bindings: shortcuts.bindings,
-                  child: (provider.child as DesktopCockpitShell).child,
+                  bindings: {desktopShortcut(key: LogicalKeyboardKey.comma): cockpit.onOpenSettings},
+                  child: cockpit.child,
                 );
               },
             ),
@@ -271,12 +278,16 @@ void main() {
           BlocProvider<AppearanceCubit>.value(value: appearanceCubit),
           BlocProvider<ChatInputModeCubit>.value(value: chatInputModeCubit),
         ],
-        child: MaterialApp.router(
-          routerConfig: router,
-          theme: buildPregoThemeData(brightness: Brightness.light),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          builder: (_, child) => DesktopEscapeDismissal(child: child!),
+        // As in the desktop shell, so owned sheets open as dialogs.
+        child: PregoInteractionScope(
+          mode: PregoInteractionMode.pointer,
+          child: MaterialApp.router(
+            routerConfig: router,
+            theme: buildPregoThemeData(brightness: Brightness.light),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            builder: (_, child) => DesktopEscapeDismissal(child: child!),
+          ),
         ),
       ),
     );
@@ -380,13 +391,16 @@ void main() {
     final router = await open(tester: tester, tab: DesktopSettingsTab.general);
     expect(router.state.uri.path, "/session");
     expect(find.byType(SettingsView), findsNothing);
-    expect(find.byType(AppearancePicker), findsOneWidget);
-    expect(find.byType(ChatInputModePicker), findsOneWidget);
+    expect(find.byKey(const ValueKey("desktop-theme-system")), findsOneWidget);
+    expect(find.byType(ChatInputModePicker), findsNothing);
+    expect(find.text("Default input"), findsNothing);
+    expect(find.text("Desktop updates"), findsOneWidget);
+    expect(find.text("Development build"), findsOneWidget);
     expect(find.text("alex"), findsNothing);
     expect(find.text("Warm harness on session open"), findsNothing);
-    expect(find.text("AI Interactions"), findsNothing);
+    expect(find.text("AI interactions"), findsNothing);
     verify(bridgeControl.refreshLaunchAtLogin).called(1);
-    verifyNever(repository.load);
+    verifyNever(bridgeSettingsService.load);
     await tester.tap(find.text("Dark"));
     await tester.pumpAndSettle();
     expect(appearanceCubit.state, AppearanceMode.dark);
@@ -401,8 +415,7 @@ void main() {
 
   testWidgets("Bridge distinguishes connected configuration from local diagnostics", (tester) async {
     await open(tester: tester, tab: DesktopSettingsTab.bridge);
-    expect(find.text("Desktop updates"), findsOneWidget);
-    expect(find.text("Development build"), findsOneWidget);
+    expect(find.text("Desktop updates"), findsNothing);
     expect(find.text("Connected bridge"), findsOneWidget);
     expect(find.text("This computer"), findsOneWidget);
     expect(find.text("Local bridge"), findsOneWidget);
@@ -410,9 +423,9 @@ void main() {
     expect(find.text("Warm harness on session open"), findsOneWidget);
     expect(find.text("Launch Sesori at login"), findsNothing);
     expect(find.text("Quit Sesori"), findsNothing);
-    await tester.ensureVisible(find.text("Open Logs"));
+    await tester.ensureVisible(find.text("Open logs"));
     await tester.pumpAndSettle();
-    await tester.tap(find.text("Open Logs"));
+    await tester.tap(find.text("Open logs"));
     verify(bridgeControl.openLogs).called(1);
     verifyNever(bridgeControl.refreshLaunchAtLogin);
     final interval = find.byKey(const Key("pull_request_refresh_interval"));
@@ -425,18 +438,18 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
     expect(tester.widget<EditableText>(input).focusNode.hasFocus, isFalse);
-    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    expect(find.byType(Dialog), findsOneWidget);
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pumpAndSettle();
-    expect(find.byType(PregoBottomSheet), findsNothing);
+    expect(find.byType(Dialog), findsNothing);
     expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
   });
 
   testWidgets("Notifications uses desktop attention and Account retains supervised logout", (tester) async {
     await open(tester: tester, tab: DesktopSettingsTab.notifications);
-    expect(find.text("AI Interactions"), findsOneWidget);
-    expect(find.text("Session Messages"), findsNothing);
-    expect(find.text("Connection Status"), findsNothing);
+    expect(find.text("AI interactions"), findsOneWidget);
+    expect(find.text("Session messages"), findsNothing);
+    expect(find.text("Connection status"), findsNothing);
     await tester.tap(find.byType(PregoSwitch));
     await tester.pumpAndSettle();
     expect(attentionPreferences.value, DesktopAttentionPreference.disabled);
@@ -445,7 +458,15 @@ void main() {
     expect(find.text("alex"), findsOneWidget);
     expect(find.bySemanticsLabel("Back"), findsNothing);
     expect(find.text("Profile"), findsNothing);
-    await tester.tap(find.text("Log Out"));
+    // The sign-in method is said once, beside its provider icon.
+    expect(find.textContaining("Signed in with"), findsOneWidget);
+    await tester.tap(find.text("Log out"));
+    await tester.pumpAndSettle();
+    // Logging out asks first, in a dialog rather than a sheet on desktop.
+    verifyNever(authGateCubit.signOut);
+    expect(find.byType(PregoBottomSheet), findsNothing);
+    expect(find.ancestor(of: find.byKey(const Key("logout_confirm_action")), matching: find.byType(Dialog)), findsOneWidget);
+    await tester.tap(find.byKey(const Key("logout_confirm_action")));
     await tester.pumpAndSettle();
     verify(authGateCubit.signOut).called(1);
     expect(logoutCompletions, 1);
@@ -457,8 +478,11 @@ void main() {
     testWidgets("failed logout ${failure.name} keeps Account open", (tester) async {
       when(authGateCubit.signOut).thenAnswer((_) async => failure);
       final router = await open(tester: tester, tab: DesktopSettingsTab.account);
-      await tester.tap(find.text("Log Out"));
+      await tester.tap(find.text("Log out"));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key("logout_confirm_action")));
+      await tester.pumpAndSettle();
+      verify(authGateCubit.signOut).called(1);
       expect(logoutCompletions, 0);
       expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
       expect(router.state.uri.path, "/session");
@@ -482,8 +506,10 @@ void main() {
     final logout = Completer<DesktopLogoutOutcome>();
     when(authGateCubit.signOut).thenAnswer((_) => logout.future);
     final router = await open(tester: tester, tab: DesktopSettingsTab.account);
-    await tester.tap(find.text("Log Out"));
-    await tester.pump();
+    await tester.tap(find.text("Log out"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("logout_confirm_action")));
+    await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     logout.complete(DesktopLogoutOutcome.completed);
     await tester.pumpAndSettle();
@@ -493,7 +519,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  for (final scale in [1.0, 2.0]) {
+  for (final scale in [1.0, 2.0, 2.5]) {
     testWidgets("minimum window at ${scale}x keeps tabs reachable and preserves the route", (tester) async {
       tester.platformDispatcher.textScaleFactorTestValue = scale;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
@@ -514,6 +540,13 @@ void main() {
         expect(target.hitTestable(), findsOneWidget);
         expect(MediaQuery.textScalerOf(tester.element(target)).scale(10), 10 * scale);
         if (scale > 1) expect(Scrollable.of(tester.element(target)).position.maxScrollExtent, greaterThan(0));
+        await tester.tap(target);
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const Key("desktop-settings-close")).hitTestable(),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull, reason: "${tab.name} at scale $scale");
       }
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
@@ -533,7 +566,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.comma);
       await tester.sendKeyUpEvent(modifier);
       await tester.pumpAndSettle();
-      expect(find.byType(AppearancePicker), findsOneWidget);
+      expect(find.byKey(const ValueKey("desktop-theme-system")), findsOneWidget);
       expect(router.state.uri.path, "/session");
       expect(tester.element(find.text("open", skipOffstage: false)), same(opener));
       expect(tester.takeException(), isNull);
@@ -592,10 +625,10 @@ void main() {
     final detail = tester.widget<HarnessSettingsDetailView>(find.byType(HarnessSettingsDetailView));
     await tester.tap(find.byKey(const Key("harness_authentication_opencode")));
     await tester.pumpAndSettle();
-    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    expect(find.byType(Dialog), findsOneWidget);
     detail.onClose();
     await tester.pumpAndSettle();
-    expect(find.byType(PregoBottomSheet), findsNothing);
+    expect(find.byType(Dialog), findsNothing);
     expect(find.text("open"), findsOneWidget);
     expect(pluginSnapshots.hasListener, isFalse);
     verifyNever(() => pluginService.cancelAuthentication(pluginId: "opencode"));
@@ -631,7 +664,7 @@ void main() {
     await tester.tap(find.byKey(const Key("harness_authentication_opencode")));
     await tester.pumpAndSettle();
 
-    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    expect(find.byType(Dialog), findsOneWidget);
     verifyNever(
       () => getIt<UrlLauncher>().launch(Uri.parse("https://auth.example/authorize"), mode: UrlLaunchMode.externalApp),
     );

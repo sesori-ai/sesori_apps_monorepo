@@ -16,6 +16,7 @@ typedef PiCatalogProbeSnapshot = ({
   List<PluginAgent> agents,
   PluginProvidersResult providers,
   List<PluginCommand> commands,
+  Set<({String providerID, String modelID})> nonReasoningModels,
   bool complete,
 });
 
@@ -188,6 +189,10 @@ class PiBackendCatalogRepository({
             ),
           ),
           commands: commands,
+          nonReasoningModels: Set.unmodifiable([
+            for (final model in deduped)
+              if (!model.reasoning) (providerID: model.provider!, modelID: model.id!),
+          ]),
           complete: !partial,
         ),
       );
@@ -266,6 +271,7 @@ class PiBackendCatalogRepository({
             [
               for (final model in entry.value)
                 PluginModel(
+                  fastMode: null,
                   id: model.id!,
                   name: _displayName(model),
                   // Strongest first; Pi's first-listed level stays the default.

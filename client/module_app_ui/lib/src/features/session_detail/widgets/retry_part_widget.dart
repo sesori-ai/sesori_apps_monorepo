@@ -23,18 +23,22 @@ class const RetryPartWidget({
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.refresh,
-            size: 14,
-            color: prego.colors.fgSuccessPrimary,
+          SizedBox.square(
+            dimension: 20,
+            child: Icon(
+              TablerRegular.refresh,
+              size: PregoIconSize.sm,
+              color: prego.colors.textTertiary,
+            ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           Expanded(
             child: Text(
               label.toString(),
-              style: prego.textTheme.textXs.medium.copyWith(
-                color: prego.colors.fgSuccessPrimary,
+              style: prego.textTheme.textSm.regular.copyWith(
+                color: prego.colors.textSecondary,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,

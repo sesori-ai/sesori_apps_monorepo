@@ -1,13 +1,16 @@
 import "dart:async";
+import "dart:ui" as ui;
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/gestures.dart";
+import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -16,6 +19,12 @@ import "package:theme_prego/module_prego.dart";
 // ---------------------------------------------------------------------------
 
 class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
+
+enum _ReasoningActivation() {
+  tap,
+  keyboard,
+  accessibility,
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -26,24 +35,26 @@ SessionDetailState _loadedState({
   List<MessageWithParts> messages = const [],
 }) {
   return SessionDetailState.loaded(
-    interaction: const SessionInteractionState.available(refreshError: null),
+    interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
     messages: messages,
     olderMessagesCursor: null,
+    transcriptFolded: false,
     streamingText: streamingText,
     sessionStatus: const SessionStatus.idle(),
     pendingQuestions: const [],
     pendingPermissions: const [],
     sessionTitle: null,
+    session: testConstSession,
     pluginId: "opencode",
     supportsPromptAttachments: false,
-    agent: null,
     assistantAgentModel: null,
     children: const [],
     childStatuses: const {},
     isRootSession: true,
     isArchived: false,
     queuedMessages: const [],
-    sendingSubmission: null,
+    bridgePromptAttachments: const {},
+    localSend: const LocalSendPhase.idle(),
     availableAgents: const [],
     availableProviders: const [],
     availableCommands: const [],
@@ -53,6 +64,8 @@ SessionDetailState _loadedState({
       modelID: "claude-3-5-sonnet",
       variant: null,
     ),
+    promptDefaults: null,
+    fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
   );
@@ -171,6 +184,69 @@ void main() {
   setUp(() {
     mockCubit = MockSessionDetailCubit();
   });
+
+  for (final activation in _ReasoningActivation.values) {
+    testWidgets("reasoning disclosure opens its full content with ${activation.name}", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+        disableAnimations: true,
+      );
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final streaming = activation == _ReasoningActivation.accessibility;
+      const text = "**Reviewing the next step**\n\nThe complete reasoning stays available here.";
+      whenListen(
+        mockCubit,
+        const Stream<SessionDetailState>.empty(),
+        initialState: _loadedState(
+          streamingText: streaming ? {"reasoning": text} : const {},
+          messages: [_messageWithPart(messageId: "message", partId: "reasoning", text: text)],
+        ),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildPregoThemeData(brightness: Brightness.light),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: BlocProvider<SessionDetailCubit>.value(
+            value: mockCubit,
+            child: SessionDetailPresentationScope(
+              messageImageRepository: () => throw UnimplementedError(),
+              imageSaver: () => throw UnimplementedError(),
+              imageClipboard: () => throw UnimplementedError(),
+              imageSharer: () => throw UnimplementedError(),
+              canShareImages: false,
+              openExternalLink: ({required url, required mode}) async => true,
+              openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+              openHarnessSettings: () {},
+              openBridgeSettings: () {},
+              child: Scaffold(
+                body: ReasoningPartCard(text: text, isStreaming: streaming, partId: "reasoning", messageId: "message"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      switch (activation) {
+        case _ReasoningActivation.tap:
+          await tester.tap(find.byType(ReasoningPartCard));
+        case _ReasoningActivation.keyboard:
+          await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+          await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        case _ReasoningActivation.accessibility:
+          final row = find.byType(ReasoningPartCard);
+          final node = tester.getSemantics(find.byType(MergeSemantics));
+          expect(node.getSemanticsData().label, contains("Thinking..."), reason: node.toStringDeep());
+          expect(node.getSemanticsData().hasAction(ui.SemanticsAction.tap), isTrue);
+          tester.renderObject(row).owner!.semanticsOwner!.performAction(node.id, ui.SemanticsAction.tap);
+      }
+      await tester.pumpAndSettle();
+      expect(find.byType(ReasoningModal), findsOneWidget);
+      final body = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
+      expect(body.data, text);
+      expect(body.styleSheet!.p!.fontSize, 14);
+      expect(body.styleSheet!.p!.height, closeTo(20 / 14, 0.001));
+    });
+  }
 
   testWidgets("modal receives streaming updates in real-time", (tester) async {
     final controller = StreamController<SessionDetailState>.broadcast();

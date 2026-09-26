@@ -107,7 +107,7 @@ void main() {
 
     // The actions are absent until the row is long-pressed…
     expect(find.text("Rename"), findsNothing);
-    expect(find.text("Hide Project"), findsNothing);
+    expect(find.text("Hide project"), findsNothing);
 
     await longPressTile(tester);
 
@@ -116,7 +116,7 @@ void main() {
     // the finger is still down, so a barrier that swallowed the lift would
     // dismiss the menu the instant it opened.
     expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);
-    expect(find.widgetWithText(InkWell, "Hide Project"), findsOneWidget);
+    expect(find.widgetWithText(InkWell, "Hide project"), findsOneWidget);
     expect(find.byType(PregoBottomSheet), findsNothing);
 
     // The row it is anchored to stays on screen behind the menu — the whole
@@ -132,7 +132,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);
-    expect(find.widgetWithText(InkWell, "Hide Project"), findsOneWidget);
+    expect(find.widgetWithText(InkWell, "Hide project"), findsOneWidget);
     // A secondary click must not double as the row's tap — the list is still
     // here, not the sessions route.
     expect(find.widgetWithText(ProjectTile, "my-app"), findsOneWidget);
@@ -166,11 +166,11 @@ void main() {
     await pumpScreen(tester);
     await longPressTile(tester);
 
-    await tester.tap(find.widgetWithText(InkWell, "Hide Project"));
+    await tester.tap(find.widgetWithText(InkWell, "Hide project"));
     await tester.pumpAndSettle();
 
     verify(() => mockProjectRepository.hideProject(projectId: project.id)).called(1);
-    expect(find.text("Hide Project"), findsNothing);
+    expect(find.text("Hide project"), findsNothing);
     expect(find.text("Project hidden"), findsOneWidget);
     // The bridge confirmed, so the row is gone.
     expect(find.widgetWithText(ProjectTile, "my-app"), findsNothing);
@@ -186,7 +186,7 @@ void main() {
     await pumpScreen(tester);
     await longPressTile(tester);
 
-    await tester.tap(find.widgetWithText(InkWell, "Hide Project"));
+    await tester.tap(find.widgetWithText(InkWell, "Hide project"));
     await tester.pumpAndSettle();
 
     expect(find.text("Project hidden"), findsNothing);
@@ -215,7 +215,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Rename"), findsNothing);
-    expect(find.text("Hide Project"), findsNothing);
+    expect(find.text("Hide project"), findsNothing);
     verifyNever(() => mockProjectRepository.hideProject(projectId: any(named: "projectId")));
   });
 }

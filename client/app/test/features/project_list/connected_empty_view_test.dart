@@ -135,10 +135,10 @@ void main() {
     await pumpConnectedEmpty(tester);
 
     expect(find.textContaining("Connected"), findsNothing);
-    // Named once, in the bar's title block — the body itself says nothing about
+    // Named once, under the page title — the body itself says nothing about
     // the connection or the machine behind it.
     expect(
-      find.descendant(of: find.byType(PregoNavLeadingTitle), matching: find.text("Macbook-Pro.local")),
+      find.descendant(of: find.byType(PregoNavSubtitle), matching: find.text("Macbook-Pro.local")),
       findsOneWidget,
     );
     expect(find.text("Macbook-Pro.local"), findsOneWidget);
@@ -155,7 +155,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AddProjectDialog), findsOneWidget);
-    expect(find.text("This directory is empty"), findsOneWidget);
-    expect(find.text("Add Project"), findsNothing);
+    expect(find.text("No folders here"), findsOneWidget);
   });
 }

@@ -56,6 +56,7 @@ void main() {
 
       // Prompt a session this process never created.
       final sending = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "old-session",
         parts: const [PluginPromptPart.text(text: "hi")],
@@ -124,6 +125,7 @@ void main() {
       // A second prompt on the now-resident session does NOT re-load.
       final loadsBefore = fake.written.where((f) => f["method"] == "session/load").length;
       final again = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-2",
         sessionId: "old-session",
         parts: const [PluginPromptPart.text(text: "again")],
@@ -146,6 +148,7 @@ void main() {
       expect(await connecting, isTrue);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "missing-session",
         parts: const [PluginPromptPart.text(text: "first")],
@@ -164,6 +167,7 @@ void main() {
       await pump();
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-2",
         sessionId: "missing-session",
         parts: const [PluginPromptPart.text(text: "retry")],

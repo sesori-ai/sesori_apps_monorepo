@@ -110,12 +110,14 @@ Future<void> _pumpComposer({
         inputMode: ChatInputMode.textFirst,
         isKeyboardVisible: false,
         sendKeyPolicy: sendKeyPolicy,
+        presentation: ComposerPresentation.touch,
         attachmentDispatcher: () => attachmentDispatcher,
         imageClipboard: () => imageClipboard,
         child: Scaffold(
           body: PromptInput(
             isBusy: false,
             hasMessages: true,
+            canSend: true,
             onSend: onSend,
             onVoiceTranscriptionCompleted: null,
             onDraftChanged: (_) {},
@@ -123,6 +125,7 @@ Future<void> _pumpComposer({
             onAbort: () {},
             surfaceStyleController: surfaceStyle,
             composerHeader: null,
+            composerTrailing: null,
             availableCommands: const [],
             stagedCommand: null,
             onCommandSelected: (_) {},

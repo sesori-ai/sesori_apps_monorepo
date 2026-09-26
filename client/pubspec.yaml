@@ -2,8 +2,8 @@ name: sesori_client_workspace
 publish_to: none
 
 environment:
-  sdk: ^3.13.3
-  flutter: ">=3.47.4 <3.48.0"
+  sdk: ^3.13.4
+  flutter: ">=3.47.5 <3.48.0"
 
 workspace:
   - app
@@ -11,6 +11,7 @@ workspace:
   - motion_tuning
   - module_core
   - module_auth
+  - module_persistence
   - module_prego
   - module_app_ui
   - module_desktop_core

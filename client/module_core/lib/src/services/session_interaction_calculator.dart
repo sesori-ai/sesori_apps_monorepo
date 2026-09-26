@@ -89,7 +89,7 @@ class const SessionInteractionCalculator() {
     }
 
     if (metadata.runtimeState.isRoutable) {
-      return SessionInteractionState.available(refreshError: refreshError);
+      return SessionInteractionState.available(displayName: displayName, refreshError: refreshError);
     }
     final runtimeReason = switch (metadata.runtimeState) {
       PluginRuntimeState.stopping => SessionInteractionBlockedReason.stopping,

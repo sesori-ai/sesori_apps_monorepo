@@ -1,0 +1,62 @@
+name: Publish qualified macOS desktop assets
+
+# Called only after the shared release exists and both native desktop builds passed.
+# Production inherits store-production approval through submit-release's release job.
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      build_number:
+        required: true
+        type: string
+      channel:
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    # Default-off platform admission is separate from approval for each production release.
+    if: vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Require the shared main release cycle
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Desktop publication requires main.' >&2; exit 1; }
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-macos-*
+          path: build/desktop-release-input
+      - name: Record producer provenance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > build/desktop-release-input/run.json
+      - name: Verify and attach immutable assets without changing the shared release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          python .github/scripts/publish_desktop_release.py \
+            --root build/desktop-release-input --output build/desktop-release-prepared \
+            --source-sha "$SOURCE_SHA" --tooling-sha "$GITHUB_SHA" --channel "$CHANNEL" \
+            --version "$VERSION" --build-number "$BUILD_NUMBER" \
+            --repository "$GITHUB_REPOSITORY" --run-id "$GITHUB_RUN_ID"

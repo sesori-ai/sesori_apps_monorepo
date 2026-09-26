@@ -12,6 +12,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -38,6 +39,7 @@ void main() {
         persistenceDatabase: db,
       );
       handler = GetSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
         prSyncService: prSyncService,
       );
@@ -79,6 +81,7 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final realHandler = GetSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: realRepository,
         prSyncService: prSyncService,
       );
@@ -304,6 +307,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          fastMode: false,
           pluginId: "opencode",
           sessionId: "s1",
           backendSessionId: "s1",
@@ -328,6 +332,7 @@ void main() {
           lastUserMessageAt: null,
           title: null,
           catalogTitle: null,
+          approvalOverride: null,
         ),
       );
 
@@ -379,6 +384,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          fastMode: false,
           pluginId: "opencode",
           sessionId: "s1",
           backendSessionId: "s1",
@@ -403,6 +409,7 @@ void main() {
           lastUserMessageAt: null,
           title: null,
           catalogTitle: null,
+          approvalOverride: null,
         ),
       );
 
@@ -447,6 +454,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          fastMode: false,
           pluginId: "opencode",
           sessionId: "s1",
           backendSessionId: "s1",
@@ -471,10 +479,12 @@ void main() {
           lastUserMessageAt: null,
           title: null,
           catalogTitle: null,
+          approvalOverride: null,
         ),
       );
       sessionDao.setSession(
         const SessionDto(
+          fastMode: false,
           pluginId: "opencode",
           sessionId: "s2",
           backendSessionId: "s2",
@@ -499,6 +509,7 @@ void main() {
           lastUserMessageAt: null,
           title: null,
           catalogTitle: null,
+          approvalOverride: null,
         ),
       );
 
@@ -527,6 +538,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          fastMode: false,
           pluginId: "opencode",
           sessionId: "s1",
           backendSessionId: "s1",
@@ -551,6 +563,7 @@ void main() {
           lastUserMessageAt: null,
           title: null,
           catalogTitle: null,
+          approvalOverride: null,
         ),
       );
 
@@ -576,6 +589,7 @@ void main() {
 
       sessionDao.setSession(
         const SessionDto(
+          fastMode: false,
           pluginId: "opencode",
           sessionId: "s1",
           backendSessionId: "s1",
@@ -600,6 +614,7 @@ void main() {
           lastUserMessageAt: null,
           title: null,
           catalogTitle: null,
+          approvalOverride: null,
         ),
       );
 
@@ -737,11 +752,13 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final realHandler = GetSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: realRepository,
         prSyncService: prSyncService,
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
+        fastMode: false,
         pluginId: "fake",
         preservePullRequestScope: false,
         sessionId: "s1",
@@ -918,6 +935,7 @@ void main() {
     test("starts explicit PR refresh before awaiting initial GitHub identity", () async {
       final identityBlockingService = _IdentityBlockingPrSyncService();
       final orderingHandler = GetSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
         prSyncService: identityBlockingService,
       );
@@ -971,6 +989,7 @@ void main() {
         identityVerificationDelays: const [Duration(milliseconds: 100)],
       );
       final boundedHandler = GetSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
         prSyncService: slowIdentityService,
         prRefreshTimeout: const Duration(milliseconds: 10),
@@ -1041,6 +1060,7 @@ void main() {
         },
       );
       final timeoutHandler = GetSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
         prSyncService: slowPrSyncService,
         prRefreshTimeout: const Duration(milliseconds: 20),
@@ -1102,6 +1122,7 @@ void main() {
         persistenceDatabase: db,
       );
       final timeoutHandler = GetSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: stalledEnrichmentRepository,
         prSyncService: FakePrSyncService(),
         prRefreshTimeout: const Duration(milliseconds: 40),
@@ -1155,6 +1176,7 @@ void main() {
         persistenceDatabase: db,
       );
       final timeoutHandler = GetSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: rereadFailingRepository,
         prSyncService: FakePrSyncService(),
       );
@@ -1207,6 +1229,7 @@ void main() {
       );
       const prRefreshTimeout = Duration(milliseconds: 300);
       final failingHandler = GetSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
         prSyncService: failedRefresh,
         prRefreshTimeout: prRefreshTimeout,
@@ -1261,6 +1284,7 @@ void main() {
         ],
       );
       final boundedHandler = GetSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
         prSyncService: slowFinalIdentityService,
         prRefreshTimeout: const Duration(milliseconds: 10),
@@ -1308,6 +1332,7 @@ void main() {
         ),
       );
       final failingHandler = GetSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
         prSyncService: FakePrSyncService(refreshError: StateError("refresh failed")),
       );
@@ -1351,6 +1376,7 @@ void main() {
       );
       final fastPrSyncService = FakePrSyncService();
       final enrichedHandler = GetSessionsHandler(
+        sessionViews: const PassThroughSessionViews(),
         sessionRepository: sessionRepository,
         prSyncService: fastPrSyncService,
       );
@@ -1371,6 +1397,7 @@ void main() {
 
 SessionDto _storedSession({required String currentBranchName}) {
   return SessionDto(
+    fastMode: false,
     pluginId: "fake",
     sessionId: "s1",
     backendSessionId: "s1",
@@ -1395,6 +1422,7 @@ SessionDto _storedSession({required String currentBranchName}) {
     lastUserMessageAt: null,
     title: null,
     catalogTitle: null,
+    approvalOverride: null,
   );
 }
 

@@ -1,4 +1,6 @@
+import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/repositories/accepted_prompts_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/cancel_queued_prompt_handler.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
@@ -9,6 +11,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_session_options_service.dart";
+import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
@@ -39,7 +42,11 @@ void main() {
       );
       final dispatcher = SessionOperationDispatcher(sessionRepository: repository);
       final service = SessionPromptService(
+        continuations: const EmptySessionContinuations(),
+        mutations: const UnusedContinuationMutations(),
+        views: const PassThroughSessionViews(),
         sessionRepository: repository,
+        acceptedPromptsRepository: AcceptedPromptsRepository(dao: AcceptedPromptsDao(database: db)),
         dispatcher: dispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
         sessionOptionsService: FakeSessionOptionsService(),

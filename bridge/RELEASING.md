@@ -106,11 +106,29 @@ and the Cloud Run delivery/dispatch logs before checking the GitHub workflow run
 `alex@vespr.xyz`; GitHub owns build status and failed-action notifications. See the
 [dispatcher runbook](../tool/release_scheduler/README.md) for pause/resume, IAM, retry, and key-rotation instructions.
 
-Automatic runs skip commits that already carry a release tag or match the rolling `internal-release-attempt` tag. Otherwise, they compare the whole batch against that attempt (or the nearest release tag before the first attempt). Only mobile-product, shared, bridge, or release-automation changes qualify; desktop-only and unrelated documentation changes do not consume store uploads. The exact paths live in `.github/scripts/check_internal_release.sh`.
+Automatic runs skip commits that already carry a release tag or match the rolling `internal-release-attempt` tag.
+Otherwise, they compare the whole batch against that attempt (or the nearest release tag before the first attempt).
+Mobile, desktop, shared, bridge and release-automation changes qualify for the shared cycle, including store uploads;
+unrelated documentation does not. Exact paths live in `.github/scripts/check_internal_release.sh`.
 
 Before version validation, store queries, or builds, the workflow moves the lightweight `internal-release-attempt` tag to the chosen SHA. A failure or cancellation therefore cannot cause hourly retries of that commit. A later relevant change allows another attempt; the marker is not a release and creates no GitHub release object. If recording the marker fails, no build starts.
 
-An eligible run uploads the mobile apps to TestFlight / Play internal, builds all six bridge platform archives with `X.Y.Z-internal.<N>` baked in, and — only when everything succeeded — pushes a `v<X.Y.Z>-internal.<N>` tag and rolls the single internal GitHub pre-release onto it (binaries + `checksums.txt` + regenerated notes). Existing internal release tags remain immutable build-number-to-commit mappings. The auto-updater ignores pre-releases on the default `stable` track; bridges switched to the `internal` track (`sesori-bridge config track internal`) pick up these `-internal.<N>` pre-releases.
+An eligible run uploads mobile apps to TestFlight / Play internal and builds all six bridge archives with
+`X.Y.Z-internal.<N>` baked in. Only after all core products succeed, it pushes a `v<X.Y.Z>-internal.<N>` tag
+and publishes its GitHub prerelease (bridge binaries, `checksums.txt`, regenerated notes). Internal tags remain
+immutable build-number-to-commit mappings. Cleanup retains the newest desktop-completed internal prerelease
+alongside the current core release, so a desktop failure does not erase its previous public downloads. Older
+completed desktop previews retire once a newer completion exists. The default `stable` bridge updater ignores
+prereleases; `sesori-bridge config track internal` selects the newest `-internal.<N>` core release.
+
+Native macOS desktop builds use the same source and aligned build number, with their own signing/qualification.
+They remain Actions artifacts while `DESKTOP_MACOS_PUBLICATION_ENABLED` is absent/false. Once the owner admits
+macOS publication, desktop attaches its installers and separate `desktop-checksums.txt`/`desktop-release.json`
+after both its native jobs and the existing shared finalizer pass. Desktop never changes bridge assets, checksums,
+tags, prerelease status or Latest. Desktop failure remains visible without changing core finalization.
+Stable bridge/npm cleanup skips desktop-completed internal previews, including bridge-only production and
+pending/failed stable desktop attachment. Internal rollover owns their retirement; stable desktop availability
+does not replace the internal channel.
 
 For an immediate build or a retry after fixing credentials/store issues, open **Actions → Release All Platforms → Run workflow**, normally on `main`, leaving **automatic** unchecked (`false`). This explicit manual retry bypasses the automatic tag/path checks but still validates versions and allocates a fresh aligned build number. Manual builds on another branch do not move main's attempt marker. The standalone iOS/Android manual workflows remain available.
 
@@ -124,6 +142,10 @@ Run the `Submit Release` workflow (`submit-release.yml`) with the build number t
 
 - `publish_bridge` ticked (default): the release is published immediately — bridge auto-update goes live for all users right away.
 - `publish_bridge` unticked: the release is created as a pre-release, invisible to the auto-updater until you promote it in the GitHub UI.
+
+Admitted macOS desktop packages rebuild that same source with the stable channel and attach after the approved
+shared release job; no additional production approval is required. Beta and `bridge-only` do not publish desktop.
+Private `macos-packaging` qualification can pin `source_sha` and `build_number` before enabling publication.
 
 ### 4. npm publish (automatic)
 

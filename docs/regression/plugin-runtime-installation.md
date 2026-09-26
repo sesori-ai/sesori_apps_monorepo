@@ -44,7 +44,7 @@ from the app or management API, or at bridge start when Sesori manages an older 
   GitHub Copilot installs the official bare `copilot`/`copilot.exe` from exactly
   six arm64/x64 macOS, Linux, and Windows archives for the pinned release.
   Antigravity installs Google's proprietary official server and local-harness pair as one package directory on macOS
-  arm64, Linux x64/arm64, and Windows x64/arm64; Google publishes no macOS x64 archive. The user must review
+  x64/arm64, Linux x64/arm64, and Windows x64/arm64. The user must review
   [Google's terms](https://antigravity.google/terms) and
   [Antigravity documentation](https://antigravity.google/docs/) before explicitly choosing Install. A configured
   `--antigravity-bin` remains authoritative and removes the managed action. In the client, the overview download icon
@@ -67,7 +67,7 @@ from the app or management API, or at bridge start when Sesori manages an older 
 - Every archive asset declares a required per-command extraction budget. The same value bounds
   member listing and extraction for tar.gz/POSIX zip; Windows zip passes it to `Expand-Archive`,
   whose existing traversal validation remains in use. This is not a total install deadline.
-  Existing archived runtimes and all five Antigravity archives declare a conservative two-minute per-command budget:
+  Existing archived runtimes and all six Antigravity archives declare a conservative two-minute per-command budget:
   extraction keeps its previous bound while listing uses that same explicit budget instead of the former fixed
   30 seconds. The policy is bounded and intentionally not derived from host timings. Bare binaries are unaffected. A
   larger budget never skips traversal or symlink checks; command timeouts remain observable failures with rejected
@@ -136,10 +136,10 @@ from the app or management API, or at bridge start when Sesori manages an older 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. Installation is a deliberate network-bound action, not a heartbeat. |
-| L2 Routine | Capability declaration is honest for every registered harness on the release-target bridge host: those with a pinned asset and no override advertise install and automatic upgrade, the rest do neither. A start with no managed version directory triggers no upgrade. Automated manifest coverage includes Codex's and Copilot's exact six platform/architecture mappings and digests, Antigravity's five official targets and macOS x64 omission, OMP's eight direct-binary mappings including Windows ARM64 capability/hash/URL and asset-service routing without a Linux libc probe, plus preservation of nested package entries and sibling resources. Headless bridge; every supporting production harness. |
+| L2 Routine | Capability declaration is honest for every registered harness on the release-target bridge host: those with a pinned asset and no override advertise install and automatic upgrade, the rest do neither. A start with no managed version directory triggers no upgrade. Automated manifest coverage includes Codex's and Copilot's exact six platform/architecture mappings and digests, Antigravity's six official targets including macOS x64, OMP's eight direct-binary mappings including Windows ARM64 capability/hash/URL and asset-service routing without a Linux libc probe, plus preservation of nested package entries and sibling resources. Headless bridge; every supporting production harness. |
 | L3 Release | One complete install on the release-target bridge host from missing runtime through verification and extraction to enabled, re-inspected, and selectable, with progress shown on the release-target client platform. Plus a start with a raised target over an older supported managed version: the harness stays selectable throughout, startup does not block, and the new version is used by the next generation; and over a below-minimum version: the harness is blocked briefly, then becomes selectable without a bridge restart or an Install press. Client end to end; every harness advertising install. |
 | L4 Extended | Checksum mismatch or interrupted download failing safely, shutdown mid-install, duplicate join, competing-command rejection, authentication-required outcome, too-old runtime, and an alternate bridge host. An Install pressed while a startup upgrade downloads, which joins it and still leaves the harness enabled and started. A forced upgrade failure over each of an older supported and a below-minimum version, leaving the documented fallback state. A session running on the older supported runtime during an upgrade continuing uninterrupted, with its version directory surviving until the generation stops and the next start resolving the pinned version. Live plugin for bridge outcome, client end to end for card state. Separate cubit/shared-widget automation proves retained progress/failure and same-harness exclusion while peer toggles remain usable, without claiming a real installation. |
-| L5 Full | Install on every supported platform and architecture where the harness publishes an asset, a superseded managed version swept after success, and pinned digests matching the upstream release assets. Copilot's complete matrix is its six official arm64/x64 macOS, Linux, and Windows archives. Antigravity's is macOS arm64 plus Linux and Windows arm64/x64; macOS x64 must omit Install. Packaged or external, since real upstream artifacts are part of the claim. |
+| L5 Full | Install on every supported platform and architecture where the harness publishes an asset, a superseded managed version swept after success, and pinned digests matching the upstream release assets. Copilot's complete matrix is its six official arm64/x64 macOS, Linux, and Windows archives. Antigravity's is all six arm64/x64 macOS, Linux and Windows archives. Packaged or external, since real upstream artifacts are part of the claim. |
 
 ## Exploration Guidance
 
@@ -195,16 +195,17 @@ download, verification, or placement. Use a disposable data directory.
   login, and it never supersedes a configured binary path. Copilot authentication remains
   an out-of-band `copilot login`, supported token environment, or BYOK configuration.
 - Pinned digests are release-engineering state, checked upstream externally.
-- OMP's Windows ARM64 mapping is implemented for `18.1.19`, with an independently
-  downloaded hash matching the official release digest and checksum list. Native
-  Windows ARM64 install, `omp/18.1.19`, ACP initialize and teardown have not been
+- OMP's Windows ARM64 mapping has an independently downloaded hash matching the
+  pinned release's official digest and checksum list. Native Windows ARM64
+  installation, version, ACP initialize and teardown have not been
   exercised; they remain required coverage rather than inferred from metadata,
   simulated platform tests or macOS/x64 runs.
-- Antigravity's managed manifest uses the registry package version `1.1.1` for its version directory and separately
-  validates the exact ACP runtime identity `agy_acp_server_1.1.1`. The initialize-only validator uses
+- Antigravity's managed manifest uses registry package version `1.2.1` for its version directory and separately
+  validates the exact ACP runtime identity `1.2.1`. The initialize-only validator uses
   disposable managed state, a sanitized false-inheritance environment, and the shared abort signal; it neither
-  authenticates nor creates a session. Native managed-pipeline correctness has been executed on macOS arm64. Linux x64,
-  Linux arm64, Windows x64 and Windows arm64 native correctness remains unverified.
+  authenticates nor creates a session. This target has macOS arm64 native initialize/teardown coverage, but its complete
+  managed-pipeline run remains unverified. Linux x64, Linux arm64, Windows x64 and Windows arm64 native correctness
+  remains unverified.
 - Startup upgrade replaces only an existing Sesori-managed runtime; otherwise Install remains explicit. A PATH runtime
   preserves managed directories and suppresses automatic managed downloads.
 - There is no hot swap: a generation started on the older supported runtime keeps it until
@@ -238,6 +239,7 @@ download, verification, or placement. Use a disposable data directory.
   verifies that the selected asset's budget reaches extraction and covers pre-placement validation ordering, private
   context containment/cleanup, cached validation and prior-runtime retention on rejection or abort; the adjacent
   managed-install and version-validator suites cover cache reuse and the existing exact-version adapter. Antigravity's
-  release, manifest, descriptor, runtime-service and candidate-validator suites cover all five immutable artifact
+  release, manifest, descriptor, runtime-service and candidate-validator suites cover all six immutable artifact
   mappings, install availability/override/failure, and isolated initialize-only environment, cwd, exact-contract,
-  timeout and abort forwarding.
+  timeout and abort forwarding. Package `1.2.1` macOS x64 archive integrity, hardened extraction, sibling permissions
+  and x86_64 headers are verified; native Intel installation and initialize validation remain unverified.

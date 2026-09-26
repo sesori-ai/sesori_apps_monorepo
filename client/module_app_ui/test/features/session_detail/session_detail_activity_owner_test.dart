@@ -8,6 +8,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 class _MockSessionDetailCubit() extends Mock implements SessionDetailCubit;
@@ -19,29 +20,33 @@ class _MockLifecycleSource() extends Mock implements LifecycleSource;
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
 const _loaded = SessionDetailState.loaded(
-  interaction: SessionInteractionState.available(refreshError: null),
+  interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
   messages: [],
   olderMessagesCursor: null,
+  transcriptFolded: false,
   streamingText: {},
   sessionStatus: SessionStatus.idle(),
   pendingQuestions: [],
   pendingPermissions: [],
   sessionTitle: null,
+  session: testConstSession,
   pluginId: "opencode",
   supportsPromptAttachments: false,
-  agent: null,
   assistantAgentModel: null,
   children: [],
   childStatuses: {},
   isRootSession: true,
   isArchived: false,
   queuedMessages: [],
-  sendingSubmission: null,
+  bridgePromptAttachments: {},
+  localSend: LocalSendPhase.idle(),
   availableAgents: [],
   availableProviders: [],
   availableCommands: [],
   selectedAgent: "build",
   selectedAgentModel: null,
+  promptDefaults: null,
+  fastMode: false,
   stagedCommand: null,
   isRefreshing: false,
 );
@@ -150,11 +155,9 @@ void main() {
       expect(events, 1); // Existing analytics deduplication survives cover/return.
 
       final ownerElement = tester.element(find.byType(SessionDetailActivityOwner));
-      unawaited(
-        showDialog<void>(
-          context: ownerElement,
-          builder: (_) => const Dialog(child: Text("root popup")),
-        ),
+      showDialog<void>(
+        context: ownerElement,
+        builder: (_) => const Dialog(child: Text("root popup")),
       );
       await tester.pumpAndSettle();
       expect(routeSource.currentRoute, expectedRoute);

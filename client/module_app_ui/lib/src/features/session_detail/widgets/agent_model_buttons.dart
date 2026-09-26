@@ -1,17 +1,28 @@
 import "dart:async";
 
+import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart" show ModelPickerSection, ModelPickerSectionBuilder;
+import "package:sesori_dart_core/sesori_dart_core.dart"
+    show
+        FastModeControl,
+        FastModeToggleApply,
+        FastModeToggleConfirmCacheReset,
+        FastModeToggleDecision,
+        FastModeToggleUnavailable,
+        ModelPickerSection,
+        ModelPickerSectionBuilder;
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "model_picker_sheet.dart";
+import "composer_surface_style.dart";
+import "model_picker.dart";
 
 /// Composer header exposing the available agent / model / variant selections
-/// as solid pill buttons ([PregoPickerButton]). Tapping a pill opens its
-/// [PregoAnchorMenu] popup listing the pickable values (instead of a modal
-/// bottom sheet).
+/// as solid pill buttons ([PregoPickerButton]). Tapping a pill opens its popup
+/// beside it: a [PregoAnchorMenu] for agents and variants, and a searchable
+/// [ModelPicker] for models.
 ///
 /// The widget owns the menu contents, so it receives the selectable data and
 /// the selection callbacks directly rather than a "open picker" callback.
@@ -26,18 +37,32 @@ class const AgentModelButtons({
   required final void Function({required String providerID, required String modelID}) onModelSelected,
   required final List<SessionVariant> availableVariants,
   required final ValueChanged<SessionVariant> onVariantSelected,
+
+  /// How the fast-mode pill shows for the selected model.
+  required final FastModeControl fastModeControl,
+
+  /// Decides what a tap on the fast-mode pill does, read at tap time.
+  required final FastModeToggleDecision? Function() decideFastModeToggle,
+  required final ValueChanged<bool> onFastModeChanged,
+
+  /// Whether each selector hugs its label at the leading edge (pointer shells)
+  /// instead of sharing the strip's width equally (touch shells).
+  required final bool compact,
+
+  /// Status chips after the selectors, such as the session's YOLO chip. Keep
+  /// them compact on touch, where the pickers share the remaining width.
+  required final List<Widget> trailing,
 }) extends StatefulWidget {
   @override
   State<AgentModelButtons> createState() => _AgentModelButtonsState();
 }
 
 class _AgentModelButtonsState() extends State<AgentModelButtons> {
-  /// Pre-sorted, provider-grouped model sections for the model menu. Grouping/
-  /// sorting a large catalog is non-trivial (the bottom sheet ran it in an
-  /// isolate), so it is memoized here and only rebuilt when the provider
-  /// catalog or selection changes — never on the frequent composer rebuilds
-  /// that streaming triggers. Filtering by [_modelQuery] is a cheap per-build
-  /// `contains` pass over these precomputed sections.
+  /// Pre-sorted, provider-grouped model sections for the model picker.
+  /// Grouping/sorting a large catalog is non-trivial, so it is memoized here
+  /// and only rebuilt when the provider catalog or selection changes — never
+  /// on the frequent composer rebuilds that streaming triggers. The picker's
+  /// search is a cheap `contains` pass over these precomputed sections.
   List<ModelPickerSection> _modelSections = const [];
 
   @override
@@ -69,67 +94,145 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
   Widget build(BuildContext context) {
     final selected = widget.selectedAgentModel;
     final selectedAgent = widget.selectedAgent;
-    final hasAgentSelection = widget.agents.isNotEmpty && selectedAgent != null;
+    // One agent is no choice: the entry appears only when there is another.
+    final hasAgentSelection = widget.agents.length > 1 && selectedAgent != null;
+    final compact = widget.compact;
+    Widget slot(Widget menu) => _pickerSlot(compact: compact, child: menu);
+    final selectors = [
+      if (hasAgentSelection)
+        slot(
+          _AgentMenu(
+            surfaceStyle: widget.surfaceStyle,
+            collapsible: !compact,
+            agents: widget.agents,
+            selectedAgent: selectedAgent,
+            onAgentSelected: widget.onAgentSelected,
+          ),
+        ),
+      slot(
+        _ModelMenu(
+          surfaceStyle: widget.surfaceStyle,
+          collapsible: !compact,
+          sections: _modelSections,
+          selected: selected,
+          providers: widget.providers,
+          onModelSelected: widget.onModelSelected,
+        ),
+      ),
+      if (widget.availableVariants.isNotEmpty)
+        slot(
+          _VariantMenu(
+            surfaceStyle: widget.surfaceStyle,
+            collapsible: !compact,
+            availableVariants: widget.availableVariants,
+            selectedVariant: selected?.variant,
+            onVariantSelected: widget.onVariantSelected,
+          ),
+        ),
+      if (widget.fastModeControl != FastModeControl.hidden)
+        _FastModeButton(
+          surfaceStyle: widget.surfaceStyle,
+          control: widget.fastModeControl,
+          decide: widget.decideFastModeToggle,
+          onFastModeChanged: widget.onFastModeChanged,
+        ),
+      ...widget.trailing,
+    ];
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-      child: Row(
-        children: [
-          if (hasAgentSelection) ...[
-            Expanded(
-              child: _AgentMenu(
-                surfaceStyle: widget.surfaceStyle,
-                agents: widget.agents,
-                selectedAgent: selectedAgent,
-                onAgentSelected: widget.onAgentSelected,
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Expanded(
-            child: _ModelMenu(
-              surfaceStyle: widget.surfaceStyle,
-              sections: _modelSections,
-              selected: selected,
-              providers: widget.providers,
-              onModelSelected: widget.onModelSelected,
-              onSearchTap: _openModelSearchSheet,
-            ),
-          ),
-          if (widget.availableVariants.isNotEmpty) ...[
-            const SizedBox(width: 8),
-            Expanded(
-              child: _VariantMenu(
-                surfaceStyle: widget.surfaceStyle,
-                availableVariants: widget.availableVariants,
-                selectedVariant: selected?.variant,
-                onVariantSelected: widget.onVariantSelected,
-              ),
-            ),
-          ],
-        ],
-      ),
+      child: Row(spacing: 8, children: selectors),
     );
   }
+}
 
-  /// Opens the full-screen, autofocused model search sheet. The menu itself is
-  /// dismissed by the search affordance (via the [PregoMenuCustom] `close`
-  /// callback) before this runs. Selecting there flows back through
-  /// [onModelSelected].
-  void _openModelSearchSheet() {
-    final selected = widget.selectedAgentModel;
-    unawaited(
-      ModelPickerSheet.show(
-        context,
-        providers: widget.providers,
-        selectedProviderID: selected?.providerID ?? "",
-        selectedModelID: selected?.modelID ?? "",
-        fullScreen: true,
-        autofocusSearch: true,
-        onModelChanged: ({required String providerID, required String modelID}) =>
-            widget.onModelSelected(providerID: providerID, modelID: modelID),
+/// What a session that cannot prompt ran with, where its composer would sit:
+/// the [AgentModelButtons] pills, showing their values without opening any
+/// picker. A value that is unknown leaves its pill out.
+class const ReadOnlyAgentModelPills({
+  super.key,
+  required final List<AgentInfo> agents,
+  required final String? agent,
+  required final List<ProviderInfo> providers,
+  required final AgentModel? model,
+
+  /// Whether each pill hugs its label at the leading edge (pointer shells)
+  /// instead of sharing the strip's width equally (touch shells).
+  required final bool compact,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final agent = this.agent;
+    final model = this.model;
+    final variant = model?.variant;
+    Widget pill({required IconData icon, required String label}) => _pickerSlot(
+      compact: compact,
+      child: _pickerButton(
+        collapsible: !compact,
+        leadingIcon: icon,
+        label: label,
+        surfaceStyle: PregoComposerSurfaceStyle.subtle,
+        onPressed: null,
+      ),
+    );
+    final pills = [
+      // As in the composer, a harness with a single agent has none to name.
+      if (agents.length > 1 && agent != null) pill(icon: TablerRegular.robot, label: agent),
+      if (model != null)
+        pill(
+          icon: TablerRegular.cpu,
+          label: _resolveModelName(context, providers: providers, selected: model),
+        ),
+      if (variant != null) pill(icon: TablerRegular.gauge, label: variant),
+    ];
+    if (pills.isEmpty) return const SizedBox.shrink();
+    return DecoratedBox(
+      decoration: composerScrimDecoration(prego: context.prego),
+      child: Padding(
+        padding: EdgeInsetsDirectional.fromSTEB(16, 6, 16, MediaQuery.paddingOf(context).bottom + 8),
+        child: Row(spacing: 8, children: pills),
       ),
     );
   }
+}
+
+/// A pill's share of the strip: a pointer (compact) pill hugs its label up to a
+/// cap, while touch pills split the width equally.
+Widget _pickerSlot({required bool compact, required Widget child}) {
+  if (!compact) return Expanded(child: child);
+  return Flexible(
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 240),
+      child: IntrinsicWidth(child: child),
+    ),
+  );
+}
+
+/// A picker's glyphs, caret and padding take about 68 points; below this width
+/// its label would show only a few characters.
+const double _minLabelledPickerWidth = 96;
+
+/// The pill for one picker. A [collapsible] (touch) pill shares the row's width
+/// and drops to its glyph when its share is too narrow for a readable label.
+/// Pointer pills size to their label, so they never collapse. Without
+/// [onPressed] the pill only shows its value.
+Widget _pickerButton({
+  required bool collapsible,
+  required IconData leadingIcon,
+  required String label,
+  required PregoComposerSurfaceStyle surfaceStyle,
+  required VoidCallback? onPressed,
+}) {
+  Widget pill({required bool showLabel}) => PregoPickerButton(
+    leadingIcon: leadingIcon,
+    label: label,
+    showLabel: showLabel,
+    surfaceStyle: surfaceStyle,
+    onPressed: onPressed,
+  );
+  if (!collapsible) return pill(showLabel: true);
+  return LayoutBuilder(
+    builder: (context, constraints) => pill(showLabel: constraints.maxWidth >= _minLabelledPickerWidth),
+  );
 }
 
 // ── Menus ────────────────────────────────────────────────────────────────────
@@ -138,6 +241,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
 /// method) so it gets its own element subtree and only rebuilds with its inputs.
 class const _AgentMenu({
   required final PregoComposerSurfaceStyle surfaceStyle,
+  required final bool collapsible,
   required final List<AgentInfo> agents,
   required final String selectedAgent,
   required final ValueChanged<String> onAgentSelected,
@@ -148,9 +252,11 @@ class const _AgentMenu({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: 240,
-      menuMaxHeight: _pickerMaxHeight,
-      triggerBuilder: (context, toggle) => PregoPickerButton(
-        leadingIcon: Icons.smart_toy_outlined,
+      acquireOpenLease: null,
+      menuMaxHeight: PregoPickerPopover.maxHeight,
+      triggerBuilder: (context, toggle) => _pickerButton(
+        collapsible: collapsible,
+        leadingIcon: TablerRegular.robot,
         label: selectedAgent,
         surfaceStyle: surfaceStyle,
         onPressed: toggle,
@@ -162,6 +268,7 @@ class const _AgentMenu({
             title: agent.name,
             subtitle: agent.description,
             isSelected: agent.name == selectedAgent,
+            shortcutLabel: null,
             onTap: () => onAgentSelected(agent.name),
           ),
       ],
@@ -169,59 +276,36 @@ class const _AgentMenu({
   }
 }
 
-/// Model-selection pill + its quick-pick popup (search affordance pinned at the
-/// top, then each provider's representative models).
+/// Model-selection pill + its searchable picker.
 class const _ModelMenu({
   required final PregoComposerSurfaceStyle surfaceStyle,
+  required final bool collapsible,
   required final List<ModelPickerSection> sections,
   required final AgentModel? selected,
   required final List<ProviderInfo> providers,
   required final void Function({required String providerID, required String modelID}) onModelSelected,
-  required final VoidCallback onSearchTap,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // Tapping the search affordance escalates into the full-screen search sheet
-    // (see [_AgentModelButtonsState._openModelSearchSheet]). The affordance is a
-    // custom entry so it can close the menu before the sheet rises.
-    final entries = <PregoMenuEntry>[
-      PregoMenuCustom(
-        height: _ModelSearchAffordance.height,
-        builder: (context, close) => _ModelSearchAffordance(
-          onTap: () {
-            close();
-            onSearchTap();
-          },
-        ),
-      ),
-    ];
-    for (final section in sections) {
-      final models = section.models.where((model) => model.visibleByDefault).toList();
-      if (models.isEmpty) continue;
-      entries.add(PregoMenuLabel(text: section.providerName));
-      for (final model in models) {
-        entries.add(
-          PregoMenuItem(
-            title: model.displayName,
-            subtitle: model.family,
-            isSelected: section.providerID == selected?.providerID && model.modelID == selected?.modelID,
-            onTap: () => onModelSelected(providerID: section.providerID, modelID: model.modelID),
-          ),
-        );
-      }
-    }
-
-    return PregoAnchorMenu(
-      flat: true,
-      menuWidth: 320,
-      menuMaxHeight: _pickerMaxHeight,
-      triggerBuilder: (context, toggle) => PregoPickerButton(
-        leadingIcon: Icons.memory_outlined,
+    return PregoPickerPopover(
+      pointerWidth: 300,
+      onClosed: null,
+      triggerBuilder: (context, toggle) => _pickerButton(
+        collapsible: collapsible,
+        leadingIcon: TablerRegular.cpu,
         label: _resolveModelName(context, providers: providers, selected: selected),
         surfaceStyle: surfaceStyle,
         onPressed: toggle,
       ),
-      entriesBuilder: () => entries,
+      contentBuilder: (context, close) => ModelPicker(
+        sections: sections,
+        selected: selected,
+        onModelSelected: ({required String providerID, required String modelID}) {
+          close();
+          onModelSelected(providerID: providerID, modelID: modelID);
+        },
+        onClose: close,
+      ),
     );
   }
 }
@@ -229,6 +313,7 @@ class const _ModelMenu({
 /// Variant-selection pill + its popup.
 class const _VariantMenu({
   required final PregoComposerSurfaceStyle surfaceStyle,
+  required final bool collapsible,
   required final List<SessionVariant> availableVariants,
   required final String? selectedVariant,
   required final ValueChanged<SessionVariant> onVariantSelected,
@@ -239,10 +324,12 @@ class const _VariantMenu({
     return PregoAnchorMenu(
       flat: true,
       menuWidth: 220,
-      menuMaxHeight: _pickerMaxHeight,
+      acquireOpenLease: null,
+      menuMaxHeight: PregoPickerPopover.maxHeight,
       reverseScroll: true,
-      triggerBuilder: (context, toggle) => PregoPickerButton(
-        leadingIcon: Icons.speed_outlined,
+      triggerBuilder: (context, toggle) => _pickerButton(
+        collapsible: collapsible,
+        leadingIcon: TablerRegular.gauge,
         label: selectedVariant ?? availableVariants.first.id,
         surfaceStyle: surfaceStyle,
         onPressed: toggle,
@@ -255,6 +342,7 @@ class const _VariantMenu({
             title: variant.id,
             subtitle: null,
             isSelected: variant.id == selectedVariant,
+            shortcutLabel: null,
             onTap: () => onVariantSelected(variant),
           ),
       ],
@@ -262,45 +350,128 @@ class const _VariantMenu({
   }
 }
 
-/// A search-bar-styled tap target pinned at the top of the model popup. Tapping
-/// it enters "search mode": the compact glass popup collapses and the roomy,
-/// keyboard-friendly full-screen search sheet rises in its place. The popup
-/// itself does not filter — searching happens in that sheet.
-class const _ModelSearchAffordance({required final VoidCallback onTap}) extends StatelessWidget {
-  /// The row's rendered height — the [_barHeight] bar plus the [_bottomGap] that
-  /// separates it from the first provider heading. The glass popup budgets its
-  /// height from what each row declares, so this is what the menu is told; the
-  /// two constants below are the only things that decide it.
-  static const double height = _barHeight + _bottomGap;
-  static const double _barHeight = 40;
-  static const double _bottomGap = 8;
-
+/// Square ⚡ pill that toggles fast mode. It is highlighted while on and dimmed
+/// while the account cannot use fast mode; a tap then explains why.
+class const _FastModeButton({
+  required final PregoComposerSurfaceStyle surfaceStyle,
+  required final FastModeControl control,
+  required final FastModeToggleDecision? Function() decide,
+  required final ValueChanged<bool> onFastModeChanged,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    final loc = context.loc;
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(4, 0, 4, _bottomGap),
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          height: _barHeight,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: prego.colors.bgSurface1,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.search, size: 18, color: prego.colors.textSecondary),
-              const SizedBox(width: 8),
-              Text(
-                loc.sessionDetailModelSearch,
-                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+    final label = context.loc.sessionDetailFastMode;
+    final borderRadius = BorderRadius.circular(PregoRadius.full);
+    final (icon, color) = switch (control) {
+      // The yellowest warning step per theme; dark utility scales run in reverse.
+      FastModeControl.on => (
+        TablerRegular.bolt,
+        switch (prego.colors.brightness) {
+          Brightness.dark => prego.colors.utilityWarning700,
+          Brightness.light => prego.colors.utilityWarning500,
+        },
+      ),
+      FastModeControl.off => (TablerRegular.bolt, prego.colors.textSecondary),
+      FastModeControl.unavailable || FastModeControl.hidden => (TablerRegular.bolt_off, prego.colors.fgDisabled),
+    };
+    return Tooltip(
+      message: label,
+      excludeFromSemantics: true,
+      child: Semantics(
+        button: true,
+        toggled: control == FastModeControl.on,
+        label: label,
+        onTap: () => unawaited(_onTap(context)),
+        excludeSemantics: true,
+        child: SizedBox.square(
+          dimension: 36,
+          child: DecoratedBox(
+            decoration: pregoComposerSurfaceDecoration(prego: prego, style: surfaceStyle, borderRadius: borderRadius),
+            child: Padding(
+              padding: const EdgeInsets.all(1),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: borderRadius,
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  mouseCursor: WidgetStateMouseCursor.clickable,
+                  onTap: () => unawaited(_onTap(context)),
+                  borderRadius: borderRadius,
+                  child: Center(
+                    child: Icon(icon, size: PregoIconSize.sm, color: color),
+                  ),
+                ),
               ),
-            ],
+            ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onTap(BuildContext context) async {
+    switch (decide()) {
+      case null:
+        return;
+      case FastModeToggleApply(:final fastMode):
+        onFastModeChanged(fastMode);
+      case FastModeToggleUnavailable(:final reason):
+        final loc = context.loc;
+        PregoPopupAlertPresenter.of(context).show(
+          title: loc.sessionDetailFastModeUnavailableTitle,
+          variant: PregoPopupAlertsNotificationsVariant.error,
+          content: PregoPopupAlertContent(
+            message: switch (reason) {
+              FastModeUnavailableReason.extraUsageDisabled => loc.sessionDetailFastModeUnavailableExtraUsageDisabled,
+              FastModeUnavailableReason.notOnPlan => loc.sessionDetailFastModeUnavailableNotOnPlan,
+              FastModeUnavailableReason.disabledByOrganization =>
+                loc.sessionDetailFastModeUnavailableDisabledByOrganization,
+              FastModeUnavailableReason.unknown => loc.sessionDetailFastModeUnavailableUnknown,
+            },
+          ),
+        );
+      case FastModeToggleConfirmCacheReset(:final fastMode):
+        final confirmed = await _confirmCacheReset(context: context, fastMode: fastMode);
+        if (confirmed ?? false) onFastModeChanged(fastMode);
+    }
+  }
+
+  Future<bool?> _confirmCacheReset({required BuildContext context, required bool fastMode}) {
+    final loc = context.loc;
+    final prego = context.prego;
+    return showPregoModal<bool>(
+      context: context,
+      title: loc.sessionDetailFastModeConfirmTitle,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              fastMode ? loc.sessionDetailFastModeConfirmEnableBody : loc.sessionDetailFastModeConfirmDisableBody,
+              style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+            ),
+            const SizedBox(height: PregoSpacing.x2l),
+            PregoButtonsSolid(
+              key: const Key("fast_mode_confirm"),
+              label: loc.sessionDetailFastModeConfirmAction,
+              hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+              size: PregoButtonsSolidSize.xl,
+              fullWidth: true,
+              onPressed: () => sheetContext.pop(true),
+            ),
+            const SizedBox(height: PregoSpacing.md),
+            PregoButtonsSolid(
+              key: const Key("fast_mode_cancel"),
+              label: loc.sessionDetailFastModeCancel,
+              hierarchy: PregoButtonsSolidHierarchy.tertiary,
+              size: PregoButtonsSolidSize.xl,
+              fullWidth: true,
+              onPressed: () => sheetContext.pop(false),
+            ),
+          ],
         ),
       ),
     );
@@ -308,11 +479,6 @@ class const _ModelSearchAffordance({required final VoidCallback onTap}) extends 
 }
 
 // ── Shared menu pieces ─────────────────────────────────────────────────────
-
-/// How tall a composer picker may grow before its rows start to scroll. The menu
-/// sizes itself to its rows below this; the cap only stops a long catalog (or a
-/// project with many agents) from swallowing the conversation behind it.
-const double _pickerMaxHeight = 380;
 
 String _resolveModelName(
   BuildContext context, {

@@ -40,6 +40,8 @@ void main() {
     );
     service.createdIsPublishable = false;
     const deletedSession = Session(
+      approvalOverride: null,
+      autoContinuation: null,
       id: "stable-root",
       pluginId: "plugin",
       projectID: "project",
@@ -72,6 +74,8 @@ void main() {
     final dispatcher = SessionEventDispatcher(sessionEventService: service);
     final outputFuture = dispatcher.events.first;
     const session = Session(
+      approvalOverride: null,
+      autoContinuation: null,
       id: "stable-root",
       pluginId: "plugin",
       projectID: "project",

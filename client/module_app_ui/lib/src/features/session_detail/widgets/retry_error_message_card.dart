@@ -1,88 +1,46 @@
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
-/// Inline retry error display for transient provider errors
-/// (e.g. "Provider is overloaded").
+import "../../../extensions/build_context_x.dart";
+import "transcript_live_row.dart";
+
+/// Ongoing provider retry activity, distinct from a terminal error.
 ///
-/// Renders as a center-aligned red text row with a subtle shimmer
-/// animation to indicate an ongoing loading/retry state.
+/// The shared motion primitives own animation and reduced-motion handling;
+/// the backend's complete error text remains readable below the status row.
 class const RetryErrorMessageCard({
   super.key,
   required final String message,
-}) extends StatefulWidget {
-  @override
-  State<RetryErrorMessageCard> createState() => _RetryErrorMessageCardState();
-}
-
-class _RetryErrorMessageCardState() extends State<RetryErrorMessageCard> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-    _animation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOutSine,
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final label = context.loc.backgroundTaskStatusRetry;
+    final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: AnimatedBuilder(
-        animation: _animation,
-        builder: (context, child) {
-          final shimmerValue = _animation.value;
-          // Oscillate opacity between 0.6 and 1.0
-          final opacity = 0.6 + (0.4 * shimmerValue);
-          // Subtle horizontal shimmer offset
-          final shimmerOffset = (shimmerValue - 0.5) * 2; // -1 to 1
-
-          return Center(
-            child: ShaderMask(
-              shaderCallback: (bounds) {
-                return LinearGradient(
-                  begin: Alignment(
-                    -1.0 + shimmerOffset * 0.5,
-                    0.0,
-                  ),
-                  end: Alignment(
-                    1.0 + shimmerOffset * 0.5,
-                    0.0,
-                  ),
-                  colors: [
-                    prego.colors.fgErrorPrimary.withValues(alpha: opacity * 0.5),
-                    prego.colors.fgErrorPrimary.withValues(alpha: opacity),
-                    prego.colors.fgErrorPrimary.withValues(alpha: opacity * 0.5),
-                  ],
-                  stops: const [0.0, 0.5, 1.0],
-                ).createShader(bounds);
-              },
-              blendMode: BlendMode.srcIn,
-              child: Text(
-                widget.message,
-                textAlign: TextAlign.center,
-                style: prego.textTheme.textSm.regular.copyWith(
-                  fontSize: 14,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const TranscriptLiveSparkle(),
+              const SizedBox(width: 4),
+              Expanded(
+                child: TranscriptLiveLabel(
+                  label: Text(label, style: style),
+                  semanticLabel: label,
                 ),
               ),
-            ),
-          );
-        },
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 24, top: 4),
+            child: Text(message, style: style),
+          ),
+        ],
       ),
     );
   }

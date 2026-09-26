@@ -4,9 +4,11 @@ import "package:bloc_test/bloc_test.dart";
 import "package:http/http.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
-import "package:sesori_auth/sesori_auth.dart" show AuthLoginResult, OAuthFlowProvider;
+import "package:sesori_auth/sesori_auth.dart"
+    show AuthLoginResult, OAuthFlowDenied, OAuthFlowExpired, OAuthFlowProvider, OAuthHandoff;
 import "package:sesori_dart_core/src/cubits/login/login_cubit.dart";
 import "package:sesori_dart_core/src/cubits/login/login_failed_reason.dart";
+import "package:sesori_dart_core/src/cubits/login/login_handoff.dart";
 import "package:sesori_dart_core/src/cubits/login/login_state.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/platform/url_launcher.dart";
@@ -26,10 +28,10 @@ class MockLifecycleSource() extends Mock implements LifecycleSource;
 
 class MockInstallationAnalyticsService() extends Mock implements InstallationAnalyticsService;
 
-const testAuthInitResponse = AuthInitResponse(
-  authUrl: "https://accounts.google.com/o/oauth2/auth",
-  state: "oauth-state",
-  expiresIn: 300,
+final testHandoff = OAuthHandoff(
+  authUrl: Uri.parse("https://accounts.google.com/o/oauth2/auth"),
+  expiresAt: DateTime(2026, 9, 25, 12, 5),
+  deviceName: "Test Mac",
 );
 
 const testAuthUser = AuthUser(
@@ -65,7 +67,7 @@ void main() {
       when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
       when(
         () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
-      ).thenAnswer((_) async => testAuthInitResponse);
+      ).thenAnswer((_) async => testHandoff);
       when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async => testAuthLoginResult);
       when(() => mockOAuthFlowProvider.hasActiveOAuthSession()).thenAnswer((_) async => false);
       when(() => mockOAuthFlowProvider.resumeOAuthFlow()).thenAnswer((_) async => testAuthLoginResult);
@@ -324,7 +326,7 @@ void main() {
       );
 
       blocTest<LoginCubit, LoginState>(
-        "loginWithProvider(AuthProvider.google) emits failed when browser launch returns false",
+        "loginWithProvider(AuthProvider.google) keeps polling when browser launch returns false",
         build: buildCubit,
         act: (cubit) async {
           when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => false);
@@ -332,11 +334,12 @@ void main() {
         },
         expect: () => [
           isA<LoginAuthenticating>(),
-          isA<LoginPolling>(),
-          isA<LoginFailed>(),
+          isA<LoginPolling>().having((state) => state.handoff.browser, "browser", LoginBrowserLaunch.opened),
+          isA<LoginPolling>().having((state) => state.handoff.browser, "browser", LoginBrowserLaunch.failed),
+          isA<LoginSuccess>(),
         ],
         verify: (_) {
-          verifyNever(() => mockOAuthFlowProvider.pollForResult());
+          verify(() => mockOAuthFlowProvider.pollForResult()).called(1);
         },
       );
 
@@ -506,6 +509,9 @@ void main() {
 
           expect(cubit.state, isA<LoginSuccess>());
           expect(states, contains(isA<LoginSuccess>()));
+          for (final polling in states.whereType<LoginPolling>()) {
+            expect(polling.handoff.oauth, same(testHandoff));
+          }
           verify(() => mockOAuthFlowProvider.resumeOAuthFlow()).called(1);
           verify(
             () => mockInstallationAnalyticsService.loginAttemptStarted(provider: AuthProvider.google),
@@ -617,7 +623,9 @@ void main() {
         await sub.cancel();
 
         expect(states, [
-          isA<LoginPolling>(),
+          isA<LoginPolling>()
+              .having((state) => state.handoff.provider, "provider", AuthProvider.google)
+              .having((state) => state.handoff.oauth, "oauth", same(testHandoff)),
           isA<LoginSuccess>(),
         ]);
         verify(() => mockOAuthFlowProvider.resumeOAuthFlow()).called(1);
@@ -692,6 +700,196 @@ void main() {
         ).called(1);
         await cubit.close();
         await lifecycleSubject.close();
+      });
+    });
+
+    group("Browser handoff", () {
+      late Completer<AuthLoginResult> poll;
+
+      setUp(() {
+        poll = Completer<AuthLoginResult>();
+        when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) => poll.future);
+        when(() => mockOAuthFlowProvider.cancelOAuthFlow()).thenAnswer((_) async {});
+      });
+
+      Future<void> settle() => Future<void>.delayed(Duration.zero);
+
+      void verifyFailedCause(LoginAttemptFailureCause cause) {
+        verify(
+          () => mockInstallationAnalyticsService.loginAttemptFailed(provider: AuthProvider.google, cause: cause),
+        ).called(1);
+      }
+
+      test("polling carries the provider, link, expiry and device name", () async {
+        final cubit = buildCubit();
+        unawaited(cubit.loginWithProvider(AuthProvider.google));
+        await settle();
+
+        final state = cubit.state as LoginPolling;
+        expect(state.handoff.provider, AuthProvider.google);
+        expect(state.handoff.oauth.authUrl, testHandoff.authUrl);
+        expect(state.handoff.oauth.expiresAt, testHandoff.expiresAt);
+        expect(state.handoff.oauth.deviceName, "Test Mac");
+        expect(state.handoff.browser, LoginBrowserLaunch.opened);
+        await cubit.close();
+      });
+
+      test("cancel returns to idle, reports cancelled and ignores the late poll result", () async {
+        final cubit = buildCubit();
+        final login = cubit.loginWithProvider(AuthProvider.google);
+        await settle();
+
+        await cubit.cancel();
+        expect(cubit.state, isA<LoginIdle>());
+        verify(() => mockOAuthFlowProvider.cancelOAuthFlow()).called(1);
+        verifyFailedCause(LoginAttemptFailureCause.cancelled);
+
+        poll.complete(testAuthLoginResult);
+        expect(await login, isFalse);
+        expect(cubit.state, isA<LoginIdle>());
+        verifyNever(
+          () => mockInstallationAnalyticsService.loginAttemptCompleted(
+            provider: any(named: "provider"),
+            accountStatus: any(named: "accountStatus"),
+          ),
+        );
+        await cubit.close();
+      });
+
+      test("a failed cancel is logged and still ends in idle", () async {
+        when(() => mockOAuthFlowProvider.cancelOAuthFlow()).thenAnswer((_) async => throw StateError("storage failed"));
+        final cubit = buildCubit();
+        unawaited(cubit.loginWithProvider(AuthProvider.google));
+        await settle();
+
+        await cubit.cancel();
+
+        expect(cubit.state, isA<LoginIdle>());
+        await cubit.close();
+      });
+
+      test("a new attempt started right after cancel is not disturbed by the cancelled poll", () async {
+        final cubit = buildCubit();
+        unawaited(cubit.loginWithProvider(AuthProvider.google));
+        await settle();
+        await cubit.cancel();
+
+        final oldPoll = poll;
+        poll = Completer<AuthLoginResult>();
+        final retry = cubit.loginWithProvider(AuthProvider.google);
+        await settle();
+        oldPoll.completeError(Exception("superseded"));
+        await settle();
+        expect(cubit.state, isA<LoginPolling>());
+
+        poll.complete(testAuthLoginResult);
+        expect(await retry, isTrue);
+        expect(cubit.state, isA<LoginSuccess>());
+        await cubit.close();
+      });
+
+      test("cancel after a failed launch reports launch", () async {
+        when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => false);
+        final cubit = buildCubit();
+        unawaited(cubit.loginWithProvider(AuthProvider.google));
+        await settle();
+        expect((cubit.state as LoginPolling).handoff.browser, LoginBrowserLaunch.failed);
+
+        await cubit.cancel();
+
+        verifyFailedCause(LoginAttemptFailureCause.launch);
+        await cubit.close();
+      });
+
+      test("a timeout after a failed launch reports launch", () async {
+        when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => false);
+        final cubit = buildCubit();
+        final login = cubit.loginWithProvider(AuthProvider.google);
+        await settle();
+
+        poll.completeError(TimeoutException("OAuth authorization timed out"));
+        await login;
+
+        expect(cubit.state, isA<LoginTimeout>());
+        verifyFailedCause(LoginAttemptFailureCause.launch);
+        await cubit.close();
+      });
+
+      test("reopen launches the same link again and reports the new launch result", () async {
+        when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => false);
+        final cubit = buildCubit();
+        unawaited(cubit.loginWithProvider(AuthProvider.google));
+        await settle();
+
+        when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
+        await cubit.reopenBrowser();
+
+        final state = cubit.state as LoginPolling;
+        expect(state.handoff.browser, LoginBrowserLaunch.opened);
+        expect(state.handoff.oauth, same(testHandoff));
+        verify(() => mockUrlLauncher.launch(testHandoff.authUrl)).called(2);
+
+        await cubit.cancel();
+        verifyFailedCause(LoginAttemptFailureCause.cancelled);
+        await cubit.close();
+      });
+
+      test("a reopen that finishes after cancel does not bring the waiting state back", () async {
+        when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => false);
+        final cubit = buildCubit();
+        unawaited(cubit.loginWithProvider(AuthProvider.google));
+        await settle();
+
+        final reopenLaunch = Completer<bool>();
+        when(() => mockUrlLauncher.launch(any())).thenAnswer((_) => reopenLaunch.future);
+        final reopen = cubit.reopenBrowser();
+        await cubit.cancel();
+        reopenLaunch.complete(true);
+        await reopen;
+
+        expect(cubit.state, isA<LoginIdle>());
+        verifyFailedCause(LoginAttemptFailureCause.launch);
+        await cubit.close();
+      });
+
+      test("a failed reopen after an opened browser still reports cancelled", () async {
+        final cubit = buildCubit();
+        unawaited(cubit.loginWithProvider(AuthProvider.google));
+        await settle();
+
+        when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => false);
+        await cubit.reopenBrowser();
+        expect((cubit.state as LoginPolling).handoff.browser, LoginBrowserLaunch.failed);
+
+        await cubit.cancel();
+        verifyFailedCause(LoginAttemptFailureCause.cancelled);
+        await cubit.close();
+      });
+
+      test("a server-expired session ends in timeout", () async {
+        final cubit = buildCubit();
+        final login = cubit.loginWithProvider(AuthProvider.google);
+        await settle();
+
+        poll.completeError(const OAuthFlowExpired());
+        await login;
+
+        expect(cubit.state, isA<LoginTimeout>());
+        verifyFailedCause(LoginAttemptFailureCause.timeout);
+        await cubit.close();
+      });
+
+      test("a declined sign-in fails with the declined reason", () async {
+        final cubit = buildCubit();
+        final login = cubit.loginWithProvider(AuthProvider.google);
+        await settle();
+
+        poll.completeError(const OAuthFlowDenied());
+        await login;
+
+        expect(cubit.state, const LoginState.failed(reason: LoginFailedReason.declined));
+        verifyFailedCause(LoginAttemptFailureCause.cancelled);
+        await cubit.close();
       });
     });
 

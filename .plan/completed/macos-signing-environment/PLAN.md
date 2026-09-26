@@ -1,0 +1,190 @@
+# macOS signing environment migration
+
+## Status
+
+- **Plan slug:** `macos-signing-environment`
+- **State:** Retired on 2026-09-17 after environment-only native x64/arm64 CLI
+  signing and direct desktop signing/notarization preflight both passed.
+- **Delivery:** Bootstrap #1525, cutover #1527, corrective declarations #1531,
+  and reusable-workflow inheritance #1532.
+- **Publication:** No product was published. Desktop release and interactive QA gates
+  remain owned by the active `desktop-distribution` plan.
+
+## Authorized outcome
+
+Move the existing five macOS signing/notarization secrets from repository scope to
+`macos-signing`, restricted to the `main` branch with **no required reviewers or wait
+timer**. Scheduled CLI signing remains automatic. Desktop publication is separate
+and must retain an approval gate; migration does not authorize publishing releases.
+TestFlight, Android, App Store Connect, Match credentials and their automation remain
+unchanged. No credential rotation, new identity, private-key export, local Keychain
+changes, or live app/bridge interruption.
+
+## Scope and consumers
+
+- `_reusable-bridge-build.yml`: certificate, certificate password and temporary
+  Keychain password; called by `release-all-platforms.yml` and `submit-release.yml`.
+- `desktop-qualification.yml`: same three plus `APPLE_ID` and
+  `APPLE_APP_SPECIFIC_PASSWORD` for private notarization.
+- `APPLE_TEAM_ID` repository variable stays unchanged. The similarly named iOS
+  secret and all `APP_STORE_CONNECT_API_*` / `MATCH_*` secrets are out of scope.
+- Internal release finalization waits for bridge and mobile jobs. Do not introduce
+  approval waits into the bridge job or delete source secrets before cutover proof.
+
+## Execution and PR boundaries
+
+1. `⚙️ [macos-signing-environment] Bootstrap encrypted signing-secret migration [step 1/2]`
+   - Create environment with custom branch policy `main`, no reviewers/wait timer.
+   - Merge a temporary manual, main-only workflow that seals the five existing values
+     directly to GitHub's destination-environment public key.
+   - Download only ciphertext and submit it through environment-secret API using the
+     operator's existing local GitHub authorization. No admin token enters Actions;
+     no credential values enter logs or local files. Verify recipient key before upload.
+   - Existing consumers and repository secrets stay untouched throughout this step.
+2. `⚙️ [macos-signing-environment] Cut over automatic signing and retire repository copies [step 2/2]`
+   - Bind signing consumers to the main-only environment and remove caller value maps.
+     The reusable workflow keeps exactly three optional signing declarations, while its
+     trusted main-only callers use `secrets: inherit` so GitHub resolves the called job's
+     environment values. Signing steps reference only those three declared names.
+   - Add a private verification route for the reusable CLI build if necessary, with no
+     mobile upload, tagging or release creation. Reuse private desktop credential checks.
+   - Remove temporary migration workflow. Add focused workflow contract tests/docs.
+   - After merge, prove existing environment-backed CLI signing and desktop credential
+     access on both native CPUs without running TestFlight or publishing.
+   - Remove only the five repository secret copies after verification. Verify environment
+     names/policies and repository absence; document exact source/run evidence.
+
+The two planned PRs preserve the source credentials until migration and consumers are
+verified. Bounded corrective PRs discovered during native cutover proof remain part of
+step 2 and do not authorize source-secret deletion before a passing environment-only
+probe. No additional product persistent state, services, timers or lifecycle owners.
+The temporary encrypted artifact is retained for one day and should be removed after
+successful import. No plaintext secret artifact is permitted.
+
+## Verification and failure handling
+
+Use actionlint, focused workflow-contract tests, and diff/link validation. CI must
+exercise the actual environment-bound native signing jobs; static checks alone do not
+prove access. Inspect active release jobs before final repository-secret removal.
+A failed upload, signing probe or policy check leaves source repository secrets in
+place; diagnose before deletion. Environment access is tied to the workflow dispatch
+branch, not the checked-out release source. Existing scheduled and production dispatches
+must run from main. Do not permit arbitrary branches or add approval gates to routine
+CLI builds to simplify migration.
+
+Desktop public publication remains unimplemented/gated; no release command is introduced
+by this migration. The existing store-production approvals remain unchanged. A future
+desktop publisher must use a separate reviewed publication job, not make automatic
+signing wait for human approval.
+
+## Current evidence
+
+- Environment created with `main` branch policy and no reviewers/wait timer.
+- Destination public key ID: `3380204578043523366` (public metadata, not a secret).
+- Consumer audit: source `ed09171665995b98d1e010b9b5bd340c3c50a605`, tree
+  `53e40902232a807cd91f83beaec669f95c084b9f`, from cwd
+  `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`.
+  Reproduced with the following source-only command (no secret values retrieved):
+
+  ```bash
+  source=ed09171665995b98d1e010b9b5bd340c3c50a605
+  pattern='secrets\.(MACOS_CERT_P12_BASE64|MACOS_CERT_PASSWORD|MACOS_KEYCHAIN_PASSWORD'
+  pattern+='|APPLE_ID|APPLE_APP_SPECIFIC_PASSWORD)'
+  git grep -n -E "$pattern" "$source" -- .github/workflows
+  ```
+
+  Result: 14 references across the four consumers/callers listed above; no iOS or
+  Android credential consumer uses this allowlist. This is source evidence, separate
+  from live environment API configuration. Environment configuration was checked via
+  `gh api repos/sesori-ai/sesori_apps_monorepo/environments/macos-signing` and its
+  `/deployment-branch-policies` endpoint.
+- Bootstrap reads repository values without a destination environment binding, so
+  partially populated destination secrets cannot shadow source values on retry.
+  The workflow's main-ref condition remains; consumers later use the environment's
+  independent main-branch deployment policy.
+- Bootstrap actions are pinned to full commits; PyNaCl, cffi and pycparser binary
+  wheels are version/hash-locked. A synthetic sealed-box roundtrip runs before
+  credential exposure. These pins bound dependency changes, not a claim that
+  hashing alone proves third-party code free of vulnerabilities.
+- Bootstrap #1525 merged as `ab9d4eb245434195c6b70fdb70b285e0a7a05bd5`.
+  Manual run `35139046166`, job `104938663518`, passed at that exact source;
+  the synthetic sealed-box roundtrip and encryption completed without plaintext output.
+- The five ciphertext values were imported via GitHub's environment-secret API only
+  after checking the exact source, allowlist, destination environment, public key and
+  key ID. Metadata confirms five destination names. The temporary Actions artifact
+  `10464765058` and local ciphertext file were removed after successful import.
+- At the initial cutover checkpoint, repository copies remained present. Step 2 bound
+  existing consumers to the environment, removed caller value maps, and removed the
+  temporary bootstrap workflow. The reusable build's full six-target matrix uses the
+  environment without an approval delay; only its macOS signing steps consume
+  credentials. Private desktop qualification uses the same environment. Both routes
+  require dispatch from main. Combined internal-release and submission callers fail
+  non-main dispatches before build-number/store work, preventing partial mobile uploads
+  when signing is denied.
+- `verify-macos-signing.yml` calls the actual reusable CLI build with the committed
+  version and read-only repository permission. It uploads private build artifacts only;
+  no TestFlight, Android, tag, release or installer publication is invoked.
+- Main-only native proof uses `verify-macos-signing.yml` and
+  `desktop-qualification.yml` with `mode=macos-signing-preflight`. Successful native
+  x64/arm64 signing and environment admission without approval are required. Repository
+  copies were retained until those checks and an active-release check passed.
+- Cutover #1527 merged as `05e019302ebeb017af899504d75e995bc6b54dc7`,
+  tree `d68f8060d6eab33b9fef755ae9dff2d01e5d5921`. Both checkpoints were dispatched
+  from `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope`
+  against that immutable `main` source:
+
+  ```bash
+  gh workflow run verify-macos-signing.yml \
+    --repo sesori-ai/sesori_apps_monorepo --ref main
+  gh workflow run desktop-qualification.yml \
+    --repo sesori-ai/sesori_apps_monorepo --ref main \
+    -f mode=macos-signing-preflight -f channel=stable -f packaging_run=''
+  ```
+
+  Desktop preflight run `35197244286` passed environment admission, certificate import,
+  notarization authentication and synthetic signing on native x64 job `105123329300`
+  and arm64 job `105123329399`, without an approval wait.
+- CLI verification run `35197240797` at the same source/tree passed all four non-macOS
+  targets but failed both native macOS jobs (`105123324081`, `105123324088`) at
+  certificate import. Sanitized logs showed invalid PKCS#12 input while direct desktop
+  consumers succeeded. Repository copies were correctly retained.
+- Corrective PR #1531 restored exactly three optional `workflow_call.secrets`
+  declarations and merged as `de6fdfe82ca84b05ce45cdeba6d0a1e48c2bb594`, tree
+  `8c4c2e9cf7eded87d466e34198722a552492683b`. Current-source CLI run `35199943612`
+  passed all four non-macOS targets but failed native x64 job `105132089029` and arm64
+  job `105132089209` before certificate import. The explicit nonempty checks established
+  that `MACOS_CERT_P12_BASE64` was absent in the called workflow; declarations alone do
+  not make the selected environment's values available.
+- GitHub's reusable-workflow boundary requires the trusted caller to opt into
+  `secrets: inherit` before the called job can resolve environment-scoped secrets.
+  Corrective PR #1532 added inheritance only to the three existing main-guarded callers,
+  retained the optional three-name contract and caller value-map prohibition, and passed
+  all 14 checks at accepted head `400ebd8a64ae3bb7afb4e60fbcd2af168e7715b0`.
+  It squash-merged as `f881ce985f587aed09e937aff510486f9993f66a`, tree
+  `f00de644951d5f29b619f18199b02e188d4a6526`.
+- Merged-main CLI run `35203834653` passed all six targets at that exact squash source.
+  Native x64 job `105144749915` and arm64 job `105144749920` both passed certificate
+  import and signing-prerequisite verification. No approval wait occurred.
+- `MACOS_KEYCHAIN_PASSWORD` was then removed only at repository scope. Environment-only
+  canary run `35204413401` passed all six targets at the same source. Native x64 job
+  `105146645837` and arm64 job `105146645938` both passed certificate import and signing
+  prerequisites, proving the called workflow could resolve a value available only from
+  `macos-signing` before irreplaceable source copies were removed.
+- A fresh active-run query found zero release, TestFlight or submission workflows in an
+  active state. The remaining four approved repository copies were then removed:
+  `MACOS_CERT_P12_BASE64`, `MACOS_CERT_PASSWORD`, `APPLE_ID`, and
+  `APPLE_APP_SPECIFIC_PASSWORD`. Repository metadata now contains none of the five names;
+  `macos-signing` contains exactly all five, and the `APPLE_TEAM_ID` repository variable
+  remains present. The environment still has only custom branch policy `main`, with no
+  required-reviewer or wait-timer protection rule.
+- Final post-deletion CLI run `35205182663` passed all six targets at source
+  `f881ce985f587aed09e937aff510486f9993f66a`. Native x64 job `105149143925` and arm64
+  job `105149143940` both passed certificate import and signing prerequisites.
+- Final post-deletion desktop preflight run `35205185758` passed at the same source.
+  Native x64 job `105149176445` and arm64 job `105149176511` both passed certificate
+  import, notarization authentication and synthetic timestamped/hardened Developer ID
+  signing. It submitted or published no product.
+- No plaintext or private key was exported, no local Keychain/app/bridge was touched,
+  and no TestFlight, App Store Connect, Match, Android, build-number or unrelated
+  repository credential was changed. Existing desktop distribution release and
+  interactive QA gates remain separate and incomplete.

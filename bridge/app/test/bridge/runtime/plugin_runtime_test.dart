@@ -519,6 +519,7 @@ void main() {
       runtime.useWithGeneration(
         pluginId: "removed-plugin",
         operation: _TestOperation.capture,
+        residency: PluginGenerationResidency.normal,
         body: (_) async {},
       ),
       throwsA(unavailableFor("capture")),
@@ -567,6 +568,7 @@ void main() {
     final result = await runtime.useWithGeneration(
       pluginId: "one",
       operation: _TestOperation.capture,
+      residency: PluginGenerationResidency.normal,
       body: (api) async {
         bodyApi = api;
         expect(runtime.snapshot.single.leaseCount, 1);
@@ -589,6 +591,7 @@ void main() {
       runtime.useWithGeneration<void>(
         pluginId: "one",
         operation: _TestOperation.capture,
+        residency: PluginGenerationResidency.normal,
         body: (_) => throw const PluginAuthenticationRequiredException(
           "test",
           actionHint: "Authenticate locally.",
@@ -613,6 +616,7 @@ void main() {
     final operation = runtime.useWithGeneration(
       pluginId: "one",
       operation: _TestOperation.capture,
+      residency: PluginGenerationResidency.normal,
       body: (_) async {
         await operationGate.future;
         return "stale";
@@ -1982,7 +1986,7 @@ void main() {
     expect(runtime.snapshot.single.generation, isNull);
   });
 
-  test("unavailable catalog snapshot cold-starts import-only and normal use promotes it", () async {
+  test("unavailable catalog snapshot cold-starts transient and normal use promotes it", () async {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(
       factory: factory,
@@ -2004,7 +2008,7 @@ void main() {
         .drain<void>();
 
     expect(factory.startCount, 1);
-    expect(runtime.snapshot.single.generationResidency, PluginGenerationResidency.importOnly);
+    expect(runtime.snapshot.single.generationResidency, PluginGenerationResidency.transient);
     await runtime.useIfActive<void>(
       pluginId: "one",
       operation: _TestOperation.activeRead,
@@ -2012,12 +2016,38 @@ void main() {
     );
     expect(
       runtime.snapshot.single.generationResidency,
-      PluginGenerationResidency.importOnly,
-      reason: "passive no-start reads must not extend import-only residency",
+      PluginGenerationResidency.transient,
+      reason: "passive no-start reads must not extend transient residency",
     );
     await runtime.use<void>(
       pluginId: "one",
       operation: _TestOperation.use,
+      body: (_) async {},
+    );
+    expect(runtime.snapshot.single.generationResidency, PluginGenerationResidency.normal);
+    expect(factory.startCount, 1);
+  });
+
+  test("a transient use cold-starts transient, never demotes, and normal use promotes it", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+
+    await runtime.useWithGeneration<void>(
+      pluginId: "one",
+      operation: _TestOperation.capture,
+      residency: PluginGenerationResidency.transient,
+      body: (_) async {},
+    );
+    expect(runtime.snapshot.single.generationResidency, PluginGenerationResidency.transient);
+
+    await runtime.use<void>(pluginId: "one", operation: _TestOperation.use, body: (_) async {});
+    expect(runtime.snapshot.single.generationResidency, PluginGenerationResidency.normal);
+
+    await runtime.useWithGeneration<void>(
+      pluginId: "one",
+      operation: _TestOperation.capture,
+      residency: PluginGenerationResidency.transient,
       body: (_) async {},
     );
     expect(runtime.snapshot.single.generationResidency, PluginGenerationResidency.normal);

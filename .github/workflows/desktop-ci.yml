@@ -31,6 +31,7 @@ jobs:
     outputs:
       desktop: ${{ steps.filter.outputs.desktop }}
       supervised_e2e: ${{ steps.filter.outputs.supervised_e2e }}
+      build-matrix: ${{ steps.build-matrix.outputs.matrix }}
       flutter-version: ${{ steps.flutter-version.outputs.version }}
       flutter-channel: ${{ steps.flutter-version.outputs.channel }}
     steps:
@@ -78,6 +79,7 @@ jobs:
               - 'client/module_desktop_core/**'
               - 'client/module_core/**'
               - 'client/module_auth/**'
+              - 'client/module_persistence/**'
               - 'client/module_prego/**'
               - 'client/module_app_ui/**'
               - 'shared/sesori_shared/**'
@@ -88,6 +90,7 @@ jobs:
               - 'client/Makefile'
               - 'client/app/all_lint_rules.yaml'
               - '.github/workflows/desktop-ci.yml'
+              - '.github/actions/setup-xcode/**'
               - '.tool-versions'
             supervised_e2e:
               # The helper is a native workspace build; keep this gate broad so
@@ -97,11 +100,59 @@ jobs:
               - 'shared/sesori_shared/**'
               - 'shared/no_slop_linter/**'
               - '.github/workflows/desktop-ci.yml'
+              - '.github/actions/setup-xcode/**'
+              - '.tool-versions'
+            # Inputs that can break a macOS or Windows build while the Linux
+            # build stays green: native runner projects, in-repo plugin sources
+            # (theme_prego ships Darwin code), dependency declarations and
+            # resolution, and the toolchain.
+            native:
+              - 'client/**/macos/**'
+              - 'client/**/windows/**'
+              - 'client/**/darwin/**'
+              - 'client/**/pubspec.yaml'
+              - 'client/pubspec.lock'
+              - '.github/workflows/desktop-ci.yml'
+              - '.github/actions/setup-xcode/**'
               - '.tool-versions'
 
+      # PRs build Linux only unless a native input changed. Pushes to main
+      # always build every platform, so a rare Dart-only macOS or Windows
+      # break still surfaces right after merge.
+      - name: Choose desktop build targets
+        id: build-matrix
+        shell: bash
+        env:
+          ALL_PLATFORMS: ${{ github.event_name == 'push' || steps.filter.outputs.native == 'true' }}
+        run: |
+          linux='{"os":"ubuntu-latest","target":"linux"}'
+          macos='{"os":"xcode-27","target":"macos"}'
+          windows='{"os":"windows-latest","target":"windows"}'
+          if [ "$ALL_PLATFORMS" = true ]; then
+            echo "matrix=[$macos,$windows,$linux]" >> "$GITHUB_OUTPUT"
+          else
+            echo "matrix=[$linux]" >> "$GITHUB_OUTPUT"
+          fi
+
+  # One job per step so the slowest step, not the sum, sets the wall time.
   analyze-test:
     needs: changes
     if: needs.changes.outputs.desktop == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - package: module_desktop_core
+            command: dart analyze --fatal-infos
+          - package: desktop
+            command: dart analyze --fatal-infos
+          # module_desktop_core needs `dart test`: two instance-lock tests fail
+          # under `flutter test`.
+          - package: module_desktop_core
+            command: dart test
+          - package: desktop
+            command: flutter test
+    name: ${{ matrix.command }} (${{ matrix.package }})
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -116,21 +167,9 @@ jobs:
         run: dart pub get
         working-directory: client
 
-      - name: Analyze module_desktop_core
-        run: dart analyze --fatal-infos
-        working-directory: client/module_desktop_core
-
-      - name: Analyze client/desktop
-        run: dart analyze --fatal-infos
-        working-directory: client/desktop
-
-      - name: Run tests for module_desktop_core
-        run: dart test
-        working-directory: client/module_desktop_core
-
-      - name: Run tests for client/desktop
-        run: flutter test
-        working-directory: client/desktop
+      - name: ${{ matrix.command }}
+        run: ${{ matrix.command }}
+        working-directory: client/${{ matrix.package }}
 
   supervised_e2e:
     needs: changes
@@ -138,12 +177,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [xcode-27, windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     env:
       PUB_CACHE: ${{ github.workspace }}/.pub-cache
     steps:
       - uses: actions/checkout@v6
+
+      - name: Set up native Xcode
+        if: runner.os == 'macOS'
+        uses: ./.github/actions/setup-xcode
 
       - uses: subosito/flutter-action@v2
         with:
@@ -186,16 +229,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: macos-latest
-            target: macos
-          - os: windows-latest
-            target: windows
-          - os: ubuntu-latest
-            target: linux
+        include: ${{ fromJSON(needs.changes.outputs.build-matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
+
+      - name: Set up native Xcode
+        if: runner.os == 'macOS'
+        uses: ./.github/actions/setup-xcode
 
       - uses: subosito/flutter-action@v2
         with:
@@ -206,12 +247,12 @@ jobs:
       - name: Install Linux desktop build dependencies
         if: matrix.target == 'linux'
         # libsecret-1-dev is required by flutter_secure_storage_linux;
-        # libayatana-appindicator3-dev is required by tray_manager.
+        # libx11-dev and libxi-dev are required by cnativeapi (tray_manager).
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
-            libstdc++-12-dev libsecret-1-dev libayatana-appindicator3-dev
+            libstdc++-12-dev libsecret-1-dev libx11-dev libxi-dev
 
       - name: Get dependencies (workspace)
         run: dart pub get

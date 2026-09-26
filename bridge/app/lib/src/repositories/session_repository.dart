@@ -14,12 +14,15 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginActiveSession,
         PluginOperationException,
         PluginProjectActivitySummary,
+        PluginQuotaContinuationReadiness,
+        PluginQuotaReportingSupport,
         PluginSession,
         PluginSessionVariant;
 import "package:sesori_shared/sesori_shared.dart"
     show
         ActiveSession,
         AgentModel,
+        AutoContinuationAvailability,
         CommandListResponse,
         MessagePartSubtask,
         MessageWithParts,
@@ -32,6 +35,7 @@ import "package:sesori_shared/sesori_shared.dart"
         Session,
         SessionAbortNotPerformedRefusal,
         SessionAbortSubAgentPolicy,
+        SessionApprovalMode,
         SessionPromptDefaults,
         SessionStatus,
         SessionStatusResponse,
@@ -55,6 +59,7 @@ import "mappers/session_catalog_mapper.dart";
 import "mappers/stored_session_mapper.dart";
 import "models/project_not_found_exception.dart";
 import "models/session_abort_result.dart";
+import "models/session_continuation_record.dart";
 import "models/session_operation.dart";
 import "models/stored_session.dart";
 import "models/verified_github_login.dart";
@@ -187,6 +192,7 @@ class SessionRepository({
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
+    required bool fastMode,
   }) async {
     final parentBinding = parentSessionId == null
         ? null
@@ -214,6 +220,7 @@ class SessionRepository({
           parts: parts.map((part) => part.toPlugin()).toList(growable: false),
           userVisibleText: userVisibleText,
           variant: _toPluginVariant(variant),
+          fastMode: fastMode,
           agent: agent,
           model: _toPluginModel(model),
         );
@@ -248,6 +255,7 @@ class SessionRepository({
             baseCommit: baseCommit,
             lastAgent: lastAgent,
             lastAgentModel: lastAgentModel,
+            fastMode: fastMode,
             pluginId: pluginId,
             preservePullRequestScope:
                 existingBinding?.projectId == projectId && existingBinding?.branchName == branchName,
@@ -317,6 +325,7 @@ class SessionRepository({
     required String arguments,
     required String? userVisibleArguments,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) => _useSessionPlugin(
@@ -329,6 +338,7 @@ class SessionRepository({
       arguments: arguments,
       userVisibleArguments: userVisibleArguments,
       variant: _toPluginVariant(variant),
+      fastMode: fastMode,
       agent: agent,
       model: _toPluginModel(model),
     ),
@@ -339,6 +349,7 @@ class SessionRepository({
     required String promptId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) => _useSessionPlugin(
@@ -349,6 +360,7 @@ class SessionRepository({
       promptId: promptId,
       parts: parts.map((part) => part.toPlugin()).toList(growable: false),
       variant: _toPluginVariant(variant),
+      fastMode: fastMode,
       agent: agent,
       model: _toPluginModel(model),
     ),
@@ -402,14 +414,46 @@ class SessionRepository({
     operation: SessionOperation.getSessionMessages,
     body: (plugin, binding) async {
       final pluginMessages = await plugin.getSessionMessages(binding.backendSessionId);
+      // History supplies model/agent changes made natively; fast mode is a
+      // bridge-owned preference and is not recorded in backend transcripts.
+      final historyDefaults = pluginMessages.latestPromptDefaults();
       return (
         messages: await _resolveChildSessionIds(
           pluginId: binding.pluginId,
           messages: pluginMessages.toSharedMessageWithParts(sessionId: binding.sessionId),
         ),
-        promptDefaults: pluginMessages.latestPromptDefaults(),
+        promptDefaults:
+            historyDefaults?.copyWith(fastMode: binding.fastMode) ??
+            (binding.lastAgent == null && binding.lastAgentModel == null && !binding.fastMode
+                ? null
+                : SessionPromptDefaults(
+                    agent: binding.lastAgent,
+                    model: binding.lastAgentModel,
+                    fastMode: binding.fastMode,
+                  )),
       );
     },
+  );
+
+  AutoContinuationAvailability quotaReportingAvailability({required String pluginId}) =>
+      switch (_runtime.quotaReportingSupport(pluginId: pluginId)) {
+        PluginQuotaReportingSupport.conditional => AutoContinuationAvailability.conditional,
+        PluginQuotaReportingSupport.unavailable => AutoContinuationAvailability.unavailable,
+      };
+
+  Future<SessionContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) => _useSessionPlugin(
+    sessionId: sessionId,
+    operation: SessionOperation.getQuotaContinuationReadiness,
+    body: (plugin, binding) async =>
+        switch (await plugin.getQuotaContinuationReadiness(sessionId: binding.backendSessionId)) {
+          PluginQuotaContinuationReadiness.idle => SessionContinuationReadiness.idle,
+          PluginQuotaContinuationReadiness.busy => SessionContinuationReadiness.busy,
+          PluginQuotaContinuationReadiness.retrying => SessionContinuationReadiness.retrying,
+          PluginQuotaContinuationReadiness.queued => SessionContinuationReadiness.queued,
+          PluginQuotaContinuationReadiness.awaitingInput => SessionContinuationReadiness.awaitingInput,
+          PluginQuotaContinuationReadiness.unavailable => SessionContinuationReadiness.unavailable,
+          PluginQuotaContinuationReadiness.unknown => SessionContinuationReadiness.unknown,
+        },
   );
 
   /// Translates the backend child references a plugin puts on subtask parts
@@ -460,6 +504,34 @@ class SessionRepository({
     );
     return true;
   }
+
+  /// Persists the session's approval override (null follows the bridge YOLO
+  /// setting) and returns the updated catalog session, or null when the
+  /// session is not stored.
+  Future<Session?> setApprovalOverride({
+    required String sessionId,
+    required SessionApprovalMode? approvalOverride,
+  }) async {
+    final stored = await _sessionDao.setApprovalOverride(sessionId: sessionId, approvalOverride: approvalOverride);
+    return stored ? await getCatalogSession(sessionId: sessionId) : null;
+  }
+
+  /// The override that governs [sessionId]'s permission requests: its own, or
+  /// else its nearest ancestor's, so a sub-agent session follows the session
+  /// that started it. Null when none is set or the session is not stored.
+  Future<SessionApprovalMode?> resolveApprovalOverride({required String sessionId}) async {
+    const maxDepth = 256;
+    String? currentSessionId = sessionId;
+    for (var depth = 0; depth < maxDepth && currentSessionId != null; depth++) {
+      final row = await _sessionDao.getSession(sessionId: currentSessionId);
+      if (row == null) return null;
+      if (row.approvalOverride case final approvalOverride?) return approvalOverride;
+      currentSessionId = row.parentSessionId;
+    }
+    return null;
+  }
+
+  Future<bool> hasYoloApprovalOverride() => _sessionDao.hasApprovalOverride(approvalOverride: SessionApprovalMode.yolo);
 
   Future<Session?> setGeneratedSessionTitleIfAbsent({required String sessionId, required String title}) async {
     final updated = await _sessionDao.setTitleIfNull(
@@ -1493,15 +1565,40 @@ class SessionRepository({
     );
   }
 
-  Future<void> updatePromptDefaults({
+  /// Records the agent and model the backend reports for [sessionId] and
+  /// returns the stored prompt defaults, or null when the session has no row.
+  ///
+  /// Leaves the stored fast mode untouched: only client requests choose it
+  /// (see [updateRequestedPromptDefaults]). The returned value carries it, so
+  /// callers never publish a backend report without it.
+  Future<SessionPromptDefaults?> updatePromptDefaults({
     required String sessionId,
     required String? agent,
     required AgentModel? agentModel,
-  }) {
-    return _sessionDao.updatePromptDefaults(
+  }) async {
+    final row = await _sessionDao.updatePromptDefaults(
       sessionId: sessionId,
       agent: agent,
       agentModel: agentModel,
+    );
+    return row == null
+        ? null
+        : SessionPromptDefaults(agent: row.lastAgent, model: row.lastAgentModel, fastMode: row.fastMode);
+  }
+
+  /// Records the selection a client prompt or command ran with, including
+  /// its fast-mode choice.
+  Future<void> updateRequestedPromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+    required bool fastMode,
+  }) {
+    return _sessionDao.updateRequestedPromptDefaults(
+      sessionId: sessionId,
+      agent: agent,
+      agentModel: agentModel,
+      fastMode: fastMode,
     );
   }
 

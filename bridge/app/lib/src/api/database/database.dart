@@ -13,11 +13,13 @@ import "daos/projects_dao.dart";
 import "daos/pull_request_dao.dart";
 import "daos/session_dao.dart";
 import "database.steps.dart";
+import "tables/accepted_prompts_table.dart";
 import "tables/catalog_hydrations_table.dart";
 import "tables/deleted_sessions_table.dart";
 import "tables/new_session_defaults_table.dart";
 import "tables/projects_table.dart";
 import "tables/pull_requests_table.dart";
+import "tables/session_continuation_table.dart";
 import "tables/session_options_cache_table.dart";
 import "tables/session_table.dart";
 
@@ -35,6 +37,8 @@ part "database.g.dart";
     CatalogHydrationsTable,
     SessionOptionsCacheTable,
     NewSessionDefaultsTable,
+    AcceptedPromptsTable,
+    SessionContinuationTable,
   ],
   daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao],
 )
@@ -42,7 +46,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 19;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -293,6 +297,22 @@ class AppDatabase(super.e) extends _$AppDatabase {
         // without that column, copying every remaining column by name in SQL
         // so the migration never deserializes the removed value.
         await m.alterTable(TableMigration(schema.sessionOptionsCacheTable));
+      },
+      from15To16: (m, schema) async {
+        await m.createTable(schema.acceptedPromptsTable);
+      },
+      from16To17: (m, schema) async {
+        // Fast mode did not exist before v17, so false is the honest backfill.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.fastMode);
+        await m.addColumn(schema.newSessionDefaultsTable, schema.newSessionDefaultsTable.fastMode);
+      },
+      from17To18: (m, schema) async {
+        await m.createTable(schema.sessionContinuations);
+      },
+      from18To19: (m, schema) async {
+        // No session had an override before v19; null follows the bridge
+        // YOLO setting, which is what every session did.
+        await m.addColumn(schema.sessionsTable, schema.sessionsTable.approvalOverride);
       },
     ),
     beforeOpen: (details) async {

@@ -1,4 +1,3 @@
-import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
@@ -6,6 +5,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/analytics_runtime_bootstrap.dart";
 import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/main.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 
 import "helpers/test_helpers.dart";
 
@@ -14,14 +14,8 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   setUp(() async {
-    final mockStorage = MockFlutterSecureStorage();
-    when(() => mockStorage.read(key: "access_token")).thenAnswer((_) async => null);
-    when(() => mockStorage.read(key: "refresh_token")).thenAnswer((_) async => null);
-    when(() => mockStorage.read(key: "pkce_verifier")).thenAnswer((_) async => null);
-    when(() => mockStorage.read(key: "oauth_provider")).thenAnswer((_) async => null);
-    when(() => mockStorage.read(key: "relay_room_key")).thenAnswer((_) async => null);
-
     await configureDependencies(
+      scope: PersistenceScope.development,
       firebaseEnabled: false,
       createAnalyticsRuntimeBootstrap: ({required crawlGateService}) async => AnalyticsRuntimeBootstrap(
         capability: const AnalyticsRuntimeCapability.disabled(
@@ -30,9 +24,6 @@ void main() {
         crawlGate: Future.value(AnalyticsStoreCrawlGate.allow),
       ),
     );
-    getIt.unregister<FlutterSecureStorage>();
-    getIt.registerLazySingleton<FlutterSecureStorage>(() => mockStorage);
-
     final statusStream = BehaviorSubject<ConnectionStatus>.seeded(
       const ConnectionStatus.disconnected(),
     );

@@ -4,7 +4,9 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/repositories/models/prompt_send_failure.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
+import "package:sesori_dart_core/src/repositories/models/session_diff_summary_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -40,6 +42,18 @@ void main() {
 
     expect(SessionRepository.isStalePromptOptionsError(error: error), isFalse);
   });
+
+  for (final (error, failure) in [
+    (ApiError.nonSuccessCode(errorCode: 400, rawErrorString: null), PromptSendFailure.rejected),
+    (ApiError.notAuthenticated(), PromptSendFailure.rejected),
+    (ApiError.nonSuccessCode(errorCode: 502, rawErrorString: null), PromptSendFailure.uncertain),
+    (ApiError.dartHttpClient(Exception("timed out")), PromptSendFailure.uncertain),
+    (ApiError.emptyResponse(), PromptSendFailure.uncertain),
+  ]) {
+    test("classifies a ${error.runtimeType} send failure as ${failure.name}", () {
+      expect(SessionRepository.sendFailureFor(error: error), failure);
+    });
+  }
 
   test("session detail flows route through session api and repository", () async {
     final api = MockSessionApi();
@@ -93,6 +107,7 @@ storedOnly: false,)).thenAnswer(
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
         variant: const SessionVariant(id: "xhigh"),
+        fastMode: false,
         command: "review",
       ),
     ).thenAnswer((_) async => ApiResponse.success(null));
@@ -128,6 +143,7 @@ storedOnly: false,);
       agent: "build",
       model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
       variant: const SessionVariant(id: "xhigh"),
+      fastMode: false,
       command: "review",
     );
     final abortResult = await repository.abortSession(
@@ -161,6 +177,7 @@ storedOnly: false,)).called(1);
         agent: "build",
         model: const PromptModel(providerID: "openai", modelID: "gpt-4.1"),
         variant: const SessionVariant(id: "xhigh"),
+        fastMode: false,
         command: "review",
       ),
     ).called(1);
@@ -532,5 +549,57 @@ storedOnly: false,)).called(1);
 
       expect(result, isA<SessionOptionsRepositoryFailure>().having((value) => value.error, "error", error));
     }
+  });
+
+  group("getSessionDiffSummary", () {
+    Future<SessionDiffSummaryResult> summaryFor({required ApiResponse<SessionDiffSummaryResponse> response}) {
+      final api = MockSessionApi();
+      when(() => api.getSessionDiffSummary(sessionId: "s1")).thenAnswer((_) async => response);
+      return SessionRepository(api: api).getSessionDiffSummary(sessionId: "s1");
+    }
+
+    test("maps the totals", () async {
+      final result = await summaryFor(
+        response: ApiResponse.success(const SessionDiffSummaryResponse(additions: 12, deletions: 2)),
+      );
+
+      expect(
+        result,
+        isA<SessionDiffSummaryAvailable>()
+            .having((value) => value.additions, "additions", 12)
+            .having((value) => value.deletions, "deletions", 2),
+      );
+    });
+
+    test("reads a bare 404 as a bridge that predates the request", () async {
+      final result = await summaryFor(
+        response: ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "no handler found for POST /session/diff-summary"),
+        ),
+      );
+
+      expect(result, isA<SessionDiffSummaryUnsupported>());
+    });
+
+    test("keeps a missing session a failure", () async {
+      final error = ApiError.nonSuccessCode(
+        errorCode: 404,
+        rawErrorString: jsonEncode(
+          const SessionDiffSummaryErrorResponse(code: SessionDiffSummaryErrorCode.sessionNotFound).toJson(),
+        ),
+      );
+
+      final result = await summaryFor(response: ApiResponse.error(error));
+
+      expect(result, isA<SessionDiffSummaryFailure>().having((value) => value.error, "error", error));
+    });
+
+    test("keeps any other status a failure", () async {
+      final error = ApiError.nonSuccessCode(errorCode: 500, rawErrorString: "git diff --numstat failed");
+
+      final result = await summaryFor(response: ApiResponse.error(error));
+
+      expect(result, isA<SessionDiffSummaryFailure>());
+    });
   });
 }

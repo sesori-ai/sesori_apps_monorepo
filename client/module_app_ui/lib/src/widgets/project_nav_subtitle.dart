@@ -3,7 +3,6 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../extensions/build_context_x.dart";
 
 /// The repo's brand glyph. GitHub keeps the mock's filled glyph; the solid
 /// Tabler set carries no other git-forge brands, so GitLab/Bitbucket use their
@@ -28,7 +27,6 @@ IconData _providerIcon({required RepoProvider provider}) => switch (provider) {
 /// Reads the project's [SessionListCubit], so it only works below the sessions
 /// shell; the caller's element is what rebuilds when either cubit emits.
 Widget? buildProjectNavSubtitle(BuildContext context) {
-  final loc = context.loc;
   final state = context.watch<SessionListCubit>().state;
   // Green only while the relay↔bridge chain is fully connected — a hidden
   // banner alone is not enough, since disconnected and unregistered
@@ -42,8 +40,6 @@ Widget? buildProjectNavSubtitle(BuildContext context) {
       text: repoSlug,
       icon: _providerIcon(provider: repoProvider),
       status: online ? PregoNavStatus.online : PregoNavStatus.offline,
-      infoMessage: repoSlug,
-      infoSemanticLabel: loc.sessionListRepoInfoSemantics,
     ),
     SessionListLoaded() || SessionListFailed() => null,
   };

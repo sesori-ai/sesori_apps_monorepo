@@ -2,12 +2,11 @@ import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/routing/app_router.dart";
-import "../../core/widgets/sesori_background_widget.dart";
-import "../../core/widgets/sesori_logo.dart";
 
 class const SplashScreen({super.key}) extends StatelessWidget {
   @override

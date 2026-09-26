@@ -36,6 +36,11 @@ _ProviderModel _$ProviderModelFromJson(Map json) => _ProviderModel(
   defaultVariant: json['defaultVariant'] as String?,
   family: json['family'] as String?,
   isAvailable: json['isAvailable'] as bool? ?? true,
+  fastMode: json['fastMode'] == null
+      ? null
+      : FastModeSupport.fromJson(
+          Map<String, dynamic>.from(json['fastMode'] as Map),
+        ),
   releaseDate: _$JsonConverterFromJson<String, DateTime>(
     json['releaseDate'],
     dateConverter.fromJson,
@@ -51,6 +56,7 @@ Map<String, dynamic> _$ProviderModelToJson(_ProviderModel instance) =>
       'defaultVariant': ?instance.defaultVariant,
       'family': ?instance.family,
       'isAvailable': instance.isAvailable,
+      'fastMode': ?instance.fastMode?.toJson(),
       'releaseDate': ?_$JsonConverterToJson<String, DateTime>(
         instance.releaseDate,
         dateConverter.toJson,
@@ -66,6 +72,48 @@ Json? _$JsonConverterToJson<Json, Value>(
   Value? value,
   Json? Function(Value value) toJson,
 ) => value == null ? null : toJson(value);
+
+FastModeAvailable _$FastModeAvailableFromJson(Map json) => FastModeAvailable(
+  promptCacheTtlSeconds: (json['promptCacheTtlSeconds'] as num).toInt(),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$FastModeAvailableToJson(FastModeAvailable instance) =>
+    <String, dynamic>{
+      'promptCacheTtlSeconds': instance.promptCacheTtlSeconds,
+      'type': instance.$type,
+    };
+
+FastModeUnavailable _$FastModeUnavailableFromJson(Map json) =>
+    FastModeUnavailable(
+      reason: $enumDecode(
+        _$FastModeUnavailableReasonEnumMap,
+        json['reason'],
+        unknownValue: FastModeUnavailableReason.unknown,
+      ),
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$FastModeUnavailableToJson(
+  FastModeUnavailable instance,
+) => <String, dynamic>{
+  'reason': _$FastModeUnavailableReasonEnumMap[instance.reason]!,
+  'type': instance.$type,
+};
+
+const _$FastModeUnavailableReasonEnumMap = {
+  FastModeUnavailableReason.extraUsageDisabled: 'extraUsageDisabled',
+  FastModeUnavailableReason.notOnPlan: 'notOnPlan',
+  FastModeUnavailableReason.disabledByOrganization: 'disabledByOrganization',
+  FastModeUnavailableReason.unknown: 'unknown',
+};
+
+FastModeSupportUnknown _$FastModeSupportUnknownFromJson(Map json) =>
+    FastModeSupportUnknown($type: json['type'] as String?);
+
+Map<String, dynamic> _$FastModeSupportUnknownToJson(
+  FastModeSupportUnknown instance,
+) => <String, dynamic>{'type': instance.$type};
 
 _ProviderListResponse _$ProviderListResponseFromJson(Map json) =>
     _ProviderListResponse(

@@ -4,12 +4,15 @@
 
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
-- **Status:** Active — steps 1–5 and the private portions of steps 6, 7 and 9
-  merged. Public macOS/Windows/Linux publication and step-8 winget assets remain
-  gated. Step 10 onboarding waits for genuine shipped releases. The independently
-  executable private portion of step 11 is in progress; its public-release
-  reconciliation and final plan retirement remain blocked. Shipping order remains
-  macOS, Windows, Linux. No blocked publication step is claimed completed.
+- **Status:** Active — steps 1–5 and private Windows/Linux packaging are merged.
+  The user retired Gate C and the listed remaining macOS QA prerequisites on
+  2026-09-26, accepting their coverage gaps. MacOS publication is admitted;
+  signed/notarized **internal `1.9.1+987`** packages are publicly verified on both CPUs.
+  Website wiring and ordinary production-release follow-through remain; stable macOS
+  publication has not occurred. Stable build 981's authenticated/Off acceptance and
+  the 82-test shutdown audit retain their recorded scope, not fresh build-987 claims.
+  Windows signing/winget, Linux signed repositories, six-target onboarding and final
+  reconciliation/retirement remain open. Shipping order stays macOS, Windows, Linux.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
@@ -25,20 +28,20 @@ ships. A working CLI target or an emulated run does not prove native desktop sup
 
 This succeeds [desktop-app](../desktop-app/PLAN.md), whose step 22 explicitly named
 this work. The user requested distribution planning before that plan's retirement.
-Its tracker still lists MT Gate C, regression reconciliation, and retirement as
-pending. Do not mark them passed, retire the parent, or claim inherited evidence
-that has not been recorded. Planning and non-public packaging can proceed; the first
-public desktop gate requires the parent closeout or an explicit user-accepted change
-to that prerequisite. The parent keeps its own step numbering and ownership.
+On 2026-09-26 the user explicitly retired MT Gate C and directed continuation after
+its remaining QA was enumerated. That acceptance removes Gate C and parent closeout
+as prerequisites for macOS publication; it does not report unexecuted tests as passes
+or retire the entire parent. Regression reconciliation and parent retirement keep
+their own numbering and ownership.
 
-[Desktop UX](../desktop-ux/PLAN.md) is a parallel workstream, merged into `main`
+[Desktop UX](../../completed/desktop-ux/PLAN.md) is a parallel workstream, merged into `main`
 during this plan's review. It owns cockpit/navigation, autostart defaults, permission
 UX and app logging; distribution owns signing/Keychain identity, packaging and
 updates. Keep those responsibilities separate and integrate against its current
 startup/control surfaces before steps 3–5, rather than restoring superseded UI or
-first-run behavior. Follow the parent's updated Gate C routing: shell/navigation
-C2/C5 move to the UX step-12 checklist; the other parent sections remain applicable
-on a build after UX step 7. A merged UX plan is not passing coverage evidence.
+first-run behavior. The earlier Gate C shell/navigation routing is now optional
+regression reference, not a release prerequisite. UX retired with accepted QA gaps on
+2026-09-19; the separate Gate C/macOS QA retirement below was explicitly accepted later.
 
 ### Unattended execution direction — 2026-09-15
 
@@ -64,6 +67,21 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 | D5 | Linux: DEB and RPM packages with signed APT/RPM repositories. No AppImage, Flatpak, Snap, or custom Linux self-updater in this plan. |
 | D6 | Trust, maturity, broad adoption, and simple integration outrank automation (user clarification 2026-09-15). The explicitly approved manual fallback is selected for macOS in step 5; Sparkle background preparation/install-on-quit is not part of the implementation. No custom updater, security layer, or shutdown machinery just to preserve automation. Windows uses manual signed-installer updates; Linux remains package-manager-owned. Ordinary Quit never unexpectedly reopens the app. |
 | D7 | GitHub Releases hosts downloadable installers; static GCS hosts signed Linux repositories. No new backend release service. Linux repositories also host their package payloads, rather than relying on cross-origin package-manager redirects. |
+| D8 | Selected 2026-09-25: share the bridge/mobile release cycle; retain platform gates and macOS-first delivery. |
+| D9 | 2026-09-26: retire Gate C with accepted QA gaps; admit macOS publication through the shared cycle. |
+
+### User-retired QA gate and macOS admission — 2026-09-26
+
+After being given the missing macOS 12, phone/live-harness and manual-build-attribution
+checks, the user directed **“retire this gate and continue”**. Accept those limitations;
+do not recreate the gate, ask for blanket repeated tests or claim a full fresh-build
+L3 sweep. Keep the configured macOS 12 minimum without claiming it was executed.
+
+Enable the existing `DESKTOP_MACOS_PUBLICATION_ENABLED` admission and continue
+macOS public distribution. Existing `store-production`, native signing/notarization,
+immutable asset/public-hash verification and private-evidence exclusion remain intact.
+Windows/Linux publication and their distinct trust requirements are not admitted.
+No additional credentials, scheduler, mutable owner or application state is needed.
 
 ### Proposed implementation defaults
 
@@ -75,11 +93,12 @@ changing user intent, adding material infrastructure, or reducing the matrix.
   the GUI. Use separate architecture artifacts rather than inventing universal
   Dart/native-asset bundles. Harness runtimes remain installed on demand through
   existing plugin management; PATH-installed harnesses retain precedence.
-- Keep shared product semantic versioning, adding desktop to `tool/sync_versions.dart`.
-  Desktop release attempts have their own build number, tags, download indexes, and publication
-  gate; they never query TestFlight/Play to obtain a desktop build number.
-- Start with explicit internal and stable desktop release dispatches. No new hourly
-  scheduler, release database, rollout service, or automatic stable promotion.
+- Share the existing product version, resolved build number, source commit and release
+  tags. Reuse the existing internal scheduler and production submission approval;
+  desktop does not query stores independently or introduce another approval environment.
+- Keep private qualification/preparation dispatches for testing. They are not a separate
+  publication cycle. No new scheduler, release database, rollout service or automatic
+  stable promotion.
 - Stable is the installed default. Internal testing is an explicit separate download/
   repository selection; do not build an in-app channel-switching feature now.
 - Use mature distribution tooling, not a new archive downloader/swap/rollback engine.
@@ -124,7 +143,7 @@ Verified against the implementation checkout, not inferred from the superseded p
   that workaround cannot compile the Flutter GUI by itself.
 - `release-all-platforms.yml` and `check_internal_release.sh` preserve a scheduled,
   immutable-commit, all-or-nothing mobile/CLI release with no automatic retry of an
-  attempted commit. Desktop-only changes intentionally do not consume store uploads.
+  attempted commit. Under D8, desktop-only product changes now qualify for the shared cycle.
 - The GitHub source repository is public. Existing bridge installers/updaters consume
   its releases; new desktop assets/tags must not change their release selection.
 
@@ -255,8 +274,8 @@ signature-verifying updater. winget remains a separate package-manager update pa
 
 **macOS manual path (D6 fallback selected in step 5):** Settings opens the official
 channel/CPU download page at `https://sesori.com/desktop/` through the existing
-external-link seam. The user selected this URL while not yet live; publication
-availability remains a release gate. The user Quits
+external-link seam. The page is live with every row an unshipped placeholder;
+publication availability remains a release gate. The user Quits
 normally, verifies the signed/notarized published package, replaces the complete
 app and reopens it manually. Close-to-tray is not Quit; failed helper stop refuses
 Quit and users must not replace the running installation. No automatic checks,
@@ -277,47 +296,54 @@ services, subscriptions or terminal-action variants. OS package trust and publis
 verification remain mandatory; the download link does not verify an installer.
 Native signed N→N+1 manual replacement and preservation are still release gates.
 
-### 4. Publication and release isolation
+### 4. Shared publication cycle and platform isolation
 
-Step 6 first delivers private read-only preparation as described in
-[step-06](steps/step-06.md). Public publication remains blocked on the prerequisites
-below; merging preparation does not clear the macOS ship gate.
+D8 replaces the separate desktop publication cycle. `release-all-platforms.yml`
+reuses native macOS qualification with its existing aligned build number and commit.
+Desktop-only product changes now qualify for that same scheduled cycle, including its
+mobile uploads. Duplicate/failed-attempt suppression and manual retry policy remain.
 
-Add a desktop-owned `desktop-release.yml` with explicit immutable ref, channel, and
-platform inputs and reusable platform build legs. It must not depend on mobile
-store jobs, move `internal-release-attempt`, or change the existing mobile/CLI
-finalizer's success conditions. PR packaging CI has no signing/publication secrets;
-manual trusted release jobs use protected environments and least-privilege OIDC
-where supported. Existing private qualification uses the owner's authorized
-repository-level signing secrets; manual dispatch is not isolation from malicious
-repository writers. Before public publication, the owner must approve a protected-
-environment credential migration, including shared CLI callers and removal of
-repository-wide copies. Merely naming an environment does not secure those copies.
-Do not provision protection rules or move credentials without that authorization.
-Preserve source revision versus workflow revision when reusing actions for older refs.
+`submit-release.yml` rebuilds admitted macOS packages from the resolved internal source
+with the stable channel. Its existing `store-production` approval remains authoritative:
+no extra environment or approval prompt. Beta and explicit `bridge-only` submissions
+retain their existing scope. The signing environment remains main-only `macos-signing`,
+with no reviewer/wait gate or changes to mobile/signing credentials.
+
+`DESKTOP_MACOS_PUBLICATION_ENABLED` is absent/false until the owner accepts the macOS
+ship gates. While disabled, internal desktop builds remain Actions artifacts, not
+public prerelease assets. Enabling this repository variable is a separate explicit
+platform-admission action, not a side effect of merging implementation. Windows/Linux
+have no publication legs yet. The existing bridge/mobile finalizer stays unchanged;
+desktop attaches assets only after it and both native desktop jobs succeed.
+
+Private `macos-packaging` accepts an exact main-ancestor source/build override so the
+selected production candidate can be tested before enabling publication. The read-only
+`desktop-release.yml` remains a qualification aid, consuming completed qualification/shared
+runs without executing packages or publishing. Source revision
+and producer/preparation workflow revisions remain distinct for stable rebuilds.
 
 - Artifact identity includes semantic version, build number, source SHA, platform,
   architecture, digest, and signing evidence. Both architectures in a platform leg
   share only the release version/build number/source SHA; each artifact has its own
   complete identity, architecture, digest and signing evidence. Feeds select and
-  verify that specific artifact. Extend desktop version/bundle checks without making
-  a desktop signing outage block mobile/CLI release.
-- Use separate `desktop-vX.Y.Z-internal.N` / `desktop-vX.Y.Z` tags and explicit desktop
-  asset names. Set GitHub releases `--latest=false`; do not move a published tag or
-  overwrite a published stable artifact. Verify legacy bridge selectors ignore the
-  new tags, including generic GitHub latest-release behavior.
+  verify that specific artifact. A desktop failure is visible in the shared run but
+  does not alter bridge/mobile finalization or roll back completed store uploads.
+- Attach explicit desktop asset names to existing `vX.Y.Z-internal.N` / `vX.Y.Z`
+  releases. Never create/promote another release or change Latest. Preserve bridge
+  archives and `checksums.txt`; desktop owns `desktop-checksums.txt` and
+  `desktop-release.json`. Refuse to overwrite any existing desktop asset.
 - Internal download entries reference only internal desktop builds; stable entries reference only
   approved stable artifacts. A stable build uses the tested source SHA and clean
   version, following the existing bridge production rebuild precedent; an internal
   binary with a prerelease version is not silently relabeled as stable. Reverify the
   actual stable signed package before publication. Do not claim byte-for-byte
   promotion when version baking/signing rebuilds the artifact.
-- Upload immutable payloads and versioned metadata first, verify their public HTTPS
-  retrieval and signatures, then publish each channel entry point last. Serialize
-  publication to that platform/channel using workflow concurrency and conditional
-  object writes. GCS has atomic object replacement, not an atomic multi-object
-  transaction: APT by-hash/versioned indexes and immutable RPM metadata must keep
-  readers valid across the switch. Retain referenced old artifacts through upgrades.
+- Verify native signatures/notarization before upload and anonymously retrieve/hash
+  each public payload. Upload desktop checksums and the completion manifest last;
+  expose website links only after public retrieval/trust is accepted. A retry reuses
+  identical public assets, never clobbers them. Existing workflow concurrency owns
+  ordering. Linux later uses conditional GCS object writes and APT by-hash/versioned
+  indexes plus immutable RPM metadata to keep readers valid across repository switches.
 - Linux repository payloads live alongside signed repository metadata in GCS; the
   same DEB/RPM bytes can also be downloadable GitHub release assets. Do not make
   package managers depend on user-specific tokens or expiring download URLs.
@@ -376,13 +402,280 @@ history and keeps lifecycle changes out of the package-signing review.
 | 4.a | 🚧 [desktop-distribution] Package and notarize native macOS builds [step 5/14] | After 3.b plus signer access. Private DMGs/ZIPs, nested hardened signing, notarization/stapling and native platform probes. High supply-chain/platform risk. Both Macs verify/install without Gatekeeper bypass; rendered startup is tracked in 4.b, not claimed passing. No database change. |
 | 4.b | ⚙️ [desktop-distribution] Keep desktop startup independent of native notifications [step 6/14] | After 4.a. Existing attention owner installs listeners before returning, without holding rendering behind native readiness; retain initial-open/account/disposal handling. Medium/high startup risk. Red/green service tests and both signed GUI targets; no new state owner, persistence, wire or database change. |
 | 5 | ⚙️ [desktop-distribution] Offer manual macOS updates through official downloads [step 7/14] | After 4.b. D6 manual fallback: immutable channel/CPU destination, honest download index, Settings guidance and staging channel metadata. Medium presentation/build risk; unchanged safe Quit, no automatic updater or database change. Native manual replacement remains a release gate. |
-| 6 | ⚙️ [desktop-distribution] Prepare isolated desktop release channels [step 8/14] | After 5. Read-only producer-evidence validation and deterministic private metadata/checksums. No tags, releases, website writes, signing or database change. Publication stays gated on parent prerequisites, credential migration and both native macOS ship gates; it is not delivered by this preparation PR. |
+| 6 | ⚙️ [desktop-distribution] Prepare isolated desktop release channels [step 8/14] | Private preparation. |
 | 7 | 🚧 [desktop-distribution] Qualify private per-user Windows installers [step 9/14] | After 3.b and Windows qualification. Independent private unsigned x64/arm64 installers, complete helper bundle, shortcuts, mutex refusal and isolated install/uninstall fixtures. Signing, timestamp/publisher verification and public delivery remain gated, including the prior macOS ship gate. High installer risk; no shared CLI data deletion or database change. |
 | 8 | ⚙️ [desktop-distribution] Deliver manual Windows updates and winget discovery [step 10/14] | After 6 and 7. Settings download action, signed N→N+1 manual replacement, channel-specific downloads, winget manifests and Windows ship gate. Medium integration risk; no embedded updater, forced helper shutdown or automatic restart. No database change. |
 | 9 | ⚙️ [desktop-distribution] Qualify private native DEB and RPM packages [step 11/14] | Independent private preparation after native bundle qualification. Four unsigned native packages, generated dependency manifests, desktop integration and isolated package-manager fixtures. Signing, public APT/RPM repositories and shipping remain blocked behind prior platform gates. No updater, home cleanup or database change. |
 | 10 | 🌿 [desktop-distribution] Offer shipped desktop downloads during onboarding [step 12/14] | After all platform gates. Shared mobile installation guidance and published links, preserve CLI alternative and truthful platform/CPU choices. Low/medium onboarding regression risk; focused UI/link tests and existing analytics assessment. New installation choice, no database change. |
 | 11 | 🌿 Private regression reconciliation (13/14) | Scope and exact PR title below. |
 | 12 | ⚙️ Release verification and retirement (14/14) | Scope and exact PR title below. |
+
+Step 6 delivered read-only private metadata/checksums in PR #1511 without publication.
+Credential migration is complete, but parent and native/public ship gates still apply.
+
+**Step 6 shared-cycle continuation:**
+`🚧 [desktop-distribution] Join the shared product release cycle [step 8.j/14]`.
+Reuse private native macOS qualification, preserve core finalization/production approval,
+then attach immutable verified assets behind default-off platform admission. Focused
+Python fixture tests and workflow lint; merged as #1724. Private native packaging and
+read-only preparation then passed for the older tagged `1.9.1+981` source. The first
+scheduled shared run failed workflow validation, not a build; details are in step 6.
+No app/database changes or public publication in this implementation step.
+Complexity budget: one repository admission variable and existing transient CI/artifact
+state; no new service, credential, persistent schema, lifecycle owner or updater. Remove
+superseded separate desktop-tag/approval assumptions; keep useful read-only QA tooling.
+
+**Step 6 caller-permission correction:**
+`🌿 [desktop-distribution] Grant desktop callers read-only PR provenance [step 8.k/14]`.
+Grant only the nested upgrade jobs' required `pull-requests: read` to both desktop
+callers, including when those jobs are skipped. Reproduce the omission in the workflow
+contract test, then verify the correction and GitHub call-graph admission. Merged as
+#1730; the next scheduled shared run passed for internal build 983. No new mutable
+state, credentials, write authority or cleanup is needed.
+
+**Step 6 acceptance record:**
+`🌱 [desktop-distribution] Record shared-cycle and candidate acceptance [step 8.l/14]`.
+Record the successful shared internal cycle and read-only preparation separately from
+stable build 981's fresh authenticated/Bridge-Off replacement on both CPUs. Docs-only;
+no new state or cleanup. Merged as #1741, squash
+`55a6624c9b2eccd9f6b17bec5118de48de4f9522`, with 9/9 terminal checks.
+
+**Step 6 macOS admission and gate retirement:**
+`🌿 [desktop-distribution] Retire accepted QA gate and publish macOS previews [step 8.m/14]`.
+Record the user's accepted limitations, retire Gate C as a prerequisite, enable the
+existing repository admission and attach build 987 to its already-public shared
+internal release using the unchanged publisher. Verify anonymous hashes, signatures,
+stapled tickets, Gatekeeper and unchanged bridge/Latest state. PR #1761 also fixes the
+reachable partial-cycle failure: existing internal cleanup retains the newest preview
+with the publisher's completion manifest, retiring older previews only after a newer
+completion. Stable npm cleanup preserves those channel-specific previews regardless of
+stable desktop availability. Two transient shell values; no new persistent pointer,
+owner or core build dependency. Verify both cleanup shells with offline GitHub fixtures.
+No app/database change.
+Website wiring follows; stable production retains its existing approval. Do not retire
+the six-platform plan.
+
+**Step 6 continuation PR:**
+`🚧 [desktop-distribution] Qualify signed macOS manual replacement [step 8/14]`.
+This credential-free continuation adds the private native replacement probe. It closes
+only after reviewed tooling passes from `main`; no tag, release, website write or
+database change is included.
+
+**Step 6 tray-evidence correction PR:**
+`⚙️ [desktop-distribution] Bind macOS upgrade Quit to tray popup [step 8/14]`.
+The first main-only run showed that AppKit does not expose the transient tray menu as a
+status-item child. The correction admits only a new process-owned AXMenu whose frame is
+anchored to the pressed status item, then searches for Quit only inside that menu.
+
+**Step 6 hit-tested-menu correction PR:**
+`⚙️ [desktop-distribution] Bind macOS Quit to hit-tested tray menu [step 8/14]`.
+The second main-only run found 16 pre-existing arm64 menu elements without a new
+accepted popup, while broad traversal invalidated an x64 status-item reference. This
+correction requires AXPress first, hit-tests beside the recorded status-item frame,
+accepts only an anchored process-owned menu and searches for Quit only inside it.
+
+**Step 6 status-bar hit-test correction PR:**
+`⚙️ [desktop-distribution] Include status-bar menu in macOS hit test [step 8/14]`.
+The third main-only run showed that application-scoped AX hit testing does not surface
+the transient status-bar menu. The correction uses system-wide z-order hit testing but
+still accepts only the exact PID's AXMenu anchored to the clicked status-item frame,
+searching for Quit only inside that menu.
+
+**Step 6 real-click correction PR:**
+`⚙️ [desktop-distribution] Click real macOS tray target [step 8/14]`.
+The fourth main-only run showed system-wide hit tests still saw only groups/windows,
+confirming AXPress did not expose the custom-view popup. The correction sends one mouse
+click to the verified process-owned 4–100 × 4–64 point frame within the top 80 points,
+then retains the exact PID/AXMenu/frame/bounded-Quit admission checks. It merged as
+`75a3e8c49be647ff663ea05207ed1badaa14db28`.
+
+**Step 6 visible-window wait correction PR:**
+`🌿 [desktop-distribution] Wait for macOS replacement window [step 8/14]`.
+Two post-merge runs passed arm64 completely and reached current-package startup on x64,
+but each x64 job failed at its only visible-window sample 15 seconds after launch. The
+correction retries that read-only inspector for 45 additional bounded seconds, records
+every attempt, and still refuses an exited process, inactive screen or final absence.
+It merged as `305998d689d13051ac0fb58f9d970dfffe319bf0`.
+
+**Step 6 accepted private helper-Off evidence:**
+Main-only run `35405646668` accepted package trust, visible startup, actual tray Quit,
+no post-Quit relaunch/orphan, persisted Bridge Off intent and bounded state
+preservation, but did not inspect a live helper. The correction
+`🌿 [desktop-distribution] Observe helper-Off during macOS replacement [step 8/14]`
+merged in PR #1546 as source `8d99cd2925c9866dc121323ed348b0d130bc6aca`, tree
+`777f3a353ff04eaeab29f6a6ff3f81e514b04cf1`. Main-only run `35411687826` passed
+tooling job `105812432480`, x64 job `105812464127` and arm64 job `105812464132`.
+Evidence artifacts `10574093842` (x64, digest
+`sha256:a2016249efcc4aa3edda7d6a5e0097a1e5904c15cd78975bb8437fb7e055a6a2`) and
+`10574368671` (arm64, digest
+`sha256:ff848668381813e9318d97a572eb3520f4c6267b0bb39d8abb668f486d2a207e`) expire
+2026-10-03. Both prior/current `*-helper-off.log` files on both CPUs record
+`NO_INSTALLED_HELPER`, and every implemented `upgrade.json` check is true, including
+`helperAbsentBeforeQuit`. Private helper-Off replacement is accepted on both CPUs.
+PR #1547 recorded that accepted boundary and merged as
+`1ff3780b0b9244f5dada842c9e7735a28712fb2d`.
+
+**Step 6 authenticated helper-On qualification PR:**
+`🚧 [desktop-distribution] Qualify authenticated macOS replacement [step 8/14]`.
+Add a separate `macos-authenticated-upgrade-probe` dispatch mode backed by the
+`macos-authenticated-upgrade` job rather than widening the credential-free accepted
+probe. It is main-only, reads the dedicated `qa@sesori.com` account from repository
+Actions secrets only in the exercise step, consumes/removes them before child processes,
+and serializes native x64/arm64 so one relay bridge slot is never shared. The probe requests phase-fresh
+sessions in memory and writes only the three established classic-Keychain values through
+stdin with the installed signed app trusted, persists
+Bridge On, and performs prior/current real tray Quit. It requires the exact packaged
+helper, authenticated profile lookup, relay-serving readiness, Keychain preservation,
+On intent, bounded state and no relaunch/orphan. Raw auth responses, token values,
+bridge/app output and authenticated screenshots never enter artifacts; only bounded
+boolean/coordinate evidence does. PR #1548 merged as
+`cb23a7fc5d1f5b4fcedd1de2d591f88fd4074d43`; the dedicated production QA account now
+exists and its email/password are repository Actions secrets with no environment approval
+gate. Workflow review plus the runtime `refs/heads/main` guard remains the access boundary.
+Accept nothing until both CPUs pass from merged `main`.
+Failed-stop, interactive browser/TCC, minimum-OS and public gates remain separate.
+
+**Step 6 repository-secret follow-up PR:**
+`🌿 [desktop-distribution] Use repository secrets for macOS QA [step 8.b/14]`.
+Apply the owner's post-merge credential policy: remove the unused environment binding,
+read the provisioned account from repository Actions secrets, and keep the existing
+main-only runtime guard, step-only exposure and serialized native matrix.
+
+**Step 6 Keychain-bound follow-up PR:**
+`⚙️ [desktop-distribution] Bound macOS QA Keychain setup [step 8.c/14]`.
+Merged-main run `35443816334` reached the credential exercise on both CPUs but each
+consumed the job's full 35-minute timeout immediately after prior-app installation. The
+native writer's create-then-change-ACL sequence was the only unbounded operation at that
+boundary. Create each classic item with its trusted ACL atomically, retain that ACL while
+refreshing values, add privacy-safe deadlines to every native Keychain command, and retry
+from merged `main`; the cancelled run is not qualification evidence. This follow-up
+merged as `55547f26c8a9f59747987f1b7a65fc473e76e9c2`.
+
+**Step 6 Keychain-envelope follow-up PR:**
+`⚙️ [desktop-distribution] Match macOS QA Keychain query [step 8.d/14]`.
+Merged-main run `35454870471` proved the atomic writer no longer hangs, but both CPUs
+reached the bounded prior-app helper deadline with zero installed-helper processes. The
+writer's classic-Keychain insert omitted the explicit non-synchronizable
+(`kSecAttrSynchronizable: false`) and when-unlocked attributes that the pinned
+FlutterSecureStorage includes in its fixed read query, so a broad `security` lookup
+was not sufficient proof that the app could match the item. Create the item with that
+exact query envelope and immediately self-verify it through `SecItemCopyMatching` without
+printing its value. Retry both CPUs from merged `main`; the failed run is not
+qualification evidence. This follow-up merged as
+`bf14d7c0f32def581febd1531214bbdd2be9fd74`.
+
+**Step 6 bounded startup-diagnostic follow-up PR:**
+`🌿 [desktop-distribution] Classify macOS authenticated startup [step 8.e/14]`.
+Merged-main run `35460239311` passed the exact Keychain self-check on both CPUs but again
+reached the prior-app helper deadline with zero final helper processes. Preserve the
+privacy boundary while distinguishing local-session/restore failures, desired-state or
+bridge-start failures, and transient helper/log activity: scan at most 1 MiB of
+phase-scoped private app output for a closed marker set, emit auth-gate outcomes through
+the captured production log sink rather than `dart:developer`, and retain whether any
+exact helper generation or fresh bridge-log bytes appeared. Raw authenticated logs remain
+outside artifacts and are removed during cleanup. Retry both CPUs from merged `main`;
+the failed run is not qualification evidence. This follow-up merged as
+`db9b0cd8bdf0e4b220d3f0fa069ec831e35f2a89`.
+
+**Step 6 persisted-log and timeout-evidence follow-up PR:**
+`⚙️ [desktop-distribution] Preserve macOS startup evidence [step 8.f/14]`.
+Merged-main run `35465783382`, source
+`db9b0cd8bdf0e4b220d3f0fa069ec831e35f2a89`, tree
+`20a3a04d3a3b5399f880cb46f79eb222e6e24f4f`, was dispatched from:
+
+```text
+/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/tan-antelope
+```
+
+```bash
+gh workflow run desktop-qualification.yml \
+  --repo sesori-ai/sesori_apps_monorepo --ref main \
+  -f mode=macos-authenticated-upgrade-probe \
+  -f previous_packaging_run=35042335424 -f packaging_run=35206885114 \
+  -f channel=stable
+```
+
+It exposed two concrete evidence gaps. X64 job `105957752803` remained in the exercise
+step until the job timeout and therefore never reached its always-upload step. Arm64 job
+`105957752806` reached the prior-app helper deadline; bounded artifact `10591911157`
+(`sha256:e4ee1899b990a5699e4127c86b83f9434a3e39ed90a808d3b6e308f734f03666`)
+contains no classified marker even though the production log sink's authoritative file
+is `logs/app.log`. Scan at most 1 MiB from both private sources, upload only booleans, write
+an atomically replaced closed phase record before each potentially blocking boundary,
+and bound the exercise step below the job deadline so the always-upload step retains the
+latest phase after a step timeout. Raw app/bridge output remains private and cleanup still
+removes it. Retry both CPUs from merged `main`; the cancelled run is not qualification
+evidence. This follow-up merged as
+`e231295f8b00a8f7a7055e943cc6f4502dfda13c`.
+
+**Step 6 pre-render startup-classification follow-up PR:**
+`🌿 [desktop-distribution] Classify macOS pre-render startup [step 8.g/14]`.
+Merged-main run `35496105360`, source
+`e231295f8b00a8f7a7055e943cc6f4502dfda13c`, tree
+`2d24d147f9f2be55e8885c4e81d3fbb7ecd17672`, used the same working directory and
+exact dispatch command recorded for `8.f/14`. Tooling job `106039227037` passed. X64
+job `106039268281` and arm64 job `106039268268` both failed at `previous: authenticated
+helper did not become ready`; bounded artifacts `10601325063`
+(`sha256:4ac6d8e635f46d6f8774ac385bebe3c5514225c38132034cd0328de7ce7bc386`) and
+`10601410119`
+(`sha256:431fea30cc86113f9d5fe388a76a625a58bfc011475f515d894f9096f949de7d`)
+each record `previous` / `helperReadiness`, completed cleanup, zero helper processes,
+no helper or bridge-log activity, no persisted app log, and a present non-truncated
+redirected app output with every existing startup classification false. Add privacy-safe
+pre-sink Dart-main and process-admission markers, then emit only the furthest observed
+closed startup stage from either bounded private source. Record each package's closed
+marker-support level separately from checked-out source or the exact retained-baseline
+metadata. Baseline run `35042335424` supports only the existing `preferences` through
+`rendering` markers, so its `noMarker` result means
+"before the first supported marker", not "before Dart main". Full pre-sink interpretation
+is valid only for a package whose recorded source contains all new markers.
+
+This follow-up merged as #1564, source
+`33a4ceb5506349d08953be37ba7d3a5f1d6d20df`, tree
+`08f1d7b283faec4985a78b78ae8e7b7e4433dee9`. Fresh private stable packaging run
+`35501361734` passed both CPUs for `1.9.0+122`. Authenticated retry `35502787779`, using
+that current package and retained baseline `35042335424`, failed on both CPUs before
+replacement. Both report `previous` / `helperReadiness`, `preRender` /
+`desktopAttention`, no helper activity and completed cleanup. Current `1.9.0+122` was
+not reached. These failures do not demonstrate an upgrade regression. The archives for
+older run `35496105360` were mistakenly deleted during investigation; its recorded
+observations survive, but those artifact IDs are no longer retrievable.
+
+**Step 6 signing-partition correction PR:**
+`⚙️ [desktop-distribution] Match QA Keychain signing partitions [step 8.h/14]`.
+The user resumed Step 8 work, requiring cause analysis and worthwhile fast local tests
+instead of repeated blind native-CI retries. An explicitly authorized disposable local
+Keychain test reproduced cross-process denial despite the trusted-app ACL: the unsigned /
+ad-hoc writer passes its own read while a distinct trusted reader running pinned
+FlutterSecureStorage native code receives `errSecAuthFailed`. The same reader succeeds
+when both processes share a signing partition. Ordinary scratch-directory Keychains lack
+this protection and cannot qualify the fix. See [step-06](steps/step-06.md) for boundaries.
+
+Sign the QA-only helper with the existing Developer ID in the main-only `macos-signing`
+environment, before and separately from QA credential exposure. Require matching valid
+Developer ID teams for helper and app. Use that signed helper for private reads as well
+as writes; remove the incompatible `security -w` verification path and its trusted-reader
+ACL entry. No product startup change, new identity, publication, persistent state or
+runtime coordination. Keep the helper outside app/packages and uploaded evidence.
+Local native controls, unsigned-helper refusal, focused Python tests and workflow
+validation preceded the both-CPU merged-main retry with unchanged package pair
+`35042335424` → `35501361734`. #1571 merged as
+`fe5df8e9152688c76eab127eac6c615547effd29`, tree
+`2549a8a964f534f462f5139d97aeaa15c925f73b`. At that tooling source, run `35573213361`
+passed native x64 and arm64 with all 15 authenticated replacement checks true and cleanup
+complete. Both archive digests and bounded JSON evidence were verified; see
+[step-06](steps/step-06.md). The demonstrated fixture correction unblocked the real
+baseline/current flow without rebuilding either product or changing production startup.
+
+**Step 6 acceptance-record PR:**
+`🌱 [desktop-distribution] Record macOS replacement acceptance [step 8.i/14]`.
+Record authenticated acceptance plus helper-Off run `35575012582` (both CPUs, all 11
+checks true) and read-only preparation `35575015316` for the same build `122`. Both ran
+at the same merged tooling source; verified archive/record checks do not borrow build-62
+evidence. Documentation/evidence only; no user-visible or database change, new state,
+release, credential, or publication authority. Failed-stop, interactive, minimum-OS and
+parent ship gates remain open; private acceptance does not complete the public portion
+of step 6.
 
 **Step 11 PR:**
 `🌿 [desktop-distribution] Reconcile private distribution regression coverage [step 13/14]`.
@@ -477,10 +770,11 @@ every desktop environment: representative selection is justified per invariant.
    without authentication. winget discovery is verified through its actual external
    manifest/install path; record an unapproved manifest as blocked, not passing.
 
-Use current native N and N+1 test builds before the first public desktop release;
-there is no obligation to migrate unpublished desktop builds. Once a public version
-ships, include it as the upgrade baseline. Same-version metadata corruption does not
-justify silently replacing immutable public artifacts.
+For unwaived platform gates, use current native N and N+1 test builds before first
+public desktop publication. Only public production releases establish compatibility
+baselines; internal previews do not impose migration promises. The macOS acceptance and explicit
+coverage reduction above remain authoritative, not a renewed Gate C prerequisite.
+Same-version metadata corruption does not justify replacing immutable public artifacts.
 
 Per-platform ship gates can release ready platforms while later ones remain blocked.
 Private qualification now covers signed/notarized macOS packages and unsigned Windows

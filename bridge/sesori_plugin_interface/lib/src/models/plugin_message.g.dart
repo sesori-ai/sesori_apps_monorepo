@@ -40,8 +40,17 @@ Map<String, dynamic> _$PluginMessagePartToolToJson(
   'sessionID': instance.sessionID,
   'messageID': instance.messageID,
   'tool': ?instance.tool,
+  'kind': _$PluginToolKindEnumMap[instance.kind]!,
   'state': instance.state.toJson(),
   'type': instance.$type,
+};
+
+const _$PluginToolKindEnumMap = {
+  PluginToolKind.read: 'read',
+  PluginToolKind.edit: 'edit',
+  PluginToolKind.command: 'command',
+  PluginToolKind.search: 'search',
+  PluginToolKind.other: 'other',
 };
 
 Map<String, dynamic> _$PluginMessagePartSubtaskToJson(
@@ -131,6 +140,7 @@ Map<String, dynamic> _$PluginMessagePartCompactionToJson(
   'id': instance.id,
   'sessionID': instance.sessionID,
   'messageID': instance.messageID,
+  'summary': ?instance.summary,
   'type': instance.$type,
 };
 

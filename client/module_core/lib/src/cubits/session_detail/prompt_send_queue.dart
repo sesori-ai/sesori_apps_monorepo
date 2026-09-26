@@ -1,5 +1,8 @@
 import "dart:collection";
 
+import "../../foundation/models/composer/composer_attachment.dart";
+import "../../repositories/models/prompt_send_failure.dart";
+import "local_send_phase.dart";
 import "queued_session_submission.dart";
 
 /// Manages a queue of queued submissions waiting to be sent.
@@ -12,6 +15,57 @@ class PromptSendQueue() {
   final Queue<QueuedSessionSubmission> _items = Queue<QueuedSessionSubmission>();
   QueuedSessionSubmission? _active;
 
+  /// The head submission whose send really failed. It stays out of the
+  /// pending list so later submissions wait behind it until the user retries
+  /// or removes it.
+  LocalSendFailed? _failed;
+
+  /// Retained bridge previews may hold at most one maximum-size submission
+  /// across the whole session. Older previews fall back to attachment counts.
+  static const maxBridgePreviewBytes = maxComposerPromptAttachmentBytes;
+  final Map<String, List<ComposerAttachment>> _bridgePromptAttachments = {};
+
+  Map<String, List<ComposerAttachment>> get bridgePromptAttachments => Map.unmodifiable(_bridgePromptAttachments);
+
+  /// Transfers local previews before bridge ownership removes staged copies.
+  /// This runs at reconciliation, independent of which states a UI renders.
+  void reconcileBridgeQueue({required Set<String> promptIds}) {
+    _bridgePromptAttachments.removeWhere((promptId, _) => !promptIds.contains(promptId));
+    var retainedBytes = _bridgePromptAttachments.values.fold(
+      0,
+      (total, items) => total + _attachmentBytes(attachments: items),
+    );
+    for (final submission in [
+      for (final entry in _awaitingBridge) entry.submission,
+      if (!isActiveSettledElsewhere) ?_active,
+      ?_failed?.submission,
+      ..._items,
+    ]) {
+      final attachments = submission.attachments;
+      if (!promptIds.contains(submission.promptId) ||
+          attachments.isEmpty ||
+          _bridgePromptAttachments.containsKey(submission.promptId)) {
+        continue;
+      }
+      final bytes = _attachmentBytes(attachments: attachments);
+      if (bytes <= maxBridgePreviewBytes) {
+        while (retainedBytes + bytes > maxBridgePreviewBytes) {
+          final oldest = _bridgePromptAttachments.entries.first;
+          retainedBytes -= _attachmentBytes(attachments: oldest.value);
+          _bridgePromptAttachments.remove(oldest.key);
+        }
+        _bridgePromptAttachments[submission.promptId] = List.unmodifiable(attachments);
+        retainedBytes += bytes;
+      }
+    }
+    for (final promptId in promptIds) {
+      _removeStagedByPromptId(promptId: promptId);
+    }
+  }
+
+  static int _attachmentBytes({required List<ComposerAttachment> attachments}) =>
+      attachments.fold(0, (total, attachment) => total + attachment.bytes.length);
+
   /// Unmodifiable snapshot of the current queue contents.
   List<QueuedSessionSubmission> get items => List.unmodifiable(_items.toList());
 
@@ -19,6 +73,9 @@ class PromptSendQueue() {
   QueuedSessionSubmission? get active => _active;
 
   bool get isSending => _active != null;
+
+  /// The failed head submission, shown with Retry until the user acts on it.
+  LocalSendFailed? get failed => _failed;
 
   /// Whether the queue has no pending messages.
   bool get isEmpty => _items.isEmpty;
@@ -31,7 +88,9 @@ class PromptSendQueue() {
 
   /// Moves the first pending submission into the active slot.
   QueuedSessionSubmission? beginSend() {
-    if (_active != null || _items.isEmpty || _items.first is UnavailableQueuedCommandSubmission) return null;
+    if (_active != null || _failed != null || _items.isEmpty || _items.first is UnavailableQueuedCommandSubmission) {
+      return null;
+    }
     return _active = _items.removeFirst();
   }
 
@@ -41,10 +100,9 @@ class PromptSendQueue() {
     _active = null;
   }
 
-  /// Parks the accepted in-flight submission until the bridge's own view of
-  /// the prompt arrives — a queue event, a snapshot, its delivered message,
-  /// or explicit terminal settlement, all of which land in [removeByPromptId].
-  /// Rendering from here
+  /// Parks the accepted in-flight submission until [reconcileBridgeQueue]
+  /// transfers it to the bridge-owned view, or [removeByPromptId] settles its
+  /// delivered message or explicit terminal outcome. Rendering from here
   /// covers the gap when the acceptance response outruns the
   /// `session.queued-prompts` event, so the bubble never blanks between
   /// "sending" and "queued". A submission the bridge already settled is
@@ -93,6 +151,35 @@ class PromptSendQueue() {
     return true;
   }
 
+  /// Holds the active submission in the failed slot after a real send failure.
+  ///
+  /// Returns whether it was held. Like [failSend], a submission the bridge
+  /// already settled is discarded instead.
+  bool holdFailedSend({required PromptSendFailure failure}) {
+    final active = _active;
+    if (active == null) return false;
+    _active = null;
+    if (_settledElsewhere.remove(active.promptId)) return false;
+    _failed = LocalSendFailed(submission: active, failure: failure);
+    return true;
+  }
+
+  /// Puts the failed submission back at the head, unchanged, so its resend
+  /// carries the same prompt id and the bridge's dedup can never run it twice.
+  void retryFailedSend() {
+    final failed = _failed;
+    if (failed == null) return;
+    _failed = null;
+    _items.addFirst(failed.submission);
+  }
+
+  /// Drops the failed submission (user removal) and returns it.
+  QueuedSessionSubmission? removeFailedSend() {
+    final failed = _failed;
+    _failed = null;
+    return failed?.submission;
+  }
+
   /// Rewrites pending submissions in place while preserving FIFO order.
   void replacePending({required QueuedSessionSubmission Function(QueuedSessionSubmission submission) update}) {
     final replacements = _items.map(update).toList(growable: false);
@@ -112,6 +199,7 @@ class PromptSendQueue() {
           :final command,
           :final agent,
           :final agentModel,
+          :final fastMode,
         )
             when submissionPromptId == promptId =>
           QueuedSessionSubmission.unavailableCommand(
@@ -120,6 +208,7 @@ class PromptSendQueue() {
             command: command,
             agent: agent,
             agentModel: agentModel,
+            fastMode: fastMode,
           ),
         QueuedTextSubmission() || QueuedCommandSubmission() || UnavailableQueuedCommandSubmission() => submission,
       },
@@ -147,14 +236,19 @@ class PromptSendQueue() {
     return active != null && _settledElsewhere.contains(active.promptId);
   }
 
-  /// Drops every staged copy of [promptId] — the bridge settled that prompt
-  /// (queued, dispatched, or cancelled it), so a local retry would only
-  /// duplicate or resurrect it. The active slot keeps settling through
+  /// Drops staged copies and retained previews of terminally settled [promptId].
+  /// A local retry would only duplicate or resurrect it. The active slot keeps settling through
   /// complete/fail so the drain loop stays single-flight; it is marked so
   /// rendering hides it and a late transport failure discards it.
   void removeByPromptId(String promptId) {
+    _bridgePromptAttachments.remove(promptId);
+    _removeStagedByPromptId(promptId: promptId);
+  }
+
+  void _removeStagedByPromptId({required String promptId}) {
     _items.removeWhere((item) => item.promptId == promptId);
     _awaitingBridge.removeWhere((entry) => entry.submission.promptId == promptId);
+    if (_failed?.submission.promptId == promptId) _failed = null;
     if (_active?.promptId == promptId) _settledElsewhere.add(promptId);
   }
 
@@ -163,6 +257,8 @@ class PromptSendQueue() {
     _items.clear();
     _awaitingBridge.clear();
     _active = null;
+    _failed = null;
     _settledElsewhere.clear();
+    _bridgePromptAttachments.clear();
   }
 }

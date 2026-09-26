@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
@@ -7,13 +9,19 @@ import "../../../extensions/build_context_x.dart";
 import "user_message_card.dart";
 
 sealed class const QueuedMessageBubblePresentation() {
-  const factory sending() = SendingMessageBubblePresentation;
+  /// [harnessName] is null until the harness status loads.
+  const factory sending({required String? harnessName}) = SendingMessageBubblePresentation;
   const factory pending({required VoidCallback onCancel}) = PendingMessageBubblePresentation;
   const factory pendingReadOnly() = ReadOnlyPendingMessageBubblePresentation;
   const factory commandUnavailable({required VoidCallback? onRemove}) = UnavailableCommandBubblePresentation;
+
+  /// A send that failed. The callbacks are null on a read-only surface.
+  const factory failed({required VoidCallback? onRetry, required VoidCallback? onRemove}) =
+      FailedMessageBubblePresentation;
 }
 
-final class const SendingMessageBubblePresentation() extends QueuedMessageBubblePresentation;
+final class const SendingMessageBubblePresentation({required final String? harnessName})
+    extends QueuedMessageBubblePresentation;
 
 final class const PendingMessageBubblePresentation({required final VoidCallback onCancel})
     extends QueuedMessageBubblePresentation;
@@ -23,39 +31,101 @@ final class const ReadOnlyPendingMessageBubblePresentation() extends QueuedMessa
 final class const UnavailableCommandBubblePresentation({required final VoidCallback? onRemove})
     extends QueuedMessageBubblePresentation;
 
+final class const FailedMessageBubblePresentation({
+  required final VoidCallback? onRetry,
+  required final VoidCallback? onRemove,
+}) extends QueuedMessageBubblePresentation;
+
 class const QueuedMessageBubble({
   super.key,
   required final String? displayText,
   required final bool isCommand,
   required final int attachmentCount,
 
-  /// Image bytes remain local while a submission is sending or awaiting the
-  /// bridge queue. Once another surface owns the queue, only its bounded count
-  /// is available and the bubble renders an attachment indicator instead.
+  /// This surface retains bounded local previews through bridge queue dispatch.
+  /// Evicted previews and prompts from another surface render an attachment
+  /// count instead.
   required final List<ComposerAttachment> localAttachments,
   required final QueuedMessageBubblePresentation presentation,
-}) extends StatelessWidget {
+}) extends StatefulWidget {
+  @override
+  State<QueuedMessageBubble> createState() => _QueuedMessageBubbleState();
+}
+
+class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
+  /// How long a send runs before its status names the harness it waits on.
+  static const _slowSendDelay = Duration(seconds: 2);
+
+  Timer? _slowSendTimer;
+  bool _isSlowSend = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncSlowSendTimer();
+  }
+
+  @override
+  void didUpdateWidget(QueuedMessageBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final wasSending = oldWidget.presentation is SendingMessageBubblePresentation;
+    if (wasSending != widget.presentation is SendingMessageBubblePresentation) _syncSlowSendTimer();
+  }
+
+  @override
+  void dispose() {
+    _slowSendTimer?.cancel();
+    super.dispose();
+  }
+
+  void _syncSlowSendTimer() {
+    _slowSendTimer?.cancel();
+    _slowSendTimer = null;
+    _isSlowSend = false;
+    if (widget.presentation is! SendingMessageBubblePresentation) return;
+    _slowSendTimer = Timer(_slowSendDelay, () {
+      if (mounted) setState(() => _isSlowSend = true);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
     final reducedMotion = context.isReducedMotion;
     final duration = reducedMotion ? Duration.zero : const Duration(milliseconds: 240);
+    final presentation = widget.presentation;
+    final isCommand = widget.isCommand;
+    final displayText = widget.displayText;
+    final attachmentCount = widget.attachmentCount;
+    final localAttachments = widget.localAttachments;
     final isPending =
         presentation is PendingMessageBubblePresentation ||
         presentation is ReadOnlyPendingMessageBubblePresentation ||
-        presentation is UnavailableCommandBubblePresentation;
+        presentation is UnavailableCommandBubblePresentation ||
+        presentation is FailedMessageBubblePresentation;
     final status = switch (presentation) {
-      SendingMessageBubblePresentation() => _status(
-        prego: prego,
-        icon: const ExcludeSemantics(
-          child: SizedBox.square(
-            dimension: 14,
-            child: PregoActivityIndicator(color: null),
+      // The label names the harness, so it wraps rather than overflowing a
+      // narrow pane at large text.
+      SendingMessageBubblePresentation(:final harnessName) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ExcludeSemantics(
+            child: SizedBox.square(
+              dimension: 14,
+              child: PregoActivityIndicator(color: null),
+            ),
           ),
-        ),
-        label: loc.sessionDetailSendingMessage,
-        color: prego.colors.textTertiary,
+          const SizedBox(width: PregoSpacing.xs),
+          Flexible(
+            child: Text(
+              _isSlowSend && harnessName != null
+                  ? loc.sessionDetailSendingToHarness(harnessName)
+                  : loc.sessionDetailSendingMessage,
+              style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary),
+            ),
+          ),
+        ],
       ),
       PendingMessageBubblePresentation(:final onCancel) => Row(
         mainAxisSize: MainAxisSize.min,
@@ -64,7 +134,7 @@ class const QueuedMessageBubble({
             prego: prego,
             icon: Icon(
               isCommand ? TablerRegular.terminal : TablerRegular.clock,
-              size: 14,
+              size: PregoIconSize.sm,
               color: prego.colors.textTertiary,
             ),
             label: isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
@@ -73,7 +143,7 @@ class const QueuedMessageBubble({
           const SizedBox(width: PregoSpacing.xs),
           TextButton.icon(
             onPressed: onCancel,
-            icon: const Icon(TablerRegular.x, size: 14),
+            icon: const Icon(TablerRegular.x, size: PregoIconSize.sm),
             label: Text(loc.sessionDetailCancelQueued),
             style: TextButton.styleFrom(
               foregroundColor: prego.colors.textTertiary,
@@ -92,7 +162,7 @@ class const QueuedMessageBubble({
         prego: prego,
         icon: Icon(
           isCommand ? TablerRegular.terminal : TablerRegular.clock,
-          size: 14,
+          size: PregoIconSize.sm,
           color: prego.colors.textTertiary,
         ),
         label: isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
@@ -105,7 +175,7 @@ class const QueuedMessageBubble({
             prego: prego,
             icon: Icon(
               TablerRegular.alert_circle,
-              size: 14,
+              size: PregoIconSize.sm,
               color: prego.colors.fgErrorPrimary,
             ),
             label: loc.sessionDetailUnavailableCommand,
@@ -115,7 +185,7 @@ class const QueuedMessageBubble({
             const SizedBox(width: PregoSpacing.xs),
             TextButton.icon(
               onPressed: onRemove,
-              icon: const Icon(TablerRegular.x, size: 14),
+              icon: const Icon(TablerRegular.x, size: PregoIconSize.sm),
               label: Text(loc.sessionDetailRemoveQueued),
               style: TextButton.styleFrom(
                 foregroundColor: prego.colors.textErrorPrimary,
@@ -129,6 +199,32 @@ class const QueuedMessageBubble({
               ),
             ),
           ],
+        ],
+      ),
+      // Wraps so both actions stay reachable in a narrow pane or at large text.
+      FailedMessageBubblePresentation(:final onRetry, :final onRemove) => Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: PregoSpacing.xs,
+        children: [
+          // Inside the Wrap the label is bounded, so it may wrap itself.
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(TablerRegular.alert_circle, size: PregoIconSize.sm, color: prego.colors.fgErrorPrimary),
+              const SizedBox(width: PregoSpacing.xs),
+              Flexible(
+                child: Text(
+                  loc.sessionDetailSendFailed,
+                  style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textErrorPrimary),
+                ),
+              ),
+            ],
+          ),
+          if (onRetry != null)
+            _action(prego: prego, icon: TablerRegular.refresh, label: loc.sessionDetailRetry, onPressed: onRetry),
+          if (onRemove != null)
+            _action(prego: prego, icon: TablerRegular.x, label: loc.sessionDetailRemoveQueued, onPressed: onRemove),
         ],
       ),
     };
@@ -169,6 +265,27 @@ class const QueuedMessageBubble({
           ),
         ),
       ],
+    );
+  }
+
+  Widget _action({
+    required PregoDesignSystem prego,
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return TextButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon, size: PregoIconSize.sm),
+      label: Text(label),
+      style: TextButton.styleFrom(
+        foregroundColor: prego.colors.textErrorPrimary,
+        minimumSize: const Size(44, 44),
+        padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.md),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: prego.textTheme.textXs.medium,
+        shape: const StadiumBorder(),
+      ),
     );
   }
 
@@ -219,7 +336,7 @@ class const _QueuedAttachmentPreviews({required final List<ComposerAttachment> a
                   gaplessPlayback: true,
                   errorBuilder: (_, _, _) => ColoredBox(
                     color: prego.colors.bgSurface2,
-                    child: Icon(Icons.broken_image, color: prego.colors.textSecondary),
+                    child: Icon(TablerRegular.photo_off, color: prego.colors.textSecondary),
                   ),
                 ),
               ),
@@ -239,7 +356,7 @@ class const _QueuedAttachmentCount({required final int count}) extends Stateless
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(TablerRegular.photo, size: 16, color: prego.colors.textBrandPrimary),
+          Icon(TablerRegular.photo, size: PregoIconSize.sm, color: prego.colors.textBrandPrimary),
           const SizedBox(width: PregoSpacing.xs),
           Text(
             context.loc.sessionDetailQueuedAttachmentCount(count),

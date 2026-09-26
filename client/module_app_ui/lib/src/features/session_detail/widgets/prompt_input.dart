@@ -15,9 +15,10 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../composer_presentation_scope.dart";
-import "command_picker_sheet.dart";
+import "command_picker.dart";
 import "composer_options_accordion.dart";
 import "composer_surface_style.dart";
+import "image_attachment_viewer.dart";
 import "prompt_editor_sheet.dart";
 import "voice_cancel_button.dart";
 
@@ -128,6 +129,10 @@ class const PromptInput({
   /// resting hint copy ("Ask anything..." vs "Follow up...") and, in
   /// text-first mode, which prompt the compact pill invites.
   required final bool hasMessages,
+
+  /// Whether a send may go out now. Typing stays open either way; while this
+  /// is false the draft simply waits in the field.
+  required final bool canSend,
   required final PromptSubmitCallback onSend,
   required final VoidCallback? onVoiceTranscriptionCompleted,
   required final ValueChanged<ComposerDraft> onDraftChanged,
@@ -135,6 +140,10 @@ class const PromptInput({
   required final VoidCallback onAbort,
   required final ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController,
   required final Widget? composerHeader,
+
+  /// Kept at the trailing edge of the strip above the input in every state,
+  /// while a staged command or the voice controls take [composerHeader]'s place.
+  required final Widget? composerTrailing,
   required final List<CommandInfo> availableCommands,
   required final CommandInfo? stagedCommand,
   required final ValueChanged<CommandInfo> onCommandSelected,
@@ -186,6 +195,11 @@ class _PromptInputState() extends State<PromptInput> {
   /// while the field wasn't in the tree yet (hold-to-talk / compact layouts),
   /// until the post-frame focus request lands. Cleared when focus leaves.
   bool _typingRequested = false;
+
+  /// Keeps the typing layout while the slash-command picker is open over it:
+  /// the picker's search takes focus, and a layout swap would drop the
+  /// picker's anchor.
+  bool _typingPinnedByPicker = false;
 
   /// Whether the field holds sendable text. Mirrored into state so the
   /// composer only rebuilds when emptiness flips (layout + send/stop swap),
@@ -317,7 +331,12 @@ class _PromptInputState() extends State<PromptInput> {
   /// Whether the expanded typing container is showing (vs. the resting
   /// hold-to-talk / compact pills).
   bool get _showsTypingLayout =>
-      _typingRequested || _focusNode.hasFocus || _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
+      _typingRequested ||
+      _typingPinnedByPicker ||
+      _focusNode.hasFocus ||
+      _hasText ||
+      widget.stagedCommand != null ||
+      _attachments.isNotEmpty;
 
   /// The layout the composer would rest in right now, ignoring any pinned
   /// voice interaction.
@@ -374,7 +393,7 @@ class _PromptInputState() extends State<PromptInput> {
 
   bool get _hasSendableContent {
     final hasContent = _hasText || widget.stagedCommand != null || _attachments.isNotEmpty;
-    return hasContent && (_attachments.isEmpty || (widget.attachmentsSupported ?? false));
+    return widget.canSend && hasContent && (_attachments.isEmpty || (widget.attachmentsSupported ?? false));
   }
 
   /// Switches to the typing layout and raises the keyboard. Focus is
@@ -409,7 +428,7 @@ class _PromptInputState() extends State<PromptInput> {
   void _handleSend() => unawaited(_submitComposer());
 
   Future<void> _submitComposer() async {
-    if (_isSubmitting) return;
+    if (_isSubmitting || !widget.canSend) return;
 
     final wasFocused = _focusNode.hasFocus;
     final stagedCommand = widget.stagedCommand;
@@ -1011,16 +1030,6 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  Future<void> _openCommandPicker() async {
-    final selected = await CommandPickerSheet.show(
-      context,
-      commands: widget.availableCommands,
-    );
-    if (!mounted || selected == null) return;
-    widget.onCommandSelected(selected);
-    _focusComposerField();
-  }
-
   Future<void> _openEditorSheet() async {
     await PromptEditorSheet.show(
       context,
@@ -1053,31 +1062,14 @@ class _PromptInputState() extends State<PromptInput> {
 
   @override
   Widget build(BuildContext context) {
-    final prego = context.prego;
     final capabilities = ComposerPresentationScope.of(context);
     _renderedVoiceState = capabilities.voiceSupport.isSupported
         ? context.watch<VoiceInputCubit>().state
         : const VoiceInputState.idle();
 
     return DecoratedBox(
-      // Floating composer: no bar surface, no separator line. The scaffold
-      // background fades up behind the floating controls so chat content
-      // dissolves as it scrolls past — the same scrim the glass top navigation
-      // bar uses (PregoGlassScaffold), mirrored to the bottom edge: opaque
-      // where the controls sit, transparent where content emerges above. The
-      // controls keep their own surfaces.
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.center,
-          end: Alignment.topCenter,
-          colors: [
-            prego.colors.bgSurface1.withValues(alpha: 0.98),
-            prego.colors.bgSurface1.withValues(alpha: 0.88),
-            prego.colors.bgSurface1.withValues(alpha: 0),
-          ],
-          stops: const [0, 0.8, 1.0],
-        ),
-      ),
+      // Floating composer: no bar surface, no separator line.
+      decoration: composerScrimDecoration(prego: context.prego),
       child: Column(
         mainAxisSize: .min,
         children: [
@@ -1095,7 +1087,17 @@ class _PromptInputState() extends State<PromptInput> {
                 onPopInvokedWithResult: (didPop, _) {
                   if (!didPop && shouldDismissKeyboardBeforePop) _focusNode.unfocus();
                 },
-                child: _buildComposerTopSlot(context),
+                child: switch (widget.composerTrailing) {
+                  null => _buildComposerTopSlot(context),
+                  final trailing => Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    spacing: 8,
+                    children: [
+                      Expanded(child: _buildComposerTopSlot(context)),
+                      Padding(padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2), child: trailing),
+                    ],
+                  ),
+                },
               );
             },
           ),
@@ -1191,7 +1193,7 @@ class _PromptInputState() extends State<PromptInput> {
             child: GlassChip(
               label: "/${commandInfo.name}",
               onDeleted: widget.onCommandCleared,
-              deleteIcon: const Icon(Icons.close, size: 18),
+              deleteIcon: const Icon(TablerRegular.x, size: PregoIconSize.md),
             ),
           ),
         ),
@@ -1426,18 +1428,21 @@ class _PromptInputState() extends State<PromptInput> {
           Expanded(
             child: _buildVoiceAwareSlot(
               height: _actionButtonSize,
-              idle: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: _enterTypingMode,
-                child: Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Padding(
-                    padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                    child: Text(
-                      _hintText(context),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+              idle: MouseRegion(
+                cursor: SystemMouseCursors.text,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: _enterTypingMode,
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+                      child: Text(
+                        _hintText(context),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+                      ),
                     ),
                   ),
                 ),
@@ -1458,6 +1463,9 @@ class _PromptInputState() extends State<PromptInput> {
     final loc = context.loc;
     final voiceFirst = _isVoiceFirst;
     final sendKeyPolicy = ComposerPresentationScope.of(context).sendKeyPolicy;
+    // A pointer shell grows the box for long prompts instead of offering the
+    // full-screen editor sheet.
+    final growsInPlace = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
 
     // Voice-first nests the fully-rounded hold pill along the bottom, so the
     // container's bottom corners wrap it: pill radius (22) + padding (6) = 28
@@ -1486,7 +1494,7 @@ class _PromptInputState() extends State<PromptInput> {
               Padding(
                 // Clear the expand button on the trailing edge so text never
                 // runs underneath it.
-                padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.xs, 0, 36, 0),
+                padding: EdgeInsetsDirectional.fromSTEB(PregoSpacing.xs, 0, growsInPlace ? PregoSpacing.xs : 36, 0),
                 child: Actions(
                   // Browser paste must remain synchronous with its DOM event;
                   // deferring Flutter's text action behind an async Clipboard
@@ -1517,7 +1525,7 @@ class _PromptInputState() extends State<PromptInput> {
                       scrollController: _textScrollController,
                       focusNode: _focusNode,
                       minLines: 1,
-                      maxLines: 6,
+                      maxLines: growsInPlace ? 16 : 6,
                       keyboardType: TextInputType.multiline,
                       textInputAction: TextInputAction.newline,
                       contextMenuBuilder: (_, editableTextState) =>
@@ -1532,6 +1540,12 @@ class _PromptInputState() extends State<PromptInput> {
                       decoration: InputDecoration(
                         isCollapsed: true,
                         border: InputBorder.none,
+                        // Growing in place stops at a third of the window and
+                        // then scrolls, so a short window keeps the selectors
+                        // above the draft on screen.
+                        constraints: growsInPlace
+                            ? BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height / 3)
+                            : null,
                         contentPadding: const EdgeInsets.symmetric(vertical: PregoSpacing.md),
                         // Command-aware placeholder: the staged command's hint,
                         // else the follow-up/default prompt hint.
@@ -1542,19 +1556,20 @@ class _PromptInputState() extends State<PromptInput> {
                   ),
                 ),
               ),
-              PositionedDirectional(
-                top: 0,
-                end: 0,
-                child: Tooltip(
-                  message: loc.sessionDetailExpandEditor,
-                  child: PregoTappable(
-                    onTap: _voicePresentation == _VoicePresentation.idle ? _openEditorSheet : null,
-                    borderRadius: BorderRadius.circular(PregoRadius.full),
-                    containerBuilder: (Widget child) => SizedBox.square(dimension: 32, child: child),
-                    child: Icon(TablerRegular.maximize, size: 18, color: prego.colors.textSecondary),
+              if (!growsInPlace)
+                PositionedDirectional(
+                  top: 0,
+                  end: 0,
+                  child: Tooltip(
+                    message: loc.sessionDetailExpandEditor,
+                    child: PregoTappable(
+                      onTap: _voicePresentation == _VoicePresentation.idle ? _openEditorSheet : null,
+                      borderRadius: BorderRadius.circular(PregoRadius.full),
+                      containerBuilder: (Widget child) => SizedBox.square(dimension: 32, child: child),
+                      child: Icon(TablerRegular.maximize, size: PregoIconSize.md, color: prego.colors.textSecondary),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           if (voiceFirst)
@@ -1615,18 +1630,43 @@ class _PromptInputState() extends State<PromptInput> {
           PregoImageAttachmentPreview(
             key: ObjectKey(_attachments[index]),
             imageLabel: _attachments[index].filename ?? loc.sessionDetailAttachedImage,
+            onOpen: () => _openAttachment(attachment: _attachments[index]),
             removeLabel: loc.sessionDetailRemoveAttachment,
             onRemove: () => setState(() => _attachments.removeAt(index)),
-            image: Image.memory(
-              _attachments[index].bytes,
-              // Decode at thumbnail scale rather than retaining full-resolution
-              // rasters for every staged image. Original bytes still get sent.
-              cacheWidth: (PregoImageAttachmentPreview.size * MediaQuery.devicePixelRatioOf(context)).round(),
-              fit: BoxFit.cover,
-              gaplessPlayback: true,
+            image: Hero(
+              tag: ObjectKey(_attachments[index]),
+              child: Image.memory(
+                _attachments[index].bytes,
+                // Decode at thumbnail scale rather than retaining full-resolution
+                // rasters for every staged image. Original bytes still get sent.
+                cacheWidth: (PregoImageAttachmentPreview.size * MediaQuery.devicePixelRatioOf(context)).round(),
+                fit: BoxFit.cover,
+                gaplessPlayback: true,
+              ),
             ),
           ),
       ],
+    );
+  }
+
+  void _openAttachment({required ComposerAttachment attachment}) {
+    unawaited(
+      showImageAttachmentViewer(
+        context: context,
+        image: ViewOnlyMessageImage(
+          // The chat thumbnails' viewer cap; staged originals can be camera-sized.
+          provider: ResizeImage(
+            MemoryImage(attachment.bytes),
+            width: 2048,
+            height: 2048,
+            policy: ResizeImagePolicy.fit,
+          ),
+          originalUri: null,
+        ),
+        heroPresentation: ImageAttachmentHeroPresentation.cropped,
+        filename: attachment.filename,
+        heroTag: ObjectKey(attachment),
+      ),
     );
   }
 
@@ -1670,11 +1710,33 @@ class _PromptInputState() extends State<PromptInput> {
   static const double _actionButtonSize = 44;
 
   Widget _buildOptionsAccordion() {
-    return ComposerOptionsAccordion(
-      actionsEnabled: _voicePresentation == _VoicePresentation.idle,
-      showAttachImage: widget.attachmentsSupported ?? false,
-      onSlashCommandsTap: _openCommandPicker,
-      onAttachImageTap: _handleAttachImage,
+    return PregoPickerPopover(
+      pointerWidth: 360,
+      onClosed: () {
+        if (mounted) _updateComposerState(update: () => _typingPinnedByPicker = false);
+      },
+      triggerBuilder: (context, toggle) => ComposerOptionsAccordion(
+        actionsEnabled: _voicePresentation == _VoicePresentation.idle,
+        alwaysOpen: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
+        isTyping: _hasText,
+        showAttachImage: widget.attachmentsSupported ?? false,
+        onSlashCommandsTap: () {
+          _typingPinnedByPicker = _layout == ComposerSurfaceLayout.typing;
+          toggle();
+        },
+        onAttachImageTap: _handleAttachImage,
+      ),
+      contentBuilder: (context, close) => CommandPicker(
+        commands: widget.availableCommands,
+        onCommandSelected: (command) {
+          close();
+          // App shortcuts can change the session under the open picker.
+          if (!mounted) return;
+          widget.onCommandSelected(command);
+          _focusComposerField();
+        },
+        onClose: close,
+      ),
     );
   }
 

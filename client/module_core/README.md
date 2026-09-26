@@ -36,7 +36,6 @@ These abstract interfaces are defined here and implemented by Flutter adapters i
 
 | Interface | Flutter Adapter |
 |-----------|----------------|
-| `SecureStorage` | `FlutterSecureStorageAdapter` |
 | `UrlLauncher` | `FlutterUrlLauncher` |
 | `DeepLinkSource` | `DeepLinkSource` (app_links) |
 | `LifecycleSource` | `AppLifecycleObserver` |
@@ -54,11 +53,17 @@ These abstract interfaces are defined here and implemented by Flutter adapters i
 ```dart
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
-// Must be called after platform adapters and auth module are registered:
+// After platform → configurePersistenceDependencies → configureAuthDependencies:
 configureCoreDependencies(getIt);
 ```
 
-The auth module (`configureAuthDependencies`) must be initialized first. The full three-phase order is in `app/lib/core/di/injection.dart`.
+Shared persistence registers before auth, which registers before core. Shells
+supply `PersistenceScope`, `MasterKeyStore` and `PersistenceDirectory` from
+`sesori_persistence`; core consumes its typed `PersisterRepository` and
+`SecureStorageRepository`, retaining domain keys and serialization here.
+Production mobile awaits the isolated deprecated import before consumers;
+development and desktop do not invoke it. See `app/lib/core/di/injection.dart`
+and `desktop/lib/core/di/injection.dart` for complete composition.
 
 ## Testing
 

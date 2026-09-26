@@ -5,8 +5,9 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 
 /// The composer's advanced-options drawer: a chevron opens a pill containing
-/// the image-attach action and slash-commands picker. Choosing an action
-/// collapses the pill; the open state has no manual collapse control.
+/// the image-attach action and slash-commands picker. Choosing an action or
+/// starting to type collapses the pill; the open state has no manual collapse
+/// control.
 ///
 /// Matches Figma `View options actions left` (4602:14568): a flat bordered
 /// 44pt pill with 32pt icon buttons separated by 8pt.
@@ -20,6 +21,14 @@ class const ComposerOptionsAccordion({
   /// Whether the image-attach action is offered at all. Harnesses that drop
   /// image parts get no attach button rather than one that loses the image.
   required final bool showAttachImage,
+
+  /// Keeps `+` and `/` visible instead of folding them behind the chevron,
+  /// except while [isTyping].
+  required final bool alwaysOpen,
+
+  /// Whether the composer holds text. Typing folds the actions away so the
+  /// field gets the room; the chevron still reopens them.
+  required final bool isTyping,
   required final VoidCallback onSlashCommandsTap,
   required final VoidCallback onAttachImageTap,
 }) extends StatefulWidget {
@@ -31,9 +40,24 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
   bool _isOpen = false;
 
   @override
+  void didUpdateWidget(ComposerOptionsAccordion oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isTyping && !oldWidget.isTyping) _isOpen = false;
+  }
+
+  /// After an action the pill folds again, unless it is open by default.
+  void _collapse() {
+    if (_isOpenByDefault) return;
+    setState(() => _isOpen = false);
+  }
+
+  bool get _isOpenByDefault => widget.alwaysOpen && !widget.isTyping;
+
+  @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
+    final isOpen = _isOpen || _isOpenByDefault;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -54,21 +78,21 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
               // single button centred in a 44pt circle, including command-only
               // harnesses. Expansion remains anchored to the trailing edge.
               padding: EdgeInsetsDirectional.only(
-                start: _isOpen && widget.showAttachImage ? 3 : PregoSpacing.sm,
+                start: isOpen && widget.showAttachImage ? 3 : PregoSpacing.sm,
                 end: PregoSpacing.sm,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 spacing: PregoSpacing.md,
                 children: [
-                  if (_isOpen) ...[
+                  if (isOpen) ...[
                     if (widget.showAttachImage)
                       _AccordionIconButton(
                         icon: TablerRegular.plus,
                         tooltip: loc.sessionDetailAttachImage,
                         onTap: widget.actionsEnabled
                             ? () {
-                                setState(() => _isOpen = false);
+                                _collapse();
                                 widget.onAttachImageTap();
                               }
                             : null,
@@ -78,7 +102,7 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
                       tooltip: loc.sessionDetailCommandPickerTitle,
                       onTap: widget.actionsEnabled
                           ? () {
-                              setState(() => _isOpen = false);
+                              _collapse();
                               widget.onSlashCommandsTap();
                             }
                           : null,
@@ -114,7 +138,7 @@ class const _AccordionIconButton({
         onTap: onTap,
         borderRadius: BorderRadius.circular(PregoRadius.full),
         containerBuilder: (Widget child) => SizedBox.square(dimension: 32, child: child),
-        child: Icon(icon, size: 18, color: prego.colors.textPrimary),
+        child: Icon(icon, size: PregoIconSize.md, color: prego.colors.textPrimary),
       ),
     );
   }

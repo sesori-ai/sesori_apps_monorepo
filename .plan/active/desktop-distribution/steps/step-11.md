@@ -69,10 +69,10 @@ step 10.
 
 ## Still blocked
 
-Private package qualification is not release closeout. Remaining gates include:
+Private package qualification is not release closeout. The owner-approved macOS
+signing migration is complete, including shared callers, native post-deletion proof
+and removal of all five repository copies. Remaining gates include:
 
-- owner-approved migration of repository signing credentials to protected release
-  environments, including shared callers and removal of repository-wide copies;
 - immutable public macOS/Windows assets, signed APT/RPM repositories and verified
   `https://sesori.com/desktop/` links; winget approval remains external;
 - real-account restoration and browser return; declared minimum OS checks; interactive

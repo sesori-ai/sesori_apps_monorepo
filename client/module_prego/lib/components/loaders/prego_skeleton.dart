@@ -48,6 +48,11 @@ class const PregoShimmer({
   /// lightens the grey bars in both themes.
   final Color? highlightColor,
 
+  /// Recolours the whole child in this colour while it sweeps, so a text
+  /// label's band stands out in either theme. Null leaves the child's own
+  /// colours outside the band.
+  final Color? baseColor,
+
   /// Announced to screen readers in place of the decorative skeleton.
   final String? semanticLabel,
 }) extends StatefulWidget {
@@ -129,6 +134,8 @@ class _PregoShimmerState()
 
     if (motionAllowed) {
       final highlight = widget.highlightColor ?? Colors.white.withValues(alpha: 0.30);
+      final base = widget.baseColor;
+      final edge = base ?? highlight.withValues(alpha: 0);
       // In RTL the band sweeps right-to-left so it still travels leading →
       // trailing.
       final direction = switch (Directionality.of(context)) {
@@ -148,7 +155,7 @@ class _PregoShimmerState()
             shaderCallback: (bounds) => LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
-              colors: [highlight.withValues(alpha: 0), highlight, highlight.withValues(alpha: 0)],
+              colors: [edge, highlight, edge],
               stops: const [0.4, 0.5, 0.6],
               transform: _SlidingGradientTransform(slidePercent: _slide.value * direction),
             ).createShader(bounds),

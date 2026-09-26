@@ -8,6 +8,7 @@ import "codex_app_server_client.dart";
 import "codex_config_reader.dart";
 import "repositories/mappers/codex_image_attachment_mapper.dart";
 import "repositories/mappers/codex_rollout_tool_mapper.dart";
+import "repositories/mappers/codex_tool_kind_mapper.dart";
 import "repositories/mappers/codex_tool_part_mapper.dart";
 import "repositories/mappers/codex_user_content_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
@@ -553,19 +554,34 @@ class CodexEventMapper({
           attachments: const [],
         );
       case "contextCompaction":
-        return [
-          ..._toolItemEvents(
+        if (!completed) {
+          return _toolItemEvents(
             threadId: threadId,
             itemId: itemId,
             tool: "compact",
             shellCommand: null,
             // Status already conveys progress; compaction has no additional detail.
             title: null,
-            status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
+            status: PluginToolStatus.running,
             time: time,
             attachments: const [],
+          );
+        }
+        return [
+          BridgeSseMessageUpdated(
+            info: _assistantMessage(itemId: itemId, threadId: threadId, time: time),
           ),
-          if (completed) BridgeSseSessionCompacted(sessionID: threadId),
+          // Keeps the running card's part id, so the row replaces it in place.
+          // The live item carries no summary; a replayed rollout can.
+          BridgeSseMessagePartUpdated(
+            part: PluginMessagePart.compaction(
+              id: "$itemId-tool",
+              sessionID: threadId,
+              messageID: itemId,
+              summary: null,
+            ),
+          ),
+          BridgeSseSessionCompacted(sessionID: threadId),
         ];
       default:
         // todoList, hookPrompt, … — codex item kinds with no mobile
@@ -603,6 +619,7 @@ class CodexEventMapper({
           sessionID: threadId,
           messageID: itemId,
           tool: tool,
+          kind: CodexToolKindMapper.map(tool: tool),
           state: PluginToolState(
             status: status,
             title: title,
@@ -877,6 +894,8 @@ class CodexEventMapper({
       cwd: thread.directory,
     );
     return shared.Session(
+      approvalOverride: null,
+      autoContinuation: null,
       branchName: null,
       id: thread.id,
       pluginId: pluginId,
@@ -926,6 +945,8 @@ class CodexEventMapper({
   }) {
     final projectId = _projectIdForThread(id);
     return shared.Session(
+      approvalOverride: null,
+      autoContinuation: null,
       branchName: null,
       id: id,
       pluginId: pluginId,
@@ -951,9 +972,8 @@ class CodexEventMapper({
     );
   }
 
-  /// Maps a codex thread status object (`{type: idle|active, …}`) onto the
-  /// [PluginSessionStatus] union. Anything that is not explicitly `idle` is
-  /// treated as busy.
+  /// Maps a codex thread status object onto the [PluginSessionStatus] union.
+  /// Idle and unloaded threads have no running work; other statuses stay busy.
   PluginSessionStatus _codexStatusToSessionStatus(Object? raw) {
     return isIdleThreadStatus(raw) ? const PluginSessionStatus.idle() : const PluginSessionStatus.busy();
   }
@@ -962,7 +982,7 @@ class CodexEventMapper({
   bool isIdleThreadStatus(Object? raw) {
     final map = _asMap(raw);
     final type = (map?["type"] ?? _asMap(map?["status"])?["type"]) as String?;
-    return type == "idle";
+    return type == "idle" || type == "notLoaded";
   }
 
   /// Concatenates the `text` of every text-bearing entry in a codex `content`

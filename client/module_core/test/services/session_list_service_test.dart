@@ -191,6 +191,8 @@ void main() {
 
 Session _session({required String id, required String title, required int updatedAt}) {
   return Session(
+    approvalOverride: null,
+    autoContinuation: null,
     id: id,
     projectID: "project",
     directory: "/project",

@@ -7,6 +7,8 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_resolvers.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
@@ -15,6 +17,8 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.d
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
+import "package:sesori_dart_core/src/services/session_approval_service.dart";
+import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -88,6 +92,8 @@ void main() {
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: loadService,
         sessionAbortService: SessionAbortService(repository: mockSessionRepository),
+        autoContinuationService: SessionAutoContinuationService(repository: mockSessionRepository),
+        approvalService: SessionApprovalService(repository: mockSessionRepository),
         promptDispatcher: mockSessionRepository,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
@@ -99,6 +105,7 @@ void main() {
         projectId: "project-1",
         notificationCanceller: mockNotificationCanceller,
         failureReporter: MockFailureReporter(),
+        bridgeSettingsService: stubbedBridgeSettingsService(),
       );
       addTearDown(cubit.close);
       return cubit;
@@ -167,7 +174,6 @@ void main() {
       final state = cubit.state as SessionDetailLoaded;
       expect(state.messages.length, 1);
       expect(state.messages.first.info.id, "msg-1");
-      expect(state.agent, "build");
 
       sessionEvents.add(
         const SesoriMessageUpdated(
@@ -186,7 +192,6 @@ void main() {
 
       final afterSystem = cubit.state as SessionDetailLoaded;
       expect(afterSystem.messages.map((message) => message.info.id), ["msg-1", "system-1"]);
-      expect(afterSystem.agent, "build");
       expect(afterSystem.assistantAgentModel, state.assistantAgentModel);
     });
 
@@ -242,7 +247,6 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       final state = cubit.state as SessionDetailLoaded;
-      expect(state.agent, "build");
       expect(
         state.assistantAgentModel,
         const AgentModel(providerID: "sesori-local", modelID: "test-model", variant: null),
@@ -264,6 +268,8 @@ void main() {
 
       // Emit a global child-session event while still loading
       const childSession = Session(
+        approvalOverride: null,
+        autoContinuation: null,
         branchName: null,
         id: "child-1",
         pluginId: "plugin-1",
@@ -607,6 +613,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async {
@@ -629,7 +636,7 @@ void main() {
         ],
       );
       expect(sendCalls, 1);
-      expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
+      expect(_failedOf(state: cubit.state as SessionDetailLoaded), isNotNull);
 
       unawaited(cubit.reload());
       await _awaitCondition(() => refreshes.length == 1);
@@ -639,6 +646,8 @@ void main() {
         ),
       );
       await Future<void>.delayed(Duration.zero);
+      // Retry while offline stages the image again without sending it.
+      cubit.retryFailedSend();
       expect(cubit.state, isA<SessionDetailLoading>());
 
       connectionStatus.add(connectedStatus);
@@ -705,6 +714,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) => accepted.future);
@@ -720,18 +730,18 @@ void main() {
       );
       await _awaitCondition(() {
         final state = cubit.state;
-        return state is SessionDetailLoaded && state.sendingSubmission?.displayText == "Cold-start prompt";
+        return state is SessionDetailLoaded && _sendingOf(state: state)?.displayText == "Cold-start prompt";
       });
 
       var state = cubit.state as SessionDetailLoaded;
       expect(state.queuedMessages, isEmpty);
-      expect(state.sendingSubmission?.displayText, "Cold-start prompt");
+      expect(_sendingOf(state: state)?.displayText, "Cold-start prompt");
 
       accepted.complete(ApiResponse.success(null));
       await send;
 
       state = cubit.state as SessionDetailLoaded;
-      expect(state.sendingSubmission, isNull);
+      expect(_sendingOf(state: state), isNull);
       expect(state.queuedMessages, isEmpty);
     });
 
@@ -789,6 +799,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) {
@@ -899,6 +910,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       ).thenAnswer((_) async {
@@ -930,6 +942,8 @@ void main() {
         ),
       );
       await Future<void>.delayed(Duration.zero);
+      // Retry while offline stages the image again without sending it.
+      cubit.retryFailedSend();
       connectionStatus.add(connectedStatus);
 
       refreshes.first.complete(
@@ -1467,7 +1481,7 @@ void main() {
         ]);
       });
 
-      test("an assistant added during the reload sets the agent and model of the installed transcript", () async {
+      test("an assistant added during the reload sets the model of the installed transcript", () async {
         final (:cubit, :refresh, loadService: _) = await startRefresh(initial: _snapshot(messages: const []));
 
         sessionEvents.add(
@@ -1491,7 +1505,6 @@ void main() {
         );
 
         expect(state.messages.map((message) => message.info.id), ["assistant-live"]);
-        expect(state.agent, "coder");
         expect(
           state.assistantAgentModel,
           const AgentModel(providerID: "provider", modelID: "live-model", variant: null),
@@ -2212,3 +2225,13 @@ Future<void> _awaitStreamingText(SessionDetailCubit cubit, {required String part
     description: "streaming text '$text' for $partId",
   );
 }
+
+QueuedSessionSubmission? _sendingOf({required SessionDetailLoaded state}) => switch (state.localSend) {
+  LocalSendSending(:final submission) => submission,
+  LocalSendIdle() || LocalSendFailed() => null,
+};
+
+QueuedSessionSubmission? _failedOf({required SessionDetailLoaded state}) => switch (state.localSend) {
+  LocalSendFailed(:final submission) => submission,
+  LocalSendIdle() || LocalSendSending() => null,
+};

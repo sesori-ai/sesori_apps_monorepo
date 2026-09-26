@@ -403,6 +403,7 @@ void main() {
       expect(s1.projectID, home);
 
       final sending = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PluginPromptPart.text(text: "resume me")],
@@ -445,6 +446,7 @@ void main() {
     test("a session/prompt rejection after dispatch surfaces its backend detail inline", () async {
       await connect();
       final creating = plugin.createSession(
+        fastMode: false,
         directory: "/repo",
         parentSessionId: null,
         parts: const [],
@@ -461,6 +463,7 @@ void main() {
       addTearDown(sub.cancel);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PluginPromptPart.text(text: "hi")],
@@ -498,6 +501,7 @@ void main() {
       const opened = "/Users/x/kustos";
 
       final creating = plugin.createSession(
+        fastMode: false,
         directory: opened,
         parentSessionId: null,
         parts: const [],
@@ -514,6 +518,7 @@ void main() {
 
       // A running turn surfaces under that project's activity row, not the CWD.
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: session.id,
         parts: const [PluginPromptPart.text(text: "hi")],
@@ -546,6 +551,7 @@ void main() {
       expect(sessions.single.projectID, opened);
 
       final sending = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "old-s",
         parts: const [PluginPromptPart.text(text: "again")],
@@ -580,6 +586,7 @@ void main() {
       );
 
       final sending = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "cold-s",
         parts: const [PluginPromptPart.text(text: "resume me")],
@@ -621,6 +628,7 @@ void main() {
         },
       );
       final sending = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "cold-s",
         parts: const [PluginPromptPart.text(text: "resume me")],
@@ -650,6 +658,7 @@ void main() {
       plugin.primeSessionDirectory(sessionId: "cold-s", directory: stored);
 
       final sending = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "cold-s",
         parts: const [PluginPromptPart.text(text: "resume me")],
@@ -701,6 +710,7 @@ void main() {
       );
 
       final sending = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "cold-s",
         parts: const [PluginPromptPart.text(text: "resume me")],
@@ -736,6 +746,7 @@ void main() {
       plugin.primeSessionDirectory(sessionId: "old-s", directory: "/somewhere/stale");
 
       final sending = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "old-s",
         parts: const [PluginPromptPart.text(text: "again")],
@@ -817,6 +828,7 @@ void main() {
       // One session per directory, both with a pending question.
       Future<PluginSession> create(String directory, String sessionId) async {
         final creating = plugin.createSession(
+          fastMode: false,
           directory: directory,
           parentSessionId: null,
           parts: const [],

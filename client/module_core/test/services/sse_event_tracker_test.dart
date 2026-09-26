@@ -5,6 +5,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 import "../helpers/test_helpers.dart";
 
 void main() {
@@ -88,7 +89,13 @@ void main() {
                   lastUserActivityAt: 20,
                   updatedAt: 10,
                 ),
-                ActiveSession(id: "s2", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  id: "s2",
+                  mainAgentRunning: false,
+                  childSessionIds: [],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ],
@@ -165,14 +172,32 @@ void main() {
             ProjectActivitySummary(
               id: "/foo",
               activeSessions: [
-                ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  id: "s1",
+                  mainAgentRunning: false,
+                  childSessionIds: [],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
             ProjectActivitySummary(
               id: "/bar",
               activeSessions: [
-                ActiveSession(id: "s2", mainAgentRunning: true, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
-                ActiveSession(id: "s3", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  id: "s2",
+                  mainAgentRunning: true,
+                  childSessionIds: [],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
+                ActiveSession(
+                  id: "s3",
+                  mainAgentRunning: false,
+                  childSessionIds: [],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ],
@@ -211,7 +236,13 @@ void main() {
               ProjectActivitySummary(
                 id: "/foo",
                 activeSessions: [
-                  ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
+                  ActiveSession(
+                    id: "s1",
+                    mainAgentRunning: false,
+                    childSessionIds: [],
+                    lastUserActivityAt: null,
+                    updatedAt: null,
+                  ),
                 ],
               ),
             ],
@@ -230,8 +261,20 @@ void main() {
               ProjectActivitySummary(
                 id: "/foo",
                 activeSessions: [
-                  ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
-                  ActiveSession(id: "s2", mainAgentRunning: true, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
+                  ActiveSession(
+                    id: "s1",
+                    mainAgentRunning: false,
+                    childSessionIds: [],
+                    lastUserActivityAt: null,
+                    updatedAt: null,
+                  ),
+                  ActiveSession(
+                    id: "s2",
+                    mainAgentRunning: true,
+                    childSessionIds: [],
+                    lastUserActivityAt: null,
+                    updatedAt: null,
+                  ),
                 ],
               ),
             ],
@@ -258,7 +301,7 @@ void main() {
 
     test("projectActivity defaults to empty map", () async {
       final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
-      expect(tracker.currentProjectActivity, isEmpty);
+      expect(tracker.projectActivity.value, isEmpty);
       await tracker.onDispose();
     });
 
@@ -283,9 +326,27 @@ void main() {
             ProjectActivitySummary(
               id: "/foo",
               activeSessions: [
-                ActiveSession(id: "s1", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
-                ActiveSession(id: "s2", mainAgentRunning: true, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
-                ActiveSession(id: "s3", mainAgentRunning: false, childSessionIds: [], lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  id: "s1",
+                  mainAgentRunning: false,
+                  childSessionIds: [],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
+                ActiveSession(
+                  id: "s2",
+                  mainAgentRunning: true,
+                  childSessionIds: [],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
+                ActiveSession(
+                  id: "s3",
+                  mainAgentRunning: false,
+                  childSessionIds: [],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ],
@@ -358,7 +419,13 @@ void main() {
             ProjectActivitySummary(
               id: "/foo",
               activeSessions: [
-                ActiveSession(id: "s1", mainAgentRunning: true, awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  id: "s1",
+                  mainAgentRunning: true,
+                  awaitingInput: true,
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ],
@@ -394,7 +461,13 @@ void main() {
             ProjectActivitySummary(
               id: "/foo",
               activeSessions: [
-                ActiveSession(id: "s1", mainAgentRunning: true, awaitingInput: false, lastUserActivityAt: null, updatedAt: null),
+                ActiveSession(
+                  id: "s1",
+                  mainAgentRunning: true,
+                  awaitingInput: false,
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
               ],
             ),
           ],
@@ -428,6 +501,8 @@ void main() {
       final event = SseEvent(
         data: const SesoriSessionCreated(
           info: Session(
+            approvalOverride: null,
+            autoContinuation: null,
             branchName: null,
             id: "s1",
             pluginId: legacyMissingPluginId,

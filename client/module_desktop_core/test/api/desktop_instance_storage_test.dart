@@ -50,9 +50,19 @@ void main() {
   });
 
   test("sidebar layout round-trips as a typed JSON file", () async {
-    const layout = DesktopSidebarLayout(width: 315, collapsed: true, collapsedProjectIds: {"project-1", "project-2"});
+    const layout = DesktopSidebarLayout(
+      width: 315,
+      collapsed: true,
+      collapsedProjectIds: {"project-1", "project-2"},
+      deferredSessions: {"older": 5, "newer": 9},
+      activitySectionCollapsed: true,
+      projectsSectionCollapsed: true,
+    );
     await storage.writeSidebarLayout(layout: layout);
-    expect(await storage.readSidebarLayout(), layout);
+    final restored = await storage.readSidebarLayout();
+    expect(restored, layout);
+    expect(restored.deferredSessions.keys, ["older", "newer"]);
+    expect(DesktopSidebarLayout.fromJson(const {"width": 315}), const DesktopSidebarLayout(width: 315));
     expect(File(path.join(root.path, "desktop-instance", "sidebar-layout")).existsSync(), isTrue);
   });
 

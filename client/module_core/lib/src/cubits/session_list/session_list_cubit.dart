@@ -18,6 +18,7 @@ import "../../repositories/session_repository.dart";
 import "../../routing/app_routes.dart";
 import "../../services/catalog_rescan_service.dart";
 import "../../services/models/catalog_rescan_state.dart";
+import "../../services/models/optimistic_rename_tracker.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/models/session_list_filter.dart";
 import "../../services/models/session_list_item_state.dart";
@@ -25,7 +26,6 @@ import "../../services/project_viewing_service.dart";
 import "../../services/session_list_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
-import "../shared/optimistic_rename_tracker.dart";
 import "session_list_mode.dart";
 import "session_list_state.dart";
 
@@ -50,7 +50,10 @@ class SessionListCubit({
   required final CatalogRescanService _catalogRescanService,
 }) extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
+  int _pendingActionOperations = 0;
+  Completer<void>? _actionOperationsDrained;
 
+  final bool _waitForActionOperationsOnClose = mode is SessionListActionsMode;
   final ProjectViewClaim? _projectViewClaim = mode is SessionListViewMode && mode.filter != SessionListFilter.archived
       ? _projectViewingService.beginListClaim(projectId: _projectId)
       : null;
@@ -218,7 +221,11 @@ class SessionListCubit({
   /// echo delivers the authoritative state (including the project aggregate)
   /// within the round trip. On failure, a silent refetch re-seeds the
   /// authoritative flags instead of local rollback bookkeeping.
-  Future<void> markSessionSeen({required String sessionId, required bool read}) async {
+  Future<void> markSessionSeen({required String sessionId, required bool read}) => _runActionScopeOperation(
+    operation: () => _markSessionSeen(sessionId: sessionId, read: read),
+  );
+
+  Future<void> _markSessionSeen({required String sessionId, required bool read}) async {
     _sessionUnseenTracker.applyLocalSessionUnseen(
       projectId: _projectId,
       sessionId: sessionId,
@@ -252,6 +259,30 @@ class SessionListCubit({
         await _fetchSessions(silent: true, catalogRefresh: false, waitForPrData: false);
       }
     }
+  }
+
+  /// Keeps an action-only owner usable while its confirmation UI is open.
+  void Function() retainActionScope() {
+    if (!_waitForActionOperationsOnClose) return () {};
+    var released = false;
+    _pendingActionOperations++;
+    return () {
+      if (released) return;
+      released = true;
+      _completeActionOperation();
+    };
+  }
+
+  Future<T> _runActionScopeOperation<T>({required Future<T> Function() operation}) {
+    final release = retainActionScope();
+    return operation().whenComplete(release);
+  }
+
+  void _completeActionOperation() {
+    _pendingActionOperations--;
+    if (_pendingActionOperations != 0) return;
+    _actionOperationsDrained?.complete();
+    _actionOperationsDrained = null;
   }
 
   void _onSessionCreated(Session session) {
@@ -366,67 +397,16 @@ class SessionListCubit({
   }
 
   // ---------------------------------------------------------------------------
-  // Archive / Delete
+  // Rename / Delete
   // ---------------------------------------------------------------------------
-
-  /// Archives a session permanently. Returns `true` on success so the screen
-  /// can confirm it.
-  Future<bool> archiveSession({
-    required String sessionId,
-    required bool deleteWorktree,
-    required bool force,
-  }) async {
-    if (state is! SessionListLoaded) return false;
-
-    final index = _allSessions.indexWhere((s) => s.id == sessionId);
-    if (index < 0) return false;
-
-    // Per-invocation, so two overlapping archives can never roll each other's
-    // session back.
-    final snapshot = _allSessions[index];
-
-    // Optimistically mark as archived in the backing list so _emitFiltered
-    // hides it when showArchived is off.
-    final archivedSession = _allSessions[index].copyWith(
-      time: _allSessions[index].time?.copyWith(archived: DateTime.now().millisecondsSinceEpoch),
-    );
-    _allSessions = _sessionListService.upsertSession(
-      sessions: _allSessions,
-      session: archivedSession,
-    );
-    _emitFiltered();
-
-    _lastCleanupRejection = null;
-
-    final ApiResponse<Session> response;
-    try {
-      response = await _sessionRepository.archiveSession(
-        sessionId: sessionId,
-        deleteWorktree: deleteWorktree,
-        force: force,
-      );
-    } on SessionCleanupRejectedException catch (error) {
-      _lastCleanupRejection = error.rejection;
-      _reinsertSession(snapshot);
-      return false;
-    }
-
-    if (isClosed) return false;
-
-    return switch (response) {
-      SuccessResponse() => true,
-      ErrorResponse(:final error) => () {
-        loge("Failed to archive session: ${error.toString()}");
-        // Rollback — re-insert the original session.
-        _reinsertSession(snapshot);
-        return false;
-      }(),
-    };
-  }
 
   /// Renames a session optimistically. Returns `false` after restoring the
   /// prior title when the bridge rejects the rename.
-  Future<bool> renameSession({required String sessionId, required String title}) async {
+  Future<bool> renameSession({required String sessionId, required String title}) => _runActionScopeOperation(
+    operation: () => _renameSession(sessionId: sessionId, title: title),
+  );
+
+  Future<bool> _renameSession({required String sessionId, required String title}) async {
     if (state is! SessionListLoaded) return false;
 
     final index = _allSessions.indexWhere((session) => session.id == sessionId);
@@ -514,6 +494,18 @@ class SessionListCubit({
 
   /// Deletes a session permanently.
   Future<bool> deleteSession({
+    required String sessionId,
+    required bool deleteWorktree,
+    required bool force,
+  }) => _runActionScopeOperation(
+    operation: () => _deleteSession(
+      sessionId: sessionId,
+      deleteWorktree: deleteWorktree,
+      force: force,
+    ),
+  );
+
+  Future<bool> _deleteSession({
     required String sessionId,
     required bool deleteWorktree,
     required bool force,
@@ -904,9 +896,15 @@ class SessionListCubit({
   }
 
   @override
-  Future<void> close() {
+  Future<void> close() async {
+    // A local change or bridge event can remove an action-only sidebar row.
+    // Let its admitted operation and response handling finish before closing.
+    if (_waitForActionOperationsOnClose && _pendingActionOperations > 0) {
+      final drained = _actionOperationsDrained ??= Completer<void>();
+      await drained.future;
+    }
     if (_projectViewClaim case final claim?) _projectViewingService.releaseClaim(claim: claim);
-    _subscriptions.dispose();
-    return super.close();
+    await _subscriptions.dispose();
+    await super.close();
   }
 }

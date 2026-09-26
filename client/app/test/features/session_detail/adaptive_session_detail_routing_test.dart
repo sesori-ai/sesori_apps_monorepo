@@ -106,7 +106,7 @@ void main() {
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("All tasks completed"));
+    await tester.tap(find.byKey(const ValueKey("sub_agents_pill")));
     await tester.pumpAndSettle();
     await tester.tap(find.text("Child Session").last);
     await tester.pumpAndSettle();

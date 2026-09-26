@@ -4,8 +4,8 @@ import "package:theme_prego/module_prego.dart";
 
 /// Inline error display for a [MessageError].
 ///
-/// Renders as a center-aligned red text row with no bubble, distinct
-/// from regular assistant/user messages.
+/// Uses the transcript's leading alignment and body typography, with error
+/// colour to distinguish a terminal failure from ongoing retry activity.
 class const ErrorMessageCard({
   super.key,
   required final MessageError message,
@@ -14,13 +14,12 @@ class const ErrorMessageCard({
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Center(
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
         child: Text(
           message.errorMessage,
-          textAlign: TextAlign.center,
-          style: TextStyle(
+          style: context.prego.textTheme.textSm.regular.copyWith(
             color: context.prego.colors.fgErrorPrimary,
-            fontSize: 14,
           ),
         ),
       ),

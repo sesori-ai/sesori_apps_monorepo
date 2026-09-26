@@ -1,6 +1,13 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart"
+    show
+        FastModeControl,
+        FastModeToggleApply,
+        FastModeToggleConfirmCacheReset,
+        FastModeToggleDecision,
+        FastModeToggleUnavailable;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -41,6 +48,11 @@ Widget _buildApp({required List<AgentInfo> agents, required void Function(String
             onModelSelected: ({required providerID, required modelID}) {},
             availableVariants: const [],
             onVariantSelected: (_) {},
+            fastModeControl: FastModeControl.hidden,
+            decideFastModeToggle: () => null,
+            onFastModeChanged: (_) {},
+            compact: false,
+            trailing: const [],
           ),
         ],
       ),
@@ -77,6 +89,11 @@ Widget _buildVariantApp({required ValueChanged<SessionVariant> onVariantSelected
             onModelSelected: ({required providerID, required modelID}) {},
             availableVariants: _variants,
             onVariantSelected: onVariantSelected,
+            fastModeControl: FastModeControl.hidden,
+            decideFastModeToggle: () => null,
+            onFastModeChanged: (_) {},
+            compact: false,
+            trailing: const [],
           ),
           // The prompt field sits below the picker row in the chat composer.
           const SizedBox(height: 120),
@@ -86,7 +103,128 @@ Widget _buildVariantApp({required ValueChanged<SessionVariant> onVariantSelected
   );
 }
 
+Widget _buildFastModeApp({
+  required PregoDesignSystem designSystem,
+  required FastModeControl control,
+  required FastModeToggleDecision decision,
+  required ValueChanged<bool> onFastModeChanged,
+}) {
+  return MaterialApp(
+    theme: ThemeData(extensions: [designSystem]),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: Scaffold(
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          AgentModelButtons(
+            surfaceStyle: PregoComposerSurfaceStyle.subtle,
+            agents: const [],
+            selectedAgent: null,
+            onAgentSelected: (_) {},
+            providers: const [],
+            selectedAgentModel: const AgentModel(providerID: "anthropic", modelID: "opus", variant: "high"),
+            onModelSelected: ({required providerID, required modelID}) {},
+            availableVariants: const [SessionVariant(id: "high")],
+            onVariantSelected: (_) {},
+            fastModeControl: control,
+            decideFastModeToggle: () => decision,
+            onFastModeChanged: onFastModeChanged,
+            compact: false,
+            trailing: const [],
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 void main() {
+  group("Fast mode pill", () {
+    Finder pill() => find.bySemanticsLabel("Fast mode");
+
+    testWidgets("is hidden when the model has no fast mode", (tester) async {
+      await tester.pumpWidget(
+        _buildFastModeApp(
+          designSystem: PregoDesignSystem.light,
+          control: FastModeControl.hidden,
+          decision: const FastModeToggleApply(fastMode: true),
+          onFastModeChanged: (_) {},
+        ),
+      );
+
+      expect(find.byIcon(TablerRegular.bolt), findsNothing);
+      expect(find.byIcon(TablerRegular.bolt_off), findsNothing);
+    });
+
+    for (final (name, designSystem, expected) in [
+      ("dark", PregoDesignSystem.dark, const Color(0xFFFEC84B)),
+      ("light", PregoDesignSystem.light, const Color(0xFFF79009)),
+    ]) {
+      testWidgets("is tinted yellow while on in $name theme and applies a cold switch directly", (tester) async {
+        final changes = <bool>[];
+        await tester.pumpWidget(
+          _buildFastModeApp(
+            designSystem: designSystem,
+            control: FastModeControl.on,
+            decision: const FastModeToggleApply(fastMode: false),
+            onFastModeChanged: changes.add,
+          ),
+        );
+
+        final icon = tester.widget<Icon>(find.byIcon(TablerRegular.bolt));
+        expect(icon.color, expected);
+        expect(tester.getSemantics(pill()), isSemantics(isButton: true, isToggled: true));
+
+        await tester.tap(pill());
+        await tester.pumpAndSettle();
+        expect(changes, [false]);
+      });
+    }
+
+    testWidgets("is dimmed when unavailable and a tap explains why", (tester) async {
+      final changes = <bool>[];
+      await tester.pumpWidget(
+        _buildFastModeApp(
+          designSystem: PregoDesignSystem.light,
+          control: FastModeControl.unavailable,
+          decision: const FastModeToggleUnavailable(reason: FastModeUnavailableReason.notOnPlan),
+          onFastModeChanged: changes.add,
+        ),
+      );
+      final context = tester.element(find.byType(AgentModelButtons));
+      final loc = AppLocalizations.of(context)!;
+
+      expect(tester.widget<Icon>(find.byIcon(TablerRegular.bolt_off)).color, context.prego.colors.fgDisabled);
+
+      await tester.tap(pill());
+      await tester.pump();
+      expect(find.text(loc.sessionDetailFastModeUnavailableTitle), findsOneWidget);
+      expect(find.text(loc.sessionDetailFastModeUnavailableNotOnPlan), findsOneWidget);
+      expect(changes, isEmpty);
+      await tester.pumpAndSettle(const Duration(seconds: 4));
+    });
+
+    testWidgets("asks before dropping a warm prompt cache", (tester) async {
+      final changes = <bool>[];
+      await tester.pumpWidget(
+        _buildFastModeApp(
+          designSystem: PregoDesignSystem.light,
+          control: FastModeControl.off,
+          decision: const FastModeToggleConfirmCacheReset(fastMode: true),
+          onFastModeChanged: changes.add,
+        ),
+      );
+      final loc = AppLocalizations.of(tester.element(find.byType(AgentModelButtons)))!;
+
+      await tester.tap(pill());
+      await tester.pumpAndSettle();
+      expect(find.text(loc.sessionDetailFastModeConfirmTitle), findsOneWidget);
+      expect(find.text(loc.sessionDetailFastModeConfirmEnableBody), findsOneWidget);
+      expect(changes, isEmpty);
+    });
+  });
+
   group("Variant picker", () {
     const platforms = TargetPlatformVariant({TargetPlatform.iOS, TargetPlatform.android, TargetPlatform.macOS});
 
@@ -112,7 +250,7 @@ void main() {
         lessThanOrEqualTo(tester.getTopLeft(_menuItem("minimal")).dy),
       );
       expect(tester.state<ScrollableState>(find.byType(Scrollable)).position.maxScrollExtent, 0);
-      expect(find.descendant(of: _menuItem("minimal"), matching: find.byIcon(Icons.check)), findsOneWidget);
+      expect(find.descendant(of: _menuItem("minimal"), matching: find.byIcon(TablerRegular.check)), findsOneWidget);
 
       await tester.tap(_menuItem("xhigh"));
       await tester.pumpAndSettle();
@@ -155,6 +293,18 @@ void main() {
   });
 
   group("Agent picker", () {
+    testWidgets("appears only when there is more than one agent", (tester) async {
+      final only = _agent(name: "aristotle-impl-review", description: "Reviews");
+      for (final (agents, matcher) in [
+        (const <AgentInfo>[], findsNothing),
+        ([only], findsNothing),
+        ([only, _agent(name: "other", description: "Other")], findsOneWidget),
+      ]) {
+        await tester.pumpWidget(_buildApp(agents: agents, onAgentSelected: (_) {}));
+        expect(find.text("aristotle-impl-review"), matcher);
+      }
+    });
+
     testWidgets("shows every agent, with none clipped out of reach", (tester) async {
       await tester.pumpWidget(_buildApp(agents: _agents, onAgentSelected: (_) {}));
 
@@ -201,4 +351,99 @@ void main() {
       expect(popup.maxScrollExtent, greaterThan(0.0));
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
   });
+
+  testWidgets("compact selectors size to their labels instead of sharing the strip", (tester) async {
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: AgentModelButtons(
+            surfaceStyle: PregoComposerSurfaceStyle.subtle,
+            agents: [
+              _agent(name: "build", description: "Build"),
+              _agent(name: "plan", description: "Plan"),
+            ],
+            selectedAgent: "build",
+            onAgentSelected: (_) {},
+            providers: const [],
+            selectedAgentModel: const AgentModel(providerID: "example", modelID: "m", variant: "high"),
+            onModelSelected: ({required providerID, required modelID}) {},
+            availableVariants: const [SessionVariant(id: "high")],
+            onVariantSelected: (_) {},
+            fastModeControl: FastModeControl.hidden,
+            decideFastModeToggle: () => null,
+            onFastModeChanged: (_) {},
+            compact: true,
+            trailing: const [],
+          ),
+        ),
+      ),
+    );
+
+    double width(String label) =>
+        tester.getSize(find.byWidgetPredicate((widget) => widget is PregoPickerButton && widget.label == label)).width;
+    // A one-letter model is the narrowest chip, and none is stretched to the cap.
+    expect(width("m"), lessThan(width("high")));
+    expect(width("high"), lessThan(width("build")));
+    expect(width("build"), lessThan(240));
+  });
+
+  for (final (width, chips, labels) in [(320.0, 2, false), (390.0, 0, true)]) {
+    testWidgets("a touch row at $width points with $chips status chips fits (labels: $labels)", (tester) async {
+      tester.view.physicalSize = Size(width, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      Widget square(String label) => PregoComposerChip(
+        icon: TablerRegular.clock,
+        label: label,
+        showLabel: false,
+        isWarning: false,
+        surfaceStyle: PregoComposerSurfaceStyle.subtle,
+        onPressed: () {},
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Padding(
+              // The composer's own inset on a phone.
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: AgentModelButtons(
+                surfaceStyle: PregoComposerSurfaceStyle.subtle,
+                agents: [
+                  _agent(name: "build", description: "Build"),
+                  _agent(name: "plan", description: "Plan"),
+                ],
+                selectedAgent: "build",
+                onAgentSelected: (_) {},
+                providers: const [],
+                selectedAgentModel: const AgentModel(providerID: "example", modelID: "sonnet", variant: "high"),
+                onModelSelected: ({required providerID, required modelID}) {},
+                availableVariants: const [SessionVariant(id: "high")],
+                onVariantSelected: (_) {},
+                fastModeControl: FastModeControl.off,
+                decideFastModeToggle: () => null,
+                onFastModeChanged: (_) {},
+                compact: false,
+                trailing: [square("YOLO"), square("Auto-continue")].take(chips).toList(),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(PregoPickerButton), findsNWidgets(3));
+      // A crowded row keeps the pickers as glyphs; a roomy one keeps labels.
+      expect(find.text("build"), labels ? findsOneWidget : findsNothing);
+      expect(find.bySemanticsLabel("build"), findsOneWidget);
+    });
+  }
 }

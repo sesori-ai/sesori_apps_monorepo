@@ -16,7 +16,7 @@ enum SessionInteractionBlockedReason() {
 
 @immutable
 sealed class const SessionInteractionState() {
-  const factory available({required ApiError? refreshError}) = SessionInteractionAvailable;
+  const factory available({required String displayName, required ApiError? refreshError}) = SessionInteractionAvailable;
   const factory checking() = SessionInteractionChecking;
   const factory legacyUnverified() = SessionInteractionLegacyUnverified;
   const factory blocked({
@@ -27,14 +27,26 @@ sealed class const SessionInteractionState() {
   }) = SessionInteractionBlocked;
 
   bool get canInteract => this is SessionInteractionAvailable || this is SessionInteractionLegacyUnverified;
+
+  /// The harness name the bridge reported, e.g. "Claude Code"; null until the
+  /// harness status loads or when an older bridge does not report it.
+  String? get harnessDisplayName => switch (this) {
+    SessionInteractionAvailable(:final displayName) => displayName,
+    SessionInteractionBlocked(:final displayName) => displayName,
+    SessionInteractionChecking() || SessionInteractionLegacyUnverified() => null,
+  };
 }
 
-final class const SessionInteractionAvailable({required final ApiError? refreshError}) extends SessionInteractionState {
+final class const SessionInteractionAvailable({
+  required final String displayName,
+  required final ApiError? refreshError,
+}) extends SessionInteractionState {
   @override
-  bool operator ==(Object other) => other is SessionInteractionAvailable && other.refreshError == refreshError;
+  bool operator ==(Object other) =>
+      other is SessionInteractionAvailable && other.displayName == displayName && other.refreshError == refreshError;
 
   @override
-  int get hashCode => refreshError.hashCode;
+  int get hashCode => Object.hash(displayName, refreshError);
 }
 
 final class const SessionInteractionChecking() extends SessionInteractionState {

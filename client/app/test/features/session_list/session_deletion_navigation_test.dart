@@ -1,7 +1,7 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_mobile/features/session_list/session_list_screen.dart";
+import "package:sesori_mobile/core/routing/app_router.dart";
 
 void main() {
   for (final suffix in ["", "/diffs"]) {

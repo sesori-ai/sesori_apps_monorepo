@@ -564,6 +564,7 @@ class AcpReplayCollector({
       sessionID: sessionId,
       messageID: draft.id,
       tool: tool.tool,
+      kind: _contentMapper.toolKind(tool: tool.tool),
       state: PluginToolState(
         status: tool.status,
         title: _contentMapper.toolTitle(tool: tool.tool, title: tool.title),

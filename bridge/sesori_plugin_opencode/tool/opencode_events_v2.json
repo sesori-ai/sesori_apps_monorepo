@@ -1,0 +1,379 @@
+{
+  "_comment": "Hand-curated manifest of OpenCode v2 (target v2.0.16) `GET /api/event` payload shapes, taken from packages/schema/src (session-event.ts, permission.ts, form.ts, project.ts, server-event.ts) because the spec's V2EventEncoded union is opaque. A frame is `{id, created, type, location?, metadata?, durable?, data}`; the generated fromJson expects `{\"type\": type, ...data}`, and envelope fields stay with the parser. Only the fields the bridge uses are listed; unlisted payload keys are ignored when decoding. Execution interrupt reasons preserve shutdown semantics. Compaction and assistant terminal projections are hydrated over REST; unused compaction reason and step-finish fields are omitted.",
+  "dart": {
+    "baseClass": "V2EventData",
+    "sessionMarkerClass": "V2SessionEventData",
+    "classPrefix": "V2",
+    "envelope": {
+      "className": "V2EventEnvelope",
+      "fields": [
+        { "name": "id", "type": "string" },
+        { "name": "created", "type": "double" },
+        { "name": "location", "ref": "LocationPublicRef", "required": false }
+      ]
+    },
+    "imports": {
+      "FormAnswer": "openapi/form_answer.g.dart",
+      "FormInfo": "openapi/form_info.g.dart",
+      "LocationPublicRef": "openapi/location_public_ref.g.dart",
+      "ModelRef": "openapi/model_ref.g.dart",
+      "PermissionReply": "openapi/permission_reply.g.dart",
+      "PermissionSource": "openapi/permission_source.g.dart",
+      "ProjectIcon": "openapi/project_icon.g.dart",
+      "ProjectTime": "openapi/project_time.g.dart",
+      "SessionStructuredError": "openapi/session_structured_error.g.dart",
+      "TokenUsageInfo": "openapi/token_usage_info.g.dart",
+      "ToolContent": "openapi/tool_content.g.dart",
+      "V2ExecutionInterruptReason": "v2_execution_interrupt_reason.dart"
+    }
+  },
+  "events": [
+    {
+      "type": "server.connected",
+      "fields": []
+    },
+    {
+      "type": "session.created",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "projectID", "type": "string" },
+        { "name": "location", "ref": "LocationPublicRef" },
+        { "name": "subpath", "type": "string", "required": false },
+        { "name": "parentID", "type": "string", "required": false },
+        { "name": "slug", "type": "string" },
+        { "name": "title", "type": "string", "required": false },
+        { "name": "agent", "type": "string", "required": false },
+        { "name": "model", "ref": "ModelRef", "required": false },
+        { "name": "version", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.renamed",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "title", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.deleted",
+      "fields": [
+        { "name": "sessionID", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.execution.started",
+      "fields": [
+        { "name": "sessionID", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.execution.succeeded",
+      "fields": [
+        { "name": "sessionID", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.execution.failed",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "error", "ref": "SessionStructuredError" }
+      ]
+    },
+    {
+      "type": "session.execution.interrupted",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "reason", "ref": "V2ExecutionInterruptReason", "ref_kind": "enum" }
+      ]
+    },
+    {
+      "type": "session.inbox.enqueued",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "inboxID", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.inbox.delivered",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "inboxID", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.inbox.cancelled",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "inboxID", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.inbox.delivery.changed",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "inboxID", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.agent.selected",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "agent", "type": "string" },
+        { "name": "previous", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "session.synthetic",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "text", "type": "string" },
+        { "name": "description", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "session.step.started",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "agent", "type": "string" },
+        { "name": "model", "ref": "ModelRef" },
+        { "name": "started", "type": "int" }
+      ]
+    },
+    {
+      "type": "session.step.ended",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "cost", "type": "double" },
+        { "name": "tokens", "ref": "TokenUsageInfo" }
+      ]
+    },
+    {
+      "type": "session.step.failed",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "error", "ref": "SessionStructuredError" },
+        { "name": "cost", "type": "double", "required": false },
+        { "name": "tokens", "ref": "TokenUsageInfo", "required": false }
+      ]
+    },
+    {
+      "type": "session.text.started",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "ordinal", "type": "int" }
+      ]
+    },
+    {
+      "type": "session.text.delta",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "ordinal", "type": "int" },
+        { "name": "delta", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.text.ended",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "ordinal", "type": "int" },
+        { "name": "text", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.reasoning.started",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "ordinal", "type": "int" }
+      ]
+    },
+    {
+      "type": "session.reasoning.delta",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "ordinal", "type": "int" },
+        { "name": "delta", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.reasoning.ended",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "ordinal", "type": "int" },
+        { "name": "text", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.tool.input.started",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "id", "type": "string" },
+        { "name": "name", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.tool.input.delta",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "id", "type": "string" },
+        { "name": "delta", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.tool.input.ended",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "id", "type": "string" },
+        { "name": "text", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.tool.called",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "id", "type": "string" },
+        { "name": "input", "type": "map" },
+        { "name": "executed", "type": "bool" }
+      ]
+    },
+    {
+      "type": "session.tool.progress",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "id", "type": "string" },
+        { "name": "metadata", "type": "map" }
+      ]
+    },
+    {
+      "type": "session.tool.success",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "id", "type": "string" },
+        { "name": "content", "ref": "ToolContent", "list": true },
+        { "name": "metadata", "type": "map", "required": false },
+        { "name": "executed", "type": "bool" }
+      ]
+    },
+    {
+      "type": "session.tool.failed",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "id", "type": "string" },
+        { "name": "error", "ref": "SessionStructuredError" },
+        { "name": "content", "ref": "ToolContent", "list": true, "required": false },
+        { "name": "metadata", "type": "map", "required": false },
+        { "name": "executed", "type": "bool" }
+      ]
+    },
+    {
+      "type": "session.retry.scheduled",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "assistantMessageID", "type": "string" },
+        { "name": "attempt", "type": "int" },
+        { "name": "at", "type": "int" },
+        { "name": "error", "ref": "SessionStructuredError" }
+      ]
+    },
+    {
+      "type": "session.compaction.started",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "inputID", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "session.compaction.delta",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "text", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.compaction.ended",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "text", "type": "string" },
+        { "name": "recent", "type": "string" }
+      ]
+    },
+    {
+      "type": "session.compaction.failed",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "error", "ref": "SessionStructuredError" },
+        { "name": "inputID", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "permission.asked",
+      "fields": [
+        { "name": "id", "type": "string" },
+        { "name": "sessionID", "type": "string" },
+        { "name": "action", "type": "string" },
+        { "name": "resources", "type": "string", "list": true },
+        { "name": "save", "type": "string", "list": true, "required": false },
+        { "name": "metadata", "type": "map", "required": false },
+        { "name": "source", "ref": "PermissionSource", "required": false },
+        { "name": "message", "type": "string", "required": false }
+      ]
+    },
+    {
+      "type": "permission.replied",
+      "fields": [
+        { "name": "sessionID", "type": "string" },
+        { "name": "requestID", "type": "string" },
+        { "name": "reply", "ref": "PermissionReply", "ref_kind": "enum" }
+      ]
+    },
+    {
+      "type": "form.created",
+      "session_marker": true,
+      "fields": [
+        { "name": "form", "ref": "FormInfo" }
+      ]
+    },
+    {
+      "type": "form.replied",
+      "fields": [
+        { "name": "id", "type": "string" },
+        { "name": "sessionID", "type": "string" },
+        { "name": "answer", "ref": "FormAnswer" }
+      ]
+    },
+    {
+      "type": "form.cancelled",
+      "fields": [
+        { "name": "id", "type": "string" },
+        { "name": "sessionID", "type": "string" }
+      ]
+    },
+    {
+      "type": "project.updated",
+      "fields": [
+        { "name": "id", "type": "string" },
+        { "name": "canonical", "type": "string" },
+        { "name": "vcs", "type": "string", "required": false },
+        { "name": "name", "type": "string", "required": false },
+        { "name": "icon", "ref": "ProjectIcon", "required": false },
+        { "name": "time", "ref": "ProjectTime" },
+        { "name": "sandboxes", "type": "string", "list": true }
+      ]
+    }
+  ]
+}

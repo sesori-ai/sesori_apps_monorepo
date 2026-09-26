@@ -16,7 +16,11 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$DesktopSidebarLayout {
 
- double get width; bool get collapsed; Set<String> get collapsedProjectIds;
+ double get width; bool get collapsed; Set<String> get collapsedProjectIds;/// Sessions the user marked unread on this desktop, each with its
+/// `time.updated` at that moment, oldest first. Activity leaves such a
+/// session alone until the agent moves that stamp.
+ Map<String, int> get deferredSessions;/// Section headers the user folded; a folded section hides its rows.
+ bool get activitySectionCollapsed; bool get projectsSectionCollapsed;
 /// Create a copy of DesktopSidebarLayout
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +34,20 @@ $DesktopSidebarLayoutCopyWith<DesktopSidebarLayout> get copyWith => _$DesktopSid
 @override
 bool operator ==(Object other) {
   final _this = this as DesktopSidebarLayout;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DesktopSidebarLayout&&(identical(other.width, _this.width) || other.width == _this.width)&&(identical(other.collapsed, _this.collapsed) || other.collapsed == _this.collapsed)&&const DeepCollectionEquality().equals(other.collapsedProjectIds, _this.collapsedProjectIds));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DesktopSidebarLayout&&(identical(other.width, _this.width) || other.width == _this.width)&&(identical(other.collapsed, _this.collapsed) || other.collapsed == _this.collapsed)&&const DeepCollectionEquality().equals(other.collapsedProjectIds, _this.collapsedProjectIds)&&const DeepCollectionEquality().equals(other.deferredSessions, _this.deferredSessions)&&(identical(other.activitySectionCollapsed, _this.activitySectionCollapsed) || other.activitySectionCollapsed == _this.activitySectionCollapsed)&&(identical(other.projectsSectionCollapsed, _this.projectsSectionCollapsed) || other.projectsSectionCollapsed == _this.projectsSectionCollapsed));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as DesktopSidebarLayout;
-  return Object.hash(runtimeType,_this.width,_this.collapsed,const DeepCollectionEquality().hash(_this.collapsedProjectIds));
+  return Object.hash(runtimeType,_this.width,_this.collapsed,const DeepCollectionEquality().hash(_this.collapsedProjectIds),const DeepCollectionEquality().hash(_this.deferredSessions),_this.activitySectionCollapsed,_this.projectsSectionCollapsed);
 }
 
 @override
 String toString() {
   final _this = this as DesktopSidebarLayout;
-  return 'DesktopSidebarLayout(width: ${_this.width}, collapsed: ${_this.collapsed}, collapsedProjectIds: ${_this.collapsedProjectIds})';
+  return 'DesktopSidebarLayout(width: ${_this.width}, collapsed: ${_this.collapsed}, collapsedProjectIds: ${_this.collapsedProjectIds}, deferredSessions: ${_this.deferredSessions}, activitySectionCollapsed: ${_this.activitySectionCollapsed}, projectsSectionCollapsed: ${_this.projectsSectionCollapsed})';
 }
 
 
@@ -54,7 +58,7 @@ abstract mixin class $DesktopSidebarLayoutCopyWith<$Res>  {
   factory $DesktopSidebarLayoutCopyWith(DesktopSidebarLayout value, $Res Function(DesktopSidebarLayout) _then) = _$DesktopSidebarLayoutCopyWithImpl;
 @useResult
 $Res call({
- double width, bool collapsed, Set<String> collapsedProjectIds
+ double width, bool collapsed, Set<String> collapsedProjectIds, Map<String, int> deferredSessions, bool activitySectionCollapsed, bool projectsSectionCollapsed
 });
 
 
@@ -71,12 +75,15 @@ class _$DesktopSidebarLayoutCopyWithImpl<$Res>
 
 /// Create a copy of DesktopSidebarLayout
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? width = null,Object? collapsed = null,Object? collapsedProjectIds = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? width = null,Object? collapsed = null,Object? collapsedProjectIds = null,Object? deferredSessions = null,Object? activitySectionCollapsed = null,Object? projectsSectionCollapsed = null,}) {
   return _then(DesktopSidebarLayout(
 width: null == width ? _self.width : width // ignore: cast_nullable_to_non_nullable
 as double,collapsed: null == collapsed ? _self.collapsed : collapsed // ignore: cast_nullable_to_non_nullable
 as bool,collapsedProjectIds: null == collapsedProjectIds ? _self.collapsedProjectIds : collapsedProjectIds // ignore: cast_nullable_to_non_nullable
-as Set<String>,
+as Set<String>,deferredSessions: null == deferredSessions ? _self.deferredSessions : deferredSessions // ignore: cast_nullable_to_non_nullable
+as Map<String, int>,activitySectionCollapsed: null == activitySectionCollapsed ? _self.activitySectionCollapsed : activitySectionCollapsed // ignore: cast_nullable_to_non_nullable
+as bool,projectsSectionCollapsed: null == projectsSectionCollapsed ? _self.projectsSectionCollapsed : projectsSectionCollapsed // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -88,7 +95,7 @@ as Set<String>,
 @JsonSerializable()
 
 class _DesktopSidebarLayout implements DesktopSidebarLayout {
-  const _DesktopSidebarLayout({this.width = 260, this.collapsed = false,  Set<String> collapsedProjectIds = const {}}): _collapsedProjectIds = collapsedProjectIds;
+  const _DesktopSidebarLayout({this.width = 260, this.collapsed = false,  Set<String> collapsedProjectIds = const {},  Map<String, int> deferredSessions = const {}, this.activitySectionCollapsed = false, this.projectsSectionCollapsed = false}): _collapsedProjectIds = collapsedProjectIds,_deferredSessions = deferredSessions;
   factory _DesktopSidebarLayout.fromJson(Map<String, dynamic> json) => _$DesktopSidebarLayoutFromJson(json);
 
 @override@JsonKey() final  double width;
@@ -100,6 +107,22 @@ class _DesktopSidebarLayout implements DesktopSidebarLayout {
   return EqualUnmodifiableSetView(_collapsedProjectIds);
 }
 
+/// Sessions the user marked unread on this desktop, each with its
+/// `time.updated` at that moment, oldest first. Activity leaves such a
+/// session alone until the agent moves that stamp.
+ final  Map<String, int> _deferredSessions;
+/// Sessions the user marked unread on this desktop, each with its
+/// `time.updated` at that moment, oldest first. Activity leaves such a
+/// session alone until the agent moves that stamp.
+@override@JsonKey() Map<String, int> get deferredSessions {
+  if (_deferredSessions is EqualUnmodifiableMapView) return _deferredSessions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_deferredSessions);
+}
+
+/// Section headers the user folded; a folded section hides its rows.
+@override@JsonKey() final  bool activitySectionCollapsed;
+@override@JsonKey() final  bool projectsSectionCollapsed;
 
 /// Create a copy of DesktopSidebarLayout
 /// with the given fields replaced by the non-null parameter values.
@@ -114,18 +137,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _DesktopSidebarLayout&&(identical(other.width, width) || other.width == width)&&(identical(other.collapsed, collapsed) || other.collapsed == collapsed)&&const DeepCollectionEquality().equals(other.collapsedProjectIds, _collapsedProjectIds));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _DesktopSidebarLayout&&(identical(other.width, width) || other.width == width)&&(identical(other.collapsed, collapsed) || other.collapsed == collapsed)&&const DeepCollectionEquality().equals(other.collapsedProjectIds, _collapsedProjectIds)&&const DeepCollectionEquality().equals(other.deferredSessions, _deferredSessions)&&(identical(other.activitySectionCollapsed, activitySectionCollapsed) || other.activitySectionCollapsed == activitySectionCollapsed)&&(identical(other.projectsSectionCollapsed, projectsSectionCollapsed) || other.projectsSectionCollapsed == projectsSectionCollapsed));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,width,collapsed,const DeepCollectionEquality().hash(_collapsedProjectIds));
+    return Object.hash(runtimeType,width,collapsed,const DeepCollectionEquality().hash(_collapsedProjectIds),const DeepCollectionEquality().hash(_deferredSessions),activitySectionCollapsed,projectsSectionCollapsed);
 }
 
 @override
 String toString() {
-    return 'DesktopSidebarLayout(width: $width, collapsed: $collapsed, collapsedProjectIds: $collapsedProjectIds)';
+    return 'DesktopSidebarLayout(width: $width, collapsed: $collapsed, collapsedProjectIds: $collapsedProjectIds, deferredSessions: $deferredSessions, activitySectionCollapsed: $activitySectionCollapsed, projectsSectionCollapsed: $projectsSectionCollapsed)';
 }
 
 
@@ -136,7 +159,7 @@ abstract mixin class _$DesktopSidebarLayoutCopyWith<$Res> implements $DesktopSid
   factory _$DesktopSidebarLayoutCopyWith(_DesktopSidebarLayout value, $Res Function(_DesktopSidebarLayout) _then) = __$DesktopSidebarLayoutCopyWithImpl;
 @override @useResult
 $Res call({
- double width, bool collapsed, Set<String> collapsedProjectIds
+ double width, bool collapsed, Set<String> collapsedProjectIds, Map<String, int> deferredSessions, bool activitySectionCollapsed, bool projectsSectionCollapsed
 });
 
 
@@ -153,12 +176,15 @@ class __$DesktopSidebarLayoutCopyWithImpl<$Res>
 
 /// Create a copy of DesktopSidebarLayout
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? width = null,Object? collapsed = null,Object? collapsedProjectIds = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? width = null,Object? collapsed = null,Object? collapsedProjectIds = null,Object? deferredSessions = null,Object? activitySectionCollapsed = null,Object? projectsSectionCollapsed = null,}) {
   return _then(_DesktopSidebarLayout(
 width: null == width ? _self.width : width // ignore: cast_nullable_to_non_nullable
 as double,collapsed: null == collapsed ? _self.collapsed : collapsed // ignore: cast_nullable_to_non_nullable
 as bool,collapsedProjectIds: null == collapsedProjectIds ? _self._collapsedProjectIds : collapsedProjectIds // ignore: cast_nullable_to_non_nullable
-as Set<String>,
+as Set<String>,deferredSessions: null == deferredSessions ? _self._deferredSessions : deferredSessions // ignore: cast_nullable_to_non_nullable
+as Map<String, int>,activitySectionCollapsed: null == activitySectionCollapsed ? _self.activitySectionCollapsed : activitySectionCollapsed // ignore: cast_nullable_to_non_nullable
+as bool,projectsSectionCollapsed: null == projectsSectionCollapsed ? _self.projectsSectionCollapsed : projectsSectionCollapsed // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

@@ -1,4 +1,5 @@
 import "../../models/claude_effort_level.dart";
+import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_tool_use_result.dart";
 
 /// One decoded line of a Claude Code transcript.
@@ -70,12 +71,14 @@ final class const ClaudeTranscriptUserRecord({
   required final bool isMeta,
   required final bool isVisibleInTranscriptOnly,
 
+  /// True for the continuation summary the CLI writes after compacting.
+  required final bool isCompactSummary,
+
   /// The typed result of the tool call this record's `tool_result` completes.
   required final ClaudeToolUseResult toolUseResult,
 
-  /// True when the CLI injected this record to deliver a background task's
-  /// outcome to the model; it is never user-authored.
-  required final bool isTaskNotification,
+  /// Distinguishes peer messages and task outcomes from ordinary user input.
+  required final ClaudeMessageOriginKind originKind,
   required super.cwd,
   required super.timestamp,
   required super.isSidechain,
@@ -128,6 +131,36 @@ final class const ClaudeTranscriptApiErrorRecord({
   required super.sessionId,
   required super.raw,
 }) extends ClaudeTranscriptAttributedRecord;
+
+/// A command Claude queued while a turn was running: a follow-up the user sent
+/// mid-turn, a peer message or a background-task outcome.
+///
+/// Claude persists it as a `queued_command` attachment instead of a `user`
+/// record, but the live stream showed it as a user frame, so history maps it
+/// like one.
+final class const ClaudeTranscriptQueuedCommandRecord({
+  /// The id the live stream gave the command: the attachment's `source_uuid`,
+  /// or the record's own `uuid` on older CLIs that omit it.
+  required final String id,
+
+  /// A string or content blocks, like a user message's content.
+  required final Object? prompt,
+  required final bool isMeta,
+
+  /// The attachment's provenance, or its command mode when it has none: a
+  /// queued task outcome carries no origin.
+  required final ClaudeMessageOriginKind originKind,
+  required super.cwd,
+  required super.timestamp,
+  required super.isSidechain,
+  required super.agentId,
+  required super.gitBranch,
+  required super.version,
+  required super.sessionId,
+  required super.raw,
+}) extends ClaudeTranscriptAttributedRecord {
+  static const String attachmentType = "queued_command";
+}
 
 /// A user or assistant record with no usable persisted message identity.
 ///

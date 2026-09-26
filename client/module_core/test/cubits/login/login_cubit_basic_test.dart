@@ -3,14 +3,15 @@ import "dart:async";
 import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
-import "package:sesori_auth/sesori_auth.dart" show AuthLoginResult;
+import "package:sesori_auth/sesori_auth.dart" show AuthLoginResult, OAuthHandoff;
 import "package:sesori_dart_core/src/cubits/login/login_cubit.dart";
+import "package:sesori_dart_core/src/cubits/login/login_handoff.dart";
 import "package:sesori_dart_core/src/cubits/login/login_state.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/installation_analytics_service.dart";
 import "package:sesori_dart_core/testing.dart";
-import "package:sesori_shared/sesori_shared.dart" show AccountStatus, AuthInitResponse, AuthProvider;
+import "package:sesori_shared/sesori_shared.dart" show AccountStatus, AuthProvider;
 import "package:test/test.dart";
 
 class StrictMockLifecycleSource() extends Mock implements LifecycleSource;
@@ -48,10 +49,10 @@ void main() {
       when(
         () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
       ).thenAnswer(
-        (_) async => const AuthInitResponse(
-          authUrl: "https://auth.example.com/login",
-          state: "test-state",
-          expiresIn: 300,
+        (_) async => OAuthHandoff(
+          authUrl: Uri.parse("https://auth.example.com/login"),
+          expiresAt: DateTime(2026, 9, 25, 12, 5),
+          deviceName: "Test Mac",
         ),
       );
       when(() => mockOAuthFlowProvider.pollForResult()).thenAnswer((_) async => testLoginResult());
@@ -144,7 +145,7 @@ void main() {
     );
 
     blocTest<LoginCubit, LoginState>(
-      "loginWithProvider emits failed when browser launch fails",
+      "loginWithProvider keeps polling when browser launch fails",
       build: buildCubit,
       act: (cubit) async {
         when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => false);
@@ -153,8 +154,9 @@ void main() {
       },
       expect: () => [
         isA<LoginAuthenticating>(),
-        isA<LoginPolling>(),
-        isA<LoginFailed>(),
+        isA<LoginPolling>().having((state) => state.handoff.browser, "browser", LoginBrowserLaunch.opened),
+        isA<LoginPolling>().having((state) => state.handoff.browser, "browser", LoginBrowserLaunch.failed),
+        isA<LoginSuccess>(),
       ],
     );
 

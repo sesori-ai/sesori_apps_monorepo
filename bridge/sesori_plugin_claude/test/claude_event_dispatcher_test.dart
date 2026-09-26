@@ -100,7 +100,7 @@ void main() {
       expect(info, isA<PluginMessageAssistant>());
       final assistant = info as PluginMessageAssistant;
       expect(assistant.id, "msg-1");
-      expect(assistant.agent, "claude");
+      expect(assistant.agent, "Agent");
       expect(assistant.modelID, "claude-opus-5");
       expect(assistant.providerID, "anthropic");
       expect((textStart.last as BridgeSseMessagePartUpdated).part.type, PluginMessagePartType.text);
@@ -586,6 +586,45 @@ void main() {
       expect(unmatchedResult, isEmpty);
     });
 
+    test("maps the synthetic summary after a compact boundary to one compaction row", () {
+      const summary = "This session is being continued from a previous conversation.";
+      final boundary = _map(mapper, {
+        "type": "system",
+        "subtype": "compact_boundary",
+        "session_id": "session-1",
+        "uuid": "boundary",
+        "compact_metadata": {"trigger": "manual", "pre_tokens": 100},
+      });
+      final summaryEvents = _map(mapper, {
+        ..._user(
+          uuid: "summary-frame",
+          content: [
+            {"type": "text", "text": summary},
+          ],
+        ),
+        "isSynthetic": true,
+      });
+      final laterSynthetic = _map(mapper, {
+        ..._user(
+          uuid: "later-frame",
+          content: [
+            {"type": "text", "text": "ordinary"},
+          ],
+        ),
+        "isSynthetic": true,
+      });
+
+      expect(boundary, isEmpty);
+      expect((summaryEvents.first as BridgeSseMessageUpdated).info, isA<PluginMessageAssistant>());
+      expect((summaryEvents.first as BridgeSseMessageUpdated).info.id, "summary-frame");
+      expect(
+        (summaryEvents.last as BridgeSseMessagePartUpdated).part,
+        isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", summary),
+      );
+      // Only the frame right after the boundary is the summary.
+      expect((laterSynthetic.last as BridgeSseMessagePartUpdated).part.text, "ordinary");
+    });
+
     test("strips the bridge worktree envelope from a replayed user frame", () {
       const envelope = "[SYSTEM CONTEXT \u2014 IMPORTANT]\nWorktree path: /private/worktree\n---\n";
       final replayed = _map(
@@ -776,8 +815,9 @@ void main() {
                 content: resultContent,
                 isMeta: false,
                 isVisibleInTranscriptOnly: false,
+                isCompactSummary: false,
                 toolUseResult: const ClaudeToolUseResultAbsent(),
-                isTaskNotification: false,
+                originKind: ClaudeMessageOriginKind.unknown,
                 cwd: "/tmp/project",
                 timestamp: timestamp,
                 isSidechain: false,

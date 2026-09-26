@@ -19,6 +19,7 @@ void main() {
 
     test("creates a lazy session and buffers creation before any backend output", () async {
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [],
@@ -48,6 +49,7 @@ void main() {
       harness.writeSession(id: "session", parentPath: null);
       await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null);
       await harness.plugin.sendPrompt(
+        fastMode: false,
         sessionId: "session",
         promptId: "prompt",
         parts: const [PluginPromptPart.text(text: "continue")],
@@ -69,6 +71,7 @@ void main() {
 
     test("buffers created before busy when the first turn starts", () async {
       await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "hello")],
@@ -103,6 +106,7 @@ void main() {
 
       await expectLater(
         harness.plugin.createSession(
+          fastMode: false,
           directory: harness.project.path,
           parentSessionId: null,
           parts: const [],
@@ -112,6 +116,127 @@ void main() {
           model: null,
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 400)),
+      );
+      expect(harness.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
+    });
+
+    for (final (reasoning, accepted, rejected) in [(false, "off", "high"), (true, "high", "off")]) {
+      test("restored thinking level respects reasoning=$reasoning model capabilities", () async {
+        harness.catalogModelReasoning = reasoning;
+        harness.writeSession(id: "session", parentPath: null);
+        await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null);
+
+        await harness.plugin.sendPrompt(
+          sessionId: "session",
+          promptId: "continuation",
+          parts: const [PluginPromptPart.text(text: "Continue.")],
+          variant: PluginSessionVariant(id: accepted),
+          fastMode: false,
+          agent: "pi",
+          model: (providerID: "provider", modelID: "model"),
+        );
+        final process = await harness.nextSessionProcess();
+        expect((await waitForCommand(process: process, type: "prompt"))["message"], "Continue.");
+        await expectLater(
+          harness.plugin.sendPrompt(
+            sessionId: "session",
+            promptId: "invalid-variant",
+            parts: const [PluginPromptPart.text(text: "Continue.")],
+            variant: PluginSessionVariant(id: rejected),
+            fastMode: false,
+            agent: "pi",
+            model: (providerID: "provider", modelID: "model"),
+          ),
+          throwsA(isA<PluginStaleOptionsException>()),
+        );
+      });
+    }
+
+    test("command discovery failure still accepts a non-reasoning model's restored off level", () async {
+      final partial = _Harness(failCommandDiscovery: true)..catalogModelReasoning = false;
+      addTearDown(partial.dispose);
+      partial.writeSession(id: "session", parentPath: null);
+      await partial.plugin.getSessions(projectId: partial.project.path, start: null, limit: null);
+
+      final discovery = await partial.plugin.getSessionOptions(
+        projectId: partial.project.path,
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      );
+      final options = (discovery as PluginSessionOptionsDiscoveryObserved).options;
+      expect(options.completeness, PluginSessionOptionsCompleteness.partial);
+      expect(options.providers.providers.single.models.single.variants, isEmpty);
+
+      await partial.plugin.sendPrompt(
+        sessionId: "session",
+        promptId: "continuation",
+        parts: const [PluginPromptPart.text(text: "Continue.")],
+        variant: const PluginSessionVariant(id: "off"),
+        fastMode: false,
+        agent: "pi",
+        model: (providerID: "provider", modelID: "model"),
+      );
+      final process = await partial.nextSessionProcess();
+      expect((await waitForCommand(process: process, type: "prompt"))["message"], "Continue.");
+    });
+
+    test("catalog refresh replaces the model's implicit off capability with its options", () async {
+      harness.catalogModelReasoning = false;
+      harness.writeSession(id: "session", parentPath: null);
+      await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null);
+      await harness.plugin.getSessionOptions(
+        projectId: harness.project.path,
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      );
+
+      // Reuse retains the known capability until the model catalog is refreshed.
+      harness.catalogModelReasoning = true;
+      harness.failThinkingDiscovery = true;
+      await harness.plugin.sendPrompt(
+        sessionId: "session",
+        promptId: "cached-capability",
+        parts: const [PluginPromptPart.text(text: "Continue.")],
+        variant: const PluginSessionVariant(id: "off"),
+        fastMode: false,
+        agent: "pi",
+        model: (providerID: "provider", modelID: "model"),
+      );
+      final process = await harness.nextSessionProcess();
+      expect((await waitForCommand(process: process, type: "prompt"))["message"], "Continue.");
+
+      await harness.plugin.getSessionOptions(
+        projectId: harness.project.path,
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      );
+      await expectLater(
+        harness.plugin.sendPrompt(
+          sessionId: "session",
+          promptId: "refreshed-capability",
+          parts: const [PluginPromptPart.text(text: "Continue.")],
+          variant: const PluginSessionVariant(id: "off"),
+          fastMode: false,
+          agent: "pi",
+          model: (providerID: "provider", modelID: "model"),
+        ),
+        throwsA(isA<PluginStaleOptionsException>()),
+      );
+    });
+
+    test("partial thinking discovery cannot establish an implicit off level", () async {
+      harness.failThinkingDiscovery = true;
+      harness.writeSession(id: "session", parentPath: null);
+      await harness.plugin.getSessions(projectId: harness.project.path, start: null, limit: null);
+
+      await expectLater(
+        harness.plugin.sendPrompt(
+          sessionId: "session",
+          promptId: "continuation",
+          parts: const [PluginPromptPart.text(text: "Continue.")],
+          variant: const PluginSessionVariant(id: "off"),
+          fastMode: false,
+          agent: "pi",
+          model: (providerID: "provider", modelID: "model"),
+        ),
+        throwsA(isA<PluginStaleOptionsException>()),
       );
       expect(harness.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
     });
@@ -143,6 +268,7 @@ void main() {
 
     test("reports a command missing from the current catalog as stale options", () async {
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [],
@@ -154,6 +280,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendCommand(
+          fastMode: false,
           sessionId: session.id,
           promptId: "prompt-unsupported",
           command: "removed-command",
@@ -176,6 +303,7 @@ void main() {
       final partial = _Harness(failCommandDiscovery: true);
       addTearDown(partial.dispose);
       final session = await partial.plugin.createSession(
+        fastMode: false,
         directory: partial.project.path,
         parentSessionId: null,
         parts: const [],
@@ -187,6 +315,7 @@ void main() {
 
       await expectLater(
         partial.plugin.sendCommand(
+          fastMode: false,
           sessionId: session.id,
           promptId: "prompt-review",
           command: "review",
@@ -207,6 +336,7 @@ void main() {
 
     test("starts an empty session through command acceptance and rejects missing paths", () async {
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [],
@@ -217,6 +347,7 @@ void main() {
       );
 
       final accepted = harness.plugin.sendCommand(
+        fastMode: false,
         sessionId: session.id,
         promptId: "prompt-1",
         command: "review",
@@ -245,6 +376,7 @@ void main() {
 
       await expectLater(
         harness.plugin.sendPrompt(
+          fastMode: false,
           sessionId: "missing",
           promptId: "prompt-2",
           parts: const [PluginPromptPart.text(text: "no")],
@@ -267,6 +399,7 @@ void main() {
       );
       expect(compaction.description, isNotNull);
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [],
@@ -280,6 +413,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       final accepted = harness.plugin.sendCommand(
+        fastMode: false,
         sessionId: session.id,
         promptId: "prompt-compact",
         command: PiCatalogService.compactionCommandName,
@@ -319,6 +453,7 @@ void main() {
     test("native compaction failure removes its running card", () async {
       await harness.plugin.getCommands(projectId: harness.project.path);
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [],
@@ -328,6 +463,7 @@ void main() {
         model: null,
       );
       final accepted = harness.plugin.sendCommand(
+        fastMode: false,
         sessionId: session.id,
         promptId: "prompt-failed-compact",
         command: PiCatalogService.compactionCommandName,
@@ -369,6 +505,7 @@ void main() {
       expect(commands, hasLength(1));
       expect(commands.single.description, isNull);
       final session = await custom.plugin.createSession(
+        fastMode: false,
         directory: custom.project.path,
         parentSessionId: null,
         parts: const [],
@@ -379,6 +516,7 @@ void main() {
       );
 
       final accepted = custom.plugin.sendCommand(
+        fastMode: false,
         sessionId: session.id,
         promptId: "prompt-custom-compact",
         command: PiCatalogService.compactionCommandName,
@@ -410,6 +548,7 @@ void main() {
 
     test("wrapped command failures retain the backend stack", () async {
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [],
@@ -419,6 +558,7 @@ void main() {
         model: null,
       );
       final command = harness.plugin.sendCommand(
+        fastMode: false,
         sessionId: session.id,
         promptId: "prompt-3",
         command: "review",
@@ -443,6 +583,7 @@ void main() {
 
     test("maps questions and toasts while permissions remain unsupported", () async {
       final session = await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "hello")],
@@ -505,6 +646,7 @@ void main() {
       harness.writeSession(id: "child", parentPath: rootPath);
       await harness.plugin.listAllSessions(knownDirectories: {harness.project.path});
       await harness.plugin.sendPrompt(
+        fastMode: false,
         sessionId: "child",
         promptId: "prompt-4",
         parts: const [PluginPromptPart.text(text: "child work")],
@@ -564,6 +706,7 @@ void main() {
       expect(await harness.plugin.healthCheck(), isTrue);
       expect(harness.commands.calls.single, ("pi", const ["--version"]));
       await harness.plugin.createSession(
+        fastMode: false,
         directory: harness.project.path,
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "dispose")],
@@ -577,6 +720,7 @@ void main() {
       harness.plugin.events.listen(events.add, onDone: () => closed = true);
       final process = await harness.nextSessionProcess();
       await waitForCommand(process: process, type: "prompt");
+      final asked = harness.plugin.events.firstWhere((event) => event is BridgeSseQuestionAsked);
       process.emit(
         frame: {
           "type": "extension_ui_request",
@@ -584,9 +728,7 @@ void main() {
           "method": "input",
         },
       );
-      for (var attempt = 0; attempt < 50 && events.whereType<BridgeSseQuestionAsked>().isEmpty; attempt++) {
-        await pump();
-      }
+      await asked;
 
       await harness.plugin.dispose();
       await harness.plugin.dispose();
@@ -600,6 +742,7 @@ void main() {
       final bounded = _Harness(failCommandDiscovery: false, stdinCloseCompletes: false);
       addTearDown(bounded.dispose);
       await bounded.plugin.createSession(
+        fastMode: false,
         directory: bounded.project.path,
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "bounded")],
@@ -621,6 +764,7 @@ void main() {
       final bounded = _Harness(failCommandDiscovery: false, stdinCloseCompletes: false);
       addTearDown(bounded.dispose);
       await bounded.plugin.createSession(
+        fastMode: false,
         directory: bounded.project.path,
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "bounded")],
@@ -664,6 +808,8 @@ final class _Harness({
             process: process,
             spec: spec,
             catalogModelsAvailable: catalogModelsAvailable,
+            catalogModelReasoning: catalogModelReasoning,
+            failThinkingDiscovery: failThinkingDiscovery,
             catalogCommand: catalogCommand,
             failCommandDiscovery: failCommandDiscovery,
           ),
@@ -689,6 +835,8 @@ final class _Harness({
   late final PiPlugin plugin;
   final List<({PiLaunchSpec spec, FakePiProcess process})> processes = [];
   final _CommandExecutor commands = _CommandExecutor();
+  bool catalogModelReasoning = true;
+  bool failThinkingDiscovery = false;
 
   Future<FakePiProcess> nextSessionProcess() async {
     for (var attempt = 0; attempt < 100; attempt++) {
@@ -727,6 +875,8 @@ Future<void> _answerProcess({
   required FakePiProcess process,
   required PiLaunchSpec spec,
   required bool catalogModelsAvailable,
+  required bool catalogModelReasoning,
+  required bool failThinkingDiscovery,
   required String catalogCommand,
   required bool failCommandDiscovery,
 }) async {
@@ -753,7 +903,7 @@ Future<void> _answerProcess({
                 "provider": selectedModel?.providerID ?? "provider",
                 "id": selectedModel?.modelID ?? "model",
                 "name": "Model",
-                "reasoning": true,
+                "reasoning": catalogModelReasoning,
               },
               "thinkingLevel": spec.thinkingLevel ?? "high",
               "isStreaming": false,
@@ -771,14 +921,17 @@ Future<void> _answerProcess({
             command: type,
             data: {
               "models": catalogModelsAvailable
-                  ? const [
-                      {"provider": "provider", "id": "model", "name": "Model", "reasoning": true},
+                  ? [
+                      {"provider": "provider", "id": "model", "name": "Model", "reasoning": catalogModelReasoning},
                     ]
                   : const <Object?>[],
             },
           );
         case "set_model":
+        case "set_thinking_level":
           process.emitResponse(id: id, command: type);
+        case "get_available_thinking_levels" when failThinkingDiscovery:
+          process.emitFailure(id: id, command: type, error: "thinking discovery temporarily unavailable");
         case "get_available_thinking_levels":
           process.emitResponse(
             id: id,

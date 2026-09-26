@@ -44,6 +44,24 @@ that baseline, and the branch and worktree facts a session carries.
   copying navigation titles, change-count subtitles, file-header metadata,
   line numbers, or +/- gutters, including inside the desktop cockpit's wide
   right pane.
+- Diff colours come from the Prego status tokens in both themes. An added or
+  removed line has a 10% status tint and a 2-point status bar at its left
+  edge; both run the full height of a wrapped line. A file's status is a plain
+  coloured letter (A, D, M). Change counts leave out a zero side and use the
+  "−" sign, both on file headers and in the page subtitle.
+- The session page's Changes button carries the session's line totals, as
+  "Changes +12 −2" on the desktop toolbar and "+12 −2" beside the phone's
+  file-changes icon, with a zero side left out and no counts when both are
+  zero. A separate `/session/diff-summary` request returns only the totals:
+  the bridge runs the same git steps as the diff but reads only untracked
+  files, which numstat does not count. Only a page whose Changes button
+  shows asks, once on open and then on the file-change signal at most every
+  two seconds. A failed refresh keeps the last totals. A missing session is
+  a 404 with a `sessionNotFound` body; an older bridge's bare 404 for the
+  unknown route makes the page stop asking and keep plain "Changes".
+  The button resizes smoothly as the counts arrive, change or leave, with the
+  counts fading, and the phone circle stretches into its pill. Under reduced
+  motion the change is instant.
 
 ## Regression Levels
 
@@ -74,6 +92,11 @@ and in-place sessions, and default versus explicit base branches.
 - Diffs never refresh after a mutating tool completes, a moved project makes
   git run in the old directory, or a supported root-session file-changes action
   cannot reach the typed shared diff route on mobile or desktop.
+- The Changes totals disagree with the diff's summed counts, never grow after
+  an edit, show a zero side, or keep asking an older bridge after its first
+  bare 404.
+- The Changes button pops to its new size when the counts arrive or leave,
+  animates under reduced motion, or stretches taller than its own content.
 - Generated refinement renames a branch after it switches or becomes published,
   moves the worktree directory, leaves durable/current branch facts disagreeing,
   or leaves Git and persistence on different branch names after failure.
@@ -81,6 +104,10 @@ and in-place sessions, and default versus explicit base branches.
 ## Known Limitations
 
 - Per-file content is bounded; oversized files are skipped, not truncated.
+- The Changes totals count the numstat lines of a tracked file the diff page
+  skips as too large or unreadable, which that page shows without counts, and do
+  not apply the diff's fallback for a modified file numstat reports with no
+  additions, so the two can differ by those files.
 - Live client end-to-end diff coverage remains phone-only. Desktop diff routing
   and shared rendering are automated but still need a live desktop release exercise.
 - Non-git and commitless sessions have no comparison baseline and intentionally
@@ -93,12 +120,16 @@ and in-place sessions, and default versus explicit base branches.
 - Bridge: `bridge/app/lib/src/services/` session-diff and worktree services,
   `bridge/app/lib/src/repositories/session_diff_repository.dart`,
   `bridge/app/lib/src/api/git_cli_api.dart`, and the diff and base-branch handlers
-- Contract: `shared/sesori_shared/lib/src/models/sesori/file_diff.dart`
+- Contract: `shared/sesori_shared/lib/src/models/sesori/file_diff.dart` and
+  `session_diff_summary_response.dart`
 - Client: `client/module_core/lib/src/cubits/session_diffs/`,
   `client/module_app_ui/lib/src/features/session_diffs/`,
   `client/app/lib/features/session_diffs/session_diffs_screen.dart`, and
   `client/desktop/lib/features/session_diffs/desktop_session_diffs_screen.dart`
 - Tests: `bridge/app/test/bridge/services/session_diff_service_integration_test.dart`,
+  `bridge/app/test/bridge/routing/get_session_diff_summary_handler_test.dart`,
+  `client/module_core/test/cubits/session_diffs/diff_summary_cubit_test.dart`,
   `client/module_app_ui/test/features/session_diffs/`,
+  `client/module_prego/test/components/prego_button_trailing_test.dart`,
   `client/app/test/features/session_diffs/session_diffs_collapse_scroll_test.dart`, and
   `client/desktop/test/core/routing/desktop_router_test.dart`

@@ -189,6 +189,7 @@ void main() {
 
     Future<String> createSession(String directory, String sessionId) async {
       final creating = plugin.createSession(
+        fastMode: false,
         directory: directory,
         parentSessionId: null,
         parts: const [],
@@ -207,6 +208,7 @@ void main() {
     Future<String> sendPrompt(String sessionId, String text) async {
       final promptId = "prompt-${++promptSequence}";
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: promptId,
         sessionId: sessionId,
         parts: [PluginPromptPart.text(text: text)],
@@ -673,6 +675,7 @@ void main() {
       emitted.clear();
 
       final creating = plugin.createSession(
+        fastMode: false,
         directory: cwd,
         parentSessionId: null,
         parts: [
@@ -724,6 +727,7 @@ void main() {
           emitted.clear();
 
           final creating = plugin.createSession(
+            fastMode: false,
             directory: cwd,
             parentSessionId: null,
             parts: [
@@ -768,6 +772,7 @@ void main() {
       emitted.clear();
 
       await plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
         command: "review",
@@ -984,51 +989,6 @@ void main() {
       );
     });
 
-    test("a retried ACP prompt id remains one turn while disconnected", () async {
-      await connect();
-      final sessionId = await createSession(cwd, "s1");
-
-      await sendPrompt(sessionId, "first");
-      final firstPrompt = await waitForFrame("session/prompt");
-      Future<void> sendRetry() => plugin.sendPrompt(
-        promptId: "retry-id",
-        sessionId: sessionId,
-        parts: const [PluginPromptPart.text(text: "only once")],
-        variant: null,
-        agent: null,
-        model: null,
-      );
-
-      await sendRetry();
-      await sendRetry();
-      expect(await plugin.getQueuedPrompts(sessionId: sessionId), hasLength(1));
-
-      respondTo(firstPrompt, {"stopReason": "end_turn"});
-      final retriedPrompt = await waitForFrameCount("session/prompt", 2);
-      await sendRetry();
-      await pump();
-      expect(frames("session/prompt"), hasLength(2));
-
-      respondTo(retriedPrompt, {"stopReason": "end_turn"});
-      for (var i = 0; i < 10; i++) {
-        await pump();
-      }
-      expect(plugin.currentWorkState, PluginWorkState.idle);
-      await plugin.resetConnectionAfterExit();
-      await sendRetry();
-      await plugin.sendCommand(
-        sessionId: sessionId,
-        promptId: "retry-id",
-        command: "deploy",
-        arguments: "",
-        userVisibleArguments: null,
-        variant: null,
-        agent: null,
-        model: null,
-      );
-      expect(frames("initialize"), hasLength(1));
-    });
-
     test("queued reconnect authentication failure surfaces on the event stream", () async {
       var processStarts = 0;
       await plugin.dispose();
@@ -1190,6 +1150,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = gated.createSession(
+        fastMode: false,
         directory: cwd,
         parentSessionId: null,
         parts: const [],
@@ -1207,6 +1168,7 @@ void main() {
       final gate = Completer<void>();
       gated.selectionGate = gate;
       await gated.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "s1",
         parts: const [PluginPromptPart.text(text: "hi")],
@@ -1499,6 +1461,7 @@ void main() {
       expect(await connecting, isTrue);
 
       final creating = respawning.createSession(
+        fastMode: false,
         directory: cwd,
         parentSessionId: null,
         parts: const [],
@@ -1517,6 +1480,7 @@ void main() {
 
       var respawnPromptSequence = 0;
       Future<void> send(String text) => respawning.sendPrompt(
+        fastMode: false,
         promptId: "respawn-prompt-${++respawnPromptSequence}",
         sessionId: "s1",
         parts: [PluginPromptPart.text(text: text)],

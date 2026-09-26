@@ -4,7 +4,7 @@ part of "harness_settings_flow_view.dart";
 class const HarnessSettingsDetailView({
   super.key,
   required final String pluginId,
-  required final HarnessSettingsPresentation presentation,
+  required final HarnessSettingsChrome chrome,
   required final VoidCallback onBack,
   required final VoidCallback onClose,
   required final Widget? connectionBanner,
@@ -16,60 +16,85 @@ class const HarnessSettingsDetailView({
     final plugin = state is PluginManagementReady
         ? state.response.plugins.where((plugin) => plugin.setup.id == pluginId).firstOrNull
         : null;
-    return PregoGlassScaffold(
-      title: plugin?.setup.displayName ?? context.loc.settingsHarnessesTitle,
-      titleMode: PregoTopNavigationTitleMode.inline,
-      automaticallyImplyLeading: false,
-      onBack: onBack,
-      onRefresh: cubit.refresh,
-      banner: connectionBanner,
-      actions: [
-        if (presentation == HarnessSettingsPresentation.modal)
-          PregoButtonsIconGlass(icon: TablerRegular.x, semanticLabel: context.loc.settingsClose, onPressed: onClose),
-      ],
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: EdgeInsetsDirectional.fromSTEB(
-              PregoSpacing.xl,
-              _contentTopPadding,
-              PregoSpacing.xl,
-              PregoSpacing.xl + MediaQuery.paddingOf(context).bottom,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                if (state is PluginManagementReady) _HarnessErrors(state: state),
-                if (plugin != null && state is PluginManagementReady)
-                  _HarnessActionFeedback(
-                    state: state,
-                    target: PluginManagementActionTarget.harness(pluginId: pluginId),
-                    groupForceReview: true,
-                  ),
-                if (plugin != null && state is PluginManagementReady)
-                  _HarnessControlCard(
-                    plugin: plugin,
-                    action: state.harnessActions[pluginId] ?? const PluginManagementActionState.idle(),
-                    blocked: state.harnessControlsBlocked(pluginId: pluginId),
-                    globalActionBlocked: state.globalAction.blocksControls,
-                    authentication: state.authentication,
-                    install: state.installs[pluginId],
-                    scanning: state.scanningPluginIds.contains(pluginId),
-                    scanRejection: state.scanRejections[pluginId],
-                  )
-                else
-                  switch (state) {
-                    PluginManagementLoading() => const _LoadingView(),
-                    PluginManagementUnsupported() => const _UnsupportedView(),
-                    PluginManagementFailure() => const _FailureView(),
-                    PluginManagementReady() => Text(context.loc.harnessManagementNotFound),
-                  },
-              ],
+    final content = SliverToBoxAdapter(
+      child: Padding(
+        padding: EdgeInsetsDirectional.fromSTEB(
+          PregoSpacing.xl,
+          _contentTopPadding,
+          PregoSpacing.xl,
+          PregoSpacing.xl + MediaQuery.paddingOf(context).bottom,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (state is PluginManagementReady) _HarnessErrors(state: state),
+            if (plugin != null && state is PluginManagementReady)
+              _HarnessActionFeedback(
+                state: state,
+                target: PluginManagementActionTarget.harness(pluginId: pluginId),
+                groupForceReview: true,
+              ),
+            if (plugin != null && state is PluginManagementReady)
+              _HarnessControlCard(
+                plugin: plugin,
+                action: state.harnessActions[pluginId] ?? const PluginManagementActionState.idle(),
+                blocked: state.harnessControlsBlocked(pluginId: pluginId),
+                globalActionBlocked: state.globalAction.blocksControls,
+                authentication: state.authentication,
+                install: state.installs[pluginId],
+                scanning: state.scanningPluginIds.contains(pluginId),
+                scanRejection: state.scanRejections[pluginId],
+              )
+            else
+              switch (state) {
+                PluginManagementLoading() => const _LoadingView(),
+                PluginManagementUnsupported() => const _UnsupportedView(),
+                PluginManagementFailure() => const _FailureView(),
+                PluginManagementReady() => Text(context.loc.harnessManagementNotFound),
+              },
+          ],
+        ),
+      ),
+    );
+
+    return switch (chrome) {
+      // The window names the harness in its identity row and owns the close
+      // button, so the page keeps only its way back to the list.
+      HarnessSettingsChrome.window => SettingsWindowPage(
+        onRefresh: cubit.refresh,
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.md),
+            sliver: SliverToBoxAdapter(
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: PregoButtonsSolid(
+                  label: MaterialLocalizations.of(context).backButtonTooltip,
+                  leadingIcon: TablerRegular.chevron_left,
+                  hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                  size: PregoButtonsSolidSize.sm,
+                  onPressed: onBack,
+                ),
+              ),
             ),
           ),
-        ),
-      ],
-    );
+          content,
+        ],
+      ),
+      HarnessSettingsChrome.modal || HarnessSettingsChrome.pushed => PregoGlassScaffold(
+        title: plugin?.setup.displayName ?? context.loc.settingsHarnessesTitle,
+        titleMode: PregoTopNavigationTitleMode.inline,
+        automaticallyImplyLeading: false,
+        onBack: onBack,
+        onRefresh: cubit.refresh,
+        banner: connectionBanner,
+        actions: [
+          if (chrome == HarnessSettingsChrome.modal)
+            PregoButtonsIconGlass(icon: TablerRegular.x, semanticLabel: context.loc.settingsClose, onPressed: onClose),
+        ],
+        slivers: [content],
+      ),
+    };
   }
 }
 
@@ -368,7 +393,7 @@ class const _HarnessInstallation({
             LinearProgressIndicator(
               value: _downloadFraction(progress: progress),
               minHeight: 6,
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(PregoRadius.xs),
               color: context.prego.colors.fgBrandPrimary,
               backgroundColor: context.prego.colors.bgSurface1,
             ),

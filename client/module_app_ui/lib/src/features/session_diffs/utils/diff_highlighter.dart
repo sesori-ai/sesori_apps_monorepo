@@ -1,7 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:re_highlight/re_highlight.dart';
 
-import '../../../extensions/text_style_x.dart';
+import 'package:theme_prego/module_prego.dart';
+
 import '../../../utils/syntax_highlight.dart';
 
 /// Static helper for syntax highlighting diff lines.

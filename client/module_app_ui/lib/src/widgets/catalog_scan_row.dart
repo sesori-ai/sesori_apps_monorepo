@@ -808,6 +808,7 @@ class _ScanLoadingSkeletonPainter({
   ];
 
   static const Size _barSize = Size(122, 21);
+  // Traced from the illustration's artwork, not a UI radius.
   static const Radius _barRadius = Radius.circular(5.918);
   static const double _effectScale = 0.74;
   static const double _bottomShadowHeight = 1.479;
@@ -950,7 +951,7 @@ class const _ScanCancelButton({
                 ),
               ),
               child: Center(
-                child: Icon(TablerRegular.x, size: 20, color: colors.textSecondary),
+                child: Icon(TablerRegular.x, size: PregoIconSize.md, color: colors.textSecondary),
               ),
             ),
           ),

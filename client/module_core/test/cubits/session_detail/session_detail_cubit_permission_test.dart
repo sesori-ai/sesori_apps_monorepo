@@ -14,6 +14,8 @@ import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
+import "package:sesori_dart_core/src/services/session_approval_service.dart";
+import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -752,6 +754,7 @@ void main() {
           agent: any(named: "agent"),
           model: any(named: "model"),
           variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
           command: any(named: "command"),
         ),
       );
@@ -798,6 +801,8 @@ SessionDetailCubit _buildCubit({
     interactionCalculator: const SessionInteractionCalculator(),
     loadService: loadService,
     sessionAbortService: SessionAbortService(repository: promptDispatcher),
+    autoContinuationService: SessionAutoContinuationService(repository: promptDispatcher),
+    approvalService: SessionApprovalService(repository: promptDispatcher),
     promptDispatcher: promptDispatcher,
     permissionRepository: permissionRepository,
     sessionViewingService: stubbedSessionViewingService(),
@@ -809,6 +814,7 @@ SessionDetailCubit _buildCubit({
     projectId: projectId,
     notificationCanceller: notificationCanceller,
     failureReporter: failureReporter,
+    bridgeSettingsService: stubbedBridgeSettingsService(),
   );
 }
 
@@ -907,6 +913,7 @@ ProviderListResponse _providers() {
         defaultModelID: "claude-3-5-sonnet",
         models: {
           "claude-3-5-sonnet": ProviderModel(
+            fastMode: null,
             id: "claude-3-5-sonnet",
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",

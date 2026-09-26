@@ -147,7 +147,7 @@ void main() {
     );
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
     await pumpScreen(tester);
-    expect(find.text("Disconnected"), findsOneWidget);
+    expect(find.text("Bridge offline"), findsOneWidget);
   }
 
   void verifyLogged(ProductAnalyticsEvent event) {

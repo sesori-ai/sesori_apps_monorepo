@@ -5,9 +5,7 @@ const double _contentTopPadding = 10;
 class const HarnessesSettingsView({
   super.key,
 
-  /// How the page was raised, which decides how the user leaves it: a pushed
-  /// page goes back, a modal one closes.
-  required final HarnessSettingsPresentation presentation,
+  required final HarnessSettingsChrome chrome,
   required final Widget? connectionBanner,
   required final VoidCallback onClose,
   required final VoidCallback? onBack,
@@ -16,12 +14,38 @@ class const HarnessesSettingsView({
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final isModal = switch (presentation) {
-      HarnessSettingsPresentation.modal => true,
-      HarnessSettingsPresentation.pushed => false,
-    };
     final cubit = context.read<PluginManagementCubit>();
     final state = context.watch<PluginManagementCubit>().state;
+    final slivers = [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: PregoSpacing.xl,
+            vertical: _contentTopPadding,
+          ),
+          child: switch (state) {
+            PluginManagementLoading() => const _LoadingView(),
+            PluginManagementUnsupported() => const _UnsupportedView(),
+            PluginManagementFailure() => const _FailureView(),
+            PluginManagementReady() => _ReadyView(state: state, onOpenHarness: onOpenHarness),
+          },
+        ),
+      ),
+      SliverToBoxAdapter(
+        child: SizedBox(height: MediaQuery.paddingOf(context).bottom + PregoSpacing.xl),
+      ),
+    ];
+
+    final bool isModal;
+    switch (chrome) {
+      case HarnessSettingsChrome.modal:
+        isModal = true;
+      case HarnessSettingsChrome.pushed:
+        isModal = false;
+      case HarnessSettingsChrome.window:
+        // The settings window names the page and owns the close button.
+        return SettingsWindowPage(onRefresh: cubit.refresh, slivers: slivers);
+    }
 
     return PregoGlassScaffold(
       title: loc.settingsHarnessesTitle,
@@ -41,25 +65,7 @@ class const HarnessesSettingsView({
           ),
       ],
       onRefresh: cubit.refresh,
-      slivers: [
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: PregoSpacing.xl,
-              vertical: _contentTopPadding,
-            ),
-            child: switch (state) {
-              PluginManagementLoading() => const _LoadingView(),
-              PluginManagementUnsupported() => const _UnsupportedView(),
-              PluginManagementFailure() => const _FailureView(),
-              PluginManagementReady() => _ReadyView(state: state, onOpenHarness: onOpenHarness),
-            },
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: SizedBox(height: MediaQuery.paddingOf(context).bottom + PregoSpacing.xl),
-        ),
-      ],
+      slivers: slivers,
     );
   }
 }

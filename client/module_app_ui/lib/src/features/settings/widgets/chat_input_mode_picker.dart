@@ -56,57 +56,60 @@ class const _ChatInputModeOption({
       child: Semantics(
         inMutuallyExclusiveGroup: true,
         checked: isSelected,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: _optionHeight),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  height: _previewHeight,
-                  decoration: BoxDecoration(
-                    color: prego.colors.bgSurface3,
-                    borderRadius: BorderRadius.circular(PregoRadius.lg),
-                  ),
-                  foregroundDecoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(PregoRadius.lg),
-                    border: Border.all(
-                      color: isSelected ? prego.colors.borderBrand : Colors.transparent,
-                      width: _selectionRingWidth,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: _optionHeight),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    height: _previewHeight,
+                    decoration: BoxDecoration(
+                      color: prego.colors.bgSurface3,
+                      borderRadius: BorderRadius.circular(PregoRadius.lg),
                     ),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: ExcludeSemantics(
-                    child: _ComposerPreview(mode: mode, isSelected: isSelected),
-                  ),
-                ),
-                const SizedBox(height: _labelGap),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  spacing: PregoSpacing.sm,
-                  children: [
-                    Icon(
-                      switch (mode) {
-                        ChatInputMode.voiceFirst => TablerRegular.microphone,
-                        ChatInputMode.textFirst => TablerRegular.keyboard,
-                      },
-                      size: 14,
-                      color: isSelected ? prego.colors.textPrimary : prego.colors.textSecondary,
-                    ),
-                    Flexible(
-                      child: Text(
-                        label,
-                        textAlign: TextAlign.center,
-                        style: prego.textTheme.textSm.regular.copyWith(
-                          color: isSelected ? prego.colors.textPrimary : prego.colors.textSecondary,
-                        ),
+                    foregroundDecoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(PregoRadius.lg),
+                      border: Border.all(
+                        color: isSelected ? prego.colors.borderBrand : Colors.transparent,
+                        width: _selectionRingWidth,
                       ),
                     ),
-                  ],
-                ),
-              ],
+                    clipBehavior: Clip.antiAlias,
+                    child: ExcludeSemantics(
+                      child: _ComposerPreview(mode: mode, isSelected: isSelected),
+                    ),
+                  ),
+                  const SizedBox(height: _labelGap),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    spacing: PregoSpacing.sm,
+                    children: [
+                      Icon(
+                        switch (mode) {
+                          ChatInputMode.voiceFirst => TablerRegular.microphone,
+                          ChatInputMode.textFirst => TablerRegular.keyboard,
+                        },
+                        size: PregoIconSize.sm,
+                        color: isSelected ? prego.colors.textPrimary : prego.colors.textSecondary,
+                      ),
+                      Flexible(
+                        child: Text(
+                          label,
+                          textAlign: TextAlign.center,
+                          style: prego.textTheme.textSm.regular.copyWith(
+                            color: isSelected ? prego.colors.textPrimary : prego.colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),

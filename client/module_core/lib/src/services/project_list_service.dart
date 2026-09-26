@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -12,10 +14,22 @@ class ProjectListService({
   required final ProjectRepository _repository,
   required final SessionActivityCalculator _activityCalculator,
 }) {
+  final StreamController<List<ProjectSummary>> _listedProjects = StreamController.broadcast(sync: true);
+  int _listGeneration = 0;
+
+  /// Every winning successful authoritative project snapshot, without retaining a
+  /// second project inventory alongside ProjectInventoryService.
+  Stream<List<ProjectSummary>> get listedProjects => _listedProjects.stream;
+
   Future<ApiResponse<Projects>> listProjects() async {
+    final generation = ++_listGeneration;
     final response = await _repository.listProjects();
     return switch (response) {
-      SuccessResponse(:final data) => ApiResponse.success(Projects(data: _sortProjects(data.data))),
+      SuccessResponse(:final data) => () {
+        final projects = List<ProjectSummary>.unmodifiable(_sortProjects(data.data));
+        if (generation == _listGeneration && !_listedProjects.isClosed) _listedProjects.add(projects);
+        return ApiResponse.success(Projects(data: projects));
+      }(),
       ErrorResponse(:final error) => ApiResponse.error(error),
     };
   }
@@ -39,11 +53,24 @@ class ProjectListService({
     return (changed: changed, projects: _sortProjects(mergedProjects));
   }
 
-  List<ProjectSummary> removeProject({required Iterable<ProjectSummary> projects, required String projectId}) {
-    return _sortProjects(projects.where((project) => project.id != projectId));
+  /// Applies an accepted local hide and publishes the resulting inventory.
+  /// Incrementing the generation prevents an older list response from
+  /// republishing the hidden project.
+  List<ProjectSummary> removeProjectAndPublish({
+    required Iterable<ProjectSummary> projects,
+    required String projectId,
+  }) {
+    _listGeneration++;
+    final remaining = List<ProjectSummary>.unmodifiable(
+      _sortProjects(projects.where((project) => project.id != projectId)),
+    );
+    if (!_listedProjects.isClosed) _listedProjects.add(remaining);
+    return remaining;
   }
 
-  List<ProjectSummary> orderProjects({
+  /// Running projects first, and each one's running-session count. A session
+  /// only waiting for input is not running.
+  ({List<ProjectSummary> projects, Map<String, int> runningByProjectId}) orderProjects({
     required Iterable<ProjectSummary> projects,
     required Map<String, Map<String, SessionActivityInfo>> activityByProjectId,
     required Map<String, Map<String, SessionListItemState>> listStateByProjectId,
@@ -51,6 +78,7 @@ class ProjectListService({
     final running = <ProjectSummary>[];
     final remaining = <ProjectSummary>[];
     final runningActivityAtByProjectId = <String, int>{};
+    final runningByProjectId = <String, int>{};
     for (final project in projects) {
       final activity = activityByProjectId[project.id];
       final runningSessions = activity?.entries
@@ -58,6 +86,7 @@ class ProjectListService({
           .toList(growable: false);
       if (runningSessions != null && runningSessions.isNotEmpty) {
         running.add(project);
+        runningByProjectId[project.id] = runningSessions.length;
         runningActivityAtByProjectId[project.id] = runningSessions
             .map(
               (entry) =>
@@ -80,7 +109,7 @@ class ProjectListService({
       final activityCompare = bActivityAt.compareTo(aActivityAt);
       return activityCompare != 0 ? activityCompare : a.id.compareTo(b.id);
     });
-    return [...running, ..._sortProjects(remaining)];
+    return (projects: [...running, ..._sortProjects(remaining)], runningByProjectId: runningByProjectId);
   }
 
   List<ProjectSummary> _sortProjects(Iterable<ProjectSummary> projects) {
@@ -106,4 +135,7 @@ class ProjectListService({
   }
 
   String _effectiveName(ProjectSummary project) => project.name ?? project.path;
+
+  @disposeMethod
+  Future<void> dispose() => _listedProjects.close();
 }

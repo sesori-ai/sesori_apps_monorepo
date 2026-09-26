@@ -160,7 +160,10 @@ as String?,
 /// @nodoc
 mixin _$FilesystemSuggestions {
 
- List<FilesystemSuggestion> get data; String? get path;
+ List<FilesystemSuggestion> get data; String? get path;/// The host's mounted drive roots, such as `C:\`, which the browser lists
+/// beside Home. Filled only on a Windows host and only for a request
+/// without a prefix; empty otherwise.
+ List<String> get driveRoots;
 /// Create a copy of FilesystemSuggestions
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -174,20 +177,20 @@ $FilesystemSuggestionsCopyWith<FilesystemSuggestions> get copyWith => _$Filesyst
 @override
 bool operator ==(Object other) {
   final _this = this as FilesystemSuggestions;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilesystemSuggestions&&const DeepCollectionEquality().equals(other.data, _this.data)&&(identical(other.path, _this.path) || other.path == _this.path));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilesystemSuggestions&&const DeepCollectionEquality().equals(other.data, _this.data)&&(identical(other.path, _this.path) || other.path == _this.path)&&const DeepCollectionEquality().equals(other.driveRoots, _this.driveRoots));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as FilesystemSuggestions;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.data),_this.path);
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.data),_this.path,const DeepCollectionEquality().hash(_this.driveRoots));
 }
 
 @override
 String toString() {
   final _this = this as FilesystemSuggestions;
-  return 'FilesystemSuggestions(data: ${_this.data}, path: ${_this.path})';
+  return 'FilesystemSuggestions(data: ${_this.data}, path: ${_this.path}, driveRoots: ${_this.driveRoots})';
 }
 
 
@@ -198,7 +201,7 @@ abstract mixin class $FilesystemSuggestionsCopyWith<$Res>  {
   factory $FilesystemSuggestionsCopyWith(FilesystemSuggestions value, $Res Function(FilesystemSuggestions) _then) = _$FilesystemSuggestionsCopyWithImpl;
 @useResult
 $Res call({
- List<FilesystemSuggestion> data, String? path
+ List<FilesystemSuggestion> data, String? path, List<String> driveRoots
 });
 
 
@@ -215,11 +218,12 @@ class _$FilesystemSuggestionsCopyWithImpl<$Res>
 
 /// Create a copy of FilesystemSuggestions
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? data = null,Object? path = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? data = null,Object? path = freezed,Object? driveRoots = null,}) {
   return _then(FilesystemSuggestions(
 data: null == data ? _self.data : data // ignore: cast_nullable_to_non_nullable
 as List<FilesystemSuggestion>,path: freezed == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,driveRoots: null == driveRoots ? _self.driveRoots : driveRoots // ignore: cast_nullable_to_non_nullable
+as List<String>,
   ));
 }
 
@@ -231,7 +235,7 @@ as String?,
 @JsonSerializable()
 
 class _FilesystemSuggestions implements FilesystemSuggestions {
-  const _FilesystemSuggestions({required  List<FilesystemSuggestion> data, required this.path}): _data = data;
+  const _FilesystemSuggestions({required  List<FilesystemSuggestion> data, required this.path,  List<String> driveRoots = const <String>[]}): _data = data,_driveRoots = driveRoots;
   factory _FilesystemSuggestions.fromJson(Map<String, dynamic> json) => _$FilesystemSuggestionsFromJson(json);
 
  final  List<FilesystemSuggestion> _data;
@@ -242,6 +246,19 @@ class _FilesystemSuggestions implements FilesystemSuggestions {
 }
 
 @override final  String? path;
+/// The host's mounted drive roots, such as `C:\`, which the browser lists
+/// beside Home. Filled only on a Windows host and only for a request
+/// without a prefix; empty otherwise.
+ final  List<String> _driveRoots;
+/// The host's mounted drive roots, such as `C:\`, which the browser lists
+/// beside Home. Filled only on a Windows host and only for a request
+/// without a prefix; empty otherwise.
+@override@JsonKey() List<String> get driveRoots {
+  if (_driveRoots is EqualUnmodifiableListView) return _driveRoots;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_driveRoots);
+}
+
 
 /// Create a copy of FilesystemSuggestions
 /// with the given fields replaced by the non-null parameter values.
@@ -256,18 +273,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilesystemSuggestions&&const DeepCollectionEquality().equals(other.data, _data)&&(identical(other.path, path) || other.path == path));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilesystemSuggestions&&const DeepCollectionEquality().equals(other.data, _data)&&(identical(other.path, path) || other.path == path)&&const DeepCollectionEquality().equals(other.driveRoots, _driveRoots));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_data),path);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_data),path,const DeepCollectionEquality().hash(_driveRoots));
 }
 
 @override
 String toString() {
-    return 'FilesystemSuggestions(data: $data, path: $path)';
+    return 'FilesystemSuggestions(data: $data, path: $path, driveRoots: $driveRoots)';
 }
 
 
@@ -278,7 +295,7 @@ abstract mixin class _$FilesystemSuggestionsCopyWith<$Res> implements $Filesyste
   factory _$FilesystemSuggestionsCopyWith(_FilesystemSuggestions value, $Res Function(_FilesystemSuggestions) _then) = __$FilesystemSuggestionsCopyWithImpl;
 @override @useResult
 $Res call({
- List<FilesystemSuggestion> data, String? path
+ List<FilesystemSuggestion> data, String? path, List<String> driveRoots
 });
 
 
@@ -295,11 +312,12 @@ class __$FilesystemSuggestionsCopyWithImpl<$Res>
 
 /// Create a copy of FilesystemSuggestions
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? data = null,Object? path = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? data = null,Object? path = freezed,Object? driveRoots = null,}) {
   return _then(_FilesystemSuggestions(
 data: null == data ? _self._data : data // ignore: cast_nullable_to_non_nullable
 as List<FilesystemSuggestion>,path: freezed == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,driveRoots: null == driveRoots ? _self._driveRoots : driveRoots // ignore: cast_nullable_to_non_nullable
+as List<String>,
   ));
 }
 

@@ -338,11 +338,13 @@ final class PiSessionProcessRepository({
       resident.frameSubscription = client.frames.listen((frame) {
         if (!identical(_residents[sessionId], resident) || _frames.isClosed) return;
         PiSessionSelectionUpdate selectionUpdate = const PiSessionSelectionUnchanged();
-        if (frame case PiEventFrame(event: PiThinkingLevelChangedEvent(:final level))) {
-          final selection = resident.selection;
-          resident.selection = level == null || selection == null
-              ? null
-              : PiSessionSelection(model: selection.model, variant: level);
+        // Track thinking changes only against a known selection. applySelection
+        // clears it while its setters run, and Pi writes each setter's thinking
+        // echo just before the response; reporting that echo would clobber the
+        // selection applySelection is about to return.
+        final selection = resident.selection;
+        if (frame case PiEventFrame(event: PiThinkingLevelChangedEvent(:final level)) when selection != null) {
+          resident.selection = level == null ? null : PiSessionSelection(model: selection.model, variant: level);
           selectionUpdate = PiSessionSelectionChanged(selection: resident.selection);
         }
         _frames.add(
@@ -1021,10 +1023,11 @@ final class PiSessionProcessRepository({
       parentId: parentId,
       timestamp: timestamp,
     ),
-    PiSessionFileCompactionEntryDto(:final timestamp) => PiSessionEntryDto.compaction(
+    PiSessionFileCompactionEntryDto(:final timestamp, :final summary) => PiSessionEntryDto.compaction(
       id: id,
       parentId: parentId,
       timestamp: timestamp,
+      summary: summary,
     ),
     PiSessionFileBranchSummaryEntryDto(:final timestamp) => PiSessionEntryDto.branchSummary(
       id: id,

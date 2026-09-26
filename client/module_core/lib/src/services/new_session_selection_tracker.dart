@@ -6,7 +6,7 @@ import "models/new_session_selection_intent.dart";
 
 typedef _RevisionedSelection = ({NewSessionSelectionIntent selection, int revision});
 
-/// Tracks only deliberate new-session agent, model, and variant choices.
+/// Tracks only deliberate new-session agent, model, variant, and fast-mode choices.
 ///
 /// Each dimension is independent so a user choosing one value never persists a
 /// service-computed default for another. Selections live only for the current
@@ -43,6 +43,7 @@ class NewSessionSelectionTracker() {
         agentName: agentName,
         model: current.model,
         variant: current.variant,
+        fastMode: current.fastMode,
       ),
     );
   }
@@ -61,6 +62,7 @@ class NewSessionSelectionTracker() {
         agentName: current.agentName,
         model: NewSessionModelIntent(providerId: providerId, modelId: modelId),
         variant: current.variant,
+        fastMode: current.fastMode,
       ),
     );
   }
@@ -78,6 +80,21 @@ class NewSessionSelectionTracker() {
         agentName: current.agentName,
         model: current.model,
         variant: variant,
+        fastMode: current.fastMode,
+      ),
+    );
+  }
+
+  void recordFastMode({required String projectId, required String pluginId, required bool fastMode}) {
+    final current = read(projectId: projectId, pluginId: pluginId) ?? const NewSessionSelectionIntent.empty();
+    _write(
+      projectId: projectId,
+      pluginId: pluginId,
+      selection: NewSessionSelectionIntent(
+        agentName: current.agentName,
+        model: current.model,
+        variant: current.variant,
+        fastMode: fastMode,
       ),
     );
   }

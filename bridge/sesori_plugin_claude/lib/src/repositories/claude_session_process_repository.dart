@@ -1,6 +1,5 @@
 import "dart:async";
 import "dart:collection";
-import "dart:convert";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -9,6 +8,7 @@ import "../api/claude_process_factory.dart";
 import "../api/claude_stream_client.dart";
 import "../api/models/claude_stream_message.dart";
 import "../models/claude_effort_level.dart";
+import "../models/claude_message_origin_kind.dart";
 import "../models/claude_permission_mode.dart";
 
 sealed class const ClaudeTurnOutcome();
@@ -45,6 +45,7 @@ final class const ClaudeAppliedSelection({
   required final String? model,
   required final ClaudeEffortLevel? effort,
   required final ClaudePermissionMode? permissionMode,
+  required final bool fastMode,
 });
 
 final class _PendingTurn({
@@ -64,6 +65,10 @@ final class _ResidentProcess({
   required var String? appliedModel,
   required var ClaudeEffortLevel? appliedEffort,
   required var ClaudePermissionMode? appliedPermissionMode,
+
+  /// A fresh process starts with fast mode off; it is a flag setting applied
+  /// over the control protocol, not a launch argument.
+  required var bool appliedFastMode,
 }) {
   late final StreamSubscription<ClaudeStreamMessage> messages;
   final Queue<_PendingTurn> pendingTurns = Queue<_PendingTurn>();
@@ -105,6 +110,7 @@ final class ClaudeSessionProcessRepository({
       model: process.appliedModel,
       effort: process.appliedEffort,
       permissionMode: process.appliedPermissionMode,
+      fastMode: process.appliedFastMode,
     );
   }
 
@@ -113,13 +119,15 @@ final class ClaudeSessionProcessRepository({
     required String? model,
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
   }) {
     final process = _resident[sessionId];
     if (process == null) return;
     process
       ..appliedModel = model
       ..appliedEffort = effort
-      ..appliedPermissionMode = permissionMode;
+      ..appliedPermissionMode = permissionMode
+      ..appliedFastMode = fastMode;
   }
 
   Future<void> ensureResident({
@@ -129,6 +137,7 @@ final class ClaudeSessionProcessRepository({
     required String? model,
     required ClaudeEffortLevel? effort,
     required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
     required List<String> allowedTools,
   }) async {
     if (_disposed) throw StateError("Claude process repository is disposed");
@@ -141,6 +150,7 @@ final class ClaudeSessionProcessRepository({
           process: resident,
           model: model,
           permissionMode: permissionMode,
+          fastMode: fastMode,
         );
         return;
       }
@@ -168,12 +178,16 @@ final class ClaudeSessionProcessRepository({
     } finally {
       if (identical(_connecting[sessionId], connection)) unawaited(_connecting.remove(sessionId));
     }
+    if (_resident[sessionId] case final process?) {
+      await _applyFastMode(process: process, fastMode: fastMode);
+    }
   }
 
   Future<void> _applySelection({
     required _ResidentProcess process,
     required String? model,
     required ClaudePermissionMode? permissionMode,
+    required bool fastMode,
   }) async {
     if (process.appliedModel != model) {
       await process.client.sendControlRequest(
@@ -189,6 +203,21 @@ final class ClaudeSessionProcessRepository({
       );
       process.appliedPermissionMode = permissionMode;
     }
+    await _applyFastMode(process: process, fastMode: fastMode);
+  }
+
+  /// The CLI acknowledges this setting even when the model or account cannot
+  /// use fast mode; it then serves at standard speed (verified against CLI
+  /// 2.1.281, which reports the reason only in `fast_mode_disabled_reason`).
+  Future<void> _applyFastMode({required _ResidentProcess process, required bool fastMode}) async {
+    if (process.appliedFastMode == fastMode) return;
+    await process.client.sendControlRequest(
+      subtype: "apply_flag_settings",
+      params: {
+        "settings": {"fastMode": fastMode},
+      },
+    );
+    process.appliedFastMode = fastMode;
   }
 
   ClaudeTurnDispatch sendTurn({
@@ -351,6 +380,7 @@ final class ClaudeSessionProcessRepository({
       appliedModel: model,
       appliedEffort: effort,
       appliedPermissionMode: permissionMode,
+      appliedFastMode: false,
     );
     process.messages = client.messages.listen((message) {
       final current = _resident[sessionId];
@@ -401,10 +431,11 @@ final class ClaudeSessionProcessRepository({
       process.interruptSettled = false;
     }
     switch (message) {
-      case ClaudeUserMessage(parentToolUseId: null):
+      case ClaudeUserMessage(parentToolUseId: null) when message.originKind != ClaudeMessageOriginKind.peer:
         // Claude normally marks stdin echoes with `isReplay`, but attachment
-        // echoes can omit it. Their full image source still identifies the
-        // bridge-dispatched turn; unmarked text stays uncorrelated.
+        // echoes can omit it. Only the bridge writes image turns to stdin, so
+        // an unmarked image echo still identifies them; unmarked text stays
+        // uncorrelated.
         final isReplay = message.raw["isReplay"] == true;
         for (final pending in process.pendingTurns) {
           final replayContent = pending.replayContent;
@@ -466,10 +497,10 @@ final class ClaudeSessionProcessRepository({
 
 /// Matches an echoed stdin payload to the prompt that wrote it.
 ///
-/// Claude decorates image blocks on some stream-json paths (for example with
-/// cache directives), although the image source itself is unchanged. Compare
-/// image blocks by their semantic source fields so that decoration cannot
-/// strand the queued prompt; all other values retain exact JSON matching.
+/// Claude rewrites image blocks in its echo: it adds cache directives and
+/// re-encodes large images (a ~900 KB PNG comes back as a smaller JPEG), so
+/// image bytes cannot identify the prompt. An image block matches any image
+/// block in the same position; text and block order keep exact JSON matching.
 bool _samePromptContent(Object? expected, Object? actual) {
   if (expected is List && actual is List) {
     if (expected.length != actual.length) return false;
@@ -479,11 +510,8 @@ bool _samePromptContent(Object? expected, Object? actual) {
     return true;
   }
   if (expected is Map && actual is Map) {
-    if (expected["type"] == "image" && actual["type"] == "image") {
-      return _sameImageContent(
-        expected: expected.cast<Object?, Object?>(),
-        actual: actual.cast<Object?, Object?>(),
-      );
+    if (expected["type"] == "image" || actual["type"] == "image") {
+      return expected["type"] == actual["type"];
     }
     if (expected.length != actual.length) return false;
     for (final entry in expected.entries) {
@@ -496,34 +524,6 @@ bool _samePromptContent(Object? expected, Object? actual) {
 
 bool _containsImageContent(Object? content) =>
     content is List && content.any((block) => block is Map && block["type"] == "image");
-
-bool _sameImageContent({
-  required Map<Object?, Object?> expected,
-  required Map<Object?, Object?> actual,
-}) {
-  final expectedSource = expected["source"];
-  final actualSource = actual["source"];
-  if (expectedSource is! Map || actualSource is! Map) return false;
-  final expectedType = expectedSource["type"];
-  final actualType = actualSource["type"];
-  if (expectedType != actualType || expectedType != "base64") return false;
-  final expectedMime = expectedSource["media_type"];
-  final actualMime = actualSource["media_type"];
-  if (expectedMime is! String ||
-      actualMime is! String ||
-      expectedMime.trim().toLowerCase() != actualMime.trim().toLowerCase()) {
-    return false;
-  }
-  final expectedData = expectedSource["data"];
-  final actualData = actualSource["data"];
-  if (expectedData is! String || actualData is! String) return false;
-  if (expectedData == actualData) return true;
-  try {
-    return base64.normalize(expectedData) == base64.normalize(actualData);
-  } on FormatException {
-    return false;
-  }
-}
 
 List<Map<String, Object?>> _promptContent(List<PluginPromptPart> parts) => [
   for (final part in parts)

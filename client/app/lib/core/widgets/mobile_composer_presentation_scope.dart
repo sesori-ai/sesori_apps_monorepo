@@ -20,6 +20,7 @@ class const MobileComposerPresentationScope({
         inputMode: inputMode,
         isKeyboardVisible: isKeyboardVisible,
         sendKeyPolicy: ComposerSendKeyPolicy.modifierEnterSends,
+        presentation: ComposerPresentation.touch,
         attachmentDispatcher: getIt.get<ComposerAttachmentDispatcher>,
         imageClipboard: getIt.get<ImageClipboard>,
         child: child,

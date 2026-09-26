@@ -215,6 +215,15 @@ package tests/analyzer and useful safely available native checks. Reuse accepted
 results whose inputs have not changed. Do not delay all updates until every
 provider, platform or lifecycle scenario can run.
 
+**OpenCode target updates also require model code generation.** Rerun the
+applicable REST/model generator against the selected upstream release, audit its
+SSE event manifest against that release and regenerate the event models. Include
+source/manifest changes and generated output in the target-update PR; record an
+unchanged-output result when there is no diff. Use the protocol-specific commands
+in [the OpenCode reference](references/harnesses.md#opencode), preserve the other
+supported adapter, and run affected model/API/event tests plus the package
+analyzer. Updating only the runtime pin and asset hashes is not sufficient.
+
 Retain named checks from the approved plan, including detailed harness prose,
 but place unavailable or inconclusive checks in the final follow-up stage under
 the update-first policy. Record what failed, its actual impact, the smallest next

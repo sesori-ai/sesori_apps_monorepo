@@ -25,11 +25,14 @@ class _MockSessionListCubit() extends MockCubit<SessionListState> implements Ses
 Widget _app({required ConnectionOverlayCubit cubit, required Widget home}) {
   return BlocProvider<ConnectionOverlayCubit>.value(
     value: cubit,
-    child: MaterialApp(
-      theme: ThemeData(extensions: [PregoDesignSystem.light]),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: home,
+    child: BlocProvider(
+      create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+      child: MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: home,
+      ),
     ),
   );
 }
@@ -91,7 +94,7 @@ void main() {
       ),
     );
 
-    expect(find.text("Connection Lost"), findsOneWidget);
+    expect(find.text("Connection lost"), findsOneWidget);
     final alert = tester.widget<PregoInlineAlertsNotifications>(find.byType(PregoInlineAlertsNotifications));
     expect(alert.type, PregoInlineAlertsNotificationsType.error);
     expect(alert.icon, TablerRegular.cloud_off);
@@ -237,7 +240,12 @@ void main() {
           child: SessionListScaffold(
             onOpenArchived: sessionListCubit.toggleArchived,
             onSessionTap: ({required session}) {},
-            actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
+            actionDispatcher: const SessionListActionDispatcher(
+              deleteConfirmation: SessionDeleteConfirmation.sheet,
+              onSessionArchived: null,
+              onSessionDeleted: null,
+              onSessionMarkedUnread: null,
+            ),
             archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
             onNewSession: () {},
             onBack: null,

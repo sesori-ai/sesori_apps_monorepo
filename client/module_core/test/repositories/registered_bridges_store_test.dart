@@ -4,43 +4,43 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/repositories/registered_bridges_store.dart";
+import "package:sesori_persistence/sesori_persistence.dart";
 import "package:test/test.dart";
 
-/// In-memory [SecureStorage] that also records how often each operation runs,
-/// so tests can assert the in-memory cache avoids redundant storage reads.
-class _InMemorySecureStorage() implements SecureStorage {
-  final Map<String, String> _data = {};
+/// Records operations so tests assert the domain cache avoids redundant reads.
+class _InMemoryPersister() extends Fake implements PersisterRepository {
+  final Map<String, bool> _data = {};
   int reads = 0;
   int writes = 0;
   int deletes = 0;
 
-  /// When set, the matching operation throws, simulating a keychain failure.
+  /// When set, the matching operation throws, simulating a SQL failure.
   bool throwOnRead = false;
   bool throwOnWrite = false;
   bool throwOnDelete = false;
-  Completer<String?>? readGate;
+  Completer<bool?>? readGate;
 
   @override
-  Future<String?> read({required String key}) async {
+  Future<bool?> readBool({required BoolPersistenceKey key}) async {
     reads++;
     if (throwOnRead) throw Exception("read failed");
     final gate = readGate;
     if (gate != null) return await gate.future;
-    return _data[key];
+    return _data[key.storageKey];
   }
 
   @override
-  Future<void> write({required String key, required String value}) async {
+  Future<void> writeBool({required BoolPersistenceKey key, required bool value}) async {
     writes++;
     if (throwOnWrite) throw Exception("write failed");
-    _data[key] = value;
+    _data[key.storageKey] = value;
   }
 
   @override
-  Future<void> delete({required String key}) async {
+  Future<void> deleteBool({required BoolPersistenceKey key}) async {
     deletes++;
     if (throwOnDelete) throw Exception("delete failed");
-    _data.remove(key);
+    _data.remove(key.storageKey);
   }
 }
 
@@ -53,12 +53,12 @@ Future<void> _settle() async {
 }
 
 void main() {
-  late _InMemorySecureStorage storage;
+  late _InMemoryPersister storage;
   late BehaviorSubject<AuthState> authState;
   late _MockAuthSession authSession;
 
   setUp(() {
-    storage = _InMemorySecureStorage();
+    storage = _InMemoryPersister();
     authState = BehaviorSubject<AuthState>.seeded(const AuthState.initial());
     authSession = _MockAuthSession();
     when(() => authSession.authStateStream).thenAnswer((_) => authState);
@@ -69,7 +69,7 @@ void main() {
   });
 
   RegisteredBridgesStore buildStore() => RegisteredBridgesStore(
-    secureStorage: storage,
+    persister: storage,
     authSession: authSession,
   );
 
@@ -106,7 +106,7 @@ void main() {
   });
 
   test("the in-memory cache serves the positive answer without re-reading storage", () async {
-    storage._data["has_registered_bridges"] = "true";
+    storage._data["has_registered_bridges"] = true;
     final store = buildStore();
 
     expect(await store.hasRegisteredBridges(), isTrue);
@@ -130,8 +130,8 @@ void main() {
   });
 
   test("a storage read completing after logout does not restore the cache", () async {
-    storage._data["has_registered_bridges"] = "true";
-    final readGate = storage.readGate = Completer<String?>();
+    storage._data["has_registered_bridges"] = true;
+    final readGate = storage.readGate = Completer<bool?>();
     final store = buildStore();
     final pending = store.hasRegisteredBridges();
     await _settle();
@@ -139,7 +139,7 @@ void main() {
     authState.add(const AuthState.unauthenticated());
     await _settle();
     storage.readGate = null;
-    readGate.complete("true");
+    readGate.complete(true);
     await _settle();
 
     expect(await pending, isFalse);
@@ -160,7 +160,7 @@ void main() {
   });
 
   test("a storage read failure fails soft to false", () async {
-    storage._data["has_registered_bridges"] = "true";
+    storage._data["has_registered_bridges"] = true;
     storage.throwOnRead = true;
     final store = buildStore();
 
@@ -186,7 +186,7 @@ void main() {
     // …and, since the delete failed, the in-memory flag is not cleared ahead of
     // storage — both still report the (un-deleted) positive latch.
     expect(await store.hasRegisteredBridges(), isTrue);
-    expect(storage._data["has_registered_bridges"], "true");
+    expect(storage._data["has_registered_bridges"], true);
   });
 
   test("a delete failure routed through the logout listener does not throw", () async {

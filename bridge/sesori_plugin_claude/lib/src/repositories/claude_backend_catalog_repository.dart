@@ -46,10 +46,18 @@ final class const ClaudeBackendCatalogRepository() {
   static const List<String> _families = ["fable", "opus", "sonnet", "haiku"];
   static const ClaudeEffortLevel _defaultEffort = ClaudeEffortLevel.high;
 
+  /// Claude's native `/fast` toggle is not offered: the session's fast-mode
+  /// selection owns that setting, and the process state it tracks would drift.
+  static const String fastModeCommand = "fast";
+
+  /// Claude keeps a prompt cache for about 60 minutes (maintainer-provided).
+  static const int _promptCacheTtlSeconds = 60 * 60;
+
   ClaudeBackendCatalog map({required Map<String, Object?> handshake}) {
     final dto = ClaudeBackendCatalogDto.fromJson(handshake);
+    final fastMode = _fastMode(disabledReason: dto.fastModeDisabledReason);
     final models = CatalogStrengthOrder.models(
-      [for (final model in dto.models) ?_model(model)],
+      [for (final model in dto.models) ?_model(model, fastMode: fastMode)],
       idOf: (model) => model.id,
     );
     final defaultModel =
@@ -63,15 +71,15 @@ final class const ClaudeBackendCatalogRepository() {
           );
 
     return ClaudeBackendCatalog(
+      // Only the default is advertised: Plan is a harness mode, not an agent.
       agents: List.unmodifiable([
-        for (final selection in ClaudeAgentSelection.values)
-          PluginAgent(
-            name: selection.displayName,
-            description: selection.description,
-            model: agentModel,
-            mode: PluginAgentMode.primary,
-            hidden: false,
-          ),
+        PluginAgent(
+          name: ClaudeAgentSelection.standard.displayName,
+          description: ClaudeAgentSelection.standard.description,
+          model: agentModel,
+          mode: PluginAgentMode.primary,
+          hidden: false,
+        ),
       ]),
       providers: PluginProvidersResult(
         providers: models.isEmpty
@@ -93,10 +101,55 @@ final class const ClaudeBackendCatalogRepository() {
     );
   }
 
+  /// Whether [handshake] masks the account's fast-mode state behind the SDK
+  /// opt-in. Claude CLI 2.1.281 checks the opt-in before the account, so a
+  /// catalog probe must opt in and re-read the handshake to learn the real
+  /// reason (verified live: `extra_usage_disabled` only appears after opting in).
+  bool fastModeNeedsOptIn({required Map<String, Object?> handshake}) {
+    final dto = ClaudeBackendCatalogDto.fromJson(handshake);
+    return dto.fastModeDisabledReason == _sdkOptInRequired &&
+        dto.models.any((model) => model.supportsFastMode ?? false);
+  }
+
+  static const String _sdkOptInRequired = "sdk_opt_in_required";
+
+  /// The account-level fast mode every fast-capable model shares.
+  PluginFastModeSupport _fastMode({required String? disabledReason}) {
+    final reason = switch (disabledReason) {
+      // Still masked only when the probe's opt-in failed. Prompts opt in
+      // through apply_flag_settings, so fast mode stays offered.
+      null || _sdkOptInRequired => null,
+      // Transient states say nothing about the account. Offering fast mode is
+      // less misleading than a disabled control that recovers on its own.
+      final String transient && ("network_error" || "pending") => _transientFastModeReason(raw: transient),
+      "extra_usage_disabled" => PluginFastModeUnavailableReason.extraUsageDisabled,
+      // The CLI's message: "Fast mode requires a paid subscription".
+      "free" => PluginFastModeUnavailableReason.notOnPlan,
+      // An organization policy turned fast mode off, or excludes its model.
+      "preference" || "model_not_allowed" => PluginFastModeUnavailableReason.disabledByOrganization,
+      // A non-Anthropic API provider, an environment override, or a remote kill switch.
+      "not_first_party" || "disabled_by_env" || "unknown" => PluginFastModeUnavailableReason.unknown,
+      final unmapped => _unmappedFastModeReason(raw: unmapped),
+    };
+    return reason == null
+        ? const PluginFastModeSupport.available(promptCacheTtlSeconds: _promptCacheTtlSeconds)
+        : PluginFastModeSupport.unavailable(reason: reason);
+  }
+
+  PluginFastModeUnavailableReason? _transientFastModeReason({required String raw}) {
+    Log.w("[claude] fast mode offered while its availability is transiently unknown: $raw");
+    return null;
+  }
+
+  PluginFastModeUnavailableReason _unmappedFastModeReason({required String raw}) {
+    Log.w("[claude] fast mode unavailable for an unmapped reason: $raw");
+    return PluginFastModeUnavailableReason.unknown;
+  }
+
   Map<String, String> _modelIdsByApiModel(List<ClaudeModelDto> models) {
     final mappedModels = [
       for (final dto in models)
-        if (_model(dto) case final model?) (dto: dto, model: model),
+        if (_model(dto, fastMode: null) case final model?) (dto: dto, model: model),
     ];
     final ids = <String, String>{};
     for (final entry in mappedModels) {
@@ -129,7 +182,7 @@ final class const ClaudeBackendCatalogRepository() {
     return "$family${modelId.substring(bare.length)}";
   }
 
-  PluginModel? _model(ClaudeModelDto dto) {
+  PluginModel? _model(ClaudeModelDto dto, {required PluginFastModeSupport? fastMode}) {
     final id = dto.value?.trim();
     if (id == null || id.isEmpty || id == _cliDefaultModelId) return null;
     final displayName = dto.displayName?.trim();
@@ -140,6 +193,7 @@ final class const ClaudeBackendCatalogRepository() {
           })
         : <String>[];
     return PluginModel(
+      fastMode: dto.supportsFastMode ?? false ? fastMode : null,
       id: id,
       name: displayName?.isNotEmpty ?? false
           ? displayName!
@@ -156,7 +210,7 @@ final class const ClaudeBackendCatalogRepository() {
 
   PluginCommand? _command(ClaudeCommandDto dto) {
     final name = dto.name?.trim();
-    if (name == null || name.isEmpty) return null;
+    if (name == null || name.isEmpty || name == fastModeCommand) return null;
     final description = dto.description?.trim();
     final hint = dto.argumentHint?.trim();
     return PluginCommand(

@@ -52,7 +52,9 @@ Future<void> showImageAttachmentViewer({
   required String? filename,
   required Key heroTag,
 }) {
-  final presentation = SessionDetailPresentationScope.read(context);
+  // The new session composer has no session scope; its view-only drafts need
+  // none of the capabilities it carries.
+  final presentation = context.getInheritedWidgetOfExactType<SessionDetailPresentationScope>();
   // ignore: no_slop_linter/avoid_navigator_of, the transient viewer must cover the split shell
   final rootNavigator = Navigator.of(context, rootNavigator: true);
   final sourceRoute = ModalRoute.of(context);
@@ -61,16 +63,8 @@ Future<void> showImageAttachmentViewer({
     opaque: false,
     transitionDuration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 260),
     reverseTransitionDuration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
-    pageBuilder: (_, _, _) => SessionDetailPresentationScope(
-      messageImageRepository: presentation.messageImageRepository,
-      imageSaver: presentation.imageSaver,
-      imageClipboard: presentation.imageClipboard,
-      imageSharer: presentation.imageSharer,
-      canShareImages: presentation.canShareImages,
-      openExternalLink: presentation.openExternalLink,
-      openSession: presentation.openSession,
-      openHarnessSettings: presentation.openHarnessSettings,
-      child: switch (image) {
+    pageBuilder: (_, _, _) {
+      final viewer = switch (image) {
         LoadedMessageImage() => ImageAttachmentViewer(
           image: image,
           flightImageProvider: image.provider,
@@ -95,8 +89,10 @@ Future<void> showImageAttachmentViewer({
           filename: filename,
           heroTag: heroTag,
         ),
-      },
-    ),
+      };
+      if (presentation == null) return viewer;
+      return presentation.around(openSession: presentation.openSession, child: viewer);
+    },
     transitionsBuilder: (_, animation, _, child) => FadeTransition(opacity: animation, child: child),
   );
   var shouldDismissViewerWithHistory = true;
@@ -619,7 +615,7 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
               fit: BoxFit.contain,
               gaplessPlayback: true,
               errorBuilder: (_, _, _) => Icon(
-                Icons.broken_image,
+                TablerRegular.photo_off,
                 size: context.prego.spacing.x6l,
                 color: context.prego.colors.textTertiary,
               ),
@@ -696,7 +692,7 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
               IconButton(
                 tooltip: context.loc.sessionDetailImageClose,
                 onPressed: _dismiss,
-                icon: Icon(Icons.close, color: prego.colors.textPrimary),
+                icon: Icon(TablerRegular.x, color: prego.colors.textPrimary),
               ),
               SizedBox(width: prego.spacing.xs),
               Expanded(
@@ -729,13 +725,13 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
                           )
                           .then<void>((_) {}),
                     ),
-                    icon: Icon(Icons.open_in_new, color: prego.colors.textPrimary),
+                    icon: Icon(TablerRegular.external_link, color: prego.colors.textPrimary),
                   ),
                 if (actionsCubit != null) ...[
                   IconButton(
                     tooltip: context.loc.sessionDetailImageCopy,
                     onPressed: () => unawaited(actionsCubit.copy()),
-                    icon: Icon(Icons.content_copy, color: prego.colors.textPrimary),
+                    icon: Icon(TablerRegular.copy, color: prego.colors.textPrimary),
                   ),
                   if (SessionDetailPresentationScope.read(context).canShareImages)
                     Builder(
@@ -746,13 +742,13 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
                             origin: _shareOrigin(originContext: buttonContext),
                           ),
                         ),
-                        icon: Icon(Icons.share_outlined, color: prego.colors.textPrimary),
+                        icon: Icon(TablerRegular.share, color: prego.colors.textPrimary),
                       ),
                     ),
                   IconButton(
                     tooltip: context.loc.sessionDetailImageSave,
                     onPressed: () => unawaited(actionsCubit.save()),
-                    icon: Icon(Icons.download_outlined, color: prego.colors.textPrimary),
+                    icon: Icon(TablerRegular.download, color: prego.colors.textPrimary),
                   ),
                 ],
               ],
@@ -864,7 +860,7 @@ class _ImageAttachmentViewerState() extends State<ImageAttachmentViewer> with Ti
                                 SizedBox(width: prego.spacing.md),
                                 TextButton.icon(
                                   onPressed: widget.onRetryOriginal,
-                                  icon: const Icon(Icons.refresh),
+                                  icon: const Icon(TablerRegular.refresh),
                                   label: Text(context.loc.sessionDetailRetryOriginal),
                                 ),
                               ],

@@ -21,16 +21,24 @@ See the [root README](../README.md) for the full monorepo overview.
 
 **Dependency Injection**
 
-Three-phase init in `configureDependencies()`:
-1. Flutter platform adapters (`getIt.init()`)
-2. `configureAuthDependencies(getIt)` — auth module
-3. `configureCoreDependencies(getIt)` — core module
+Startup order in `configureDependencies()`:
+1. Register the build-mode `PersistenceScope` and Flutter platform adapters (`getIt.init()`)
+2. `configurePersistenceDependencies(getIt: getIt)` — shared SQL/crypto repositories
+3. `configureAuthDependencies(getIt)` — auth module
+4. `configureCoreDependencies(getIt)` — core module
+5. Production only: await the isolated deprecated native-storage import
+6. Prepare analytics and resolve normal consumers
+
+Development never constructs the legacy source. Import failure disposes the
+partial graph and renders standalone recovery instead of starting consumers.
 
 **Platform Adapters**
 
 | Adapter | Interface |
 |---------|-----------|
-| `FlutterSecureStorageAdapter` | `SecureStorage` |
+| `FlutterMasterKeyStore` | `MasterKeyStore` (`sesori_persistence`) |
+| `FlutterPersistenceDirectory` | `PersistenceDirectory` (`sesori_persistence`) |
+| `FlutterLegacyNativeStorageAdapter` (temporary) | `LegacyNativeStorage` |
 | `FlutterUrlLauncher` | `UrlLauncher` |
 | `AppLifecycleObserver` | `LifecycleSource` |
 | `DeepLinkSource` (app_links) | `DeepLinkSource` |
@@ -120,7 +128,8 @@ flutter test
 | State management | `flutter_bloc` |
 | Dependency injection | `get_it` + `injectable` |
 | Navigation | `go_router` |
-| Secure storage | `flutter_secure_storage` |
+| Typed preferences and encrypted secrets | `sesori_persistence` (Drift/crypto) |
+| Native master key | `flutter_secure_storage` |
 | Deep links | `app_links` |
 | URL launching | `url_launcher` |
 | Audio recording | `record` |

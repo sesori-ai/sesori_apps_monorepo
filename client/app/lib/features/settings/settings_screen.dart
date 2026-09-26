@@ -9,7 +9,6 @@ import "../../core/external_link.dart";
 import "../../core/platform/package_info_client.dart";
 import "../../core/routing/app_router.dart";
 import "../../core/widgets/legal_document_sheet.dart";
-import "../../core/widgets/sesori_logo.dart";
 
 /// Mobile-shell composition for the shared settings view.
 class const SettingsScreen({super.key}) extends StatelessWidget {
@@ -26,7 +25,7 @@ class const SettingsScreen({super.key}) extends StatelessWidget {
         ),
         BlocProvider(
           create: (_) => BridgeSettingsCubit(
-            repository: getIt<BridgeSettingsRepository>(),
+            service: getIt<BridgeSettingsService>(),
             connectionService: getIt<ConnectionService>(),
           ),
         ),

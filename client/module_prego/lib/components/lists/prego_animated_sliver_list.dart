@@ -1,3 +1,4 @@
+import "package:flutter/rendering.dart";
 import "package:material_ui/material_ui.dart";
 
 import "../../motion/prego_reduced_motion.dart";
@@ -30,6 +31,10 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
   final GlobalKey<SliverAnimatedListState> _listKey = GlobalKey<SliverAnimatedListState>();
   late List<_ListEntry<T>> _entries;
 
+  /// How many times each item has left. A row that returns while its previous
+  /// copy is still closing gets a new key, so the two never share one.
+  final Map<Key, int> _departures = {};
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +53,7 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
     }
 
     final duration = prefersReducedMotion(context) ? Duration.zero : _itemTransitionDuration;
+    final landsOnScreen = _landsOnScreen();
     final nextKeys = nextEntries.map((entry) => entry.key).toSet();
 
     // Remove from the end so each index still addresses the old list while it
@@ -57,19 +63,17 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
       if (nextKeys.contains(entry.key)) continue;
 
       _entries.removeAt(index);
-      final outgoingKey = UniqueKey();
+      final outgoingKey = _itemKey(entry.key);
+      _departures.update(entry.key, (count) => count + 1, ifAbsent: () => 1);
       listState.removeItem(
         index,
         (context, animation) => _transition(
           key: outgoingKey,
           animation: animation,
-          child: ExcludeSemantics(
-            child: IgnorePointer(
-              child: oldWidget.itemBuilder(context, index, entry.item),
-            ),
-          ),
+          outgoing: true,
+          child: oldWidget.itemBuilder(context, index, entry.item),
         ),
-        duration: duration,
+        duration: landsOnScreen(index) ? duration : Duration.zero,
       );
     }
 
@@ -86,8 +90,37 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
       if (retainedKeys.contains(entry.key)) continue;
 
       _entries.insert(index, entry);
-      listState.insertItem(index, duration: duration);
+      listState.insertItem(index, duration: landsOnScreen(index) ? duration : Duration.zero);
     }
+  }
+
+  /// Whether a row at an index lands in the list's visible extent, so its
+  /// entry or exit is worth animating.
+  ///
+  /// An animated row enters at zero height, so all of them fit in the first
+  /// frame after a filter change and the list would build every one at once.
+  /// Rows outside the visible extent enter at full size instead and build
+  /// lazily as they scroll in, and leave at once instead of each ticking a
+  /// transition nobody sees. Rows are tap targets, so none is shorter than
+  /// [kMinInteractiveDimension], which bounds how many the extent can show.
+  /// The window is therefore an upper bound: taller rows leave some off-screen
+  /// rows in it, and those still animate.
+  bool Function(int index) _landsOnScreen() {
+    final sliver = _listKey.currentContext?.findRenderObject();
+    // A list that is not laid out, such as one kept offstage, has no extent.
+    if (sliver is! RenderSliverMultiBoxAdaptor || sliver.geometry == null) return (_) => true;
+
+    final constraints = sliver.constraints;
+    // The last built row starting at or above the top edge is the first one
+    // visible.
+    var firstVisible = 0;
+    for (var child = sliver.firstChild; child != null; child = sliver.childAfter(child)) {
+      if ((sliver.childScrollOffset(child) ?? 0) > constraints.scrollOffset) break;
+      firstVisible = sliver.indexOf(child);
+    }
+    // Unbounded inside a shrink-wrapped list, so every row there animates.
+    final visibleRows = constraints.remainingPaintExtent / kMinInteractiveDimension;
+    return (index) => index >= firstVisible && index < firstVisible + visibleRows;
   }
 
   @override
@@ -97,19 +130,22 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
       initialItemCount: _entries.length,
       findChildIndexCallback: (key) {
         if (key is! _PregoAnimatedSliverItemKey) return null;
-        final index = _entries.indexWhere((entry) => entry.key == key.value);
+        final index = _entries.indexWhere((entry) => _itemKey(entry.key) == key);
         return index == -1 ? null : index;
       },
       itemBuilder: (context, index, animation) {
         final entry = _entries[index];
         return _transition(
-          key: _PregoAnimatedSliverItemKey(entry.key),
+          key: _itemKey(entry.key),
           animation: animation,
+          outgoing: false,
           child: widget.itemBuilder(context, index, entry.item),
         );
       },
     );
   }
+
+  _PregoAnimatedSliverItemKey _itemKey(Key key) => _PregoAnimatedSliverItemKey((key, _departures[key] ?? 0));
 
   List<_ListEntry<T>> _entriesFor(PregoAnimatedSliverList<T> source) {
     final entries = [for (final item in source.items) _ListEntry(key: source.itemKey(item), item: item)];
@@ -127,17 +163,34 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
     return entries;
   }
 
-  Widget _transition({required Key key, required Animation<double> animation, required Widget child}) {
+  /// A leaving row keeps its live key and widget shape, so it updates the row
+  /// already on screen instead of building a new one: removing many rows at
+  /// once (a filter change) otherwise rebuilt every one of them in one frame.
+  Widget _transition({
+    required Key key,
+    required Animation<double> animation,
+    required bool outgoing,
+    required Widget child,
+  }) {
     final curvedAnimation = CurvedAnimation(parent: animation, curve: Curves.easeInOutCubic);
     return SizeTransition(
       key: key,
       sizeFactor: curvedAnimation,
       alignment: Alignment.topCenter,
-      child: FadeTransition(opacity: curvedAnimation, child: child),
+      child: FadeTransition(
+        opacity: curvedAnimation,
+        child: ExcludeSemantics(
+          excluding: outgoing,
+          child: ExcludeFocus(
+            excluding: outgoing,
+            child: IgnorePointer(ignoring: outgoing, child: child),
+          ),
+        ),
+      ),
     );
   }
 }
 
 class const _ListEntry<T>({required final Key key, required final T item});
 
-class const _PregoAnimatedSliverItemKey(super.value) extends ValueKey<Key>;
+class const _PregoAnimatedSliverItemKey(super.value) extends ValueKey<(Key, int)>;

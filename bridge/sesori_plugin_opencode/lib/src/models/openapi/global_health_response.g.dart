@@ -13,7 +13,7 @@ class GlobalHealthResponse {
   factory GlobalHealthResponse.fromJson(Map<String, dynamic> json) {
     return GlobalHealthResponse(
       healthy: json["healthy"] as bool,
-      version: json["version"] as String?,
+      version: json["version"] as String,
     );
   }
 
@@ -47,5 +47,5 @@ class GlobalHealthResponse {
   int get hashCode => Object.hash(healthy, version);
 
   final bool healthy;
-  final String? version;
+  final String version;
 }

@@ -13,10 +13,10 @@ import "package:theme_prego/module_prego.dart";
 import "../../helpers/test_helpers.dart";
 
 // ---------------------------------------------------------------------------
-// Behaviour guards for the redesigned bridge-offline recovery view: the
-// machine-name row fed from the account's registered bridges, the status line
-// reporting how long that bridge has been gone, the start-the-bridge info
-// popover, and the install-commands disclosure that closes the body.
+// Behaviour guards for the bridge-offline recovery view: the computer named
+// once, in the bar's bridge line; the "Bridge offline" heading with how long
+// the bridge has been gone; a single info control; and the install-commands
+// disclosure that closes the body.
 //
 // Pumps the real [ProjectListScreen] (its cubit is built from getIt, so every
 // dependency is registered as a mock below) driven into the bridge-offline
@@ -116,35 +116,22 @@ void main() {
     addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
   }
 
-  group("machine-name row", () {
-    testWidgets("names the most recently seen registered bridge, above the status line", (tester) async {
+  group("the computer's name", () {
+    testWidgets("appears once, in the bridge line, above the Bridge offline heading", (tester) async {
       when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
         (_) async => [_bridge(id: "a", name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1))],
       );
 
       await pumpScreen(tester);
 
-      // Once in the body, once as the top bar's subtitle.
-      expect(find.text("Macbook-Pro.local"), findsNWidgets(2));
-      final bodyName = find.descendant(
-        of: find.byType(CustomScrollView),
-        matching: find.text("Macbook-Pro.local"),
+      expect(find.text("Macbook-Pro.local"), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text("Macbook-Pro.local")).dy,
+        lessThan(tester.getTopLeft(find.text("Bridge offline")).dy),
       );
-      final status = find.textContaining("Disconnected");
-      expect(tester.getTopLeft(bodyName).dy, lessThan(tester.getTopLeft(status).dy));
     });
 
-    testWidgets("is hidden when the registered bridges could not be fetched", (tester) async {
-      await pumpScreen(tester);
-
-      expect(find.byIcon(TablerRegular.device_laptop), findsNothing);
-      // The recovery view itself still renders in full, and with no last-seen
-      // time to report the status line falls back to the bare caption.
-      expect(find.text("Disconnected"), findsOneWidget);
-      expect(find.text("Install commands"), findsOneWidget);
-    });
-
-    testWidgets("is a static label: only the most recent machine, tapping does nothing", (tester) async {
+    testWidgets("only the most recent machine is named", (tester) async {
       when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
         (_) async => [
           _bridge(id: "a", name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1)),
@@ -156,15 +143,18 @@ void main() {
 
       // One bridge at a time: stale extra registrations are never listed.
       expect(find.text("work-desktop"), findsNothing);
-
-      // Not tappable — no menu or sheet opens off the row.
-      await tester.tap(find.text("Macbook-Pro.local").first);
-      await tester.pumpAndSettle();
-      expect(find.text("work-desktop"), findsNothing);
     });
   });
 
-  testWidgets("the status line reports how long the bridge has been gone", (tester) async {
+  testWidgets("the heading stands alone when the bridges could not be fetched", (tester) async {
+    await pumpScreen(tester);
+
+    expect(find.text("Bridge offline"), findsOneWidget);
+    expect(find.textContaining("Last seen"), findsNothing);
+    expect(find.text("Install commands"), findsOneWidget);
+  });
+
+  testWidgets("a quiet line reports how long the bridge has been gone", (tester) async {
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
       (_) async => [
         _bridge(
@@ -179,21 +169,14 @@ void main() {
 
     // Relative wording follows the app's shared timestamp vocabulary ("5h
     // ago"), the same one the project tiles use.
-    expect(find.text("Disconnected · 5h ago"), findsOneWidget);
+    expect(find.text("Last seen 5h ago"), findsOneWidget);
   });
 
-  testWidgets("the start-the-bridge info icon opens its explainer popover", (tester) async {
+  testWidgets("Why is this needed? is the only info control", (tester) async {
     await pumpScreen(tester);
 
-    // The "Make sure the Bridge is running" label owns the only info trigger
-    // on this view.
-    await tester.tap(find.bySemanticsLabel("More information"));
-    await tester.pumpAndSettle();
-
-    expect(
-      find.text("Leave it running while you use Sesori from your phone."),
-      findsOneWidget,
-    );
+    expect(find.bySemanticsLabel("More information"), findsNothing);
+    expect(find.text("Why is this needed?"), findsOneWidget);
   });
 
   testWidgets("the install-commands disclosure closes the body and expands in place", (tester) async {

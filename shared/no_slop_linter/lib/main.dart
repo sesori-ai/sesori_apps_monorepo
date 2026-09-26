@@ -6,10 +6,12 @@
 // - `avoid_dynamic_return_type`: Prevents implicit/dynamic return types on functions
 // - `avoid_legacy_flutter_design_imports`: Forbids SDK Material/Cupertino imports
 // - `avoid_flutter_spinners`: Forbids direct Flutter spinner widgets
+// - `avoid_material_icons`: Forbids Material Icons glyphs, use Tabler
 // - `prefer_specific_type`: Forbids usage of `dynamic` type (except fromJson/toJson)
 // - `avoid_hardcoded_colors`: Forbids Color() and Colors.xxx, use theme colorScheme
 // - `avoid_hardcoded_text_styles`: Forbids TextStyle(), use theme textTheme
 // - `avoid_navigator_of`: Forbids Navigator.of(), use AutoRoute
+// - `avoid_raw_modal_presenters`: Forbids showDialog/showModalBottomSheet/etc., use showPregoModal
 // - `avoid_as_cast`: Forbids force casts, use `is` or `as Type?`
 // - `avoid_mutable_class_fields`: Forbids non-final fields, use final
 // - `avoid_string_literals_in_widgets`: Forbids hardcoded strings in Text()
@@ -36,6 +38,7 @@ import 'src/rules/avoid_bang_operator_rule.dart';
 import 'src/rules/avoid_dartz_tuple_rule.dart';
 import 'src/rules/avoid_dynamic_return_type_rule.dart';
 import 'src/rules/avoid_flutter_spinners_rule.dart';
+import 'src/rules/avoid_material_icons_rule.dart';
 import 'src/rules/prefer_specific_type_rule.dart';
 import 'src/rules/avoid_hardcoded_colors_rule.dart';
 import 'src/rules/avoid_hardcoded_text_styles_rule.dart';
@@ -44,6 +47,7 @@ import 'src/rules/avoid_legacy_flutter_design_imports_rule.dart';
 import 'src/rules/avoid_mutable_class_fields_rule.dart';
 import 'src/rules/avoid_navigator_of_rule.dart';
 import 'src/rules/avoid_raw_go_router_rule.dart';
+import 'src/rules/avoid_raw_modal_presenters_rule.dart';
 import 'src/rules/avoid_string_literals_in_widgets_rule.dart';
 import 'src/rules/prefer_edge_insets_directional_rule.dart';
 import 'src/rules/prefer_exhaustive_switch_rule.dart';
@@ -67,9 +71,11 @@ class _NoSlopLinterPlugin extends Plugin {
     registry.registerWarningRule(AvoidFlutterSpinnersRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidImplicitTostringRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidLegacyFlutterDesignImportsRule(ignoreTestFiles: false));
+    registry.registerWarningRule(AvoidMaterialIconsRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidMutableClassFieldsRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidNavigatorOfRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidRawGoRouterRule(ignoreTestFiles: true));
+    registry.registerWarningRule(AvoidRawModalPresentersRule(ignoreTestFiles: true));
     registry.registerWarningRule(AvoidStringLiteralsInWidgetsRule(ignoreTestFiles: true));
     registry.registerWarningRule(PreferSpecificTypeRule(ignoreTestFiles: true));
     registry.registerWarningRule(PreferEdgeInsetsDirectionalRule(ignoreTestFiles: true));

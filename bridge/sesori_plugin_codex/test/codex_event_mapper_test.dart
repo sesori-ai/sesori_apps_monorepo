@@ -365,6 +365,24 @@ void main() {
       );
     });
 
+    for (final status in [
+      {"type": "notLoaded"},
+      {
+        "status": {"type": "notLoaded"},
+      },
+    ]) {
+      test("thread/status/changed maps unloaded status $status to idle", () {
+        final events = mapper.map(
+          CodexServerNotification(
+            method: "thread/status/changed",
+            params: {"threadId": "t-1", "status": status},
+          ),
+        );
+
+        expect((events.single as BridgeSseSessionStatus).status, isA<PluginSessionStatusIdle>());
+      });
+    }
+
     test("item userMessage → MessageUpdated + MessagePartUpdated", () {
       final events = mapper.map(
         const CodexServerNotification(
@@ -765,7 +783,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
     });
 
-    test("contextCompaction emits a durable tool lifecycle and completion signal", () {
+    test("contextCompaction runs as a tool card and finishes as a compaction row", () {
       final started = mapper.map(
         const CodexServerNotification(
           method: "item/started",
@@ -799,8 +817,8 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 
       expect(completed, hasLength(3));
       final completedPart = (completed[1] as BridgeSseMessagePartUpdated).part;
-      expect(completedPart.state.title, isNull);
-      expect(completedPart.state.status, PluginToolStatus.completed);
+      expect(completedPart.id, startedPart.id);
+      expect(completedPart, isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", isNull));
       expect(
         completed.whereType<BridgeSseSessionCompacted>().single.sessionID,
         "t-1",

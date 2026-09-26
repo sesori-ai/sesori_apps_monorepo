@@ -9,6 +9,8 @@ import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 import "../repositories/trackers/session_event_tracker.dart";
 import "../runtime/plugin_runtime.dart";
+import "session_prompt_service.dart";
+import "session_view_service.dart";
 
 typedef SourcedBridgeEvent = ({
   String pluginId,
@@ -21,6 +23,8 @@ typedef _ProjectedSession = ({StoredSession binding, bool inserted});
 
 class SessionEventService({
   required final SessionRepository _sessionRepository,
+  required final SessionPromptService _sessionPromptService,
+  required final SessionViewService _sessionViews,
   required final PluginRuntime _pluginRuntime,
   required final SessionEventMapper _eventMapper,
   required final SessionEventTracker _eventTracker,
@@ -138,7 +142,8 @@ class SessionEventService({
         }
         if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return const [];
         return [
-          if (session != null) BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
+          if (session != null)
+            BridgeSseSessionUpdated(info: (await _sessionViews.enrich(session: session)).toJson(), titleChanged: false),
           translated,
         ];
       }
@@ -183,7 +188,7 @@ class SessionEventService({
           pluginId: commit.pluginId,
           backendSessionId: backendSessionId,
         );
-        final catalog = binding == null ? null : await _sessionRepository.getCatalogSession(sessionId: binding.id);
+        final catalog = binding == null ? null : await _catalogSessionById(sessionId: binding.id);
         if (catalog != null &&
             isCurrentGeneration(
               pluginId: pendingRoot.pluginId,
@@ -463,16 +468,19 @@ class SessionEventService({
             ),
             null => null,
           };
-          try {
-            await _sessionRepository.updatePromptDefaults(sessionId: sessionID, agent: agent, agentModel: model);
-          } on Object catch (error, stackTrace) {
-            Log.w("Failed to persist backend-originated prompt defaults for session $sessionID", error, stackTrace);
-          }
-          return BridgeSseSessionPromptDefaultsChanged(
-            sessionID: sessionID,
+          // Clients hear about it from SessionPromptService, which publishes
+          // the stored defaults including the session's fast mode.
+          await _sessionPromptService.recordBackendPromptDefaults(
+            sessionId: sessionID,
             agent: agent,
-            model: pluginModel,
+            agentModel: model,
+            isCurrentSource: () => isCurrentEvent(
+              pluginId: source.pluginId,
+              generation: source.generation,
+              allowDuringStop: allowDuringStop,
+            ),
           );
+          return translated;
         }(),
       BridgeSseSessionCreated() => switch (translatedSession) {
         final session? => switch (await _catalogSession(session: session)) {
@@ -507,7 +515,7 @@ class SessionEventService({
     )) {
       return null;
     }
-    final catalogSession = await _sessionRepository.getCatalogSession(sessionId: session.id);
+    final catalogSession = await _catalogSessionById(sessionId: session.id);
     if (!isCurrentEvent(
       pluginId: source.pluginId,
       generation: source.generation,
@@ -520,13 +528,18 @@ class SessionEventService({
   }
 
   Future<Session?> _catalogSession({required Session session}) {
-    return _sessionRepository.getCatalogSession(
+    return _catalogSessionById(
       sessionId: session.id,
     );
   }
 
-  Future<BridgeSseEvent?> _createdEvent({required String sessionId}) async {
+  Future<Session?> _catalogSessionById({required String sessionId}) async {
     final session = await _sessionRepository.getCatalogSession(sessionId: sessionId);
+    return session == null ? null : await _sessionViews.enrich(session: session);
+  }
+
+  Future<BridgeSseEvent?> _createdEvent({required String sessionId}) async {
+    final session = await _catalogSessionById(sessionId: sessionId);
     return session == null ? null : BridgeSseSessionCreated(info: session.toJson());
   }
 

@@ -11,7 +11,7 @@ void main() {
 
     expect(response.toJson(), {
       "pullRequestRefresh": {"intervalSeconds": 45},
-      "yolo": {"enabled": true},
+      "yolo": {"enabled": true, "supportsSessionOverride": false},
       "warmUpPluginsOnSessionOpen": true,
     });
     expect(BridgeSettingsResponse.fromJson(response.toJson()), response);

@@ -862,6 +862,15 @@ class _FakeWindowHost() implements WindowHost {
   }
 
   @override
+  Future<void> startDragging() async {}
+
+  @override
+  Future<void> toggleZoom() async {}
+
+  @override
+  Future<void> setBrightness({required WindowBrightness brightness}) async {}
+
+  @override
   Future<void> dispose() async {
     disposeCalls++;
     if (disposeError case final error?) throw error;

@@ -462,6 +462,8 @@ class AcpEventMapper({
     final time = session.time;
     return BridgeSseSessionCreated(
       info: shared.Session(
+        approvalOverride: null,
+        autoContinuation: null,
         branchName: null,
         id: session.id,
         pluginId: pluginId,
@@ -1286,6 +1288,8 @@ class AcpEventMapper({
     final created = snapshot?.createdMs;
     final updated = snapshot?.updatedMs ?? created;
     return shared.Session(
+      approvalOverride: null,
+      autoContinuation: null,
       branchName: null,
       id: id,
       pluginId: pluginId,
@@ -1357,6 +1361,7 @@ class AcpEventMapper({
       sessionID: sessionId,
       messageID: messageId,
       tool: tool,
+      kind: _contentMapper.toolKind(tool: tool),
       state: state,
     );
   }

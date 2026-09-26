@@ -4,12 +4,16 @@ import "dart:math";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginStaleOptionsException;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/accepted_prompts_repository.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/random_hex_id.dart";
+import "../repositories/session_continuation_repository.dart";
 import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
+import "session_mutation_dispatcher.dart";
 import "session_operation_dispatcher.dart";
 import "session_options_service.dart";
+import "session_view_service.dart";
 import "stale_session_prompt_options_exception.dart";
 
 class const SessionPromptDefaultsChange({
@@ -19,9 +23,13 @@ class const SessionPromptDefaultsChange({
 
 class SessionPromptService({
   required final SessionRepository _sessionRepository,
+  required final AcceptedPromptsRepository _acceptedPromptsRepository,
   required final SessionOperationDispatcher _dispatcher,
   required final ArchivedSessionValidator _archivedSessionValidator,
   required final SessionOptionsService _sessionOptionsService,
+  required final SessionContinuationRepository _continuations,
+  required final SessionViewService _views,
+  required final SessionMutationDispatcher _mutations,
 }) {
   final StreamController<SessionPromptDefaultsChange> _promptDefaultsChangesController =
       StreamController<SessionPromptDefaultsChange>.broadcast(sync: true);
@@ -33,6 +41,7 @@ class SessionPromptService({
     required String? promptId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
     required String? command,
@@ -50,6 +59,7 @@ class SessionPromptService({
         promptId: promptId ?? generatePromptId(),
         parts: parts,
         variant: variant,
+        fastMode: fastMode,
         agent: agent,
         model: model,
         normalizedCommand: normalizedCommand,
@@ -57,11 +67,31 @@ class SessionPromptService({
     );
   }
 
+  Future<void> sendPromptAlreadyReserved({
+    required String sessionId,
+    required String promptId,
+    required List<PromptPart> parts,
+    required SessionVariant? variant,
+    required bool fastMode,
+    required String? agent,
+    required PromptModel? model,
+  }) => _sendPrompt(
+    sessionId: sessionId,
+    promptId: promptId,
+    parts: parts,
+    variant: variant,
+    fastMode: fastMode,
+    agent: agent,
+    model: model,
+    normalizedCommand: null,
+  );
+
   Future<void> _sendPrompt({
     required String sessionId,
     required String promptId,
     required List<PromptPart> parts,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
     required String? normalizedCommand,
@@ -69,6 +99,21 @@ class SessionPromptService({
     // Inside the dispatched body, so this cannot race a concurrent archive on
     // the same family lane.
     await _archivedSessionValidator.requireNotArchived(sessionId: sessionId);
+    // A client retries a send whose response was lost with the same id,
+    // possibly hours later, when the plugin's own dedup may be gone (idle
+    // reap, bridge restart). The lane keeps this check and the record below
+    // atomic, and the repeat succeeds as the first send did.
+    if (await _acceptedPromptsRepository.isAccepted(sessionId: sessionId, promptId: promptId)) {
+      Log.i("Ignoring repeated prompt $promptId for session $sessionId: it was already accepted");
+      return;
+    }
+    if (await _continuations.cancelCurrentObservationAlreadyReserved(sessionId: sessionId)) {
+      try {
+        _mutations.continuationUpdated(session: await _views.get(sessionId: sessionId));
+      } on Object catch (error, stackTrace) {
+        Log.w("Could not publish quota cancellation before prompt for session $sessionId", error, stackTrace);
+      }
+    }
     if (normalizedCommand == null || normalizedCommand.isEmpty) {
       await _sendInvalidatingStaleOptionsCache(
         sessionId: sessionId,
@@ -77,41 +122,44 @@ class SessionPromptService({
           promptId: promptId,
           parts: parts,
           variant: variant,
+          fastMode: fastMode,
           agent: agent,
           model: model,
         ),
       );
-      await _updatePromptDefaults(
+    } else {
+      final textPart = parts.whereType<PromptPartText>().firstOrNull;
+      final arguments = textPart?.text;
+      // Per the BridgePluginApi contract, sendCommand completes once the
+      // backend has accepted the command — not when its run finishes — so
+      // awaiting it here never holds the phone's relay request open for the
+      // duration of the command's agent run.
+      await _sendInvalidatingStaleOptionsCache(
         sessionId: sessionId,
-        variant: variant,
-        agent: agent,
-        model: model,
+        send: () => _sessionRepository.sendCommand(
+          sessionId: sessionId,
+          promptId: promptId,
+          command: normalizedCommand,
+          arguments: arguments ?? '',
+          userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
+          variant: variant,
+          fastMode: fastMode,
+          agent: agent,
+          model: model,
+        ),
       );
-      return;
     }
-
-    final textPart = parts.whereType<PromptPartText>().firstOrNull;
-    final arguments = textPart?.text;
-    // Per the BridgePluginApi contract, sendCommand completes once the
-    // backend has accepted the command — not when its run finishes — so
-    // awaiting it here never holds the phone's relay request open for the
-    // duration of the command's agent run.
-    await _sendInvalidatingStaleOptionsCache(
-      sessionId: sessionId,
-      send: () => _sessionRepository.sendCommand(
-        sessionId: sessionId,
-        promptId: promptId,
-        command: normalizedCommand,
-        arguments: arguments ?? '',
-        userVisibleArguments: arguments == null || arguments.trim().isEmpty ? null : arguments,
-        variant: variant,
-        agent: agent,
-        model: model,
-      ),
-    );
+    try {
+      await _acceptedPromptsRepository.recordAccepted(sessionId: sessionId, promptId: promptId);
+    } catch (error, stackTrace) {
+      // The plugin already owns the prompt; failing the send would only make
+      // the client retry it.
+      Log.w("Failed to record accepted prompt $promptId for session $sessionId", error, stackTrace);
+    }
     await _updatePromptDefaults(
       sessionId: sessionId,
       variant: variant,
+      fastMode: fastMode,
       agent: agent,
       model: model,
     );
@@ -165,6 +213,7 @@ class SessionPromptService({
   Future<void> _updatePromptDefaults({
     required String sessionId,
     required SessionVariant? variant,
+    required bool fastMode,
     required String? agent,
     required PromptModel? model,
   }) async {
@@ -176,10 +225,11 @@ class SessionPromptService({
           )
         : null;
     try {
-      await _sessionRepository.updatePromptDefaults(
+      await _sessionRepository.updateRequestedPromptDefaults(
         sessionId: sessionId,
         agent: agent,
         agentModel: agentModel,
+        fastMode: fastMode,
       );
       _promptDefaultsChangesController.add(
         SessionPromptDefaultsChange(
@@ -187,12 +237,41 @@ class SessionPromptService({
           promptDefaults: SessionPromptDefaults(
             agent: agent,
             model: agentModel,
+            fastMode: fastMode,
           ),
         ),
       );
     } catch (error, stackTrace) {
       Log.w("Failed to update prompt defaults for session $sessionId", error, stackTrace);
     }
+  }
+
+  /// Records the agent and model the backend reports for [sessionId] and
+  /// publishes the stored prompt defaults, which keep the session's fast mode.
+  ///
+  /// Publishes nothing when the write fails: a report without the stored fast
+  /// mode would switch it off on the client.
+  Future<void> recordBackendPromptDefaults({
+    required String sessionId,
+    required String? agent,
+    required AgentModel? agentModel,
+
+    /// Rechecked after the write: a retired plugin generation must not reach clients.
+    required bool Function() isCurrentSource,
+  }) async {
+    final SessionPromptDefaults? stored;
+    try {
+      stored = await _sessionRepository.updatePromptDefaults(
+        sessionId: sessionId,
+        agent: agent,
+        agentModel: agentModel,
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to persist backend-originated prompt defaults for session $sessionId", error, stackTrace);
+      return;
+    }
+    if (stored == null || !isCurrentSource()) return;
+    _promptDefaultsChangesController.add(SessionPromptDefaultsChange(sessionId: sessionId, promptDefaults: stored));
   }
 
   Future<void> dispose() async {

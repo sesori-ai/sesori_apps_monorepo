@@ -1,22 +1,27 @@
 import "package:material_ui/material_ui.dart";
 
+import "../../icons/tabler_icons.g.dart";
 import "../../theme/prego_theme.dart";
+import "../prego_ellipsis_text.dart";
 import "../surfaces/prego_surfaces.dart";
 
 /// A solid pill that opens a picker: leading glyph, one-line [label], and a
-/// trailing unfold caret signalling the popup.
+/// trailing unfold caret signalling the popup. Without [onPressed] it only
+/// shows the value: no caret and no press feedback.
 ///
 /// Its surface matches the composer's background, border, and elevation on
 /// every platform, while its press feedback uses the same Material ripple.
-/// The pill fills its parent's width and ellipsizes long labels.
+/// The pill fills its parent's width. A long label keeps its end, the part
+/// that tells names apart, behind a leading ellipsis.
 ///
 /// Usage:
 /// ```dart
 /// PregoPickerButton(
-///   leadingIcon: Icons.smart_toy_outlined,
+///   leadingIcon: TablerRegular.robot,
 ///   label: selectedAgent,
 ///   surfaceStyle: PregoComposerSurfaceStyle.subtle,
 ///   onPressed: toggle,
+///   showLabel: true,
 /// )
 /// ```
 class const PregoPickerButton({
@@ -25,21 +30,52 @@ class const PregoPickerButton({
   /// The glyph rendered before the label.
   required final IconData leadingIcon,
 
-  /// One-line button text; ellipsizes when it doesn't fit.
+  /// One-line button text; ellipsized from the start when it doesn't fit.
   required final String label,
 
   /// Outline emphasis shared with the current composer state.
   required final PregoComposerSurfaceStyle surfaceStyle,
 
-  /// Called when the pill is tapped. Wire this to the menu's open callback.
-  required final VoidCallback onPressed,
+  /// Called when the pill is tapped. Wire this to the menu's open callback, or
+  /// pass null for a value that cannot be changed here.
+  required final VoidCallback? onPressed,
+
+  /// Whether the label and caret show. Without them the pill is only its
+  /// glyph, keeping [label] as its tooltip and accessible name, for rows too
+  /// narrow to show a readable label.
+  required final bool showLabel,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final foreground = prego.colors.textSecondary;
     final borderRadius = BorderRadius.circular(PregoRadius.full);
-    return SizedBox(
+    final onPressed = this.onPressed;
+    final content = !showLabel
+        ? Center(
+            child: Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
+          )
+        : Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Icon(leadingIcon, size: PregoIconSize.sm, color: foreground),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: PregoEllipsisText(
+                    text: label,
+                    ellipsis: PregoEllipsis.start,
+                    style: prego.textTheme.textXs.medium.copyWith(color: foreground),
+                  ),
+                ),
+                if (onPressed != null) ...[
+                  const SizedBox(width: 4),
+                  Icon(TablerRegular.selector, size: PregoIconSize.sm, color: foreground),
+                ],
+              ],
+            ),
+          );
+    final pill = SizedBox(
       width: double.infinity,
       height: 36,
       child: DecoratedBox(
@@ -50,36 +86,27 @@ class const PregoPickerButton({
         ),
         child: Padding(
           padding: const EdgeInsets.all(1),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: borderRadius,
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: onPressed,
-              borderRadius: borderRadius,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    Icon(leadingIcon, size: 14, color: foreground),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: prego.textTheme.textXs.medium.copyWith(color: foreground),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(Icons.unfold_more, size: 14, color: foreground),
-                  ],
+          child: onPressed == null
+              ? content
+              : Material(
+                  color: Colors.transparent,
+                  borderRadius: borderRadius,
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    mouseCursor: WidgetStateMouseCursor.clickable,
+                    onTap: onPressed,
+                    borderRadius: borderRadius,
+                    child: content,
+                  ),
                 ),
-              ),
-            ),
-          ),
         ),
       ),
+    );
+    if (showLabel) return pill;
+    return Tooltip(
+      message: label,
+      excludeFromSemantics: true,
+      child: Semantics(button: onPressed != null, label: label, child: pill),
     );
   }
 }

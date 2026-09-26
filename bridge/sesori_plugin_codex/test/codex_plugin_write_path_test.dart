@@ -296,6 +296,7 @@ void main() {
       ]);
 
       final session = await plugin.createSession(
+        fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "hello codex")],
@@ -317,6 +318,80 @@ void main() {
       expect((turnStartParams["input"] as List).first["text"], equals("hello codex"));
       expect(turnStartParams.containsKey("collaborationMode"), isFalse);
       expect(plugin.currentWorkState, PluginWorkState.busy);
+    });
+
+    test("createSession with fastMode sends the priority service tier on thread/start and turn/start", () async {
+      // Respond to: initialize, thread/start, turn/start.
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "t-fast",
+              "cwd": "/work/sample",
+              "createdAt": 1700000000,
+              "updatedAt": 1700000005,
+              "name": null,
+            },
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-fast"},
+          },
+        ),
+      ]);
+
+      await plugin.createSession(
+        fastMode: true,
+        directory: "/work/sample",
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "hello codex")],
+        userVisibleText: "hello codex",
+        variant: null,
+        agent: "Agent",
+        model: null,
+      );
+
+      expect(fake.sentParamsFor("thread/start")["serviceTier"], equals("priority"));
+      expect(fake.sentParamsFor("turn/start")["serviceTier"], equals("priority"));
+    });
+
+    test("createSession without fastMode omits thread/start's service tier and clears turn/start's", () async {
+      // Respond to: initialize, thread/start, turn/start.
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "t-standard",
+              "cwd": "/work/sample",
+              "createdAt": 1700000000,
+              "updatedAt": 1700000005,
+              "name": null,
+            },
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-standard"},
+          },
+        ),
+      ]);
+
+      await plugin.createSession(
+        fastMode: false,
+        directory: "/work/sample",
+        parentSessionId: null,
+        parts: const [PluginPromptPart.text(text: "hello codex")],
+        userVisibleText: "hello codex",
+        variant: null,
+        agent: "Agent",
+        model: null,
+      );
+
+      expect(fake.sentParamsFor("thread/start").containsKey("serviceTier"), isFalse);
+      expect(fake.sentParamsFor("turn/start")["serviceTier"], equals("default"));
     });
 
     test("createSession forwards inline image data to Codex turn input", () async {
@@ -341,6 +416,7 @@ void main() {
       ]);
 
       await plugin.createSession(
+        fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
         parts: const [
@@ -407,6 +483,7 @@ void main() {
       for (final part in invalidParts) {
         await expectLater(
           plugin.sendPrompt(
+            fastMode: false,
             promptId: "prompt-1",
             sessionId: "t-invalid-image",
             parts: [part],
@@ -458,6 +535,7 @@ void main() {
 
       final commands = await plugin.getCommands(projectId: "/work/sample");
       await plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-existing",
         command: "review",
@@ -468,6 +546,7 @@ void main() {
         model: null,
       );
       await plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-existing",
         command: "compact",
@@ -516,6 +595,7 @@ void main() {
           .cast<BridgeSsePromptSettled>()
           .first;
       await plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-compact",
         command: "compact",
@@ -580,6 +660,7 @@ void main() {
       final subscription = plugin.events.listen(events.add);
 
       await plugin.createSession(
+        fastMode: false,
         directory: "/other/proj",
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "go")],
@@ -613,6 +694,7 @@ void main() {
       ]);
 
       final created = await plugin.createSession(
+        fastMode: false,
         directory: "/work/sample/packages/core",
         parentSessionId: null,
         parts: const [],
@@ -665,6 +747,7 @@ void main() {
       ]);
 
       await plugin.createSession(
+        fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "start")],
@@ -766,6 +849,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-existing-child",
         parts: const [PluginPromptPart.text(text: "go on")],
@@ -903,6 +987,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-default-mode",
         parts: const [PluginPromptPart.text(text: "implement it")],
@@ -940,6 +1025,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prm_1",
         sessionId: "t-client-id",
         parts: const [PluginPromptPart.text(text: "implement it")],
@@ -1008,6 +1094,7 @@ void main() {
       addTearDown(subscription.cancel);
 
       await resolvedPlugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "plan this")],
@@ -1047,6 +1134,7 @@ void main() {
       ]);
 
       await plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-command",
         command: "review",
@@ -1076,6 +1164,7 @@ void main() {
         const _Response(result: null),
       ]);
       await plugin.sendCommand(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-command-force",
         command: "review",
@@ -1125,6 +1214,7 @@ void main() {
 
       await expectLater(
         plugin.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "t-rejected",
           parts: const [PluginPromptPart.text(text: "go on")],
@@ -1154,6 +1244,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-delayed",
         parts: const [PluginPromptPart.text(text: "go on")],
@@ -1197,6 +1288,7 @@ void main() {
       };
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-early-complete",
         parts: const [PluginPromptPart.text(text: "quick task")],
@@ -1227,6 +1319,7 @@ void main() {
       };
 
       final send = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-deleted",
         parts: const [PluginPromptPart.text(text: "quick task")],
@@ -1261,6 +1354,7 @@ void main() {
         ),
       ]);
       await plugin.createSession(
+        fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "new lifecycle")],
@@ -1310,6 +1404,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-terminal",
         parts: const [PluginPromptPart.text(text: "go on")],
@@ -1367,6 +1462,7 @@ void main() {
       ]);
 
       await plugin.createSession(
+        fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
         parts: const [],
@@ -1376,6 +1472,7 @@ void main() {
         model: null,
       );
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-fresh",
         parts: const [PluginPromptPart.text(text: "continue")],
@@ -1415,6 +1512,7 @@ void main() {
 
       // createSession with no parts marks t-dropped as loaded.
       await plugin.createSession(
+        fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
         parts: const [],
@@ -1424,6 +1522,7 @@ void main() {
         model: null,
       );
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-dropped",
         parts: const [PluginPromptPart.text(text: "are you there")],
@@ -1769,6 +1868,7 @@ void main() {
       await plugin.healthCheck();
       fake.holdNextResponse("turn/start");
       final send = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-pending-turn",
         sessionId: "root-pending-turn",
         parts: const [PluginPromptPart.text(text: "long task")],
@@ -1848,6 +1948,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-1",
         parts: const [PluginPromptPart.text(text: "long task")],
@@ -1893,6 +1994,7 @@ void main() {
         const _Response(result: null),
       ]);
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-force",
         parts: const [PluginPromptPart.text(text: "long task")],
@@ -1935,6 +2037,7 @@ void main() {
         ),
       ]);
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-overlap",
         parts: const [PluginPromptPart.text(text: "first task")],
@@ -1958,6 +2061,7 @@ void main() {
         const _Response(result: null),
       ]);
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-overlap",
         parts: const [PluginPromptPart.text(text: "second task")],
@@ -2009,6 +2113,7 @@ void main() {
         ),
       ]);
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-steered",
         parts: const [PluginPromptPart.text(text: "first task")],
@@ -2032,6 +2137,7 @@ void main() {
         ),
       ]);
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-2",
         sessionId: "t-steered",
         parts: const [PluginPromptPart.text(text: "follow up")],
@@ -2073,6 +2179,7 @@ void main() {
         ),
       ]);
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-provisional",
         parts: const [PluginPromptPart.text(text: "continue active work")],
@@ -2112,6 +2219,7 @@ void main() {
         ),
       ]);
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-stale-active",
         parts: const [PluginPromptPart.text(text: "first task")],
@@ -2127,6 +2235,7 @@ void main() {
 
       fake.holdNextResponse("turn/start");
       final secondPrompt = plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-2",
         sessionId: "t-stale-active",
         parts: const [PluginPromptPart.text(text: "fresh task")],
@@ -2208,6 +2317,7 @@ void main() {
         const _Response(error: {"code": -32600, "message": "no active turn to interrupt"}),
       ]);
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "task")],
@@ -2299,6 +2409,7 @@ void main() {
         const _Response(error: {"code": -32600, "message": "no active turn to interrupt"}),
       ]);
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "task")],
@@ -2374,6 +2485,7 @@ void main() {
         const _Response(error: {"code": -32600, "message": "no active turn to interrupt"}),
       ]);
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-abort-race",
         parts: const [PluginPromptPart.text(text: "old work")],
@@ -2438,6 +2550,7 @@ void main() {
 
       await expectLater(
         plugin.sendPrompt(
+          fastMode: false,
           promptId: "prompt-1",
           sessionId: "t-whitespace",
           parts: const [PluginPromptPart.text(text: "continue")],
@@ -2494,6 +2607,7 @@ void main() {
       final subscription = plugin.events.listen(events.add);
       addTearDown(subscription.cancel);
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "run a tool")],
@@ -2657,6 +2771,7 @@ void main() {
       final subscription = plugin.events.listen(events.add);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: sessionId,
         parts: const [PluginPromptPart.text(text: "run the live event fixture")],
@@ -3022,7 +3137,7 @@ void main() {
       expect(fake.sentMethods, contains("model/list"));
     });
 
-    test("getAgents uses the live catalog to expose Plan without local model metadata", () async {
+    test("getAgents takes the agent model from the live catalog without local model metadata", () async {
       fake.respondInOrder([
         const _Response(result: _initOk),
         const _Response(
@@ -3042,7 +3157,7 @@ void main() {
       await plugin.healthCheck();
       final agents = await plugin.getAgents(projectId: "/work/sample");
 
-      expect(agents.map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(agents.map((agent) => agent.name), ["Agent"]);
       expect(agents.every((agent) => agent.model?.modelID == "gpt-5.5"), isTrue);
     });
 
@@ -3089,7 +3204,7 @@ void main() {
       final options = (result as PluginSessionOptionsDiscoveryObserved).options;
       expect(options.completeness, PluginSessionOptionsCompleteness.complete);
       expect(options.providers.providers.single.models.single.id, "gpt-5.5");
-      expect(options.agents.map((agent) => agent.name), ["Agent", "Plan"]);
+      expect(options.agents.map((agent) => agent.name), ["Agent"]);
       expect(options.commands.map((command) => command.name), ["review", "compact"]);
       expect(fake.sentMethods.where((method) => method == "model/list"), hasLength(1));
     });
@@ -3168,6 +3283,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-effort",
         parts: const [PluginPromptPart.text(text: "think hard")],
@@ -3203,6 +3319,7 @@ void main() {
       ]);
 
       await plugin.sendPrompt(
+        fastMode: false,
         promptId: "prompt-1",
         sessionId: "t-default",
         parts: const [PluginPromptPart.text(text: "hi")],
@@ -3212,6 +3329,62 @@ void main() {
       );
 
       expect(fake.sentParamsFor("turn/start").containsKey("effort"), isFalse);
+    });
+
+    test("sendPrompt sends the priority service tier when fastMode is on", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-fast-prompt"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-1"},
+          },
+        ),
+      ]);
+
+      await plugin.sendPrompt(
+        fastMode: true,
+        promptId: "prompt-1",
+        sessionId: "t-fast-prompt",
+        parts: const [PluginPromptPart.text(text: "hi")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(fake.sentParamsFor("turn/start")["serviceTier"], equals("priority"));
+    });
+
+    test("sendPrompt sends the default service tier when fastMode is off", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-standard-prompt"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-1"},
+          },
+        ),
+      ]);
+
+      await plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: "t-standard-prompt",
+        parts: const [PluginPromptPart.text(text: "hi")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(fake.sentParamsFor("turn/start")["serviceTier"], equals("default"));
     });
 
     test("legacy codex agent selects Default mode on the first turn", () async {
@@ -3231,6 +3404,7 @@ void main() {
       ]);
 
       await plugin.createSession(
+        fastMode: false,
         directory: "/work/sample",
         parentSessionId: null,
         parts: const [PluginPromptPart.text(text: "start low")],
@@ -3797,6 +3971,84 @@ void main() {
       final statuses = await plugin.getSessionStatuses();
       expect(statuses["root-pending-start"], isA<PluginSessionStatusIdle>());
       expect(statuses["child-pending-start"], isA<PluginSessionStatusIdle>());
+    });
+
+    test("unloading a completed child keeps the child and root idle", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {
+              "id": "child-unloaded",
+              "parentThreadId": "root-unloaded",
+              "agentNickname": "Raman",
+              "cwd": "/work/sample",
+            },
+          },
+        ),
+      ]);
+      Future<T> next<T extends BridgeSseEvent>({required bool Function(T event) where}) => plugin.events
+          .where((event) => event is T && where(event))
+          .cast<T>()
+          .first
+          .timeout(const Duration(seconds: 2));
+      await plugin.healthCheck();
+      fake.pushNotification("thread/started", {
+        "thread": {"id": "root-unloaded", "cwd": "/work/sample"},
+      });
+      fake.pushNotification("turn/started", {
+        "threadId": "root-unloaded",
+        "turn": {"id": "root-turn"},
+      });
+      final childCreated = next<BridgeSseSessionCreated>(
+        where: (event) => event.info["id"] == "child-unloaded",
+      );
+      fake.pushNotification("item/started", {
+        "threadId": "root-unloaded",
+        "item": {
+          "type": "subAgentActivity",
+          "id": "spawn-unloaded",
+          "kind": "started",
+          "agentThreadId": "child-unloaded",
+          "agentPath": "/root/reviewer",
+        },
+      });
+      await childCreated;
+      final childBusy = next<BridgeSseSessionStatus>(
+        where: (event) => event.sessionID == "child-unloaded" && event.status is PluginSessionStatusBusy,
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": "child-unloaded",
+        "turn": {"id": "child-turn"},
+      });
+      await childBusy;
+      final rootUpdated = next<BridgeSseSessionUpdated>(
+        where: (event) => event.info["id"] == "root-unloaded",
+      );
+      fake.pushNotification("turn/completed", {
+        "threadId": "root-unloaded",
+        "turn": {"id": "root-turn"},
+      });
+      await rootUpdated;
+      expect((await plugin.getSessionStatuses())["root-unloaded"], isA<PluginSessionStatusBusy>());
+
+      final rootIdle = next<BridgeSseSessionIdle>(where: (event) => event.sessionID == "root-unloaded");
+      fake.pushNotification("turn/completed", {
+        "threadId": "child-unloaded",
+        "turn": {"id": "child-turn"},
+      });
+      await rootIdle;
+      final unloaded = next<BridgeSseSessionStatus>(where: (event) => event.sessionID == "child-unloaded");
+      fake.pushNotification("thread/status/changed", {
+        "threadId": "child-unloaded",
+        "status": {"type": "notLoaded"},
+      });
+      expect((await unloaded).status, isA<PluginSessionStatusIdle>());
+      final statuses = await plugin.getSessionStatuses();
+      expect(statuses["root-unloaded"], isA<PluginSessionStatusIdle>());
+      expect(statuses["child-unloaded"], isA<PluginSessionStatusIdle>());
+      expect(plugin.getActiveSessionsSummary(), isEmpty);
+      expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
     test("deleting a busy root cancels and clears its live descendants", () async {

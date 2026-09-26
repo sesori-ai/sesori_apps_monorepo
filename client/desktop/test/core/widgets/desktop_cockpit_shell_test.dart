@@ -4,14 +4,20 @@ import "package:bloc_test/bloc_test.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/semantics.dart";
+import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:get_it/get_it.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
 import "package:sesori_desktop/core/widgets/desktop_connection_pill.dart";
+import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
+import "package:sesori_desktop/core/widgets/desktop_sidebar.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -24,10 +30,21 @@ void main() {
   late _MockRecentSessionsCubit recent;
   late _MockRepository repository;
   late DesktopSidebarCubit sidebar;
+  late _MockRefreshService refreshService;
+  late _MockWindowHost windowHost;
+  late _MockAuthGateCubit authGate;
 
   setUpAll(() => registerFallbackValue(const DesktopSidebarLayout()));
+  tearDown(GetIt.instance.reset);
   setUp(() {
+    // The shell asks for the window host on macOS only, where it hides the title bar.
+    windowHost = _MockWindowHost();
+    when(windowHost.startDragging).thenAnswer((_) async {});
+    when(windowHost.toggleZoom).thenAnswer((_) async {});
+    GetIt.instance.registerSingleton<WindowHost>(windowHost);
     bridgeControlCubit = _MockBridgeControlCubit();
+    authGate = _MockAuthGateCubit();
+    whenListen(authGate, const Stream<AuthGateState>.empty(), initialState: const AuthGateState.signedIn(user: null));
     overlay = _MockConnectionOverlayCubit();
     contentTaps = 0;
     whenListen(
@@ -42,15 +59,16 @@ void main() {
       const Stream<Map<String, RecentSessionsEntry>>.empty(),
       initialState: const <String, RecentSessionsEntry>{},
     );
-    when(() => recent.ensureLoaded(projectId: any(named: "projectId"))).thenAnswer((_) async {});
+    when(() => recent.retry(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     whenListen(
       projects,
       const Stream<ProjectListState>.empty(),
       initialState: const ProjectListState.loaded(
         projects: [ProjectSummary(id: "project-1", name: "Sesori Desktop", path: "/work/sesori", time: null)],
-        activityById: {},
       ),
     );
+    refreshService = _MockRefreshService();
+    when(refreshService.refresh).thenAnswer((_) async => DesktopSidebarRefreshOutcome.succeeded);
     repository = _MockRepository();
     when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout());
     when(() => repository.writeSidebarLayout(layout: any(named: "layout"))).thenAnswer((_) async {});
@@ -62,33 +80,43 @@ void main() {
       providers: [
         BlocProvider<BridgeControlCubit>.value(value: bridgeControlCubit),
         BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
-        BlocProvider<ProjectListCubit>.value(value: projects),
-        BlocProvider<RecentSessionsCubit>.value(value: recent),
-        BlocProvider<DesktopSidebarCubit>(create: (_) => sidebar = DesktopSidebarCubit(repository: repository)),
+        BlocProvider<AuthGateCubit>.value(value: authGate),
       ],
       child: MaterialApp(
         theme: buildPregoThemeData(brightness: Brightness.light),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home:
-            child ??
-            DesktopCockpitShell(
-              selectedProjectId: "project-1",
-              selectedSessionId: null,
-              onOpenSession: _openSession,
-              onNewSession: _openProject,
-              sessionActions: _sessionActions,
-              onOpenProject: _openProject,
-              onOpenBridgeSettings: _noOp,
-              onOpenProjects: _noOp,
-              onOpenSettings: _noOp,
-              child: GestureDetector(
-                key: const Key("cockpit-content"),
-                behavior: HitTestBehavior.opaque,
-                onTap: () => contentTaps++,
-                child: const ColoredBox(color: Colors.transparent),
+        // As in the router, the cockpit's cubits sit below the root navigator,
+        // out of reach of the popups it hosts.
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider<ProjectListCubit>.value(value: projects),
+            BlocProvider<RecentSessionsCubit>.value(value: recent),
+            BlocProvider(create: (_) => DesktopSidebarRefreshCubit(service: refreshService)),
+            BlocProvider<DesktopSidebarCubit>(create: (_) => sidebar = DesktopSidebarCubit(repository: repository)),
+            BlocProvider(create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository())),
+          ],
+          child:
+              child ??
+              DesktopCockpitShell(
+                selectedProjectId: "project-1",
+                selectedSessionId: null,
+                onOpenSession: _openSession,
+                onNewSession: _openProject,
+                sessionActions: _sessionActions,
+                onOpenProject: _openProject,
+                onOpenBridgeSettings: _noOp,
+                onOpenProjects: _noOp,
+                onOpenSettings: _noOp,
+                onGoBack: _noOp,
+                child: GestureDetector(
+                  key: const Key("cockpit-content"),
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => contentTaps++,
+                  child: const ColoredBox(color: Colors.transparent),
+                ),
               ),
-            ),
+        ),
       ),
     );
   }
@@ -98,7 +126,107 @@ void main() {
   final resize = find.byKey(const Key("desktop-sidebar-resize"));
   final toggle = find.byKey(const Key("desktop-sidebar-toggle"));
 
-  testWidgets("home selection and screen-reader activation distinguish Settings as an action", (tester) async {
+  testWidgets("sidebar shortcut preserves focus, ignores repeats and respects automatic collapse", (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(900, 600);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final focus = FocusNode();
+    addTearDown(focus.dispose);
+    await tester.pumpWidget(
+      app(
+        state: running,
+        child: DesktopCockpitShell(
+          selectedProjectId: "project-1",
+          selectedSessionId: null,
+          onOpenSession: _openSession,
+          onNewSession: _openProject,
+          sessionActions: _sessionActions,
+          onOpenProject: _openProject,
+          onOpenBridgeSettings: _noOp,
+          onOpenProjects: _noOp,
+          onOpenSettings: _noOp,
+          onGoBack: _noOp,
+          child: TextField(focusNode: focus),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final macOS = defaultTargetPlatform == TargetPlatform.macOS;
+    final modifier = macOS ? LogicalKeyboardKey.metaLeft : LogicalKeyboardKey.controlLeft;
+    final hint = macOS ? "⌘" : "Ctrl+";
+    expect(find.byTooltip("Collapse sidebar (${hint}B)"), findsOneWidget);
+    expect(find.byTooltip("Settings ($hint,)"), findsOneWidget);
+    expect(find.byTooltip("New session in Sesori Desktop (${hint}N)"), findsOneWidget);
+    // The cockpit admits shortcuts before a child requests focus.
+    await tester.sendKeyDownEvent(modifier);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.keyB);
+    await tester.pumpAndSettle();
+    await tester.sendKeyRepeatEvent(LogicalKeyboardKey.keyB);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.keyB);
+    await tester.sendKeyUpEvent(modifier);
+    await tester.pumpAndSettle();
+    expect(sidebar.state.collapsed, isTrue);
+    expect(tester.getSize(rail).width, 56);
+    expect(find.byTooltip("Expand sidebar (${hint}B)"), findsOneWidget);
+    focus.requestFocus();
+    await tester.pump();
+    final wrongModifier = macOS ? LogicalKeyboardKey.controlLeft : LogicalKeyboardKey.metaLeft;
+    await tester.sendKeyDownEvent(wrongModifier);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+    await tester.sendKeyUpEvent(wrongModifier);
+    expect(sidebar.state.collapsed, isTrue);
+    await tester.sendKeyDownEvent(modifier);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+    await tester.sendKeyUpEvent(modifier);
+    await tester.pumpAndSettle();
+    expect(sidebar.state.collapsed, isFalse);
+    expect(tester.getSize(rail).width, 260);
+    expect(focus.hasFocus, isTrue);
+    verify(() => repository.writeSidebarLayout(layout: any(named: "layout"))).called(2);
+    tester.view.physicalSize = const Size(700, 600);
+    await tester.pump();
+    expect(find.byTooltip("Collapse sidebar"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.layout_sidebar_left_collapse), findsOneWidget);
+    expect(tester.widget<IconButton>(toggle).onPressed, isNull);
+    await tester.pumpAndSettle();
+    expect(find.byTooltip("Expand sidebar"), findsOneWidget);
+    await tester.sendKeyDownEvent(modifier);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyB);
+    await tester.sendKeyUpEvent(modifier);
+    await tester.pumpAndSettle();
+    expect(sidebar.state.collapsed, isFalse);
+    expect(tester.getSize(rail).width, 56);
+    verifyNever(() => repository.writeSidebarLayout(layout: any(named: "layout")));
+    tester.view.physicalSize = const Size(900, 600);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(rail).width, 260);
+    expect(focus.hasFocus, isTrue);
+  }, variant: TargetPlatformVariant.desktop());
+
+  testWidgets("only the selected project's New session control advertises the shortcut", (tester) async {
+    whenListen(
+      projects,
+      const Stream<ProjectListState>.empty(),
+      initialState: const ProjectListState.loaded(
+        projects: [
+          ProjectSummary(id: "project-1", name: "Selected", path: "/work/selected", time: null),
+          ProjectSummary(id: "project-2", name: "Another", path: "/work/another", time: null),
+        ],
+      ),
+    );
+    await tester.pumpWidget(app(state: running));
+    await tester.pumpAndSettle();
+    final hint = defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N";
+    expect(find.byTooltip("New session in Selected ($hint)"), findsOneWidget);
+    expect(find.byTooltip("New session in Another"), findsOneWidget);
+  });
+
+  testWidgets("compact home and Settings remain screen-reader actions", (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(700, 600);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final semantics = tester.ensureSemantics();
     try {
       var opens = 0;
@@ -115,14 +243,18 @@ void main() {
             onOpenBridgeSettings: () => opens++,
             onOpenProjects: () => opens++,
             onOpenSettings: () => opens++,
+            onGoBack: _noOp,
             child: const SizedBox.shrink(),
           ),
         ),
       );
-      for (final label in ["Projects", "Settings"]) {
-        final finder = find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.label == label);
-        expect(tester.widget<Semantics>(finder).properties.selected, label == "Projects");
+      final projectsAction = find.byWidgetPredicate(
+        (widget) => widget is Semantics && widget.properties.label == "Projects",
+      );
+      expect(tester.widget<Semantics>(projectsAction).properties.selected, isTrue);
+      for (final finder in [projectsAction, find.byKey(const Key("desktop-sidebar-settings"))]) {
         final node = tester.getSemantics(finder);
+        expect(node.label, finder == projectsAction ? "Projects" : "Settings");
         tester.platformDispatcher.onSemanticsActionEvent!(
           SemanticsActionEvent(type: SemanticsAction.tap, nodeId: node.id, viewId: tester.view.viewId),
         );
@@ -144,7 +276,7 @@ void main() {
       final page = tester.element(find.byKey(const Key("cockpit-content")));
       await tester.tap(
         find.byWidgetPredicate(
-          (widget) => widget is Semantics && widget.properties.label == "Bridge, Bridge status",
+          (widget) => widget is Semantics && widget.properties.label == "This computer, Bridge status",
         ),
       );
       await tester.pumpAndSettle();
@@ -166,12 +298,86 @@ void main() {
       await tester.pumpWidget(app(state: running));
       await tester.pumpAndSettle();
       final mainPane = find.byKey(const Key("cockpit-content"));
-      final dividerWidth = width < DesktopCockpitShell.autoCollapseBreakpoint ? 1 : 6;
-      expect(tester.getSize(mainPane).width, width - tester.getSize(rail).width - dividerWidth);
+      // The panel keeps a margin at its start and the resize gap at its end.
+      expect(tester.getSize(mainPane).width, width - tester.getSize(rail).width - 2 * DesktopSidebar.panelMargin);
       expect(find.byType(SessionSplitShell), findsNothing);
       expect(find.byType(SessionListPanel), findsNothing);
     }
   });
+
+  testWidgets("the sidebar floats as an inset panel whose gap is the resize handle", (tester) async {
+    const margin = DesktopSidebar.panelMargin;
+    final mainPane = find.byKey(const Key("cockpit-content"));
+    await tester.pumpWidget(app(state: running));
+    final panel = tester.getRect(rail);
+    expect(panel, const Rect.fromLTRB(margin, margin, margin + 260, 600 - margin));
+    expect(tester.getRect(resize), Rect.fromLTRB(panel.right, 0, panel.right + margin, 600));
+    expect(tester.getRect(mainPane).left, panel.right + margin);
+    expect(find.byType(VerticalDivider), findsNothing);
+    // A row's ink highlight is clipped with the list, not painted over the section above it.
+    final listMaterial = find.ancestor(
+      of: find.byKey(const Key("desktop-sidebar-project-list")),
+      matching: find.byType(Material),
+    );
+    expect(tester.widget<Material>(listMaterial.first).clipBehavior, Clip.hardEdge);
+
+    // The rail floats the same way, and a fixed-width rail has nothing to resize.
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(rail), const Rect.fromLTRB(margin, margin, margin + 56, 600 - margin));
+    expect(resize, findsNothing);
+    expect(tester.getRect(mainPane).left, margin + 56 + margin);
+  });
+
+  testWidgets(
+    "on macOS the panel carries the traffic lights, its top drags and zooms, and the rail starts below them",
+    variant: TargetPlatformVariant.only(TargetPlatform.macOS),
+    (tester) async {
+      const margin = DesktopSidebar.panelMargin;
+      await tester.pumpWidget(app(state: running));
+      expect(tester.getRect(rail), const Rect.fromLTRB(margin, margin, margin + 260, 600 - margin));
+      // The first control starts below the lights, which end 33 pt from the window's top.
+      expect(tester.getTopLeft(find.byKey(const Key("desktop-sidebar-new-session"))).dy, 42);
+
+      Future<void> drag({required Offset from}) async {
+        final gesture = await tester.startGesture(from, kind: PointerDeviceKind.mouse);
+        await gesture.moveBy(const Offset(40, 0));
+        await gesture.up();
+        await tester.pump();
+      }
+
+      Future<void> doubleClick({required Offset at}) async {
+        await tester.tapAt(at, kind: PointerDeviceKind.mouse);
+        await tester.pump(kDoubleTapMinTime);
+        await tester.tapAt(at, kind: PointerDeviceKind.mouse);
+        await tester.pumpAndSettle();
+      }
+
+      // The room the panel leaves for the lights stands in for the title bar.
+      await drag(from: const Offset(140, 26));
+      verify(windowHost.startDragging).called(1);
+      await doubleClick(at: const Offset(140, 26));
+      verify(windowHost.toggleZoom).called(1);
+
+      // The lights are wider than the rail, so it starts below them, level with
+      // the page toolbar's separator; the strip that opens above it drags and
+      // zooms too.
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(rail),
+        const Rect.fromLTRB(margin, DesktopPageToolbar.height, margin + 56, 600 - margin),
+      );
+      await drag(from: const Offset(30, 20));
+      verify(windowHost.startDragging).called(1);
+      await doubleClick(at: const Offset(30, 20));
+      verify(windowHost.toggleZoom).called(1);
+
+      // The window's top band belongs to the app root, not to the shell.
+      await drag(from: const Offset(500, 20));
+      verifyNever(windowHost.startDragging);
+    },
+  );
 
   testWidgets("retry uses the failure-aware reconnect path", (tester) async {
     whenListen(
@@ -181,9 +387,81 @@ void main() {
     );
     when(projects.retryLoadProjects).thenAnswer((_) async {});
     await tester.pumpWidget(app(state: running));
-    await tester.tap(find.byTooltip("Retry"));
+    // Refresh lives on the Projects header, which a failed load does not show.
+    expect(find.byKey(const Key("desktop-sidebar-refresh")), findsNothing);
+    await tester.tap(find.text("Retry"));
     verify(projects.retryLoadProjects).called(1);
     verifyNever(projects.refreshProjects);
+  });
+
+  for (final outcome in DesktopSidebarRefreshOutcome.values) {
+    testWidgets("keyboard refresh stays busy until ${outcome.name} and retains useful rows", (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        final reply = Completer<DesktopSidebarRefreshOutcome>();
+        when(refreshService.refresh).thenAnswer((_) => reply.future);
+        await tester.pumpWidget(app(state: running));
+        await tester.pumpAndSettle();
+        expect(find.byTooltip(RegExp(r"^New session \(")), findsNothing);
+        expect(find.byTooltip("This computer, Bridge status"), findsOneWidget);
+        final refresh = find.byKey(const Key("desktop-sidebar-refresh"));
+        final icon = find.descendant(of: refresh, matching: find.byType(Icon));
+        Focus.of(tester.element(icon)).requestFocus();
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        await tester.pump();
+        expect(tester.widget<IconButton>(refresh).onPressed, isNull);
+        expect(find.bySemanticsLabel("Refreshing projects and sessions"), findsOneWidget);
+        expect(find.descendant(of: refresh, matching: find.byType(PregoActivityIndicator)), findsOneWidget);
+        expect(find.text("Sesori Desktop"), findsOneWidget);
+        expect(tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-settings"))).onPressed, isNotNull);
+        verify(refreshService.refresh).called(1);
+        verifyNever(projects.refreshProjects);
+        reply.complete(outcome);
+        await tester.pumpAndSettle();
+        expect(tester.widget<IconButton>(refresh).onPressed, isNotNull);
+        expect(find.text("Sesori Desktop"), findsOneWidget);
+        expect(
+          find.text(
+            outcome == DesktopSidebarRefreshOutcome.succeeded
+                ? "Projects and sessions updated"
+                : "Could not refresh projects and sessions",
+          ),
+          findsOneWidget,
+        );
+      } finally {
+        semantics.dispose();
+      }
+    });
+  }
+
+  testWidgets("refresh is unavailable during initial load, disconnection and existing project refresh", (tester) async {
+    final semantics = tester.ensureSemantics();
+    for (final state in <ProjectListState>[
+      const ProjectListState.loading(),
+      const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
+      const ProjectListState.loaded(projects: [], isRefreshing: true),
+    ]) {
+      whenListen(projects, const Stream<ProjectListState>.empty(), initialState: state);
+      await tester.pumpWidget(app(state: running));
+      await tester.pump();
+      final refresh = find.byKey(const Key("desktop-sidebar-refresh"));
+      // Before projects load there is no Projects header to carry it.
+      if (state is ProjectListLoaded) {
+        expect(tester.widget<IconButton>(refresh).onPressed, isNull);
+      } else {
+        expect(refresh, findsNothing);
+        // New session cannot start before projects load, and says so.
+        expect(
+          tester.getSemantics(
+            find.descendant(of: find.byKey(const Key("desktop-sidebar-new-session")), matching: find.byType(InkWell)),
+          ),
+          isSemantics(isButton: true, isEnabled: false),
+        );
+      }
+    }
+    semantics.dispose();
+    verifyNever(refreshService.refresh);
   });
 
   testWidgets("project row identity follows live reordering and removal", (tester) async {
@@ -193,22 +471,219 @@ void main() {
     whenListen(
       projects,
       updates.stream,
-      initialState: const ProjectListState.loaded(projects: [first, second], activityById: {}),
+      initialState: const ProjectListState.loaded(projects: [first, second]),
     );
     await tester.pumpWidget(app(state: running));
     final original = tester.element(find.byKey(const ValueKey("one")));
-    updates.add(const ProjectListState.loaded(projects: [second, first], activityById: {}));
+    updates.add(const ProjectListState.loaded(projects: [second, first]));
     await tester.pumpAndSettle();
     expect(tester.element(find.byKey(const ValueKey("one"))), same(original));
     expect(
       tester.getTopLeft(find.byKey(const ValueKey("two"))).dy,
       lessThan(tester.getTopLeft(find.byKey(const ValueKey("one"))).dy),
     );
-    updates.add(const ProjectListState.loaded(projects: [second], activityById: {}));
+    updates.add(const ProjectListState.loaded(projects: [second]));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey("one")), findsNothing);
     await tester.pumpWidget(const SizedBox.shrink());
     await updates.close();
+  });
+
+  testWidgets("project rendering never dispatches recent-session loads", (tester) async {
+    final updates = StreamController<ProjectListState>();
+    const added = ProjectSummary(id: "project-2", name: "Two", path: "/two", time: null);
+    whenListen(
+      projects,
+      updates.stream,
+      initialState: projects.state,
+    );
+
+    await tester.pumpWidget(app(state: running));
+    updates.add(const ProjectListState.loaded(projects: [added]));
+    await tester.pumpAndSettle();
+
+    verifyNever(() => recent.retry(projectId: any(named: "projectId")));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await updates.close();
+  });
+
+  testWidgets("priority activity stays global, counted, selected and actionable", (tester) async {
+    const projectOne = ProjectSummary(id: "project-1", name: "Project One", path: "/one", time: null);
+    const projectTwo = ProjectSummary(id: "project-2", name: "Project Two", path: "/two", time: null);
+    final priority = _session(id: "priority").copyWith(unseen: true);
+    final ordinary = _session(id: "ordinary");
+    final runningSession = _session(id: "running").copyWith(projectID: "project-2", directory: "/two");
+    when(repository.readSidebarLayout).thenAnswer(
+      (_) async => const DesktopSidebarLayout(collapsedProjectIds: {"project-1", "project-2"}),
+    );
+    whenListen(
+      projects,
+      const Stream<ProjectListState>.empty(),
+      initialState: const ProjectListState.loaded(projects: [projectOne, projectTwo]),
+    );
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: [priority, ordinary],
+          visibleSessions: [priority, ordinary],
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+        "project-2": RecentSessionsLoaded(
+          sourceSessions: [runningSession],
+          visibleSessions: [runningSession],
+          activityBySessionId: const {
+            "running": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    String? openedSession;
+    await tester.pumpWidget(
+      app(
+        state: running,
+        child: DesktopCockpitShell(
+          selectedProjectId: "project-1",
+          selectedSessionId: "priority",
+          onOpenSession: ({required context, required project, required displayName, required session}) =>
+              openedSession = session.id,
+          onNewSession: _openProject,
+          sessionActions: _sessionActions,
+          onOpenProject: _openProject,
+          onOpenBridgeSettings: _noOp,
+          onOpenProjects: _noOp,
+          onOpenSettings: _noOp,
+          onGoBack: _noOp,
+          child: const SizedBox.shrink(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text("Activity · 2"), findsOneWidget);
+    final priorityRow = find.byKey(const ValueKey("sidebar-activity-session-project-1-priority"));
+    final runningRow = find.byKey(const ValueKey("sidebar-activity-session-project-2-running"));
+    expect(priorityRow, findsOneWidget);
+    expect(runningRow, findsOneWidget);
+    expect(find.byKey(const ValueKey("sidebar-session-project-1-priority")), findsNothing);
+    expect(find.text("priority"), findsOneWidget);
+    expect(find.text("Project One"), findsNWidgets(2));
+    expect(
+      tester
+          .widget<Semantics>(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget is Semantics && (widget.properties.label?.startsWith("priority in Project One") ?? false),
+            ),
+          )
+          .properties
+          .selected,
+      // The open session is highlighted once, in the project tree.
+      isFalse,
+    );
+    await tester.tap(priorityRow);
+    expect(openedSession, "priority");
+    final activityMenu = find.descendant(of: priorityRow, matching: find.byType(PregoAnchorMenu));
+    expect(activityMenu, findsOneWidget);
+    expect(tester.widget<PregoAnchorMenu>(activityMenu).acquireOpenLease, isNotNull);
+  });
+
+  testWidgets("Activity lists what is in motion above project rows that never move", (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    final session = _session(
+      id: "moving",
+    ).copyWith(unseen: true, time: const SessionTime(created: 1, updated: 5, archived: null));
+    final updates = StreamController<Map<String, RecentSessionsEntry>>();
+    Map<String, RecentSessionsEntry> entries({required Session session, required bool unseen}) => {
+      "project-1": RecentSessionsLoaded(
+        sourceSessions: [session],
+        visibleSessions: [session],
+        activityBySessionId: const {},
+        listStateBySessionId: {"moving": (unseen: unseen, lastUserActivityAt: null)},
+      ),
+    };
+    whenListen(recent, updates.stream, initialState: entries(session: session, unseen: false));
+    Widget shell({required String? selectedSessionId}) => app(
+      state: running,
+      child: DesktopCockpitShell(
+        selectedProjectId: "project-1",
+        selectedSessionId: selectedSessionId,
+        onOpenSession: _openSession,
+        onNewSession: _openProject,
+        sessionActions: _sessionActions,
+        onOpenProject: _openProject,
+        onOpenBridgeSettings: _noOp,
+        onOpenProjects: _noOp,
+        onOpenSettings: _noOp,
+        onGoBack: _noOp,
+        child: const SizedBox.shrink(),
+      ),
+    );
+    await tester.pumpWidget(shell(selectedSessionId: null));
+    final projectElement = tester.element(find.byKey(const ValueKey("project-1")));
+    final ordinaryRow = find.byKey(const ValueKey("sidebar-session-project-1-moving"));
+    final activityRow = find.byKey(const ValueKey("sidebar-activity-session-project-1-moving"));
+    expect(find.byKey(const Key("desktop-sidebar-activity-header"), skipOffstage: false), findsOneWidget);
+    expect(ordinaryRow, findsOneWidget);
+    expect(activityRow, findsNothing);
+    expect(
+      tester
+          .widget<PregoAnchorMenu>(find.descendant(of: ordinaryRow, matching: find.byType(PregoAnchorMenu)))
+          .acquireOpenLease,
+      isNotNull,
+    );
+
+    updates.add(entries(session: session, unseen: true));
+    await tester.pump();
+    expect(ordinaryRow, findsOneWidget);
+    expect(activityRow, findsOneWidget);
+    expect(tester.element(find.byKey(const ValueKey("project-1"))), same(projectElement));
+
+    // Opening it from Activity marks it seen; it stays listed while selected.
+    await tester.pumpWidget(shell(selectedSessionId: "moving"));
+    updates.add(entries(session: session, unseen: false));
+    await tester.pump();
+    expect(activityRow, findsOneWidget);
+    await tester.pumpWidget(shell(selectedSessionId: null));
+    expect(activityRow, findsNothing);
+    expect(ordinaryRow, findsOneWidget);
+
+    // Marked unread on purpose: out of Activity until the agent moves the stamp.
+    deferMarkedUnreadSession(context: tester.element(find.byType(DesktopCockpitShell)), session: session);
+    updates.add(entries(session: session, unseen: true));
+    await tester.pump();
+    expect(activityRow, findsNothing);
+    expect(ordinaryRow, findsOneWidget);
+    updates.add(
+      entries(
+        session: session.copyWith(time: const SessionTime(created: 1, updated: 6, archived: null)),
+        unseen: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(activityRow, findsOneWidget);
+    await updates.close();
+  });
+
+  testWidgets("recent inventory failure stays project-local and retries explicitly", (tester) async {
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: const {
+        "project-1": RecentSessionsFailed(reason: RemoteFailureReason.networkDown),
+      },
+    );
+    when(() => recent.retry(projectId: "project-1")).thenAnswer((_) async {});
+
+    await tester.pumpWidget(app(state: running));
+    final activityHeader = find.byKey(const Key("desktop-sidebar-activity-header"), skipOffstage: false);
+    expect(activityHeader, findsOneWidget);
+    await tester.tap(find.text("Retry"));
+    verify(() => recent.retry(projectId: "project-1")).called(1);
   });
 
   testWidgets("renders shared projects and dispatches existing route actions", (tester) async {
@@ -229,22 +704,22 @@ void main() {
           onOpenBridgeSettings: () => bridgeOpens++,
           onOpenProjects: () => projectOpens++,
           onOpenSettings: () => settingsOpens++,
+          onGoBack: _noOp,
           child: const SizedBox.shrink(),
         ),
       ),
     );
     expect(find.byType(NavigationRail), findsNothing);
     expect(tester.getSize(rail).width, 260);
-    await tester.tap(find.text("Bridge"));
+    await tester.tap(find.text("This computer"));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key("desktop-bridge-popover")), findsOneWidget);
     expect(bridgeOpens, 0);
     await tester.tap(find.text("Bridge settings…"));
     await tester.pumpAndSettle();
-    await tester.tap(find.text("Projects"));
-    await tester.tap(find.text("Settings"));
+    await tester.tap(find.byKey(const Key("desktop-sidebar-settings")));
     await tester.tap(find.text("Sesori Desktop"));
-    expect((bridgeOpens, projectOpens, settingsOpens, openedProject), (1, 1, 1, "project-1"));
+    expect((bridgeOpens, projectOpens, settingsOpens, openedProject), (1, 0, 1, "project-1"));
   });
 
   testWidgets("recent tree pins selection, keeps route actions, and persists project collapse", (tester) async {
@@ -262,7 +737,6 @@ void main() {
       },
     );
     String? openedSession;
-    var allSessions = 0;
     var newSessions = 0;
     await tester.pumpWidget(
       app(
@@ -274,14 +748,17 @@ void main() {
           onOpenSession: ({required context, required project, required displayName, required session}) =>
               openedSession = session.id,
           onNewSession: ({required context, required project, required displayName}) => newSessions++,
-          onOpenProject: ({required context, required project, required displayName}) => allSessions++,
+          onOpenProject: _openProject,
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
+          onGoBack: _noOp,
           child: const SizedBox.shrink(),
         ),
       ),
     );
+    // The selected session is pinned under the three newest, so nothing is left to show.
+    expect(find.byKey(const ValueKey("sidebar-show-more-project-1")), findsNothing);
     for (final session in sessions) {
       expect(find.text(session.title!), findsOneWidget);
     }
@@ -289,11 +766,6 @@ void main() {
     expect(tester.widget<Semantics>(selected).properties.selected, isTrue);
     await tester.tap(find.text("session-4"));
     expect(openedSession, "session-4");
-    final allSessionsLabel = tester.widget<Text>(find.text("All sessions · 4"));
-    expect(allSessionsLabel.maxLines, 1);
-    expect(allSessionsLabel.style!.fontFamily, startsWith("packages/theme_prego/"));
-    await tester.tap(find.text("All sessions · 4"));
-    expect(allSessions, 1);
     final projectToggle = find.byKey(const ValueKey("sidebar-project-toggle-project-1"));
     await tester.tap(projectToggle);
     await tester.pump();
@@ -316,8 +788,317 @@ void main() {
     await tester.tap(find.text("Sesori Desktop"), buttons: kSecondaryMouseButton);
     await tester.pumpAndSettle();
     expect(find.text("Rename"), findsOneWidget);
-    expect(find.text("Hide Project"), findsOneWidget);
+    expect(find.text("Hide project"), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("show more grows a project's rows in place and folding the project starts over", (tester) async {
+    final sessions = [for (var index = 1; index <= 15; index++) _session(id: "session-$index")];
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: sessions,
+          visibleSessions: sessions,
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+    final rows = find.textContaining("session-");
+    final showMore = find.byKey(const ValueKey("sidebar-show-more-project-1"));
+    expect(rows, findsNWidgets(3));
+    final showMoreLabel = tester.widget<Text>(find.text("Show 10 more"));
+    expect(showMoreLabel.maxLines, 1);
+    expect(showMoreLabel.style?.fontFamily, startsWith("packages/theme_prego/"));
+    expect(showMoreLabel.style?.fontSize, 12);
+    expect(showMoreLabel.style?.color, tester.element(showMore).prego.colors.textTertiary);
+    await tester.tap(showMore);
+    await tester.pumpAndSettle();
+    expect(rows, findsNWidgets(13));
+    expect(find.text("Show 2 more"), findsOneWidget);
+    await tester.ensureVisible(showMore);
+    await tester.pump();
+    await tester.tap(showMore);
+    await tester.pumpAndSettle();
+    expect(rows, findsNWidgets(15));
+    expect(showMore, findsNothing);
+
+    // The list is scrolled by now, so fold through the cubit the chevron calls.
+    await sidebar.toggleProject(projectId: "project-1");
+    await tester.pump();
+    expect(rows, findsNothing);
+    await sidebar.toggleProject(projectId: "project-1");
+    await tester.pumpAndSettle();
+    expect(rows, findsNWidgets(3));
+  });
+
+  testWidgets("projects lead, sessions stay quiet, and the open session alone is highlighted", (tester) async {
+    final quiet = _session(id: "quiet");
+    final fresh = _session(id: "fresh").copyWith(unseen: true);
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: [quiet, fresh],
+          visibleSessions: [quiet, fresh],
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    await tester.pumpWidget(
+      app(
+        state: running,
+        child: const DesktopCockpitShell(
+          selectedProjectId: "project-1",
+          selectedSessionId: "quiet",
+          onOpenSession: _openSession,
+          onNewSession: _openProject,
+          sessionActions: _sessionActions,
+          onOpenProject: _openProject,
+          onOpenBridgeSettings: _noOp,
+          onOpenProjects: _noOp,
+          onOpenSettings: _noOp,
+          onGoBack: _noOp,
+          child: SizedBox.shrink(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final colors = tester.element(rail).prego.colors;
+    TextStyle? styleOf(Finder text) => tester.widget<Text>(text).style;
+    Semantics semanticsOf(String label) => tester.widget<Semantics>(
+      find.byWidgetPredicate(
+        (widget) => widget is Semantics && (widget.properties.label?.startsWith(label) ?? false),
+      ),
+    );
+
+    final projectName = find.descendant(
+      of: find.byKey(const ValueKey("project-1")),
+      matching: find.text("Sesori Desktop"),
+    );
+    expect(styleOf(projectName)?.fontSize, 14);
+    expect(styleOf(projectName)?.color, colors.textPrimary);
+    final quietRow = find.byKey(const ValueKey("sidebar-session-project-1-quiet"));
+    final quietTitle = find.descendant(of: quietRow, matching: find.text("quiet"));
+    expect(styleOf(quietTitle)?.fontSize, 14);
+    expect(styleOf(quietTitle)?.color, colors.textSecondary);
+    final freshTitle = find.descendant(
+      of: find.byKey(const ValueKey("sidebar-session-project-1-fresh")),
+      matching: find.text("fresh"),
+    );
+    expect(styleOf(freshTitle)?.color, colors.textPrimary);
+
+    // One highlight: the session row, not its project, and it spans the list.
+    expect(semanticsOf("Sesori Desktop").properties.selected, isFalse);
+    expect(semanticsOf("quiet").properties.selected, isTrue);
+    final quietInk = find.descendant(of: quietRow, matching: find.byType(InkWell));
+    final list = find.byKey(const Key("desktop-sidebar-project-list"));
+    expect(tester.getTopLeft(quietInk).dx, tester.getTopLeft(list).dx);
+
+    // The project's controls wait for the pointer.
+    final chevron = find.byKey(const ValueKey("sidebar-project-toggle-project-1"));
+    double chevronOpacity() =>
+        tester.widget<Opacity>(find.ancestor(of: chevron, matching: find.byType(Opacity)).first).opacity;
+    expect(chevronOpacity(), 0);
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await mouse.moveTo(tester.getCenter(projectName));
+    await tester.pump();
+    expect(chevronOpacity(), 1);
+  });
+
+  testWidgets("section headers fold their rows and persist, and the rail has no folded sections", (tester) async {
+    final session = _session(id: "moving").copyWith(unseen: true);
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: [session],
+          visibleSessions: [session],
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+    final activityRow = find.byKey(const ValueKey("sidebar-activity-session-project-1-moving"));
+    final project = find.byKey(const ValueKey("project-1"));
+    expect(activityRow, findsOneWidget);
+
+    await tester.tap(find.text("Activity · 1"));
+    await tester.pumpAndSettle();
+    expect(activityRow, findsNothing);
+    expect(project, findsOneWidget);
+    await tester.tap(find.text("Projects"));
+    await tester.pumpAndSettle();
+    expect(project, findsNothing);
+    verify(
+      () => repository.writeSidebarLayout(
+        layout: const DesktopSidebarLayout(activitySectionCollapsed: true, projectsSectionCollapsed: true),
+      ),
+    ).called(1);
+
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(rail).width, 56);
+    expect(find.byKey(const Key("desktop-sidebar-rail-activity")), findsOneWidget);
+    expect(project, findsOneWidget);
+  });
+
+  testWidgets("the rail's one Activity button counts and pops out live rows beside it", (tester) async {
+    const projectOne = ProjectSummary(id: "project-1", name: "Project One", path: "/one", time: null);
+    const projectTwo = ProjectSummary(id: "project-2", name: "Project Two", path: "/two", time: null);
+    final priority = _session(id: "priority").copyWith(unseen: true);
+    final runningSession = _session(id: "running").copyWith(projectID: "project-2", directory: "/two");
+    Map<String, RecentSessionsEntry> entries({required bool stillRunning}) => {
+      "project-1": RecentSessionsLoaded(
+        sourceSessions: [priority],
+        visibleSessions: [priority],
+        activityBySessionId: const {},
+        listStateBySessionId: const {},
+      ),
+      "project-2": RecentSessionsLoaded(
+        sourceSessions: [runningSession],
+        visibleSessions: [runningSession],
+        activityBySessionId: {
+          if (stillRunning)
+            "running": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+        },
+        listStateBySessionId: const {},
+      ),
+    };
+    final updates = StreamController<Map<String, RecentSessionsEntry>>();
+    when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout(collapsed: true));
+    whenListen(
+      projects,
+      const Stream<ProjectListState>.empty(),
+      initialState: const ProjectListState.loaded(projects: [projectOne, projectTwo]),
+    );
+    whenListen(recent, updates.stream, initialState: entries(stillRunning: true));
+    String? openedSession;
+    await tester.pumpWidget(
+      app(
+        state: running,
+        child: DesktopCockpitShell(
+          selectedProjectId: null,
+          selectedSessionId: null,
+          onOpenSession: ({required context, required project, required displayName, required session}) =>
+              openedSession = session.id,
+          onNewSession: _openProject,
+          sessionActions: _sessionActions,
+          onOpenProject: _openProject,
+          onOpenBridgeSettings: _noOp,
+          onOpenProjects: _noOp,
+          onOpenSettings: _noOp,
+          onGoBack: _noOp,
+          child: const SizedBox.shrink(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.getSize(rail).width, 56);
+
+    // One Activity button, then one chip per project: no session stands in as its project.
+    final button = find.byKey(const Key("desktop-sidebar-rail-activity"));
+    expect(find.descendant(of: button, matching: find.text("2")), findsOneWidget);
+    expect(find.byTooltip("Activity · 2, Running, New activity"), findsOneWidget);
+    expect(find.byType(PregoAvatarInitials), findsNWidgets(2));
+    expect(find.text("priority"), findsNothing);
+
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    final popout = find.byKey(const Key("desktop-sidebar-activity-popout"));
+    expect(tester.getTopLeft(popout).dx, greaterThan(tester.getTopRight(rail).dx));
+    expect(find.descendant(of: popout, matching: find.text("priority")), findsOneWidget);
+    expect(find.descendant(of: popout, matching: find.text("running")), findsOneWidget);
+
+    // The open popout follows the cubits: a finished, seen session leaves it.
+    updates.add(entries(stillRunning: false));
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: popout, matching: find.text("running")), findsNothing);
+
+    await tester.tap(find.descendant(of: popout, matching: find.text("priority")));
+    await tester.pumpAndSettle();
+    expect(openedSession, "priority");
+    expect(popout, findsNothing);
+    await updates.close();
+  });
+
+  testWidgets("the rail's Activity popout closes with its last row, and a sticky row claims nothing new", (
+    tester,
+  ) async {
+    Map<String, RecentSessionsEntry> entries({required bool unseen}) {
+      final session = _session(id: "priority").copyWith(unseen: unseen);
+      return {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: [session],
+          visibleSessions: [session],
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+      };
+    }
+
+    final updates = StreamController<Map<String, RecentSessionsEntry>>();
+    when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout(collapsed: true));
+    whenListen(recent, updates.stream, initialState: entries(unseen: true));
+    Widget shell({required String? selectedSessionId}) => app(
+      state: running,
+      child: DesktopCockpitShell(
+        selectedProjectId: selectedSessionId == null ? null : "project-1",
+        selectedSessionId: selectedSessionId,
+        onOpenSession: _openSession,
+        onNewSession: _openProject,
+        sessionActions: _sessionActions,
+        onOpenProject: _openProject,
+        onOpenBridgeSettings: _noOp,
+        onOpenProjects: _noOp,
+        onOpenSettings: _noOp,
+        onGoBack: _noOp,
+        child: const SizedBox.shrink(),
+      ),
+    );
+    await tester.pumpWidget(shell(selectedSessionId: null));
+    await tester.pumpAndSettle();
+    final button = find.byKey(const Key("desktop-sidebar-rail-activity"));
+    final popout = find.byKey(const Key("desktop-sidebar-activity-popout"));
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: popout, matching: find.text("priority")), findsOneWidget);
+    // The app's own page route has a barrier too; the popout's route adds the second.
+    expect(find.byType(ModalBarrier), findsNWidgets(2));
+
+    // The last row leaves: no empty bubble stays behind, and its route goes with it.
+    updates.add(entries(unseen: false));
+    await tester.pumpAndSettle();
+    expect(popout, findsNothing);
+    expect(button, findsNothing);
+    expect(find.byType(ModalBarrier), findsOneWidget);
+
+    // A seen, idle session stays listed only while selected; the button counts it and claims nothing.
+    updates.add(entries(unseen: true));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(shell(selectedSessionId: "priority"));
+    updates.add(entries(unseen: false));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip("Activity · 1"), findsOneWidget);
+
+    // Larger system text grows the count pill instead of clipping its 12-point number.
+    final count = find.descendant(of: button, matching: find.text("1"));
+    expect(tester.getSize(count).height, 12);
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(count).height, 24);
+    expect(tester.takeException(), isNull);
+    await updates.close();
   });
 
   testWidgets("session status signals stay inside the row while the rail collapses", (tester) async {
@@ -337,7 +1118,8 @@ void main() {
       },
     );
     await tester.pumpWidget(app(state: running));
-    expect(find.descendant(of: rail, matching: find.byIcon(TablerRegular.message_circle)), findsOneWidget);
+    // A waiting session is listed under Activity as well as under its project.
+    expect(find.descendant(of: rail, matching: find.byIcon(TablerRegular.message_circle)), findsNWidgets(2));
     await tester.tap(toggle);
     await tester.pump();
     for (var frame = 0; frame < 12; frame++) {
@@ -377,6 +1159,123 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1));
       expect(tester.takeException(), isNull);
     }
+  });
+
+  testWidgets("a row shows its last activity, says it in full, and larger text drops it first", (tester) async {
+    final updated = DateTime.now().subtract(const Duration(hours: 3)).millisecondsSinceEpoch;
+    final sessions = [
+      _session(id: "session-1").copyWith(time: SessionTime(created: 1, updated: updated, archived: null)),
+    ];
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: sessions,
+          visibleSessions: sessions,
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+    expect(find.text("3h"), findsOneWidget);
+    expect(find.byTooltip("session-1, 3h ago"), findsOneWidget);
+    expect(find.bySemanticsLabel("session-1, 3h ago"), findsOneWidget);
+
+    tester.platformDispatcher.textScaleFactorTestValue = 2.5;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pump();
+    expect(find.text("3h"), findsNothing);
+    expect(find.text("session-1"), findsOneWidget);
+    expect(find.bySemanticsLabel("session-1, 3h ago"), findsOneWidget);
+  });
+
+  testWidgets("a scheduled auto-continuation replaces the time unless the session runs", (tester) async {
+    final updated = DateTime.now().subtract(const Duration(hours: 3)).millisecondsSinceEpoch;
+    final continueAt = DateTime.now().add(const Duration(minutes: 1)).millisecondsSinceEpoch;
+    Session session({required String id, required bool enabled}) => _session(id: id).copyWith(
+      time: SessionTime(created: 1, updated: updated, archived: null),
+      autoContinuation: SessionAutoContinuationView(
+        enabled: enabled,
+        availability: AutoContinuationAvailability.conditional,
+        status: SessionAutoContinuationStatus.resetKnown(resetAt: continueAt, continueAt: continueAt),
+      ),
+    );
+    final sessions = [
+      session(id: "scheduled", enabled: true),
+      _session(id: "older-bridge").copyWith(time: SessionTime(created: 1, updated: updated, archived: null)),
+      session(id: "offered", enabled: false),
+      session(id: "running", enabled: true),
+    ];
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: sessions,
+          visibleSessions: sessions,
+          activityBySessionId: const {
+            "running": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+
+    final scheduledRow = find.byKey(const ValueKey("sidebar-session-project-1-scheduled"));
+    expect(find.descendant(of: scheduledRow, matching: find.textContaining(":")), findsOneWidget);
+    expect(find.descendant(of: scheduledRow, matching: find.byIcon(TablerRegular.clock)), findsOneWidget);
+    expect(find.descendant(of: scheduledRow, matching: find.text("3h")), findsNothing);
+    expect(find.bySemanticsLabel(RegExp("^scheduled, Resumes at ")), findsOneWidget);
+    // Only an enabled preference is a schedule; a bare offer keeps the time.
+    final offeredRow = find.byKey(const ValueKey("sidebar-session-project-1-offered"));
+    expect(find.descendant(of: offeredRow, matching: find.text("3h")), findsOneWidget);
+    expect(find.descendant(of: offeredRow, matching: find.byIcon(TablerRegular.clock)), findsNothing);
+    // Running wins, in the project and in Activity.
+    expect(find.bySemanticsLabel(RegExp("running.*Resumes")), findsNothing);
+    // An older bridge sends no view, and the row stays as it was.
+    final olderRow = find.byKey(const ValueKey("sidebar-session-project-1-older-bridge"));
+    expect(find.descendant(of: olderRow, matching: find.text("3h")), findsOneWidget);
+    expect(find.byIcon(TablerRegular.clock), findsOneWidget);
+  });
+
+  testWidgets("an Activity row shows a scheduled auto-continuation unless the session runs", (tester) async {
+    final continueAt = DateTime.now().add(const Duration(minutes: 1)).millisecondsSinceEpoch;
+    Session session({required String id}) => _session(id: id).copyWith(
+      time: SessionTime(created: 1, updated: DateTime.now().millisecondsSinceEpoch, archived: null),
+      autoContinuation: SessionAutoContinuationView(
+        enabled: true,
+        availability: AutoContinuationAvailability.conditional,
+        status: SessionAutoContinuationStatus.resetKnown(resetAt: continueAt, continueAt: continueAt),
+      ),
+    );
+    final sessions = [session(id: "unread"), session(id: "running")];
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: sessions,
+          visibleSessions: sessions,
+          activityBySessionId: const {
+            "running": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+          },
+          listStateBySessionId: const {"unread": (unseen: true, lastUserActivityAt: null)},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+
+    final unreadRow = find.byKey(const ValueKey("sidebar-activity-session-project-1-unread"));
+    final runningRow = find.byKey(const ValueKey("sidebar-activity-session-project-1-running"));
+    expect(unreadRow, findsOneWidget);
+    expect(runningRow, findsOneWidget);
+    expect(find.descendant(of: unreadRow, matching: find.byIcon(TablerRegular.clock)), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp("^unread, .*New activity, Resumes at ")), findsOneWidget);
+    expect(find.descendant(of: runningRow, matching: find.byIcon(TablerRegular.clock)), findsNothing);
+    expect(find.bySemanticsLabel(RegExp("^running, .*Resumes")), findsNothing);
   });
 
   testWidgets("drag resizes immediately, persists on end, and double-click resets", (tester) async {
@@ -444,12 +1343,11 @@ void main() {
           for (var index = 0; index < 20; index++)
             ProjectSummary(id: "project-$index", name: "Project $index", path: "/fixture/$index", time: null),
         ],
-        activityById: const {},
       ),
     );
     await tester.pumpWidget(app(state: running));
-    final list = find.byType(ListView);
-    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    final list = find.byKey(const Key("desktop-sidebar-project-list"));
+    final scrollable = tester.state<ScrollableState>(find.descendant(of: list, matching: find.byType(Scrollable)));
     expect(scrollable.position.maxScrollExtent, greaterThan(0));
     // Show the automatic desktop scrollbar at the first project's row.
     scrollable.position.jumpTo(24);
@@ -547,7 +1445,7 @@ void main() {
     try {
       var opens = 0;
       const states = [
-        ProjectListState.loaded(projects: [], activityById: {}),
+        ProjectListState.loaded(projects: []),
         ProjectListState.loading(),
         ProjectListState.failed(reason: RemoteFailureReason.networkDown),
         ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
@@ -568,6 +1466,7 @@ void main() {
               onOpenBridgeSettings: _noOp,
               onOpenProjects: () => opens++,
               onOpenSettings: _noOp,
+              onGoBack: _noOp,
               child: const SizedBox.shrink(),
             ),
           ),
@@ -593,14 +1492,144 @@ void main() {
     }
   });
 
-  testWidgets("new project is labeled and the pinned footer has its own surface", (tester) async {
+  testWidgets("new session is a quiet row, new project sits on the Projects header, the footer is one row", (
+    tester,
+  ) async {
     await tester.pumpWidget(app(state: running));
     expect(find.text("Sesori"), findsNothing);
-    expect(find.text("Projects"), findsOneWidget);
-    expect(find.text("New project"), findsOneWidget);
-    expect(tester.widget<FilledButton>(find.byKey(const Key("desktop-sidebar-new-project"))).onPressed, isNotNull);
-    final footer = tester.widget<Container>(find.byKey(const Key("desktop-sidebar-footer")));
-    expect((footer.decoration! as BoxDecoration).border, isNotNull);
+    final newSession = find.byKey(const Key("desktop-sidebar-new-session"));
+    expect(find.descendant(of: newSession, matching: find.text("New session")), findsOneWidget);
+    expect(find.text("New project"), findsNothing);
+    expect(
+      find.descendant(
+        of: newSession,
+        matching: find.text(defaultTargetPlatform == TargetPlatform.macOS ? "⌘N" : "Ctrl+N"),
+      ),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: rail, matching: find.byType(FilledButton)), findsNothing);
+    final newProject = tester.widget<IconButton>(
+      find.descendant(
+        of: find.byKey(const Key("desktop-sidebar-projects-header")),
+        matching: find.byKey(const Key("desktop-sidebar-new-project")),
+      ),
+    );
+    expect(newProject.tooltip, "New project");
+    expect(newProject.onPressed, isNotNull);
+    // Refresh sits beside New project while the sidebar is open.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key("desktop-sidebar-projects-header")),
+        matching: find.byKey(const Key("desktop-sidebar-refresh")),
+      ),
+      findsOneWidget,
+    );
+    final footer = find.byKey(const Key("desktop-sidebar-footer"));
+    expect((tester.widget<Container>(footer).decoration! as BoxDecoration).border, isNotNull);
+    // One 44-point row under a 1-point rule: This computer, then settings and collapse.
+    expect(tester.getSize(footer).height, 45);
+    final bridgeRow = tester.getCenter(find.text("This computer")).dy;
+    for (final key in ["desktop-sidebar-settings", "desktop-sidebar-toggle"]) {
+      expect(tester.getCenter(find.byKey(Key(key))).dy, bridgeRow);
+    }
+  });
+
+  group("new session", () {
+    const recentProject = ProjectSummary(id: "project-recent", name: "Most recent", path: "/work/recent", time: null);
+    const openProject = ProjectSummary(id: "project-open", name: null, path: "/work/open-one", time: null);
+    late List<(String, String)> started;
+
+    Widget shell({required String? selectedProjectId, required List<ProjectSummary> available}) {
+      whenListen(
+        projects,
+        const Stream<ProjectListState>.empty(),
+        initialState: ProjectListState.loaded(projects: available),
+      );
+      return app(
+        state: running,
+        child: DesktopCockpitShell(
+          selectedProjectId: selectedProjectId,
+          selectedSessionId: null,
+          onOpenSession: _openSession,
+          onNewSession: ({required context, required project, required displayName}) =>
+              started.add((project.id, displayName)),
+          sessionActions: _sessionActions,
+          onOpenProject: _openProject,
+          onOpenBridgeSettings: _noOp,
+          onOpenProjects: _noOp,
+          onOpenSettings: _noOp,
+          onGoBack: _noOp,
+          child: const TextField(autofocus: true),
+        ),
+      );
+    }
+
+    Future<void> pressNew({required WidgetTester tester, required LogicalKeyboardKey modifier}) async {
+      await tester.sendKeyDownEvent(modifier);
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.keyN);
+      await tester.sendKeyRepeatEvent(LogicalKeyboardKey.keyN);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.keyN);
+      await tester.sendKeyUpEvent(modifier);
+      await tester.pump();
+    }
+
+    setUp(() => started = []);
+
+    testWidgets("shortcut and button start in the open project and ignore repeats", (tester) async {
+      await tester.pumpWidget(shell(selectedProjectId: "project-open", available: const [recentProject, openProject]));
+      await tester.pumpAndSettle();
+      final macOS = defaultTargetPlatform == TargetPlatform.macOS;
+      await pressNew(tester: tester, modifier: macOS ? LogicalKeyboardKey.controlLeft : LogicalKeyboardKey.metaLeft);
+      expect(started, isEmpty);
+      await pressNew(tester: tester, modifier: macOS ? LogicalKeyboardKey.metaLeft : LogicalKeyboardKey.controlLeft);
+      expect(started, [("project-open", "open-one")]);
+      await tester.tap(find.byKey(const Key("desktop-sidebar-new-session")));
+      expect(started, [("project-open", "open-one"), ("project-open", "open-one")]);
+    }, variant: TargetPlatformVariant.desktop());
+
+    testWidgets("without an open project the most recently active one is used", (tester) async {
+      await tester.pumpWidget(shell(selectedProjectId: null, available: const [recentProject, openProject]));
+      await tester.pumpAndSettle();
+      await pressNew(
+        tester: tester,
+        modifier: defaultTargetPlatform == TargetPlatform.macOS
+            ? LogicalKeyboardKey.metaLeft
+            : LogicalKeyboardKey.controlLeft,
+      );
+      expect(started, [("project-recent", "Most recent")]);
+    }, variant: TargetPlatformVariant.desktop());
+
+    testWidgets("an open project missing from the inventory is never swapped for another", (tester) async {
+      await tester.pumpWidget(shell(selectedProjectId: "project-hidden", available: const [recentProject]));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key("desktop-sidebar-new-session")));
+      await tester.pumpAndSettle();
+      expect(started, isEmpty);
+      expect(find.byType(AddProjectDialog), findsNothing);
+    });
+
+    testWidgets("without any project it offers to add one", (tester) async {
+      final connection = _MockConnectionService();
+      const status = ConnectionStatus.connected(
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
+      );
+      when(() => connection.status).thenAnswer((_) => BehaviorSubject<ConnectionStatus>.seeded(status));
+      when(() => connection.currentStatus).thenReturn(status);
+      when(() => projects.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer(
+        (_) async => const FilesystemSuggestionsSuccess(
+          suggestions: FilesystemSuggestions(data: [], path: "/home"),
+        ),
+      );
+      GetIt.instance.registerSingleton<ConnectionService>(connection);
+      await tester.pumpWidget(shell(selectedProjectId: null, available: const []));
+      await tester.pumpAndSettle();
+      expect(find.text("Add project"), findsOneWidget);
+      await tester.tap(find.byKey(const Key("desktop-sidebar-new-session")));
+      await tester.pumpAndSettle();
+      expect(started, isEmpty);
+      expect(find.byType(AddProjectDialog), findsOneWidget);
+    });
   });
 
   testWidgets("running and unread project signals update in expanded and compact modes", (tester) async {
@@ -615,13 +1644,18 @@ void main() {
     whenListen(
       projects,
       updates.stream,
-      initialState: const ProjectListState.loaded(projects: [project], activityById: {"project-1": 2}),
+      // A third session only waits for input, so it is active but not running.
+      initialState: const ProjectListState.loaded(
+        projects: [project],
+        runningByProjectId: {"project-1": 2},
+      ),
     );
     await tester.pumpWidget(app(state: running));
     final loc = tester.element(rail).loc;
     final native = defaultTargetPlatform == TargetPlatform.macOS;
     final runningHint = "Sesori Desktop, ${loc.projectListRunning(2)}, ${loc.projectListNewActivity}";
     expect(find.byTooltip(runningHint), findsOneWidget);
+    expect(find.text(loc.projectListRunning(2)), findsOneWidget);
     expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isTrue);
     expect(find.byType(AppKitView), native ? findsOneWidget : findsNothing);
     expect(
@@ -640,7 +1674,7 @@ void main() {
     expect(tester.getSize(rail).width, 56);
     expect(find.byTooltip(runningHint), findsOneWidget);
     expect(tester.getCenter(find.byType(PregoAiLoader)).dx, lessThan(56));
-    updates.add(const ProjectListState.loaded(projects: [project], activityById: {}));
+    updates.add(const ProjectListState.loaded(projects: [project]));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 800));
     expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isFalse);
@@ -650,7 +1684,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
     updates.add(
-      const ProjectListState.loaded(projects: [project], activityById: {}, unseenByProjectId: {"project-1": false}),
+      const ProjectListState.loaded(projects: [project], unseenByProjectId: {"project-1": false}),
     );
     await tester.pumpAndSettle();
     expect(find.byType(PregoAiLoader), findsNothing);
@@ -658,6 +1692,34 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await updates.close();
   }, variant: const TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.macOS}));
+
+  testWidgets("a project whose folder is gone shows it in amber ahead of activity and offers Remove", (tester) async {
+    whenListen(
+      projects,
+      const Stream<ProjectListState>.empty(),
+      initialState: const ProjectListState.loaded(
+        projects: [
+          ProjectSummary(id: "project-1", name: "Gone", path: "/work/gone", time: null, directoryMissing: true),
+        ],
+        runningByProjectId: {"project-1": 1},
+      ),
+    );
+    await tester.pumpWidget(app(state: running));
+    await tester.pump();
+
+    final loc = tester.element(rail).loc;
+    expect(find.byTooltip("Gone, ${loc.projectListFolderNotFound}"), findsOneWidget);
+    expect(find.text(loc.projectListRunning(1)), findsNothing);
+    expect(
+      tester.widget<Icon>(find.byIcon(TablerRegular.folder_off)).color,
+      PregoDesignSystem.light.colors.fgWarningPrimary,
+    );
+
+    await tester.tap(find.text("Gone"), buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
+    expect(find.text(loc.projectListRemove), findsOneWidget);
+    expect(find.text(loc.hideProject), findsNothing);
+  });
 
   testWidgets("connection transitions overlay unchanged content bounds", (tester) async {
     final root = app(state: running);
@@ -772,7 +1834,7 @@ void main() {
     expect(find.text(message), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);
     verifyNever(bridgeControlCubit.startBridge);
-    expect(find.text("Open Logs"), findsNothing);
+    expect(find.text("Open logs"), findsNothing);
     await tester.ensureVisible(find.text("Retry"));
     await tester.tap(find.text("Retry"));
     verify(bridgeControlCubit.startBridge).called(1);
@@ -794,7 +1856,7 @@ void main() {
     );
     expect(find.text("The local bridge stopped after repeated crashes."), findsOneWidget);
     await tester.tap(find.text("Retry"));
-    await tester.tap(find.text("Open Logs"));
+    await tester.tap(find.text("Open logs"));
     verify(bridgeControlCubit.recoverConnection).called(1);
     verify(bridgeControlCubit.openLogs).called(1);
   });
@@ -802,7 +1864,7 @@ void main() {
   testWidgets("offers takeover from the integrated supervision surface", (tester) async {
     when(bridgeControlCubit.takeOver).thenAnswer((_) async {});
     await tester.pumpWidget(app(state: _state(processState: const BridgeProcessContention())));
-    await tester.tap(find.text("Take Over"));
+    await tester.tap(find.text("Take over"));
     verify(bridgeControlCubit.takeOver).called(1);
   });
 
@@ -816,9 +1878,9 @@ void main() {
         ),
       ),
     );
-    expect(find.text("Take Over"), findsOneWidget);
-    expect(find.text("Start Bridge"), findsNothing);
-    await tester.tap(find.text("Take Over"));
+    expect(find.text("Take over"), findsOneWidget);
+    expect(find.text("Start bridge"), findsNothing);
+    await tester.tap(find.text("Take over"));
     verify(bridgeControlCubit.takeOver).called(1);
   });
 
@@ -827,9 +1889,142 @@ void main() {
     await tester.pumpWidget(app(state: _state(processState: const BridgeProcessLoginRequired())));
     expect(find.textContaining("account is required"), findsOneWidget);
     expect(find.textContaining("install"), findsNothing);
-    await tester.tap(find.text("Start Bridge"));
+    await tester.tap(find.text("Start bridge"));
     verify(bridgeControlCubit.recoverConnection).called(1);
   });
+
+  testWidgets("the command palette filters, picks by keyboard, closes on Esc and runs commands", (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1200, 800);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final build = testSession(id: "s1", title: "Fix the build", updatedAt: 2);
+    final docs = testSession(id: "s2", title: "Write docs", updatedAt: 1);
+    final untitled = testSession(id: "s3", title: null, updatedAt: 0);
+    final auth = StreamController<AuthGateState>();
+    addTearDown(auth.close);
+    whenListen(authGate, auth.stream, initialState: const AuthGateState.signedIn(user: null));
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: [build, docs, untitled],
+          visibleSessions: [build, docs, untitled],
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    final opened = <String>[];
+    var backs = 0;
+    await tester.pumpWidget(
+      PregoInteractionScope(
+        mode: PregoInteractionMode.pointer,
+        child: app(
+          state: running,
+          child: DesktopCockpitShell(
+            selectedProjectId: null,
+            selectedSessionId: null,
+            onOpenSession: ({required context, required project, required displayName, required session}) =>
+                opened.add(session.id),
+            onNewSession: _openProject,
+            sessionActions: _sessionActions,
+            onOpenProject: ({required context, required project, required displayName}) => opened.add(project.id),
+            onOpenBridgeSettings: _noOp,
+            onOpenProjects: _noOp,
+            onOpenSettings: _noOp,
+            onGoBack: () => backs++,
+            child: const SizedBox.expand(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final macOS = defaultTargetPlatform == TargetPlatform.macOS;
+    final modifier = macOS ? LogicalKeyboardKey.metaLeft : LogicalKeyboardKey.controlLeft;
+    final palette = find.byKey(const Key("desktop-command-palette"));
+    Finder inPalette(String text) => find.descendant(of: palette, matching: find.textContaining(text));
+    Future<void> press(LogicalKeyboardKey key) async {
+      await tester.sendKeyDownEvent(modifier);
+      await tester.sendKeyEvent(key);
+      await tester.sendKeyUpEvent(modifier);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> type(String query) async {
+      await tester.enterText(find.descendant(of: palette, matching: find.byType(TextField)), query);
+      await tester.pumpAndSettle();
+    }
+
+    await press(LogicalKeyboardKey.keyK);
+    expect(palette, findsOneWidget);
+    expect(inPalette("New session"), findsOneWidget);
+    expect(find.descendant(of: palette, matching: find.text(macOS ? "⌘N" : "Ctrl+N")), findsOneWidget);
+    // Sessions follow recency and name their project.
+    expect(
+      tester.getTopLeft(inPalette("Fix the build")).dy,
+      lessThan(tester.getTopLeft(inPalette("Write docs")).dy),
+    );
+    expect(find.descendant(of: palette, matching: find.text("Fix the build   Sesori Desktop")), findsOneWidget);
+
+    await type("BUILD");
+    expect(inPalette("Fix the build"), findsOneWidget);
+    expect(inPalette("Write docs"), findsNothing);
+    expect(inPalette("New session"), findsNothing);
+    await type("nothing like it");
+    expect(find.text("No matches"), findsOneWidget);
+
+    // Enter picks the first match: the session opens and the palette closes.
+    await type("docs");
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(opened, ["s2"]);
+    expect(palette, findsNothing);
+
+    // The sidebar row opens it too; Down moves from New session to Toggle sidebar.
+    await tester.tap(find.byKey(const Key("desktop-sidebar-search")));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(sidebar.state.collapsed, isTrue);
+    expect(palette, findsNothing);
+
+    await press(LogicalKeyboardKey.keyK);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(palette, findsNothing);
+
+    // A command runs from the palette, and its shortcut still works.
+    await press(LogicalKeyboardKey.keyK);
+    await type("go back");
+    expect(inPalette("Go back"), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(backs, 1);
+    await press(LogicalKeyboardKey.bracketLeft);
+    expect(backs, 2);
+
+    await press(LogicalKeyboardKey.keyK);
+    await type("sesori");
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(opened.last, "project-1");
+
+    // An untitled session matches the title it shows.
+    await press(LogicalKeyboardKey.keyK);
+    await type("untitled");
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(opened.last, "s3");
+
+    // Signing out takes the palette with the cockpit.
+    await press(LogicalKeyboardKey.keyK);
+    auth.add(const AuthGateState.signedOut());
+    await tester.pumpAndSettle();
+    expect(palette, findsNothing);
+  }, variant: TargetPlatformVariant.desktop());
 }
 
 BridgeControlState _state({
@@ -854,6 +2049,8 @@ BridgeControlState _state({
 );
 
 Session _session({required String id}) => Session(
+  approvalOverride: null,
+  autoContinuation: null,
   id: id,
   title: id,
   projectID: "project-1",
@@ -867,7 +2064,12 @@ Session _session({required String id}) => Session(
   lastUserActivityAt: null,
 );
 
-const _sessionActions = SessionListActionDispatcher(onSessionDeleted: _deleted);
+const _sessionActions = SessionListActionDispatcher(
+  deleteConfirmation: SessionDeleteConfirmation.sheet,
+  onSessionArchived: null,
+  onSessionDeleted: _deleted,
+  onSessionMarkedUnread: null,
+);
 void _deleted({required BuildContext context, required String sessionId}) {}
 void _openSession({
   required BuildContext context,
@@ -875,8 +2077,16 @@ void _openSession({
   required String displayName,
   required Session session,
 }) {}
+class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
+
 void _noOp() {}
 void _openProject({required BuildContext context, required ProjectSummary project, required String displayName}) {}
+
+class _MockRefreshService() extends Mock implements DesktopSidebarRefreshService;
+
+class _MockWindowHost() extends Mock implements WindowHost;
+
+class _MockConnectionService() extends Mock implements ConnectionService;
 
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
 class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;

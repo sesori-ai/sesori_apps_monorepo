@@ -114,6 +114,7 @@ void main() {
       model: "gpt-5.6",
       effort: "high",
       collaborationMode: CodexCollaborationMode.plan,
+      fastMode: true,
     );
 
     final input = threadRepository.lastParts.single as PluginPromptPartText;
@@ -121,6 +122,7 @@ void main() {
     expect(threadRepository.lastModel, "gpt-5.6");
     expect(threadRepository.lastEffort, "high");
     expect(threadRepository.lastClientUserMessageId, "prm_1");
+    expect(threadRepository.lastFastMode, isTrue);
     expect(dispatched.turnId, "turn");
 
     final compacted = await service.sendCommand(
@@ -131,6 +133,7 @@ void main() {
       model: null,
       effort: null,
       collaborationMode: null,
+      fastMode: false,
     );
     expect(threadRepository.compactCount, 1);
     expect(compacted.turnId, isNull);
@@ -150,6 +153,7 @@ void main() {
         defaultModelID: "gpt-default",
         models: const [
           PluginModel(
+            fastMode: null,
             id: "gpt-default",
             name: "Default model",
             variants: [],
@@ -158,6 +162,7 @@ void main() {
             releaseDate: null,
           ),
           PluginModel(
+            fastMode: null,
             id: "gpt-project",
             name: "Project model",
             variants: ["medium", "high"],
@@ -188,7 +193,7 @@ void main() {
     expect(result, isA<PluginSessionOptionsDiscoveryObserved>());
     final options = (result as PluginSessionOptionsDiscoveryObserved).options;
     expect(options.completeness, PluginSessionOptionsCompleteness.complete);
-    expect(options.agents.map((agent) => agent.name), ["Agent", "Plan"]);
+    expect(options.agents.map((agent) => agent.name), ["Agent"]);
     expect(
       options.agents.map((agent) => agent.model?.modelID),
       everyElement("gpt-project"),
@@ -596,6 +601,7 @@ class _StubThreadRepository() extends CodexThreadRepository {
   String? lastModel;
   String? lastEffort;
   String? lastClientUserMessageId;
+  bool? lastFastMode;
 
   @override
   Future<CodexThreadRecord> resumeThread({required String threadId}) async {
@@ -622,11 +628,13 @@ class _StubThreadRepository() extends CodexThreadRepository {
     required String? model,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
+    required bool? fastMode,
   }) async {
     lastParts = parts;
     lastModel = model;
     lastEffort = effort;
     lastClientUserMessageId = clientUserMessageId;
+    lastFastMode = fastMode;
     return "turn";
   }
 

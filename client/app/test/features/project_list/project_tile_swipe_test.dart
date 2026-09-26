@@ -108,8 +108,8 @@ void main() {
   testWidgets("swiping the row reveals Rename and Hide without navigating or acting", (tester) async {
     await pumpScreen(tester);
 
-    // The hide pill starts past the row's edge, clipped out of view.
-    expect(tester.getRect(find.text("Hide")).left, greaterThanOrEqualTo(800));
+    // A row at rest builds no pills.
+    expect(find.text("Hide"), findsNothing);
 
     await swipeOpen(tester);
 
@@ -192,9 +192,9 @@ void main() {
     await tester.tap(tile(), warnIfMissed: false);
     await tester.pumpAndSettle();
 
-    // Closed, still on the list: the actions are back off-row and no route
+    // Closed, still on the list: the actions are gone again and no route
     // was pushed.
-    expect(tester.getRect(find.text("Hide")).left, greaterThanOrEqualTo(800));
+    expect(find.text("Hide"), findsNothing);
     expect(tile(), findsOneWidget);
 
     await tester.tap(tile());
@@ -215,6 +215,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(InkWell, "Rename"), findsOneWidget);
-    expect(find.widgetWithText(InkWell, "Hide Project"), findsOneWidget);
+    expect(find.widgetWithText(InkWell, "Hide project"), findsOneWidget);
   });
 }

@@ -56,26 +56,31 @@ Widget _buildApp({required SessionListCubit cubit}) {
 Widget _buildScreenApp({required Widget child}) {
   return BlocProvider<ConnectionOverlayCubit>(
     create: (_) => StubConnectionOverlayCubit(),
-    child: MaterialApp(
-      theme: ThemeData(
-        colorScheme: PregoColors.light.toFlutterColorScheme(),
-        textTheme: PregoTextTheme.light.asFlutterTextTheme(),
-        extensions: [PregoDesignSystem.light],
+    child: BlocProvider(
+      create: (_) => PendingSessionArchiveCubit(repository: MockSessionRepository()),
+      child: MaterialApp(
+        theme: ThemeData(
+          colorScheme: PregoColors.light.toFlutterColorScheme(),
+          textTheme: PregoTextTheme.light.asFlutterTextTheme(),
+          extensions: [PregoDesignSystem.light],
+        ),
+        darkTheme: ThemeData(
+          colorScheme: PregoColors.dark.toFlutterColorScheme(),
+          textTheme: PregoTextTheme.dark.asFlutterTextTheme(),
+          extensions: [PregoDesignSystem.dark],
+        ),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: child,
       ),
-      darkTheme: ThemeData(
-        colorScheme: PregoColors.dark.toFlutterColorScheme(),
-        textTheme: PregoTextTheme.dark.asFlutterTextTheme(),
-        extensions: [PregoDesignSystem.dark],
-      ),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: child,
     ),
   );
 }
 
 Session _testSessionWithPullRequest() {
   return const Session(
+    approvalOverride: null,
+    autoContinuation: null,
     branchName: null,
     id: "session-pr-1",
     pluginId: "plugin-1",
@@ -129,7 +134,6 @@ class const _TestSessionListBody() extends StatelessWidget {
   void _showActions(BuildContext context, Session session) {
     final loc = AppLocalizations.of(context)!;
     final cubit = context.read<SessionListCubit>();
-    final isArchived = session.time?.archived != null;
 
     showModalBottomSheet<void>(
       context: context,
@@ -137,15 +141,6 @@ class const _TestSessionListBody() extends StatelessWidget {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (!isArchived)
-              ListTile(
-                leading: const Icon(Icons.archive_outlined),
-                title: Text(loc.sessionListArchive),
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  _showArchiveSheet(context, cubit, session);
-                },
-              ),
             ListTile(
               leading: Icon(Icons.delete_outlined, color: Theme.of(context).colorScheme.error),
               title: Text(
@@ -169,13 +164,6 @@ class const _TestSessionListBody() extends StatelessWidget {
     showModalBottomSheet<void>(
       context: context,
       builder: (_) => _TestDeleteSheet(session: session, cubit: cubit),
-    );
-  }
-
-  void _showArchiveSheet(BuildContext context, SessionListCubit cubit, Session session) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (_) => _TestArchiveSheet(session: session, cubit: cubit),
     );
   }
 }
@@ -221,49 +209,6 @@ class _TestDeleteSheetState() extends State<_TestDeleteSheet> {
               );
             },
             child: Text(loc.sessionListDeleteConfirmAction),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class const _TestArchiveSheet({required final Session session, required final SessionListCubit cubit})
-    extends StatefulWidget {
-  @override
-  State<_TestArchiveSheet> createState() => _TestArchiveSheetState();
-}
-
-class _TestArchiveSheetState() extends State<_TestArchiveSheet> {
-  bool _deleteWorktree = true;
-
-  @override
-  Widget build(BuildContext context) {
-    final loc = AppLocalizations.of(context)!;
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(loc.sessionListArchiveConfirmTitle),
-          CheckboxListTile(
-            key: const Key("archive-worktree-checkbox"),
-            value: _deleteWorktree,
-            onChanged: (v) => setState(() => _deleteWorktree = v ?? false),
-            title: Text(loc.sessionListDeleteWorktreeCheckbox),
-          ),
-          FilledButton(
-            key: const Key("confirm-archive-button"),
-            onPressed: () {
-              Navigator.pop(context);
-              widget.cubit.archiveSession(
-                sessionId: widget.session.id,
-                deleteWorktree: _deleteWorktree,
-                force: false,
-              );
-            },
-            child: Text(loc.sessionListArchiveConfirmAction),
           ),
         ],
       ),
@@ -437,62 +382,6 @@ void main() {
   // Archive bottom sheet
   // ---------------------------------------------------------------------------
 
-  group("Archive bottom sheet", () {
-    testWidgets("shows archive checkboxes and confirm button", (tester) async {
-      final session = testSession(title: "My Session");
-      when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
-      );
-
-      await tester.pumpWidget(_buildApp(cubit: mockCubit));
-
-      await tester.longPress(find.byKey(Key("session-${session.id}")));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text("Archive"));
-      await tester.pumpAndSettle();
-
-      expect(find.text("Archive session?"), findsOneWidget);
-      expect(find.text("Delete worktree"), findsOneWidget);
-    });
-
-    testWidgets("archive confirm calls cubit with checkbox values", (tester) async {
-      final session = testSession(title: "My Session");
-      when(() => mockCubit.state).thenReturn(
-        SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
-      );
-      when(
-        () => mockCubit.archiveSession(
-          sessionId: any(named: "sessionId"),
-          deleteWorktree: any(named: "deleteWorktree"),
-          force: any(named: "force"),
-        ),
-      ).thenAnswer((_) async => true);
-
-      await tester.pumpWidget(_buildApp(cubit: mockCubit));
-
-      await tester.longPress(find.byKey(Key("session-${session.id}")));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.text("Archive"));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key("archive-worktree-checkbox")));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key("confirm-archive-button")));
-      await tester.pumpAndSettle();
-
-      verify(
-        () => mockCubit.archiveSession(
-          sessionId: session.id,
-          deleteWorktree: false,
-          force: false,
-        ),
-      ).called(1);
-    });
-  });
-
   group("Session tile PR rendering", () {
     testWidgets("renders the PR row when a session has pullRequest data", (tester) async {
       final getIt = GetIt.instance;
@@ -555,7 +444,12 @@ void main() {
                 projectName: "Project One",
                 onNewSession: () {},
                 onSessionTap: ({required session}) {},
-                actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
+                actionDispatcher: const SessionListActionDispatcher(
+                  deleteConfirmation: SessionDeleteConfirmation.sheet,
+                  onSessionArchived: null,
+                  onSessionDeleted: null,
+                  onSessionMarkedUnread: null,
+                ),
                 archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
                 onBack: null,
               ),
@@ -566,7 +460,7 @@ void main() {
 
       expect(find.byType(Scaffold), findsNothing);
       expect(find.text("Panel Session"), findsOneWidget);
-      expect(find.byIcon(Icons.add), findsOneWidget);
+      expect(find.byIcon(TablerRegular.plus), findsOneWidget);
     });
 
     testWidgets("selected session is visually marked", (tester) async {
@@ -586,7 +480,12 @@ void main() {
                 selectedSessionId: session.id,
                 onNewSession: () {},
                 onSessionTap: ({required session}) {},
-                actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
+                actionDispatcher: const SessionListActionDispatcher(
+                  deleteConfirmation: SessionDeleteConfirmation.sheet,
+                  onSessionArchived: null,
+                  onSessionDeleted: null,
+                  onSessionMarkedUnread: null,
+                ),
                 archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
                 onBack: null,
               ),
@@ -663,53 +562,8 @@ void main() {
         find.text("Worktree is on branch 'feature/xyz' instead of expected 'main'"),
         findsOneWidget,
       );
-      expect(find.text("Force Delete"), findsOneWidget);
+      expect(find.text("Force delete"), findsOneWidget);
       expect(find.text("Cancel"), findsOneWidget);
-    });
-
-    testWidgets("force archive dialog shows correct labels", (tester) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Builder(
-            builder: (context) {
-              final loc = AppLocalizations.of(context)!;
-              return Scaffold(
-                body: ElevatedButton(
-                  onPressed: () {
-                    showDialog<void>(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        title: Text(loc.sessionListForceArchiveTitle),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(loc.sessionListCleanupIssueUnstagedChanges),
-                          ],
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: Text(loc.sessionListForceArchiveAction),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  child: const Text("Show"),
-                ),
-              );
-            },
-          ),
-        ),
-      );
-
-      await tester.tap(find.text("Show"));
-      await tester.pumpAndSettle();
-
-      expect(find.text("Force archive?"), findsOneWidget);
-      expect(find.text("Force Archive"), findsOneWidget);
     });
   });
 }

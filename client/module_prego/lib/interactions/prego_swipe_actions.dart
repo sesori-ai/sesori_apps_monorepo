@@ -159,6 +159,10 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
   /// captures.
   _StripChildren? _lastBuiltStrips;
 
+  /// Set when a drag begins on a row at rest, whose strips are not built yet:
+  /// the first drag update after they lay out measures them instead.
+  bool _measurePending = false;
+
   /// While a close settle runs, the children captured as it began; the strips
   /// render these instead of fresh builder output, so the closing action's
   /// own state change cannot morph the still-visible pill mid-settle. Null
@@ -190,19 +194,23 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
     super.dispose();
   }
 
+  /// The strips sit clipped past the row's edge at rest, so a resting row
+  /// leaves them unbuilt: a list inserting many rows at once would otherwise
+  /// build every row's hidden actions in one frame.
+  bool get _stripsVisible => _dragging || _controller.value != 0;
+
   @override
   Widget build(BuildContext context) {
     final strips =
         _frozenStrips ??
-        (
-          actions: widget.actionsBuilder(context, _close),
-          primary: widget.primaryActionBuilder(context, _close),
-          leadingPrimary: widget.leadingPrimaryActionBuilder?.call(context, _close),
-        );
-    _lastBuiltStrips = strips;
-    final actions = strips.actions;
-    final primary = strips.primary;
-    final leadingPrimary = strips.leadingPrimary;
+        (_stripsVisible
+            ? (
+                actions: widget.actionsBuilder(context, _close),
+                primary: widget.primaryActionBuilder(context, _close),
+                leadingPrimary: widget.leadingPrimaryActionBuilder?.call(context, _close),
+              )
+            : null);
+    if (strips != null) _lastBuiltStrips = strips;
 
     final row = TapRegion(
       onTapOutside: (_) => _handleTapOutside(),
@@ -231,21 +239,23 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
                   return Stack(
                     children: [
                       Transform.translate(offset: shift, child: widget.child),
-                      _positionedStrip(
-                        side: _trailing,
-                        actions: actions,
-                        primary: primary,
-                        extent: extent,
-                        shift: shift,
-                      ),
-                      if (leadingPrimary != null)
+                      if (strips != null && _stripsVisible) ...[
                         _positionedStrip(
-                          side: _leading,
-                          actions: const [],
-                          primary: leadingPrimary,
+                          side: _trailing,
+                          actions: strips.actions,
+                          primary: strips.primary,
                           extent: extent,
                           shift: shift,
                         ),
+                        if (strips.leadingPrimary case final leadingPrimary?)
+                          _positionedStrip(
+                            side: _leading,
+                            actions: const [],
+                            primary: leadingPrimary,
+                            extent: extent,
+                            shift: shift,
+                          ),
+                      ],
                       if (extent != 0)
                         // Absorbs taps on the revealed row's content so it
                         // closes instead of activating; sized to spare the open
@@ -317,13 +327,16 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
   // ── Gesture handling ───────────────────────────────────────────────────────
 
   void _handleDragStart(DragStartDetails details) {
-    _dragging = true;
+    // A row at rest builds its strips now; they measure once laid out.
+    _measurePending = !_stripsVisible;
+    // A re-grab mid-close also takes the row back to live rebuilds.
+    setState(() {
+      _dragging = true;
+      _frozenStrips = null;
+    });
     _controller.stop();
-    // A re-grab mid-close takes the row back to live rebuilds.
-    if (_frozenStrips != null) setState(() => _frozenStrips = null);
     _dragStartSide = _extent.sign;
-    _trailing.measureIfResting(extent: _extent);
-    _leading.measureIfResting(extent: _extent);
+    _measureStrips();
     // A re-grab of a held overdrag stays armed — unless the extent is the
     // closing settle of a commit that already fired.
     _pastCommit = !_commitFired && _extent.abs() >= _commitThreshold(extent: _extent);
@@ -331,6 +344,7 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
 
   void _handleDragUpdate(DragUpdateDetails details) {
     if (_rowWidth <= 0) return;
+    if (_measurePending) _measureStrips();
     final floor = _hasLeading ? -_rowWidth : 0.0;
     final extent = (_extent + _toExtentDelta(details.primaryDelta ?? 0)).clamp(floor, _rowWidth);
     _controller.value = extent / _rowWidth;
@@ -346,8 +360,9 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
     unawaited(past ? HapticFeedback.lightImpact() : HapticFeedback.selectionClick());
   }
 
-  void _handleDragEnd(DragEndDetails details) {
-    _dragging = false;
+  void _handleDragEnd(DragEndDetails details) => _afterStripsMeasured(() => _release(details));
+
+  void _release(DragEndDetails details) {
     // Velocity in extent terms: positive drives toward the trailing side, the
     // way the extent itself grows.
     final velocity = _toExtentDelta(details.primaryVelocity ?? 0);
@@ -390,10 +405,41 @@ class _PregoSwipeActionsState() extends State<PregoSwipeActions> with SingleTick
     return true;
   }
 
-  void _handleDragCancel() {
-    _dragging = false;
-    _settleToNearest();
+  void _measureStrips() {
+    if (_measurePending && _trailing.stripKey.currentContext == null) return;
+    _measurePending = false;
+    _trailing.measureIfResting(extent: _extent);
+    _leading.measureIfResting(extent: _extent);
   }
+
+  /// Settles once the strips have a measured width. A drag that ends before
+  /// they first laid out (a flick inside one frame) waits for that frame, and
+  /// re-reads the commit threshold its updates could not know yet.
+  void _afterStripsMeasured(VoidCallback settle) {
+    _measureStrips();
+    if (!_measurePending) {
+      _finishDrag(settle);
+      return;
+    }
+    WidgetsBinding.instance
+      ..addPostFrameCallback((_) {
+        if (!mounted) return;
+        _measureStrips();
+        _pastCommit = !_commitFired && _extent.abs() >= _commitThreshold(extent: _extent);
+        _finishDrag(settle);
+      })
+      ..ensureVisualUpdate();
+  }
+
+  void _finishDrag(VoidCallback settle) {
+    _dragging = false;
+    settle();
+    // A touch that never moved the row starts no settle to rebuild it, so
+    // drop the strips it built here.
+    if (!_controller.isAnimating && _controller.value == 0) setState(() {});
+  }
+
+  void _handleDragCancel() => _afterStripsMeasured(_settleToNearest);
 
   void _handleTapOutside() {
     if (_extent == 0 || _dragging) return;
