@@ -136,7 +136,7 @@ void main() {
       await tester.scrollUntilVisible(legal, 100);
       expect(tester.getRect(legal).bottom, lessThanOrEqualTo(480));
       expect(find.text("Sign in with email").hitTestable(), findsOneWidget);
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
     testWidgets("crossing the breakpoint folds the panel and keeps what was typed", (tester) async {
       await pumpLogin(tester, state: const LoginState.idle());
