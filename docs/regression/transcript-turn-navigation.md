@@ -26,8 +26,10 @@ sent to the bridge.
   with an error · {first line}" when it failed. The leading segment reads
   "Earlier turn, partly loaded" while older pages remain and "Before the first
   prompt" once the start is loaded. Follow-ups and automation fold inside
-  their turn. The "Working…" row, a retry row and unsent prompts stay as they
-  are. Screen readers read each line as shown.
+  their turn. Durations read "42s", "1m 02s" or "1h 05m 12s". The running
+  line has no clock; the "Working…" row under it ticks the time since the
+  prompt ("Working… · 1m 43s") where the prompt carries a time. The
+  "Working…" row, a retry row and unsent prompts stay as they are. Screen readers read each line as shown.
 - The phone bar and the desktop toolbar (between Changes and More) carry one
   button on a loaded session: "Fold all turns" while unfolded, "Unfold all
   turns" while folded. The desktop tooltip adds the shortcut: ⌘− folds and ⌘=
@@ -101,7 +103,8 @@ answer and a folded line, and on a trackpad while text streams.
 - Claude sessions imported before the queued-command fix regain dropped
   follow-ups only on their next re-import.
 - A folded running turn shows its "Running · step {n}" line with the "Working…"
-  row below it, so two sparkles turn at once.
+  row below it, so two sparkles turn at once. Only the "Working…" row shows a
+  time.
 - A far target is reached one cache-extended viewport a frame, so a long hold
   shows brief motion. Folded, older pages load after less scrolling, because
   the prefetch threshold is in pixels.

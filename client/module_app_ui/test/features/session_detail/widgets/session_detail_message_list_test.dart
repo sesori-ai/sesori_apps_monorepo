@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 
+import "package:clock/clock.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -1620,6 +1621,44 @@ void main() {
       ..setRetryErrorMessage("Rate limited");
     await settle();
     expect(find.text("Working…"), findsNothing);
+  });
+
+  testWidgets("a folded running turn keeps its row without a timer, the timed Working row under it", (tester) async {
+    await withClock(Clock(() => tester.binding.clock.now()), () async {
+      final harness = await _pumpTurns(
+        tester,
+        messages: _turns(count: 1, promptLines: 1, answers: 1, paragraphs: 1),
+        folded: true,
+      );
+      final sentAt = tester.binding.clock.now().millisecondsSinceEpoch - 65000;
+      harness
+        ..appendNewestMessage(
+          MessageWithParts(
+            info: Message.user(
+              promptId: null,
+              id: "u1",
+              sessionID: "session-1",
+              agent: null,
+              time: MessageTime(created: sentAt, completed: null),
+            ),
+            parts: const [MessagePart.text(id: "u1-part", sessionID: "session-1", messageID: "u1", text: "Fix it")],
+          ),
+        )
+        ..setBusy(true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text("Running"), findsOneWidget);
+      expect(find.text("Working… · "), findsOneWidget);
+      expect(find.text("1m 05s"), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text("1m 06s"), findsOneWidget);
+
+      harness.setBusy(false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("Working… · "), findsNothing);
+    });
   });
 
   testWidgets("a reader pinned at the bottom stays pinned while a finished step folds into its group", (

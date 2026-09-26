@@ -2527,23 +2527,23 @@ abstract class AppLocalizations {
   /// **'Before the first prompt'**
   String get transcriptTurnBeforeFirstPrompt;
 
-  /// How long a folded turn of a session transcript took, under a minute, e.g. '42s'.
+  /// A session transcript duration under a minute, such as how long a folded turn took or how long the agent has been working, e.g. '42s'.
   ///
   /// In en, this message translates to:
   /// **'{seconds}s'**
   String transcriptTurnSeconds(int seconds);
 
-  /// How long a folded turn of a session transcript took, under an hour. The seconds always have two digits, e.g. '1m 02s'.
+  /// A session transcript duration under an hour, such as how long a folded turn took or how long the agent has been working. The seconds always have two digits, e.g. '1m 02s'.
   ///
   /// In en, this message translates to:
   /// **'{minutes}m {seconds}s'**
   String transcriptTurnMinutes(int minutes, String seconds);
 
-  /// How long a folded turn of a session transcript took, an hour or more. The minutes always have two digits, e.g. '1h 05m'.
+  /// A session transcript duration of an hour or more, such as how long a folded turn took or how long the agent has been working. The minutes and seconds always have two digits, e.g. '1h 05m 12s'.
   ///
   /// In en, this message translates to:
-  /// **'{hours}h {minutes}m'**
-  String transcriptTurnHours(int hours, String minutes);
+  /// **'{hours}h {minutes}m {seconds}s'**
+  String transcriptTurnHours(int hours, String minutes, String seconds);
 
   /// Label of the session toolbar button that folds every turn of the transcript to one line each.
   ///
