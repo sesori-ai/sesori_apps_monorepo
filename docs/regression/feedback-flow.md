@@ -67,10 +67,22 @@ itself.
 - **Could be better** replaces the rating step with "What should we improve?".
   It shows four issue pills (Hard to navigate, Connection drops, Notifications
   don’t arrive, App feels slow) and a text composer. A quiet line below the
-  composer says "Sent privately to the Sesori team." Voice input is not part of
-  this build.
-- The composer is typing-only and stops at 4,000 characters. A counter appears
-  when 200 or fewer remain.
+  composer says "Sent privately to the Sesori team."
+- The composer stops at 4,000 characters. A counter appears when 200 or fewer
+  remain.
+- A microphone button sits beside **Send**. Holding it records through the
+  shared voice transcription stack, with no project attached. While recording,
+  the counter's slot shows a live waveform and a cancel target: dragging onto
+  it and releasing, or a hold shorter than 200 ms, discards the recording.
+  Releasing elsewhere transcribes, showing "Transcribing..." with a cancel
+  button. The transcript is appended to the draft after a space, cut at the
+  4,000-character limit, and never sent automatically. **Send** is disabled
+  while recording or transcribing.
+- Voice failures keep the draft. A denied microphone shows the permission
+  notice; a failed start, a failed or unauthenticated transcription, and a
+  network failure show their error, and a network failure discards the saved
+  recording so the next hold starts fresh. Closing the sheet discards any
+  recording or transcription still running.
 - **Send** is always available, including with nothing filled in. It posts the
   ticked issues to `POST /feedback` on the auth server as their wire values,
   with the source (`settings` or `automatic`), platform (`ios` or `android`), and app version.
@@ -87,15 +99,16 @@ itself.
 - Reopening the sheet always starts from the first question.
 - Android Remove animations and iOS Reduce Motion remove the sheet travel and
   skip the celebration. Turning either on during the celebration finishes it
-  promptly, and turning either on while writing keeps the draft.
+  promptly, and turning either on while writing or recording keeps the draft
+  and the recording.
 - The sheet fits a 320 x 568 screen at 1.5x text without overflow.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: the sheet widget suite proves the celebration timing, the confirmation copy, the locked answers, that the outcome resolves only after the sheet has closed, the outcomes for dismiss, Not now, close during the celebration and Cancel, private Send with its toast after closing, the recipient line, that Cancel, back, a barrier tap, and a swipe down cannot dismiss the sheet mid-send, a failed send that keeps the draft and retries, the 4,000-character limit and counter, reduced motion (at open, turned on mid-flight, and while writing), and the narrow large-text layout. The cubit, repository, API, store-client, and Settings suites prove the outcome mapping, send locking and failure, message trimming and omission, the request's wire values, the store URLs with the Android fallback, the automatic source's StoreKit request on iOS (no confirmation, the sheet closes itself first) and store listing on Android, that Settings opens the store only after the sheet has closed, and that Settings sends with the `settings` source. The counter suites prove the stored state's round trip and discard of unreadable values, the Remote Config defaults and fallbacks, that points below the threshold or inside the cooldown do not open the sheet, that opening it restarts the count and records the time, that each AI-error event and a failure restart the count, that **Yes** stops it for good, that nothing is counted before the counter starts (desktop), and that the session-detail and new-session cubits count accepted sends and replies and restart on failures. A widget test proves the app-root listener opens the sheet over the current screen. |
-| L2 Routine | Client end to end on the release-target client platform against the dev auth server: Settings shows **Rate Sesori**; **Yes**, then **Leave a review**, opens the store review page after the sheet has closed; **Not now** returns to Settings without leaving the app; **Could be better** sends ticked issues and fixture text, closes the sheet, and shows the toast, and the stored document matches (message omitted when blank). |
+| L1 Smoke | Automated: the sheet widget suite proves the celebration timing, the confirmation copy, the locked answers, that the outcome resolves only after the sheet has closed, the outcomes for dismiss, Not now, close during the celebration and Cancel, private Send with its toast after closing, the recipient line, that Cancel, back, a barrier tap, and a swipe down cannot dismiss the sheet mid-send, a failed send that keeps the draft and retries, the 4,000-character limit and counter, reduced motion (at open, turned on mid-flight, while writing, and while recording), and the narrow large-text layout. Its voice group proves hold-to-talk with the waveform, the disabled Send, the draft staying in place, and the transcript appended without sending; that the cancel target and a quick tap discard the recording; the permission and network-failure notices keeping the draft; the transcript cut at the character limit; and that closing the sheet mid-recording discards it. The cubit, repository, API, store-client, and Settings suites prove the outcome mapping, send locking and failure, message trimming and omission, the request's wire values, the store URLs with the Android fallback, the automatic source's StoreKit request on iOS (no confirmation, the sheet closes itself first) and store listing on Android, that Settings opens the store only after the sheet has closed, and that Settings sends with the `settings` source. The counter suites prove the stored state's round trip and discard of unreadable values, the Remote Config defaults and fallbacks, that points below the threshold or inside the cooldown do not open the sheet, that opening it restarts the count and records the time, that each AI-error event and a failure restart the count, that **Yes** stops it for good, that nothing is counted before the counter starts (desktop), and that the session-detail and new-session cubits count accepted sends and replies and restart on failures. A widget test proves the app-root listener opens the sheet over the current screen. |
+| L2 Routine | Client end to end on the release-target client platform against the dev auth server: Settings shows **Rate Sesori**; **Yes**, then **Leave a review**, opens the store review page after the sheet has closed; **Not now** returns to Settings without leaving the app; **Could be better** sends ticked issues and fixture text (typed, then extended by a held voice recording), closes the sheet, and shows the toast, and the stored document matches (message omitted when blank). |
 | L3 Release | Client end to end on the alternate client platform: the same journey opens that platform's store. On a phone with Remote Config setting the threshold to 2, two sent messages open the automatic sheet over the session; on iOS **Yes** closes it and asks StoreKit; on Android **Yes** shows the confirmation. After **Not now** the sheet does not reopen by itself on the next two sends. |
 | L4 Extended | Client end to end with Reduce Motion or Remove animations enabled and at accessibility text sizes. On Android, a device without the Play Store app falls back to the web listing. Sending offline or past the server's rate limit shows the inline error, keeps the draft, and Retry succeeds once the server accepts it. |
 | L5 Full | No additional coverage. |
@@ -118,6 +131,11 @@ itself.
 - A blank or whitespace-only message is sent as text, so the server rejects it
   with a 400.
 - The message text appears in a log.
+- A transcript replaces the draft, sends itself, or lands after the sheet has
+  closed; a voice failure clears the draft; or the draft jumps when recording
+  starts.
+- Scrolling or swiping on the microphone scrolls or dismisses the sheet instead
+  of recording.
 - With reduced motion enabled, the celebration or sheet travel still animates.
 - The sheet clips or overflows on a small screen or at large text sizes.
 - **Rate Sesori** appears in desktop Settings, or outside the mobile Account
@@ -144,6 +162,7 @@ itself.
 - `client/app/lib/core/platform/flutter_app_review_client.dart`
 - `client/app/ios/Runner/AppDelegate.swift`
 - `client/app/lib/features/settings/settings_screen.dart`
+- `client/app/lib/core/widgets/feedback_voice_input_scope.dart`
 - `client/module_app_ui/test/features/feedback/feedback_sheet_test.dart`
 - `client/module_core/test/cubits/feedback_sheet/feedback_sheet_cubit_test.dart`
 - `client/module_core/test/cubits/feedback_prompt/feedback_prompt_cubit_test.dart`

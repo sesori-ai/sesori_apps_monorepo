@@ -22,6 +22,7 @@ import "core/platform/firebase_analytics_startup.dart";
 import "core/platform/singular_attribution_startup.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
+import "core/widgets/feedback_voice_input_scope.dart";
 import "firebase_options.dart";
 
 const _singularSdkKeyDefine = String.fromEnvironment("SESORI_SINGULAR_SDK_KEY");
@@ -413,6 +414,7 @@ class const _SesoriAppShell() extends StatelessWidget {
                   ],
                   child: FeedbackPromptListener(
                     navigatorKey: appRootNavigatorKey,
+                    voiceInputScopeBuilder: ({required child}) => FeedbackVoiceInputScope(child: child),
                     // Above the router, so an archive's Undo window survives
                     // leaving the project it was started in.
                     child: BlocProvider(

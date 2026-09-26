@@ -17,6 +17,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
+import "../../helpers/voice_test_helpers.dart";
 
 /// An [AuthSession] with valid local tokens but no cached [AuthUser]: the
 /// state splash leaves behind when `restoreLocalSession()` finds no stored
@@ -176,6 +177,9 @@ void main() {
     when(productAnalyticsService.resumeAfterFailedLogout).thenAnswer((_) async {});
     GetIt.instance.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
     GetIt.instance.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
+    final voiceTranscriptionService = MockVoiceTranscriptionService();
+    stubVoiceTranscriptionService(service: voiceTranscriptionService);
+    GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
 
     final store = _MockAppearanceStore();
     when(() => store.write(mode: any(named: "mode"))).thenAnswer((_) async {});

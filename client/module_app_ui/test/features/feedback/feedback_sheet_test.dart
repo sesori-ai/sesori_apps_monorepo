@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
@@ -7,11 +8,16 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/feedback/feedback_rating_motion.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockAppReviewClient() extends Mock implements AppReviewClient;
 
 class _MockFeedbackRepository() extends Mock implements FeedbackRepository;
+
+class _MockVoiceTranscriptionService() extends Mock implements VoiceTranscriptionService;
+
+class _MockVoiceTranscriptionSession() extends Mock implements VoiceTranscriptionSession;
 
 const _ratingTitle = "Are you enjoying Sesori?";
 const _reviewTitle = "Thanks! Leave a review?";
@@ -22,10 +28,13 @@ void main() {
   late FeedbackSheetCubit cubit;
   late List<FeedbackSheetOutcome> outcomes;
   late List<bool> sheetsAtOutcome;
+  late _MockVoiceTranscriptionService voiceService;
+  late List<VoiceInputCubit> voiceCubits;
 
   setUpAll(() {
     registerFallbackValue(<FeedbackIssue>{});
     registerFallbackValue(FeedbackSource.settings);
+    registerFallbackValue(_MockVoiceTranscriptionSession());
   });
 
   setUp(() {
@@ -38,6 +47,23 @@ void main() {
     );
     outcomes = [];
     sheetsAtOutcome = [];
+    voiceService = _MockVoiceTranscriptionService();
+    voiceCubits = [];
+    // Created per test, so closing a recorder settles inside the fake clock.
+    final maxDurationReached = StreamController<void>.broadcast();
+    addTearDown(maxDurationReached.close);
+    when(
+      () => voiceService.maxDurationReachedStream(session: any(named: "session")),
+    ).thenAnswer((_) => maxDurationReached.stream);
+    // The recorder's level stream is broadcast, like the real capture's.
+    final levels = StreamController<double>.broadcast();
+    addTearDown(levels.close);
+    when(() => voiceService.amplitudeStream(session: any(named: "session"))).thenAnswer((_) => levels.stream);
+    when(() => voiceService.prewarm(session: any(named: "session"))).thenAnswer((_) async {});
+    when(() => voiceService.start(session: any(named: "session"))).thenAnswer((_) async {});
+    when(() => voiceService.cancel(session: any(named: "session"))).thenAnswer((_) async {});
+    when(() => voiceService.discard(session: any(named: "session"))).thenAnswer((_) async {});
+    when(() => voiceService.close(session: any(named: "session"))).thenAnswer((_) async {});
   });
 
   tearDown(() => cubit.close());
@@ -55,7 +81,21 @@ void main() {
           builder: (context) => Center(
             child: TextButton(
               onPressed: () async {
-                final outcome = await showFeedbackSheet(context: context, cubit: cubit);
+                final outcome = await showFeedbackSheet(
+                  context: context,
+                  cubit: cubit,
+                  voiceInputScopeBuilder: ({required child}) => BlocProvider(
+                    create: (_) {
+                      final voiceCubit = VoiceInputCubit(
+                        service: voiceService,
+                        session: _MockVoiceTranscriptionSession(),
+                      );
+                      voiceCubits.add(voiceCubit);
+                      return voiceCubit;
+                    },
+                    child: child,
+                  ),
+                );
                 outcomes.add(outcome);
                 sheetsAtOutcome.add(find.byType(BottomSheet, skipOffstage: false).evaluate().isNotEmpty);
               },
@@ -404,5 +444,181 @@ void main() {
     await tester.ensureVisible(cancel);
     expect(find.text("Notifications don’t arrive"), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  group("voice input", () {
+    final microphone = find.byKey(const ValueKey("feedback-voice"));
+    final waveform = find.byType(PregoVoiceWaveform);
+    final transcribing = find.text("Transcribing...");
+
+    String draft(WidgetTester tester) => tester.widget<TextField>(text).controller?.text ?? "";
+
+    bool sendEnabled(WidgetTester tester) => tester.widget<PregoButtonsSolid>(send).onPressed != null;
+
+    Future<void> openPrivateStep({required WidgetTester tester, required String typed}) async {
+      await open(tester: tester);
+      await tapAndSettle(tester: tester, finder: improve);
+      await tester.enterText(text, typed);
+      await tester.pump();
+    }
+
+    /// Holds the microphone past the tap threshold; the waveform never
+    /// settles, so frames are pumped explicitly.
+    Future<TestGesture> hold(WidgetTester tester) async {
+      final gesture = await tester.startGesture(tester.getCenter(microphone));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      return gesture;
+    }
+
+    testWidgets("holding records with a live level and releasing appends the transcript without sending", (
+      tester,
+    ) async {
+      final transcript = Completer<String>();
+      when(() => voiceService.stopAndTranscribe(session: any(named: "session"))).thenAnswer((_) => transcript.future);
+      await openPrivateStep(tester: tester, typed: "Typed first");
+      final draftRect = tester.getRect(text);
+
+      final gesture = await hold(tester);
+      expect(waveform, findsOneWidget);
+      expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
+      expect(sendEnabled(tester), isFalse, reason: "A recording cannot race a send.");
+      expect(tester.getRect(text), draftRect, reason: "Recording must not move the draft.");
+
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      verify(() => voiceService.stopAndTranscribe(session: any(named: "session"))).called(1);
+      expect(transcribing, findsOneWidget);
+      expect(waveform, findsNothing);
+      expect(draft(tester), "Typed first");
+
+      transcript.complete("  and then spoken. ");
+      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(draft(tester), "Typed first and then spoken.");
+      expect(transcribing, findsNothing);
+      expect(sendEnabled(tester), isTrue);
+      expect(tester.getRect(text), draftRect);
+      verifyZeroInteractions(feedbackRepository);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("releasing on the cancel target, or a quick tap, discards only the recording", (tester) async {
+      await openPrivateStep(tester: tester, typed: "Keep me");
+
+      final gesture = await hold(tester);
+      await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceCancelButton)));
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      final quickTap = await tester.startGesture(tester.getCenter(microphone));
+      await tester.pump(const Duration(milliseconds: 50));
+      await quickTap.up();
+      await tester.pumpAndSettle();
+
+      verify(() => voiceService.cancel(session: any(named: "session"))).called(2);
+      verifyNever(() => voiceService.stopAndTranscribe(session: any(named: "session")));
+      expect(draft(tester), "Keep me");
+      expect(waveform, findsNothing);
+      expect(sendEnabled(tester), isTrue);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("a denied microphone explains itself and keeps the draft", (tester) async {
+      when(() => voiceService.start(session: any(named: "session"))).thenAnswer(
+        (_) async => throw VoiceTranscriptionError.microphonePermissionDenied(innerError: StateError("denied")),
+      );
+      await openPrivateStep(tester: tester, typed: "Keep me");
+
+      final gesture = await hold(tester);
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(find.text("Microphone permission is required for voice input"), findsOneWidget);
+      expect(draft(tester), "Keep me");
+      expect(waveform, findsNothing);
+      expect(sendEnabled(tester), isTrue);
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("a transcription that fails in transit drops the recording, keeps the draft, and records again", (
+      tester,
+    ) async {
+      when(
+        () => voiceService.stopAndTranscribe(session: any(named: "session")),
+      ).thenAnswer((_) async => throw VoiceTranscriptionError.networkError());
+      await openPrivateStep(tester: tester, typed: "Keep me");
+
+      final gesture = await hold(tester);
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(find.text("Transcription failed. Record again or type instead."), findsOneWidget);
+      verify(() => voiceService.discard(session: any(named: "session"))).called(1);
+      expect(draft(tester), "Keep me");
+      expect(sendEnabled(tester), isTrue);
+
+      final again = await hold(tester);
+      expect(waveform, findsOneWidget, reason: "A fresh recording starts after the failure.");
+      await again.up();
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("the draft and the recording survive turning on Reduce Motion mid-recording", (tester) async {
+      when(() => voiceService.stopAndTranscribe(session: any(named: "session"))).thenAnswer((_) async => "spoken");
+      await openPrivateStep(tester: tester, typed: "Typed");
+
+      final gesture = await hold(tester);
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(waveform, findsOneWidget);
+      expect(draft(tester), "Typed");
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(voiceCubits, hasLength(1), reason: "The layout switch must not replace the recorder.");
+      expect(voiceCubits.single.isClosed, isFalse);
+      expect(draft(tester), "Typed spoken");
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("a transcript stops at the 4,000-character limit", (tester) async {
+      when(() => voiceService.stopAndTranscribe(session: any(named: "session"))).thenAnswer((_) async => "a" * 50);
+      await openPrivateStep(tester: tester, typed: "b" * 3980);
+
+      final gesture = await hold(tester);
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(draft(tester), "${"b" * 3980} ${"a" * 19}");
+      expect(find.text("0 characters left"), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("closing the sheet mid-recording closes its recorder", (tester) async {
+      await openPrivateStep(tester: tester, typed: "Draft");
+
+      final gesture = await hold(tester);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await gesture.up();
+      await tester.pump();
+
+      expect(find.byType(BottomSheet, skipOffstage: false), findsNothing);
+      // Closing the recorder starts by invalidating its session, which stops
+      // the recording; the release that follows transcribes nothing.
+      verify(() => voiceService.invalidate(session: any(named: "session"))).called(1);
+      verifyNever(() => voiceService.stopAndTranscribe(session: any(named: "session")));
+      verifyZeroInteractions(feedbackRepository);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

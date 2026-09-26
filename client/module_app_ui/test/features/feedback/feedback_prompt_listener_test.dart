@@ -34,7 +34,12 @@ void main() {
               ),
             ),
           ],
-          child: FeedbackPromptListener(navigatorKey: navigatorKey, child: child ?? const SizedBox.shrink()),
+          child: FeedbackPromptListener(
+            navigatorKey: navigatorKey,
+            // The rating step never builds the private step's voice scope.
+            voiceInputScopeBuilder: ({required child}) => child,
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
         home: const Text("Session"),
       ),
