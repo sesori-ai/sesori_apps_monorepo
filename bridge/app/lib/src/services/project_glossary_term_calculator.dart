@@ -8,9 +8,9 @@ import "project_glossary_english_words.dart";
 /// Selects a small, deterministic set of likely spoken technical terms from
 /// bounded project metadata and tracked path names.
 class const ProjectGlossaryTermCalculator() {
-  // Whole ASCII words only, so "Español" leaves no "Espa" fragment.
+  // Whole ASCII words only, so "Español" leaves no "Espa" fragment, nor "Espan" when its accent is a combining mark.
   static final RegExp _metadataTokenPattern = RegExp(
-    r"(?<![\p{L}\p{N}])(?:[Cc]\+\+|[CFcf]#|[A-Za-z][A-Za-z0-9]*(?![\p{L}\p{N}]))",
+    r"(?<![\p{L}\p{M}\p{N}])(?:[Cc]\+\+|[CFcf]#|[A-Za-z][A-Za-z0-9]*(?![\p{L}\p{M}\p{N}]))",
     unicode: true,
   );
   static final RegExp _identifierPattern = RegExp(r"^[A-Za-z][A-Za-z0-9]*$");
@@ -57,10 +57,11 @@ class const ProjectGlossaryTermCalculator() {
     "[A-Za-z0-9_./+=#-]{8,}",
     caseSensitive: false,
   );
-  // Hash and color fragments such as "c4f042" or "ffcb47".
-  static final RegExp _hexTokenPattern = RegExp(r"^(?:[A-Fa-f0-9]{12,}|(?=.*[0-9])[A-Fa-f0-9]{5,})$");
-  // File numbering or icon sizes such as "p01" or "Square30x30Logo".
-  static final RegExp _serialTokenPattern = RegExp(r"^[A-Za-z][0-9]{2,}$|[0-9]x[0-9]");
+  // Hash and color fragments such as "c4f042" or "ffcb47". Short ones must be lowercase, so "D3D11" and "Ed25519" stay.
+  static final RegExp _hexTokenPattern = RegExp(r"^(?:[A-Fa-f0-9]{12,}|(?=.*[0-9])[a-f0-9]{5,})$");
+  // File numbering, line anchors, or icon sizes such as "p01", "L23", or "Square30x30Logo". An x or H prefix names an
+  // architecture, curve, or codec such as "x64", "X25519", or "H264", so those stay.
+  static final RegExp _serialTokenPattern = RegExp(r"^(?![HhXx])[A-Za-z][0-9]{2,}$|[0-9]x[0-9]");
   static final RegExp _allCapsPattern = RegExp(r"^[A-Z]{2,}$");
   static final RegExp _hasUpperPattern = RegExp("[A-Z]");
   static final RegExp _hasLowerPattern = RegExp("[a-z]");

@@ -232,7 +232,7 @@ void main() {
     }
   });
 
-  test("drops hash, serial, icon-size, and non-ASCII word fragments", () {
+  test("drops hash, serial, icon-size, and non-ASCII word fragments but keeps technical names", () {
     final terms = calculator.calculate(
       source: ProjectGlossarySource(
         projectName: "AcmeCompiler",
@@ -245,19 +245,23 @@ void main() {
         ],
         metadataDocuments: const [
           "Badge ffcb47 in Español, Français, and Übersicht. See README.md for arm64.",
+          // "Español" decomposed, as macOS can store it, and names that look like hashes or numbering.
+          "Español builds for x64 with D3D11, Ed25519, X25519, and H264. See L23.",
         ],
       ),
       maximumTerms: 100,
     );
 
-    expect(terms, contains("arm64"));
+    expect(terms, containsAll(["arm64", "x64", "D3D11", "Ed25519", "X25519", "H264"]));
     for (final fragment in [
       "p01",
+      "L23",
       "c4f042",
       "Square30x30Logo",
       "acme-bridge-darwin-arm64",
       "ffcb47",
       "Espa",
+      "Espan",
       "Fran",
       "ais",
       "bersicht",
