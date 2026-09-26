@@ -4,7 +4,8 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 6.a (PR 8/13) — event projection, local on `sesori/opencode-v2-step-6a-event-projection`.
+- Current step: 6.a (PR 8/13) — event projection, architecture approved and ready for review.
+  Branch: `sesori/opencode-v2-step-6a-event-projection`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
   Step 3 [#1716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1716),
@@ -14,7 +15,7 @@
   Step 5.c [#1748](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1748).
 - One-step-ahead successor: Step 6.b activity/service (PR 9/13); do not start before Step 6.a is in PR.
 - Takeover: continue from `aqua-hummingbird`; preserve the existing published Step 2/3 history.
-- Architecture review: first pass rejected 9 layering points; all applied (see PLAN.md Status)
+- Plan architecture review: first pass rejected 9 layering points; all applied (see PLAN.md Status)
 
 ## Steps
 
@@ -45,10 +46,9 @@
   supported; regeneration changes only the three non-session v1 version fields alongside the v2 fixes.
 - Churn is approximately 1,100 authored plus 10,700 generated lines. The generated output remains with its
   source as one coherent code-generation change; there is no runtime behavior or database change.
-- Step 6 must add live user-message events (`session.inbox.*` / `session.synthetic`) when mapping needs them.
-  Interrupt/compaction reasons are not yet in the event manifest. Number/integer form bounds currently retain
-  OpenCode's number-or-special-string union as `Object?`; Step 7 must validate these at its boundary rather than
-  assuming all values are finite numbers. These are implementation handoffs, not unsupported product claims.
+- Step 6.a adds inbox/synthetic/agent-selection events and typed interruption reasons. Compaction state comes
+  from its native message projection. Number/integer form bounds retain OpenCode's number-or-special-string union
+  as `Object?`; Step 7 must validate these rather than assuming all values are finite numbers.
 
 ## Step 4 Evidence And Handoff
 
@@ -139,7 +139,7 @@
   Single-message 404 translation now belongs to the API; the repository consumes a nullable native DTO.
   Other errors propagate unchanged. All 36 affected API/repository cases pass, including two new HTTP-boundary
   cases, and package analysis passes. Unchanged mapper/parser/model suites and generation were not repeated.
-  Second architecture review is pending.
+  Second architecture review approved `5d22c21`, inspecting all 14 changed files with no remaining findings.
 - Event projection contains no mutable state. Native readback supplies tool context and compaction identity;
   targeted tool/assistant updates never replay unrelated snapshot text ahead of queued deltas.
 - The event slice ceiling is revised from 1,200 to 1,400 after measuring approximately 1,100 authored plus 202
