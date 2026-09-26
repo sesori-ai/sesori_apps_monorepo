@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prompts view — round 3</title>
+<style>
+@font-face { font-family: Satoshi; src: url("fonts/SatoshiPrego-Regular.otf"); font-weight: 400; }
+@font-face { font-family: Satoshi; src: url("fonts/SatoshiPrego-Medium.otf"); font-weight: 500; }
+@font-face { font-family: Satoshi; src: url("fonts/SatoshiPrego-Bold.otf"); font-weight: 700; }
+@font-face { font-family: TablerRegular; src: url("fonts/TablerIcons-Regular.ttf"); }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Satoshi, -apple-system, sans-serif; background: #f4f4f5; color: #161616; line-height: 1.45; }
+main { max-width: 1320px; margin: 0 auto; padding: 28px 28px 120px; }
+h1 { font-size: 30px; margin: 0 0 6px; }
+h2 { font-size: 24px; margin: 56px 0 6px; padding-top: 18px; border-top: 1px solid #ddd; }
+p.lead { color: #444; margin: 0 0 18px; max-width: 980px; font-size: 16px; }
+.box { background: #fff; border-radius: 14px; padding: 16px 20px; margin: 14px 0; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+.box.settled { border-left: 4px solid #12a150; }
+.box.how { border-left: 4px solid #1a6dff; }
+.box h3 { margin: 0 0 6px; font-size: 16px; }
+ul { margin: 6px 0; padding-left: 22px; } li { margin: 3px 0; }
+code { font-size: 13px; background: #ececef; padding: 1px 5px; border-radius: 5px; }
+.muted { color: #666; }
+
+/* Sticky answer bar */
+.bar { position: sticky; top: 0; z-index: 10; background: rgba(244,244,245,.94); backdrop-filter: blur(8px); border-bottom: 1px solid #e0e0e0; }
+.bar .in { max-width: 1320px; margin: 0 auto; padding: 10px 28px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+.bar nav a { margin-right: 12px; color: #1a4fd6; text-decoration: none; font-weight: 500; font-size: 14px; }
+.bar .prog { font-weight: 700; font-size: 14px; }
+.bar .darkt { font-size: 14px; color: #555; }
+#copy { margin-left: auto; background: #1a6dff; color: #fff; border: 0; border-radius: 10px; padding: 9px 18px; font: inherit; font-weight: 700; font-size: 15px; cursor: pointer; }
+#copy:hover { background: #1558d6; }
+#toast { font-size: 14px; color: #12813f; font-weight: 700; min-width: 60px; }
+#fallback { width: 100%; height: 160px; font: 13px ui-monospace, monospace; }
+
+/* Section overview: today next to the suggested result */
+.overview { display: grid; grid-template-columns: 390px 390px 1fr; gap: 22px; align-items: start; margin: 14px 0 10px; }
+.overview figure { margin: 0; }
+.overview figcaption { font-size: 14px; margin: 0 0 8px; }
+.overview img { width: 390px; display: block; border-radius: 12px; border: 1px solid #ddd; margin-bottom: 10px; }
+@media (max-width: 1260px) { .overview { grid-template-columns: 390px 390px; } .overview table { grid-column: 1 / -1; } }
+.tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 99px; margin-right: 6px; }
+.tag.today { background: #e6e6e6; color: #555; }
+.tag.after { background: #dcf5e6; color: #0f7a3d; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
+th { color: #666; font-weight: 500; background: #fafafa; }
+
+/* Question cards */
+.q { background: #fff; border-radius: 16px; padding: 18px 20px 16px; margin: 22px 0; box-shadow: 0 1px 3px rgba(0,0,0,.08); border: 1.5px solid transparent; }
+.q.answered { border-color: #cfe0ff; }
+.qh { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.qid { flex: none; font-size: 13px; font-weight: 700; color: #fff; background: #161616; border-radius: 8px; padding: 2px 8px; }
+.qt { font-size: 18px; font-weight: 700; }
+.qhint { font-size: 13px; color: #1a4fd6; font-weight: 700; margin-left: auto; white-space: nowrap; }
+.qsub { color: #444; margin: 0 0 12px; max-width: 1000px; }
+.opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.opt { display: block; border: 1.5px solid #ddd; border-radius: 12px; padding: 12px 14px; cursor: pointer; background: #fff; }
+.opt:hover { border-color: #9ab; }
+.opt.on { border-color: #1a6dff; background: #f2f6ff; box-shadow: 0 0 0 3px rgba(26,109,255,.12); }
+.oh { display: flex; align-items: center; gap: 8px; font-size: 15px; margin-bottom: 10px; }
+.oh input { width: 18px; height: 18px; margin: 0; accent-color: #1a6dff; flex: none; }
+.oh .letter { font-weight: 700; }
+.sug { font-size: 12px; font-weight: 700; color: #0f7a3d; background: #dcf5e6; border-radius: 99px; padding: 2px 8px; margin-left: auto; white-space: nowrap; }
+.why { font-size: 14px; color: #444; margin: 8px 0 0; }
+.note-in { display: block; margin-top: 12px; width: 100%; border: 1.5px solid #e2e2e2; border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 14px; resize: vertical; min-height: 38px; }
+#other { min-height: 110px; }
+
+/* Phone transcript mock: Prego tokens, textSm 14/20, rows 16 px from the edge. */
+.phone { width: 390px; max-width: 100%; background: var(--bg); color: var(--tp); border-radius: 12px; padding: 8px 0 10px; font-size: 14px; line-height: 20px; overflow: hidden; border: 1px solid #ddd; }
+.light { --bg: #F0F0F0; --s2: #FCFCFC; --tp: #141414; --ts: #474747; --tt: #6A6A6A; --err: #D92D20; --spin: 60, 60, 68; }
+.dark { --bg: #141414; --s2: #1E1E1E; --tp: #FDFDFD; --ts: #AEAEAE; --tt: #999999; --err: #F97066; --spin: 235, 235, 245; border-color: #333; }
+.bubble { width: fit-content; max-width: 272px; margin: 4px 16px 4px auto; padding: 10px; background: var(--s2); border-radius: 12px; letter-spacing: .14px; }
+.answer { padding: 6px 16px; letter-spacing: .14px; }
+.row { display: flex; align-items: center; min-height: 44px; padding: 0 16px; color: var(--ts); white-space: nowrap; }
+.row.sum { margin: 2px 0; }
+.row.work { min-height: 36px; margin: 4px 0; }
+.row.two { align-items: flex-start; padding-top: 12px; padding-bottom: 12px; }
+.row.sub { min-height: 32px; padding-left: 44px; }
+.slot { flex: none; width: 20px; height: 20px; margin-right: 8px; display: grid; place-items: center; color: var(--ts); }
+.txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.grow { flex: 1; }
+.time { flex: none; color: var(--tt); font-variant-numeric: tabular-nums; }
+.sum .time { color: var(--ts); }
+.err { flex: none; color: var(--err); }
+.stack { display: flex; flex-direction: column; min-width: 0; }
+.stack .line { display: flex; min-width: 0; }
+.stack .sub2 { color: var(--tt); white-space: normal; }
+.chev { flex: none; margin-left: 8px; font-size: 18px; color: var(--ts); }
+.ti { font-family: TablerRegular; font-style: normal; font-size: 14px; line-height: 1; }
+.dot { width: 5px; height: 5px; border-radius: 50%; background: var(--tt); }
+.spark { width: 14px; height: 14px; color: var(--ts); }
+.spark.turn { animation: turn 2s linear infinite; }
+.spin { width: 13px; height: 13px; color: rgb(var(--spin)); animation: turn 1s steps(8) infinite; }
+@keyframes turn { to { transform: rotate(360deg); } }
+.shim { background: linear-gradient(90deg, var(--tt) 0 40%, var(--tp) 50%, var(--tt) 60% 100%); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: shim 1.5s linear infinite; }
+.shim u { text-decoration-color: var(--tt); }
+@keyframes shim { from { background-position: 100% 0; } to { background-position: 0 0; } }
+.divider { border-top: 1px dashed var(--tt); opacity: .35; margin: 6px 16px; }
+.phonelabel { font-size: 12px; color: var(--tt); padding: 2px 16px 0; }
+@media (prefers-reduced-motion: reduce) { .spark.turn, .spin, .shim { animation: none; } }
+details { margin: 14px 0; }
+summary { cursor: pointer; font-weight: 700; }
+
+/* Narrow screens (answering from a phone). */
+@media (max-width: 760px) {
+  main { padding: 16px 14px 120px; }
+  h1 { font-size: 24px; }
+  h2 { font-size: 20px; margin-top: 38px; }
+  .qt { font-size: 16px; }
+  .qhint { display: none; }
+  .opts { grid-template-columns: 1fr; }
+  .overview { grid-template-columns: 1fr; }
+  .overview img { width: 100%; }
+  .bar .in { padding: 9px 14px; gap: 10px; }
+  .bar nav { display: none; }
+  #copy { padding: 9px 14px; }
+  .phone { width: 100%; }
+  table { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="sparkle" viewBox="0 0 24 24"><path d="M12 3C12.375 3 12.711 3.231 12.846 3.581L14.496 7.871A2.85 2.85 0 0 0 16.128 9.504L20.419 11.154A0.906 0.906 0 0 1 20.419 12.846L16.129 14.496A2.84 2.84 0 0 0 14.496 16.128L12.846 20.419A0.906 0.906 0 0 1 11.154 20.419L9.504 16.129A2.84 2.84 0 0 0 7.872 14.496L3.581 12.846A0.906 0.906 0 0 1 3.581 11.154L7.871 9.504A2.84 2.84 0 0 0 9.504 7.872L11.154 3.581A0.91 0.91 0 0 1 12 3Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+  <symbol id="spinner" viewBox="0 0 20 20">
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".58"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".18" transform="rotate(45 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".18" transform="rotate(90 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".18" transform="rotate(135 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".18" transform="rotate(180 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".28" transform="rotate(225 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".38" transform="rotate(270 10 10)"/>
+    <rect x="9" y="1" width="2" height="5.5" rx="1" fill="currentColor" opacity=".48" transform="rotate(315 10 10)"/>
+  </symbol>
+</svg>
+
+<style>
+/* Prompts view mock: spine, numbers, search. */
+.pv { padding: 0; }
+.pvbar { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-bottom: 1px solid rgba(128,128,128,.22); }
+
+.pvtitle { font-weight: 500; color: var(--tp); }
+.pvcount { color: var(--tt); }
+.pvfield { flex: 1; display: flex; align-items: center; gap: 6px; background: var(--s2); border-radius: 10px; padding: 6px 10px; color: var(--tt); min-width: 0; }
+.pvfield .ic { color: var(--tt); }
+.ic { width: 15px; height: 15px; flex: none; }
+.pvbar > .ic { width: 17px; height: 17px; color: var(--tp); }
+.pvday { position: sticky; top: 0; font-size: 12px; color: var(--tt); background: var(--bg); padding: 8px 16px 4px; }
+.pvrow { display: flex; align-items: flex-start; min-height: 44px; padding: 0 16px; gap: 10px; }
+.pvnum { flex: none; width: 22px; text-align: right; color: var(--tt); font-variant-numeric: tabular-nums; padding-top: 12px; font-size: 13px; }
+.pvspine { flex: none; width: 9px; align-self: stretch; position: relative; }
+.pvspine::before { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: rgba(128,128,128,.32); }
+.pvspine::after { content: ""; position: absolute; left: 1px; top: 17px; width: 7px; height: 7px; border-radius: 50%; background: var(--tt); }
+.pvrow.first .pvspine::before { top: 20px; }
+.pvrow.last .pvspine::before { bottom: auto; height: 20px; }
+.pvbody { min-width: 0; flex: 1; padding: 12px 0; }
+.pvtxt { color: var(--tp); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pvmeta { color: var(--tt); font-size: 12px; margin-top: 2px; }
+.pvtime { flex: none; color: var(--tt); font-variant-numeric: tabular-nums; padding-top: 12px; font-size: 13px; }
+.pvexc { color: var(--ts); white-space: normal; margin-top: 3px; font-size: 13px; line-height: 18px; }
+.pvexc mark { background: rgba(26,109,255,.22); color: var(--tp); border-radius: 3px; padding: 0 1px; }
+.pvtxt mark { background: rgba(26,109,255,.22); color: var(--tp); border-radius: 3px; padding: 0 1px; }
+.pvmore { color: var(--ts); padding: 12px 16px; font-size: 13px; }
+.mini { font-size: 13px; line-height: 19px; }
+.mini .pvrow { min-height: 38px; padding: 0 10px; }
+.mini .pvbody { padding: 9px 0; }
+.mini .pvnum, .mini .pvtime { padding-top: 9px; font-size: 12px; }
+.mini .pvspine::after { top: 14px; }
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; align-items: start; margin: 14px 0; }
+.pair figure { margin: 0; }
+.pair figcaption { font-size: 14px; margin: 0 0 8px; }
+.gap { outline: 2px dashed #e5a300; outline-offset: -1px; border-radius: 4px; }
+</style>
+
+<div class="bar"><div class="in">
+  <span class="prog" id="prog">0 of 5 picked</span>
+  <nav><a href="#settled">Settled</a><a href="#qs">Questions</a><a href="#facts">Facts</a></nav>
+  <label class="darkt"><input type="checkbox" id="darkmode"> Dark mocks</label>
+  <span id="toast"></span>
+  <button id="copy" type="button">Copy response</button>
+</div>
+<div class="in" style="padding-top:0"><textarea id="fallback" hidden></textarea></div>
+</div>
+
+<main>
+<h1>Prompts view — round 3</h1>
+<p class="lead">Two things you raised in round 2: <b>can the numbers on the spine be trusted</b>, and <b>should the header line be a search field</b> that shows a longer excerpt for matches. I went and checked what the bridge and the app actually know today. Rounds 1 and 2 are answered and settled; nothing below re-asks them.</p>
+
+<div class="box settled" id="settled">
+  <h3>Already settled (no choice needed)</h3>
+  <ul>
+    <li>A pinch opens a <b>separate Prompts screen</b>; the transcript itself never folds or relayouts.</li>
+    <li><b>Dense rows</b>, deliberately unlike the chat: no bubbles.</li>
+    <li><b>D4 spine</b>: a dot on a vertical line, the prompt, the time.</li>
+    <li>One line per prompt, ellipsised; sticky day headers; tap jumps back to that prompt.</li>
+    <li>A filter field at the top — this round decides what it searches and how matches look.</li>
+  </ul>
+</div>
+
+<h2 id="qs">Questions</h2>
+
+<div class="q" data-id="Q1" data-title="Numbers on the spine">
+  <div class="qh"><span class="qid">Q1</span><span class="qt">Can the spine be numbered honestly?</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">Short answer: <b>not today.</b> Nothing in the app or the bridge knows that a prompt is "the 12th". The app only holds the pages it has loaded (50 messages at a time), so numbering what is loaded means every "load earlier" renumbers every row you already read — and not even by a fixed amount, because the oldest turn boundary can move when the previous page arrives. Numbers that change while you look at them are worse than no numbers.</p>
+  <div class="pair">
+    <figure><figcaption><span class="tag today">Unnumbered</span> ships with the view</figcaption>
+      <div class="phone light mini">
+        <div class="pvday">Today</div>
+        <div class="pvrow first"><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Fix the flaky reconnect test</div></span><span class="pvtime">14:02</span></div>
+        <div class="pvrow"><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Now do the same for Android</div></span><span class="pvtime">14:19</span></div>
+        <div class="pvrow last"><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Push it and open the PR</div></span><span class="pvtime">14:40</span></div>
+      </div>
+    </figure>
+    <figure><figcaption><span class="tag after">Numbered</span> needs a small bridge addition</figcaption>
+      <div class="phone light mini">
+        <div class="pvday">Today</div>
+        <div class="pvrow first"><span class="pvnum">9</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Fix the flaky reconnect test</div></span><span class="pvtime">14:02</span></div>
+        <div class="pvrow"><span class="pvnum gap">12</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Now do the same for Android</div></span><span class="pvtime">14:19</span></div>
+        <div class="pvrow last"><span class="pvnum">13</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Push it and open the PR</div></span><span class="pvtime">14:40</span></div>
+      </div>
+      <p class="why" style="margin-top:8px">The <span class="gap" style="padding:0 3px">gap</span> is the honest part: 10 and 11 were follow-ups you typed while turn 9 was still running, so they were absorbed into it. The number counts <i>messages you sent</i>, not rows.</p>
+    </figure>
+  </div>
+  <div class="opts">
+    <label class="opt" data-label="Numbered via a small bridge addition, counting messages you sent (gaps possible)"><span class="oh"><input type="radio" name="Q1" value="a"><span class="letter">A</span> Number them, with the bridge sending the count <span class="sug">Suggested</span></span>
+      <p class="why">The bridge adds one number per page ("how many of your messages came before this page"), so the app can number every row exactly and the numbers never change as you scroll. ~150–200 lines, one extra query per page, no database migration. Two honest catches: numbers can skip where you sent a mid-turn follow-up, and an older bridge sends nothing, so rows simply show no number.</p></label>
+    <label class="opt" data-label="No numbers; plain spine"><span class="oh"><input type="radio" name="Q1" value="b"><span class="letter">B</span> No numbers — just the spine</span>
+      <p class="why">Ships with the view, nothing to get wrong, works on every bridge. You lose the sense of "where am I in this session", which is most of why numbers feel nice.</p></label>
+    <label class="opt" data-label="Wait for the full turn index so numbers are real turn numbers"><span class="oh"><input type="radio" name="Q1" value="c"><span class="letter">C</span> Wait for real turn numbers</span>
+      <p class="why">A proper turn index in the bridge gives gapless numbers <i>and</i> unlocks a real "Stopped" label on rows. It is a project of its own: ~800–1,500 lines, a database migration, and every write path touched. The Prompts view would ship unnumbered first and gain numbers later.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" data-id="Q2" data-title="Harnesses that send no prompt time">
+  <div class="qh"><span class="qid">Q2</span><span class="qt">Six harnesses never tell us when you sent a prompt</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">The time on the right, and the day headers, come from the prompt's own timestamp. Claude, Codex, OpenCode, Pi and DeepSeek send one. <b>Grok, Antigravity, Copilot, Cursor, Hermes and OMP do not</b> — their protocol carries no time with a prompt. On those sessions there is nothing truthful to put in that column.</p>
+  <div class="pair">
+    <figure><figcaption>On a harness with no prompt times</figcaption>
+      <div class="phone light mini">
+        <div class="pvrow first"><span class="pvnum">3</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Add the Windows drive picker</div></span></div>
+        <div class="pvrow"><span class="pvnum">4</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Handle a path with no drive letter</div></span></div>
+        <div class="pvrow last"><span class="pvnum">5</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Write a test for the UNC case</div></span></div>
+      </div>
+    </figure>
+  </div>
+  <div class="opts">
+    <label class="opt" data-label="No time column and no day headers on those harnesses"><span class="oh"><input type="radio" name="Q2" value="a"><span class="letter">A</span> Show no time, and no day headers, on those sessions <span class="sug">Suggested</span></span>
+      <p class="why">Honest and free: the list is still the prompt spine, just without the right column. Nothing is invented, and the rows do not shift when you switch harnesses.</p></label>
+    <label class="opt" data-label="Have the bridge stamp its own arrival time for those harnesses first"><span class="oh"><input type="radio" name="Q2" value="b"><span class="letter">B</span> Have the bridge stamp the time it received the prompt</span>
+      <p class="why">Every harness would then have times and day headers. It is a separate bridge change, and the stamp is wrong for history imported from disk (it would say "now" for a prompt you sent last week), so it needs care. The Prompts view would wait for it.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" data-id="Q3" data-title="What the search covers">
+  <div class="qh"><span class="qid">Q3</span><span class="qt">Does the search reach prompts that are not loaded yet?</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">There is no prompt-search route in the bridge today, and no search index in its database. The app can only filter what it has already pulled down — a long session loads 50 messages at a time as you scroll up.</p>
+  <div class="opts">
+    <label class="opt" data-label="Filter what is loaded, with a Load earlier prompts row to extend it"><span class="oh"><input type="radio" name="Q3" value="a"><span class="letter">A</span> Filter what is loaded, and say so <span class="sug">Suggested</span></span>
+      <div class="phone light mini" style="margin-top:8px">
+        <div class="pvbar"><span class="pvfield"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> android</span></div>
+        <div class="pvrow first"><span class="pvnum">12</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Now do the same for <mark>Android</mark></div></span><span class="pvtime">14:19</span></div>
+        <div class="pvmore">2 matches in the loaded part · Load earlier prompts</div>
+      </div>
+      <p class="why">Tens of lines, uses the field the app already has elsewhere, and every match jumps instantly because it is already in memory. The row at the bottom is the honest bit: it tells you the search has a floor and lets you push it down.</p></label>
+    <label class="opt" data-label="New bridge route that searches the whole session"><span class="oh"><input type="radio" name="Q3" value="b"><span class="letter">B</span> Search the whole session through the bridge</span>
+      <p class="why">Finds a prompt from three days ago without scrolling. ~250–350 lines for a new route (a plain scan, no migration), plus the app has to fetch the missing part of the transcript before it can jump — so a far match is a short wait rather than an instant jump, and that wait needs its own treatment.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" data-id="Q4" data-title="Search field or title line">
+  <div class="qh"><span class="qid">Q4</span><span class="qt">Does the field replace the header line?</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">Round 2 settled a header line ("Prompts · 9 in this session") and, separately, a filter field. Your note asked whether the field should simply <i>be</i> the header.</p>
+  <div class="pair">
+    <figure><figcaption><span class="tag after">A</span> the field is the header</figcaption>
+      <div class="phone light mini">
+        <div class="pvbar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="pvfield"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Search your prompts</span></div>
+        <div class="pvday">Today</div>
+        <div class="pvrow first"><span class="pvnum">12</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Now do the same for Android</div></span><span class="pvtime">14:19</span></div>
+        <div class="pvrow last"><span class="pvnum">13</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Push it and open the PR</div></span><span class="pvtime">14:40</span></div>
+      </div>
+    </figure>
+    <figure><figcaption><span class="tag today">B</span> title line, field under it</figcaption>
+      <div class="phone light mini">
+        <div class="pvbar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="pvtitle">Prompts</span><span class="pvcount">13 in this session</span></div>
+        <div class="pvbar" style="border:0"><span class="pvfield"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> Search your prompts</span></div>
+        <div class="pvday">Today</div>
+        <div class="pvrow first"><span class="pvnum">12</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Now do the same for Android</div></span><span class="pvtime">14:19</span></div>
+      </div>
+    </figure>
+  </div>
+  <div class="opts">
+    <label class="opt" data-label="The field is the header; the count moves into the field's placeholder area"><span class="oh"><input type="radio" name="Q4" value="a"><span class="letter">A</span> The field is the header <span class="sug">Suggested</span></span>
+      <p class="why">One row instead of two, so more prompts are visible on a phone, and the screen's one job is obvious the moment it opens. The total count moves to the bottom of the list instead of the top.</p></label>
+    <label class="opt" data-label="Keep the title line and put the field below it"><span class="oh"><input type="radio" name="Q4" value="b"><span class="letter">B</span> Keep the title line, field below</span>
+      <p class="why">The count stays at the top and the screen names itself. Costs 44 px of a phone screen permanently, for a screen you already know you opened.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" data-id="Q5" data-title="How a match is shown">
+  <div class="qh"><span class="qid">Q5</span><span class="qt">Showing the match when it falls past the one-line cut</span><span class="qhint">Pick one</span></div>
+  <p class="qsub">Rows are one ellipsised line. If your word appears late in a long prompt, a plain one-line row shows none of it — the row matches and you cannot see why.</p>
+  <div class="pair">
+    <figure><figcaption><span class="tag after">A</span> matching rows grow, match in context</figcaption>
+      <div class="phone light mini">
+        <div class="pvbar"><span class="pvfield"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> haptic</span></div>
+        <div class="pvrow first"><span class="pvnum">7</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Go through the composer and the send button once more</div><div class="pvexc">…and the send button once more, then add a light <mark>haptic</mark> tap when the message actually leaves…</div></span><span class="pvtime">11:04</span></div>
+        <div class="pvrow last"><span class="pvnum">11</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Make the <mark>haptic</mark> softer on Android</div></span><span class="pvtime">13:22</span></div>
+      </div>
+    </figure>
+    <figure><figcaption><span class="tag today">B</span> one line, window slid to the match</figcaption>
+      <div class="phone light mini">
+        <div class="pvbar"><span class="pvfield"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> haptic</span></div>
+        <div class="pvrow first"><span class="pvnum">7</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">…then add a light <mark>haptic</mark> tap when the message…</div></span><span class="pvtime">11:04</span></div>
+        <div class="pvrow last"><span class="pvnum">11</span><span class="pvspine"></span><span class="pvbody"><div class="pvtxt">Make the <mark>haptic</mark> softer on Android</div></span><span class="pvtime">13:22</span></div>
+      </div>
+    </figure>
+  </div>
+  <div class="opts">
+    <label class="opt" data-label="Matching rows grow to show the match in context under the prompt's opening"><span class="oh"><input type="radio" name="Q5" value="a"><span class="letter">A</span> Let matching rows grow <span class="sug">Suggested</span></span>
+      <p class="why">You keep the prompt's opening words (which is how you recognise it) and see the match under them. Rows change height as you type, which is fine in a filtered list that is redrawing anyway.</p></label>
+    <label class="opt" data-label="Keep one line and slide the window so the match is visible"><span class="oh"><input type="radio" name="Q5" value="b"><span class="letter">B</span> Keep one line, slide it to the match</span>
+      <p class="why">Row heights never move, so the list stays a calm grid. You lose the opening of the prompt on exactly the rows you are looking at, which makes long prompts harder to tell apart.</p></label>
+  </div>
+  <textarea class="note-in" rows="1" placeholder="Note (optional)"></textarea>
+</div>
+
+<div class="q" style="border-color:#ddd">
+  <div class="qh"><span class="qt">Anything else?</span></div>
+  <textarea id="other" placeholder="Free text (optional)"></textarea>
+</div>
+
+<h2 id="facts">Facts behind this round <span class="muted" style="font-size:15px;font-weight:400">— nothing to pick</span></h2>
+<div class="box">
+  <ul>
+    <li><b>No numbering exists anywhere today.</b> Messages carry a per-session sequence number internally, but it counts every message including the agent's, so it is not a prompt number.</li>
+    <li><b>The bridge does not know what a "turn" is.</b> Grouping a prompt with the work that followed it is a rule in the app. That is why a bridge-side count can only answer "your Nth message".</li>
+    <li><b>Numbers can still go stale</b> if a session is re-imported or the harness rewrites its own history (a rewind or an edited message). Worst case is a wrong number on an old row — cosmetic, so no machinery to defend it.</li>
+    <li><b>Loading the whole transcript up front</b> would make both numbering and search free, but it pulls the entire session over the wire — the opposite of the payload work you asked for today. Not on the table.</li>
+    <li><b>Everything else a row shows</b> — prompt text, time, step count, duration, failure, running — already exists in the app. Only "Stopped" does not, and that needs option C in Q1.</li>
+  </ul>
+</div>
+
+<div class="box settled">
+  <h3>Earlier rounds (answered)</h3>
+  <ul>
+    <li>Round 1: <code>prompts-view/round1.html</code> — pinch opens a screen, dense rows, no folding.</li>
+    <li>Round 2: <code>prompts-view/index.html</code> — D4 spine, one line, day headers, filter field.</li>
+  </ul>
+</div>
+</main>
+<script>
+// Answers: one pick and one note per question, kept in this browser.
+const KEY = "sesori-prompts-view-r3";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { state = {}; }
+const save = () => localStorage.setItem(KEY, JSON.stringify(state));
+const questions = [...document.querySelectorAll(".q[data-id]")];
+function refresh() {
+  let picked = 0;
+  for (const q of questions) {
+    const s = state[q.dataset.id] || {};
+    if (s.v) picked++;
+    q.classList.toggle("answered", Boolean(s.v));
+    q.querySelectorAll("input[type=radio]").forEach((r) => {
+      r.checked = r.value === s.v;
+      r.closest(".opt").classList.toggle("on", r.checked);
+    });
+  }
+  document.getElementById("prog").textContent = `${picked} of ${questions.length} picked`;
+}
+for (const q of questions) {
+  const id = q.dataset.id;
+  q.querySelectorAll("input[type=radio]").forEach((r) => r.addEventListener("change", () => {
+    (state[id] ||= {}).v = r.value;
+    save();
+    refresh();
+  }));
+  const note = q.querySelector(".note-in");
+  note.value = (state[id] || {}).n || "";
+  note.addEventListener("input", () => { (state[id] ||= {}).n = note.value; save(); });
+}
+const other = document.getElementById("other");
+other.value = state.other || "";
+other.addEventListener("input", () => { state.other = other.value; save(); });
+
+function response() {
+  const lines = ["Review the Prompts view, round 3 (numbering and search)", ""];
+  for (const q of questions) {
+    const s = state[q.dataset.id] || {};
+    const opt = s.v ? q.querySelector(`input[value="${s.v}"]`).closest(".opt") : null;
+    const pick = opt
+      ? `${s.v.toUpperCase()}. ${opt.dataset.label}${opt.querySelector(".sug") ? " (suggested)" : ""}`
+      : "no answer";
+    lines.push(`${q.dataset.id} ${q.dataset.title}: ${pick}`);
+    if (s.n && s.n.trim()) lines.push(`    Note: ${s.n.trim()}`);
+  }
+  if (state.other && state.other.trim()) lines.push("", `Anything else: ${state.other.trim()}`);
+  return lines.join("\n") + "\n";
+}
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = response();
+  const toast = document.getElementById("toast");
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.textContent = "Copied";
+  } catch (e) {
+    const fallback = document.getElementById("fallback");
+    fallback.hidden = false;
+    fallback.value = text;
+    fallback.focus();
+    fallback.select();
+    toast.textContent = "Copy the selected text";
+  }
+  setTimeout(() => { toast.textContent = ""; }, 2500);
+});
+refresh();
+
+// Dark mocks: swap the phone palette and the Today renders.
+document.getElementById("darkmode").addEventListener("change", (event) => {
+  const dark = event.target.checked;
+  document.querySelectorAll(".phone").forEach((p) => { p.classList.toggle("dark", dark); p.classList.toggle("light", !dark); });
+  document.querySelectorAll("img[data-today]").forEach((img) => {
+    img.src = dark ? img.src.replace("-light.png", "-dark.png") : img.src.replace("-dark.png", "-light.png");
+  });
+});
+
+// "42s", "1m 02s", "1h 05m 12s": one format, seconds always shown.
+function format(total) {
+  if (total < 60) return `${total}s`;
+  const s = String(total % 60).padStart(2, "0");
+  const m = Math.floor(total / 60);
+  if (m < 60) return `${m}m ${s}s`;
+  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m ${s}s`;
+}
+const opened = Date.now();
+function tick() {
+  const elapsed = Math.floor((Date.now() - opened) / 1000);
+  document.querySelectorAll(".tick").forEach((node) => { node.textContent = format(Number(node.dataset.base) + elapsed); });
+}
+tick();
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
