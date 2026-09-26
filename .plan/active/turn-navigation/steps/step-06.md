@@ -44,7 +44,7 @@ Branch `turn-navigation/fold-controls`. Architecture 6.
   rules say so. The step 9 pinch rows ("while following it stays following")
   are left for step 9 to reconcile.
 
-Size: about 600 changed lines against the 650-line target. The first push was
+Size: 549 changed lines before this correction, against the 650-line target. The first push was
 439; the Codex focus fix and this decision added the rest.
 
 ## Automated Evidence
