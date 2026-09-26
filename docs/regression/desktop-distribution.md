@@ -221,17 +221,24 @@ Private package mechanics are qualified for both native CPUs on all three deskto
 platforms: signed/notarized/stapled DMGs and ZIPs containing the signed/notarized/stapled
 app on macOS (the ZIP itself is not signed or stapled), unsigned per-user EXE
 construction and isolated fixtures on Windows, and unsigned DEB/RPM construction plus
-six native package-manager fixtures on Linux. This is repository-shipped preparation,
-not public release support. Exact accepted sources, runs, hashes and proof limits stay
-in the active distribution plan's [macOS](../../.plan/active/desktop-distribution/steps/step-04.md),
+six native package-manager fixtures on Linux. macOS internal installers are now public;
+stable macOS and Windows/Linux public availability are not implied.
+Exact accepted sources, runs, hashes and proof limits stay
+in the active distribution plan's [macOS](../../.plan/active/desktop-distribution/steps/step-06.md),
 [Windows](../../.plan/active/desktop-distribution/steps/step-07.md), and
 [Linux](../../.plan/active/desktop-distribution/steps/step-09.md) evidence.
 
-Still unproved: public retrieval and trust, interactive account login/browser/TCC,
-declared minimum OS, the remaining GUI/keyring/tray/login scenarios, failed-stop macOS
-replacement, signed Windows N→N+1 manual replacement, and signed-repository Linux N→N+1
-updates. The passing private On/Off replacement probes, silent fixtures or same-version
-reinstalls cannot close those gates.
+On 2026-09-26 the user retired the remaining macOS/parent Gate C QA requirements with
+coverage gaps accepted. Minimum-OS execution, remaining phone/live-harness scenarios
+and candidate-specific manual attribution are not newly passing evidence and do not
+block macOS publication. Existing shutdown tests are not native fault injection.
+
+Internal `1.9.1+987` installers were published from a successful shared producer. All
+four payloads, desktop checksums and the last-uploaded manifest passed anonymous public
+hash verification. Both CPUs' apps/DMGs passed independent Developer ID, stapled-ticket
+and Gatekeeper checks without local app execution. Bridge assets and Latest stable
+were unchanged. Website wiring and stable production attachment remain separate.
+Windows signed N→N+1 and Linux signed-repository N→N+1 requirements remain open.
 
 ## Coverage
 
@@ -258,7 +265,8 @@ reinstalls cannot close those gates.
   plan, downloaded artifacts, trust checks and public links.
 
 L1/L2 do not establish installation, native trust, real-account restoration, minimum
-OS or publication. Public downloads remain gated; a merged index is not a release.
+OS or publication. Published internal macOS assets have their own recorded trust proof;
+unshipped platforms/channels remain unavailable. A merged index alone is not a release.
 See [packaging](desktop-macos-packaging.md), [supervision](desktop-bridge-supervision.md)
 and [download instructions](../desktop/downloads.md).
 

@@ -14,7 +14,7 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 4.a | 5 | Package and notarize native macOS builds | done |
 | 4.b | 6 | Keep desktop startup independent of native notifications | done |
 | 5 | 7 | Offer manual macOS updates through official downloads | done |
-| 6 | 8 | Shared cycle and candidate 981 verified; macOS publication remains gated | blocked |
+| 6 | 8 | macOS internal packages public; website and production follow-through | in-progress |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
 | 9 | 11 | Private native DEB/RPM packages merged; signing/publication gated | blocked |
@@ -26,7 +26,27 @@ Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
 Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
 remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 
-## Current continuation — shared release cycle (2026-09-25)
+## Current continuation — macOS admission (2026-09-26)
+
+The user directed **“retire this gate and continue”** after the missing QA was
+itemized. Gate C, macOS 12 execution, remaining phone/live-harness checks and unknown
+manual-build attribution are accepted limitations, not newly passing evidence.
+Parent closeout is no longer a macOS publication prerequisite. Do not reopen those
+checks or interrupt the running app/bridge; Windows/Linux requirements remain intact.
+
+`DESKTOP_MACOS_PUBLICATION_ENABLED=true` now admits macOS through the shared cycle.
+The unchanged publisher attached four signed installers, desktop checksums and the
+completion manifest to existing internal `v1.9.1-internal.987`, from successful producer
+`36198178787` / `acc0de273de4f9e618be7d2f362b1437b5d84541`.
+Anonymous hashes, both CPUs' native signatures/tickets/Gatekeeper, unchanged seven
+bridge assets and unchanged Latest stable release were verified. No stable promotion,
+new store upload, private-evidence publication, installation or app launch occurred.
+
+Continuation `🌿 [desktop-distribution] Retire accepted QA gate and publish macOS previews [step 8.m/14]`
+records this decision and evidence. The website still needs its internal macOS links;
+stable production attachment remains subject to existing `store-production` approval.
+
+## Shared release-cycle history (2026-09-25)
 
 The user selected the existing bridge/mobile cycle for desktop. PR #1724 merged
 as `af23da2078a53f6515c75303f37b673e65983ec4`, with 43/43 terminal checks and
@@ -61,8 +81,9 @@ observations and cleanup were checked, not just job conclusions. These results d
 qualify the different source/channel of build 983 for authenticated replacement.
 
 Continuation `🌱 [desktop-distribution] Record shared-cycle and candidate acceptance [step 8.l/14]`
-records this evidence without product or workflow changes. Remaining ship gates below
-keep step 6 blocked and the distribution plan active.
+merged as #1741 (`55a6624c9b2eccd9f6b17bec5118de48de4f9522`), with 9/9 terminal
+checks and Codex completing without findings. The subsequent user decision above
+removes the QA block; the six-platform distribution plan remains active.
 
 Evidence reconciliation:
 
@@ -75,13 +96,14 @@ Evidence reconciliation:
   suites at `55781432391c042ebbbfe17a21d5e26083d4f4ba`: **82 tests passed**, with
   the running app/bridge untouched. Failed-stop refusal, waiting and retry are covered;
   native packaged fault injection is separate.
-- Remaining parent Gate C checks are concrete: live harness install/login, dedicated
+- The now-retired parent Gate C covered live harness install/login, dedicated
   sessions, image/permission/diff flows, relay-only recovery; phone-side request
   resolution clearing desktop alerts; one phone push; physical picker/microphone,
   shared session/navigation and notification regression. Do not repeat already-passing
   user checks or relabel automated fixtures as physical-device acceptance.
-- Public admission, source-specific interactive acceptance, minimum-OS execution and
-  website retrieval/trust remain gated. No desktop publication was approved or performed.
+- At this historical checkpoint publication was not admitted. On 2026-09-26 the user
+  accepted the listed QA limitations and public internal macOS publication proceeded
+  as recorded above; website wiring and ordinary stable production still follow.
 
 ## Merged implementation history
 

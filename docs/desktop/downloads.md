@@ -7,10 +7,11 @@ plus `linux-package-managers`, and its contract checks fail when one is renamed 
 removed. Publishing a row means registering the verified public artifact in that
 repository's `src/lib/desktop-downloads.ts` and updating the matching section here.
 
-Desktop packages are undergoing private qualification. **No public desktop release
-is available yet.** Private CI artifacts are not supported public downloads. This
-index lists only verified public artifacts after the relevant release gate passes;
-it never substitutes a mobile/CLI release or a private artifact.
+**Internal macOS installers are public for both CPUs.** Stable macOS and Windows/Linux
+are not published yet. The first shared internal publication was `1.9.1+987`; the
+website's download wiring follows separately. Private CI artifacts are not public
+links. This index never substitutes a mobile/CLI release or private evidence for a
+desktop installer.
 
 ## Updating safely
 
@@ -45,11 +46,20 @@ No public download is available.
 
 ## Internal macOS x64
 
-No public download is available.
+Available in the current completed internal [shared release][shared-releases]:
+`Sesori-macos-x64.dmg` or `Sesori-macos-x64.zip`. Verify against its
+`desktop-checksums.txt` and `desktop-release.json`, not bridge `checksums.txt`.
 
 ## Internal macOS arm64
 
-No public download is available.
+Available in the current completed internal [shared release][shared-releases]:
+`Sesori-macos-arm64.dmg` or `Sesori-macos-arm64.zip`. Verify against its
+`desktop-checksums.txt` and `desktop-release.json`, not bridge `checksums.txt`.
+
+The internal release rolls forward with the shared cycle. Do not pin a permanent
+website link to the first internal tag or use Latest stable as a substitute.
+
+[shared-releases]: https://github.com/sesori-ai/sesori_apps_monorepo/releases
 
 ## Stable Windows x64
 
