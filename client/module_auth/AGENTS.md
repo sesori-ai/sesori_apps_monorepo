@@ -81,6 +81,7 @@ lib/src/
 - `AuthenticatedHttpApiClient`
 - `TokenStorageService` (internal)
 - `OAuthStorageService` (internal)
+- `LastSignInStorage` (internal)
 
 **Prerequisite**: both shells configure `sesori_persistence` before auth DI.
 Storage services consume its shared `SecureStorageRepository` using `AuthSecretKey`;
