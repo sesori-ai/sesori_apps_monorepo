@@ -113,8 +113,9 @@ The persistence contracts come from lower-level `sesori_persistence`. Scope is
 selected by `main` (release → production; debug/profile → development), then
 registered explicitly before lazy platform DI. Production startup awaits the
 deprecated importer before consumers; development does not construct its source.
-Import failure disposes the partial graph and renders `PersistenceStartupFailureApp`
-without DI, analytics or preference reads. Only OS close/reopen retries.
+Import failure performs scoped reset recovery before normal logged-out startup.
+Cleanup failures remain observable and persistent storage denial can still reject
+login writes; no blocking migration-specific screen is rendered.
 Android backup XML excludes the database subtree and exact legacy/new native
 credential preferences; iOS retains Application Support backup eligibility.
 The legacy adapter stays inside `deprecated_native_storage_v1/` and is deleted

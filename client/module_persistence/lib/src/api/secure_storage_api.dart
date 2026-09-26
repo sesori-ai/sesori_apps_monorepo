@@ -26,6 +26,8 @@ class SecureStorageApi({required PersistenceDatabase database, required MasterKe
     await _database.delete(_database.encryptedValues).delete(EncryptedValuesCompanion(key: Value(key)));
   }
 
+  Future<void> clearCiphertexts() => _database.batch((batch) => batch.deleteAll(_database.encryptedValues));
+
   Future<bool> hasEncryptedValues() async {
     final query = _database.selectOnly(_database.encryptedValues)
       ..addColumns([_database.encryptedValues.key])

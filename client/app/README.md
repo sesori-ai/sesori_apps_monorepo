@@ -29,8 +29,10 @@ Startup order in `configureDependencies()`:
 5. Production only: await the isolated deprecated native-storage import
 6. Prepare analytics and resolve normal consumers
 
-Development never constructs the legacy source. Import failure disposes the
-partial graph and renders standalone recovery instead of starting consumers.
+Development never constructs the legacy source. Import failure attempts scoped
+local reset before normal logged-out startup; cleanup errors remain observable.
+Persistent native storage denial can still fail a login write, but no separate
+blocking migration screen prevents access to the normal login flow.
 
 **Platform Adapters**
 

@@ -14,7 +14,7 @@ one deprecated call with the same dated retirement condition.
 
 - Foundation: raw legacy capability, sealed typed snapshot values, safe failure
   with retained cause/stack, and the internal completion key.
-- API: native enumeration and named deletion only.
+- API: native enumeration, named deletion and failed-import namespace clearing.
 - Repository: classify known auth/core keys and scoped prefixes. Auth keys come
   from `sesori_auth`'s public `AuthSecretKey`, never a duplicate migration enum.
 - Service: orchestrate the source repository and shared typed primitive/secret
@@ -35,19 +35,49 @@ never import migration types.
    empty strings, absence, bridge/user identities and pending analytics opt-out.
    Only the known boolean is parsed, strictly; malformed data is not defaulted.
 3. Copy through normal shared repositories, committing each write. No transaction
-   spans native authorization. A copy failure leaves **all** source items intact.
+   spans native authorization.
 4. Only after every copy succeeds, delete copied source entries individually,
-   then commit completion. Never `deleteAll`.
+   then commit completion. Successful import retains unknown entries.
 5. Relaunch after interrupted cleanup/marker writes merges remaining native
    entries into committed rows. Missing source entries never delete destination
    data. No per-key progress records, fallback reads, mirrors, timers or retries.
 
-A failure retains its original typed cause and stack in
-`LegacyStorageMigrationException`, with payload-free presentation and the failed
-operation. Bootstrap awaits disposal of its partial graph and renders the fixed
-upgrade failure root instead of starting normal consumers. It logs disposal
-failure separately and still renders recovery. OS close/relaunch retries;
-clearing app data, replacing keys and automatic re-entry are not recovery paths.
+## Failed-import recovery
+
+The mobile shell installs its file sink before migration. Caught failures log
+through `LegacyStorageMigrationException`, retaining native/SQL causes, operation
+and original stacks (including both reset failures). Parser source buffers are
+omitted, not their error messages/offsets. Before normal startup:
+
+1. Independently attempt ciphertext clearing and protected-master replacement
+   through `SecureStorageRepository.reset()`. Its replacement future retains both
+   failures and stays cached. A saved replacement key also makes old ciphertext
+   unusable on relaunch if SQL deletion failed; no new writes use it until both
+   operations succeed.
+2. Clear both primitive tables atomically through `PersisterRepository.clear()`.
+3. Retire this import permanently only when the destination consumers inherit is
+   whole: either the copy committed every value, or the reset emptied it to a clean
+   slate. Any other outcome leaves half-copied or half-fenced rows, so retire
+   nothing and let a relaunch retry from the still-untouched source. A failed reset
+   also leaves this process unable to persist a session that such a retry could
+   overwrite. A committed copy stays trusted even when the reset could not fence
+   it: it is a finished import, not the partial state this recovery discards, and
+   its source remainder must never be imported in halves.
+4. After successful secret reset, clear the old native namespace, including unknown
+   entries. The new master uses a separate namespace. Then attempt completion even
+   if preference/source cleanup failed, fencing surviving legacy auth when saved.
+
+Each cleanup failure stays logged. Primitive clearing is attempted even when
+secret reset failed; retirement is gated only by the whole-destination rule above.
+Either namespace clearing or the marker fences the source. When neither can be
+recorded the source stays importable, which a later launch then imports before any
+consumer starts; the accepted residue is that a session established between those
+launches can be replaced by the imported one.
+Successful reset permits fresh login and follows normal account/server analytics
+preferences; pending local-only opt-out may be lost, as explicitly accepted.
+No alternate store, consent flag or blocking migration-specific UI is introduced.
+Permanent native/SQL denial can still fail normal persistence operations; reset
+is best effort, not a promise that unavailable storage has become writable.
 
 ## Native gates (not established by pure-Dart tests)
 
@@ -57,7 +87,7 @@ and uses the same iOS account/group without an accessibility filter for both
 enumeration and named cleanup. Plugin-channel fixtures verify options and error
 forwarding, not actual native completeness. Native/decryption failure must throw,
 not look like an empty snapshot. Shell tests exercise production admission,
-startup ordering/disposal, pending disable and offline restoration through real
+startup/reset ordering, pending disable and offline restoration through real
 SQL/crypto with fake native sources. Actual iOS/Android released-format
 enumeration, failure propagation and backup/restore still require qualification.
 Android now excludes old/new credential preferences with the database subtree.
@@ -77,8 +107,7 @@ or equate plan completion with permission to remove upgrade compatibility.
 
 ## Deletion checklist
 
-- Remove the mobile startup admission/call and migration-failure presentation
-  seam that exists solely for this importer.
+- Remove the mobile startup admission/call that exists solely for this importer.
 - Remove this entire deprecated directory and the mobile
   `core/platform/deprecated_native_storage_v1/` adapter directory.
 - Remove migration-specific core/shell DI bindings, ignored dependency entries,

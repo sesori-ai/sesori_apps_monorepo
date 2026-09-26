@@ -16,13 +16,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'Sesori Mobile';
 
   @override
-  String get persistenceStartupFailureTitle => 'Storage upgrade paused';
-
-  @override
-  String get persistenceStartupFailureDescription =>
-      'Sesori couldn’t finish upgrading your local storage. Close and reopen Sesori to try again.';
-
-  @override
   String get connectErrorUnexpectedFormat => 'Unexpected response format';
 
   @override

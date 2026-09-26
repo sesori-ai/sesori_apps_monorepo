@@ -9,11 +9,16 @@ No dependency on Flutter or product/domain packages.
 - `PersisterRepository` maps typed string/bool keys through `PersisterApi`
   directly into Drift. Defaults apply only to absence; failures propagate.
 - `SecureStorageRepository` owns per-row AES-256-GCM and one cached master-key
-  initialization future. Failed initialization stays failed for that instance.
-  Missing-row reads, deletes and all primitive operations require no native key.
+  initialization future. Failed initialization stays failed for normal operations.
+  Explicit startup-only `reset()` independently attempts ciphertext clearing and
+  native-key replacement, retaining both errors. The cached future is replaced
+  immediately and publishes its new key only after both operations succeed.
+  Failed reset stays cached; successful key replacement also invalidates old
+  ciphertext if deletion failed. Missing-row reads/deletes need no native key.
 - A missing master key is created only for a store without encrypted rows, and
-  saved natively before ciphertext. Key loss/corruption never clears or re-keys
-  existing rows. `StorageCipher` authenticates scope/key identity with fresh
+  saved natively before ciphertext. Normal reads/writes never clear or re-key
+  existing rows after key loss/corruption. Destructive reset is an explicit
+  startup recovery operation, not an automatic repository fallback. `StorageCipher` authenticates scope/key identity with fresh
   nonces and retains diagnostic causes behind privacy-safe error presentation.
 - `PersistenceDatabase` owns three tables (`StringValues`, `BoolValues`,
   `EncryptedValues`), a lazy background SQLite connection, WAL and disposal.
