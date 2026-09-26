@@ -1,5 +1,6 @@
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart" show CleanupIssueSharedWorktree;
 
 import "../repositories/models/session_cleanup_rejection.dart";
 import "../repositories/session_repository.dart";
@@ -46,13 +47,18 @@ class SessionCleanupService({required final SessionRepository _repository}) {
       // solve: go ahead and leave that worktree to the other one. The retry
       // sends deleteWorktree: false, so it cannot be refused again, and a
       // refusal that names no issue is never retried.
-      if (!deleteWorktree || !error.rejection.isOnlySharedWorktree) rethrow;
+      if (!deleteWorktree || !_isOnlySharedWorktree(error.rejection)) rethrow;
       return _outcome(
         response: await request(deleteWorktree: false),
         outcome: SessionCleanupOutcome.sharedWorktreeKept,
       );
     }
   }
+
+  /// True when a live session sharing the worktree is the only thing in the
+  /// way: nothing of the user's is at risk. False for an empty list.
+  bool _isOnlySharedWorktree(SessionCleanupRejection rejection) =>
+      rejection.issues.isNotEmpty && rejection.issues.every((issue) => issue is CleanupIssueSharedWorktree);
 
   ApiResponse<SessionCleanupOutcome> _outcome<T>({
     required ApiResponse<T> response,
