@@ -19,6 +19,20 @@ typedef SessionDetailBottomControlsBuilder = Widget Function({
   required SessionDetailLoaded state,
 });
 
+/// The widths of the two centred columns a pointer surface reads a session in.
+/// They are separate design constants rather than one number: body text carries
+/// a longer measure comfortably, while a text field and its pill row look
+/// stretched well before it does. Both are always known together, so the pair
+/// travels as one value.
+final class const SessionDetailColumnWidths({
+  /// Caps the transcript's reading column.
+  required final double transcript,
+
+  /// Caps the floating bottom controls — the needs-you cards, the composer and
+  /// its pills.
+  required final double composer,
+});
+
 class SessionDetailLoadedView extends StatefulWidget {
   final String? projectId;
   final String sessionId;
@@ -26,9 +40,9 @@ class SessionDetailLoadedView extends StatefulWidget {
   final bool readOnly;
   final Widget? bottomControls;
 
-  /// Caps the transcript and the bottom controls to a centred column; null
-  /// lets them span the pane.
-  final double? maxContentWidth;
+  /// Centres the transcript and the bottom controls in their own columns; null
+  /// lets both span the pane, as the phone does.
+  final SessionDetailColumnWidths? columnWidths;
   final VoidCallback onShowPendingQuestions;
   final VoidCallback onShowPendingPermissions;
 
@@ -40,7 +54,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
     required this.bottomControls,
-    required this.maxContentWidth,
+    required this.columnWidths,
   }) : readOnly = true;
 
   const new interactive({
@@ -51,7 +65,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
     required this.bottomControls,
-    required this.maxContentWidth,
+    required this.columnWidths,
   }) : readOnly = false;
 
   @override
@@ -79,17 +93,22 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
 
   @override
   Widget build(BuildContext context) {
-    final maxContentWidth = widget.maxContentWidth;
-    if (maxContentWidth == null) return _buildContent(context: context, horizontalInset: 0);
+    final columnWidths = widget.columnWidths;
+    if (columnWidths == null) return _buildContent(context: context, transcriptInset: 0, composerInset: 0);
     return LayoutBuilder(
       builder: (context, constraints) => _buildContent(
         context: context,
-        horizontalInset: math.max(0, (constraints.maxWidth - maxContentWidth) / 2),
+        transcriptInset: math.max(0, (constraints.maxWidth - columnWidths.transcript) / 2),
+        composerInset: math.max(0, (constraints.maxWidth - columnWidths.composer) / 2),
       ),
     );
   }
 
-  Widget _buildContent({required BuildContext context, required double horizontalInset}) {
+  Widget _buildContent({
+    required BuildContext context,
+    required double transcriptInset,
+    required double composerInset,
+  }) {
     final loc = context.loc;
     final state = widget.state;
     // A session waiting on the user is not working; its card says so.
@@ -201,7 +220,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           // up behind the bar's fade and the composer's fade.
                           topInset: topInset,
                           bottomInset: hasBottomControls ? bottomControlsHeight : 0,
-                          horizontalInset: horizontalInset,
+                          horizontalInset: transcriptInset,
                         ),
                       ),
                     ),
@@ -236,8 +255,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
         if (hasBottomControls)
           Positioned(
             bottom: 0,
-            left: horizontalInset,
-            right: horizontalInset,
+            left: composerInset,
+            right: composerInset,
             child: PregoSizeObserver(
               onSizeChanged: (size) {
                 if (!mounted) return;
