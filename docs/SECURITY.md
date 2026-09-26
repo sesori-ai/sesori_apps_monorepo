@@ -39,6 +39,8 @@ It does **not** see:
 
 Sesori retains the minimum account-level data needed to make the service work while your account is active: your sign-in identity, a small amount of routing metadata, and push notification tokens. We do not store your code, prompts, or AI responses.
 
+If you send private feedback from the app, the Sesori auth server stores it with your account: the issues you ticked, any text you wrote, where the sheet was opened, your platform, and the app version. Nothing is stored unless you choose to send it. Feedback text goes only to Sesori, never to an app store. It is deleted along with your account's other data when you ask us to delete your account ([hello@sesori.com](mailto:hello@sesori.com)).
+
 ## Push notifications
 
 If you enable push notifications, our backend builds a notification payload that may contain a short preview of the event (for example, a question summary or the latest assistant message). That payload is sent to Apple or Google push services, so it leaves the end-to-end encrypted channel between your phone and the Bridge. The full code, prompts, and responses stay on your machine; only the preview needed for the notification travels through the push provider.

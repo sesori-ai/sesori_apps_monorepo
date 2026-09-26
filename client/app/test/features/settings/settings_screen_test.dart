@@ -45,6 +45,8 @@ class _MockBridgeSettingsService() extends Mock implements BridgeSettingsService
 
 class _MockAppReviewClient() extends Mock implements AppReviewClient;
 
+class _MockFeedbackRepository() extends Mock implements FeedbackRepository;
+
 const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null);
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _connectionConfig, health: _health);
@@ -759,6 +761,7 @@ void main() {
       sheetsAtStoreOpen.add(find.byType(BottomSheet, skipOffstage: false).evaluate().isNotEmpty);
     });
     GetIt.instance.registerSingleton<AppReviewClient>(appReviewClient);
+    GetIt.instance.registerSingleton<FeedbackRepository>(_MockFeedbackRepository());
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
@@ -774,6 +777,45 @@ void main() {
 
     verify(appReviewClient.openStoreReviewPage).called(1);
     expect(sheetsAtStoreOpen, [false]);
+  });
+
+  testWidgets("Rate Sesori sends private feedback from Settings", (tester) async {
+    registerFallbackValue(<FeedbackIssue>{});
+    registerFallbackValue(FeedbackSource.automatic);
+    final feedbackRepository = _MockFeedbackRepository();
+    when(
+      () => feedbackRepository.submit(
+        issues: any(named: "issues"),
+        message: any(named: "message"),
+        source: any(named: "source"),
+      ),
+    ).thenAnswer((_) async {});
+    GetIt.instance.registerSingleton<AppReviewClient>(_MockAppReviewClient());
+    GetIt.instance.registerSingleton<FeedbackRepository>(feedbackRepository);
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Rate Sesori"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Could be better"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("App feels slow"));
+    await tester.enterText(find.byKey(const ValueKey("feedback-text")), "Fixture feedback");
+    await tester.tap(find.bySemanticsLabel("Send feedback"));
+    await tester.pumpAndSettle();
+
+    verify(
+      () => feedbackRepository.submit(
+        issues: {FeedbackIssue.appSlow},
+        message: "Fixture feedback",
+        source: FeedbackSource.settings,
+      ),
+    ).called(1);
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text("Feedback sent. Thank you!"), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
   });
 
   testWidgets("basic usage analytics lives on Account with concise copy", (tester) async {

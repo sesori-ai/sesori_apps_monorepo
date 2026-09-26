@@ -1951,6 +1951,78 @@ abstract class AppLocalizations {
   /// **'Not now'**
   String get feedbackNotNow;
 
+  /// Title of the private feedback step after Could be better
+  ///
+  /// In en, this message translates to:
+  /// **'What should we improve?'**
+  String get feedbackPrivateTitle;
+
+  /// Private feedback issue pill
+  ///
+  /// In en, this message translates to:
+  /// **'Hard to navigate'**
+  String get feedbackIssueHardToNavigate;
+
+  /// Private feedback issue pill
+  ///
+  /// In en, this message translates to:
+  /// **'Connection drops'**
+  String get feedbackIssueConnectionDrops;
+
+  /// Private feedback issue pill
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications don’t arrive'**
+  String get feedbackIssueNotificationsMissing;
+
+  /// Private feedback issue pill
+  ///
+  /// In en, this message translates to:
+  /// **'App feels slow'**
+  String get feedbackIssueAppSlow;
+
+  /// Placeholder of the private feedback text field
+  ///
+  /// In en, this message translates to:
+  /// **'Example: Hard to navigate'**
+  String get feedbackMessageHint;
+
+  /// Accessibility label of the private feedback send button
+  ///
+  /// In en, this message translates to:
+  /// **'Send feedback'**
+  String get feedbackSend;
+
+  /// Inline error after private feedback failed to send
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t send feedback. Your draft is still here.'**
+  String get feedbackSendFailed;
+
+  /// Retries sending private feedback
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get feedbackRetry;
+
+  /// Closes the private feedback step without sending
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get feedbackCancel;
+
+  /// Toast after private feedback was sent
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback sent. Thank you!'**
+  String get feedbackSent;
+
+  /// Counter shown when the private feedback text nears its length limit
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 character left} other{{count} characters left}}'**
+  String feedbackCharactersLeft(int count);
+
   /// No description provided for @settingsSectionLegal.
   ///
   /// In en, this message translates to:

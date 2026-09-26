@@ -12,6 +12,9 @@ const feedbackCelebrationDuration = Duration(milliseconds: 1500);
 const feedbackContentDuration = Duration(milliseconds: 220);
 const feedbackContentReverseDuration = Duration(milliseconds: 160);
 const _contentOffset = 0.03;
+// Controls: composer, issue pills and presses.
+const feedbackControlDuration = Duration(milliseconds: 160);
+const feedbackControlReverseDuration = Duration(milliseconds: 100);
 
 /// Retire outgoing content without leaving duplicate hit targets or semantics.
 class const FeedbackContentTransition({

@@ -174,33 +174,77 @@ String toString() {
 /// @nodoc
 
 
-class FeedbackSheetCouldBeBetter implements FeedbackSheetState {
-  const FeedbackSheetCouldBeBetter();
+class FeedbackSheetPrivateFeedback implements FeedbackSheetState {
+  const FeedbackSheetPrivateFeedback({required  Set<FeedbackIssue> issues, required this.submission}): _issues = issues;
   
 
+ final  Set<FeedbackIssue> _issues;
+ Set<FeedbackIssue> get issues {
+  if (_issues is EqualUnmodifiableSetView) return _issues;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableSetView(_issues);
+}
 
+ final  FeedbackSubmission submission;
 
+/// Create a copy of FeedbackSheetState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$FeedbackSheetPrivateFeedbackCopyWith<FeedbackSheetPrivateFeedback> get copyWith => _$FeedbackSheetPrivateFeedbackCopyWithImpl<FeedbackSheetPrivateFeedback>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is FeedbackSheetCouldBeBetter);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FeedbackSheetPrivateFeedback&&const DeepCollectionEquality().equals(other.issues, _issues)&&(identical(other.submission, submission) || other.submission == submission));
 }
 
 
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_issues),submission);
+}
 
 @override
 String toString() {
-    return 'FeedbackSheetState.couldBeBetter()';
+    return 'FeedbackSheetState.privateFeedback(issues: $issues, submission: $submission)';
 }
 
 
 }
 
+/// @nodoc
+abstract mixin class $FeedbackSheetPrivateFeedbackCopyWith<$Res> implements $FeedbackSheetStateCopyWith<$Res> {
+  factory $FeedbackSheetPrivateFeedbackCopyWith(FeedbackSheetPrivateFeedback value, $Res Function(FeedbackSheetPrivateFeedback) _then) = _$FeedbackSheetPrivateFeedbackCopyWithImpl;
+@useResult
+$Res call({
+ Set<FeedbackIssue> issues, FeedbackSubmission submission
+});
 
 
+
+
+}
+/// @nodoc
+class _$FeedbackSheetPrivateFeedbackCopyWithImpl<$Res>
+    implements $FeedbackSheetPrivateFeedbackCopyWith<$Res> {
+  _$FeedbackSheetPrivateFeedbackCopyWithImpl(this._self, this._then);
+
+  final FeedbackSheetPrivateFeedback _self;
+  final $Res Function(FeedbackSheetPrivateFeedback) _then;
+
+/// Create a copy of FeedbackSheetState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? issues = null,Object? submission = null,}) {
+  return _then(FeedbackSheetPrivateFeedback(
+issues: null == issues ? _self._issues : issues // ignore: cast_nullable_to_non_nullable
+as Set<FeedbackIssue>,submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
+as FeedbackSubmission,
+  ));
+}
+
+
+}
 
 // dart format on

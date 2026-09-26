@@ -1022,6 +1022,50 @@ class AppLocalizationsEn extends AppLocalizations {
   String get feedbackNotNow => 'Not now';
 
   @override
+  String get feedbackPrivateTitle => 'What should we improve?';
+
+  @override
+  String get feedbackIssueHardToNavigate => 'Hard to navigate';
+
+  @override
+  String get feedbackIssueConnectionDrops => 'Connection drops';
+
+  @override
+  String get feedbackIssueNotificationsMissing => 'Notifications don’t arrive';
+
+  @override
+  String get feedbackIssueAppSlow => 'App feels slow';
+
+  @override
+  String get feedbackMessageHint => 'Example: Hard to navigate';
+
+  @override
+  String get feedbackSend => 'Send feedback';
+
+  @override
+  String get feedbackSendFailed => 'Couldn’t send feedback. Your draft is still here.';
+
+  @override
+  String get feedbackRetry => 'Retry';
+
+  @override
+  String get feedbackCancel => 'Cancel';
+
+  @override
+  String get feedbackSent => 'Feedback sent. Thank you!';
+
+  @override
+  String feedbackCharactersLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count characters left',
+      one: '1 character left',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get settingsSectionLegal => 'Legal';
 
   @override

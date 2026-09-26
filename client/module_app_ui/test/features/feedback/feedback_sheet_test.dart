@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
@@ -8,16 +10,29 @@ import "package:theme_prego/module_prego.dart";
 
 class _MockAppReviewClient() extends Mock implements AppReviewClient;
 
+class _MockFeedbackRepository() extends Mock implements FeedbackRepository;
+
 const _ratingTitle = "Are you enjoying Sesori?";
 const _reviewTitle = "Thanks! Leave a review?";
 
 void main() {
+  late _MockFeedbackRepository feedbackRepository;
   late FeedbackSheetCubit cubit;
   late List<FeedbackSheetOutcome> outcomes;
   late List<bool> sheetsAtOutcome;
 
+  setUpAll(() {
+    registerFallbackValue(<FeedbackIssue>{});
+    registerFallbackValue(FeedbackSource.settings);
+  });
+
   setUp(() {
-    cubit = FeedbackSheetCubit(appReviewClient: _MockAppReviewClient());
+    feedbackRepository = _MockFeedbackRepository();
+    cubit = FeedbackSheetCubit(
+      appReviewClient: _MockAppReviewClient(),
+      feedbackRepository: feedbackRepository,
+      source: FeedbackSource.settings,
+    );
     outcomes = [];
     sheetsAtOutcome = [];
   });
@@ -61,6 +76,17 @@ void main() {
   final close = find.byKey(const ValueKey("feedback-close"));
   final leaveReview = find.byKey(const ValueKey("feedback-leave-review"));
   final notNow = find.byKey(const ValueKey("feedback-not-now"));
+  final text = find.byKey(const ValueKey("feedback-text"));
+  final send = find.byKey(const ValueKey("feedback-send"));
+  final cancel = find.byKey(const ValueKey("feedback-cancel"));
+
+  void answerSubmit(Future<void> Function() answer) => when(
+    () => feedbackRepository.submit(
+      issues: any(named: "issues"),
+      message: any(named: "message"),
+      source: any(named: "source"),
+    ),
+  ).thenAnswer((_) => answer());
 
   testWidgets("Yes keeps the authored opening, locks both answers, then asks for a review", (tester) async {
     await open(tester: tester);
@@ -134,7 +160,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("closing before answering dismisses, and Could be better resolves as such", (tester) async {
+  testWidgets("closing before answering dismisses, and cancelling private feedback sends nothing", (tester) async {
     await open(tester: tester);
     final semantics = tester.ensureSemantics();
     expect(find.bySemanticsLabel("Close feedback"), findsOneWidget);
@@ -144,8 +170,86 @@ void main() {
     await tester.tap(find.text("Open"));
     await tester.pumpAndSettle();
     await tapAndSettle(tester: tester, finder: improve);
+    expect(find.text("What should we improve?"), findsOneWidget);
+    expect(find.text(_ratingTitle), findsNothing);
+    await tapAndSettle(tester: tester, finder: cancel);
 
-    expect(outcomes, [isA<FeedbackSheetOutcomeDismissed>(), isA<FeedbackSheetOutcomeCouldBeBetter>()]);
+    expect(outcomes, [
+      isA<FeedbackSheetOutcomeDismissed>(),
+      isA<FeedbackSheetOutcomeCouldBeBetter>().having((o) => o.sent, "sent", isFalse),
+    ]);
+    verifyZeroInteractions(feedbackRepository);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("Send submits the ticked issues and text, closes, then confirms with a toast", (tester) async {
+    final pending = Completer<void>();
+    answerSubmit(() => pending.future);
+    await open(tester: tester);
+    await tapAndSettle(tester: tester, finder: improve);
+
+    await tapAndSettle(tester: tester, finder: find.text("Connection drops"));
+    await tester.enterText(text, "Fixture feedback");
+    await tester.tap(send);
+    await tester.pump();
+
+    verify(
+      () => feedbackRepository.submit(
+        issues: {FeedbackIssue.connectionDrops},
+        message: "Fixture feedback",
+        source: FeedbackSource.settings,
+      ),
+    ).called(1);
+    expect(tester.widget<TextField>(text).readOnly, isTrue, reason: "The draft is locked while sending.");
+
+    pending.complete();
+    await tester.pumpAndSettle();
+    expect(outcomes.single, isA<FeedbackSheetOutcomeCouldBeBetter>().having((o) => o.sent, "sent", isTrue));
+    expect(sheetsAtOutcome, [false]);
+    expect(find.text("Feedback sent. Thank you!"), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("a failed send keeps the draft and Retry sends it again", (tester) async {
+    answerSubmit(() async => throw StateError("offline"));
+    await open(tester: tester);
+    await tapAndSettle(tester: tester, finder: improve);
+    await tester.enterText(text, "Fixture feedback");
+    await tapAndSettle(tester: tester, finder: send);
+
+    expect(find.text("Couldn’t send feedback. Your draft is still here."), findsOneWidget);
+    expect(find.text("Fixture feedback"), findsOneWidget);
+    expect(outcomes, isEmpty);
+
+    answerSubmit(() async {});
+    await tapAndSettle(tester: tester, finder: find.byKey(const ValueKey("feedback-retry")));
+    verify(
+      () => feedbackRepository.submit(issues: {}, message: "Fixture feedback", source: FeedbackSource.settings),
+    ).called(2);
+    expect(outcomes.single, isA<FeedbackSheetOutcomeCouldBeBetter>().having((o) => o.sent, "sent", isTrue));
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("the text stops at 4,000 characters and counts down near the limit", (tester) async {
+    await open(tester: tester);
+    await tapAndSettle(tester: tester, finder: improve);
+    final counter = find.byKey(const ValueKey("feedback-counter"));
+
+    await tester.enterText(text, "a" * 3700);
+    await tester.pump();
+    expect(counter, findsNothing);
+
+    await tester.enterText(text, "a" * 3850);
+    await tester.pump();
+    expect(find.text("150 characters left"), findsOneWidget);
+
+    await tester.enterText(text, "a" * 4100);
+    await tester.pump();
+    expect(tester.widget<TextField>(text).controller?.text.length, 4000);
+    expect(find.text("0 characters left"), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -184,6 +288,19 @@ void main() {
     });
   }
 
+  testWidgets("turning on Reduce Motion keeps the private draft", (tester) async {
+    await open(tester: tester);
+    await tapAndSettle(tester: tester, finder: improve);
+    await tester.enterText(text, "Fixture feedback");
+
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await tester.pumpAndSettle();
+
+    expect(find.text("Fixture feedback"), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("a narrow screen with large text fits both steps", (tester) async {
     tester.platformDispatcher.textScaleFactorTestValue = 1.5;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
@@ -191,6 +308,17 @@ void main() {
     expect(tester.takeException(), isNull);
     await tapAndSettle(tester: tester, finder: love);
     expect(find.text(_reviewTitle), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // The small screen scrolls the sheet, so bring each answer into view.
+    await tester.ensureVisible(notNow);
+    await tapAndSettle(tester: tester, finder: notNow);
+    await tester.tap(find.text("Open"));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(improve);
+    await tapAndSettle(tester: tester, finder: improve);
+    await tester.ensureVisible(cancel);
+    expect(find.text("Notifications don’t arrive"), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
