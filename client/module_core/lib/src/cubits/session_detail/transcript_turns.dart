@@ -31,9 +31,6 @@ final class const TranscriptTurnDone({
 final class const TranscriptTurnSummary({
   /// Every step in the turn's step groups, running steps included.
   required final int steps,
-
-  /// How many of [steps] failed.
-  required final int failedSteps,
   required final TranscriptTurnOutcome outcome,
 });
 
@@ -155,13 +152,11 @@ class const TranscriptTurnBuilder() {
     required bool isRunning,
   }) {
     var steps = 0;
-    var failedSteps = 0;
     TranscriptTurnOutcome ending = const TranscriptTurnDone(answerLine: null);
     for (final message in messages) {
       for (final block in transcript.blocksFor(messageId: message.info.id)) {
         if (block is! TranscriptGroupBlock) continue;
         steps += block.steps.length;
-        failedSteps += block.summary.failedCount;
       }
       switch (message.info) {
         case MessageAssistant(sender: MessageSender.agent):
@@ -177,7 +172,6 @@ class const TranscriptTurnBuilder() {
     }
     return TranscriptTurnSummary(
       steps: steps,
-      failedSteps: failedSteps,
       outcome: isRunning ? const TranscriptTurnRunning() : ending,
     );
   }

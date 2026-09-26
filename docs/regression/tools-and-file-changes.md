@@ -37,7 +37,10 @@ sub-agent parts, plus the signal that a tool changed files.
   pending/running/failed/cancelled/unknown status. Tool-name strings never decide
   whether a shell panel is available.
 - Consecutive tool, thinking and sub-agent parts collapse into one summary row
-  (for example “Thought · 3 steps · 1 sub-agent · 1 failed”). Tapping or
+  that counts its finished steps, “N steps”: every thinking block, tool call
+  and sub-agent is one step, failed ones included, and a lone finished step
+  reads “1 step” like any group. The line names no kinds and counts no
+  failures apart. Tapping or
   keyboard-activating the summary opens its finished steps outside the
   transcript, so the transcript's layout never changes: on desktop an anchored
   popover below the summary, 560 px wide and capped at 480 px tall, whose steps
@@ -49,17 +52,12 @@ sub-agent parts, plus the signal that a tool changed files.
   agent messages and renders in the first one's row, while an automation
   message groups only within itself. A running step stays below the summary as
   its own row and folds into the summary when it finishes; a group of only
-  running steps shows no summary. A group with exactly one finished step shows
-  no summary either: that step keeps its own row, in step order among any live
-  rows, with its own label and details (for example a lone background-task
-  notice reads `Agent "…" finished`, never “1 step”), and it folds into the
-  new summary when a second step finishes. The fold is animated over 200 ms: the live
+  running steps shows no summary. The fold is animated over 200 ms: the live
   row keeps its last look while its height shrinks, it fades and slides up a
   little, and the summary takes it in: a changed count rolls (the old number
-  slides up and out, the new one in from below, so “read 2 files” rolls only
-  its digit), a new kind or first failure wipes in, and the summary's width
-  eases so the text after it moves rather than jumps. At rest the summary is
-  one line that ellipsizes on a narrow screen. A new group, a new live row, the
+  slides up and out, the new one in from below, so “2 steps” rolls only its
+  digit), and the summary's width eases so the text after it moves rather than
+  jumps. At rest the summary is one line that ellipsizes on a narrow screen. A new group, a new live row, the
   thinking tail's first words and a new agent message row ease their height in
   the same way; user prompts appear at once. Only the rows that change animate,
   and a reader pinned to the newest edge stays pinned while they do. Reduced
@@ -68,12 +66,8 @@ sub-agent parts, plus the signal that a tool changed files.
   shared `TranscriptBuilder`, so phone and desktop match.
 - Each tool part carries a kind (read, edit, command, search or other) that its
   plugin classifies from the backend's own tool names; the client never
-  classifies a raw tool name or parses tool input. The summary names finished
-  calls by kind in order of first appearance, for example “Thought · read 2
-  files · edited 1 file · ran 1 command · 1 search · 1 step · 1 failed”. Counts
-  are calls, so reading one file twice reads “read 2 files”, and edits carry no
-  line counts. An other kind, a kind the app does not know, and a part from an
-  older bridge that sends no kind all count as plain steps.
+  classifies a raw tool name or parses tool input. The group summary does not
+  read it.
 - A finished context compaction renders as one quiet "Context compacted" row in
   the step style; like visible text it ends a group. While it runs, Pi and Codex
   show a running `compact` tool that the finished row replaces in place. When the
@@ -249,7 +243,7 @@ sub-agent parts, plus the signal that a tool changed files.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated presentation only: command disclosure/two-axis scrolling, exact command/output copy, six statuses, streaming updates, keyboard activation, eased and reduced-motion disclosure, enlarged text and both themes; attachment visibility and title-only older-peer rendering; every step kind lining up in one row layout with a bold, capitalised label at phone and desktop density; the sparkle leading a live row, and the “Working…” row showing while busy with no live step or streaming text and leaving when a step starts, text streams, the session idles or a retry row shows; a finished live row folding into its group while its count rolls, including one that finishes before it has eased in, a new segment wiping in, a group opening in a desktop popover (Esc and outside-click dismissal, capped height) or a phone sheet without changing the transcript height, instant changes under reduced motion, and a pinned reader staying pinned through the fold. Authoritative tool execution still requires a live turn. |
+| L1 Smoke | Automated presentation only: command disclosure/two-axis scrolling, exact command/output copy, six statuses, streaming updates, keyboard activation, eased and reduced-motion disclosure, enlarged text and both themes; attachment visibility and title-only older-peer rendering; every step kind lining up in one row layout with a bold, capitalised label at phone and desktop density; the sparkle leading a live row, and the “Working…” row showing while busy with no live step or streaming text and leaving when a step starts, text streams, the session idles or a retry row shows; a finished live row folding into its group while its count rolls, including one that finishes before it has eased in, a group reading “N steps” with no kind list or failed count and a lone finished step reading “1 step”, a failed step still red in the opened group, a group opening in a desktop popover (Esc and outside-click dismissal, capped height) or a phone sheet without changing the transcript height, instant changes under reduced motion, and a pinned reader staying pinned through the fold. Authoritative tool execution still requires a live turn. |
 | L2 Routine | Live plugin, representative: a file-editing tool produces a lightweight tool part with name and terminal status, while a shell tool preserves its command and bounded result. |
 | L3 Release | Client end to end (phone), every supporting production plugin: status normalizes consistently, non-shell tool snippets are absent, and shell commands/results/errors render; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok target coverage: a complete lightweight tool lifecycle, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. Grok owned-phone coverage passed completed-tile rendering, exact read-only child navigation, and genuine permission Once. File diff/invalidation, mutating-tool permission linkage, failing-tool presentation, and permission denial remain unexecuted. |
 | L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity and status intact, shell commands retain their results, and non-shell snippets remain absent; a failing shell command surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, a resumed terminal agent returns to running in both its tile and child status, and a failed sub-agent renders `error` with the notification summary. |
@@ -310,9 +304,9 @@ edge (see `transcript-turn-navigation.md`).
   reduced motion.
 - A step that finishes before its live row has eased in raises a framework
   assertion or breaks the transcript instead of folding into the summary.
-- A summary names a backend tool, counts distinct files instead of calls, shows
-  line counts for edits, or fails to decode a tool part whose kind is missing
-  or new; a reloaded session reports different kinds than the live one did.
+- A group shows a per-kind list, a failed count, or a lone finished step's own
+  row instead of “1 step”, or a summary names a backend tool. A tool part
+  whose kind is missing or new fails to decode.
 - A finished compaction shows no row, shows its summary inline as a user or
   assistant message, leaves a running `compact` tool beside the row, or opens an
   empty modal; tapping a long summary stalls before the ripple, skips the
@@ -397,8 +391,7 @@ edge (see `transcript-turn-navigation.md`).
 
 - Tool kinds: `ClaudeToolKindMapper`, `CodexToolKindMapper`, `PiToolKindMapper`,
   OpenCode `MessagePartMapper` and ACP `AcpContentMapper.toolKind`, with their
-  tests; `shared/sesori_shared/test/models/tool_kind_test.dart`,
-  `client/module_core/test/cubits/session_detail/transcript_builder_test.dart`
+  tests; `shared/sesori_shared/test/models/tool_kind_test.dart`
 - Contract: `bridge/sesori_plugin_interface/lib/src/models/plugin_message.dart`;
   `shared/sesori_shared/lib/src/models/sesori/message_part.dart`
 - Bridge: `bridge/app/lib/src/repositories/mappers/plugin_to_shared_mapping.dart`,

@@ -211,8 +211,8 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 ## Tool kinds
 
 Each plugin classifies its own tool names into read, edit, command, search or
-other, and the transcript summary names calls by kind (“read 2 files · ran 1
-command”). Other calls count as plain steps.
+other. No client surface reads the kind: the transcript summary counts every
+call as one step.
 
 | Harness | Status and kind source |
 |---|---|
