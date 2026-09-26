@@ -29,10 +29,11 @@ Register lazy platform capabilities and scope, then call
 `configurePersistenceDependencies(getIt: getIt)` before auth/core registration.
 Database, APIs, cipher and repositories are lazy; graph reset closes the database.
 
-Product shells are not switched yet. The active `desktop-master-key-storage`
-plan adds deprecated mobile import and native capabilities before the coherent
-consumer cutover. Existing auth's per-value interface remains live until then,
-not as an alias or fallback inside this implementation.
+Both product shells use this implementation. Production mobile awaits the
+isolated deprecated importer in core before consumers; development and desktop
+never resolve it. There is no per-value runtime backend, alias or fallback.
+Native migration, authorization and backup/restore qualification remain tracked
+in the active `desktop-master-key-storage` plan.
 
 ## Verification
 

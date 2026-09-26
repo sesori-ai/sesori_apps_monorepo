@@ -2,8 +2,8 @@
 
 ## Execution
 
-- Status: #1749 merged with 22 passing checks. Reconciled both-client cutover
-  passes focused verification and architecture review against fixed main `33c7815`.
+- Status: #1751 is open. Initial head passed 33 checks; Codex's README finding
+  is corrected in a documentation-only follow-up. Native qualification remains.
 - User approved one Drift backend on both mobile and desktop, with mobile data
   migration in this work. No postponed mobile-native runtime backend.
 - Migration must be isolated and explicitly deprecated from its first commit,
@@ -29,7 +29,7 @@
 | 4.a — Deprecated mobile import | Merged | #1739; 11 recovery tests, three analyses, architecture approval and 24 passing CI checks; unwired. |
 | 4.b — Native capabilities and backup | Merged | #1744; 28 tests, two analyses, architecture approval and 24 passing checks; no native qualification. |
 | 4.c — Startup recovery | Merged | #1749; eight tests, three analyses, architecture approval and 22 passing checks; no storage cutover. |
-| 4.d — Both-client cutover | Architecture approved | PR 10; 24 reconciled shell cases, retained unchanged auth/core evidence and clean analyses; no native qualification. |
+| 4.d — Both-client cutover | In PR | #1751; architecture approved, 24 reconciled shell cases plus retained auth/core evidence; README feedback corrected. |
 | 5 — Regression reconciliation | Not started | PR 11; behavior docs also accompany their implementation. |
 | 6 — Required qualification/retirement | Not started | PR 12; plan remains active until recorded mobile + desktop matrix passes. |
 
@@ -183,6 +183,10 @@
   adapter symbol searches found no remaining Dart references.
   Architecture review `554a1f9d-c952-4df8-8501-eb9595df2e64` approved exact
   `33c7815..90b20bd` (54 paths, 1,539 lines) without findings.
+  Codex identified stale package READMEs; corrected setup/dependency guidance in
+  mobile, auth, core, workspace and persistence READMEs. Documentation checks
+  cover retired names/phases, public exports, code fences and whitespace;
+  production/test inputs remain unchanged, so no suite or architecture rerun.
 - Native qualification must replace the authenticated macOS fixture's old
   per-value seeding and retained desktop baseline before using it with this
   cutover. Seed with production Dart storage; do not copy SQL/crypto into Swift
