@@ -58,6 +58,21 @@ sender and parts, at the point the model received it. Verified on
 **2026-09-26** with native Claude Code **2.1.281** captures and live rows the
 bridge stored from CLIs 2.1.237 to 2.1.281.
 
+## Transcript turn boundaries
+
+The client groups a transcript into turns from its messages alone, so a
+follow-up sent while a turn runs stays inside that turn only where the harness
+delivers it into the running turn. See
+`docs/regression/transcript-turn-navigation.md`.
+
+| Harness | Follow-up sent while a turn runs | Stays in the running turn |
+|---|---|---|
+| Claude Code | Taken at the next tool boundary; history replays it where the model received it | ✅ |
+| Codex | `turn/start` steers the active turn | ✅ |
+| Pi | Sent with the `steer` streaming behavior | ✅ |
+| OpenCode | Sent at once into the running turn | ✅ |
+| ACP family: Antigravity, Copilot, Cursor, DeepSeek, Grok, Hermes, OMP | Stop-and-send: the bridge cancels the turn, then sends | 🚫 Opens a new turn: ACP v1 has no steering operation, and no ACP plugin overrides the shared stop-and-send (checked in code on 2026-09-26). |
+
 ## Quota-reset auto continuation
 
 Claude/Pi also implement named-session readiness for idle, retry, queued work
@@ -193,29 +208,30 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 | Codex | ✅ Argument-derived title (`cmd`, `command`, `path`, `filePath`, `query`, else bounded raw arguments). |
 | Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ Agent-supplied ACP `tool_call` title, when the agent sends one; Sesori does not derive titles from ACP inputs. A call without `kind` uses its title as the tool name and drops the title, so the card does not say it twice. |
 
-## Tool kinds
+## Live timers
 
-Each plugin classifies its own tool names into read, edit, command, search or
-other, and the transcript summary names calls by kind (“read 2 files · ran 1
-command”). Other calls count as plain steps.
+"Working…" ticks the time since the running turn's prompt was sent, from the
+prompt message's `time.created`. Without that time it reads plain "Working…";
+the client never starts its own clock.
 
-| Harness | Status and kind source |
+| Harness | Prompt sent time |
 |---|---|
-| Claude | ✅ Built-in names: `Read`/`NotebookRead`; `Edit`/`MultiEdit`/`NotebookEdit`/`Write`; `Bash`; `Grep`/`Glob`/`LS`/`WebSearch`. MCP and other tools are other. |
-| OpenCode | ✅ Built-in names: `read`; `edit`/`multiedit`/`write`/`patch`/`apply_patch`; `bash`; `grep`/`glob`/`list`/`codesearch`/`websearch`. |
-| Pi | ✅ Built-in names: `read`; `edit`/`write`; `bash`; `grep`/`find`/`ls`. Extension tools are other. |
-| Codex | ✅ Partial: shell calls are commands, file changes are edits and web searches are searches. Codex reads and searches files through shell commands, so those count as commands, not reads. |
-| Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ The ACP tool `kind`: `read`; `edit`/`delete`/`move`; `execute`; `search`. A call without a `kind`, or with `fetch`, `think` or `other`, counts as a plain step. |
+| OpenCode, Codex, Pi, DeepSeek | ✅ Live and after reload. |
+| Claude | ✅ Live from the `--replay-user-messages` echo's `timestamp` (verified 2026-09-26 on CLI 2.1.281), and after reload from the transcript record. A slash command's synthetic bubble is stamped at dispatch. |
+| Grok, Antigravity, Copilot, Cursor, Hermes, OMP | ❌ Not implemented: the ACP prompt carries no time, so "Working…" shows no timer. A bridge-side prompt stamp is planned. |
 
-## OpenCode v2 adapter (not yet active)
+## OpenCode v2 adapter
 
-The staged adapter targets the public 2.0.11–2.0.16 API; active v1 behavior is unchanged.
+Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.0.18.
+V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the native database one-way.
 
 | Capability | Status |
 |---|---|
 | Explicit parent-linked creation | Not supported by the native create API; refused before mutation. Native forks remain standalone roots, never children of their source. |
 | Conditional/external form rendering | Not implemented; native-only. Visible replies preserve native keys/types and numeric bounds; native validation remains authoritative. |
 | Native archival | Not supported; archival stays in the bridge database. |
+| Prompt/compaction correlation | Implemented with caller-supplied native IDs and stateless projection. |
+| Custom-command correlation | Not supported by the native command route: no caller ID or result ID is exposed. Command dispatch still waits for native acceptance. |
 
 ## Managed runtime
 
@@ -528,7 +544,8 @@ row, which opens the carried-forward summary when the harness exposes it.
 | Harness | Compaction row | Summary |
 |---|---|---|
 | Claude | ✅ | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.281). |
-| OpenCode | ✅ | ✅ The text of the `summary: true` assistant message. |
+| OpenCode v1 | ✅ | ✅ The text of the `summary: true` assistant message. |
+| OpenCode v2 | ✅ | ✅ The completed native compaction message's `summary`; a running snapshot is not a completed marker. |
 | Pi | ✅ | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |
 | Codex | ✅ | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
 | DeepSeek | ⬜ | ⬜ The runtime reports a live `compaction_completed` status without message identity or a replayable history record, so Sesori maps it only to a session-compacted event; a live-only row would vanish on reload. |
@@ -553,7 +570,9 @@ end with `session.prompt-settled` so clients can remove its optimistic row.
 | Harness | Status and settlement source |
 |---|---|
 | Claude | ✅ Command dispatch publishes a correlated synthetic user message. |
-| OpenCode | ✅ Reserved message identity correlates the backend user echo. |
+| OpenCode v1 | ✅ Correlated backend user echoes cover prompts, commands and manual compaction. |
+| OpenCode v2 prompts / fallback compaction | ✅ Caller-supplied native IDs correlate prompt echoes; completed or failed compaction snapshots emit explicit prompt settlement. |
+| OpenCode v2 native commands | 🚫 The 2.0.18 command route exposes neither caller nor result message identity. There is no correlated echo or explicit settlement; an optimistic command row can remain after acceptance. |
 | Codex | ✅ Turn-backed commands correlate their user echo; native `compact` emits explicit prompt settlement because it returns no turn identity. |
 | Pi | ✅ User echoes and agent-running fallback synthesis remain transcript-backed; an accepted slash command with no agent work emits explicit prompt settlement after its state barrier. |
 | Antigravity, Copilot, Cursor, Hermes, OMP, DeepSeek, Grok | ✅ Shared ACP dispatch publishes a correlated user message; no silent accepted-command path is exposed. |

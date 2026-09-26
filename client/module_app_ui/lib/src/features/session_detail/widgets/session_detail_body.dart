@@ -41,6 +41,11 @@ typedef SessionDetailMenuEntriesBuilder = List<PregoMenuEntry> Function({
 class const SessionDetailPageChrome({
   required final SessionDetailHeaderBuilder headerBuilder,
   required final double maxContentWidth,
+
+  /// Fold and unfold every turn while focus is in the page. The shell picks
+  /// the platform's modifier keys.
+  required final SingleActivator foldActivator,
+  required final SingleActivator unfoldActivator,
 });
 
 class const SessionDetailBody({
@@ -195,6 +200,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
             trailing: sessionChangesCounts(state: summary, style: context.prego.textTheme.textSm.medium),
           ),
         ),
+      if (state case SessionDetailLoaded(:final transcriptFolded))
+        PregoButtonsIconGlass(
+          icon: transcriptFolded ? TablerRegular.separator_horizontal : TablerRegular.fold,
+          semanticLabel: transcriptFolded ? loc.transcriptUnfoldAll : loc.transcriptFoldAll,
+          onPressed: () => context.read<SessionDetailCubit>().setTranscriptFolded(folded: !transcriptFolded),
+        ),
       // Root sessions only: the actions run on the project's session list,
       // which holds no sub-agent sessions and must not gain one.
       if (session != null && ((menuEntriesBuilder != null && session.parentID == null) || canConfigureContinuation))
@@ -252,27 +263,36 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     final pageChrome = widget.pageChrome;
     final content = _buildContent(context: context, state: state, maxContentWidth: pageChrome?.maxContentWidth);
     if (pageChrome != null) {
-      return Scaffold(
-        body: Column(
-          children: [
-            pageChrome.headerBuilder(
-              context: context,
-              title: title,
-              isBusy: isBusy,
-              onShowDiffs: canShowDiffs ? onShowDiffs : null,
-              session: state.hydratedSession,
+      final cubit = context.read<SessionDetailCubit>();
+      return CallbackShortcuts(
+        bindings: {
+          pageChrome.foldActivator: () => cubit.setTranscriptFolded(folded: true),
+          pageChrome.unfoldActivator: () => cubit.setTranscriptFolded(folded: false),
+        },
+        child: _PageFocus(
+          child: Scaffold(
+            body: Column(
+              children: [
+                pageChrome.headerBuilder(
+                  context: context,
+                  title: title,
+                  isBusy: isBusy,
+                  onShowDiffs: canShowDiffs ? onShowDiffs : null,
+                  session: state.hydratedSession,
+                ),
+                ?banner,
+                // The header sits above the transcript, so nothing scrolls behind a
+                // bar and the transcript needs no top inset for one.
+                Expanded(
+                  child: PregoTopBarInsetScope(
+                    baseInset: 0,
+                    bannerHeight: const AlwaysStoppedAnimation<double>(0),
+                    child: content,
+                  ),
+                ),
+              ],
             ),
-            ?banner,
-            // The header sits above the transcript, so nothing scrolls behind a
-            // bar and the transcript needs no top inset for one.
-            Expanded(
-              child: PregoTopBarInsetScope(
-                baseInset: 0,
-                bannerHeight: const AlwaysStoppedAnimation<double>(0),
-                child: content,
-              ),
-            ),
-          ],
+          ),
         ),
       );
     }
@@ -553,4 +573,39 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
       variant: PregoPopupAlertsNotificationsVariant.error,
     );
   }
+}
+
+/// Holds keyboard focus inside the page when it opens and when a click lands
+/// in it, so the page's shortcuts work before the composer is focused. Focus
+/// already inside the page, such as the composer's, is left alone.
+class const _PageFocus({required final Widget child}) extends StatefulWidget {
+  @override
+  State<_PageFocus> createState() => _PageFocusState();
+}
+
+class _PageFocusState() extends State<_PageFocus> {
+  // Out of Tab order: the page itself is no stop, only a home for its shortcuts.
+  final _node = FocusNode(debugLabel: "session page", skipTraversal: true);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _claim());
+  }
+
+  void _claim() {
+    if (mounted && !_node.hasFocus) _node.requestFocus();
+  }
+
+  @override
+  void dispose() {
+    _node.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Listener(
+    onPointerDown: (_) => _claim(),
+    child: Focus(focusNode: _node, child: widget.child),
+  );
 }

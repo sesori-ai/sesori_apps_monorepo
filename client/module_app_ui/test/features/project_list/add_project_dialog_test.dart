@@ -760,7 +760,7 @@ void main() {
       await tester.tapAt(tester.getCenter(_upButton) - const Offset(0, 21));
       await tester.pumpAndSettle();
       verify(() => mockCubit.fetchFilesystemSuggestions(prefix: "/home")).called(1);
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
     testWidgets("a short breadcrumb segment gets a touch-sized tap target", (tester) async {
       _stubSuggestionsPerPrefix(mockCubit, byPrefix: {"": _homeDirEntries});

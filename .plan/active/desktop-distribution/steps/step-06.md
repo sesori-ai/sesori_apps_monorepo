@@ -6,8 +6,10 @@ The user selected the shared bridge/mobile release cycle on 2026-09-25. Continua
 changing bridge/mobile finalizers or publishing a desktop release. Follow-up `8.k/14`
 corrected the reusable callers' read-only PR-provenance permission in #1730. Acceptance
 record `8.l/14` records the successful shared cycle and fresh stable-candidate replacement.
-The user retired the remaining QA gate on 2026-09-26; continuation `8.m/14` admits
-macOS publication and records the first public internal assets.
+The user retired the remaining QA gate on 2026-09-26; continuation `8.m/14` merged
+as #1761, admitting macOS and recording the first public internal assets. Website
+continuation `8.n/14` merged in `sesori-ai/landingpage#111`; `8.o/14` records automatic
+shared publication and live website verification without reopening the retired gate.
 
 ## Code-informed implementation boundary
 
@@ -84,11 +86,9 @@ is claimed.
 
 Remaining delivery work:
 
-- Wire verified internal macOS links on `https://sesori.com/desktop/`. Its existing
-  channel/CPU anchors remain stable; the page is still awaiting the first link update.
-- Observe normal shared-cycle attachment and ordinary stable production when submitted
-  through existing `store-production`. No redundant store release is dispatched merely
-  for desktop proof. First internal attachment and anonymous retrieval are recorded below.
+- Observe ordinary stable production when submitted through existing `store-production`.
+  Normal internal shared-cycle attachment and the deployed website are verified below;
+  no redundant store release is dispatched merely for desktop proof.
 - Windows/Linux keep their independent signing/publication requirements. No additional
   publication credentials or hosted resources are provisioned here.
 
@@ -148,6 +148,80 @@ stable cleanup with/without desktop assets. Three internal-rollover and both sta
 cleanup subcases failed against their old implementations; all 17 publisher/workflow
 tests and actionlint passed after correction. This is a local workflow regression proof,
 not a forced live store/desktop failure.
+
+## Automatic publication and deployed website (2026-09-26)
+
+Admission/retention #1761 merged at `2026-09-26T08:28:17Z`, squash
+`d72c9ae976a690569593eb925340d8d1e21c7d2b`; all 22 terminal checks passed. Its accepted
+head was `e13b3f371b8c3f1703ca584afb9d82e2b7c360eb`, not the squash or later product source.
+
+The ordinary shared run
+[36230719108](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36230719108)
+succeeded from `2026-09-26T08:45:07Z` through `09:18:46Z`, with main product/producer
+source `67bcc32ed3cdbdb00295c6572cd208cc78df6c68`. Mobile internal uploads, six bridge
+targets, both native macOS packages, core finalization and automatic desktop attachment
+completed for `v1.9.1-internal.991`. The run was observed after completion, not
+redispatched for desktop proof. It proves the admitted shared-workflow attachment path;
+the earlier completed-run bootstrap and scheduler no-ops did not prove that path.
+
+[Website PR #111](https://github.com/sesori-ai/landingpage/pull/111) merged at
+`2026-09-26T10:32:03Z`, accepted head `318336486370207dc12705d37fb3d1ed3cb32893`,
+actual squash `d3ab0da1ac001c86e83089daf9a3937fc3c9ef6e`. The website selects the newest
+completed shared publication independently per channel, requiring both native DMGs
+with positive sizes/SHA-256 index digests plus desktop checksum and completion assets.
+It follows release pages on the fixed repository endpoint within one five-second
+budget. A five-minute cache coalesces success/failure lookups; failures remain logged.
+The runtime trusts the publisher's last-uploaded marker, not per-request manifest
+parsing or payload hashing. URLs derive from validated tags and expected filenames.
+
+Review found the first-page-only stable discovery gap. A 100-entry/page-two regression
+failed before the fix and passed afterward, also proving request coalescing and cache
+reuse. The pinned `lru-cache` defined-result `forceFetch` respects TTL; it is not the
+`forceRefresh` option. All **22 tests**, lint and real-SSR fixture contracts passed.
+Merged-main CI
+[36236080941](https://github.com/sesori-ai/landingpage/actions/runs/36236080941) passed.
+Fixture screenshots use actual desktop widgets with demo data/fonts and explicitly
+disclose native-control differences; they are not native AppKit or account QA.
+
+The website automatically deploys its base branch after a push/merge, normally within
+1–3 minutes. The initial immediate post-merge response still served the old page;
+no dummy commit, GCP authentication or separate deployment was needed. Live headless
+Chrome verification at **`2026-09-26T11:59:40Z`** checked `https://sesori.com/desktop/`:
+
+- The preview CTA opens the internal macOS section. All eight channel/OS/CPU anchors
+  plus `linux-package-managers` exist and select/reveal their correct sections.
+- Exactly two internal macOS downloads are active. Stable and Windows links remain
+  unavailable, Linux repositories remain unpublished, and stable structured data
+  contains no version, offer or download/install URL borrowed from previews.
+- Both production rows select **`v1.9.1-internal.993`**, not permanently pinned build
+  987 or previously checked 991. Their anonymous HEADs return 200 and sizes match the
+  GitHub asset index; displayed/index SHA-256 values agree with the public manifest
+  and `desktop-checksums.txt`.
+- Desktop `1280×900` and mobile `390×844` navigation run without browser exceptions;
+  the mobile page has no horizontal overflow. Only an isolated headless browser was
+  opened; the installed app, running Bridge and native user state were untouched.
+
+Build 993's manifest identifies product source
+`eb2bdb20070425fa163563b18177635a43656ab9` and successful ordinary producer
+[36236723908](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/36236723908).
+Checked live payload metadata:
+
+- arm64 DMG: **44,585,961 bytes**;
+  `4525499d5d1ae48754a1c54cd5717b31c856cbc9f2adcfcf74013ed58ef182b1`.
+- x64 DMG: **45,237,370 bytes**;
+  `11728112b58eb78c3f2e4696fb09d45fd95704c753a59f0d3f937fec3e73d473`.
+
+These are deployed-page, anonymous-link and metadata-agreement checks, not new full-byte
+hashing, Apple trust assessment, native installation or authenticated replacement of
+builds 991/993. Build 981's old-format replacement evidence stays source/format-bound.
+Stable production is not published; its existing approval and Windows/Linux gates
+remain unchanged. Gate C and accepted macOS QA are not reopened.
+
+Local bounded evidence under `build/landingpage-public-macos/`:
+`shared-cycle-991.json`, `merged-pr-111.json`, `live-links.json`,
+`production-verification.json`, `production-verification.log` and
+`shared-cycle-36236723908.json`. The first link record measures 991; the production
+record measures 993. Local files are ignored, not public release assets.
 
 ## Shared-cycle native evidence (2026-09-25)
 

@@ -10,6 +10,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
+import "../../core/widgets/desktop_command_palette.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
 import "../../core/widgets/desktop_page_toolbar.dart";
 import "../../core/widgets/desktop_session_signals.dart";
@@ -165,6 +166,8 @@ class const DesktopSessionDetailView({
           pageChrome: SessionDetailPageChrome(
             maxContentWidth: maxContentWidth,
             headerBuilder: _buildToolbar,
+            foldActivator: _foldShortcut,
+            unfoldActivator: _unfoldShortcut,
           ),
           menuEntriesBuilder: null,
         ),
@@ -173,6 +176,9 @@ class const DesktopSessionDetailView({
   }
 
   static const double maxContentWidth = 760;
+
+  static SingleActivator get _foldShortcut => desktopShortcut(key: LogicalKeyboardKey.minus);
+  static SingleActivator get _unfoldShortcut => desktopShortcut(key: LogicalKeyboardKey.equal);
 
   void _markUnread({required BuildContext context, required Session session}) {
     sessionActions.handleSessionMarkUnread(
@@ -222,6 +228,18 @@ class const DesktopSessionDetailView({
               hierarchy: PregoButtonsSolidHierarchy.secondary,
               size: PregoButtonsSolidSize.sm,
               onPressed: onShowDiffs,
+            ),
+          ),
+        if (state case SessionDetailLoaded(:final transcriptFolded))
+          IconButton(
+            key: const Key("desktop-session-page-fold"),
+            tooltip: transcriptFolded
+                ? loc.desktopShortcutHint(loc.transcriptUnfoldAll, desktopShortcutLabel(shortcut: _unfoldShortcut))
+                : loc.desktopShortcutHint(loc.transcriptFoldAll, desktopShortcutLabel(shortcut: _foldShortcut)),
+            onPressed: () => context.read<SessionDetailCubit>().setTranscriptFolded(folded: !transcriptFolded),
+            icon: Icon(
+              transcriptFolded ? TablerRegular.separator_horizontal : TablerRegular.fold,
+              size: PregoIconSize.md,
             ),
           ),
         PregoAnchorMenu(

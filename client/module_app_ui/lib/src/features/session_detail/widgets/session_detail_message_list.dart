@@ -21,7 +21,10 @@ import "system_message_card.dart";
 import "tool_part_widget.dart";
 import "transcript_live_row.dart";
 import "transcript_motion.dart";
+import "transcript_pinch_detector.dart";
 import "transcript_row_reporter.dart";
+import "transcript_sticky_position.dart";
+import "transcript_sticky_prompt_overlay.dart";
 import "transcript_turn_stub.dart";
 import "user_message_card.dart";
 
@@ -220,6 +223,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// switch can read the turn the reader was on.
   List<String> _rowIds = const [];
   Map<String, TranscriptTurn> _rowTurns = const {};
+  TranscriptTurns _turns = const TranscriptTurns(turns: [], turnIndexByMessageId: {});
+
+  /// The prompt pinned at the top edge, measured after each frame that built
+  /// or scrolled the list. Only the sticky prompt overlay reads it.
+  final ValueNotifier<TranscriptStickyPosition?> _sticky = ValueNotifier(null);
+  bool _stickyUpdateScheduled = false;
 
   /// The built rows by id. Only built rows are here, so every scan stays
   /// bounded by the viewport and its cache extent.
@@ -227,6 +236,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// The one turn being held in place, until its row settles or goes.
   _TurnAnchor? _anchor;
+
+  /// Captured when a pinch's first pointer lands, before a trackpad pan-zoom
+  /// start detaches the list, so a pinch that switches nothing leaves
+  /// following alone.
+  bool _pinchStartedFollowing = false;
+  bool _pinchDetachSuppressed = false;
 
   @override
   void initState() {
@@ -244,6 +259,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _follow.removeListener(_onFollowChanged);
     _follow.dispose();
     _revealController.dispose();
+    _sticky.dispose();
     super.dispose();
   }
 
@@ -254,9 +270,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       // The rows a fold switch brings in are not new, so they must not ease in.
       _knownRowIds = null;
       // Unless a control in the list already chose the turn, hold the one at
-      // the top edge, measured in the last frame's layout. Following keeps the
-      // newest turn in view by itself.
-      if (_anchor == null && !_follow.following) {
+      // the top edge, measured in the last frame's layout. That holds while
+      // following too: the hold's first jump detaches the list, as a stub tap's
+      // does, so a round trip returns to the same turn.
+      if (_anchor == null) {
         if (_topEdgeTurn() case final turn?) _holdTurn(turn: turn, folded: widget.transcriptFolded);
       }
     }
@@ -393,7 +410,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final shownRowId = _firstRowOf(turn: turn, folded: !folded);
     final span = _spanOf(rowId: shownRowId);
     final top = span == null || span.bottom <= widget.topInset ? 0.0 : span.top - widget.topInset;
-    final rowId = _firstRowOf(turn: turn, folded: folded);
+    _holdRow(
+      rowId: _firstRowOf(turn: turn, folded: folded),
+      top: top,
+    );
+  }
+
+  /// Moves row [rowId] to rest [top] px below the top edge, from the next frame.
+  void _holdRow({required String rowId, required double top}) {
     final anchor = _anchor = _TurnAnchor(rowId: rowId, top: top);
     WidgetsBinding.instance.addPostFrameCallback((_) => _stepAnchor(anchor: anchor, first: true));
     WidgetsBinding.instance.ensureVisualUpdate();
@@ -434,9 +458,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final pixels = (position.pixels + delta).clamp(position.minScrollExtent, position.maxScrollExtent);
     if ((pixels - position.pixels).abs() <= 0.5) return;
     _anchor = anchor;
-    // The jump ends a scroll, so the tracker detaches the list, or follows
-    // again when it lands within the latest edge's tolerance.
+    // A held turn stops following, even where the jump ends within the latest
+    // edge's tolerance and the tracker would follow again, so later output
+    // never pulls the reader away from it.
     position.jumpTo(pixels);
+    _follow.detach();
     WidgetsBinding.instance.addPostFrameCallback((_) => _stepAnchor(anchor: anchor, first: false));
   }
 
@@ -444,6 +470,89 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   void _unfoldAt({required TranscriptTurn turn}) {
     _holdTurn(turn: turn, folded: false);
     widget.onTranscriptFoldedChanged(folded: false);
+  }
+
+  /// Puts the prompt of turn [openerMessageId] at the top edge. Folded, it
+  /// unfolds every turn and holds that one in place instead. Like any hold,
+  /// the jump stops following.
+  void _jumpToTurn({required String openerMessageId}) {
+    final turn = _turns.promptTurnFor(openerMessageId: openerMessageId);
+    if (turn == null) return;
+    if (widget.transcriptFolded) return _unfoldAt(turn: turn);
+    _holdRow(rowId: _firstRowOf(turn: turn, folded: false), top: 0);
+  }
+
+  void _scheduleStickyUpdate() {
+    if (_stickyUpdateScheduled) return;
+    _stickyUpdateScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _stickyUpdateScheduled = false;
+      if (mounted) _sticky.value = _stickyPosition();
+    });
+  }
+
+  /// The prompt to pin: unfolded, the top-edge turn's opener while that
+  /// opener is above the edge or not built. Segments without a prompt pin
+  /// nothing.
+  TranscriptStickyPosition? _stickyPosition() {
+    if (widget.transcriptFolded) return null;
+    if (_topEdgeTurn() case final TranscriptPromptTurn turn) {
+      final opener = _spanOf(rowId: _firstRowOf(turn: turn, folded: false));
+      if (opener != null && opener.bottom > widget.topInset) return null;
+      final index = _turns.turnIndexByMessageId[turn.opener.info.id];
+      final next = index == null ? null : _turns.turns.elementAtOrNull(index + 1);
+      final nextOpener = next == null ? null : _spanOf(rowId: _firstRowOf(turn: next, folded: false));
+      return TranscriptStickyPosition(
+        openerMessageId: turn.opener.info.id,
+        nextOpenerTop: nextOpener == null ? null : nextOpener.top - widget.topInset,
+      );
+    }
+    return null;
+  }
+
+  /// The turn of the built row under [globalPosition].
+  TranscriptTurn? _turnAt({required Offset globalPosition}) {
+    final list = context.findRenderObject();
+    if (list is! RenderBox) return null;
+    final y = list.globalToLocal(globalPosition).dy;
+    for (final rowId in _rowContexts.keys) {
+      final span = _spanOf(rowId: rowId);
+      if (span != null && span.top <= y && y < span.bottom) return _rowTurns[rowId];
+    }
+    return null;
+  }
+
+  void _onPinchPointerDown() => _pinchStartedFollowing = _follow.following;
+
+  /// Keeps a list that followed when the pinch began following while it
+  /// pinches, undoing a trackpad pan-zoom start's detach.
+  void _onPinchStart() {
+    if (!_pinchStartedFollowing || _pinchDetachSuppressed) return;
+    _pinchDetachSuppressed = true;
+    _follow.suppressDetach();
+  }
+
+  /// Switches to [folded] and holds the turn under the fingers, like a button
+  /// holds the top-edge turn. The hold's jump stops following, as theirs does.
+  void _onPinchFoldRequested({required bool folded, required Offset focalPoint}) {
+    if (folded == widget.transcriptFolded) return;
+    // A switching pinch stops following, so the hold's jump must detach.
+    _releasePinchDetachSuppression();
+    if (_turnAt(globalPosition: focalPoint) ?? _topEdgeTurn() case final turn?) {
+      _holdTurn(turn: turn, folded: folded);
+    }
+    widget.onTranscriptFoldedChanged(folded: folded);
+  }
+
+  void _onPinchGestureEnd() {
+    _pinchStartedFollowing = false;
+    _releasePinchDetachSuppression();
+  }
+
+  void _releasePinchDetachSuppression() {
+    if (!_pinchDetachSuppressed) return;
+    _pinchDetachSuppressed = false;
+    _follow.releaseDetachSuppression();
   }
 
   bool _transientSubmissionsMatch({required SessionDetailMessageList oldWidget}) {
@@ -578,6 +687,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       isBusy: isBusy,
       hasOlderMessages: widget.onLoadOlderMessages != null,
     );
+    final activity = const TranscriptActivityBuilder().build(
+      transcript: transcript,
+      turns: turns,
+      isBusy: isBusy,
+      retryErrorMessage: retryErrorMessage,
+      hasStreamingText: streamingText.isNotEmpty,
+    );
     // The message rows in order, each with its turn: folded, a prompt turn's
     // prompt and one stub for the rest; unfolded, every rendered message.
     final rowTurns = <String, TranscriptTurn>{
@@ -624,6 +740,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _knownRowIds = rowIds.toSet();
     _rowIds = rowIds;
     _rowTurns = rowTurns;
+    _turns = turns;
+    _scheduleStickyUpdate();
     // Rows held still while scrolled away never animate, and a prompt shows
     // at once: only the agent's side of the transcript eases in.
     final enteringRowIds = knownRowIds == null || snap != null || context.isReducedMotion
@@ -664,64 +782,81 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       //   path ignores the mouse kind) so it keeps selecting message
       //   text; hijacking it for the peek would make selection impossible.
       //
-      child: NotificationListener<Notification>(
-        onNotification: _onScrollNotification,
-        child: PregoHorizontalDragGestureDetector(
-          behavior: HitTestBehavior.translucent,
-          supportedDevices: _kRevealPointerDevices,
-          onHorizontalDragDown: _onRevealDragDown,
-          onHorizontalDragStart: _onRevealDragStart,
-          onHorizontalDragUpdate: _onRevealDragUpdate,
-          onHorizontalDragEnd: _onRevealDragEnd,
-          onHorizontalDragCancel: _onRevealDragCancel,
-          pendingRejectionSlop: _kRevealPendingRejectionSlop,
-          direction: PregoHorizontalDragDirection.left,
-          dragStartBehavior: DragStartBehavior.down,
-          child: ListView.builder(
-            key: _kListViewKey,
-            reverse: true,
-            controller: _follow.scrollController,
-            padding: EdgeInsetsDirectional.only(
-              start: widget.horizontalInset,
-              end: widget.horizontalInset,
-              top: 8 + widget.topInset,
-              bottom: 8 + widget.bottomInset,
-            ),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
-            physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: rowIds.length,
-            findChildIndexCallback: (key) {
-              if (key case ValueKey<String>(value: final rowId)) {
-                final domainIndex = rowIds.indexOf(rowId);
-                return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
-              }
-              return null;
-            },
-            itemBuilder: (context, index) {
-              final entryId = rowIds[rowIds.length - index - 1];
-              return TranscriptRowReporter(
-                key: ValueKey(entryId),
-                rowId: entryId,
-                onMount: _onRowMount,
-                onUnmount: _onRowUnmount,
-                child: TranscriptPresence(
-                  entering: enteringRowIds.contains(entryId),
-                  exiting: false,
-                  onExited: null,
-                  child: _buildRow(
-                    entryId: entryId,
-                    messages: messages,
-                    indexById: indexById,
-                    rowTurns: rowTurns,
-                    transientSubmissions: transientSubmissions,
-                    transcript: transcript,
-                    streamingText: streamingText,
-                    retryErrorMessage: retryErrorMessage,
-                    isBusy: isBusy,
+      child: TranscriptPinchDetector(
+        onPointerDown: _onPinchPointerDown,
+        onPinchStart: _onPinchStart,
+        onFoldRequested: _onPinchFoldRequested,
+        onGestureEnd: _onPinchGestureEnd,
+        child: NotificationListener<Notification>(
+          onNotification: _onScrollNotification,
+          child: PregoHorizontalDragGestureDetector(
+            behavior: HitTestBehavior.translucent,
+            supportedDevices: _kRevealPointerDevices,
+            onHorizontalDragDown: _onRevealDragDown,
+            onHorizontalDragStart: _onRevealDragStart,
+            onHorizontalDragUpdate: _onRevealDragUpdate,
+            onHorizontalDragEnd: _onRevealDragEnd,
+            onHorizontalDragCancel: _onRevealDragCancel,
+            pendingRejectionSlop: _kRevealPendingRejectionSlop,
+            direction: PregoHorizontalDragDirection.left,
+            dragStartBehavior: DragStartBehavior.down,
+            child: Stack(
+              children: [
+                ListView.builder(
+                  key: _kListViewKey,
+                  reverse: true,
+                  controller: _follow.scrollController,
+                  padding: EdgeInsetsDirectional.only(
+                    start: widget.horizontalInset,
+                    end: widget.horizontalInset,
+                    top: 8 + widget.topInset,
+                    bottom: 8 + widget.bottomInset,
                   ),
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: rowIds.length,
+                  findChildIndexCallback: (key) {
+                    if (key case ValueKey<String>(value: final rowId)) {
+                      final domainIndex = rowIds.indexOf(rowId);
+                      return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
+                    }
+                    return null;
+                  },
+                  itemBuilder: (context, index) {
+                    final entryId = rowIds[rowIds.length - index - 1];
+                    return TranscriptRowReporter(
+                      key: ValueKey(entryId),
+                      rowId: entryId,
+                      onMount: _onRowMount,
+                      onUnmount: _onRowUnmount,
+                      child: TranscriptPresence(
+                        entering: enteringRowIds.contains(entryId),
+                        exiting: false,
+                        onExited: null,
+                        child: _buildRow(
+                          entryId: entryId,
+                          messages: messages,
+                          indexById: indexById,
+                          rowTurns: rowTurns,
+                          transientSubmissions: transientSubmissions,
+                          transcript: transcript,
+                          streamingText: streamingText,
+                          retryErrorMessage: retryErrorMessage,
+                          activity: activity,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
+                Positioned(
+                  top: widget.topInset,
+                  left: widget.horizontalInset,
+                  right: widget.horizontalInset,
+                  bottom: 0,
+                  child: TranscriptStickyPromptOverlay(position: _sticky, turns: turns, onJumpToTurn: _jumpToTurn),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -752,7 +887,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required Transcript transcript,
     required Map<String, String> streamingText,
     required String? retryErrorMessage,
-    required bool isBusy,
+    required TranscriptActivity activity,
   }) {
     if (rowTurns[entryId] case final turn? when entryId.startsWith(_kTurnRowPrefix)) {
       return _revealable(
@@ -776,10 +911,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       );
     }
     if (entryId == _kWorkingRowId) {
-      // Streaming text, a live step or the retry row already shows progress;
-      // the row fills only the gaps: before the first token and between steps.
-      final show = isBusy && retryErrorMessage == null && transcript.liveStep == null && streamingText.isEmpty;
-      return _revealable(createdAtMs: null, child: _workingRow(show: show));
+      return _revealable(createdAtMs: null, child: _workingRow(activity: activity));
     }
     if (entryId.startsWith(_kPromptRowPrefix)) {
       // One row serves the prompt's whole lifecycle. Resolve the most settled
@@ -908,8 +1040,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// The working row eases in when work starts or a step ends, and away when
   /// a step starts or work ends.
-  Widget _workingRow({required bool show}) => TranscriptPresenceColumn(
-    children: [if (show) const TranscriptWorkingRow(key: ValueKey("session-detail-working"))],
+  Widget _workingRow({required TranscriptActivity activity}) => TranscriptPresenceColumn(
+    children: [
+      if (activity case TranscriptActivityWorking(:final sinceMs))
+        TranscriptWorkingRow(key: const ValueKey("session-detail-working"), sinceMs: sinceMs),
+    ],
   );
 
   /// Wraps a row so the shared horizontal drag reveals its timestamp.
@@ -968,6 +1103,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       _ => false,
     };
     if (nearingOldestEdge) _requestOlderPage();
+    if (notification case ScrollUpdateNotification(depth: 0) || ScrollMetricsNotification(depth: 0)) {
+      _scheduleStickyUpdate();
+    }
     return notification is ScrollNotification && _onNestedScrollNotification(notification);
   }
 

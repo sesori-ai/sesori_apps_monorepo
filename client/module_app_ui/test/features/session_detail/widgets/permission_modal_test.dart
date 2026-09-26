@@ -176,7 +176,7 @@ void main() {
       final router = _createRouter(permission: _permission, capture: capture);
       await tester.pumpWidget(_buildApp(router: router));
       await _openPermissionModal(tester);
-      await tester.tap(find.text(replyCase.label));
+      await tester.tap(find.widgetWithText(PregoButtonsSolid, replyCase.label));
       await tester.pumpAndSettle();
 
       expect(capture.requestId, _permission.requestID);
@@ -203,11 +203,11 @@ void main() {
     await tester.drag(find.byType(SingleChildScrollView).first, const Offset(0, -5000));
     await tester.pumpAndSettle();
     expect(tester.getRect(find.text("Don’t allow")), rejectBefore);
-    expect(find.text("Don’t allow").hitTestable(), findsOneWidget);
-    expect(find.text("Allow").hitTestable(), findsOneWidget);
-    expect(find.text("Always approve").hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(PregoButtonsSolid, "Don’t allow").hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(PregoButtonsSolid, "Allow").hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(PregoButtonsSolid, "Always approve").hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.text("Don’t allow"));
+    await tester.tap(find.widgetWithText(PregoButtonsSolid, "Don’t allow"));
     await tester.pumpAndSettle();
     expect(capture.reply, PermissionReply.reject);
   });

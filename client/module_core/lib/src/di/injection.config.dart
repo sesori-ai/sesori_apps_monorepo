@@ -24,6 +24,9 @@ import 'package:sesori_dart_core/src/api/client/relay_http_client.dart'
     as _i857;
 import 'package:sesori_dart_core/src/api/connection_notification_observation_api.dart'
     as _i479;
+import 'package:sesori_dart_core/src/api/feedback_api.dart' as _i872;
+import 'package:sesori_dart_core/src/api/feedback_prompt_config_api.dart'
+    as _i373;
 import 'package:sesori_dart_core/src/api/filesystem_api.dart' as _i1068;
 import 'package:sesori_dart_core/src/api/installed_app_build_api.dart' as _i258;
 import 'package:sesori_dart_core/src/api/legal_api.dart' as _i835;
@@ -40,6 +43,8 @@ import 'package:sesori_dart_core/src/api/project_api.dart' as _i733;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/storage/composer_draft_storage.dart'
     as _i64;
+import 'package:sesori_dart_core/src/api/storage/feedback_prompt_storage.dart'
+    as _i945;
 import 'package:sesori_dart_core/src/api/storage/notification_preferences_device_id_storage.dart'
     as _i407;
 import 'package:sesori_dart_core/src/api/storage/product_analytics_preference_storage.dart'
@@ -73,6 +78,8 @@ import 'package:sesori_dart_core/src/foundation/platform/attribution_client.dart
     as _i14;
 import 'package:sesori_dart_core/src/foundation/platform/composer_image_picker.dart'
     as _i65;
+import 'package:sesori_dart_core/src/foundation/platform/feedback_prompt_config_source.dart'
+    as _i294;
 import 'package:sesori_dart_core/src/foundation/platform/installed_app_build_source.dart'
     as _i957;
 import 'package:sesori_dart_core/src/foundation/platform/plugin_authentication_browser.dart'
@@ -113,6 +120,10 @@ import 'package:sesori_dart_core/src/repositories/composer_draft_repository.dart
     as _i198;
 import 'package:sesori_dart_core/src/repositories/connection_notification_observation_repository.dart'
     as _i678;
+import 'package:sesori_dart_core/src/repositories/feedback_prompt_repository.dart'
+    as _i723;
+import 'package:sesori_dart_core/src/repositories/feedback_repository.dart'
+    as _i860;
 import 'package:sesori_dart_core/src/repositories/installed_app_build_repository.dart'
     as _i507;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
@@ -157,6 +168,8 @@ import 'package:sesori_dart_core/src/services/composer_attachment_dispatcher.dar
     as _i705;
 import 'package:sesori_dart_core/src/services/connection_notification_observation_service.dart'
     as _i959;
+import 'package:sesori_dart_core/src/services/feedback_prompt_service.dart'
+    as _i905;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
@@ -248,6 +261,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i384.BridgeApi>(
       () => _i384.BridgeApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
     );
+    gh.lazySingleton<_i872.FeedbackApi>(
+      () => _i872.FeedbackApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
+    );
     gh.lazySingleton<_i400.NotificationApi>(
       () =>
           _i400.NotificationApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
@@ -260,6 +276,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i560.ProductAnalyticsPreferenceApi>(
       () => _i560.ProductAnalyticsPreferenceApi(
         client: gh<_i442.AuthenticatedHttpApiClient>(),
+      ),
+    );
+    gh.lazySingleton<_i373.FeedbackPromptConfigApi>(
+      () => _i373.FeedbackPromptConfigApi(
+        source: gh<_i294.FeedbackPromptConfigSource>(),
       ),
     );
     gh.lazySingleton<_i727.AnalyticsApi>(
@@ -334,6 +355,11 @@ extension GetItInjectableX on _i174.GetIt {
       () =>
           _i958.PluginPreferenceApi(persister: gh<_i903.PersisterRepository>()),
     );
+    gh.lazySingleton<_i945.FeedbackPromptStorage>(
+      () => _i945.FeedbackPromptStorage(
+        persister: gh<_i903.PersisterRepository>(),
+      ),
+    );
     gh.lazySingleton<_i407.NotificationPreferencesDeviceIdStorage>(
       () => _i407.NotificationPreferencesDeviceIdStorage(
         persister: gh<_i903.PersisterRepository>(),
@@ -388,6 +414,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i933.LegalRepository>(
       () => _i933.LegalRepository(api: gh<_i835.LegalApi>()),
+    );
+    gh.lazySingleton<_i860.FeedbackRepository>(
+      () => _i860.FeedbackRepository(
+        api: gh<_i872.FeedbackApi>(),
+        installedAppBuildApi: gh<_i258.InstalledAppBuildApi>(),
+      ),
     );
     gh.lazySingleton<_i594.PluginPreferenceRepository>(
       () => _i594.PluginPreferenceRepository(
@@ -468,6 +500,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i28.SessionUnseenTracker(
         gh<_i369.ConnectionService>(),
         failureReporter: gh<_i553.FailureReporter>(),
+      ),
+    );
+    gh.lazySingleton<_i723.FeedbackPromptRepository>(
+      () => _i723.FeedbackPromptRepository(
+        configApi: gh<_i373.FeedbackPromptConfigApi>(),
+        storage: gh<_i945.FeedbackPromptStorage>(),
       ),
     );
     gh.lazySingleton<_i678.ConnectionNotificationObservationRepository>(
@@ -552,6 +590,13 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i7.SessionRepository>(
       () => _i7.SessionRepository(api: gh<_i603.SessionApi>()),
+    );
+    gh.lazySingleton<_i905.FeedbackPromptService>(
+      () => _i905.FeedbackPromptService(
+        connectionService: gh<_i369.ConnectionService>(),
+        repository: gh<_i723.FeedbackPromptRepository>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i337.PluginRepository>(
       () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),

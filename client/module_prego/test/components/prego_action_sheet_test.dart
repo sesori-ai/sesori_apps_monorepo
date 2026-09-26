@@ -49,64 +49,75 @@ void main() {
     // The desktop's minimum window with very large text.
     (size: const Size(560, 480), textScale: 3.0, keyboard: 0.0, mode: PregoInteractionMode.pointer),
   ]) {
-    testWidgets("all actions remain reachable in constrained viewport $viewport", (tester) async {
-      final pressed = <String>[];
-      tester.view.physicalSize = viewport.size;
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      await tester.pumpWidget(
-        PregoInteractionScope(
-          mode: viewport.mode,
-          child: MaterialApp(
-            theme: ThemeData(extensions: [PregoDesignSystem.light]),
-            home: MediaQuery(
-              data: MediaQueryData(
-                size: viewport.size,
-                textScaler: TextScaler.linear(viewport.textScale),
-                viewInsets: EdgeInsets.only(bottom: viewport.keyboard),
-              ),
-              child: Scaffold(
-                resizeToAvoidBottomInset: false,
-                body: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: PregoActionSheet(
-                    title: "Allow this action?",
-                    topInset: 24,
-                    actions: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      spacing: PregoSpacing.xl,
-                      children: [
-                        for (final label in ["Allow", "Always approve", "Don’t allow"])
-                          PregoButtonsSolid(
-                            label: label,
-                            hierarchy: PregoButtonsSolidHierarchy.secondary,
-                            size: PregoButtonsSolidSize.lg,
-                            fullWidth: true,
-                            onPressed: () => pressed.add(label),
-                          ),
-                      ],
+    testWidgets(
+      "all actions remain reachable in constrained viewport $viewport",
+      variant: const TargetPlatformVariant({
+        TargetPlatform.android,
+        TargetPlatform.iOS,
+        TargetPlatform.linux,
+      }),
+      (tester) async {
+        final pressed = <String>[];
+        tester.view.physicalSize = viewport.size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        await tester.pumpWidget(
+          PregoInteractionScope(
+            mode: viewport.mode,
+            child: MaterialApp(
+              theme: ThemeData(extensions: [PregoDesignSystem.light]),
+              home: MediaQuery(
+                data: MediaQueryData(
+                  size: viewport.size,
+                  textScaler: TextScaler.linear(viewport.textScale),
+                  viewInsets: EdgeInsets.only(bottom: viewport.keyboard),
+                ),
+                child: Scaffold(
+                  resizeToAvoidBottomInset: false,
+                  body: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: PregoActionSheet(
+                      title: "Allow this action?",
+                      topInset: 24,
+                      actions: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        spacing: PregoSpacing.xl,
+                        children: [
+                          for (final label in ["Allow", "Always approve", "Don’t allow"])
+                            PregoButtonsSolid(
+                              label: label,
+                              hierarchy: PregoButtonsSolidHierarchy.secondary,
+                              size: PregoButtonsSolidSize.lg,
+                              fullWidth: true,
+                              onPressed: () => pressed.add(label),
+                            ),
+                        ],
+                      ),
+                      child: const SizedBox(height: 2000),
                     ),
-                    child: const SizedBox(height: 2000),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-      expect(find.text("Allow this action?").hitTestable(), findsOneWidget);
-      expect(tester.takeException(), isNull);
-      for (final label in ["Allow", "Always approve", "Don’t allow"]) {
-        await tester.ensureVisible(find.text(label));
-        await tester.pumpAndSettle();
-        expect(find.text(label).hitTestable(), findsOneWidget);
-        await tester.tap(find.text(label));
-        await tester.pumpAndSettle();
+        );
+        expect(find.text("Allow this action?").hitTestable(), findsOneWidget);
         expect(tester.takeException(), isNull);
-      }
-      expect(pressed, ["Allow", "Always approve", "Don’t allow"]);
-    });
+        for (final label in ["Allow", "Always approve", "Don’t allow"]) {
+          // Android paints the label above its InkWell inside IgnorePointer.
+          // Assert reachability and activation on the actual button surface.
+          final button = find.widgetWithText(PregoButtonsSolid, label);
+          await tester.ensureVisible(button);
+          await tester.pumpAndSettle();
+          expect(button.hitTestable(), findsOneWidget);
+          await tester.tap(button);
+          await tester.pumpAndSettle();
+          expect(tester.takeException(), isNull);
+        }
+        expect(pressed, ["Allow", "Always approve", "Don’t allow"]);
+      },
+    );
   }
 
   testWidgets("a nonzero keyboard inset takes precedence over safe-area padding", (tester) async {

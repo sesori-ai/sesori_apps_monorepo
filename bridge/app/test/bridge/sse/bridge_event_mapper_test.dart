@@ -321,7 +321,6 @@ void main() {
             sessionID: "s1",
             messageID: "m1",
             tool: "tool",
-            kind: PluginToolKind.other,
             state: PluginToolState(
               status: PluginToolStatus.completed,
               title: null,
@@ -362,7 +361,6 @@ void main() {
             sessionID: "s1",
             messageID: "m1",
             tool: "tool",
-            kind: PluginToolKind.other,
             state: PluginToolState(
               status: PluginToolStatus.completed,
               title: null,

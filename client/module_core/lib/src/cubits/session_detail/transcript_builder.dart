@@ -9,23 +9,10 @@ enum TranscriptStepStatus() {
   failed,
 }
 
-/// What a summary counts, in the order its kinds first appear. Tool calls count
-/// by the kind their plugin reported; [tool] holds the rest as plain steps.
-enum TranscriptStepKind() {
-  thinking,
-  read,
-  edit,
-  command,
-  search,
-  tool,
-  subAgent,
-}
-
 /// One tool, thinking or sub-agent part inside a [TranscriptGroupBlock].
 @immutable
 sealed class const TranscriptStep({required final TranscriptStepStatus status}) {
   String get id;
-  TranscriptStepKind get kind;
 }
 
 final class const TranscriptThinkingStep({
@@ -37,9 +24,6 @@ final class const TranscriptThinkingStep({
 }) extends TranscriptStep {
   @override
   String get id => part.id;
-
-  @override
-  TranscriptStepKind get kind => TranscriptStepKind.thinking;
 }
 
 final class const TranscriptToolStep({
@@ -48,15 +32,6 @@ final class const TranscriptToolStep({
 }) extends TranscriptStep {
   @override
   String get id => part.id;
-
-  @override
-  TranscriptStepKind get kind => switch (part.kind) {
-    ToolKind.read => TranscriptStepKind.read,
-    ToolKind.edit => TranscriptStepKind.edit,
-    ToolKind.command => TranscriptStepKind.command,
-    ToolKind.search => TranscriptStepKind.search,
-    ToolKind.other || ToolKind.unknown => TranscriptStepKind.tool,
-  };
 }
 
 final class const TranscriptSubAgentStep({
@@ -68,22 +43,6 @@ final class const TranscriptSubAgentStep({
 }) extends TranscriptStep {
   @override
   String get id => part.id;
-
-  @override
-  TranscriptStepKind get kind => TranscriptStepKind.subAgent;
-}
-
-/// How many finished steps of one kind a group holds.
-typedef TranscriptKindCount = ({TranscriptStepKind kind, int count});
-
-/// A group's collapsed line: finished steps counted by kind in order of first
-/// appearance, plus failures. Running steps are not counted; they show as
-/// live rows until they finish.
-final class const TranscriptSummary({
-  required final List<TranscriptKindCount> counts,
-  required final int failedCount,
-}) {
-  bool get isEmpty => counts.isEmpty;
 }
 
 /// One piece of an assistant message's row.
@@ -101,8 +60,10 @@ final class const TranscriptGroupBlock({
   /// The first grouped part's id, stable while the group grows.
   required final String id,
   required final List<TranscriptStep> steps,
-  required final TranscriptSummary summary,
 }) extends TranscriptBlock {
+  /// What the group's summary counts: every finished thinking block, tool call
+  /// and sub-agent is one step. Running steps show as live rows until they
+  /// finish.
   List<TranscriptStep> get finishedSteps => [
     for (final step in steps)
       if (step.status != TranscriptStepStatus.running) step,
@@ -317,21 +278,5 @@ final class const _PendingParts({required final List<MessagePart> parts}) extend
 final class _OpenGroup({required final String id}) extends _PendingBlock {
   final List<TranscriptStep> steps = [];
 
-  TranscriptGroupBlock close() {
-    final counts = <TranscriptStepKind, int>{};
-    var failedCount = 0;
-    for (final step in steps) {
-      if (step.status == TranscriptStepStatus.running) continue;
-      counts[step.kind] = (counts[step.kind] ?? 0) + 1;
-      if (step.status == TranscriptStepStatus.failed) failedCount++;
-    }
-    return TranscriptGroupBlock(
-      id: id,
-      steps: List.unmodifiable(steps),
-      summary: TranscriptSummary(
-        counts: [for (final MapEntry(:key, :value) in counts.entries) (kind: key, count: value)],
-        failedCount: failedCount,
-      ),
-    );
-  }
+  TranscriptGroupBlock close() => TranscriptGroupBlock(id: id, steps: List.unmodifiable(steps));
 }

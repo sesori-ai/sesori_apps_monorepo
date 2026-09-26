@@ -70,6 +70,7 @@ void main() {
     late MockPermissionRepository mockPermissionRepository;
     late MockFailureReporter mockFailureReporter;
     late MockProductAnalyticsService mockProductAnalyticsService;
+    late FakeFeedbackPromptService feedbackPromptService;
     late SessionDetailLoadService loadService;
     late SessionRepository promptDispatcher;
     late BehaviorSubject<SesoriSessionEvent> sessionEvents;
@@ -86,6 +87,7 @@ void main() {
       mockPermissionRepository = MockPermissionRepository();
       mockFailureReporter = MockFailureReporter();
       mockProductAnalyticsService = MockProductAnalyticsService();
+      feedbackPromptService = FakeFeedbackPromptService();
       stubProductAnalyticsService(service: mockProductAnalyticsService);
       _stubPromptAttachmentCapability(
         repository: mockPluginRepository,
@@ -172,6 +174,7 @@ void main() {
       lifecycleSource: lifecycleSource ?? MockLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: mockProductAnalyticsService,
+      feedbackPromptService: feedbackPromptService,
       sessionId: pageSessionId,
       projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
@@ -369,6 +372,30 @@ void main() {
         cubit.setTranscriptFolded(folded: false);
         await pumpEventQueue();
         expect(emitted.map((state) => (state as SessionDetailLoaded).transcriptFolded), [true, false]);
+      });
+
+      test("reports a fold once, and an unfold or a repeated fold reports nothing", () async {
+        final cubit = await loadedCubit(pageSessionId: sessionId);
+        clearInteractions(mockProductAnalyticsService);
+
+        cubit.setTranscriptFolded(folded: true);
+        cubit.setTranscriptFolded(folded: true);
+        await pumpEventQueue();
+        verify(
+          () => mockProductAnalyticsService.logEvent(
+            event: const ProductAnalyticsEvent.transcriptTurnsFolded(),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        ).called(1);
+
+        cubit.setTranscriptFolded(folded: false);
+        await pumpEventQueue();
+        verifyNever(
+          () => mockProductAnalyticsService.logEvent(
+            event: any(named: "event"),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        );
       });
 
       test("keeps the fold through a full reload, while another session starts unfolded", () async {
@@ -1358,6 +1385,7 @@ void main() {
             occurredAtUtc: any(named: "occurredAtUtc"),
           ),
         ).called(1);
+        expect(feedbackPromptService.positiveInteractions, 1);
       },
     );
 
@@ -2027,6 +2055,7 @@ void main() {
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
+        feedbackPromptService: FakeFeedbackPromptService(),
         sessionId: sessionId,
         projectId: "project-1",
         notificationCanceller: null,
@@ -2557,6 +2586,8 @@ void main() {
 
         final localSend = (cubit.state as SessionDetailLoaded).localSend;
         expect(localSend, isA<LocalSendFailed>().having((phase) => phase.failure, "failure", failure));
+        expect(feedbackPromptService.failures, 1);
+        expect(feedbackPromptService.positiveInteractions, 0);
       });
     }
 

@@ -2,6 +2,7 @@ import "dart:convert";
 import "dart:io" show HttpStatus;
 
 import "package:http/http.dart" as http;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonCastMap, jsonDecodeListMap, jsonDecodeMap;
 
 import "../../open_code_raw_http_client.dart";
@@ -39,18 +40,30 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   Future<ServerInfo> getServerInfo() async {
     const path = "/api/info";
     return _object<ServerInfo>(
-      response: await _client.get(path: path),
+      response: await _response(request: _client.get(path: path)),
       operation: path,
       fromJson: ServerInfo.fromJson,
     );
   }
 
+  Future<bool> healthCheck() async {
+    try {
+      await getServerInfo();
+      return true;
+    } on Object catch (error, stackTrace) {
+      Log.w("[opencode-v2] health probe failed", error, stackTrace);
+      return false;
+    }
+  }
+
   Future<LocationPublicInfo> getLocation({required String directory}) async {
     const path = "/api/location";
     return _object<LocationPublicInfo>(
-      response: await _client.get(
-        path: path,
-        queryParameters: _location(directory: directory),
+      response: await _response(
+        request: _client.get(
+          path: path,
+          queryParameters: _location(directory: directory),
+        ),
       ),
       operation: path,
       fromJson: LocationPublicInfo.fromJson,
@@ -60,7 +73,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   Future<List<Project>> listProjects() async {
     const path = "/api/project";
     return _decode<List<Project>>(
-      response: await _client.get(path: path),
+      response: await _response(request: _client.get(path: path)),
       operation: path,
       decode: (body) => jsonDecodeListMap(body).map(Project.fromJson).toList(),
     );
@@ -69,7 +82,9 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   Future<Project> updateProject({required String projectId, required V2UpdateProjectBody body}) async {
     final path = "/api/project/${Uri.encodeComponent(projectId)}";
     return _object<Project>(
-      response: await _client.patch(path: path, headers: _jsonHeaders, body: jsonEncode(body.toJson())),
+      response: await _response(
+        request: _client.patch(path: path, headers: _jsonHeaders, body: jsonEncode(body.toJson())),
+      ),
       operation: path,
       fromJson: Project.fromJson,
     );
@@ -88,14 +103,16 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
     String? cursor;
     do {
       final page = _object(
-        response: await _client.get(
-          path: path,
-          queryParameters: {
-            ...filters,
-            "cursor": ?cursor,
-            "order": ?(cursor == null ? V2PageOrder.asc.name : null),
-            "limit": "100",
-          },
+        response: await _response(
+          request: _client.get(
+            path: path,
+            queryParameters: {
+              ...filters,
+              "cursor": ?cursor,
+              "order": ?(cursor == null ? V2PageOrder.asc.name : null),
+              "limit": "100",
+            },
+          ),
         ),
         operation: path,
         fromJson: SessionsResponse.fromJson,
@@ -112,13 +129,15 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
     String? cursor;
     do {
       final page = _object(
-        response: await _client.get(
-          path: path,
-          queryParameters: {
-            "cursor": ?cursor,
-            "order": ?(cursor == null ? V2PageOrder.asc.name : null),
-            "limit": "100",
-          },
+        response: await _response(
+          request: _client.get(
+            path: path,
+            queryParameters: {
+              "cursor": ?cursor,
+              "order": ?(cursor == null ? V2PageOrder.asc.name : null),
+              "limit": "100",
+            },
+          ),
         ),
         operation: path,
         fromJson: SessionMessagesResponse.fromJson,
@@ -137,7 +156,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
         directory: null,
         fromJson: (value) => SessionMessageInfo.fromJson(jsonCastMap(value)),
       );
-    } on OpenCodeApiException catch (error) {
+    } on PluginOperationException catch (error) {
       if (error.statusCode == HttpStatus.notFound) return null;
       rethrow;
     }
@@ -146,9 +165,11 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   Future<SessionMessageInfo?> getLatestMessage({required String sessionId, required V2MessageFilter filter}) async {
     final path = "${_sessionPath(sessionId: sessionId)}/message";
     final page = _object(
-      response: await _client.get(
-        path: path,
-        queryParameters: {"type": filter.name, "order": V2PageOrder.desc.name, "limit": "1"},
+      response: await _response(
+        request: _client.get(
+          path: path,
+          queryParameters: {"type": filter.name, "order": V2PageOrder.desc.name, "limit": "1"},
+        ),
       ),
       operation: path,
       fromJson: SessionMessagesResponse.fromJson,
@@ -177,30 +198,38 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   );
 
   Future<void> renameSession({required String sessionId, required V2RenameSessionBody body}) async {
-    await _client.patch(
-      path: _sessionPath(sessionId: sessionId),
-      headers: _jsonHeaders,
-      body: jsonEncode(body.toJson()),
+    await _response(
+      request: _client.patch(
+        path: _sessionPath(sessionId: sessionId),
+        headers: _jsonHeaders,
+        body: jsonEncode(body.toJson()),
+      ),
     );
   }
 
   Future<void> deleteSession({required String sessionId}) async {
-    await _client.delete(path: _sessionPath(sessionId: sessionId));
+    await _response(
+      request: _client.delete(path: _sessionPath(sessionId: sessionId)),
+    );
   }
 
   Future<void> switchAgent({required String sessionId, required V2SwitchAgentBody body}) async {
-    await _client.post(
-      path: "${_sessionPath(sessionId: sessionId)}/agent",
-      headers: _jsonHeaders,
-      body: jsonEncode(body.toJson()),
+    await _response(
+      request: _client.post(
+        path: "${_sessionPath(sessionId: sessionId)}/agent",
+        headers: _jsonHeaders,
+        body: jsonEncode(body.toJson()),
+      ),
     );
   }
 
   Future<void> switchModel({required String sessionId, required V2SwitchModelBody body}) async {
-    await _client.post(
-      path: "${_sessionPath(sessionId: sessionId)}/model",
-      headers: _jsonHeaders,
-      body: jsonEncode(body.toJson()),
+    await _response(
+      request: _client.post(
+        path: "${_sessionPath(sessionId: sessionId)}/model",
+        headers: _jsonHeaders,
+        body: jsonEncode(body.toJson()),
+      ),
     );
   }
 
@@ -211,10 +240,12 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   );
 
   Future<void> command({required String sessionId, required V2CommandBody body}) async {
-    await _client.post(
-      path: "${_sessionPath(sessionId: sessionId)}/command",
-      headers: _jsonHeaders,
-      body: jsonEncode(body.toJson()),
+    await _response(
+      request: _client.post(
+        path: "${_sessionPath(sessionId: sessionId)}/command",
+        headers: _jsonHeaders,
+        body: jsonEncode(body.toJson()),
+      ),
     );
   }
 
@@ -233,7 +264,9 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   Future<SessionInterruptResponse> interrupt({required String sessionId, required bool resume}) async {
     final path = "${_sessionPath(sessionId: sessionId)}/interrupt";
     return _object<SessionInterruptResponse>(
-      response: await _client.post(path: path, queryParameters: {"resume": "$resume"}),
+      response: await _response(
+        request: _client.post(path: path, queryParameters: {"resume": "$resume"}),
+      ),
       operation: path,
       fromJson: SessionInterruptResponse.fromJson,
     );
@@ -268,27 +301,35 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
     required String requestId,
     required V2PermissionReplyBody body,
   }) async {
-    await _client.post(
-      path: "${_sessionPath(sessionId: sessionId)}/permission/${Uri.encodeComponent(requestId)}/reply",
-      headers: _jsonHeaders,
-      body: jsonEncode(body.toJson()),
+    await _response(
+      request: _client.post(
+        path: "${_sessionPath(sessionId: sessionId)}/permission/${Uri.encodeComponent(requestId)}/reply",
+        headers: _jsonHeaders,
+        body: jsonEncode(body.toJson()),
+      ),
     );
   }
 
   Future<void> replyForm({required String sessionId, required String formId, required FormReply body}) async {
-    await _client.post(
-      path: "${_sessionPath(sessionId: sessionId)}/form/${Uri.encodeComponent(formId)}/reply",
-      headers: _jsonHeaders,
-      body: jsonEncode(body.toJson()),
+    await _response(
+      request: _client.post(
+        path: "${_sessionPath(sessionId: sessionId)}/form/${Uri.encodeComponent(formId)}/reply",
+        headers: _jsonHeaders,
+        body: jsonEncode(body.toJson()),
+      ),
     );
   }
 
   Future<void> cancelForm({required String sessionId, required String formId}) async {
-    await _client.delete(path: "${_sessionPath(sessionId: sessionId)}/form/${Uri.encodeComponent(formId)}");
+    await _response(
+      request: _client.delete(path: "${_sessionPath(sessionId: sessionId)}/form/${Uri.encodeComponent(formId)}"),
+    );
   }
 
   Future<void> removeWorktree({required WorktreeRemoveInput body}) async {
-    await _client.delete(path: "/api/worktree", headers: _jsonHeaders, body: jsonEncode(body.toJson()));
+    await _response(
+      request: _client.delete(path: "/api/worktree", headers: _jsonHeaders, body: jsonEncode(body.toJson())),
+    );
   }
 
   Future<List<T>> _getList<T>({
@@ -306,9 +347,11 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
     required String? directory,
     required T Function(Object?) fromJson,
   }) async => _data<T>(
-    response: await _client.get(
-      path: path,
-      queryParameters: _location(directory: directory),
+    response: await _response(
+      request: _client.get(
+        path: path,
+        queryParameters: _location(directory: directory),
+      ),
     ),
     operation: path,
     fromJson: fromJson,
@@ -319,10 +362,31 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
     required Map<String, dynamic> body,
     required T Function(Object?) fromJson,
   }) async => _data<T>(
-    response: await _client.post(path: path, headers: _jsonHeaders, body: jsonEncode(body)),
+    response: await _response(
+      request: _client.post(path: path, headers: _jsonHeaders, body: jsonEncode(body)),
+    ),
     operation: path,
     fromJson: fromJson,
   );
+
+  Future<http.Response> _response({required Future<http.Response> request}) async {
+    try {
+      return await request;
+    } on OpenCodeApiException catch (error, stackTrace) {
+      // The remote-safe wrapper deliberately omits the native diagnostic body.
+      Log.w("[opencode-v2] HTTP request failed", error, stackTrace);
+      Error.throwWithStackTrace(
+        _V2ApiException(operation: error.endpoint, statusCode: error.statusCode, innerError: error),
+        stackTrace,
+      );
+    } on http.ClientException catch (error, stackTrace) {
+      Log.w("[opencode-v2] Transport request failed", error, stackTrace);
+      Error.throwWithStackTrace(
+        _V2ApiException(operation: error.uri?.path ?? "request", statusCode: null, innerError: error),
+        stackTrace,
+      );
+    }
+  }
 
   T _object<T>({
     required http.Response response,
@@ -348,4 +412,13 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   Map<String, String> _location({required String? directory}) => {"location[directory]": ?directory};
 
   String _sessionPath({required String sessionId}) => "/api/session/${Uri.encodeComponent(sessionId)}";
+}
+
+/// Retain native diagnostics without reflecting an arbitrary response body in presentation.
+class _V2ApiException({required String operation, required int? statusCode, required Exception innerError})
+    extends PluginOperationException {
+  this : super(operation, statusCode: statusCode, message: "OpenCode request failed.", cause: innerError);
+
+  @override
+  String toString() => "OpenCode v2 request failed: $operation${statusCode == null ? "" : " (HTTP $statusCode)"}";
 }

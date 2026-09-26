@@ -980,6 +980,80 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSupportX => 'DM on X';
 
   @override
+  String get settingsRateSesori => 'Rate Sesori';
+
+  @override
+  String get feedbackRatingTitle => 'Are you enjoying Sesori?';
+
+  @override
+  String get feedbackLove => 'Yes, love it!';
+
+  @override
+  String get feedbackCouldBeBetter => 'Could be better';
+
+  @override
+  String get feedbackClose => 'Close feedback';
+
+  @override
+  String get feedbackReviewTitle => 'Thanks! Leave a review?';
+
+  @override
+  String get feedbackReviewBody => 'It takes a minute and helps other developers find Sesori.';
+
+  @override
+  String get feedbackLeaveReview => 'Leave a review';
+
+  @override
+  String get feedbackNotNow => 'Not now';
+
+  @override
+  String get feedbackPrivateTitle => 'What should we improve?';
+
+  @override
+  String get feedbackIssueHardToNavigate => 'Hard to navigate';
+
+  @override
+  String get feedbackIssueConnectionDrops => 'Connection drops';
+
+  @override
+  String get feedbackIssueNotificationsMissing => 'Notifications don’t arrive';
+
+  @override
+  String get feedbackIssueAppSlow => 'App feels slow';
+
+  @override
+  String get feedbackMessageHint => 'Example: Hard to navigate';
+
+  @override
+  String get feedbackRecipient => 'Sent privately to the Sesori team.';
+
+  @override
+  String get feedbackSend => 'Send feedback';
+
+  @override
+  String get feedbackSendFailed => 'Couldn’t send feedback. Your draft is still here.';
+
+  @override
+  String get feedbackRetry => 'Retry';
+
+  @override
+  String get feedbackCancel => 'Cancel';
+
+  @override
+  String get feedbackSent => 'Feedback sent. Thank you!';
+
+  @override
+  String feedbackCharactersLeft(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count characters left',
+      one: '1 character left',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get settingsSectionLegal => 'Legal';
 
   @override
@@ -1331,81 +1405,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailFollowOutput => 'Follow';
 
   @override
-  String get transcriptSummaryThought => 'Thought';
-
-  @override
   String transcriptSummarySteps(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
       other: '$count steps',
       one: '1 step',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String transcriptSummaryRead(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'read $count files',
-      one: 'read 1 file',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String transcriptSummaryEdited(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'edited $count files',
-      one: 'edited 1 file',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String transcriptSummaryRan(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: 'ran $count commands',
-      one: 'ran 1 command',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String transcriptSummarySearches(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count searches',
-      one: '1 search',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String transcriptSummarySubAgents(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count sub-agents',
-      one: '1 sub-agent',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String transcriptSummaryFailed(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count failed',
-      one: '1 failed',
     );
     return '$_temp0';
   }
@@ -1450,9 +1455,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String transcriptTurnHours(int hours, String minutes) {
-    return '${hours}h ${minutes}m';
+  String transcriptTurnHours(int hours, String minutes, String seconds) {
+    return '${hours}h ${minutes}m ${seconds}s';
   }
+
+  @override
+  String get transcriptFoldAll => 'Fold all turns';
+
+  @override
+  String get transcriptUnfoldAll => 'Unfold all turns';
+
+  @override
+  String get transcriptStickyPromptJumpHint => 'Jump to this prompt';
+
+  @override
+  String get transcriptStickyPromptAttachment => 'Attachment';
 
   @override
   String get sessionDetailJumpToLatest => 'Jump to latest';

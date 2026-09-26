@@ -575,6 +575,96 @@
   "settingsSupportEmail": "Email",
   "settingsSupportDiscord": "Discord",
   "settingsSupportX": "DM on X",
+  "settingsRateSesori": "Rate Sesori",
+  "@settingsRateSesori": {
+    "description": "Settings account row that opens the rating sheet"
+  },
+  "feedbackRatingTitle": "Are you enjoying Sesori?",
+  "feedbackLove": "Yes, love it!",
+  "@feedbackLove": {
+    "description": "Positive answer on the rating sheet; starts the celebration"
+  },
+  "feedbackCouldBeBetter": "Could be better",
+  "@feedbackCouldBeBetter": {
+    "description": "Negative answer on the rating sheet"
+  },
+  "feedbackClose": "Close feedback",
+  "@feedbackClose": {
+    "description": "Accessibility label of the rating sheet's close button"
+  },
+  "feedbackReviewTitle": "Thanks! Leave a review?",
+  "@feedbackReviewTitle": {
+    "description": "Title of the rating sheet step shown after the user said they love the app"
+  },
+  "feedbackReviewBody": "It takes a minute and helps other developers find Sesori.",
+  "@feedbackReviewBody": {
+    "description": "Body of the review confirmation step"
+  },
+  "feedbackLeaveReview": "Leave a review",
+  "@feedbackLeaveReview": {
+    "description": "Confirms opening the store review page"
+  },
+  "feedbackNotNow": "Not now",
+  "@feedbackNotNow": {
+    "description": "Closes the rating sheet without opening the store"
+  },
+  "feedbackPrivateTitle": "What should we improve?",
+  "@feedbackPrivateTitle": {
+    "description": "Title of the private feedback step after Could be better"
+  },
+  "feedbackIssueHardToNavigate": "Hard to navigate",
+  "@feedbackIssueHardToNavigate": {
+    "description": "Private feedback issue pill"
+  },
+  "feedbackIssueConnectionDrops": "Connection drops",
+  "@feedbackIssueConnectionDrops": {
+    "description": "Private feedback issue pill"
+  },
+  "feedbackIssueNotificationsMissing": "Notifications don’t arrive",
+  "@feedbackIssueNotificationsMissing": {
+    "description": "Private feedback issue pill"
+  },
+  "feedbackIssueAppSlow": "App feels slow",
+  "@feedbackIssueAppSlow": {
+    "description": "Private feedback issue pill"
+  },
+  "feedbackMessageHint": "Example: Hard to navigate",
+  "@feedbackMessageHint": {
+    "description": "Placeholder of the private feedback text field"
+  },
+  "feedbackRecipient": "Sent privately to the Sesori team.",
+  "@feedbackRecipient": {
+    "description": "Quiet line below the private feedback text field saying who receives it"
+  },
+  "feedbackSend": "Send feedback",
+  "@feedbackSend": {
+    "description": "Accessibility label of the private feedback send button"
+  },
+  "feedbackSendFailed": "Couldn’t send feedback. Your draft is still here.",
+  "@feedbackSendFailed": {
+    "description": "Inline error after private feedback failed to send"
+  },
+  "feedbackRetry": "Retry",
+  "@feedbackRetry": {
+    "description": "Retries sending private feedback"
+  },
+  "feedbackCancel": "Cancel",
+  "@feedbackCancel": {
+    "description": "Closes the private feedback step without sending"
+  },
+  "feedbackSent": "Feedback sent. Thank you!",
+  "@feedbackSent": {
+    "description": "Toast after private feedback was sent"
+  },
+  "feedbackCharactersLeft": "{count, plural, =1{1 character left} other{{count} characters left}}",
+  "@feedbackCharactersLeft": {
+    "description": "Counter shown when the private feedback text nears its length limit",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "settingsSectionLegal": "Legal",
   "settingsLegalTerms": "Terms of service",
   "settingsLegalPrivacy": "Privacy policy",
@@ -816,67 +906,9 @@
   "sessionDetailShell": "Shell",
   "sessionDetailCommandRan": "Ran",
   "sessionDetailFollowOutput": "Follow",
-  "transcriptSummaryThought": "Thought",
-  "@transcriptSummaryThought": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript, present when the agent thought at least once, e.g. 'Thought · 3 steps'."
-  },
   "transcriptSummarySteps": "{count, plural, =1{1 step} other{{count} steps}}",
   "@transcriptSummarySteps": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many other tool calls the agent made, e.g. 'Thought · read 1 file · 3 steps'.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptSummaryRead": "{count, plural, =1{read 1 file} other{read {count} files}}",
-  "@transcriptSummaryRead": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file reads the agent made, counted per call, e.g. 'Thought · read 2 files · ran 1 command'.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptSummaryEdited": "{count, plural, =1{edited 1 file} other{edited {count} files}}",
-  "@transcriptSummaryEdited": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file edits the agent made, counted per call, e.g. 'read 2 files · edited 1 file'.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptSummaryRan": "{count, plural, =1{ran 1 command} other{ran {count} commands}}",
-  "@transcriptSummaryRan": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many shell commands the agent ran, e.g. 'Thought · ran 3 commands'.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptSummarySearches": "{count, plural, =1{1 search} other{{count} searches}}",
-  "@transcriptSummarySearches": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many file or web searches the agent made, e.g. 'Thought · 2 searches · read 1 file'.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptSummarySubAgents": "{count, plural, =1{1 sub-agent} other{{count} sub-agents}}",
-  "@transcriptSummarySubAgents": {
-    "description": "Part of the one-line summary of a collapsed group of agent steps in a session transcript: how many sub-agents the agent ran, e.g. '3 steps · 2 sub-agents'.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptSummaryFailed": "{count, plural, =1{1 failed} other{{count} failed}}",
-  "@transcriptSummaryFailed": {
-    "description": "Last part of the one-line summary of a collapsed group of agent steps in a session transcript: how many of the steps failed, e.g. '3 steps · 1 failed'.",
+    "description": "The one-line summary of a collapsed group of agent steps in a session transcript: how many finished steps it holds, where every thinking block, tool call and sub-agent counts as one step, e.g. '7 steps'.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -919,7 +951,7 @@
   },
   "transcriptTurnSeconds": "{seconds}s",
   "@transcriptTurnSeconds": {
-    "description": "How long a folded turn of a session transcript took, under a minute, e.g. '42s'.",
+    "description": "A session transcript duration under a minute, such as how long a folded turn took or how long the agent has been working, e.g. '42s'.",
     "placeholders": {
       "seconds": {
         "type": "int"
@@ -928,7 +960,7 @@
   },
   "transcriptTurnMinutes": "{minutes}m {seconds}s",
   "@transcriptTurnMinutes": {
-    "description": "How long a folded turn of a session transcript took, under an hour. The seconds always have two digits, e.g. '1m 02s'.",
+    "description": "A session transcript duration under an hour, such as how long a folded turn took or how long the agent has been working. The seconds always have two digits, e.g. '1m 02s'.",
     "placeholders": {
       "minutes": {
         "type": "int"
@@ -938,17 +970,36 @@
       }
     }
   },
-  "transcriptTurnHours": "{hours}h {minutes}m",
+  "transcriptTurnHours": "{hours}h {minutes}m {seconds}s",
   "@transcriptTurnHours": {
-    "description": "How long a folded turn of a session transcript took, an hour or more. The minutes always have two digits, e.g. '1h 05m'.",
+    "description": "A session transcript duration of an hour or more, such as how long a folded turn took or how long the agent has been working. The minutes and seconds always have two digits, e.g. '1h 05m 12s'.",
     "placeholders": {
       "hours": {
         "type": "int"
       },
       "minutes": {
         "type": "String"
+      },
+      "seconds": {
+        "type": "String"
       }
     }
+  },
+  "transcriptFoldAll": "Fold all turns",
+  "@transcriptFoldAll": {
+    "description": "Label of the session toolbar button that folds every turn of the transcript to one line each."
+  },
+  "transcriptUnfoldAll": "Unfold all turns",
+  "@transcriptUnfoldAll": {
+    "description": "Label of the session toolbar button that unfolds every folded turn of the transcript."
+  },
+  "transcriptStickyPromptJumpHint": "Jump to this prompt",
+  "@transcriptStickyPromptJumpHint": {
+    "description": "Screen reader hint of the prompt pinned at the top of a session transcript while the user reads that prompt's turn. Activating it scrolls the transcript to the prompt."
+  },
+  "transcriptStickyPromptAttachment": "Attachment",
+  "@transcriptStickyPromptAttachment": {
+    "description": "What the prompt pinned at the top of a session transcript shows when the prompt has no text and its first attachment has no file name."
   },
   "sessionDetailJumpToLatest": "Jump to latest",
   "@sessionDetailJumpToLatest": {
