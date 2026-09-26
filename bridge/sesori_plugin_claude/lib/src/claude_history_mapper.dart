@@ -107,7 +107,10 @@ final class const ClaudeHistoryMapper({
           );
         case ClaudeTranscriptUserRecord():
           if (skip(record) ||
-              (record.isMeta && record.originKind != ClaudeMessageOriginKind.peer) ||
+              _content.hidesHarnessGeneratedUserTurn(
+                isHarnessGenerated: record.isMeta,
+                originKind: record.originKind,
+              ) ||
               record.isVisibleInTranscriptOnly) {
             continue;
           }
@@ -151,7 +154,13 @@ final class const ClaudeHistoryMapper({
           );
           if (message != null) entries.add(_MappedHistoryMessage(message: message));
         case ClaudeTranscriptQueuedCommandRecord():
-          if (skip(record) || (record.isMeta && record.originKind != ClaudeMessageOriginKind.peer)) continue;
+          if (skip(record) ||
+              _content.hidesHarnessGeneratedUserTurn(
+                isHarnessGenerated: record.isMeta,
+                originKind: record.originKind,
+              )) {
+            continue;
+          }
           final blocks = _content.map(content: record.prompt);
           if (_content.containsInternalCommandOutput(blocks: blocks)) continue;
           final message = _userTurn(

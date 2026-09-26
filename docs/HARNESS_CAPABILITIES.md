@@ -58,6 +58,29 @@ sender and parts, at the point the model received it. Verified on
 **2026-09-26** with native Claude Code **2.1.281** captures and live rows the
 bridge stored from CLIs 2.1.237 to 2.1.281.
 
+## Harness-generated user frames
+
+Some harnesses talk to the model through the `user` role themselves. Claude Code
+is the only one that does: loading a skill injects the whole `SKILL.md` body plus
+its `<ARGUMENTS>` blob as a separate `user` frame, and the CLI uses the same
+shape for image captions, "your response was cut off" nudges, sub-agent plumbing
+and automation preambles. Sesori drops those frames so the transcript shows only
+the compact `Skill / <name>` step row (see "Ordinary tool titles").
+
+The CLI flags them `isSynthetic` on the `stream-json` socket and `isMeta` in its
+transcript records; both mean "the CLI wrote this", are normalized at the parse
+boundary, and are decided by one predicate the live dispatcher and the history
+mapper share. Sesori's own peer injections carry the same flag, so
+`origin.kind: peer` keeps them visible as Automation (see "Automation transcript
+attribution"). Frames already stored by an earlier bridge keep their bubble; the
+residue is cosmetic and is not migrated.
+
+| Harness | Native evidence | Sesori availability |
+|---|---|---|
+| Claude Code | `user` frames/records flagged `isSynthetic` (stream) or `isMeta` (transcript), including the injected skill body | ✅ Dropped live and on replay; peer injections, tool results, task-notification outcomes and the post-compaction summary still render. |
+| OpenCode, Codex, Pi | Skills exposed as `PluginCommandSource.skill` commands, no injected body record | Not applicable: no harness-authored user turn to hide. |
+| Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | None | Not applicable: the ACP seam has no skill concept and no harness-authored user turn. |
+
 ## Transcript turn boundaries
 
 The client groups a transcript into turns from its messages alone, so a

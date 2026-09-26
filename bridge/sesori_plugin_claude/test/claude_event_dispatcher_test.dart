@@ -604,11 +604,11 @@ void main() {
         ),
         "isSynthetic": true,
       });
-      final laterSynthetic = _map(mapper, {
+      final laterHarnessGenerated = _map(mapper, {
         ..._user(
           uuid: "later-frame",
           content: [
-            {"type": "text", "text": "ordinary"},
+            {"type": "text", "text": "harness-generated"},
           ],
         ),
         "isSynthetic": true,
@@ -621,8 +621,9 @@ void main() {
         (summaryEvents.last as BridgeSseMessagePartUpdated).part,
         isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", summary),
       );
-      // Only the frame right after the boundary is the summary.
-      expect((laterSynthetic.last as BridgeSseMessagePartUpdated).part.text, "ordinary");
+      // Only the frame right after the boundary is the summary; a later
+      // harness-generated frame is dropped instead of becoming a user bubble.
+      expect(laterHarnessGenerated, isEmpty);
     });
 
     test("strips the bridge worktree envelope from a replayed user frame", () {

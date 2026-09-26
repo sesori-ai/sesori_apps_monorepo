@@ -114,7 +114,7 @@ sealed class const ClaudeStreamMessage({
           toolUseResult: ClaudeToolUseResult.parse(json["tool_use_result"] ?? json["toolUseResult"]),
           taskNotifications: _taskNotifications(message["content"]),
           originKind: ClaudeMessageOriginKind.parse(kind: _mapOrEmpty(json["origin"])["kind"]),
-          isSynthetic: json["isSynthetic"] == true,
+          isHarnessGenerated: json["isSynthetic"] == true || json["isMeta"] == true,
           timestamp: _dateTimeOrNull(json["timestamp"]),
           sessionId: sessionId,
           uuid: uuid,
@@ -504,9 +504,14 @@ final class const ClaudeUserMessage({
   /// Host-stamped provenance, independent of this frame's `user` role.
   required final ClaudeMessageOriginKind originKind,
 
-  /// The CLI generated this frame rather than the user typing it, such as the
-  /// summary that follows a `compact_boundary`.
-  required final bool isSynthetic,
+  /// The CLI generated this frame rather than the user typing it: the summary
+  /// that follows a `compact_boundary`, an injected skill body, an image
+  /// caption, or a sub-agent plumbing nudge.
+  ///
+  /// The stream spells this `isSynthetic` and the transcript the CLI replays
+  /// from spells it `isMeta`; both are normalized here so the live dispatcher
+  /// and the history mapper decide visibility on one meaning.
+  required final bool isHarnessGenerated,
   required final DateTime? timestamp,
   required super.sessionId,
   required super.uuid,
