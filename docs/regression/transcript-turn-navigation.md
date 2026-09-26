@@ -34,10 +34,11 @@ sent to the bridge.
   unfolds on macOS, Ctrl+− and Ctrl+= elsewhere, while focus is in the session
   page; they are inert elsewhere. Tapping a folded line unfolds every turn.
 - A switch is instant, with no animation, so reduced motion needs nothing.
-  While the reader follows the latest edge, a switch keeps following.
-  Otherwise the turn at the top edge (button or shortcut) or the tapped turn
-  stays put: a prompt on screen keeps its distance from the top edge, and from
-  mid-turn the prompt lands at the top edge.
+  The turn at the top edge (button or shortcut) or the tapped turn stays put,
+  even while the reader follows the latest edge: a prompt on screen keeps its
+  distance from the top edge, and from mid-turn the prompt lands at the top
+  edge, as far as the list can scroll. A switch that moves the list stops
+  following until the reader scrolls back down.
 - Scrolling up while folded loads older pages as it does unfolded. A partial
   leading segment joins its prompt when that page arrives.
 - Each switch from unfolded to folded reports `transcript_turns_folded` with
@@ -49,8 +50,8 @@ sent to the bridge.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated, no plugin: every branch of the turn rule, the leading segment, summaries and determinism; the fold state across reload and per page; the event once per fold and never on unfold or a repeated fold; folded rows and lines; holding the top-edge turn, a tapped turn and far turns not yet built, and following through a switch; both buttons and the desktop shortcuts per platform. |
-| L3 Release | Client end to end on the release-target phone and on macOS, on a session of three or more pages: the button and ⌘−/⌘= from mid-turn and from a prompt on screen keep the reader's turn in place; a line tap unfolds at its turn; a switch while following keeps following; a running turn's line; paging older turns while folded; screen readers read the lines and the button; `transcript_turns_folded` arrives. Android, Windows and Linux: the button, and Ctrl+−/Ctrl+= on the desktops. Live plugin plus client, every supporting production plugin: a follow-up sent while a turn runs stays in that turn, or opens one where `docs/HARNESS_CAPABILITIES.md` says so; Claude and Pi automation stays inside its turn; a forced Claude re-import keeps follow-ups, peers and task outcomes in their turns. |
+| L2 Routine | Automated, no plugin: every branch of the turn rule, the leading segment, summaries and determinism; the fold state across reload and per page; the event once per fold and never on unfold or a repeated fold; folded rows and lines; holding the top-edge turn, a tapped turn and far turns not yet built, while following and after a clamp at the latest edge; both buttons and the desktop shortcuts per platform. |
+| L3 Release | Client end to end on the release-target phone and on macOS, on a session of three or more pages: the button and ⌘−/⌘= from mid-turn and from a prompt on screen keep the reader's turn in place; a line tap unfolds at its turn; a fold and unfold from one of the last turns returns to the turn at the top edge; a running turn's line; paging older turns while folded; screen readers read the lines and the button; `transcript_turns_folded` arrives. Android, Windows and Linux: the button, and Ctrl+−/Ctrl+= on the desktops. Live plugin plus client, every supporting production plugin: a follow-up sent while a turn runs stays in that turn, or opens one where `docs/HARNESS_CAPABILITIES.md` says so; Claude and Pi automation stays inside its turn; a forced Claude re-import keeps follow-ups, peers and task outcomes in their turns. |
 | L4 Extended | Switch while text streams and while an older page loads; fold, then reopen the session and open another. |
 | L5 Full | No additional coverage. |
 
@@ -64,8 +65,8 @@ and a line tap, and repeat the same control twice.
 
 ## Failure Signals
 
-- The reading position jumps on fold or unfold, or a switch while following
-  leaves the latest edge.
+- The reading position jumps on fold or unfold, including from the latest
+  edge, or a switch snaps back to the latest edge.
 - Turns split differently after a re-import or reload than live, or a
   follow-up leaves its running turn on a harness the capability matrix marks
   supported.
@@ -88,9 +89,6 @@ and a line tap, and repeat the same control twice.
   follow-ups only on their next re-import.
 - A folded running turn shows its "Running · step {n}" line with the "Working…"
   row below it, so two sparkles turn at once.
-- Folding from one of the last few turns can clamp the list at the latest
-  edge. The list then follows, so the next unfold lands at the end of the
-  latest turn instead of the reader's turn.
 - A far target is reached one cache-extended viewport a frame, so a long hold
   shows brief motion. Folded, older pages load after less scrolling, because
   the prefetch threshold is in pixels.

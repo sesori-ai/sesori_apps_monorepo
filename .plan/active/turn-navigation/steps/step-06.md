@@ -31,17 +31,21 @@ Branch `turn-navigation/fold-controls`. Architecture 6.
 
 ## Deviation
 
-- None from PLAN.md. The desktop test's `pumpPage` gained an optional
-  `transcriptFolded` flag, test-only.
-- The iOS check found that a fold from one of the last few turns clamps at the
-  latest edge, so the list follows and the next unfold lands at the end of the
-  latest turn. That is step 5's documented "while following, a switch keeps
-  following" rule meeting a clamp. It is recorded under Known Limitations and
-  left for the user to decide; this step does not change it.
+- The desktop test's `pumpPage` gained an optional `transcriptFolded` flag,
+  test-only.
+- **User decision: every fold and unfold holds the top-edge turn, even while
+  following.** The iOS check found that a fold from one of the last few turns
+  clamps at the latest edge, where the list followed again, so step 5's "while
+  following, a switch keeps following" sent the next unfold to the end of the
+  latest turn. The user accepted that an unfold at the bottom of a running
+  turn now stops following until the reader scrolls down. The list drops its
+  `!_follow.following` condition; the hold's first jump detaches the list, as
+  a stub tap's already did, so nothing re-snaps to the edge. PLAN.md's anchor
+  rules say so. The step 9 pinch rows ("while following it stays following")
+  are left for step 9 to reconcile.
 
-Size: 363 changed lines against the 650-line target, before this file.
-Production code is 100 authored lines plus 18 generated localization lines,
-tests 106, and docs the rest.
+Size: about 600 changed lines against the 650-line target. The first push was
+439; the Codex focus fix and this decision added the rest.
 
 ## Automated Evidence
 
@@ -52,7 +56,7 @@ clean in `module_core`, `module_app_ui`, `client/app` and `client/desktop`.
 | Command | Result |
 |---|---|
 | `flutter test` in `client/module_core` | 924 passed (analytics event, cubit fold reporting) |
-| `flutter test test/features/session_detail/` in `client/module_app_ui` | 312 passed |
+| `flutter test test/features/session_detail/` in `client/module_app_ui` | 314 passed (2 new: the clamp round trip and a switch while following; both fail with the old condition) |
 | `flutter test test/features/session_detail/` in `client/app` | 168 passed (phone button) |
 | `flutter test test/features/sessions/desktop_session_detail_screen_test.dart` in `client/desktop` | 13 passed (button, tooltips, shortcuts on macOS and Linux) |
 
@@ -71,9 +75,10 @@ the composer and covers a click returning focus.
 - iOS: run on simulator `sesori-dev-2` with slot 2's own bridge and a synthetic
   OpenCode session of five numbered-list turns. From mid-turn two, the button
   folds with turn two's prompt at the top edge and unfolds with it still there;
-  from a prompt near the top the same holds. From mid-turn three the fold
-  clamps at the latest edge and the unfold follows to the end of turn five (see
-  Deviation). Recordings are on `pr-media` under
+  from a prompt near the top the same holds. Before the user decision, from
+  mid-turn three the fold clamped at the latest edge and the unfold followed to
+  the end of turn five (see Deviation); the fix is covered by widget tests and
+  was not re-run on the simulator. Recordings are on `pr-media` under
   `turn-navigation/fold-controls/`.
 - macOS toolbar and shortcuts: not run. The user's debug Sesori desktop app was
   running, and a second desktop instance manages its own bridge helper with

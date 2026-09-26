@@ -526,9 +526,9 @@ merged, so the controls need no interim follow rule.
     tolerance of the latest edge. A step that finds the list following ends
     the anchor, except the first, so a tap while following still anchors.
 - **Anchor rules.**
-  - While following, a switch keeps following.
-  - Otherwise the anchor is the top-edge turn (button or shortcut) or the
-    tapped turn (stub).
+  - The anchor is the top-edge turn (button or shortcut) or the tapped turn
+    (stub), even while following (user decision in step 6). A switch that
+    moves the list stops following until the reader scrolls back down.
   - If the anchor's opener row is on screen, it keeps its distance from the top
     edge.
   - If the reader is mid-turn (the opener is above the edge), the opener lands

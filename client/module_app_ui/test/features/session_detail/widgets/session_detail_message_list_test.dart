@@ -2048,6 +2048,51 @@ void main() {
       expect(_topOf(tester, "u6"), moreOrLessEquals(_topInset, epsilon: 1));
     });
 
+    /// The turn at the top edge, and where its prompt should rest after a
+    /// switch: in place while any of it shows, else at the edge.
+    ({String promptId, double top}) topEdgePrompt(WidgetTester tester, {required bool folded}) {
+      for (var turn = 0; turn < 20; turn++) {
+        final lastRow = folded ? _messageKey("session-detail-turn-u$turn") : _messageKey("a$turn-0");
+        if (lastRow.evaluate().isEmpty || tester.getBottomLeft(lastRow).dy <= _topInset) continue;
+        final prompt = _messageKey("u$turn");
+        final shown = prompt.evaluate().isNotEmpty && tester.getBottomLeft(prompt).dy > _topInset;
+        return (promptId: "u$turn", top: shown ? _topOf(tester, "u$turn") : _topInset);
+      }
+      fail("no turn reaches below the top edge");
+    }
+
+    testWidgets("folding from a late turn clamps at the latest edge, and unfolding holds the top-edge turn", (
+      tester,
+    ) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a18-0", top: _topInset - 100);
+
+      harness.setTranscriptFolded(folded: true);
+      await tester.pumpAndSettle();
+      // Too little is folded below turn 18 to lift its prompt to the edge.
+      expect(_position(tester).pixels, lessThan(1));
+      final held = topEdgePrompt(tester, folded: true);
+
+      harness.setTranscriptFolded(folded: false);
+      await tester.pumpAndSettle();
+
+      expect(_topOf(tester, held.promptId), moreOrLessEquals(held.top, epsilon: 1));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    });
+
+    testWidgets("while following, a switch holds the top-edge turn and stops following", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: true);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
+      final held = topEdgePrompt(tester, folded: true);
+
+      harness.setTranscriptFolded(folded: false);
+      await tester.pumpAndSettle();
+
+      expect(_topOf(tester, held.promptId), moreOrLessEquals(held.top, epsilon: 1));
+      expect(_position(tester).pixels, greaterThan(20));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    });
+
     testWidgets("an anchor whose row goes ends, so the row coming back moves nothing", (tester) async {
       final harness = await _pumpTurns(tester, messages: shortTurns, folded: true);
 
