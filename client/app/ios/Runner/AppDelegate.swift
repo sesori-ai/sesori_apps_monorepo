@@ -1,5 +1,9 @@
 import Flutter
 import UIKit
+#if DEBUG
+import AVFoundation
+import StoreKit
+#endif
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -20,5 +24,50 @@ import UIKit
         binaryMessenger: engineBridge.applicationRegistrar.messenger()
       )
     )
+    #if DEBUG
+    // Local feedback playbook only. The production Dart entry point has no caller.
+    FlutterMethodChannel(
+      name: "com.sesori.app/feedback_preview",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    ).setMethodCallHandler { call, result in
+      if call.method == "requestMicrophoneAccess" {
+        // True means already authorized; native UI requires a fresh gesture.
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+          result(true)
+        case .notDetermined:
+          AVCaptureDevice.requestAccess(for: .audio) { _ in
+            DispatchQueue.main.async { result(false) }
+          }
+        case .denied:
+          UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!) { _ in
+            result(false)
+          }
+        case .restricted:
+          result(false)
+        @unknown default:
+          result(false)
+        }
+        return
+      }
+      guard call.method == "requestReview" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      guard let scene = UIApplication.shared.connectedScenes
+        .compactMap({ $0 as? UIWindowScene })
+        .first(where: { $0.activationState == .foregroundActive }) else {
+        result(FlutterError(code: "no_active_scene", message: "No active scene for native rating.", details: nil))
+        return
+      }
+      if #available(iOS 16.0, *) {
+        AppStore.requestReview(in: scene)
+      } else {
+        SKStoreReviewController.requestReview(in: scene)
+      }
+      // StoreKit does not report whether the sheet appeared or a rating was sent.
+      result(nil)
+    }
+    #endif
   }
 }
