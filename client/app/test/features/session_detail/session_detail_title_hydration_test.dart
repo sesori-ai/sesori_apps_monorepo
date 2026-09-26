@@ -158,6 +158,7 @@ void _registerDependencies({
   getIt.registerSingleton<SessionDetailLoadService>(loadService);
   getIt.registerSingleton<PluginManagementService>(stubbedPluginManagementService());
   getIt.registerSingleton<BridgeSettingsService>(stubbedBridgeSettingsService());
+  getIt.registerSingleton<SseEventTracker>(MockSseEventTracker());
   getIt.registerSingleton<SessionInteractionCalculator>(const SessionInteractionCalculator());
   getIt.registerSingleton<SessionRepository>(promptDispatcher);
   getIt.registerSingleton<SessionAbortService>(SessionAbortService(repository: promptDispatcher));

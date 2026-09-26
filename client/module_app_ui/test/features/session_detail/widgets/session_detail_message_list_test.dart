@@ -42,6 +42,9 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   final List<String> cancelledBridgePromptIds = [];
   late String? _retryErrorMessage;
   bool _isBusy = false;
+  bool _mainAgentRunning = false;
+  List<Session> _children = const [];
+  Map<String, SessionStatus> _childStatuses = const {};
   bool _isLoadingOlderMessages = false;
   bool _transcriptFolded = false;
   bool _hasOlderMessages = true;
@@ -95,6 +98,17 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
 
   void setBusy(bool isBusy) {
     setState(() => _isBusy = isBusy);
+  }
+
+  void setMainAgentRunning(bool running) {
+    setState(() => _mainAgentRunning = running);
+  }
+
+  void setChildren({required List<Session> children, required Map<String, SessionStatus> childStatuses}) {
+    setState(() {
+      _children = children;
+      _childStatuses = childStatuses;
+    });
   }
 
   void clearStreamingText() {
@@ -229,9 +243,10 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           },
           topInset: widget.topInset,
           streamingText: _streamingText,
-          children: const <Session>[],
-          childStatuses: const <String, SessionStatus>{},
+          children: _children,
+          childStatuses: _childStatuses,
           isBusy: _isBusy,
+          mainAgentRunning: _mainAgentRunning,
           retryErrorMessage: _retryErrorMessage,
           onCancelQueuedMessage: cancelQueuedMessage,
         ),
@@ -1716,6 +1731,73 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.text("Working… · "), findsNothing);
+    });
+  });
+
+  testWidgets("the sub-agent row takes over from Working… with an ease while only sub-agents run", (tester) async {
+    await withClock(Clock(() => tester.binding.clock.now()), () async {
+      final harness = await _pumpTurns(
+        tester,
+        messages: _turns(count: 1, promptLines: 1, answers: 1, paragraphs: 1),
+        folded: false,
+      );
+      harness.setBusy(true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("Working…"), findsOneWidget);
+
+      final startedAt = tester.binding.clock.now().millisecondsSinceEpoch - 185000;
+      final child = Session(
+        approvalOverride: null,
+        id: "child-1",
+        projectID: "p",
+        directory: "/d",
+        parentID: "session-1",
+        title: "Explore",
+        time: SessionTime(created: startedAt, updated: startedAt, archived: null),
+        pullRequest: null,
+        promptDefaults: null,
+        branchName: null,
+        lastUserActivityAt: null,
+        autoContinuation: null,
+      );
+      harness.setChildren(children: [child], childStatuses: const {"child-1": SessionStatus.busy()});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      // Mid-ease both rows show: Working… folds away as the sub-agent row grows in.
+      expect(find.text("Working…"), findsOneWidget);
+      expect(find.text("You can keep chatting meanwhile."), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text("Working…"), findsNothing);
+      expect(find.text("1 sub-agent running in the background · "), findsOneWidget);
+      expect(find.text("3m 05s"), findsOneWidget);
+      expect(find.byType(PregoActivityIndicator), findsOneWidget);
+      expect(find.byType(PregoAiLoader), findsNothing);
+
+      // The main agent back mid-turn, or blocked on a foreground sub-agent:
+      // a new prompt would wait, so the row gives way to Working….
+      harness.setMainAgentRunning(true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("You can keep chatting meanwhile."), findsNothing);
+      expect(find.text("Working…"), findsOneWidget);
+      harness.setMainAgentRunning(false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("You can keep chatting meanwhile."), findsOneWidget);
+
+      // A question or permission clears isBusy, and with it the row.
+      harness.setBusy(false);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("You can keep chatting meanwhile."), findsNothing);
+
+      harness
+        ..setBusy(true)
+        ..setChildren(children: [child], childStatuses: const {"child-1": SessionStatus.idle()});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("Working…"), findsOneWidget);
     });
   });
 

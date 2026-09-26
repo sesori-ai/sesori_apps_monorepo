@@ -2677,6 +2677,18 @@ abstract class AppLocalizations {
   /// **'{hours}h {minutes}m {seconds}s'**
   String transcriptTurnHours(int hours, String minutes, String seconds);
 
+  /// First line of the transcript's live row while only sub-agents work and the main agent does nothing itself. The elapsed time may follow after ' · ', e.g. '2 sub-agents running in the background · 3m 05s'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 sub-agent running in the background} other{{count} sub-agents running in the background}}'**
+  String transcriptSubAgentsRunning(int count);
+
+  /// Muted second line of the transcript's sub-agent row: a prompt sent now reaches the main agent while the sub-agents keep running.
+  ///
+  /// In en, this message translates to:
+  /// **'You can keep chatting meanwhile.'**
+  String get transcriptSubAgentsKeepChatting;
+
   /// Label of the session toolbar button that folds every turn of the transcript to one line each.
   ///
   /// In en, this message translates to:

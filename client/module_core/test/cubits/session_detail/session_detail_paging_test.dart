@@ -98,6 +98,7 @@ void main() {
       notificationCanceller: MockNotificationCanceller(),
       failureReporter: MockFailureReporter(),
       bridgeSettingsService: stubbedBridgeSettingsService(),
+      sseEventTracker: MockSseEventTracker(),
     );
     addTearDown(cubit.close);
     await _awaitLoaded(cubit);

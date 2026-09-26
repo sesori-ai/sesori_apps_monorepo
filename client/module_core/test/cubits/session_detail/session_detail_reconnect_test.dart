@@ -103,6 +103,7 @@ void main() {
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
       bridgeSettingsService: stubbedBridgeSettingsService(),
+      sseEventTracker: MockSseEventTracker(),
     );
     addTearDown(cubit.close);
 
@@ -214,6 +215,7 @@ void main() {
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
       bridgeSettingsService: stubbedBridgeSettingsService(),
+      sseEventTracker: MockSseEventTracker(),
     );
     addTearDown(cubit.close);
 
@@ -331,6 +333,7 @@ void main() {
       notificationCanceller: mockNotificationCanceller,
       failureReporter: MockFailureReporter(),
       bridgeSettingsService: stubbedBridgeSettingsService(),
+      sseEventTracker: MockSseEventTracker(),
     );
     addTearDown(cubit.close);
 

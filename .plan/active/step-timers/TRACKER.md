@@ -19,7 +19,7 @@ step lives in `steps/step-NN.md`, written only by that step's own PR.
   harness gaps go into `docs/HARNESS_CAPABILITIES.md`.
 - No client-side "first seen" clock for a missing prompt or step time.
 - The live-row rule lives in `TranscriptActivityBuilder` in `module_core`,
-  not in the widget. "Running child" has one owner, `runningChildCount`.
+  not in the widget. "Running child" has one owner, `runningChildren`.
 - One `Timer` per visible timer, owned by `TranscriptElapsedTime`; nothing
   ticks in a cubit.
 - The folded running stub never gets a clock (D9, turn-navigation D16).

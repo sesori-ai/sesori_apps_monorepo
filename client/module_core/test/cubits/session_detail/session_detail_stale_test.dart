@@ -139,6 +139,7 @@ void main() {
       failureReporter: MockFailureReporter(),
       eventRefreshMinInterval: eventRefreshMinInterval,
       bridgeSettingsService: stubbedBridgeSettingsService(),
+      sseEventTracker: MockSseEventTracker(),
     );
 
     tearDown(() async {
