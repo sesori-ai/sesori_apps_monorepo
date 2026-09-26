@@ -639,9 +639,14 @@ defaults and queued client sends coherent.
   streaming, working, and settled rows keep stable identities and transitions.
 - A leftward touch, stylus, or trackpad drag across the transcript reveals all
   message timestamps together without changing vertical scroll or follow state,
-  then settles closed on release. System-back edges remain reserved on iOS and
-  Android gesture navigation, mouse drags remain available for text selection,
-  and a horizontal drag inside a fenced code block scrolls only that block.
+  then settles closed on release. Every revealed label shares one alignment line
+  at the reading column's right edge — the same line for a user bubble, an
+  assistant paragraph, a tool or thought group and a code block, whatever width
+  the row's own content takes — and a fully revealed label is never clipped at
+  any window width. Closed, no label is painted, so none lingers in a wide
+  pane's side margin. System-back edges remain reserved on iOS and Android
+  gesture navigation, mouse drags remain available for text selection, and a
+  horizontal drag inside a fenced code block scrolls only that block.
 - A fenced code block sits on the same raised inset as tool output, visible
   against the page in both themes, with its language label and Copy. A block
   longer than 12 lines shows its first 12 under a fade and an “Open all N lines”
@@ -843,6 +848,8 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 - A timestamp peek responds from a reserved system-back edge, detaches or
   vertically scrolls the transcript, captures a mouse selection drag, or moves
   while a fenced code block is handling the horizontal drag.
+- Revealed timestamps step between rows, follow each message's own right edge
+  instead of the reading column's, or a fully revealed label is cut short.
 
 ## Known Limitations
 
