@@ -586,6 +586,11 @@ merged, so the controls need no interim follow rule.
 - **Anchor.** The turn under the focal point, found through the registry, with
   the section 4 rules.
 - **Follow state.**
+  - A pinch that switches holds the turn under the fingers even while
+    following, and stops following, like a button or shortcut switch (decision
+    delegated by the user, 2026-09-26: an explicit gesture on a place wins over
+    following). The rules below only keep a pinch that never reaches a
+    threshold from changing the follow state.
   - A trackpad pinch begins with a pan-zoom start, which `FollowDetachScrollable`
     treats as a scroll and so detaches.
   - Following the peek's `_revealStartedFollowing` precedent, the list records
@@ -893,7 +898,7 @@ this file before retirement:
 | Platform | Coverage |
 |---|---|
 | iOS phone, real device (release target) | Pinch in and out on a session of three or more pages: the turn under the fingers stays in place. The fold button. A stub tap unfolds at that turn. The sticky prompt appears mid-turn, is pushed out by the next prompt, clamps a long prompt, and scrolls to it on tap. A partial oldest turn, then scrolling up while folded loads older pages. A running turn's stub while following. VoiceOver reads the stubs, the fold button and the pinned prompt, and the pinned prompt's action jumps to it. One-finger scroll, the timestamp peek and a code block's horizontal scroll are unaffected. `transcript_turns_folded` arrives. |
-| macOS desktop | Trackpad pinch both ways, while following (it stays following) and while reading history (it stays detached). ⌘− and ⌘=. The toolbar toggle. The index follows the scroll, highlights the current turn, jumps on click (folded and unfolded) and loads earlier turns. Below 1,000 px the index hides. Trackpad scroll and the trackpad peek are unaffected. |
+| macOS desktop | Trackpad pinch both ways, while following (the turn under the fingers stays in place and following stops) and while reading history (it stays detached). ⌘− and ⌘=. The toolbar toggle. The index follows the scroll, highlights the current turn, jumps on click (folded and unfolded) and loads earlier turns. Below 1,000 px the index hides. Trackpad scroll and the trackpad peek are unaffected. |
 | Android phone | Pinch both ways, the fold button, and a sticky prompt smoke check. |
 | Windows and Linux desktop | Ctrl+− and Ctrl+=, the toolbar toggle, and an index smoke check. |
 | Plugins (live plugin plus client) | A follow-up sent while a turn runs: with Claude, Codex, Pi and OpenCode it stays inside the running turn, and the turn keeps one sticky prompt. With one ACP plugin (the stop-and-send base is shared) it opens a new turn, as the capability doc records. Claude and Pi automation stays inside its turn and is never a sticky prompt. After a forced Claude history re-import, follow-ups, peer messages and task notifications are still present, with the same ids and order. Run together with `session-turns.md`'s busy-send check. |
@@ -1010,8 +1015,9 @@ under [Regression Coverage](#regression-coverage), and analyze `module_core`,
   - pinch in folds once, and pinch out unfolds once;
   - one-finger scroll, tap, the touch and trackpad peek, and a nested
     horizontal scroll are unaffected;
-  - a trackpad pinch while following stays following, and while reading stays
-    detached;
+  - a switching pinch while following holds the turn under the fingers and
+    stops following, one below the thresholds leaves following alone, and a
+    pinch while reading stays detached;
   - the focal-point anchor.
 - **A real iPhone pinch and a real macOS trackpad pinch**, recorded.
 - Pinch in the regression document.
