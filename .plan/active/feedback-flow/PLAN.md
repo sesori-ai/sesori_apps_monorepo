@@ -124,6 +124,14 @@ Implementation decisions (2026-09-26, step 3 review):
   `didCrashOnPreviousExecution()` after `start()`; builds without Firebase do
   not reset on crashes. An error the handlers catch before `start()` (during
   bootstrap) does not reset the count.
+- Step 7 refines the proposed events. `FeedbackSheetCubit.finish()`, called
+  once the sheet's route has closed, reports `feedback_prompt_answered` with
+  `answer` split by the D10 choice (`love_review_requested`, `love_no_review`,
+  `could_be_better`, `dismissed`). `private_feedback_sent` is reported only
+  after the server accepts the send, with `input` `typed`, `voice_assisted`
+  (the private step saw a transcript inserted, the session composer's
+  meaning), `issues_only` or `empty`. Both carry `source`. Warehouse allowlist
+  and transforms belong to `sesori_analytics_platform`, outside this series.
 
 ## Current Behavior (origin/main after #1361, 2026-09-26)
 

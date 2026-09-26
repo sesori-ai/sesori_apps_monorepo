@@ -128,6 +128,8 @@ void main() {
     registerFallbackValue(ChatInputMode.voiceFirst);
     registerFallbackValue(LegalDocument.terms);
     registerFallbackValue(ProductAnalyticsPreference.disabled);
+    registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
+    registerFallbackValue(DateTime.utc(2026));
   });
 
   setUp(() async {
@@ -166,6 +168,7 @@ void main() {
       ),
     );
     productAnalyticsService = MockProductAnalyticsService();
+    stubProductAnalyticsService(service: productAnalyticsService);
     when(() => productAnalyticsService.state).thenAnswer((_) => productAnalyticsStates.value);
     when(() => productAnalyticsService.stateStream).thenAnswer((_) => productAnalyticsStates.stream);
     when(

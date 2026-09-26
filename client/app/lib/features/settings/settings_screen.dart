@@ -31,6 +31,7 @@ class const SettingsScreen({super.key}) extends StatelessWidget {
             appReviewClient: getIt<AppReviewClient>(),
             feedbackRepository: getIt<FeedbackRepository>(),
             feedbackPromptService: getIt<FeedbackPromptService>(),
+            productAnalyticsService: getIt<ProductAnalyticsService>(),
             source: FeedbackSource.settings,
           ),
         ),

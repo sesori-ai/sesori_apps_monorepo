@@ -68,6 +68,9 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
   Timer? _minimumDurationTimer;
   bool _minimumDurationReached = false;
 
+  /// Voice-assisted once a transcript has been inserted into the draft.
+  ComposerInputMode _inputMode = ComposerInputMode.typed;
+
   VoiceInputCubit get _voice => context.read<VoiceInputCubit>();
 
   @override
@@ -93,7 +96,7 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
 
   void _submit() {
     _focus.unfocus();
-    unawaited(context.read<FeedbackSheetCubit>().submit(message: _text.text));
+    unawaited(context.read<FeedbackSheetCubit>().submit(message: _text.text, inputMode: _inputMode));
   }
 
   void _handleMicPointerDown(PointerDownEvent event) {
@@ -241,6 +244,7 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
       text: text,
       selection: TextSelection.collapsed(offset: text.length),
     );
+    _inputMode = ComposerInputMode.voiceAssisted;
     unawaited(_playHaptic(play: HapticFeedback.lightImpact));
     // Bring the new words into view once the field has laid them out.
     WidgetsBinding.instance.addPostFrameCallback((_) {

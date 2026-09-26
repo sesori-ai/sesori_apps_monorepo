@@ -7,6 +7,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/feedback/feedback_rating_motion.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
@@ -25,6 +26,7 @@ const _reviewBody = "It takes a minute and helps other developers find Sesori.";
 
 void main() {
   late _MockFeedbackRepository feedbackRepository;
+  late MockProductAnalyticsService productAnalyticsService;
   late FeedbackSheetCubit cubit;
   late List<FeedbackSheetOutcome> outcomes;
   late List<bool> sheetsAtOutcome;
@@ -35,14 +37,24 @@ void main() {
     registerFallbackValue(<FeedbackIssue>{});
     registerFallbackValue(FeedbackSource.settings);
     registerFallbackValue(_MockVoiceTranscriptionSession());
+    registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
+    registerFallbackValue(DateTime.utc(2026));
   });
 
   setUp(() {
     feedbackRepository = _MockFeedbackRepository();
+    productAnalyticsService = MockProductAnalyticsService();
+    when(
+      () => productAnalyticsService.logEvent(
+        event: any(named: "event"),
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
+    ).thenAnswer((_) async => AnalyticsDeliveryResult.acceptedBySdk);
     cubit = FeedbackSheetCubit(
       appReviewClient: _MockAppReviewClient(),
       feedbackRepository: feedbackRepository,
       feedbackPromptService: FakeFeedbackPromptService(),
+      productAnalyticsService: productAnalyticsService,
       source: FeedbackSource.settings,
     );
     outcomes = [];
@@ -131,6 +143,13 @@ void main() {
     ),
   ).thenAnswer((_) => answer());
 
+  List<ProductAnalyticsEvent> reportedEvents() => verify(
+    () => productAnalyticsService.logEvent(
+      event: captureAny(named: "event"),
+      occurredAtUtc: any(named: "occurredAtUtc"),
+    ),
+  ).captured.cast<ProductAnalyticsEvent>();
+
   testWidgets("Yes keeps the authored opening, locks both answers, then asks for a review", (tester) async {
     await open(tester: tester);
     final heroAnimation = tester.widget<FeedbackRatingHero>(find.byType(FeedbackRatingHero)).animation;
@@ -189,6 +208,7 @@ void main() {
       appReviewClient: appReviewClient,
       feedbackRepository: feedbackRepository,
       feedbackPromptService: FakeFeedbackPromptService(),
+      productAnalyticsService: productAnalyticsService,
       source: FeedbackSource.automatic,
     );
     await open(tester: tester);
@@ -294,6 +314,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(outcomes.single, isA<FeedbackSheetOutcomeCouldBeBetter>().having((o) => o.sent, "sent", isTrue));
     expect(sheetsAtOutcome, [false]);
+    expect(reportedEvents(), const [
+      ProductAnalyticsEvent.privateFeedbackSent(
+        input: AnalyticsFeedbackInput.typed,
+        source: AnalyticsFeedbackSource.settings,
+      ),
+      ProductAnalyticsEvent.feedbackPromptAnswered(
+        answer: AnalyticsFeedbackAnswer.couldBeBetter,
+        source: AnalyticsFeedbackSource.settings,
+      ),
+    ]);
     expect(find.text("Feedback sent. Thank you!"), findsOneWidget);
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
@@ -501,6 +531,16 @@ void main() {
       expect(sendEnabled(tester), isTrue);
       expect(tester.getRect(text), draftRect);
       verifyZeroInteractions(feedbackRepository);
+
+      answerSubmit(() async {});
+      await tapAndSettle(tester: tester, finder: send);
+      expect(
+        reportedEvents().first,
+        const ProductAnalyticsEvent.privateFeedbackSent(
+          input: AnalyticsFeedbackInput.voiceAssisted,
+          source: AnalyticsFeedbackSource.settings,
+        ),
+      );
       expect(tester.takeException(), isNull);
     });
 

@@ -92,7 +92,7 @@ Future<FeedbackSheetOutcome> _presentFeedbackSheet({
   );
   // A popped sheet's result completes before its closing animation does.
   await sheetRoute?.completed;
-  return cubit.outcome;
+  return cubit.finish();
 }
 
 void _confirmFeedbackSent({required BuildContext context, required PregoPopupAlertPresenter alerts}) {

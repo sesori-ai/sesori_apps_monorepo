@@ -16,6 +16,7 @@ void main() {
     final feedbackPromptService = FakeFeedbackPromptService();
     addTearDown(feedbackPromptService.promptsController.close);
     final navigatorKey = GlobalKey<NavigatorState>();
+    final productAnalyticsService = MockProductAnalyticsService();
     await tester.pumpWidget(
       MaterialApp(
         navigatorKey: navigatorKey,
@@ -30,6 +31,7 @@ void main() {
                 appReviewClient: _MockAppReviewClient(),
                 feedbackRepository: _MockFeedbackRepository(),
                 feedbackPromptService: feedbackPromptService,
+                productAnalyticsService: productAnalyticsService,
                 source: FeedbackSource.automatic,
               ),
             ),

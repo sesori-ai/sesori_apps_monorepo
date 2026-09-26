@@ -2,8 +2,9 @@ import "dart:async";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/testing.dart";
 import "package:test/test.dart";
+
+import "../../helpers/test_helpers.dart";
 
 class _MockAppReviewClient() extends Mock implements AppReviewClient;
 
@@ -13,9 +14,11 @@ void main() {
   late _MockAppReviewClient appReviewClient;
   late _MockFeedbackRepository feedbackRepository;
   late FakeFeedbackPromptService feedbackPromptService;
+  late MockProductAnalyticsService productAnalyticsService;
   late FeedbackSheetCubit cubit;
 
   setUpAll(() {
+    registerAllFallbackValues();
     registerFallbackValue(<FeedbackIssue>{});
     registerFallbackValue(FeedbackSource.settings);
   });
@@ -24,11 +27,13 @@ void main() {
     appReviewClient = _MockAppReviewClient();
     feedbackRepository = _MockFeedbackRepository();
     feedbackPromptService = FakeFeedbackPromptService();
+    productAnalyticsService = stubbedProductAnalyticsService();
     when(appReviewClient.openStoreReviewPage).thenAnswer((_) async {});
     cubit = FeedbackSheetCubit(
       appReviewClient: appReviewClient,
       feedbackRepository: feedbackRepository,
       feedbackPromptService: feedbackPromptService,
+      productAnalyticsService: productAnalyticsService,
       source: FeedbackSource.settings,
     );
   });
@@ -42,6 +47,13 @@ void main() {
       source: any(named: "source"),
     ),
   ).thenAnswer((_) => answer());
+
+  List<ProductAnalyticsEvent> reportedEvents() => verify(
+    () => productAnalyticsService.logEvent(
+      event: captureAny(named: "event"),
+      occurredAtUtc: any(named: "occurredAtUtc"),
+    ),
+  ).captured.cast<ProductAnalyticsEvent>();
 
   test("closing before answering is a dismissal", () {
     expect(cubit.state, const FeedbackSheetState.rating());
@@ -113,6 +125,7 @@ void main() {
         appReviewClient: appReviewClient,
         feedbackRepository: feedbackRepository,
         feedbackPromptService: feedbackPromptService,
+        productAnalyticsService: productAnalyticsService,
         source: FeedbackSource.automatic,
       );
     });
@@ -154,7 +167,7 @@ void main() {
     cubit.toggleIssue(issue: FeedbackIssue.connectionDrops);
     cubit.toggleIssue(issue: FeedbackIssue.appSlow);
 
-    await cubit.submit(message: "Fixture feedback");
+    await cubit.submit(message: "Fixture feedback", inputMode: ComposerInputMode.typed);
 
     verify(
       () => feedbackRepository.submit(
@@ -178,7 +191,7 @@ void main() {
     cubit.chooseCouldBeBetter();
     cubit.toggleIssue(issue: FeedbackIssue.hardToNavigate);
 
-    await cubit.submit(message: "Fixture feedback");
+    await cubit.submit(message: "Fixture feedback", inputMode: ComposerInputMode.typed);
     expect(
       cubit.state,
       const FeedbackSheetState.privateFeedback(
@@ -188,7 +201,7 @@ void main() {
     );
 
     answerSubmit(() async {});
-    await cubit.submit(message: "Fixture feedback");
+    await cubit.submit(message: "Fixture feedback", inputMode: ComposerInputMode.typed);
     expect((cubit.state as FeedbackSheetPrivateFeedback).submission, FeedbackSubmission.sent);
   });
 
@@ -197,10 +210,10 @@ void main() {
     answerSubmit(() => pending.future);
     cubit.chooseCouldBeBetter();
 
-    final first = cubit.submit(message: "Fixture feedback");
+    final first = cubit.submit(message: "Fixture feedback", inputMode: ComposerInputMode.typed);
     expect((cubit.state as FeedbackSheetPrivateFeedback).submission, FeedbackSubmission.submitting);
     cubit.toggleIssue(issue: FeedbackIssue.appSlow);
-    await cubit.submit(message: "Fixture feedback");
+    await cubit.submit(message: "Fixture feedback", inputMode: ComposerInputMode.typed);
     expect((cubit.state as FeedbackSheetPrivateFeedback).issues, isEmpty);
 
     pending.complete();
@@ -218,12 +231,80 @@ void main() {
     final pending = Completer<void>();
     answerSubmit(() => pending.future);
     cubit.chooseCouldBeBetter();
-    final send = cubit.submit(message: "Fixture feedback");
+    final send = cubit.submit(message: "Fixture feedback", inputMode: ComposerInputMode.typed);
 
     cubit.start();
     pending.complete();
     await send;
 
     expect(cubit.state, const FeedbackSheetState.rating());
+  });
+
+  test("finish reports the answer the sheet ended with and its source", () {
+    expect(cubit.finish(), isA<FeedbackSheetOutcomeDismissed>());
+
+    cubit.start();
+    cubit.chooseLove();
+    cubit.finish();
+
+    cubit.start();
+    cubit.chooseLove();
+    cubit.finishCelebration();
+    cubit.chooseLeaveReview();
+    cubit.finish();
+
+    cubit.start();
+    cubit.chooseCouldBeBetter();
+    cubit.finish();
+
+    expect(reportedEvents(), [
+      for (final answer in [
+        AnalyticsFeedbackAnswer.dismissed,
+        AnalyticsFeedbackAnswer.loveNoReview,
+        AnalyticsFeedbackAnswer.loveReviewRequested,
+        AnalyticsFeedbackAnswer.couldBeBetter,
+      ])
+        ProductAnalyticsEvent.feedbackPromptAnswered(answer: answer, source: AnalyticsFeedbackSource.settings),
+    ]);
+  });
+
+  test("private feedback is reported once the server accepts it, with what it carried", () async {
+    Future<void> send({
+      required Set<FeedbackIssue> issues,
+      required String message,
+      required ComposerInputMode inputMode,
+    }) async {
+      cubit.start();
+      cubit.chooseCouldBeBetter();
+      for (final issue in issues) {
+        cubit.toggleIssue(issue: issue);
+      }
+      await cubit.submit(message: message, inputMode: inputMode);
+    }
+
+    answerSubmit(() async => throw StateError("offline"));
+    await send(issues: {}, message: "Fixture feedback", inputMode: ComposerInputMode.typed);
+    verifyNever(
+      () => productAnalyticsService.logEvent(
+        event: any(named: "event"),
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
+    );
+
+    answerSubmit(() async {});
+    await send(issues: {}, message: "Fixture feedback", inputMode: ComposerInputMode.typed);
+    await send(issues: {}, message: "Fixture feedback", inputMode: ComposerInputMode.voiceAssisted);
+    await send(issues: {FeedbackIssue.appSlow}, message: "  ", inputMode: ComposerInputMode.voiceAssisted);
+    await send(issues: {}, message: "", inputMode: ComposerInputMode.typed);
+
+    expect(reportedEvents(), [
+      for (final input in [
+        AnalyticsFeedbackInput.typed,
+        AnalyticsFeedbackInput.voiceAssisted,
+        AnalyticsFeedbackInput.issuesOnly,
+        AnalyticsFeedbackInput.empty,
+      ])
+        ProductAnalyticsEvent.privateFeedbackSent(input: input, source: AnalyticsFeedbackSource.settings),
+    ]);
   });
 }

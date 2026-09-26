@@ -408,6 +408,7 @@ class const _SesoriAppShell() extends StatelessWidget {
                         appReviewClient: getIt<AppReviewClient>(),
                         feedbackRepository: getIt<FeedbackRepository>(),
                         feedbackPromptService: getIt<FeedbackPromptService>(),
+                        productAnalyticsService: getIt<ProductAnalyticsService>(),
                         source: FeedbackSource.automatic,
                       ),
                     ),
