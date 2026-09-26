@@ -278,6 +278,41 @@ void main() {
     expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), true);
   });
 
+  test("a half-deleted source is retired, not re-imported, when secret reset fails", () async {
+    final fixture = await MigrationFixture.create(values: _values);
+    addTearDown(fixture.dispose);
+    // The native store dies mid-cleanup: deleting the second auth entry fails,
+    // and from that moment neither the replacement master nor namespace
+    // clearing can be persisted either. SQL keeps working throughout.
+    fixture.source.deleteFailure = (key: "refresh_token", error: StateError("fixture cleanup denied"));
+    fixture.source.beforeDelete = () async {
+      fixture.master.writeFailure = StateError("fixture native denial");
+      fixture.source.clearFailure = StateError("fixture clear denied");
+    };
+    await fixture.service.migrate();
+
+    // The surviving half still holds a restorable session, so the import must be
+    // retired rather than left retryable; only its deletion can be retried.
+    expect(fixture.source.values.keys, containsAll(["refresh_token", "auth_user"]));
+    expect(fixture.source.values.containsKey("access_token"), false);
+    expect(fixture.source.clears, 1);
+    expect(await fixture.database.select(fixture.database.encryptedValues).get(), isEmpty);
+    expect(await fixture.persister.readBool(key: LegacyMigrationKey.completed), true);
+    expect(logs.records.map((e) => e.diagnosticError), [
+      contains("deleteSource"),
+      contains("resetSecrets"),
+      contains("clearSource"),
+    ]);
+
+    // A cold launch must not import the remaining half of the old session.
+    await fixture.reopen();
+    final reads = fixture.source.reads;
+    await fixture.service.migrate();
+    expect(fixture.source.reads, reads);
+    expect(await fixture.secrets.read(key: AuthSecretKey.refreshToken), isNull);
+    expect(await fixture.secrets.read(key: AuthSecretKey.user), isNull);
+  });
+
   test("storage diagnostics unwrap causes but omit parser source buffers", () {
     final error = LegacyStorageMigrationException(
       operation: LegacyStorageMigrationOperation.resetSecrets,

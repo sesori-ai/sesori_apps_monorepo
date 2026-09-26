@@ -51,9 +51,11 @@ desktop do not resolve it. No coding plugin participates.
   registration and before analytics runtime creation, auth restoration, deep
   links or preference reads. Development must not even construct the source.
 - On caught import failure, attempt scoped secret reset and atomic primitive
-  clearing before normal logged-out startup. If secret reset fails, preserve the
-  remaining source and leave import retryable on cold launch; never mark partial
-  destination state handled. After secret reset succeeds, clear the old namespace
+  clearing before normal logged-out startup. If secret reset fails while the source
+  is still untouched, preserve it and leave import retryable on cold launch; never
+  mark partial destination state handled. Once source deletion started, retire the
+  remaining half instead: a later import of it would restore an arbitrary part of
+  the old session. After secret reset succeeds, clear the old namespace
   and attempt completion even after preference/source cleanup failure. The new
   master belongs to a separate namespace. No automatic retry or blocking screen.
 - Install the app file sink before migration. Log the original and each recovery

@@ -52,8 +52,9 @@ persistence. Production mobile awaits the deprecated importer before consumers;
 development and desktop never resolve it. Failed import attempts a scoped reset
 before normal startup: clear destination data, replace its master, clear the old
 namespace and mark migration handled after secret reset succeeds. Failed secret
-reset keeps the remaining legacy source and the import retryable, rather than
-trusting partial destination rows on relaunch. Recovery failures reach the app
+reset keeps an untouched legacy source and the import retryable, rather than
+trusting partial destination rows on relaunch; a source whose deletion already
+started is retired instead, never imported in halves. Recovery failures reach the app
 log; failed reset stays cached in-process. Normal account analytics rules
 apply after login; there is no separate recovery-consent state.
 

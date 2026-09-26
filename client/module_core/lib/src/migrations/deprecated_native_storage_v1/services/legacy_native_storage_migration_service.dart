@@ -22,6 +22,9 @@ class LegacyNativeStorageMigrationService({
   @Deprecated("Remove only when supported direct upgrades exclude all per-value-native production builds.")
   Future<void> migrate() async {
     var operation = LegacyStorageMigrationOperation.readCompletion;
+    // Only an untouched source is still a complete import that a relaunch may
+    // safely retry. Cleared once deletion starts.
+    var sourceComplete = true;
     try {
       if (await persister.readBool(key: LegacyMigrationKey.completed) ?? false) return;
 
@@ -42,6 +45,7 @@ class LegacyNativeStorageMigrationService({
       // Every copy has committed. Interrupted cleanup leaves those rows intact;
       // a relaunch merges only remaining source entries, never replacing a map.
       operation = LegacyStorageMigrationOperation.deleteSource;
+      sourceComplete = false;
       for (final entry in values) {
         await source.delete(sourceKey: entry.sourceKey);
       }
@@ -55,9 +59,12 @@ class LegacyNativeStorageMigrationService({
         action: secrets.reset,
       );
       await _recover(operation: LegacyStorageMigrationOperation.clearPreferences, action: persister.clear);
-      // Do not discard the remaining source or trust partial destination rows
-      // on a cold launch when reset failed. Leave the import/reset retryable.
-      if (!secretsReset) return;
+      // Do not discard a still-complete source or trust partial destination rows
+      // on a cold launch when reset failed. Leave that import/reset retryable.
+      // Once deletion started, the remainder is an arbitrary half of the old
+      // session: importing it later would restore exactly the partial state this
+      // recovery exists to discard, so retire it instead of retrying.
+      if (!secretsReset && sourceComplete) return;
       await _recover(operation: LegacyStorageMigrationOperation.clearSource, action: source.clear);
       // Also retire an unreadable/undeletable source: it must not resurrect old
       // auth after a fresh login. Failure to persist this decision stays logged.
