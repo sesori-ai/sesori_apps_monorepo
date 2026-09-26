@@ -132,9 +132,14 @@
   genuinely absent control projections from transport failures; ordinary history failures still propagate.
 - The 2.0.11 source also supports single-message reads, newest-by-type filtering and all four interrupt reasons.
   Shutdown preserves the native execution claim, so it does not emit a false idle transition.
-- Sixty-one focused API/repository/event-mapper/parser/model tests and owning-package analysis pass.
+- Initial verification passed 61 focused API/repository/event-mapper/parser/model cases and package analysis.
   V2 REST/SSE regeneration completed (30 selected operations, 41 event variants); unfiltered build_runner wrote
-  no changed output. Architecture review is pending. Evidence remains source/fixture/fake-HTTP, not native turns.
+  no changed output. Evidence remains source/fixture/fake-HTTP, not native turns.
+- First architecture review rejected `42db015` only for repository access to the raw transport error.
+  Single-message 404 translation now belongs to the API; the repository consumes a nullable native DTO.
+  Other errors propagate unchanged. All 36 affected API/repository cases pass, including two new HTTP-boundary
+  cases, and package analysis passes. Unchanged mapper/parser/model suites and generation were not repeated.
+  Second architecture review is pending.
 - Event projection contains no mutable state. Native readback supplies tool context and compaction identity;
   targeted tool/assistant updates never replay unrelated snapshot text ahead of queued deltas.
 - The event slice ceiling is revised from 1,200 to 1,400 after measuring approximately 1,100 authored plus 202

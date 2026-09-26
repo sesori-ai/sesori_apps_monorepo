@@ -149,7 +149,23 @@ void main() {
         );
       },
     );
-    expect((await api.getMessage(sessionId: "s", messageId: "msg/fixture") as SessionMessageUser).id, "msg/fixture");
+    expect(
+      await api.getMessage(sessionId: "s", messageId: "msg/fixture"),
+      isA<SessionMessageUser>().having((message) => message.id, "id", "msg/fixture"),
+    );
+  });
+
+  test("a missing projected message is absent at the API boundary", () async {
+    final api = makeApi(handler: (_) async => http.Response("Fixture not found", 404));
+    expect(await api.getMessage(sessionId: "s", messageId: "m"), isNull);
+  });
+
+  test("single-message lookup propagates other HTTP failures", () async {
+    final api = makeApi(handler: (_) async => http.Response("Fixture failure", 500));
+    await expectLater(
+      api.getMessage(sessionId: "s", messageId: "m"),
+      throwsA(isA<OpenCodeApiException>().having((error) => error.statusCode, "statusCode", 500)),
+    );
   });
 
   for (final filter in V2MessageFilter.values) {

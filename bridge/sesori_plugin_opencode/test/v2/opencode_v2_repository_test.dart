@@ -1,6 +1,5 @@
 import "dart:io";
 
-import "package:opencode_plugin/src/open_code_raw_http_client.dart";
 import "package:opencode_plugin/src/v2/api/opencode_v2_api.dart";
 import "package:opencode_plugin/src/v2/models/openapi/agent_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/command_info.g.dart";
@@ -283,9 +282,8 @@ void main() {
   });
 
   test("distinguishes an absent inbox projection from a failed read", () async {
-    api.historyFailure = OpenCodeApiException("fixture", 404);
     expect(await repository.getMessage(sessionId: "s", messageId: "m", directory: directory), isNull);
-    final failure = OpenCodeApiException("fixture", 500);
+    final failure = StateError("Fixture read failure");
     api.historyFailure = failure;
     await expectLater(
       repository.getMessage(sessionId: "s", messageId: "m", directory: directory),
@@ -387,10 +385,10 @@ class FakeV2Api({
   }
 
   @override
-  Future<SessionMessageInfo> getMessage({required String sessionId, required String messageId}) async {
+  Future<SessionMessageInfo?> getMessage({required String sessionId, required String messageId}) async {
     if (historyFailure case final failure?) throw failure;
     calls.add("message:$sessionId/$messageId");
-    return messages.single;
+    return messages.firstOrNull;
   }
 
   @override

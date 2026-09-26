@@ -1,9 +1,6 @@
-import "dart:io" show HttpStatus;
-
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
-import "../../open_code_raw_http_client.dart";
 import "../api/opencode_v2_api.dart";
 import "../models/openapi/form_info.g.dart";
 import "../models/openapi/form_reply.g.dart";
@@ -123,16 +120,11 @@ class OpenCodeV2Repository({
     required String sessionId,
     required String messageId,
     required String directory,
-  }) async {
-    final SessionMessageInfo message;
-    try {
-      message = await _api.getMessage(sessionId: sessionId, messageId: messageId);
-    } on OpenCodeApiException catch (error) {
-      if (error.statusCode == HttpStatus.notFound) return null;
-      rethrow;
-    }
-    return await _mapMessage(sessionId: sessionId, message: message, directory: directory);
-  }
+  }) async => await _mapMessage(
+    sessionId: sessionId,
+    message: await _api.getMessage(sessionId: sessionId, messageId: messageId),
+    directory: directory,
+  );
 
   Future<PluginMessageWithParts?> getLatestMessage({
     required String sessionId,

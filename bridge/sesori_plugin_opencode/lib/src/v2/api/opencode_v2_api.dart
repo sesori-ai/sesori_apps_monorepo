@@ -1,4 +1,5 @@
 import "dart:convert";
+import "dart:io" show HttpStatus;
 
 import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart" show jsonCastMap, jsonDecodeListMap, jsonDecodeMap;
@@ -128,11 +129,19 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
     return messages;
   }
 
-  Future<SessionMessageInfo> getMessage({required String sessionId, required String messageId}) => _getData(
-    path: "${_sessionPath(sessionId: sessionId)}/message/${Uri.encodeComponent(messageId)}",
-    directory: null,
-    fromJson: (value) => SessionMessageInfo.fromJson(jsonCastMap(value)),
-  );
+  /// Native control inbox delivery need not project a transcript message.
+  Future<SessionMessageInfo?> getMessage({required String sessionId, required String messageId}) async {
+    try {
+      return await _getData<SessionMessageInfo>(
+        path: "${_sessionPath(sessionId: sessionId)}/message/${Uri.encodeComponent(messageId)}",
+        directory: null,
+        fromJson: (value) => SessionMessageInfo.fromJson(jsonCastMap(value)),
+      );
+    } on OpenCodeApiException catch (error) {
+      if (error.statusCode == HttpStatus.notFound) return null;
+      rethrow;
+    }
+  }
 
   Future<SessionMessageInfo?> getLatestMessage({required String sessionId, required V2MessageFilter filter}) async {
     final path = "${_sessionPath(sessionId: sessionId)}/message";
