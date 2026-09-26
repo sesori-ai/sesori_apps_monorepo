@@ -9,9 +9,12 @@ import "package:opencode_plugin/src/v2/models/openapi/form_reply.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/location_public_ref.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/model_ref.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_reply.g.dart";
+import "package:opencode_plugin/src/v2/models/openapi/session_message_assistant.g.dart";
+import "package:opencode_plugin/src/v2/models/openapi/session_message_compaction_running.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_message_user.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/worktree_remove_input.g.dart";
 import "package:opencode_plugin/src/v2/models/v2_decode_exception.dart";
+import "package:opencode_plugin/src/v2/models/v2_message_filter.dart";
 import "package:opencode_plugin/src/v2/models/v2_request_bodies.dart";
 import "package:test/test.dart";
 
@@ -58,7 +61,7 @@ void main() {
         expect(request.url.path, "/api/session");
         expect(request.url.queryParameters["directory"], "/fixture/project");
         expect(request.url.queryParameters["parentID"], "parent-fixture");
-        expect(request.url.queryParameters["order"], "asc");
+        expect(request.url.queryParameters["order"], calls == 1 ? "asc" : null);
         expect(request.url.queryParameters["cursor"], calls == 1 ? null : "cursor-2");
         return http.Response(
           jsonEncode(<String, dynamic>{
@@ -85,6 +88,7 @@ void main() {
           expect(request.url.queryParameters["project"], projectId);
           expect(request.url.queryParameters.containsKey("directory"), isFalse);
           expect(request.url.queryParameters["parentID"], "null");
+          expect(request.url.queryParameters["order"], calls == 1 ? "asc" : null);
           expect(request.url.queryParameters["cursor"], calls == 1 ? null : "next");
           return http.Response(
             jsonEncode(<String, dynamic>{
@@ -106,7 +110,7 @@ void main() {
         calls++;
         expect(request.url.path, "/api/session/session-fixture/message");
         expect(request.url.queryParameters["cursor"], calls == 1 ? null : "next");
-        expect(request.url.queryParameters["order"], "asc");
+        expect(request.url.queryParameters["order"], calls == 1 ? "asc" : null);
         return http.Response(
           jsonEncode(<String, dynamic>{
             "data": <Object>[
@@ -126,6 +130,79 @@ void main() {
     final messages = await api.listMessages(sessionId: "session-fixture");
     expect(messages.cast<SessionMessageUser>().map((message) => message.id), <String>["message-1", "message-2"]);
     expect(calls, 2);
+  });
+
+  test("reads a single projected message by its encoded identity", () async {
+    final api = makeApi(
+      handler: (request) async {
+        expect(request.url.pathSegments, ["api", "session", "s", "message", "msg/fixture"]);
+        return http.Response(
+          jsonEncode(const <String, dynamic>{
+            "data": <String, dynamic>{
+              "id": "msg/fixture",
+              "type": "user",
+              "text": "Fixture",
+              "time": <String, int>{"created": 1},
+            },
+          }),
+          200,
+        );
+      },
+    );
+    expect(
+      await api.getMessage(sessionId: "s", messageId: "msg/fixture"),
+      isA<SessionMessageUser>().having((message) => message.id, "id", "msg/fixture"),
+    );
+  });
+
+  test("a missing projected message is absent at the API boundary", () async {
+    final api = makeApi(handler: (_) async => http.Response("Fixture not found", 404));
+    expect(await api.getMessage(sessionId: "s", messageId: "m"), isNull);
+  });
+
+  test("single-message lookup propagates other HTTP failures", () async {
+    final api = makeApi(handler: (_) async => http.Response("Fixture failure", 500));
+    await expectLater(
+      api.getMessage(sessionId: "s", messageId: "m"),
+      throwsA(isA<OpenCodeApiException>().having((error) => error.statusCode, "statusCode", 500)),
+    );
+  });
+
+  for (final filter in V2MessageFilter.values) {
+    test("reads the latest ${filter.name} without loading unrelated history", () async {
+      final api = makeApi(
+        handler: (request) async {
+          expect(request.url.queryParameters, {"type": filter.name, "order": "desc", "limit": "1"});
+          return http.Response(
+            jsonEncode(<String, dynamic>{
+              "data": <Object>[
+                <String, dynamic>{
+                  "id": "msg-fixture",
+                  "type": filter.name,
+                  "time": <String, int>{"created": 1},
+                  if (filter == V2MessageFilter.assistant) ...<String, dynamic>{
+                    "agent": "build",
+                    "model": <String, dynamic>{"id": "m", "providerID": "p"},
+                    "content": <Object>[],
+                  } else ...<String, dynamic>{"status": "running", "reason": "manual", "summary": "", "recent": ""},
+                },
+              ],
+              "cursor": <String, dynamic>{},
+            }),
+            200,
+          );
+        },
+      );
+      expect(await api.getLatestMessage(sessionId: "s", filter: filter), switch (filter) {
+        V2MessageFilter.assistant => isA<SessionMessageAssistant>(),
+        V2MessageFilter.compaction => isA<SessionMessageCompactionRunning>(),
+      });
+    });
+  }
+
+  test("an empty filtered page is genuinely absent", () async {
+    final api = makeApi(handler: (_) async => http.Response('{"data":[],"cursor":{}}', 200));
+    expect(await api.getLatestMessage(sessionId: "s", filter: V2MessageFilter.compaction), isNull);
   });
 
   test("decodes data envelopes, active maps and nullable defaults", () async {

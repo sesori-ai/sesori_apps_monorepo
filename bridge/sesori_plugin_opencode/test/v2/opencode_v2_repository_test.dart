@@ -21,6 +21,7 @@ import "package:opencode_plugin/src/v2/models/openapi/session_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_interrupt_response.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_message_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/worktree_remove_input.g.dart";
+import "package:opencode_plugin/src/v2/models/v2_message_filter.dart";
 import "package:opencode_plugin/src/v2/models/v2_request_bodies.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_repository.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_message_mapper.dart";
@@ -242,6 +243,55 @@ void main() {
     );
   });
 
+  test("maps targeted snapshots with the supplied session directory", () async {
+    api.messages = [
+      SessionMessageInfo.fromJson(const <String, dynamic>{
+        "id": "message",
+        "type": "assistant",
+        "agent": "build",
+        "model": <String, dynamic>{"id": "m", "providerID": "p"},
+        "time": <String, int>{"created": 1},
+        "content": <Object>[],
+      }),
+    ];
+    final message = await repository.getMessage(
+      sessionId: "session-fixture",
+      messageId: "message",
+      directory: worktree,
+    );
+    expect((message!.info as PluginMessageAssistant).agent, "Build");
+    expect(
+      (await repository.getLatestMessage(
+        sessionId: "session-fixture",
+        filter: V2MessageFilter.assistant,
+        directory: worktree,
+      ))!.info.id,
+      "message",
+    );
+    expect(api.calls, ["message:session-fixture/message", "latest:assistant"]);
+    api.messages = [];
+    expect(
+      await repository.getLatestMessage(
+        sessionId: "session-fixture",
+        filter: V2MessageFilter.compaction,
+        directory: worktree,
+      ),
+      isNull,
+    );
+    expect(api.agentDirectories, [worktree, worktree]);
+  });
+
+  test("distinguishes an absent inbox projection from a failed read", () async {
+    expect(await repository.getMessage(sessionId: "s", messageId: "m", directory: directory), isNull);
+    final failure = StateError("Fixture read failure");
+    api.historyFailure = failure;
+    await expectLater(
+      repository.getMessage(sessionId: "s", messageId: "m", directory: directory),
+      throwsA(same(failure)),
+    );
+    expect(api.agentDirectories, isEmpty);
+  });
+
   test("propagates history failures rather than returning an empty transcript", () async {
     final failure = StateError("Fixture transport failure");
     api.historyFailure = failure;
@@ -332,6 +382,20 @@ class FakeV2Api({
   Future<List<SessionMessageInfo>> listMessages({required String sessionId}) async {
     if (historyFailure case final failure?) throw failure;
     return messages;
+  }
+
+  @override
+  Future<SessionMessageInfo?> getMessage({required String sessionId, required String messageId}) async {
+    if (historyFailure case final failure?) throw failure;
+    calls.add("message:$sessionId/$messageId");
+    return messages.firstOrNull;
+  }
+
+  @override
+  Future<SessionMessageInfo?> getLatestMessage({required String sessionId, required V2MessageFilter filter}) async {
+    if (historyFailure case final failure?) throw failure;
+    calls.add("latest:${filter.name}");
+    return messages.firstOrNull;
   }
 
   @override

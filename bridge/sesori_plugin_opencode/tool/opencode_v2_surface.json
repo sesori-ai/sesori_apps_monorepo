@@ -17,6 +17,7 @@
     "session.remove",
     "session.active",
     "session.message.list",
+    "session.message.get",
     "session.prompt",
     "session.command",
     "session.synthetic",

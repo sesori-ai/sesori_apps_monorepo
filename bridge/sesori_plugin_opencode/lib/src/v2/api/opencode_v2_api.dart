@@ -1,4 +1,5 @@
 import "dart:convert";
+import "dart:io" show HttpStatus;
 
 import "package:http/http.dart" as http;
 import "package:sesori_shared/sesori_shared.dart" show jsonCastMap, jsonDecodeListMap, jsonDecodeMap;
@@ -26,6 +27,7 @@ import "../models/openapi/sessions_response.g.dart";
 import "../models/openapi/worktree_remove_input.g.dart";
 import "../models/v2_data_response.dart";
 import "../models/v2_decode_exception.dart";
+import "../models/v2_message_filter.dart";
 import "../models/v2_page_order.dart";
 import "../models/v2_request_bodies.dart";
 
@@ -91,7 +93,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
           queryParameters: {
             ...filters,
             "cursor": ?cursor,
-            "order": V2PageOrder.asc.name,
+            "order": ?(cursor == null ? V2PageOrder.asc.name : null),
             "limit": "100",
           },
         ),
@@ -112,7 +114,11 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
       final page = _object(
         response: await _client.get(
           path: path,
-          queryParameters: {"cursor": ?cursor, "order": V2PageOrder.asc.name, "limit": "100"},
+          queryParameters: {
+            "cursor": ?cursor,
+            "order": ?(cursor == null ? V2PageOrder.asc.name : null),
+            "limit": "100",
+          },
         ),
         operation: path,
         fromJson: SessionMessagesResponse.fromJson,
@@ -121,6 +127,33 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
       cursor = page.cursor.next;
     } while (cursor != null);
     return messages;
+  }
+
+  /// Native control inbox delivery need not project a transcript message.
+  Future<SessionMessageInfo?> getMessage({required String sessionId, required String messageId}) async {
+    try {
+      return await _getData<SessionMessageInfo>(
+        path: "${_sessionPath(sessionId: sessionId)}/message/${Uri.encodeComponent(messageId)}",
+        directory: null,
+        fromJson: (value) => SessionMessageInfo.fromJson(jsonCastMap(value)),
+      );
+    } on OpenCodeApiException catch (error) {
+      if (error.statusCode == HttpStatus.notFound) return null;
+      rethrow;
+    }
+  }
+
+  Future<SessionMessageInfo?> getLatestMessage({required String sessionId, required V2MessageFilter filter}) async {
+    final path = "${_sessionPath(sessionId: sessionId)}/message";
+    final page = _object(
+      response: await _client.get(
+        path: path,
+        queryParameters: {"type": filter.name, "order": V2PageOrder.desc.name, "limit": "1"},
+      ),
+      operation: path,
+      fromJson: SessionMessagesResponse.fromJson,
+    );
+    return page.data.firstOrNull;
   }
 
   Future<Map<String, SessionActive>> getActiveSessions() => _getData(

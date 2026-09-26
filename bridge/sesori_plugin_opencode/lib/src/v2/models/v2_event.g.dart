@@ -15,6 +15,7 @@ import "openapi/project_time.g.dart";
 import "openapi/session_structured_error.g.dart";
 import "openapi/token_usage_info.g.dart";
 import "openapi/tool_content.g.dart";
+import "v2_execution_interrupt_reason.dart";
 
 /// Marker sealed type for all SSE events that are scoped to a specific
 /// session. Any [V2EventData] variant that carries a session context
@@ -71,7 +72,34 @@ sealed class V2EventData {
   }) = V2SessionExecutionFailed;
   const factory V2EventData.sessionExecutionInterrupted({
     required String sessionID,
+    required V2ExecutionInterruptReason reason,
   }) = V2SessionExecutionInterrupted;
+  const factory V2EventData.sessionInboxEnqueued({
+    required String sessionID,
+    required String inboxID,
+  }) = V2SessionInboxEnqueued;
+  const factory V2EventData.sessionInboxDelivered({
+    required String sessionID,
+    required String inboxID,
+  }) = V2SessionInboxDelivered;
+  const factory V2EventData.sessionInboxCancelled({
+    required String sessionID,
+    required String inboxID,
+  }) = V2SessionInboxCancelled;
+  const factory V2EventData.sessionInboxDeliveryChanged({
+    required String sessionID,
+    required String inboxID,
+  }) = V2SessionInboxDeliveryChanged;
+  const factory V2EventData.sessionAgentSelected({
+    required String sessionID,
+    required String agent,
+    String? previous,
+  }) = V2SessionAgentSelected;
+  const factory V2EventData.sessionSynthetic({
+    required String sessionID,
+    required String text,
+    String? description,
+  }) = V2SessionSynthetic;
   const factory V2EventData.sessionStepStarted({
     required String sessionID,
     required String assistantMessageID,
@@ -259,6 +287,12 @@ sealed class V2EventData {
       "session.execution.succeeded" => V2SessionExecutionSucceeded.fromJson(json),
       "session.execution.failed" => V2SessionExecutionFailed.fromJson(json),
       "session.execution.interrupted" => V2SessionExecutionInterrupted.fromJson(json),
+      "session.inbox.enqueued" => V2SessionInboxEnqueued.fromJson(json),
+      "session.inbox.delivered" => V2SessionInboxDelivered.fromJson(json),
+      "session.inbox.cancelled" => V2SessionInboxCancelled.fromJson(json),
+      "session.inbox.delivery.changed" => V2SessionInboxDeliveryChanged.fromJson(json),
+      "session.agent.selected" => V2SessionAgentSelected.fromJson(json),
+      "session.synthetic" => V2SessionSynthetic.fromJson(json),
       "session.step.started" => V2SessionStepStarted.fromJson(json),
       "session.step.ended" => V2SessionStepEnded.fromJson(json),
       "session.step.failed" => V2SessionStepFailed.fromJson(json),
@@ -485,9 +519,11 @@ class V2SessionExecutionFailed extends V2EventData implements V2SessionEventData
 class V2SessionExecutionInterrupted extends V2EventData implements V2SessionEventData {
   const V2SessionExecutionInterrupted({
     required this.sessionID,
+    required this.reason,
   });
 
   final String sessionID;
+  final V2ExecutionInterruptReason reason;
 
   @override
   String get type => "session.execution.interrupted";
@@ -496,11 +532,177 @@ class V2SessionExecutionInterrupted extends V2EventData implements V2SessionEven
   Map<String, dynamic> toJson() => <String, dynamic>{
     "type": type,
     "sessionID": sessionID,
+    "reason": reason.toJson(),
   };
 
   factory V2SessionExecutionInterrupted.fromJson(Map<String, dynamic> json) {
     return V2SessionExecutionInterrupted(
       sessionID: json["sessionID"] as String,
+      reason: V2ExecutionInterruptReason.fromJson(json["reason"] as String),
+    );
+  }
+}
+class V2SessionInboxEnqueued extends V2EventData implements V2SessionEventData {
+  const V2SessionInboxEnqueued({
+    required this.sessionID,
+    required this.inboxID,
+  });
+
+  final String sessionID;
+  final String inboxID;
+
+  @override
+  String get type => "session.inbox.enqueued";
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    "type": type,
+    "sessionID": sessionID,
+    "inboxID": inboxID,
+  };
+
+  factory V2SessionInboxEnqueued.fromJson(Map<String, dynamic> json) {
+    return V2SessionInboxEnqueued(
+      sessionID: json["sessionID"] as String,
+      inboxID: json["inboxID"] as String,
+    );
+  }
+}
+class V2SessionInboxDelivered extends V2EventData implements V2SessionEventData {
+  const V2SessionInboxDelivered({
+    required this.sessionID,
+    required this.inboxID,
+  });
+
+  final String sessionID;
+  final String inboxID;
+
+  @override
+  String get type => "session.inbox.delivered";
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    "type": type,
+    "sessionID": sessionID,
+    "inboxID": inboxID,
+  };
+
+  factory V2SessionInboxDelivered.fromJson(Map<String, dynamic> json) {
+    return V2SessionInboxDelivered(
+      sessionID: json["sessionID"] as String,
+      inboxID: json["inboxID"] as String,
+    );
+  }
+}
+class V2SessionInboxCancelled extends V2EventData implements V2SessionEventData {
+  const V2SessionInboxCancelled({
+    required this.sessionID,
+    required this.inboxID,
+  });
+
+  final String sessionID;
+  final String inboxID;
+
+  @override
+  String get type => "session.inbox.cancelled";
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    "type": type,
+    "sessionID": sessionID,
+    "inboxID": inboxID,
+  };
+
+  factory V2SessionInboxCancelled.fromJson(Map<String, dynamic> json) {
+    return V2SessionInboxCancelled(
+      sessionID: json["sessionID"] as String,
+      inboxID: json["inboxID"] as String,
+    );
+  }
+}
+class V2SessionInboxDeliveryChanged extends V2EventData implements V2SessionEventData {
+  const V2SessionInboxDeliveryChanged({
+    required this.sessionID,
+    required this.inboxID,
+  });
+
+  final String sessionID;
+  final String inboxID;
+
+  @override
+  String get type => "session.inbox.delivery.changed";
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    "type": type,
+    "sessionID": sessionID,
+    "inboxID": inboxID,
+  };
+
+  factory V2SessionInboxDeliveryChanged.fromJson(Map<String, dynamic> json) {
+    return V2SessionInboxDeliveryChanged(
+      sessionID: json["sessionID"] as String,
+      inboxID: json["inboxID"] as String,
+    );
+  }
+}
+class V2SessionAgentSelected extends V2EventData implements V2SessionEventData {
+  const V2SessionAgentSelected({
+    required this.sessionID,
+    required this.agent,
+    this.previous,
+  });
+
+  final String sessionID;
+  final String agent;
+  final String? previous;
+
+  @override
+  String get type => "session.agent.selected";
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    "type": type,
+    "sessionID": sessionID,
+    "agent": agent,
+    "previous": previous,
+  };
+
+  factory V2SessionAgentSelected.fromJson(Map<String, dynamic> json) {
+    return V2SessionAgentSelected(
+      sessionID: json["sessionID"] as String,
+      agent: json["agent"] as String,
+      previous: json["previous"] == null ? null : json["previous"] as String,
+    );
+  }
+}
+class V2SessionSynthetic extends V2EventData implements V2SessionEventData {
+  const V2SessionSynthetic({
+    required this.sessionID,
+    required this.text,
+    this.description,
+  });
+
+  final String sessionID;
+  final String text;
+  final String? description;
+
+  @override
+  String get type => "session.synthetic";
+
+  @override
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    "type": type,
+    "sessionID": sessionID,
+    "text": text,
+    "description": description,
+  };
+
+  factory V2SessionSynthetic.fromJson(Map<String, dynamic> json) {
+    return V2SessionSynthetic(
+      sessionID: json["sessionID"] as String,
+      text: json["text"] as String,
+      description: json["description"] == null ? null : json["description"] as String,
     );
   }
 }

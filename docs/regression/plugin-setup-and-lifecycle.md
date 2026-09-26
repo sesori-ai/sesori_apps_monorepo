@@ -472,6 +472,14 @@ constraints. It checks stale-selection refusal, native defaults, typed write bod
 permission decisions and unchanged propagation of history failures. Fake-API and
 HTTP-boundary tests do not prove native write, turn or reconnect behavior.
 
+Inactive live-event projection keeps REST/stream part identities aligned, including
+retry and agent-switch notices. Typed interruption reasons distinguish shutdown
+from a settled run. Enqueue does not invent a delivered user message. Targeted
+message reads hydrate missing tool context and native compaction identity; tool
+and assistant-header updates do not replay unrelated text ahead of later deltas.
+Source checks cover the minimum 2.0.11 message-query and interruption shapes;
+mapper/parser fixtures are not evidence of a native event sequence.
+
 ## Exploration Guidance
 
 Vary which harness runs first and which stays disabled, and the configuration: default
