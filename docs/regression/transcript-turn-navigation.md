@@ -56,7 +56,10 @@ stored or sent to the bridge.
   three lines of that text, or the first attachment's name when it has no text.
   The cut holds whatever a prompt contains — a code fence, a table or an image
   never makes the pinned row taller — at any width and text scale, so the
-  transcript beneath never shifts. The next turn's prompt pushes it out as it
+  transcript beneath never shifts. Only the start of the prompt is built, so
+  pinning a pasted document costs no more than pinning a sentence, and a remote
+  image renders as the bubble's own open button: pinning a prompt never fetches
+  from the host it names. The next turn's prompt pushes it out as it
   reaches it. Only an opening prompt is pinned, never a follow-up or
   automation, and nothing is pinned while folded or over the messages before
   the first prompt. A tap on the bubble puts that prompt at the top edge, which
@@ -76,7 +79,7 @@ stored or sent to the bridge.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated, no plugin: every branch of the turn rule, the leading segment, summaries and determinism; the fold state across reload and per page; the event once per fold and never on unfold or a repeated fold; folded rows and lines; holding the top-edge turn, a tapped turn and far turns not yet built, while following and after a clamp at the latest edge; both buttons and the desktop shortcuts per platform; touch and trackpad pinch per platform (iOS, Android, macOS): once per gesture, one finger held still, below the thresholds, the turn under the fingers while following and while reading history, and one-finger scroll, peek and nested horizontal scroll unaffected; the pinned prompt appearing as its prompt leaves the top edge, pushed out by the next one, hidden while folded and before the first prompt, cut at three lines at a narrow width and at a large text scale and with a table, a code fence and an image in the prompt, and jumping to its prompt on a tap on the bubble and through its semantics button, also when that prompt is not built, while a tap beside the bubble does nothing and a drag on the band still scrolls. |
+| L2 Routine | Automated, no plugin: every branch of the turn rule, the leading segment, summaries and determinism; the fold state across reload and per page; the event once per fold and never on unfold or a repeated fold; folded rows and lines; holding the top-edge turn, a tapped turn and far turns not yet built, while following and after a clamp at the latest edge; both buttons and the desktop shortcuts per platform; touch and trackpad pinch per platform (iOS, Android, macOS): once per gesture, one finger held still, below the thresholds, the turn under the fingers while following and while reading history, and one-finger scroll, peek and nested horizontal scroll unaffected; the pinned prompt appearing as its prompt leaves the top edge, pushed out by the next one, hidden while folded and before the first prompt, cut at three lines at a narrow width and at a large text scale and with a table, a code fence and an image in the prompt, a remote image rendered as the open button rather than fetched, only the opening of a pasted document built, a fence the cut leaves open still a code block, and jumping to its prompt on a tap on the bubble and through its semantics button, also when that prompt is not built, while a tap beside the bubble does nothing and a drag on the band still scrolls. |
 | L3 Release | Client end to end on the release-target phone and on macOS, on a session of three or more pages: the button and ⌘−/⌘= from mid-turn and from a prompt on screen keep the reader's turn in place; a line tap unfolds at its turn; a fold and unfold from one of the last turns returns to the turn at the top edge; a real-device pinch in and out on the phone and a macOS trackpad pinch, while following (the turn under the fingers stays and following stops) and while reading history (it stays detached), with one-finger scroll, the peek and a code block's horizontal scroll unaffected; a running turn's line; the pinned prompt through a long turn with no visible lag, pushed out by the next prompt, its Markdown rendered and cut with no change of height as the pinned turn changes, and jumping on a tap on the bubble; paging older turns while folded; screen readers read the lines, the button and the pinned prompt, whose action jumps to it; `transcript_turns_folded` arrives. Android, Windows and Linux: the button, and Ctrl+−/Ctrl+= on the desktops. Live plugin plus client, every supporting production plugin: a follow-up sent while a turn runs stays in that turn, or opens one where `docs/HARNESS_CAPABILITIES.md` says so; Claude and Pi automation stays inside its turn and is never pinned; a forced Claude re-import keeps follow-ups, peers and task outcomes in their turns. |
 | L4 Extended | Switch while text streams and while an older page loads; fold, then reopen the session and open another. |
 | L5 Full | No additional coverage. |
@@ -107,6 +110,8 @@ answer and a folded line, and on a trackpad while text streams.
   the next prompt instead of being pushed out, or swallows a scroll.
 - The pinned row shows Markdown source, changes height as it renders or as the
   pinned turn changes, or a tap beside the bubble jumps.
+- The pinned row fetches a remote image instead of showing the open button, or
+  a scroll that pins a long pasted prompt stalls.
 - The fold resets on reload, carries into another session, or rows ease in.
 - A button shows the other state, a shortcut fires outside the session page or
   with the other platform's modifier, or types into the composer.
@@ -135,8 +140,11 @@ answer and a folded line, and on a trackpad while text streams.
   pinches nor scrolls leaves the list detached, as before pinch existed.
 - The pinned prompt's cut is approximate: Markdown blocks have their own
   metrics, so the last visible line can be part of a block rather than a whole
-  line of text. The pinned prompt can trail a scroll by one frame, and while
-  pinned it covers the top of the rows beneath it.
+  line of text. Only the prompt's first few thousand characters are rendered
+  there, far more than three lines can show, so a construct that needs a later
+  line — a link reference definition — reads as source in the pinned row only.
+  The pinned prompt can trail a scroll by one frame, and while pinned it covers
+  the top of the rows beneath it.
 
 ## Sources
 

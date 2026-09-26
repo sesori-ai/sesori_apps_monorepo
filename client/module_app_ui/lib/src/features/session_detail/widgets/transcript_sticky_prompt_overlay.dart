@@ -11,8 +11,8 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
 import "../../../widgets/markdown_styles.dart";
-import "text_part_widget.dart" show MarkdownMessageImage;
 import "transcript_sticky_position.dart";
+import "user_prompt_markdown_image.dart";
 
 /// The prompt of the turn being read, pinned over the transcript's top edge
 /// in the user bubble's style, rendered as Markdown and clipped to about three
@@ -129,9 +129,9 @@ class const TranscriptStickyPromptOverlay({
     );
   }
 
-  /// The prompt's Markdown, rendered as the user bubble renders it, cut off at
-  /// the bubble's height so no code fence, table or image can make the pinned
-  /// row grow.
+  /// The start of the prompt's Markdown, rendered as the user bubble renders
+  /// it, cut off at the bubble's height so no code fence, table or image can
+  /// make the pinned row grow.
   Widget _cutMarkdown({
     required BuildContext context,
     required String markdown,
@@ -141,18 +141,35 @@ class const TranscriptStickyPromptOverlay({
     return _CutToHeight(
       maxHeight: maxHeight,
       child: MarkdownBody(
-        data: markdown,
+        data: _boundedSource(markdown: markdown),
         selectable: false,
         softLineBreak: true,
         styleSheet: styleSheet,
-        // The transcript's bounded image preview, so a remote image cannot pull
-        // a full-size decode into a row that only ever shows its top.
-        imageBuilder: (uri, _, alt) => MarkdownMessageImage(uri: uri, semanticLabel: alt),
+        // The user bubble's own image rule, so a pinned prompt discloses no
+        // more to a remote host than the prompt's own bubble does: nothing.
+        imageBuilder: (uri, _, alt) => buildUserPromptMarkdownImage(context: context, uri: uri, semanticLabel: alt),
         blockSyntaxes: sessionMarkdownBlockSyntaxes,
         builders: buildSessionMarkdownBuilders(highlightEnabled: true, copyTooltip: context.loc.sessionDetailCopy),
       ),
     );
   }
+
+  /// As much of the prompt as the row could ever paint, and no more. A pasted
+  /// document can be megabytes long; building and laying out all of its tables,
+  /// fences and images to paint three lines of it would make every scroll that
+  /// pins a prompt cost as much as that prompt is long. Well over three lines'
+  /// worth, so the paint-level cut, not this one, is what the reader sees.
+  ///
+  /// Cutting mid-document can leave a code fence open, which the Markdown
+  /// parser reads as a fenced block running to the end of the prefix: a code
+  /// block, never bare backticks.
+  static String _boundedSource({required String markdown}) {
+    return markdown.length <= _sourceCharacterBudget ? markdown : markdown.substring(0, _sourceCharacterBudget);
+  }
+
+  /// Around twenty-five lines of prose at the bubble's width, so the three
+  /// painted lines are unaffected at any text scale the cut can face.
+  static const _sourceCharacterBudget = 2000;
 
   /// About three lines of the bubble's body text at the reader's text scale.
   /// Markdown blocks have their own metrics, so the cut is approximate; what

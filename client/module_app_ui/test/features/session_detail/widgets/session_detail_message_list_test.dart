@@ -2689,6 +2689,57 @@ void main() {
       expect(markdownHeight, moreOrLessEquals(tester.getSize(bubble).height, epsilon: 0.5));
     });
 
+    testWidgets("pins a remote image as the bubble's button, never as a fetch", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: "![diagram](https://example.com/diagram.png)"),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // A prompt can name any host, so pinning it must not contact that host:
+      // the bubble's own button is all a remote image ever renders as.
+      expect(find.descendant(of: overlay, matching: find.byType(MarkdownMessageImage)), findsNothing);
+      expect(find.descendant(of: overlay, matching: find.byType(TextButton)), findsOneWidget);
+      expect(pinned("diagram"), findsOneWidget);
+    });
+
+    testWidgets("builds only the start of a pasted document", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(
+          id: "u4",
+          text: _multilineText(label: "Pasted", lines: 2000),
+        ),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // Only three lines are ever painted, so the rest is not built: pinning a
+      // prompt costs the same whatever was pasted into it.
+      final built = pinnedParagraph(tester).text.toPlainText();
+      expect(built, startsWith("Pasted line 0\nPasted line 1\n"));
+      expect(built, isNot(contains("Pasted line 500")));
+    });
+
+    testWidgets("pins a fence left open by the cut as a code block, not backticks", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(
+          id: "u4",
+          text: "```dart\n${_multilineText(label: "// pasted", lines: 400)}\n```",
+        ),
+        folded: false,
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      expect(find.descendant(of: overlay, matching: find.byType(CodeBlock)), findsOneWidget);
+      expect(find.descendant(of: overlay, matching: find.textContaining("```", findRichText: true)), findsNothing);
+    });
+
     testWidgets("a tap on the bubble puts its prompt at the top edge and stops following", (tester) async {
       await _pumpTurns(tester, messages: shortTurns, folded: false);
       await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);

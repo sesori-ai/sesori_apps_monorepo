@@ -7,7 +7,7 @@ import "../../../extensions/build_context_x.dart";
 import "../../../widgets/markdown_styles.dart";
 import "../session_detail_markdown_link_handler.dart";
 import "attachment_collection_widget.dart";
-import "text_part_widget.dart" show MarkdownMessageImage;
+import "user_prompt_markdown_image.dart";
 
 class const UserMessageCard({super.key, required final MessageWithParts message}) extends StatelessWidget {
   @override
@@ -82,7 +82,7 @@ class const UserMessageBubble({
                     selectable: false,
                     softLineBreak: true,
                     onTapLink: buildSessionDetailMarkdownLinkTapHandler(context: context),
-                    imageBuilder: (uri, title, alt) => _userMarkdownImage(
+                    imageBuilder: (uri, title, alt) => buildUserPromptMarkdownImage(
                       context: context,
                       uri: uri,
                       semanticLabel: alt,
@@ -96,46 +96,6 @@ class const UserMessageBubble({
                   ),
                 ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _userMarkdownImage({
-    required BuildContext context,
-    required Uri uri,
-    required String? semanticLabel,
-  }) {
-    final scheme = uri.scheme.toLowerCase();
-    final isSafeRemote = (scheme == "http" || scheme == "https") && uri.host.isNotEmpty && uri.userInfo.isEmpty;
-    if (!isSafeRemote) {
-      return MarkdownMessageImage(uri: uri, semanticLabel: semanticLabel);
-    }
-
-    final prego = context.prego;
-    final normalizedLabel = semanticLabel?.trim();
-    final label = normalizedLabel == null || normalizedLabel.isEmpty
-        ? context.loc.sessionDetailImageOpen
-        : normalizedLabel;
-    final handleLink = buildSessionDetailMarkdownLinkTapHandler(context: context);
-    return TextButton.icon(
-      onPressed: () => handleLink(label, uri.toString(), ""),
-      icon: const Icon(TablerRegular.photo, size: PregoIconSize.sm),
-      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      style: TextButton.styleFrom(
-        foregroundColor: prego.colors.textPrimary,
-        backgroundColor: prego.colors.textPrimary.withValues(alpha: 0.08),
-        minimumSize: const Size(44, 44),
-        padding: const EdgeInsetsDirectional.symmetric(
-          horizontal: PregoSpacing.lg,
-          vertical: PregoSpacing.md,
-        ),
-        textStyle: prego.textTheme.textSm.medium,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(PregoRadius.md),
-          side: BorderSide(
-            color: prego.colors.textPrimary.withValues(alpha: 0.24),
           ),
         ),
       ),
