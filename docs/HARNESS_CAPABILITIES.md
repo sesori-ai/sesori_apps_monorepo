@@ -220,6 +220,24 @@ the client never starts its own clock.
 | Claude | ✅ Live from the `--replay-user-messages` echo's `timestamp` (verified 2026-09-26 on CLI 2.1.281), and after reload from the transcript record. A slash command's synthetic bubble is stamped at dispatch. |
 | Grok, Antigravity, Copilot, Cursor, Hermes, OMP | ❌ Not implemented: the ACP prompt carries no time, so "Working…" shows no timer. A bridge-side prompt stamp is planned. |
 
+While only sub-agents run (the main agent streams nothing and runs no step of
+its own), the transcript shows "N sub-agents running in the background · time"
+and "You can keep chatting meanwhile." The time counts from the earliest
+running sub-agent's start: the `time.created` of the message holding its
+sub-agent step, else the child session's own `time.created`. With neither, the
+row shows no timer. The second line claims that a prompt sent now reaches the
+main agent at once; no harness where the row shows queues it behind the
+sub-agents.
+
+| Harness | Sub-agent start | Prompt while sub-agents run |
+|---|---|---|
+| Claude | ✅ The sub-agent step's message time. | ✅ Written to the CLI at once and starts a turn; background tasks never force a turn boundary. |
+| Codex | ✅ The sub-agent step's message time. | ✅ `turn/start` at once. Verified live 2026-09-26 on codex-cli 0.156.1 (app-server): the parent's turn ended with its sub-agent still running `sleep 90`, and a new prompt started a parent turn answered in 2 s. |
+| OpenCode | ✅ The child session's `time.created`. | ✅ For background children the parent is idle and `prompt_async` starts a turn. A foreground Task is the parent's own running step, so the row does not show. |
+| DeepSeek | ✅ The sub-agent step's message time. | ✅ By code, not probed live (the adapter is not installed on the probe machine): the parent idles while a background child runs, and the shared ACP path sends `session/prompt` at once. A prompt that meets DeepSeek's own follow-up turn after a child settles is unconfirmed. |
+| Grok | ❌ No time: no message or child session carries one, so the row shows no timer. | ✅ `session/prompt` at once while the root is idle. A prompt sent during the wake turn that follows a finished sub-agent cancels that turn and is then answered. |
+| Cursor, Antigravity, Copilot, Hermes, OMP, Pi | Not applicable: no running sub-agent lifecycle reaches the client, so the row never shows. | Not applicable. |
+
 ## OpenCode v2 adapter (not yet active)
 
 The staged adapter targets the public 2.0.11–2.0.16 API; active v1 behavior is unchanged.

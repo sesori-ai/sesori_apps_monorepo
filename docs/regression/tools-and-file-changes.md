@@ -88,7 +88,18 @@ sub-agent parts, plus the signal that a tool changed files.
   (see “Live timers” in `docs/HARNESS_CAPABILITIES.md`) it reads plain
   “Working…”. Screen readers hear the time as of the row's build, not every
   second. Transcript durations read “42s”, “1m 02s” or “1h 05m 12s”, seconds
-  always shown. A retry row replaces it, with the same
+  always shown. While a sub-agent runs and the main agent itself does nothing
+  (no step of its own runs, no text streams, no retry row), a sub-agent row
+  takes the same slot, easing in as “Working…” eases out: a spinner like the
+  composer's sub-agent pill (never the sparkle or a shimmer), “2 sub-agents
+  running in the background · 3m 05s” and a muted second line “You can keep
+  chatting meanwhile.” It counts running sub-agents as the pill does (busy or
+  retrying) and ticks from the earliest one's start: the message holding its
+  sub-agent step, else its own session's creation; with neither it shows no
+  time. Both lines always show, so the row keeps its height as the count or
+  time changes. It hides while a question or permission waits. Which harnesses
+  show it, with a time, is under “Live timers” in
+  `docs/HARNESS_CAPABILITIES.md`. A retry row replaces it, with the same
   sparkle and band, and folds away when the retry error clears. Streaming thinking shows a shimmering “Thinking...” with one
   line of its
   latest words below, the older start fading out; a finished thought is one row,
@@ -246,9 +257,9 @@ sub-agent parts, plus the signal that a tool changed files.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated presentation only: command disclosure/two-axis scrolling, exact command/output copy, six statuses, streaming updates, keyboard activation, eased and reduced-motion disclosure, enlarged text and both themes; attachment visibility and title-only older-peer rendering; every step kind lining up in one row layout with a bold, capitalised label at phone and desktop density; the sparkle leading a live row, and the “Working…” row showing while busy with no live step or streaming text and leaving when a step starts, text streams, the session idles or a retry row shows, ticking “Working… · time” on each whole second from the prompt's sent time or reading plain “Working…” without one, and durations reading “42s”, “1m 02s” and “1h 05m 12s”; a finished live row folding into its group while its count rolls, including one that finishes before it has eased in, a group reading “N steps” with no kind list or failed count and a lone finished step reading “1 step”, a failed step still red in the opened group, a group opening in a desktop popover (Esc and outside-click dismissal, capped height) or a phone sheet without changing the transcript height, instant changes under reduced motion, and a pinned reader staying pinned through the fold. Authoritative tool execution still requires a live turn. |
+| L1 Smoke | Automated presentation only: command disclosure/two-axis scrolling, exact command/output copy, six statuses, streaming updates, keyboard activation, eased and reduced-motion disclosure, enlarged text and both themes; attachment visibility and title-only older-peer rendering; every step kind lining up in one row layout with a bold, capitalised label at phone and desktop density; the sparkle leading a live row, and the “Working…” row showing while busy with no live step or streaming text and leaving when a step starts, text streams, the session idles or a retry row shows, ticking “Working… · time” on each whole second from the prompt's sent time or reading plain “Working…” without one, and durations reading “42s”, “1m 02s” and “1h 05m 12s”; the sub-agent row easing in for “Working…” while only sub-agents run, with a spinner, two lines, a time from the earliest start or none when no start is known, a steady height, the screen-reader label read once, and giving way to the main agent's own step, streaming text, a retry row, idle and a waiting question; a finished live row folding into its group while its count rolls, including one that finishes before it has eased in, a group reading “N steps” with no kind list or failed count and a lone finished step reading “1 step”, a failed step still red in the opened group, a group opening in a desktop popover (Esc and outside-click dismissal, capped height) or a phone sheet without changing the transcript height, instant changes under reduced motion, and a pinned reader staying pinned through the fold. Authoritative tool execution still requires a live turn. |
 | L2 Routine | Live plugin, representative: a file-editing tool produces a lightweight tool part with name and terminal status, while a shell tool preserves its command and bounded result. |
-| L3 Release | Client end to end (phone), every supporting production plugin: status normalizes consistently, non-shell tool snippets are absent, and shell commands/results/errors render; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok target coverage: a complete lightweight tool lifecycle, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. Grok owned-phone coverage passed completed-tile rendering, exact read-only child navigation, and genuine permission Once. File diff/invalidation, mutating-tool permission linkage, failing-tool presentation, and permission denial remain unexecuted. |
+| L3 Release | Client end to end (phone), every supporting production plugin: status normalizes consistently, non-shell tool snippets are absent, and shell commands/results/errors render; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. On Claude, Codex, OpenCode (background children), DeepSeek and Grok the sub-agent row takes over from “Working…” once the main agent goes quiet, and a prompt sent while it shows is answered before the sub-agents finish. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok target coverage: a complete lightweight tool lifecycle, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. Grok owned-phone coverage passed completed-tile rendering, exact read-only child navigation, and genuine permission Once. File diff/invalidation, mutating-tool permission linkage, failing-tool presentation, and permission denial remain unexecuted. |
 | L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity and status intact, shell commands retain their results, and non-shell snippets remain absent; a failing shell command surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, a resumed terminal agent returns to running in both its tile and child status, and a failed sub-agent renders `error` with the notification summary. |
 | L5 Full | Client end to end, every supporting production plugin: rune-boundary truncation is exact for multi-byte shell output; attachments render where emitted and unsafe or malformed sources degrade to metadata; unknown status from a newer peer degrades gracefully. |
 
@@ -323,6 +334,11 @@ edge (see `transcript-turn-navigation.md`).
 - “Working…” shows a time that restarts on reopen, runs backwards, differs
   from the folded turn's duration once it finishes, or is announced every
   second.
+- The sub-agent row shows “Working” or the sparkle, shows while a question or
+  permission waits or beside the main agent's own running step or streaming
+  text, jumps instead of easing when it takes over from “Working…”, changes
+  height as its count or time changes, or claims chatting on a harness where a
+  prompt would wait for the sub-agents.
 - Backend naming or payload shape reaches the client unnormalized, or a local
   path or unsafe URL crosses the attachment contract.
 - A part carries fields owned by another variant, or a released known-type
@@ -396,7 +412,9 @@ edge (see `transcript-turn-navigation.md`).
 
 - Live row: `TranscriptActivityBuilder`
   (`client/module_core/lib/src/cubits/session_detail/transcript_activity.dart`);
-  `TranscriptWorkingRow`, `TranscriptElapsedTime` and
+  `runningChildren`
+  (`client/module_core/lib/src/cubits/session_detail/session_detail_resolvers.dart`);
+  `TranscriptWorkingRow`, `TranscriptSubAgentsRow`, `TranscriptElapsedTime` and
   `TranscriptDurationFormatter` under
   `client/module_app_ui/lib/src/features/session_detail/widgets/`, with their
   tests

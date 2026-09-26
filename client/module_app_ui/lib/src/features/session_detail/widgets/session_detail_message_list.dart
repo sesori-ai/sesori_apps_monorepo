@@ -690,9 +690,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final activity = const TranscriptActivityBuilder().build(
       transcript: transcript,
       turns: turns,
+      messages: messages,
       isBusy: isBusy,
       retryErrorMessage: retryErrorMessage,
       hasStreamingText: streamingText.isNotEmpty,
+      children: children,
+      childStatuses: childStatuses,
     );
     // The message rows in order, each with its turn: folded, a prompt turn's
     // prompt and one stub for the rest; unfolded, every rendered message.
@@ -1039,11 +1042,22 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }
 
   /// The working row eases in when work starts or a step ends, and away when
-  /// a step starts or work ends.
+  /// a step starts or work ends. The sub-agent row takes over, easing, while
+  /// only sub-agents work.
   Widget _workingRow({required TranscriptActivity activity}) => TranscriptPresenceColumn(
     children: [
-      if (activity case TranscriptActivityWorking(:final sinceMs))
-        TranscriptWorkingRow(key: const ValueKey("session-detail-working"), sinceMs: sinceMs),
+      ?switch (activity) {
+        TranscriptActivityWorking(:final sinceMs) => TranscriptWorkingRow(
+          key: const ValueKey("session-detail-working"),
+          sinceMs: sinceMs,
+        ),
+        TranscriptActivitySubAgents(:final count, :final sinceMs) => TranscriptSubAgentsRow(
+          key: const ValueKey("session-detail-sub-agents"),
+          count: count,
+          sinceMs: sinceMs,
+        ),
+        TranscriptActivityIdle() => null,
+      },
     ],
   );
 

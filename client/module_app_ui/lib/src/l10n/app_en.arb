@@ -897,6 +897,19 @@
       }
     }
   },
+  "transcriptSubAgentsRunning": "{count, plural, =1{1 sub-agent running in the background} other{{count} sub-agents running in the background}}",
+  "@transcriptSubAgentsRunning": {
+    "description": "First line of the transcript's live row while only sub-agents work and the main agent does nothing itself. The elapsed time may follow after ' · ', e.g. '2 sub-agents running in the background · 3m 05s'.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "transcriptSubAgentsKeepChatting": "You can keep chatting meanwhile.",
+  "@transcriptSubAgentsKeepChatting": {
+    "description": "Muted second line of the transcript's sub-agent row: a prompt sent now reaches the main agent while the sub-agents keep running."
+  },
   "transcriptFoldAll": "Fold all turns",
   "@transcriptFoldAll": {
     "description": "Label of the session toolbar button that folds every turn of the transcript to one line each."

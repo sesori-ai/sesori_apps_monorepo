@@ -1393,6 +1393,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String transcriptSubAgentsRunning(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sub-agents running in the background',
+      one: '1 sub-agent running in the background',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get transcriptSubAgentsKeepChatting => 'You can keep chatting meanwhile.';
+
+  @override
   String get transcriptFoldAll => 'Fold all turns';
 
   @override
