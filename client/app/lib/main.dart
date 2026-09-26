@@ -22,6 +22,7 @@ import "core/platform/firebase_analytics_startup.dart";
 import "core/platform/singular_attribution_startup.dart";
 import "core/routing/app_router.dart";
 import "core/routing/deep_link_service.dart";
+import "core/widgets/feedback_voice_input_scope.dart";
 import "firebase_options.dart";
 
 const _singularSdkKeyDefine = String.fromEnvironment("SESORI_SINGULAR_SDK_KEY");
@@ -41,13 +42,35 @@ void _configureFirebaseSdk({
 
   if (supportsCrashlytics) {
     final crashlytics = getIt<FirebaseCrashlytics>();
-    FlutterError.onError = crashlytics.recordFlutterFatalError;
+    final feedbackPromptService = getIt<FeedbackPromptService>();
+    // A crash also restarts the count toward the automatic rating sheet.
+    FlutterError.onError = (details) {
+      unawaited(feedbackPromptService.recordFailure());
+      unawaited(crashlytics.recordFlutterFatalError(details));
+    };
     // Pass uncaught asynchronous errors outside the Flutter framework to Crashlytics.
     PlatformDispatcher.instance.onError = (error, stack) {
+      unawaited(feedbackPromptService.recordFailure());
       crashlytics.recordError(error, stack, fatal: true);
       return true;
     };
   }
+}
+
+/// Starts counting toward the automatic rating sheet, restarting the count
+/// when the previous launch crashed without reaching the handlers above.
+void _startFeedbackPrompt({required bool supportsCrashlytics}) {
+  final feedbackPromptService = getIt<FeedbackPromptService>()..start();
+  if (!supportsCrashlytics) return;
+  unawaited(
+    () async {
+      if (await getIt<FirebaseCrashlytics>().didCrashOnPreviousExecution()) {
+        await feedbackPromptService.recordFailure();
+      }
+    }().catchError((Object error, StackTrace stackTrace) {
+      logw("Failed to check the previous launch for a crash", error, stackTrace);
+    }),
+  );
 }
 
 void main() async {
@@ -81,18 +104,17 @@ void main() async {
           crawlGateService: crawlGateService,
         ),
       );
-      setLogSink(sink: getIt<LogSink>());
       _configureFirebaseSdk(
         supportsCrashlytics: supportsFirebaseCrashlytics,
       );
       return analyticsBootstrap;
     },
-    disposeDependenciesFn: getIt.reset,
     prepareSingularAttributionFn: _prepareSingularAttribution,
     applySingularCrawlGateFn: _applySingularCrawlGate,
     initializeDeepLinks: () => getIt<DeepLinkService>().init(),
     startAttributionFn: () => getIt<AttributionService>().start(),
     startProductAnalyticsFn: () => getIt<ProductAnalyticsService>().start(),
+    startFeedbackPromptFn: () => _startFeedbackPrompt(supportsCrashlytics: supportsFirebaseCrashlytics),
     startAnalyticsRouteListenerFn: () => getIt<AnalyticsRouteListener>().start(),
     startNotificationStartupFn: () => startNotificationStartup(
       localNotificationClient: getIt<LocalNotificationClient>(),
@@ -111,34 +133,23 @@ void main() async {
 Future<void> bootstrapSesoriApp({
   required bool shouldInitializeFirebase,
   required Future<AnalyticsRuntimeBootstrap> Function() configureDependenciesFn,
-  required Future<void> Function() disposeDependenciesFn,
   required void Function() prepareSingularAttributionFn,
   required void Function({required AnalyticsStoreCrawlGate crawlGate}) applySingularCrawlGateFn,
   required void Function() initializeDeepLinks,
   required void Function() startAttributionFn,
   required Future<void> Function() startProductAnalyticsFn,
+  required void Function() startFeedbackPromptFn,
   required Future<void> Function() startAnalyticsRouteListenerFn,
   required Future<void> Function() startNotificationStartupFn,
   required Future<AppearanceMode> Function() readAppearanceFn,
   required Future<ChatInputMode> Function() readChatInputModeFn,
   required void Function(Widget app) runAppFn,
 }) async {
-  final AnalyticsRuntimeBootstrap analyticsBootstrap;
-  try {
-    analyticsBootstrap = await configureDependenciesFn();
-  } on LegacyStorageMigrationException catch (error, stackTrace) {
-    loge("Unable to finish the local storage upgrade", error, stackTrace);
-    try {
-      await disposeDependenciesFn();
-    } on Object catch (disposeError, disposeStackTrace) {
-      loge("Failed to dispose startup dependencies after the storage upgrade failed", disposeError, disposeStackTrace);
-    }
-    runAppFn(const PersistenceStartupFailureApp());
-    return;
-  }
+  final analyticsBootstrap = await configureDependenciesFn();
   prepareSingularAttributionFn();
   initializeDeepLinks();
   await startProductAnalyticsFn();
+  startFeedbackPromptFn();
   await startAnalyticsRouteListenerFn();
   if (shouldInitializeFirebase) {
     unawaited(
@@ -387,13 +398,32 @@ class const _SesoriAppShell() extends StatelessWidget {
               ),
               child: SseToastListener(
                 navigatorKey: appRootNavigatorKey,
-                // Above the router, so an archive's Undo window survives
-                // leaving the project it was started in.
-                child: BlocProvider(
-                  create: (_) => PendingSessionArchiveCubit(repository: getIt<SessionRepository>()),
-                  child: PendingArchiveAlerts(
+                child: MultiBlocProvider(
+                  providers: [
+                    BlocProvider(
+                      create: (_) => FeedbackPromptCubit(feedbackPromptService: getIt<FeedbackPromptService>()),
+                    ),
+                    BlocProvider(
+                      create: (_) => FeedbackSheetCubit(
+                        appReviewClient: getIt<AppReviewClient>(),
+                        feedbackRepository: getIt<FeedbackRepository>(),
+                        feedbackPromptService: getIt<FeedbackPromptService>(),
+                        source: FeedbackSource.automatic,
+                      ),
+                    ),
+                  ],
+                  child: FeedbackPromptListener(
                     navigatorKey: appRootNavigatorKey,
-                    child: child ?? const SizedBox.shrink(),
+                    voiceInputScopeBuilder: ({required child}) => FeedbackVoiceInputScope(child: child),
+                    // Above the router, so an archive's Undo window survives
+                    // leaving the project it was started in.
+                    child: BlocProvider(
+                      create: (_) => PendingSessionArchiveCubit(repository: getIt<SessionRepository>()),
+                      child: PendingArchiveAlerts(
+                        navigatorKey: appRootNavigatorKey,
+                        child: child ?? const SizedBox.shrink(),
+                      ),
+                    ),
                   ),
                 ),
               ),

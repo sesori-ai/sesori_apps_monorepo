@@ -167,3 +167,68 @@ class const TranscriptWorkingRow({super.key, required final int? sinceMs}) exten
     duration: Duration(milliseconds: clock.now().millisecondsSinceEpoch - sinceMs),
   );
 }
+
+/// The live row while only sub-agents work: a spinner, as on the composer's
+/// sub-agent pill, never the sparkle, since the main agent is not working.
+/// With a known [sinceMs], when the earliest running sub-agent started, the
+/// first line ticks the time since. The second line always shows, so the row
+/// keeps its height as the count or the time changes.
+class const TranscriptSubAgentsRow({super.key, required final int count, required final int? sinceMs})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final loc = context.loc;
+    final running = loc.transcriptSubAgentsRunning(count);
+    final keepChatting = loc.transcriptSubAgentsKeepChatting;
+    final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
+    final sinceMs = this.sinceMs;
+    final firstLine = sinceMs == null
+        ? running
+        : "$running · ${TranscriptWorkingRow._elapsed(loc: loc, sinceMs: sinceMs)}";
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      // The label replaces the ticking text for screen readers, so the time is
+      // read as of this build instead of every second.
+      child: Semantics(
+        label: "$firstLine\n$keepChatting",
+        excludeSemantics: true,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox.square(
+              dimension: TranscriptLiveSparkle.size,
+              child: PregoActivityIndicator(color: null),
+            ),
+            SizedBox(width: prego.spacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (sinceMs == null)
+                    Text(running, style: style, maxLines: 1, overflow: TextOverflow.ellipsis)
+                  else
+                    Row(
+                      // In a narrow row the count gives way and the time stays whole.
+                      children: [
+                        Flexible(
+                          child: Text("$running · ", style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ),
+                        TranscriptElapsedTime(sinceMs: sinceMs, style: style),
+                      ],
+                    ),
+                  Text(
+                    keepChatting,
+                    style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

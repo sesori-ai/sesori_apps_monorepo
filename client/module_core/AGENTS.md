@@ -70,8 +70,13 @@ layered importer and its removal checklist. Core DI registers it lazily;
 production-mobile bootstrap awaits it after registration and before analytics,
 auth restoration or preferences. Development and desktop never resolve it.
 Shared storage remains below core in `module_persistence`; permanent domain
-keys live in `foundation/persistence/`. The mobile shell catches typed import
-failures, awaits graph disposal and renders the shared standalone recovery root.
+keys live in `foundation/persistence/`. The migration service logs import failure,
+resets destination secrets/preferences and the old native namespace, then attempts
+to mark migration handled before allowing normal logged-out startup. Failed secret
+reset preserves an untouched source and leaves import retryable on relaunch.
+Retirement requires a whole destination: a committed copy, or one the reset emptied.
+The shell installs the file sink first; recovery diagnostics retain native/SQL
+causes while excluding parser source buffers. Normal account analytics rules apply.
 
 ## Logging
 

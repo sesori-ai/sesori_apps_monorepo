@@ -64,6 +64,10 @@ class const SessionDetailMessageList({
   /// no text streaming, a "Working…" row closes the transcript.
   required final bool isBusy,
 
+  /// Whether the bridge reports the main agent mid-turn. Only while it is
+  /// not does the sub-agent row take over from "Working…".
+  required final bool mainAgentRunning,
+
   /// Requests the page of messages before the ones shown, or null when the
   /// start of the transcript is already loaded.
   required final Future<void> Function()? onLoadOlderMessages,
@@ -114,6 +118,7 @@ typedef _DetachedSnapshot = ({
   Map<String, SessionStatus> childStatuses,
   String? retryErrorMessage,
   bool isBusy,
+  bool mainAgentRunning,
 });
 
 enum _TransientStage() {
@@ -335,6 +340,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         childStatuses: frozen.childStatuses,
         retryErrorMessage: frozen.retryErrorMessage,
         isBusy: frozen.isBusy,
+        mainAgentRunning: frozen.mainAgentRunning,
       );
     });
     // The prepended rows render against the frozen `streamingText` and
@@ -372,6 +378,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           childStatuses: Map<String, SessionStatus>.unmodifiable(widget.childStatuses),
           retryErrorMessage: widget.retryErrorMessage,
           isBusy: widget.isBusy,
+          mainAgentRunning: widget.mainAgentRunning,
         );
       }
     });
@@ -673,6 +680,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final childStatuses = snap?.childStatuses ?? widget.childStatuses;
     final retryErrorMessage = snap?.retryErrorMessage ?? widget.retryErrorMessage;
     final isBusy = snap?.isBusy ?? widget.isBusy;
+    final mainAgentRunning = snap?.mainAgentRunning ?? widget.mainAgentRunning;
 
     final indexById = _indexByIdFor(messages: messages);
     final transcript = const TranscriptBuilder().build(
@@ -690,9 +698,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final activity = const TranscriptActivityBuilder().build(
       transcript: transcript,
       turns: turns,
+      messages: messages,
       isBusy: isBusy,
+      mainAgentRunning: mainAgentRunning,
       retryErrorMessage: retryErrorMessage,
       hasStreamingText: streamingText.isNotEmpty,
+      children: children,
+      childStatuses: childStatuses,
     );
     // The message rows in order, each with its turn: folded, a prompt turn's
     // prompt and one stub for the rest; unfolded, every rendered message.
@@ -1039,11 +1051,22 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }
 
   /// The working row eases in when work starts or a step ends, and away when
-  /// a step starts or work ends.
+  /// a step starts or work ends. The sub-agent row takes over, easing, while
+  /// only sub-agents work.
   Widget _workingRow({required TranscriptActivity activity}) => TranscriptPresenceColumn(
     children: [
-      if (activity case TranscriptActivityWorking(:final sinceMs))
-        TranscriptWorkingRow(key: const ValueKey("session-detail-working"), sinceMs: sinceMs),
+      ?switch (activity) {
+        TranscriptActivityWorking(:final sinceMs) => TranscriptWorkingRow(
+          key: const ValueKey("session-detail-working"),
+          sinceMs: sinceMs,
+        ),
+        TranscriptActivitySubAgents(:final count, :final sinceMs) => TranscriptSubAgentsRow(
+          key: const ValueKey("session-detail-sub-agents"),
+          count: count,
+          sinceMs: sinceMs,
+        ),
+        TranscriptActivityIdle() => null,
+      },
     ],
   );
 

@@ -7,10 +7,12 @@
 - **Status:** Active — steps 1–5 and private Windows/Linux packaging are merged.
   The user retired Gate C and the listed remaining macOS QA prerequisites on
   2026-09-26, accepting their coverage gaps. MacOS publication is admitted;
-  signed/notarized **internal `1.9.1+987`** packages are publicly verified on both CPUs.
-  Website wiring and ordinary production-release follow-through remain; stable macOS
-  publication has not occurred. Stable build 981's authenticated/Off acceptance and
-  the 82-test shutdown audit retain their recorded scope, not fresh build-987 claims.
+  signed/notarized internal packages are public on both CPUs. Ordinary shared build
+  `1.9.1+991` completed automatic attachment, and the deployed website selected
+  `1.9.1+993` during live verification on 2026-09-26. Stable macOS publication remains
+  pending its ordinary production submission. Stable build 981's authenticated/Off
+  acceptance and the 82-test shutdown audit retain their recorded scope; later public
+  links do not establish fresh authenticated replacement or shared-store qualification.
   Windows signing/winget, Linux signed repositories, six-target onboarding and final
   reconciliation/retirement remain open. Shipping order stays macOS, Windows, Linux.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
@@ -451,9 +453,29 @@ with the publisher's completion manifest, retiring older previews only after a n
 completion. Stable npm cleanup preserves those channel-specific previews regardless of
 stable desktop availability. Two transient shell values; no new persistent pointer,
 owner or core build dependency. Verify both cleanup shells with offline GitHub fixtures.
-No app/database change.
-Website wiring follows; stable production retains its existing approval. Do not retire
-the six-platform plan.
+No app/database change. Merged as #1761, squash
+`d72c9ae976a690569593eb925340d8d1e21c7d2b`. Stable production retains its existing
+approval; the six-platform plan stays active.
+
+**Step 6 website continuation:**
+`⚙️ [desktop-distribution] Connect website to completed macOS previews [step 8.n/14]`.
+Merged in `sesori-ai/landingpage#111`, squash
+`d3ab0da1ac001c86e83089daf9a3937fc3c9ef6e`. The existing Astro server selects completed
+shared releases independently by channel, preserving all app-linked anchors and
+unavailable platforms. One five-minute cache coalesces lookups; all anonymous release
+pages share one five-second timeout. No new dependency, background poller, persistent
+pointer or publication authority. Stable controls/schema never borrow preview availability.
+Tests use synthetic release metadata and a process-local SSR fetch fixture. Real-widget
+images use demo data and disclose native-control differences. The base-branch merge
+triggered the existing automatic website deployment; no separate deploy command is needed.
+
+**Step 6 publication/deployment record:**
+`🌱 [desktop-distribution] Record live macOS downloads and automatic publication [step 8.o/14]`.
+Reconcile admission, ordinary shared build-991 attachment and the deployed website's
+build-993 selection. Record anonymous link/metadata agreement and browser behavior
+without claiming new full-byte, native or authenticated qualification. Docs only; no
+application/database change, mutable state or new cleanup owner. Stable production,
+Windows/Linux admission, parent lifecycle reconciliation and final retirement stay separate.
 
 **Step 6 continuation PR:**
 `🚧 [desktop-distribution] Qualify signed macOS manual replacement [step 8/14]`.

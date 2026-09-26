@@ -9,6 +9,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 ## Runtime Target Coverage
 
 Targets audited on **2026-09-24**, covering all eleven registered harnesses.
+OpenCode was refreshed on **2026-09-26** with the scoped evidence below.
 Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 6,
 Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. GitHub digests and available
 checksum lists agree; Cursor/Antigravity hashes are locally computed, not publisher

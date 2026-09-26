@@ -19,8 +19,12 @@ desktop do not resolve it. No coding plugin participates.
   usable while unlock is pending or denied. Failed initialization stays failed
   for that repository instance, without automatic prompt retries.
 - A missing key is generated only when no encrypted rows exist, then persisted
-  before ciphertext. Key loss, malformed keys, wrong keys or damaged envelopes
-  fail explicitly without clearing or silently re-keying saved data.
+  before ciphertext. Normal reads/writes fail explicitly on key loss, malformed
+  keys, wrong keys or damaged envelopes, without silently clearing/re-keying.
+  Explicit startup-only reset attempts ciphertext clearing and native-key replacement
+  independently, retaining both errors. Its failed future stays cached, fencing
+  partial auth in that process; successful key replacement also invalidates old
+  ciphertext on relaunch if SQL deletion failed.
 - Ciphertext authenticates its version, scope and row identity. Each write uses
   a fresh nonce. Encryption/SQL failures preserve the last committed row.
 - Native errors preserve typed diagnostic causes without rendering protected
@@ -38,18 +42,32 @@ desktop do not resolve it. No coding plugin participates.
   literal user identities, including pending analytics disable JSON. Parse only
   the known bool; malformed present values fail rather than become defaults.
 - Commit all typed destination writes before deleting any copied native item.
-  Mark complete only after cleanup. Copy failure retains all source entries;
-  interrupted cleanup/marker writes retry on relaunch by merging remaining
-  source entries without erasing already committed absent-source rows.
+  Successful import marks complete only after named cleanup. Process interruption
+  retries on relaunch by merging remaining source entries without erasing already
+  committed absent-source rows; caught failures instead use the reset below.
 - Failures retain cause, stack and operation with payload-free presentation.
   No dual reads/writes, per-key progress, native mirror or automatic retry.
 - Production admission occurs after lazy platform/persistence/auth/core
   registration and before analytics runtime creation, auth restoration, deep
   links or preference reads. Development must not even construct the source.
-- On typed import failure, await graph disposal before rendering the standalone
-  localized recovery root. Disposal failure is logged separately and still
-  allows rendering. No normal consumers, telemetry, automatic retry, raw error
-  text or destructive recovery advice. OS close/reopen retries the import.
+- On caught import failure, attempt scoped secret reset and atomic primitive
+  clearing before normal logged-out startup. Retire the import only when the
+  destination is whole: the copy committed every value, or the reset emptied it.
+  Otherwise preserve the untouched source and leave import retryable on cold launch;
+  never mark half-copied or half-fenced destination state handled. A committed copy
+  stays trusted when unfenced, and its source remainder is never imported in halves.
+  After secret reset succeeds, clear the old namespace and attempt completion even
+  after preference/source cleanup failure. Either clearing or the marker fences the
+  source; when neither can be recorded it stays importable, and a session
+  established before the next launch may be replaced by that import. The new
+  master belongs to a separate namespace. No automatic retry or blocking screen.
+- Install the app file sink before migration. Log the original and each recovery
+  failure, including underlying native/SQL messages/codes and both reset stacks.
+  Exclude parser source buffers containing values/keys, not all diagnostic details.
+- Successful reset allows fresh login. Normal account/server analytics preferences
+  apply; the user accepted losing pending local-only opt-out on this destructive
+  path. Persistent storage denial can still reject normal reads/writes; recovery
+  must not report denied cleanup as successful or claim all state was cleared.
 - The removal checklist lives with the deprecated module. Retire it only when
   supported direct upgrades exclude public per-value-native mobile builds.
 
@@ -86,9 +104,9 @@ for the affected consumer boundaries.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Typed primitive/secret roundtrips, absence/defaults, false/empty values and key-local updates/deletes through the shared repositories. Verify shell master keys/options, lazy construction, missing values/error forwarding and persistent directory resolution. Automated with real SQLite and mocked native channels; no coding plugin. |
-| L2 Routine | Automated SQL/crypto/DI and widget fixtures: concurrency, cached failure, plaintext independence, key-save ordering, corruption/rollback, complete import inventory and restart recovery. Production admission precedes consumers and pending opt-out restoration; development never constructs the source. Local auth/preferences survive cold reopen. Failure disposes before rendering, even if disposal fails; recovery is service-free in both themes and large text. Native ports remain fake; no plugin. |
+| L2 Routine | Automated SQL/crypto/DI and widget fixtures: concurrency, cached failure, plaintext independence, key-save ordering, corruption/rollback, complete import inventory and restart recovery. Production admission precedes consumers and pending opt-out restoration; development never constructs the source. Local auth/preferences survive cold reopen. Caught source/copy/cleanup/marker failures attempt reset before consumers; verify fresh writes, cached reset failure, independent cleanup logging and stale-source fencing. Native ports remain fake; no plugin. |
 | L3 Release | Actual iOS and Android released-format native fixtures: preserve auth/OAuth/relay/preferences/scoped identities and pending opt-out, clean only copied items, restore after restart, and write subsequent values only to the new store. Prove production admission and development isolation in those native fixtures. Packaged Developer ID macOS arm64 plus native Windows/Linux: shared SQLite/master roundtrip, cold reopen and new-format replacement preserving the database/master pairing on all three platforms. No plugin. |
-| L4 Extended | Shared suites on macOS/Windows/Linux; actual mobile interruption at copy/cleanup/marker boundaries, native enumeration/decryption failure without an empty-success result, and recovery presentation. Qualify paired iOS database/master encrypted-backup restore, Android cloud/device-transfer exclusions and fresh new-device state, and explicit copied-DB/key-loss failure. Native macOS denial, unchanged relaunch and same-identity replacement preserve committed data; record actual prompts separately from adapter call counts. No plugin. |
+| L4 Extended | Shared suites on macOS/Windows/Linux; actual mobile interruption at copy/cleanup/marker boundaries, native enumeration/decryption failure without an empty-success result, and reset followed by the normal login flow (including cleanup denial). Qualify paired iOS database/master encrypted-backup restore, Android cloud/device-transfer exclusions and fresh new-device state, and explicit copied-DB/key-loss failure. Native macOS denial, unchanged relaunch and same-identity replacement preserve committed data; record actual prompts separately from adapter call counts. No plugin. |
 | L5 Full | No additional feature-specific coverage beyond the complete L4 matrix. |
 
 ## Exploration Guidance
@@ -114,12 +132,16 @@ channel mocks and old-format package evidence do not establish the L3/L4 matrix.
   before its key, or a pending unlock blocking unrelated plaintext operations.
 - Eager filesystem I/O during composition or an opened database connection
   remaining usable after graph disposal.
-- Legacy cleanup before all copies commit, unknown items deleted, a completed
-  import reading legacy storage, or restart erasing already committed rows.
-- Pending analytics disable, scoped identity, empty value or diagnostic cause lost.
-- Development consuming production legacy data, consumers starting before import
-  completion, or migration/disposal failure preventing safe recovery rendering.
-- Rendering before disposal settles or failure copy exposing payloads.
+- Successful-import cleanup before all copies commit, unknown items deleted on
+  that success path, completed import reading legacy storage, or an interrupted
+  process losing already committed rows.
+- Successful import losing pending disable, scoped identity or empty values;
+  any recovery losing useful diagnostic cause/stack or exposing stored payloads.
+- Development consuming production legacy data, consumers starting before import/
+  reset attempts finish, a recovered failure stranding the login screen, or a
+  failed reset reusing the old cached key or being marked handled so a cold launch
+  trusts partial auth without retrying migration. Recovery diagnostics missing
+  from the app file, losing useful causes, or exposing parser source buffers.
 - Android restoring unusable ciphertext/credential envelopes without their
   Keystore keys, or an iOS restore losing the usable database/master pairing.
 
@@ -142,7 +164,7 @@ channel mocks and old-format package evidence do not establish the L3/L4 matrix.
   and Android manifest/full-backup/data-extraction XML.
 - `client/module_core/lib/src/migrations/deprecated_native_storage_v1/`, its
   matching tests, and permanent auth/core domain key definitions.
-- Mobile `persistence_admission_test.dart` / `persistence_startup_failure_test.dart`,
-  shared recovery-widget tests, desktop DI/smoke tests and the CI-only packaged probe.
+- Mobile `persistence_admission_test.dart`, startup wiring tests, desktop DI/smoke
+  tests and the CI-only packaged probe.
 - Active `.plan/active/desktop-master-key-storage/` for remaining required native
   qualification; fixture success does not retire that matrix.

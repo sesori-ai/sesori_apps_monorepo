@@ -103,18 +103,6 @@ abstract class AppLocalizations {
   /// **'Sesori Mobile'**
   String get appTitle;
 
-  /// No description provided for @persistenceStartupFailureTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Storage upgrade paused'**
-  String get persistenceStartupFailureTitle;
-
-  /// No description provided for @persistenceStartupFailureDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Sesori couldn’t finish upgrading your local storage. Close and reopen Sesori to try again.'**
-  String get persistenceStartupFailureDescription;
-
   /// No description provided for @connectErrorUnexpectedFormat.
   ///
   /// In en, this message translates to:
@@ -1885,6 +1873,138 @@ abstract class AppLocalizations {
   /// **'DM on X'**
   String get settingsSupportX;
 
+  /// Settings account row that opens the rating sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Rate Sesori'**
+  String get settingsRateSesori;
+
+  /// No description provided for @feedbackRatingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you enjoying Sesori?'**
+  String get feedbackRatingTitle;
+
+  /// Positive answer on the rating sheet; starts the celebration
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, love it!'**
+  String get feedbackLove;
+
+  /// Negative answer on the rating sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Could be better'**
+  String get feedbackCouldBeBetter;
+
+  /// Accessibility label of the rating sheet's close button
+  ///
+  /// In en, this message translates to:
+  /// **'Close feedback'**
+  String get feedbackClose;
+
+  /// Title of the rating sheet step shown after the user said they love the app
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks! Leave a review?'**
+  String get feedbackReviewTitle;
+
+  /// Body of the review confirmation step
+  ///
+  /// In en, this message translates to:
+  /// **'It takes a minute and helps other developers find Sesori.'**
+  String get feedbackReviewBody;
+
+  /// Confirms opening the store review page
+  ///
+  /// In en, this message translates to:
+  /// **'Leave a review'**
+  String get feedbackLeaveReview;
+
+  /// Closes the rating sheet without opening the store
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get feedbackNotNow;
+
+  /// Title of the private feedback step after Could be better
+  ///
+  /// In en, this message translates to:
+  /// **'What should we improve?'**
+  String get feedbackPrivateTitle;
+
+  /// Private feedback issue pill
+  ///
+  /// In en, this message translates to:
+  /// **'Hard to navigate'**
+  String get feedbackIssueHardToNavigate;
+
+  /// Private feedback issue pill
+  ///
+  /// In en, this message translates to:
+  /// **'Connection drops'**
+  String get feedbackIssueConnectionDrops;
+
+  /// Private feedback issue pill
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications don’t arrive'**
+  String get feedbackIssueNotificationsMissing;
+
+  /// Private feedback issue pill
+  ///
+  /// In en, this message translates to:
+  /// **'App feels slow'**
+  String get feedbackIssueAppSlow;
+
+  /// Placeholder of the private feedback text field
+  ///
+  /// In en, this message translates to:
+  /// **'Example: Hard to navigate'**
+  String get feedbackMessageHint;
+
+  /// Quiet line below the private feedback text field saying who receives it
+  ///
+  /// In en, this message translates to:
+  /// **'Sent privately to the Sesori team.'**
+  String get feedbackRecipient;
+
+  /// Accessibility label of the private feedback send button
+  ///
+  /// In en, this message translates to:
+  /// **'Send feedback'**
+  String get feedbackSend;
+
+  /// Inline error after private feedback failed to send
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t send feedback. Your draft is still here.'**
+  String get feedbackSendFailed;
+
+  /// Retries sending private feedback
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get feedbackRetry;
+
+  /// Closes the private feedback step without sending
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get feedbackCancel;
+
+  /// Toast after private feedback was sent
+  ///
+  /// In en, this message translates to:
+  /// **'Feedback sent. Thank you!'**
+  String get feedbackSent;
+
+  /// Counter shown when the private feedback text nears its length limit
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 character left} other{{count} characters left}}'**
+  String feedbackCharactersLeft(int count);
+
   /// No description provided for @settingsSectionLegal.
   ///
   /// In en, this message translates to:
@@ -2544,6 +2664,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{hours}h {minutes}m {seconds}s'**
   String transcriptTurnHours(int hours, String minutes, String seconds);
+
+  /// First line of the transcript's live row while only sub-agents work and the main agent does nothing itself. The elapsed time may follow after ' · ', e.g. '2 sub-agents running in the background · 3m 05s'.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 sub-agent running in the background} other{{count} sub-agents running in the background}}'**
+  String transcriptSubAgentsRunning(int count);
+
+  /// Muted second line of the transcript's sub-agent row: a prompt sent now reaches the main agent while the sub-agents keep running.
+  ///
+  /// In en, this message translates to:
+  /// **'You can keep chatting meanwhile.'**
+  String get transcriptSubAgentsKeepChatting;
 
   /// Label of the session toolbar button that folds every turn of the transcript to one line each.
   ///

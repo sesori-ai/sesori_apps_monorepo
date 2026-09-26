@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -8,6 +10,7 @@ import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
 import "../../core/platform/package_info_client.dart";
 import "../../core/routing/app_router.dart";
+import "../../core/widgets/feedback_voice_input_scope.dart";
 import "../../core/widgets/legal_document_sheet.dart";
 
 /// Mobile-shell composition for the shared settings view.
@@ -21,6 +24,14 @@ class const SettingsScreen({super.key}) extends StatelessWidget {
             authSession: getIt<AuthSession>(),
             notificationRegistrationService: getIt<NotificationRegistrationService>(),
             productAnalyticsService: getIt<ProductAnalyticsService>(),
+          ),
+        ),
+        BlocProvider(
+          create: (_) => FeedbackSheetCubit(
+            appReviewClient: getIt<AppReviewClient>(),
+            feedbackRepository: getIt<FeedbackRepository>(),
+            feedbackPromptService: getIt<FeedbackPromptService>(),
+            source: FeedbackSource.settings,
           ),
         ),
         BlocProvider(
@@ -48,6 +59,7 @@ class const _MobileSettingsView() extends StatelessWidget {
         const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.pushed),
       ),
       onOpenDefaultInput: () => context.pushRoute(const AppRoute.settingsDefaultInput()),
+      onOpenRateSesori: () => unawaited(_openRateSesori(context: context)),
       additionalSettings: null,
       openSupportLink: ({required url}) async {
         await openExternalLink(url: url, mode: UrlLaunchMode.externalApp);
@@ -58,6 +70,21 @@ class const _MobileSettingsView() extends StatelessWidget {
       // down to the product name, matching the existing mobile settings view.
       footerLogo: const SesoriLogo(squareSize: 52),
     );
+  }
+}
+
+Future<void> _openRateSesori({required BuildContext context}) async {
+  final cubit = context.read<FeedbackSheetCubit>();
+  final outcome = await showFeedbackSheet(
+    context: context,
+    cubit: cubit,
+    voiceInputScopeBuilder: ({required child}) => FeedbackVoiceInputScope(child: child),
+  );
+  switch (outcome) {
+    case FeedbackSheetOutcomeLoveLeaveReview():
+      await cubit.requestStoreReview();
+    case FeedbackSheetOutcomeLoveNotNow() || FeedbackSheetOutcomeCouldBeBetter() || FeedbackSheetOutcomeDismissed():
+      break;
   }
 }
 

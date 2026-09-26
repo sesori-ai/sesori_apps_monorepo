@@ -124,6 +124,100 @@ void main() {
     expect(native.writes, 1);
   });
 
+  test("explicit startup reset clears ciphertext, rotates the cached key and allows a fresh login", () async {
+    await repository.write(key: first, value: "old session");
+    await repository.write(key: second, value: "old OAuth state");
+    await primitive.writeString(key: "theme", value: "dark");
+    final oldKey = native.storedValue;
+    await repository.reset();
+    expect(await api.hasEncryptedValues(), isFalse);
+    expect(native.storedValue, isNot(oldKey));
+    expect(native.reads, 1);
+    expect(native.writes, 2);
+    expect(await primitive.readString(key: "theme"), "dark");
+    await repository.write(key: first, value: "new session");
+    final cold = SecureStorageRepository(storageApi: api, cipher: cipher);
+    expect(await cold.read(key: first), "new session");
+    expect(await cold.read(key: second), isNull);
+  });
+
+  test("explicit reset replaces a corrupt master and its cached initialization failure", () async {
+    native.storedValue = "invalid fixture key!";
+    await expectLater(repository.write(key: first, value: "before"), throwsA(isA<StorageException>()));
+    await repository.reset();
+    await repository.write(key: first, value: "after");
+    expect(await repository.read(key: first), "after");
+    expect(native.reads, 1);
+    expect(native.writes, 1);
+  });
+
+  test("reset waits for the replacement native key before allowing new ciphertext", () async {
+    await repository.write(key: first, value: "old");
+    final replacementNative = FixtureMasterKeyStore(value: native.storedValue);
+    final saved = Completer<void>();
+    replacementNative.writeCompletion = saved.future;
+    repository = SecureStorageRepository(
+      storageApi: SecureStorageApi(database: database, masterKeyStore: replacementNative),
+      cipher: cipher,
+    );
+    final reset = repository.reset();
+    await replacementNative.writeStarted.future;
+    final write = repository.write(key: second, value: "new");
+    expect(await repository.read(key: first), isNull);
+    expect(await api.readCiphertext(key: second.storageKey), isNull);
+    saved.complete();
+    await reset;
+    await write;
+    expect(await repository.read(key: second), "new");
+  });
+
+  test("failed ciphertext reset poisons the old cached key so partial auth cannot restore", () async {
+    await repository.write(key: first, value: "old");
+    await database.customStatement("""
+      CREATE TRIGGER reject_reset BEFORE DELETE ON encrypted_values
+      BEGIN SELECT RAISE(ABORT, 'fixture reset denied'); END;
+    """);
+    await expectLater(repository.reset(), throwsA(isA<ParallelWaitError<Object?, Object?>>()));
+    expect(await api.hasEncryptedValues(), isTrue);
+    expect(native.writes, 2);
+    await expectLater(repository.read(key: first), throwsA(isA<ParallelWaitError<Object?, Object?>>()));
+    await expectLater(repository.write(key: second, value: "new"), throwsA(isA<ParallelWaitError<Object?, Object?>>()));
+    final cold = SecureStorageRepository(storageApi: api, cipher: cipher);
+    await expectLater(cold.read(key: first), throwsA(isA<StorageException>()));
+    await primitive.writeBool(key: "preference", value: false);
+    expect(await primitive.readBool(key: "preference"), isFalse);
+  });
+
+  test("failed replacement-key save stays cached without retaining old ciphertext", () async {
+    await repository.write(key: first, value: "old");
+    native.writeFailure = StateError("fixture replacement denied");
+    await expectLater(repository.reset(), throwsA(isA<ParallelWaitError<Object?, Object?>>()));
+    expect(await api.hasEncryptedValues(), isFalse);
+    expect(await repository.read(key: first), isNull);
+    native.writeFailure = null;
+    await expectLater(repository.write(key: first, value: "new"), throwsA(isA<ParallelWaitError<Object?, Object?>>()));
+    expect(native.writes, 2);
+  });
+
+  test("reset retains both failures when SQL deletion and native replacement are denied", () async {
+    await repository.write(key: first, value: "old");
+    await database.customStatement("""
+      CREATE TRIGGER reject_reset BEFORE DELETE ON encrypted_values
+      BEGIN SELECT RAISE(ABORT, 'fixture reset denied'); END;
+    """);
+    native.writeFailure = StateError("fixture native denial");
+    await expectLater(
+      repository.reset(),
+      throwsA(
+        isA<ParallelWaitError<Object?, (AsyncError?, AsyncError?)>>()
+            .having((error) => error.errors.$1?.error, "SQL error", isA<Exception>())
+            .having((error) => error.errors.$2?.error, "native error", isA<StorageException>()),
+      ),
+    );
+    expect(native.writes, 2);
+    await expectLater(repository.read(key: first), throwsA(isA<ParallelWaitError<Object?, Object?>>()));
+  });
+
   test("existing ciphertext without its native key is never overwritten or re-keyed", () async {
     await repository.write(key: first, value: "existing credential");
     final before = await api.readCiphertext(key: first.storageKey);

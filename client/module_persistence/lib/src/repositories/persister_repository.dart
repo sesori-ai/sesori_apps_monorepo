@@ -10,6 +10,9 @@ import "../foundation/keys/string_persistence_key.dart";
 class PersisterRepository({required PersisterApi persisterApi}) {
   final PersisterApi _api = persisterApi;
 
+  /// Clears both primitive tables in this repository's scope.
+  Future<void> clear() => _api.clear();
+
   Future<String?> readString({required StringPersistenceKey key}) => _api.readString(key: key.storageKey);
 
   Future<String> readStringOrDefault({required StringPersistenceKey key, required String defaultValue}) async =>

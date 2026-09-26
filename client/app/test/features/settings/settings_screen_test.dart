@@ -17,6 +17,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
+import "../../helpers/voice_test_helpers.dart";
 
 /// An [AuthSession] with valid local tokens but no cached [AuthUser]: the
 /// state splash leaves behind when `restoreLocalSession()` finds no stored
@@ -42,6 +43,10 @@ class _MockUrlLauncher() extends Mock implements UrlLauncher;
 class _MockLegalRepository() extends Mock implements LegalRepository;
 
 class _MockBridgeSettingsService() extends Mock implements BridgeSettingsService;
+
+class _MockAppReviewClient() extends Mock implements AppReviewClient;
+
+class _MockFeedbackRepository() extends Mock implements FeedbackRepository;
 
 const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null);
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
@@ -171,6 +176,10 @@ void main() {
     when(productAnalyticsService.prepareForLogout).thenAnswer((_) async {});
     when(productAnalyticsService.resumeAfterFailedLogout).thenAnswer((_) async {});
     GetIt.instance.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
+    GetIt.instance.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
+    final voiceTranscriptionService = MockVoiceTranscriptionService();
+    stubVoiceTranscriptionService(service: voiceTranscriptionService);
+    GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
 
     final store = _MockAppearanceStore();
     when(() => store.write(mode: any(named: "mode"))).thenAnswer((_) async {});
@@ -748,6 +757,80 @@ void main() {
         mode: UrlLaunchMode.externalApp,
       ),
     ).called(1);
+  });
+
+  testWidgets("Rate Sesori is the Account section's second row", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    final rateTop = tester.getTopLeft(find.text("Rate Sesori")).dy;
+    expect(tester.getTopLeft(find.text("Account").last).dy, lessThan(rateTop));
+    expect(rateTop, lessThan(tester.getTopLeft(find.text("Bridge")).dy));
+  });
+
+  testWidgets("Rate Sesori opens the store only after the confirmed sheet has closed", (tester) async {
+    final appReviewClient = _MockAppReviewClient();
+    final sheetsAtStoreOpen = <bool>[];
+    when(appReviewClient.openStoreReviewPage).thenAnswer((_) async {
+      sheetsAtStoreOpen.add(find.byType(BottomSheet, skipOffstage: false).evaluate().isNotEmpty);
+    });
+    GetIt.instance.registerSingleton<AppReviewClient>(appReviewClient);
+    GetIt.instance.registerSingleton<FeedbackRepository>(_MockFeedbackRepository());
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Rate Sesori"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Yes, love it!"));
+    await tester.pumpAndSettle();
+    verifyNever(appReviewClient.openStoreReviewPage);
+
+    await tester.tap(find.text("Leave a review"));
+    await tester.pumpAndSettle();
+
+    verify(appReviewClient.openStoreReviewPage).called(1);
+    expect(sheetsAtStoreOpen, [false]);
+  });
+
+  testWidgets("Rate Sesori sends private feedback from Settings", (tester) async {
+    registerFallbackValue(<FeedbackIssue>{});
+    registerFallbackValue(FeedbackSource.automatic);
+    final feedbackRepository = _MockFeedbackRepository();
+    when(
+      () => feedbackRepository.submit(
+        issues: any(named: "issues"),
+        message: any(named: "message"),
+        source: any(named: "source"),
+      ),
+    ).thenAnswer((_) async {});
+    GetIt.instance.registerSingleton<AppReviewClient>(_MockAppReviewClient());
+    GetIt.instance.registerSingleton<FeedbackRepository>(feedbackRepository);
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Rate Sesori"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Could be better"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("App feels slow"));
+    await tester.enterText(find.byKey(const ValueKey("feedback-text")), "Fixture feedback");
+    await tester.tap(find.bySemanticsLabel("Send feedback"));
+    await tester.pumpAndSettle();
+
+    verify(
+      () => feedbackRepository.submit(
+        issues: {FeedbackIssue.appSlow},
+        message: "Fixture feedback",
+        source: FeedbackSource.settings,
+      ),
+    ).called(1);
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text("Feedback sent. Thank you!"), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
   });
 
   testWidgets("basic usage analytics lives on Account with concise copy", (tester) async {

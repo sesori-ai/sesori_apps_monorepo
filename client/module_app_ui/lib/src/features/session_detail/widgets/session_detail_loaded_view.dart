@@ -184,6 +184,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           children: state.children,
                           childStatuses: state.childStatuses,
                           isBusy: isBusy,
+                          mainAgentRunning: state.mainAgentRunning,
                           // Null once the start of the transcript is loaded,
                           // so the list stops asking for more.
                           onLoadOlderMessages: state.olderMessagesCursor == null
@@ -270,6 +271,5 @@ bool hasActiveWork({
   required SessionStatus sessionStatus,
   required Map<String, SessionStatus> childStatuses,
 }) {
-  return sessionStatus is! SessionStatusIdle ||
-      childStatuses.values.any((s) => s is SessionStatusBusy || s is SessionStatusRetry);
+  return sessionStatus is! SessionStatusIdle || childStatuses.values.any((status) => isChildRunning(status: status));
 }

@@ -4,8 +4,8 @@
 
 - Slug: `opencode-v2`
 - Base: `main` at `fed841c2f9`
-- Current step: 8 (PR 12/14) — managed 2.0.18 verified; ready for publication.
-  Branch: `sesori/opencode-v2-step-8-runtime`.
+- Current step: 9 (PR 13/14) — [#1795](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1795) open; review correction verified.
+  Branch: `sesori/opencode-v2-step-9-docs`.
 - Merged: Step 1 [#1709](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1709),
   Step 2 [#1711](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1711),
   Step 3 [#1716](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1716),
@@ -16,8 +16,9 @@
   Step 6.a [#1755](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1755),
   Step 6.b [#1762](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1762),
   Step 7.a [#1767](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1767),
-  Step 7.b [#1780](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1780).
-- One-step-ahead successor: Step 9 docs reconciliation (PR 13/14); keep local until Step 8 merges.
+  Step 7.b [#1780](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1780),
+  Step 8 [#1794](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1794).
+- One-step-ahead successor: Step 10 L3 coverage/retirement (PR 14/14); keep local until Step 9 merges.
 - Takeover: continue from `aqua-hummingbird`; preserve the existing published Step 2/3 history.
 - Plan architecture review: first pass rejected 9 layering points; all applied (see PLAN.md Status)
 
@@ -255,12 +256,34 @@
 - Sandboxed macOS arm64 probe passed the production managed installer, checksum/extractor, actual exact-version
   validator, canonical placement and digest sentinel. Native 2.0.18 passed authenticated info/catalog/activity reads,
   unauthenticated refusal and SSE startup. Filtered fixture environment, no external network, owned process teardown
-  and zero remaining owned processes were observed. Other-platform execution, provider turns, native reconnect and
-  managed-v1 upgrade/migration remain final-stage gates, not inferred passes.
+  and zero remaining owned processes were observed. Other-platform native execution remains unverified; this plan
+  requires only Linux/Windows CI unit coverage. Provider turns, native reconnect and managed-v1 upgrade/migration
+  remain final-stage gates, not inferred passes.
 - Focused verification passed 145 OpenCode manifest/policy/descriptor/model/API/event cases and 16 runtime-install
   cases; both owning-package fatal-info analyzers are clean. Hash records match all six manifest entries exactly.
   Architecture re-review is not applicable: only release facts/URL construction change production behavior, with
   unchanged generated shapes and existing installer ownership. Authored formatting and diff checks passed.
+
+## Step 9 Evidence And Handoff
+
+- #1794 merged at accepted head `a7acd80`, squash commit `b3342871fe`, with CI 21/21 and current-head Codex completed
+  without findings. Final scope: 268 authored + 212 generated changed lines (480 total). Step 9 starts from that merge.
+- Reconcile v2 catalog identity, standalone forks, parent-create refusal, selection validation, prompt/fallback-compaction
+  correlation, the custom-command limitation, replay/readback and typed form replies. Scope v1-specific command,
+  compaction-reservation and best-effort hydration claims instead of extending them to v2.
+- The v2-specific capability section, setup bounds and npm-install contract already describe the landed behavior.
+  Required final coverage remains L3 on macOS arm64 with a real provider/dev account: managed v2 fresh/v1 upgrade,
+  v1 PATH, and v2 attach.
+  Startup-only native evidence and fixture/loopback suites do not complete that matrix. No reduction is approved.
+- Validation: all 22 added repository-path references exist, the final verification matrix is unchanged, and diff
+  checks pass. Ten Markdown files only; no production, generated, dependency, database or wire changes. Dart/Flutter
+  suites and architecture re-review are not applicable to this documentation-only step.
+- #1795 review found that the aggregate accepted-prompt table still generalized v1 correlation to native v2 commands.
+  Split that table by adapter/path and state the unsettled optimistic-row gap. The adjacent compaction-summary table
+  now distinguishes v1 assistant summaries from v2 completed native compaction messages. No runtime behavior changed.
+- The later form-text finding narrows the documentation guarantee: string/multiselect answers matching an option
+  label use its native value; unmatched custom text is preserved. The flat reply contract and existing mapper remain
+  unchanged; no input-origin tracking or speculative producer handling is added.
 
 GitHub remains authoritative for live PR state. The checkpoint above records the series handoff; update it when
 advancing to the next PR. Generated-model churn is reported separately from authored changes.
