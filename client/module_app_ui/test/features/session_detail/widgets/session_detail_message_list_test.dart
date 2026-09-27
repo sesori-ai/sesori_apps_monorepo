@@ -76,6 +76,18 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     _queuedMessages = widget.initialQueuedMessages;
     _bridgeQueuedPrompts = widget.initialBridgeQueuedPrompts;
     _retryErrorMessage = widget.initialRetryErrorMessage;
+    _launchHandoff = widget.launchHandoff;
+  }
+
+  late SessionLaunchHandoff? _launchHandoff;
+
+  /// The first message's echo arrives and releases the launch bubble in the
+  /// same build, as the detail cubit emits it.
+  void echoLaunch(MessageWithParts message) {
+    setState(() {
+      _messages = [..._messages, message];
+      _launchHandoff = null;
+    });
   }
 
   void startLoadingOlderMessages() {
@@ -237,7 +249,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           messages: _messages,
           localSend: _localSend,
           harnessName: "OpenCode",
-          launchHandoff: widget.launchHandoff,
+          launchHandoff: _launchHandoff,
           onRetryFailedSend: () {
             if (_localSend case LocalSendFailed(:final submission)) {
               setState(() {
@@ -928,6 +940,49 @@ void main() {
     // Named from the launch's plugin, not the list's harness name, so it
     // reads as the new-session screen's bubble did.
     expect(find.text("Sending to Claude Code…"), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("a launch's first message turns into its echo in place, above the working row", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        launchHandoff: SessionLaunchHandoff(
+          submission: NewSessionSubmissionSnapshot.text(
+            draft: ComposerDraft.typed(text: "first message"),
+            attachments: const [],
+          ),
+          pluginId: "claude",
+          startedAt: clock.now(),
+          followUpIds: const {},
+        ),
+      ),
+    );
+    harnessKey.currentState!.setBusy(true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    final promptRow = find.ancestor(of: find.text("first message"), matching: find.byType(AnimatedSize));
+    final before = tester.state(promptRow);
+    expect(
+      tester.getTopLeft(find.text("first message")).dy,
+      lessThan(tester.getTopLeft(find.byType(TranscriptWorkingRow)).dy),
+    );
+
+    harnessKey.currentState!.echoLaunch(_message(messageId: "user-1", role: "user", text: "first message"));
+    await tester.pump();
+
+    // The bubble's row eases into the echo's instead of remounting elsewhere.
+    expect(tester.state(promptRow), same(before));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(QueuedMessageBubble), findsNothing);
+    expect(find.byType(UserMessageCard), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text("first message")).dy,
+      lessThan(tester.getTopLeft(find.byType(TranscriptWorkingRow)).dy),
+    );
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

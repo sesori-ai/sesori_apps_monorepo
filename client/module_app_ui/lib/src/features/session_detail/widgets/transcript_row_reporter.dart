@@ -20,6 +20,16 @@ class _TranscriptRowReporterState() extends State<TranscriptRowReporter> {
     widget.onMount(rowId: widget.rowId, context: context);
   }
 
+  // A row that takes over another's key, as a launch bubble's echo does,
+  // keeps this element under its own id.
+  @override
+  void didUpdateWidget(TranscriptRowReporter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.rowId == widget.rowId) return;
+    oldWidget.onUnmount(rowId: oldWidget.rowId);
+    widget.onMount(rowId: widget.rowId, context: context);
+  }
+
   // Not in dispose: a row laid out again in the same frame, after a scroll
   // correction, mounts its replacement before this one is disposed.
   @override

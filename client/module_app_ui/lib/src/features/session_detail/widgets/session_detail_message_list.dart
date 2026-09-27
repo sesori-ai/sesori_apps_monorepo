@@ -257,6 +257,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// the rows already there, or caught up at once, do not animate.
   Set<String>? _knownRowIds;
 
+  /// The row that replaced the launch bubble. It keeps the bubble's key, so
+  /// the swap eases in place like a queued prompt turning into its message.
+  String? _launchSlotRowId;
+
   /// The last build's rows by their place in order, and each message row's
   /// turn, so a fold switch can read the turn the reader was on.
   Map<String, int> _rowIndexById = const {};
@@ -768,9 +772,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     };
     final entries = <String>[
       ...messageRows,
+      // Where the first message's echo lands, above the working row.
+      if (hasLaunchRow) _kLaunchRowId,
       _kRetryErrorRowId,
       _kWorkingRowId,
-      if (hasLaunchRow) _kLaunchRowId,
       for (final prompt in bridgeQueuedPrompts)
         if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
       for (final submission in awaitingBridgeSubmissions)
@@ -898,6 +903,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       hasLaunchRow: widget.launchHandoff != null,
     );
     final knownRowIds = _knownRowIds;
+    if (knownRowIds != null && knownRowIds.contains(_kLaunchRowId) && !rowIds.contains(_kLaunchRowId)) {
+      _launchSlotRowId = rowIds
+          .where(
+            (rowId) =>
+                !knownRowIds.contains(rowId) && _isUserRow(rowId: rowId, messages: messages, indexById: indexById),
+          )
+          .firstOrNull;
+    }
     _knownRowIds = rowIds.toSet();
     _rowIndexById = {for (final (index, rowId) in rowIds.indexed) rowId: index};
     _rowTurns = rowTurns;
@@ -976,7 +989,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                   physics: const AlwaysScrollableScrollPhysics(),
                   itemCount: rowIds.length,
                   findChildIndexCallback: (key) {
-                    if (key case ValueKey<String>(value: final rowId)) {
+                    if (key case ValueKey<String>(value: final keyValue)) {
+                      final rowId = keyValue == _kLaunchRowId ? _launchSlotRowId ?? keyValue : keyValue;
                       final domainIndex = rowIds.indexOf(rowId);
                       return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
                     }
@@ -985,7 +999,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                   itemBuilder: (context, index) {
                     final entryId = rowIds[rowIds.length - index - 1];
                     return TranscriptRowReporter(
-                      key: ValueKey(entryId),
+                      key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
                       rowId: entryId,
                       onMount: _onRowMount,
                       onUnmount: _onRowUnmount,
@@ -1186,6 +1200,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return const SizedBox.shrink();
     }
     final card = switch (message.info) {
+      // The launch bubble's echo keeps easing like the bubble it replaced.
+      MessageUser() when entryId == _launchSlotRowId => _animatedPromptRow(child: _userMessage(message: message)),
       MessageUser() => _userMessage(message: message),
       MessageAssistant(sender: MessageSender.agent, :final id) => AssistantMessageCard(
         projectId: widget.projectId,
