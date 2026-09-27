@@ -265,6 +265,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
   Widget _buildChromePage({
     required NewSessionPageChrome chrome,
     required NewSessionSubmissionSnapshot? sendingSubmission,
+    required DateTime? sendingSince,
     required String? harnessName,
     required Widget header,
     required Widget? options,
@@ -288,6 +289,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
                         submission: sendingSubmission,
                         harnessName: harnessName,
                         transcriptWidth: chrome.transcriptWidth,
+                        sendingSince: sendingSince,
                       ),
                     ),
               composing: Center(
@@ -409,15 +411,16 @@ class _NewSessionViewState() extends State<NewSessionView> {
     final cubit = context.watch<NewSessionCubit>();
     final state = cubit.state;
     final loc = context.loc;
-    final sendingSubmission = switch (state.phase) {
-      NewSessionPhaseSending(:final submission) => submission,
+    final sendingPhase = switch (state.phase) {
+      final NewSessionPhaseSending phase => phase,
       NewSessionPhaseIdle() ||
       NewSessionPhaseRestoringSubmission() ||
       NewSessionPhaseCreationError() ||
       NewSessionPhaseDiscoveryError() ||
       null => null,
     };
-    final isSending = sendingSubmission != null;
+    final sendingSubmission = sendingPhase?.submission;
+    final isSending = sendingPhase != null;
     final composerData = state.agentModelData;
     final restoringSubmission = switch (state.phase) {
       NewSessionPhaseRestoringSubmission(:final submission) => submission,
@@ -435,7 +438,12 @@ class _NewSessionViewState() extends State<NewSessionView> {
     // The listener can run while this route is being torn down. The route
     // object stays stable, so `isCurrent` remains safe to read at event time.
     final modalRoute = ModalRoute.of(context);
-    final harnessName = composerData?.plugin?.displayName;
+    // Named from the plugin id, as the session screen names the launch's
+    // bubble, so the handoff never changes the bubble's words.
+    final harnessName = switch (composerData?.plugin) {
+      final plugin? => PregoBrandLogo.displayNameFor(plugin.id),
+      null => null,
+    };
     final options = _buildOptions(cubit: cubit, data: composerData);
     // Typing never waits on options; only sending waits on what it needs.
     final notice = _buildBlockedNotice(cubit: cubit);
@@ -482,6 +490,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
       final chrome => _buildChromePage(
         chrome: chrome,
         sendingSubmission: sendingSubmission,
+        sendingSince: sendingPhase?.startedAt,
         harnessName: harnessName,
         header: header,
         options: options,
@@ -551,6 +560,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
                       submission: sendingSubmission,
                       harnessName: harnessName,
                       transcriptWidth: null,
+                      sendingSince: sendingPhase?.startedAt,
                     ),
               composing: Column(
                 children: [

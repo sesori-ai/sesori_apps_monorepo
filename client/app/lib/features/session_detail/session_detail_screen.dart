@@ -120,6 +120,7 @@ class const _MobileSessionDetailBody({
                     sessionId: sessionId,
                     readOnly: readOnly,
                     sessionTitle: sessionTitle,
+                    fromLaunch: false,
                   ),
           ),
       child: SessionDetailBody(

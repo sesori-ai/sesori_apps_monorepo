@@ -1072,6 +1072,7 @@ void main() {
           sessionId: "session-root",
           sessionTitle: "Fix the build",
           readOnly: false,
+          fromLaunch: false,
         ).buildPath(),
       ],
     );
@@ -1085,6 +1086,7 @@ void main() {
         sessionId: "session-root",
         sessionTitle: "Existing session title",
         readOnly: false,
+        fromLaunch: false,
       ).buildPath(),
     );
     await service.start();

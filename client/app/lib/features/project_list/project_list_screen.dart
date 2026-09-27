@@ -66,6 +66,7 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
                 sessionId: session.id,
                 sessionTitle: session.title,
                 readOnly: false,
+                fromLaunch: false,
               ),
             );
           },

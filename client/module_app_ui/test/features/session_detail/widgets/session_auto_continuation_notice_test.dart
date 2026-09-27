@@ -189,7 +189,7 @@ void main() {
 
   testWidgets("menu waits for a loaded session and can disable after support becomes unavailable", (tester) async {
     final cubit = _Cubit();
-    when(() => cubit.state).thenReturn(const SessionDetailState.loading());
+    when(() => cubit.state).thenReturn(const SessionDetailState.loading(launchHandoff: null));
     when(() => cubit.setAutoContinuation(enabled: any(named: "enabled"))).thenAnswer((_) async {});
     late PregoMenuItem entry;
     Future<void> pumpMenu(SessionAutoContinuationView? continuation) => tester.pumpWidget(

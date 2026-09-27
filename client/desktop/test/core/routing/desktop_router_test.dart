@@ -206,6 +206,7 @@ void main() {
       sessionId: "other",
       sessionTitle: null,
       readOnly: false,
+      fromLaunch: false,
     );
     showDialog<void>(
       context: opener,
@@ -294,6 +295,7 @@ void main() {
           sessionId: "child",
           sessionTitle: "Child",
           readOnly: true,
+          fromLaunch: false,
         ).buildPath(),
       ),
     );
@@ -386,6 +388,7 @@ AppRoute _detail({required bool readOnly}) => AppRoute.sessionDetail(
   sessionId: "s",
   sessionTitle: "A session",
   readOnly: readOnly,
+  fromLaunch: false,
 );
 const _session = Session(
   approvalOverride: null,

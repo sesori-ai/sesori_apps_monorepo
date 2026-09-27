@@ -288,7 +288,11 @@ variant, and worktree mode, and creating the session with its first input.
   creation running under an app-lifetime owner, so a success after leaving still
   records its outcome and clears the options chosen for it exactly as an
   in-route success does. Success replaces the route only when that launch route
-  is still current and the returned session is durable.
+  is still current and the returned session is durable. The session screen that
+  replaces it opens on the same bubble, in the same place and with the same
+  words, including a "Sending to `<harness>`…" already showing; it never shows
+  a loading status or "No messages yet" in between. The bubble stays until the
+  harness's own transcript or queue shows the message, and a stop removes it.
 - Mobile and desktop compose the same new-session view while retaining
   shell-owned routing, DI, connection-banner policy, and platform capabilities.
   Mobile keeps voice capture and keyboard visibility. Desktop is explicitly
@@ -447,6 +451,10 @@ highlight, Enter and Esc.
   one surface but not another, an agent's declared model is adopted without
   being checked against the catalog, or a screen's variant list describes a
   model it no longer has selected.
+- The session screen replacing a new session's route shows a loading status or
+  "No messages yet", moves or re-words the sending bubble, reverts
+  "Sending to `<harness>`…" to "Sending", or shows the bubble beside the
+  delivered message.
 - A successful creation does not become the next per-plugin prefill (also when
   the user left the route before it finished), a failed creation replaces it, one plugin's selection leaks into another, or a removed
   saved value prevents current catalog defaults from loading.

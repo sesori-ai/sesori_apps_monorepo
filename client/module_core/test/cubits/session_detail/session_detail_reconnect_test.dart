@@ -108,7 +108,7 @@ void main() {
     );
     addTearDown(cubit.close);
 
-    expect(cubit.state, const SessionDetailState.loading());
+    expect(cubit.state, const SessionDetailState.loading(launchHandoff: null));
 
     connectionStatus.add(connectedStatus);
     await _awaitLoaded(cubit);

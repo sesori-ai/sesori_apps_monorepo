@@ -19,6 +19,7 @@ import "session_auto_continuation_notice.dart";
 import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
 import "session_harness_unavailable_notice.dart";
+import "session_launch_submission_view.dart";
 import "transcript_jump_notifier.dart";
 
 typedef SessionDetailHeaderBuilder = Widget Function({
@@ -614,7 +615,11 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         // reversed scroll controller, so the large title can't collapse with
         // it; the inline title is used instead, as on the new-session screen.
         SliverFillRemaining(
-          hasScrollBody: state is SessionDetailLoaded || state is SessionDetailHarnessUnavailable,
+          hasScrollBody: switch (state) {
+            SessionDetailLoading(:final launchHandoff) => launchHandoff != null,
+            SessionDetailLoaded() || SessionDetailHarnessUnavailable() => true,
+            SessionDetailFailed() => false,
+          },
           child: content,
         ),
       ],
@@ -628,6 +633,15 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   }) {
     final loc = context.loc;
     return switch (state) {
+      // A session this surface just created keeps showing its first message,
+      // in the rect the new-session screen drew it, instead of a status.
+      SessionDetailLoading(launchHandoff: SessionLaunchHandoff(:final submission, :final pluginId, :final startedAt)) =>
+        SessionLaunchSubmissionView(
+          submission: submission,
+          harnessName: PregoBrandLogo.displayNameFor(pluginId),
+          transcriptWidth: columnWidths?.transcript,
+          sendingSince: startedAt,
+        ),
       SessionDetailLoading() => PregoLaunchStatus(
         semanticsLabel: loc.sessionDetailLoadingSemantics,
         messages: [

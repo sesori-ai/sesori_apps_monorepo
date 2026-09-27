@@ -13,6 +13,11 @@ desktop main-pane transitions distinct.
   Android.
 - Compact session-list, session-detail, new-session, and diff navigation uses
   the same platform transition. Split-view pane changes fade instead of sliding.
+  The one exception is the session screen replacing the new-session screen that
+  created it: it appears with no entry transition, because the new-session
+  screen already shows its first message where the session screen does. Back
+  from it still animates, and every other entry to the same session, including a
+  deep link, transitions as usual.
 - The base compact session-detail toolbar returns to the typed sessions route.
   This keeps path-like project identifiers percent-encoded and matchable instead
   of reconstructing the parent URL from decoded route parameters. A child or

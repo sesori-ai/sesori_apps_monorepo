@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:typed_data";
 
+import "package:bloc_test/bloc_test.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
@@ -38,6 +39,14 @@ class MockPluginRepository() extends Mock implements PluginRepository;
 class MockPluginPreferenceRepository() extends Mock implements PluginPreferenceRepository;
 
 class _MockProjectListService() extends Mock implements ProjectListService;
+
+class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
+
+class _MockMessageImageRepository() extends Mock implements MessageImageRepository;
+
+class _MockImageSaver() extends Mock implements ImageSaver;
+
+class _MockImageSharer() extends Mock implements ImageSharer;
 
 final Uint8List _tinyPng = Uint8List.fromList(const [
   0x89,
@@ -159,6 +168,7 @@ Future<void> closeHarnessMenu(WidgetTester tester) async {
 Widget _buildApp({
   bool useHarnessFlow = false,
   ThemeMode themeMode = ThemeMode.light,
+  GoRouterWidgetBuilder? sessionDetailBuilder,
 }) {
   final router = GoRouter(
     initialLocation: "/projects/project-1/sessions/new",
@@ -185,17 +195,19 @@ Widget _buildApp({
         ),
       GoRoute(
         path: "/projects/:projectId/sessions/:sessionId",
-        builder: (context, state) {
-          return Material(
-            child: Column(
-              children: [
-                Text("session-detail:${state.pathParameters['sessionId']}"),
-                Text("uri:${state.uri}"),
-                Text("canPop=${GoRouter.of(context).canPop()}"),
-              ],
-            ),
-          );
-        },
+        builder:
+            sessionDetailBuilder ??
+            (context, state) {
+              return Material(
+                child: Column(
+                  children: [
+                    Text("session-detail:${state.pathParameters['sessionId']}"),
+                    Text("uri:${state.uri}"),
+                    Text("canPop=${GoRouter.of(context).canPop()}"),
+                  ],
+                ),
+              );
+            },
       ),
     ],
   );
@@ -466,10 +478,11 @@ void main() {
     GetIt.instance.registerSingleton<ComposerDraftRepository>(composerDraftRepository);
     GetIt.instance.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
     GetIt.instance.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
+    GetIt.instance.registerSingleton<SessionLaunchRepository>(inMemorySessionLaunchRepository());
     GetIt.instance.registerSingleton<SessionLaunchService>(
       SessionLaunchService(
         sessionRepository: sessionService,
-        launchRepository: inMemorySessionLaunchRepository(),
+        launchRepository: GetIt.instance<SessionLaunchRepository>(),
         feedbackPromptService: GetIt.instance<FeedbackPromptService>(),
         productAnalyticsService: productAnalyticsService,
         selectionTracker: GetIt.instance<NewSessionSelectionTracker>(),
@@ -1714,7 +1727,8 @@ void main() {
 
     // A slow creation names the harness it waits on.
     await tester.pump(const Duration(seconds: 2));
-    expect(find.text(loc.sessionDetailSendingToHarness("Plugin One")), findsOneWidget);
+    // Named from the plugin id, as the session screen names the bubble.
+    expect(find.text(loc.sessionDetailSendingToHarness(PregoBrandLogo.displayNameFor("plugin-1"))), findsOneWidget);
   });
 
   testWidgets("removes composer and closes its voice lifecycle while a session is sending", (tester) async {
@@ -1890,11 +1904,104 @@ void main() {
 
     expect(find.text("session-detail:session-1"), findsOneWidget);
     expect(
-      find.text("uri:/projects/project-1/sessions/session-1?readOnly=false&name=Project+One"),
+      find.text("uri:/projects/project-1/sessions/session-1?readOnly=false&name=Project+One&fromLaunch=1"),
       findsOneWidget,
     );
     expect(find.byType(NewSessionScreen), findsNothing);
     expect(find.byType(EditableText), findsNothing);
+  });
+
+  testWidgets("the session screen takes over the sending bubble without moving it or changing its words", (
+    tester,
+  ) async {
+    final createCompleter = Completer<ApiResponse<Session>>();
+    when(
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) => createCompleter.future);
+    // The detail screen's first state, seeded from the launch as its cubit
+    // seeds it, and built once however often the route rebuilds.
+    _MockSessionDetailCubit? detailCubit;
+    _MockSessionDetailCubit detailCubitFor({required String sessionId}) {
+      final cubit = _MockSessionDetailCubit();
+      whenListen(
+        cubit,
+        const Stream<SessionDetailState>.empty(),
+        initialState: SessionDetailState.loading(
+          launchHandoff: GetIt.instance<SessionLaunchRepository>().takeHandoff(sessionId: sessionId),
+        ),
+      );
+      when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
+      when(() => cubit.permissionStream).thenAnswer((_) => const Stream.empty());
+      when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
+      return cubit;
+    }
+
+    await tester.pumpWidget(
+      _buildApp(
+        sessionDetailBuilder: (context, state) {
+          final sessionId = state.pathParameters["sessionId"] ?? "";
+          return BlocProvider<SessionDetailCubit>.value(
+            value: detailCubit ??= detailCubitFor(sessionId: sessionId),
+            child: SessionDetailPresentationScope(
+              openHarnessSettings: () {},
+              openBridgeSettings: () {},
+              messageImageRepository: _MockMessageImageRepository.new,
+              imageSaver: _MockImageSaver.new,
+              imageClipboard: () => GetIt.instance<ImageClipboard>(),
+              imageSharer: _MockImageSharer.new,
+              canShareImages: true,
+              openExternalLink: ({required url, required mode}) async => false,
+              openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+              child: SessionDetailBody(
+                projectId: "project-1",
+                sessionId: sessionId,
+                sessionTitle: null,
+                readOnly: false,
+                banner: null,
+                onBack: null,
+                onShowDiffs: null,
+                pageChrome: null,
+                menuEntriesBuilder: null,
+                bottomControlsBuilder: null,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    await enterTextAndSend(tester: tester, text: "test message");
+    await tester.pumpAndSettle();
+    // Past the slow-send threshold, so the words must survive the swap too.
+    await tester.pump(const Duration(seconds: 3));
+    final loc = AppLocalizations.of(tester.element(find.byType(QueuedMessageBubble)))!;
+    final slowSendCopy = loc.sessionDetailSendingToHarness(PregoBrandLogo.displayNameFor("plugin-1"));
+    expect(find.text(slowSendCopy), findsOneWidget);
+    final sendingRect = tester.getRect(find.byType(QueuedMessageBubble));
+
+    createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: null)));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(SessionDetailBody), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsNothing);
+    expect(find.text(slowSendCopy), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.byType(NewSessionScreen), findsNothing);
+    expect(tester.getRect(find.byType(QueuedMessageBubble)), sendingRect);
+    expect(find.text(slowSendCopy), findsOneWidget);
   });
 
   testWidgets("does not show snackbar when auto-navigating after creating a session", (tester) async {

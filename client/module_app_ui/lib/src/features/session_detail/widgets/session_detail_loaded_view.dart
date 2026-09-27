@@ -138,7 +138,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
         state.localSend is LocalSendIdle &&
         state.queuedMessages.isEmpty &&
         state.awaitingBridgeSubmissions.isEmpty &&
-        state.bridgeQueuedPrompts.isEmpty;
+        state.bridgeQueuedPrompts.isEmpty &&
+        state.launchHandoff == null;
     // A lost response may already have reached the bridge, so only an
     // authoritative rejection can be removed.
     final canRemoveFailedSend =
@@ -194,6 +195,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           localSend: state.localSend,
                           queuedMessages: state.queuedMessages,
                           harnessName: state.interaction.harnessDisplayName,
+                          launchHandoff: state.launchHandoff,
                           onRetryFailedSend: widget.readOnly || !state.interaction.canInteract
                               ? null
                               : context.read<SessionDetailCubit>().retryFailedSend,

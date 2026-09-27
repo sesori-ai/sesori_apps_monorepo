@@ -162,6 +162,9 @@ class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
                       // they can be resumed.
                       tasks: [...running, ...idle],
                       childStatuses: widget.childStatuses,
+                      // A list left shown under the pushed session asserts on
+                      // the next window resize (flutter/flutter#192030).
+                      onOpened: _overlayController.hide,
                     ),
                   ),
                 ],

@@ -837,12 +837,15 @@ the first spinner with no new state at all.
 
 ### Step 3: First-message handoff to the session screen (module_core, module_app_ui, app, desktop)
 
-**As built (PR 3/8, part 3.a), which later steps extend rather than re-argue:**
-`takeHandoff` returns one `SessionLaunchHandoff` value (submission, plugin id,
-`startedAt`, `followUpIds`); `SessionDetailCubit` takes it synchronously in its
-constructor and, in 3.a, discards it, so `watchForSession` arrives with its
-first reader in a later step; and the selection revision is owned by
-`SessionLaunchService` (see "The Launch Owner").
+**As built (PRs 3/8 and 4/8), which later steps extend rather than re-argue:**
+the detail states carry one `SessionLaunchHandoff? launchHandoff` value
+(submission, plugin id, `startedAt`, `followUpIds`) in place of the separate
+`launchSubmission`, `launchPluginId` and `launchFollowUpIds` fields named below;
+the single release funnel is an `emit` override on `SessionDetailCubit` rather
+than a private `_emitLoaded`; `SessionDetailCubit` takes the handoff
+synchronously with `takeHandoff` in its initial state, so `watchForSession`
+arrives with its first reader in a later step; and the selection revision is
+owned by `SessionLaunchService` (see "The Launch Owner").
 
 - Introduce the whole launch owner family — sealed `SessionLaunch`,
   `SessionLaunchStorage`, `SessionLaunchRepository` and `SessionLaunchService` —

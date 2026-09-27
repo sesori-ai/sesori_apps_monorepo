@@ -47,6 +47,10 @@ class const SessionDetailMessageList({
   /// The harness name a slow send names, or null until it is known.
   required final String? harnessName,
 
+  /// The first message of a session this surface just created, shown as a
+  /// sending bubble until the transcript holds its replacement.
+  required final SessionLaunchHandoff? launchHandoff,
+
   /// Null on a read-only surface, which shows the failure without actions.
   required final VoidCallback? onRetryFailedSend,
   required final VoidCallback? onRemoveFailedSend,
@@ -179,6 +183,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// session works. The row stays in the list, empty while idle, so it eases
   /// in and out as work starts and ends.
   static const _kWorkingRowId = "session-detail-working-row";
+
+  /// Synthetic id for the launch's first message, the oldest transient row. A
+  /// session has at most one, so it is never matched against echoes.
+  static const _kLaunchRowId = "session-detail-launch-row";
   static const _kPromptRowPrefix = "session-detail-prompt-";
 
   /// Distance from the oldest edge at which the next older page starts
@@ -236,6 +244,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// following eases in. Null until the first build and after reattaching, so
   /// the rows already there, or caught up at once, do not animate.
   Set<String>? _knownRowIds;
+
+  /// The row that replaced the launch bubble. It keeps the bubble's key, so
+  /// the swap eases in place like a queued prompt turning into its message.
+  String? _launchSlotRowId;
 
   /// The last build's rows by their place in order.
   Map<String, int> _rowIndexById = const {};
@@ -665,6 +677,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required List<QueuedSessionSubmission> queuedMessages,
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
     required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    required bool hasLaunchRow,
   }) {
     final deliveredPromptIds = <String>{
       for (final message in messages)
@@ -673,6 +686,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     };
     final entries = <String>[
       ...messageRows,
+      // Where the first message's echo lands, above the working row.
+      if (hasLaunchRow) _kLaunchRowId,
       _kRetryErrorRowId,
       _kWorkingRowId,
       for (final prompt in bridgeQueuedPrompts)
@@ -777,8 +792,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       queuedMessages: queuedMessages,
       bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
       awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
+      hasLaunchRow: widget.launchHandoff != null,
     );
     final knownRowIds = _knownRowIds;
+    if (knownRowIds != null && knownRowIds.contains(_kLaunchRowId) && !rowIds.contains(_kLaunchRowId)) {
+      _launchSlotRowId = rowIds
+          .where(
+            (rowId) =>
+                !knownRowIds.contains(rowId) && _isUserRow(rowId: rowId, messages: messages, indexById: indexById),
+          )
+          .firstOrNull;
+    }
     _knownRowIds = rowIds.toSet();
     _rowIndexById = {for (final (index, rowId) in rowIds.indexed) rowId: index};
     _turns = turns;
@@ -856,7 +880,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                   physics: const AlwaysScrollableScrollPhysics(),
                   itemCount: rowIds.length,
                   findChildIndexCallback: (key) {
-                    if (key case ValueKey<String>(value: final rowId)) {
+                    if (key case ValueKey<String>(value: final keyValue)) {
+                      final rowId = keyValue == _kLaunchRowId ? _launchSlotRowId ?? keyValue : keyValue;
                       final domainIndex = rowIds.indexOf(rowId);
                       return domainIndex < 0 ? null : rowIds.length - domainIndex - 1;
                     }
@@ -865,7 +890,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                   itemBuilder: (context, index) {
                     final entryId = rowIds[rowIds.length - index - 1];
                     return TranscriptRowReporter(
-                      key: ValueKey(entryId),
+                      key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
                       rowId: entryId,
                       onMount: _onRowMount,
                       onUnmount: _onRowUnmount,
@@ -938,6 +963,34 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     if (entryId == _kWorkingRowId) {
       return _revealable(createdAtMs: null, child: _workingRow(activity: activity));
     }
+    if (widget.launchHandoff
+        case SessionLaunchHandoff(
+          :final submission,
+          :final pluginId,
+          :final startedAt,
+        )
+        when entryId == _kLaunchRowId) {
+      final attachments = switch (submission) {
+        NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
+        NewSessionCommandSubmissionSnapshot() => const <ComposerAttachment>[],
+      };
+      return _revealable(
+        createdAtMs: null,
+        child: _animatedPromptRow(
+          child: QueuedMessageBubble(
+            key: const ValueKey(_kLaunchRowId),
+            displayText: submission.displayText,
+            isCommand: submission is NewSessionCommandSubmissionSnapshot,
+            attachmentCount: attachments.length,
+            localAttachments: attachments,
+            presentation: QueuedMessageBubblePresentation.sending(
+              harnessName: PregoBrandLogo.displayNameFor(pluginId),
+              sendingSince: startedAt,
+            ),
+          ),
+        ),
+      );
+    }
     if (entryId.startsWith(_kPromptRowPrefix)) {
       // One row serves the prompt's whole lifecycle. Resolve the most settled
       // state first: the delivered message, else the bridge-queued entry, else
@@ -968,6 +1021,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               presentation: switch (prompt.dispatchState) {
                 QueuedPromptDispatchState.dispatched => QueuedMessageBubblePresentation.sending(
                   harnessName: widget.harnessName,
+                  sendingSince: null,
                 ),
                 QueuedPromptDispatchState.queued || QueuedPromptDispatchState.unknown =>
                   onCancel == null
@@ -993,7 +1047,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             attachmentCount: submission.attachments.length,
             localAttachments: submission.attachments,
             presentation: switch (transientSubmission.stage) {
-              _TransientStage.sending => QueuedMessageBubblePresentation.sending(harnessName: widget.harnessName),
+              _TransientStage.sending => QueuedMessageBubblePresentation.sending(
+                harnessName: widget.harnessName,
+                sendingSince: null,
+              ),
               _TransientStage.failed => QueuedMessageBubblePresentation.failed(
                 onRetry: widget.onRetryFailedSend,
                 onRemove: widget.onRemoveFailedSend,
@@ -1023,6 +1080,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return const SizedBox.shrink();
     }
     final card = switch (message.info) {
+      // The launch bubble's echo keeps easing like the bubble it replaced.
+      MessageUser() when entryId == _launchSlotRowId => _animatedPromptRow(child: _userMessage(message: message)),
       MessageUser() => _userMessage(message: message),
       MessageAssistant(sender: MessageSender.agent, :final id) => AssistantMessageCard(
         projectId: widget.projectId,

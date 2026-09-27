@@ -72,6 +72,7 @@ void main() {
             sessionId: "session-1",
             sessionTitle: "Weekly planning",
             readOnly: false,
+            fromLaunch: false,
           ).buildPath(),
         ]),
       );
@@ -179,6 +180,7 @@ void main() {
             sessionId: "session-2",
             sessionTitle: "Latest title",
             readOnly: false,
+            fromLaunch: false,
           ).buildPath(),
         ),
       );
@@ -207,6 +209,7 @@ void main() {
             sessionId: "session-1",
             sessionTitle: "Weekly planning",
             readOnly: false,
+            fromLaunch: false,
           ).buildPath(),
         ),
       );

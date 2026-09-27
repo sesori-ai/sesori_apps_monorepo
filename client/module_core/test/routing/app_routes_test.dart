@@ -138,6 +138,7 @@ void main() {
         sessionId: "session/with?special&chars",
         sessionTitle: "Title / Name?",
         readOnly: false,
+        fromLaunch: false,
       );
 
       final path = route.buildPath();
@@ -160,6 +161,40 @@ void main() {
       expect(detail.sessionId, "session/with?special&chars");
       expect(detail.sessionTitle, "Title / Name?");
       expect(detail.readOnly, isFalse);
+    });
+
+    test("session detail carries the launch marker only when set", () {
+      AppRouteSessionDetail roundTrip({required bool fromLaunch}) {
+        final uri = Uri.parse(
+          AppRoute.sessionDetail(
+            projectId: "p1",
+            projectName: null,
+            sessionId: "s1",
+            sessionTitle: null,
+            readOnly: false,
+            fromLaunch: fromLaunch,
+          ).buildPath(),
+        );
+        return AppRoute.fromDef(
+          def: AppRouteDef.sessionDetail,
+          pathParams: {"projectId": uri.pathSegments[1], "sessionId": uri.pathSegments[3]},
+          queryParams: uri.queryParameters,
+        ) as AppRouteSessionDetail;
+      }
+
+      expect(roundTrip(fromLaunch: true).fromLaunch, isTrue);
+      expect(roundTrip(fromLaunch: false).fromLaunch, isFalse);
+      expect(
+        const AppRoute.sessionDetail(
+          projectId: "p1",
+          projectName: null,
+          sessionId: "s1",
+          sessionTitle: null,
+          readOnly: false,
+          fromLaunch: false,
+        ).buildPath(),
+        isNot(contains("fromLaunch")),
+      );
     });
 
     test("session diffs with name encodes path params exactly once and round-trips", () {

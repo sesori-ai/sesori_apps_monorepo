@@ -182,6 +182,7 @@ void main() {
         sessionId: "session-1",
         sessionTitle: "Session One",
         readOnly: false,
+        fromLaunch: false,
       ).buildPath();
       final sessionsLocation = const AppRoute.sessions(
         projectId: projectId,

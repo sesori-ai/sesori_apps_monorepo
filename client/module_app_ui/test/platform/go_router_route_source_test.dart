@@ -127,6 +127,7 @@ void main() {
           sessionId: "s1",
           sessionTitle: null,
           readOnly: true,
+          fromLaunch: false,
         ).buildPath(),
       ),
     );

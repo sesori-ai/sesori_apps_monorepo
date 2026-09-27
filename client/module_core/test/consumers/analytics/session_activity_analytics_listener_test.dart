@@ -37,6 +37,7 @@ const _activeAnalyticsState = ProductAnalyticsState(
 );
 
 const _emptyState = SessionDetailState.loaded(
+  launchHandoff: null,
   bridgePromptAttachments: {},
   interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
   messages: [
@@ -79,6 +80,7 @@ const _emptyState = SessionDetailState.loaded(
 );
 
 const _nonEmptyState = SessionDetailState.loaded(
+  launchHandoff: null,
   bridgePromptAttachments: {},
   interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
   messages: [],

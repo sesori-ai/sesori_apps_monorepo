@@ -24,6 +24,9 @@ void main() {
     lastUserActivityAt: null,
   );
 
+  final openedSessionIds = <String>[];
+  setUp(openedSessionIds.clear);
+
   Future<void> pump(
     WidgetTester tester, {
     required int total,
@@ -36,17 +39,29 @@ void main() {
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: Align(
-            alignment: alignment,
-            child: BackgroundTasksBar(
-              surfaceStyle: PregoComposerSurfaceStyle.subtle,
-              projectId: "project-1",
-              children: children,
-              childStatuses: {
-                for (final (index, session) in children.indexed)
-                  session.id: index < running ? const SessionStatus.busy() : const SessionStatus.idle(),
-              },
+        home: SessionDetailPresentationScope(
+          messageImageRepository: () => throw UnimplementedError(),
+          imageSaver: () => throw UnimplementedError(),
+          imageClipboard: () => throw UnimplementedError(),
+          imageSharer: () => throw UnimplementedError(),
+          canShareImages: false,
+          openExternalLink: ({required url, required mode}) async => true,
+          openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
+              openedSessionIds.add(sessionId),
+          openHarnessSettings: () {},
+          openBridgeSettings: () {},
+          child: Scaffold(
+            body: Align(
+              alignment: alignment,
+              child: BackgroundTasksBar(
+                surfaceStyle: PregoComposerSurfaceStyle.subtle,
+                projectId: "project-1",
+                children: children,
+                childStatuses: {
+                  for (final (index, session) in children.indexed)
+                    session.id: index < running ? const SessionStatus.busy() : const SessionStatus.idle(),
+                },
+              ),
             ),
           ),
         ),
@@ -94,6 +109,20 @@ void main() {
 
     await tester.tapAt(const Offset(20, 20));
     await tester.pumpAndSettle();
+    expect(find.text("Sub-agents"), findsNothing);
+  });
+
+  testWidgets("opening a sub-agent closes the list", (tester) async {
+    await pump(tester, total: 3, running: 1);
+    await tester.tap(find.byKey(const ValueKey("sub_agents_pill")));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Sub-agent 2"));
+    await tester.pumpAndSettle();
+
+    expect(openedSessionIds, ["child-2"]);
+    // A list left shown under the pushed session would assert on the next
+    // window resize (flutter/flutter#192030).
     expect(find.text("Sub-agents"), findsNothing);
   });
 

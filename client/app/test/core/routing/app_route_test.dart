@@ -94,6 +94,7 @@ void main() {
         sessionId: "ses-456",
         sessionTitle: null,
         readOnly: false,
+        fromLaunch: false,
       ).buildPath();
       expect(result, "/projects/proj-123/sessions/ses-456?readOnly=false");
     });
@@ -123,6 +124,7 @@ void main() {
         sessionId: "ses-1",
         sessionTitle: "hello world & more",
         readOnly: true,
+        fromLaunch: false,
       ).buildPath();
       expect(result, contains("/projects/proj-1/sessions/ses-1?"));
       expect(result, isNot(contains("& more")));
@@ -137,6 +139,7 @@ void main() {
         sessionId: "ses-1",
         sessionTitle: null,
         readOnly: false,
+        fromLaunch: false,
       ).buildPath();
       expect(result, "/projects/proj-1/sessions/ses-1?readOnly=false");
     });
@@ -148,6 +151,7 @@ void main() {
         sessionId: "id/with?special&chars",
         sessionTitle: null,
         readOnly: false,
+        fromLaunch: false,
       ).buildPath();
       expect(
         result,
@@ -469,6 +473,7 @@ void main() {
               sessionId: "ses_1",
               sessionTitle: "Session Title",
               readOnly: false,
+              fromLaunch: false,
             ).buildPath(),
           ],
         ),
@@ -489,6 +494,7 @@ void main() {
             sessionId: "ses_1",
             sessionTitle: "Session Title",
             readOnly: false,
+            fromLaunch: false,
           ).buildPath(),
         ]),
       );

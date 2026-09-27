@@ -71,6 +71,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                 sessionId: session.id,
                 sessionTitle: session.title,
                 readOnly: session.time?.archived != null,
+                fromLaunch: false,
               ),
             ),
             onNewSession: ({required context, required project, required displayName}) => _pushRoute(
@@ -111,6 +112,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               sessionId: session.id,
               sessionTitle: session.title,
               readOnly: false,
+              fromLaunch: false,
             ),
           ),
           onOpenProject: ({required context, required project, required displayName}) => _goRoute(
@@ -137,6 +139,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                   sessionId: session.id,
                   sessionTitle: session.title,
                   readOnly: session.time?.archived != null,
+                  fromLaunch: false,
                 ),
               ),
               actionDispatcher: _desktopSessionActions,
@@ -181,6 +184,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                 sessionId: session.id,
                 sessionTitle: session.title,
                 readOnly: false,
+                fromLaunch: false,
               ),
             ),
           );
@@ -210,6 +214,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                 sessionId: parentSessionId,
                 sessionTitle: null,
                 readOnly: false,
+                fromLaunch: false,
               );
               if (_pageBelowIs(context: context, route: parent)) {
                 context.pop();
@@ -241,6 +246,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                     sessionId: sessionId,
                     sessionTitle: sessionTitle,
                     readOnly: readOnly,
+                    fromLaunch: false,
                   ),
                 ),
           );

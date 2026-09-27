@@ -41,6 +41,7 @@ class const SessionListScreen({
             sessionId: session.id,
             sessionTitle: session.title,
             readOnly: false,
+            fromLaunch: false,
           ),
         );
       },
