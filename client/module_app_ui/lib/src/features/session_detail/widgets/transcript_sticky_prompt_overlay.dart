@@ -178,10 +178,11 @@ class const _StickyPrompts({
 class _StickyPromptsElement(super.widget) extends MultiChildRenderObjectElement {
   @override
   void debugVisitOnstageChildren(ElementVisitor visitor) {
-    final pins = renderObject as RenderTranscriptStickyPrompts;
-    final pinnedIds = {for (final pin in pins.stickyLayout.pinned) pin.openerId};
-    for (final (index, child) in children.indexed) {
-      if (pinnedIds.contains(pins.openerIds.elementAtOrNull(index))) visitor(child);
+    if (renderObject case final RenderTranscriptStickyPrompts pins) {
+      final pinnedIds = {for (final pin in pins.stickyLayout.pinned) pin.openerId};
+      for (final (index, child) in children.indexed) {
+        if (pinnedIds.contains(pins.openerIds.elementAtOrNull(index))) visitor(child);
+      }
     }
   }
 }
