@@ -1096,11 +1096,11 @@ adding readers to the same model — and deletes whatever is genuinely dead,
 with its tests. If that pushes the step past its target, the trim lands as
 step 14.b rather than growing the removal PR.
 
-**Documentation.** Step 14 strips the fold and pinch-to-fold behavior from
-`docs/regression/transcript-turn-navigation.md` (the capability paragraph, the
-fold/control/pinch/place-keeping bullets, the fold clauses of L2–L4, the
-fold-specific failure signals and limitations, and the stale Sources entries)
-rather than leaving tombstones, and removes the fold cross-reference sentences
+**Documentation.** Step 14 strips the remaining fold behavior from
+`docs/regression/transcript-turn-navigation.md` — the capability paragraph, the
+fold/control/place-keeping bullets, the fold clauses of L2–L4, the
+fold-specific failure signals and limitations, and the stale Sources entries;
+step 13 already replaced the pinch clauses — rather than leaving tombstones, and removes the fold cross-reference sentences
 step 6 added to `session-history-and-recovery.md` and
 `tools-and-file-changes.md`. The `session-turns.md` cross-reference is about
 turn boundaries and is re-worded, not removed.
@@ -1180,8 +1180,10 @@ runs over what the list renders.
   - `TranscriptPromptFollowUp(messageId, text?, fullText?, createdAt?, dayKey?,
     number?, openerMessageId)`.
 
-  `fullText` is what step 16 searches and excerpts; `text` is the one-line
-  display value. Both come from one resolver, below.
+  These list the fields; both constructors take `required` named parameters,
+  nullable ones included (AGENTS.md). `fullText` is what step 16 searches and
+  excerpts; `text` is the one-line display value. Both come from one resolver,
+  below.
 - The builder walks `messages` **oldest first**, so numbering and the list order
   are the same single pass:
   - every role-`user` message advances the number, renderable or not;
@@ -1247,7 +1249,8 @@ exists and none is added. Files:
   the transcript's order: earlier above, later below (D39). Top to bottom:
   - a pinned `SliverPersistentHeader` holding the search field (step 16 fills
     it; step 11 ships it as the title row so the header's height never changes
-    under the reader);
+    under the reader) and, at its trailing end on every platform, a close button
+    that closes the layer without moving the transcript;
   - from step 16, "Load earlier prompts" as the **first** scrolling sliver: it
     extends the older end of the list, which is now the top, so it must sit
     there or it points the wrong way (D39);
@@ -1269,8 +1272,11 @@ exists and none is added. Files:
   nothing reusable exists to extend.
 - `widgets/prompt_day_header.dart` and its `SliverPersistentHeaderDelegate`,
   with a fixed extent as `DiffFileHeaderDelegate` requires.
-- Day grouping and the time column use `formatMessageTimestamp`'s conventions so
-  the screen and the transcript's timestamp peek agree.
+- The time column uses `formatMessageTimestamp`, so the screen and the
+  transcript's timestamp peek agree. That formatter always includes a time, so it
+  cannot label a day: step 11 adds a small day-label helper beside it — the
+  existing `archivedSessionsToday`/`archivedSessionsYesterday` strings, then the
+  same `MMMd`/`yMMMd` date patterns without the time.
 
 Entry points:
 
@@ -1309,7 +1315,9 @@ all reusing what already exists:
   turn the sticky prompt names, so the highlighted row is the prompt the transcript
   was showing above it. `_topEdgeTurn` is already computed in the post-frame pass
   that publishes the sticky value ([Architecture 6](#6-sticky-prompt-step-8)),
-  after every frame that scrolled or laid out.
+  after every frame that scrolled or laid out. When that segment has no opener (a
+  partial oldest turn or a preamble), the next prompt turn's opener is published
+  instead, since it is the nearest prompt below.
 - **The seam.** `_SessionDetailBodyState` owns a `ValueNotifier<String?>` holding
   that opener id, passed through `SessionDetailLoadedView` to the list, which
   **writes** it in that same post-frame pass. It mirrors `TranscriptJumpNotifier`
@@ -1508,8 +1516,9 @@ depends on it.
   The window is a fixed number of characters either side, clipped at the text's
   ends, and the row stays a single extra line. Non-matching rows are filtered
   out, so the spine stays continuous.
-- Day headers keep grouping whatever rows remain, still oldest day first with the
-  "No date" group above them; a day with no match contributes no group.
+- Day headers keep grouping whatever rows remain by the same contiguous runs, in
+  list order, so each "No date" run stays at its position; a day with no match
+  contributes no group.
 - The last sliver states the honest scope: the match count within the loaded
   range. Newly loaded entries are filtered by the same query on the next build,
   so the count grows in place.
@@ -1630,7 +1639,8 @@ Planning copy, not from a mock. Review may polish the wording, not the meaning.
 | Total count, last row | "{n} prompts loaded". Use "1 prompt loaded". |
 | Match count, last row while searching | "{n} matches in the prompts loaded so far". Use "1 match in the prompts loaded so far", and "No matches in the prompts loaded so far". |
 | Load earlier | "Load earlier prompts", at the top of the list (D39). |
-| Day header | The date, in `formatMessageTimestamp`'s conventions: "Today", "Yesterday", then the date. Oldest day at the top. |
+| Day header | "Today", "Yesterday" (the existing session-list strings), then the date without a time, in `formatMessageTimestamp`'s date patterns. Oldest day at the top. |
+| Close button | Tooltip and screen-reader label "Close prompts". |
 | Undated day header | "No date", heading each run of undated prompts; normally the first group (D38). |
 | Follow-up row, screen readers | The row's text, prefixed "Follow-up:" so a child row is not read as a peer. |
 | Row, screen readers | The number where there is one, the text, and the time where there is one, as one button labelled with them; the tap hint is the existing "Jump to this prompt". |
@@ -1862,8 +1872,8 @@ Steps 4 and 5 ship nothing users can reach, so they change none.
 | 8 | The sticky prompt, including its screen reader node. |
 | 11 | Rewrites the capability paragraph around the Prompts screen and adds its required behavior, levels, exploration guidance, failure signals and limitations, including the transcript's order, the opening anchor and the undated group (D38, D39). Adds the `docs/HARNESS_CAPABILITIES.md` prompt-times note for the state at this step: the six ACP harnesses still show no times. |
 | 12 | The transition, including reduced motion, and the iOS edge swipe that closes the Prompts screen (D40). |
-| 13 | Pinch opens the screen; the fold clauses of pinch go in step 14. |
-| 14 | Removes the fold and pinch-to-fold behavior from `transcript-turn-navigation.md` and the fold cross-references in `session-history-and-recovery.md` and `tools-and-file-changes.md`, and re-words the `session-turns.md` one. No tombstones. |
+| 13 | Pinch opens the screen and pinch out does nothing: it replaces the pinch-to-fold and pinch-to-unfold clauses, so no PR documents a gesture the product lacks. |
+| 14 | Removes the remaining fold behavior from `transcript-turn-navigation.md` and the fold cross-references in `session-history-and-recovery.md` and `tools-and-file-changes.md`, and re-words the `session-turns.md` one. No tombstones. |
 | 15 | Prompt numbers, their stability across an older page, and the no-number case against an older bridge. Cross-reference from `session-history-and-recovery.md` for the new response field. The ACP prompt stamp: which prompts get a time, which stay undated, and the "Working…" timer arriving on the six harnesses — in the regression document and in the `docs/HARNESS_CAPABILITIES.md` "Live timers" row that step 11 left saying otherwise. |
 | 16 | Search, the grown match row, and "Load earlier prompts" at the top of the list with no jump when earlier prompts arrive. |
 | 17 | Reconciles every document with what shipped. |
@@ -2110,12 +2120,13 @@ No user-visible change.
   day headers, and a mixed list where only some rows have a time; the opening
   anchor — the top-edge prompt is highlighted and on screen, stays tinted after
   scrolling it away and back, also with reduced motion (D41), and an empty list or
-  an unknown anchor opens at the newest end with no highlight; the total count row;
+  an unknown anchor opens at the newest end with no highlight, while a partial
+  oldest segment at the top edge anchors on the next prompt; the total count row;
   opening and closing the layer leaves the transcript's scroll offset and follow
   state unchanged; tapping an opener and tapping a follow-up each reach that
   message, including when its row is not built; a vanished row id ends the jump
   with no move; the system back gesture closes the layer instead of leaving the
-  page; the entry button on the phone bar and on the desktop toolbar.
+  page; the header's close button closes it with the transcript unmoved; the entry button on the phone bar and on the desktop toolbar.
 - The analytics event test and a cubit test: one event per open, with the
   `session_bar` value.
 - By hand on iOS and macOS, with screenshots.
