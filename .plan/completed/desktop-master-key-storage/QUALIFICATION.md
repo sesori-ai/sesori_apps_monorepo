@@ -1,7 +1,9 @@
 # Shared client persistence qualification
 
-Status: **Partial — plan stays active.** Recorded 2026-09-26. No coverage waiver
-or importer-retirement decision has been given.
+Status: **Qualification closed with explicit acceptance of remaining gaps.**
+The user selected **“All remaining qualification gaps”** after the physical-iPhone
+checks, authorizing the final qualification PR and plan closure. Missing evidence
+below remains unvalidated, not passed. This does not authorize importer retirement.
 
 ## Authorization and isolation
 
@@ -11,9 +13,12 @@ or changes to personal local applications. They then explicitly requested the
 global `sesori-local-testing` skill. Its slot-owned development accounts and
 simulator/emulator workflow was used for the mobile checks below.
 
-No dedicated physical test devices are available. Device-dependent restore gates
-remain **Blocked**, not passed or inapplicable. Local native tests do not authorize
-access to personal credentials, the login Keychain, or the running desktop/helper.
+The user subsequently authorized Sesori-only testing on a connected physical
+iPhone; migration, reopen and persisted-pending recovery passed as described in
+[MOBILE_MIGRATION.md](MOBILE_MIGRATION.md). No whole-device erase/restore or other
+app changes were authorized. The user's physical Android also retained its old
+login through the cutover (user-reported, not instrumented). Local tests do not
+authorize personal desktop credentials, login Keychain or running desktop/helper.
 
 ## Live mobile checks
 
@@ -119,18 +124,18 @@ not replacement, authorization denial, observed prompt counts or full L3/L4.
 The accompanying shared-format packages are a possible future replacement
 baseline, not replacement evidence themselves.
 
-## Remaining required coverage
+## Explicitly accepted unvalidated coverage
 
 - **Partial:** production-scope released-format iOS/Android import and cold reopen
   now have native fixture evidence, including pending-disable JSON before analytics
   bootstrap. Actual store-distributed upgrade, complete historical native envelope/
   error behavior, interruption/copy/cleanup/marker failure handling, server opt-out
   synchronization and native failure UI remain unqualified.
-- **Requested policy change, not yet implemented:** reset local storage and continue
-  logged out after migration failure instead of the blocking recovery root. The
-  user chose normal account/server analytics rules after reset, accepting loss of
-  pending local-only opt-out. Prior preserve-and-retry failure expectations must
-  be replaced and requalified; happy-path evidence above does not cover that change.
+- **Implemented, partially qualified:** #1779 and #1808 implement reset-to-login
+  with durable recovery intent. Physical iPhone startup from an injected pending
+  marker, native master replacement/scoped cleanup and fresh-secret cold reopen
+  passed. Actual OS-denied-access recovery, interruption and all historical native
+  error paths remain unvalidated; fixture injection is not native denial proof.
 - **Not run:** native Windows/Linux master-store roundtrip/cold reopen and
   new-format replacement on all three desktop platforms. Existing six-platform
   native build passes are not native storage execution.
@@ -143,7 +148,14 @@ baseline, not replacement evidence themselves.
   shared-store seeding and a shared-format baseline before reuse. Its old
   per-value seeder must not be used against the cutover.
 
-Retain the existing automated evidence on unchanged inputs. Complete the missing
-[plan matrix](PLAN.md#verification-and-retirement) before retirement, or record a
-separate explicit user acceptance of the named missing coverage. The deprecated
-mobile importer has its own public-upgrade retirement condition and remains.
+The user's acceptance covers every remaining entry above and missing native L3/L4
+coverage in the [plan matrix](PLAN.md#verification-and-retirement), including
+actual distributed iOS upgrade, historical native completeness/error cases,
+server opt-out synchronization, native denial/interruption, Windows/Linux storage
+execution, all-desktop replacement, macOS prompt observations and both mobile
+backup/restore/transfer gates. No additional execution is implied by closure.
+Existing fixture/CI evidence retains its original scope and source identity.
+
+The deprecated mobile importer remains: its separate public-upgrade retirement
+condition has not been satisfied or waived. Whole-device erase/restore remains
+unauthorized despite acceptance of its coverage gap.

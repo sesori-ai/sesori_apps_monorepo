@@ -155,9 +155,10 @@ channel mocks and old-format package evidence do not establish the L3/L4 matrix.
 
 - Isolated tests exercise real shell registration, SQL/crypto and startup
   ordering, but do not establish actual native enumeration/error behavior,
-  authorization, backup/restore or packaged-client behavior. Those required
-  gates remain in the active plan. Channel tests across platform options on one
-  host are not native OS coverage. Android XML validation is configuration
+  authorization, backup/restore or packaged-client behavior. Native migration and
+  pending-reset fixture evidence is recorded in the completed plan; outstanding
+  qualification gaps were explicitly accepted, not represented as passing.
+  Channel tests across platform options on one host are not native OS coverage. Android XML validation is configuration
   evidence, not proof of actual cloud/device-transfer restore behavior.
 - Shared implementation is not shared files or cross-device synchronization.
   Plaintext preferences and row IDs are inspectable, as is unlocked process
@@ -172,5 +173,6 @@ channel mocks and old-format package evidence do not establish the L3/L4 matrix.
   matching tests, and permanent auth/core domain key definitions.
 - Mobile `persistence_admission_test.dart`, startup wiring tests, desktop DI/smoke
   tests and the CI-only packaged probe.
-- Active `.plan/active/desktop-master-key-storage/` for remaining required native
-  qualification; fixture success does not retire that matrix.
+- Completed `.plan/completed/desktop-master-key-storage/` for bounded native
+  evidence and explicit acceptance of unvalidated qualification gaps. The importer
+  remains until its separate supported-public-upgrade retirement condition is met.
