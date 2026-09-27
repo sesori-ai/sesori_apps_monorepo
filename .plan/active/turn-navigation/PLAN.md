@@ -78,8 +78,9 @@ What survives from steps 2–8:
   (step 5) — they now serve the sticky prompt and returning from the Prompts
   screen instead of the fold;
 - the pinch recognizer (step 7) — repointed, and narrowed to the pinch-in half;
-- the sticky pinned prompt (step 8) — kept unchanged in behaviour, minus its
-  "only while unfolded" condition.
+- the sticky pinned prompt (step 8) — kept, minus its "only while unfolded"
+  condition; its behaviour is owned by the standalone
+  `sticky-prompt-continuity` PR (D42).
 
 What dies: the fold state, the folded stub rows, the fold buttons, the desktop
 fold shortcuts, the fold analytics event and their copy, tests and documented
@@ -400,7 +401,7 @@ this plan implements them and does not reopen them.
     [Architecture 10](#10-the-prompts-screen-steps-10-and-11) and
     [Architecture 15](#15-search-step-16).
 
-### User decisions of 2026-09-27 (the iOS edge swipe and the anchor tint)
+### User decisions of 2026-09-27 (the iOS edge swipe, the anchor tint and the pinned prompt)
 
 - **D40 On iOS, an edge swipe drags the Prompts layer away under the finger.**
   Chosen over "no swipe" and over making the screen a route.
@@ -415,6 +416,11 @@ this plan implements them and does not reopen them.
   open.** One boolean on the anchored row, with no animation in or out, and the
   same under reduced motion. Implemented by step 11; see
   [Opening anchored](#opening-anchored-on-the-prompt-you-were-reading-step-11).
+- **D42 The pinned prompt's behaviour belongs to the standalone
+  `sticky-prompt-continuity` PR.** The user redesigned it on 2026-09-27, outside
+  this plan. This plan's steps must keep it working and must not restate its
+  geometry or motion; where this plan describes step 8's pinned prompt, that PR
+  supersedes it.
 
 Defaults this plan adopts for the Prompts screen. **Each is a default the user
 may override:**
@@ -512,8 +518,8 @@ override:**
   [Analytics](#analytics)).
 - **D15 The sticky prompt shows only while turns are unfolded. SIMPLIFIED on
   2026-09-26.** With no fold state the condition disappears; the prompt is
-  always pinned while its opener is above the top edge. Clamped to three lines,
-  and a tap scrolls its prompt to the top. Both stand.
+  always pinned while its opener is above the top edge. Its geometry and tap
+  behaviour are now D42's.
 - **D16 A running turn's stub shows "Running · step {n}". SUPERSEDED on
   2026-09-26 by D24**; the stub is removed in step 14. The "Working…" row's
   timer is step-timers' own behavior and is untouched.
@@ -968,8 +974,8 @@ below is still the evidence for the recognizer choice.
   to the index.
   - Folded: unfold, anchored on that turn.
   - Unfolded: scroll the opener to the top edge.
-- A one-frame lag is accepted. Move to a render object only if a device shows
-  the lag.
+- This section records what step 8 shipped. Its look and motion now belong to
+  the standalone `sticky-prompt-continuity` PR (D42).
 
 ### 7. Desktop index pane (old step 9)
 
@@ -1193,7 +1199,7 @@ runs over what the list renders.
   rather than keeping a second copy;
   `transcript_sticky_prompt_overlay.dart`'s `_textOf` is that copy and step 8's
   review already noted it waits for a third caller. The overlay keeps the whole
-  value and its three-line clamp, unchanged.
+  value; how it shows it is D42's.
 - `hasTimes` is false only when **no** listed entry has a `createdAt`. Then the
   screen shows no time column and no day headers: that is a session nothing ever
   timed, such as an ACP session Sesori never sent a prompt to (D38).
@@ -1830,7 +1836,7 @@ Accepted:
 - One `COUNT(*)` with `json_extract` per page fetch, unindexed.
 - The screen has no URL and no deep link.
 - A jump to a distant prompt moves about one cache-extended viewport per frame,
-  so a long jump shows brief motion — unchanged from step 8's sticky tap.
+  so a long jump shows brief motion.
 - ACP follow-ups open a new turn. A live ACP follow-up after a running tool can
   also move to a new turn once idle finalization marks that tool failed.
 - Claude's live-only `isMeta` bubbles can open a bogus turn live, for example
@@ -1838,7 +1844,6 @@ Accepted:
 - OpenCode task-notification injection stays unverified.
 - Already imported Claude sessions regain dropped follow-ups only on their next
   re-import.
-- The sticky header can lag by one frame.
 - A jump to a distant turn moves about one cache-extended viewport per frame,
   so a long jump shows brief motion.
 - The jump-to-latest pill can flash briefly when a trackpad pinch starts while
@@ -2263,7 +2268,7 @@ settle on its own. None of them blocks step 10.
 5. Can the Windows and Linux rows of the matrix run on real machines?
 6. Defaults D9–D18 that survive: D11 (the turn rule), D12 (no stopped state) and
    D19–D23 stand unless you say otherwise. D32–D37 are this revision's defaults
-   and are equally open, except D34, which D39 superseded. D38–D41 are the
+   and are equally open, except D34, which D39 superseded. D38–D42 are the
    user's own decisions and are settled.
 
 Answered in round 4, kept here so the record is complete: list order (D39,

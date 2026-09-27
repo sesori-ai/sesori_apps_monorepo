@@ -23,11 +23,13 @@ step lives in `steps/step-NN.md`, written only by that step's own PR.
   (supersedes D31's "the bridge does not stamp its own time"); and the prompt list
   keeps the transcript's chronological order and opens anchored on the prompt the
   reader was nearest (supersedes D34).
-- **D40–D41 are the user's decisions of 2026-09-27.** On iOS an edge swipe drags
+- **D40–D42 are the user's decisions of 2026-09-27.** On iOS an edge swipe drags
   the Prompts layer away under the finger, closing past halfway or on a fling and
   springing back otherwise; the layer stays a layer. Built by step 12. The opening
   anchor's tint stays while the screen is open, with no animation, also under
-  reduced motion. Built by step 11.
+  reduced motion. Built by step 11. The pinned prompt's behaviour belongs to the
+  standalone `sticky-prompt-continuity` PR; this plan's steps keep it working and
+  do not restate its geometry.
 
 See [PLAN](PLAN.md#decisions) for each one, including which are superseded.
 
