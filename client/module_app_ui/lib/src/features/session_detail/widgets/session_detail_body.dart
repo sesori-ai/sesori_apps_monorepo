@@ -48,11 +48,6 @@ typedef SessionDetailMenuEntriesBuilder = List<PregoMenuEntry> Function({
 class const SessionDetailPageChrome({
   required final SessionDetailHeaderBuilder headerBuilder,
   required final SessionDetailColumnWidths columnWidths,
-
-  /// Fold and unfold every turn while focus is in the page. The shell picks
-  /// the platform's modifier keys.
-  required final SingleActivator foldActivator,
-  required final SingleActivator unfoldActivator,
 });
 
 class const SessionDetailBody({
@@ -501,44 +496,37 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         ),
         SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => false,
       };
-      final cubit = context.read<SessionDetailCubit>();
-      return CallbackShortcuts(
-        bindings: {
-          pageChrome.foldActivator: () => cubit.setTranscriptFolded(folded: true),
-          pageChrome.unfoldActivator: () => cubit.setTranscriptFolded(folded: false),
-        },
-        child: _PageFocus(
-          child: Scaffold(
-            body: Column(
-              children: [
-                pageChrome.headerBuilder(
-                  context: context,
-                  title: title,
-                  isBusy: isBusy,
-                  onShowDiffs: openDiffs,
-                  session: session,
-                  onShowPrompts: openPrompts,
+      return _PageFocus(
+        child: Scaffold(
+          body: Column(
+            children: [
+              pageChrome.headerBuilder(
+                context: context,
+                title: title,
+                isBusy: isBusy,
+                onShowDiffs: openDiffs,
+                session: session,
+                onShowPrompts: openPrompts,
+              ),
+              ?banner,
+              // The header sits above the transcript, so nothing scrolls behind a
+              // bar and the transcript needs no top inset for one.
+              Expanded(
+                child: PregoTopBarInsetScope(
+                  baseInset: 0,
+                  bannerHeight: const AlwaysStoppedAnimation<double>(0),
+                  child: content,
                 ),
-                ?banner,
-                // The header sits above the transcript, so nothing scrolls behind a
-                // bar and the transcript needs no top inset for one.
-                Expanded(
-                  child: PregoTopBarInsetScope(
-                    baseInset: 0,
-                    bannerHeight: const AlwaysStoppedAnimation<double>(0),
-                    child: content,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       );
     }
     // The floating glass bar's centred title shares one row with its controls,
     // and on a phone that row runs out first: every control it carries is taken
-    // out of the title. So it keeps only those the reader acts on here — Prompts,
-    // fold and the menu — while Changes rides in that menu with its counts, and the
+    // out of the title. So it keeps only those the reader acts on here — Prompts
+    // and the menu — while Changes rides in that menu with its counts, and the
     // session's progress is left to the transcript, the composer and the
     // sub-agents bar, which all report it already.
     //
@@ -555,12 +543,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             semanticLabel: loc.transcriptPrompts,
             onPressed: () => openPrompts(origin: buttonContext.globalCentre),
           ),
-        ),
-      if (state case SessionDetailLoaded(:final transcriptFolded))
-        PregoButtonsIconGlass(
-          icon: transcriptFolded ? TablerRegular.separator_horizontal : TablerRegular.fold,
-          semanticLabel: transcriptFolded ? loc.transcriptUnfoldAll : loc.transcriptFoldAll,
-          onPressed: () => context.read<SessionDetailCubit>().setTranscriptFolded(folded: !transcriptFolded),
         ),
       // Root sessions only: the session actions run on the project's session
       // list, which holds no sub-agent sessions and must not gain one, and only
@@ -883,8 +865,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
 }
 
 /// Holds keyboard focus inside the page when it opens and when a click lands
-/// in it, so the page's shortcuts work before the composer is focused. Focus
-/// already inside the page, such as the composer's, is left alone.
+/// in it, so the shortcuts the shell binds around the page, such as marking the
+/// session unread, work before the composer is focused. Focus already inside
+/// the page, such as the composer's, is left alone.
 class const _PageFocus({required final Widget child}) extends StatefulWidget {
   @override
   State<_PageFocus> createState() => _PageFocusState();

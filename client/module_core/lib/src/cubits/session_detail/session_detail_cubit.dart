@@ -181,10 +181,6 @@ class SessionDetailCubit(
   bool _autoContinuationUpdateInFlight = false;
   bool _approvalUpdateInFlight = false;
 
-  /// Whether the transcript is folded to one row per turn. Lives for the
-  /// cubit, so it survives a full reload, and another session starts unfolded.
-  bool _transcriptFolded = false;
-
   /// Route visibility is separate from app lifecycle visibility. Desktop can
   /// cover the nested session navigator with a root-level settings route while
   /// leaving this cubit mounted; a covered route must not declare the session
@@ -411,7 +407,6 @@ class SessionDetailCubit(
             previous.copyWith(
               interaction: _interaction,
               isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
-              transcriptFolded: _transcriptFolded,
             ),
           );
           _drainPendingEvents();
@@ -528,7 +523,6 @@ class SessionDetailCubit(
                   previous.copyWith(
                     interaction: _interaction,
                     isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
-                    transcriptFolded: _transcriptFolded,
                   ),
                 );
                 _drainPendingEvents();
@@ -1399,16 +1393,6 @@ class SessionDetailCubit(
         isArchived: sessionTime == null ? current.isArchived : sessionTime.archived != null,
       ),
     );
-  }
-
-  /// Folds or unfolds every turn of the transcript: the one intent behind
-  /// every fold control. A request that changes nothing emits and reports
-  /// nothing.
-  void setTranscriptFolded({required bool folded}) {
-    if (isClosed || folded == _transcriptFolded) return;
-    _transcriptFolded = folded;
-    if (state case final SessionDetailLoaded current) emit(current.copyWith(transcriptFolded: folded));
-    if (folded) _reportProductEvent(event: const ProductAnalyticsEvent.transcriptTurnsFolded());
   }
 
   /// Reports that the Prompts screen opened from [entry].
@@ -3005,7 +2989,6 @@ class SessionDetailCubit(
       interaction: interaction,
       messages: snapshot.messages,
       olderMessagesCursor: snapshot.olderMessagesCursor,
-      transcriptFolded: _transcriptFolded,
       streamingText: const {},
       sessionStatus: initialSessionStatus,
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),

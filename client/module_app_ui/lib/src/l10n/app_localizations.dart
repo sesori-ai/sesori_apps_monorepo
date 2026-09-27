@@ -2617,55 +2617,19 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 step} other{{count} steps}}'**
   String transcriptSummarySteps(int count);
 
-  /// Part of the one line a folded turn of a session transcript shows: how many steps the agent took in it, e.g. '3 steps · 1m 02s — Fixed the failing test'.
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =0{No steps} =1{1 step} other{{count} steps}}'**
-  String transcriptTurnSteps(int count);
-
-  /// The line a folded turn of a session transcript shows while the agent works on it and has taken no step yet.
-  ///
-  /// In en, this message translates to:
-  /// **'Running'**
-  String get transcriptTurnRunning;
-
-  /// The line a folded turn of a session transcript shows while the agent works on it: how many steps it has taken so far, e.g. 'Running · step 3'.
-  ///
-  /// In en, this message translates to:
-  /// **'Running · step {step}'**
-  String transcriptTurnRunningStep(int step);
-
-  /// Start of the line a folded turn of a session transcript shows when the turn ended in an error, followed by the error's first line when there is one, e.g. 'Ended with an error · Rate limit reached'.
-  ///
-  /// In en, this message translates to:
-  /// **'Ended with an error'**
-  String get transcriptTurnFailed;
-
-  /// Start of the line a folded session transcript shows for the messages before the first loaded prompt, whose own prompt may be on an older page that has not loaded, followed by the step count, e.g. 'Earlier turn, partly loaded · 3 steps'.
-  ///
-  /// In en, this message translates to:
-  /// **'Earlier turn, partly loaded'**
-  String get transcriptTurnPartlyLoaded;
-
-  /// Start of the line a folded session transcript shows for the messages before the user's first prompt, such as automation, followed by the step count, e.g. 'Before the first prompt · 2 steps'.
-  ///
-  /// In en, this message translates to:
-  /// **'Before the first prompt'**
-  String get transcriptTurnBeforeFirstPrompt;
-
-  /// A session transcript duration under a minute, such as how long a folded turn took or how long the agent has been working, e.g. '42s'.
+  /// A session transcript duration under a minute, such as how long the agent has been working, e.g. '42s'.
   ///
   /// In en, this message translates to:
   /// **'{seconds}s'**
   String transcriptTurnSeconds(int seconds);
 
-  /// A session transcript duration under an hour, such as how long a folded turn took or how long the agent has been working. The seconds always have two digits, e.g. '1m 02s'.
+  /// A session transcript duration under an hour, such as how long the agent has been working. The seconds always have two digits, e.g. '1m 02s'.
   ///
   /// In en, this message translates to:
   /// **'{minutes}m {seconds}s'**
   String transcriptTurnMinutes(int minutes, String seconds);
 
-  /// A session transcript duration of an hour or more, such as how long a folded turn took or how long the agent has been working. The minutes and seconds always have two digits, e.g. '1h 05m 12s'.
+  /// A session transcript duration of an hour or more, such as how long the agent has been working. The minutes and seconds always have two digits, e.g. '1h 05m 12s'.
   ///
   /// In en, this message translates to:
   /// **'{hours}h {minutes}m {seconds}s'**
@@ -2682,18 +2646,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You can keep chatting meanwhile.'**
   String get transcriptSubAgentsKeepChatting;
-
-  /// Label of the session toolbar button that folds every turn of the transcript to one line each.
-  ///
-  /// In en, this message translates to:
-  /// **'Fold all turns'**
-  String get transcriptFoldAll;
-
-  /// Label of the session toolbar button that unfolds every folded turn of the transcript.
-  ///
-  /// In en, this message translates to:
-  /// **'Unfold all turns'**
-  String get transcriptUnfoldAll;
 
   /// Screen reader hint of the prompt pinned at the top of a session transcript while the user reads that prompt's turn. Activating it scrolls the transcript to the prompt.
   ///

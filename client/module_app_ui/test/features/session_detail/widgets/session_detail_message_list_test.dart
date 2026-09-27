@@ -8,11 +8,9 @@ import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_jump_notifier.dart";
-import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_prompt_slot.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_layout.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_prompt_overlay.dart";
-import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_turn_stub.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -49,13 +47,9 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   List<Session> _children = const [];
   Map<String, SessionStatus> _childStatuses = const {};
   bool _isLoadingOlderMessages = false;
-  bool _transcriptFolded = false;
   bool _hasOlderMessages = true;
   bool _isRefreshing = false;
   int? lastCancelledQueuedMessageIndex;
-
-  /// Fold switches the list asked for.
-  int foldRequests = 0;
 
   /// The focal points of the pinches in that asked for the Prompts screen.
   final List<Offset> pinchIns = [];
@@ -137,10 +131,6 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
 
   void setRefreshing({required bool refreshing}) {
     setState(() => _isRefreshing = refreshing);
-  }
-
-  void setTranscriptFolded({required bool folded}) {
-    setState(() => _transcriptFolded = folded);
   }
 
   void cancelQueuedMessage(int index) {
@@ -252,11 +242,6 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
           isRefreshing: _isRefreshing,
-          transcriptFolded: _transcriptFolded,
-          onTranscriptFoldedChanged: ({required folded}) {
-            foldRequests++;
-            setTranscriptFolded(folded: folded);
-          },
           currentPromptId: currentPromptId,
           jumpNotifier: jumpNotifier,
           onPinchIn: ({required focalPoint}) => pinchIns.add(focalPoint),
@@ -449,15 +434,12 @@ List<MessageWithParts> _turns({
 Future<_SessionDetailMessageListHarnessState> _pumpTurns(
   WidgetTester tester, {
   required List<MessageWithParts> messages,
-  required bool folded,
 }) async {
   await tester.pumpWidget(
     _SessionDetailMessageListHarness(initialMessages: messages, initialStreamingText: const {}, topInset: _topInset),
   );
-  final harness = tester.state<_SessionDetailMessageListHarnessState>(find.byType(_SessionDetailMessageListHarness));
-  harness.setTranscriptFolded(folded: folded);
   await tester.pumpAndSettle();
-  return harness;
+  return tester.state<_SessionDetailMessageListHarnessState>(find.byType(_SessionDetailMessageListHarness));
 }
 
 double _topOf(WidgetTester tester, String rowId) => tester.getTopLeft(_messageKey(rowId)).dy;
@@ -1436,13 +1418,14 @@ void main() {
     });
   });
 
-  testWidgets("folding a transcript shorter than the screen loads the older page", (tester) async {
+  testWidgets("a transcript that shrinks below the screen without a scroll loads the older page", (tester) async {
     final key = GlobalKey<_SessionDetailMessageListHarnessState>();
     var requested = 0;
+    final messages = _turns(count: 3, promptLines: 1, answers: 4, paragraphs: 4);
     await tester.pumpWidget(
       _SessionDetailMessageListHarness(
         key: key,
-        initialMessages: _turns(count: 3, promptLines: 1, answers: 4, paragraphs: 4),
+        initialMessages: messages,
         initialStreamingText: const {},
         onLoadOlderMessages: () {
           requested++;
@@ -1453,7 +1436,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(requested, 0);
 
-    key.currentState?.setTranscriptFolded(folded: true);
+    // The oldest message stays, so only the shorter layout can ask for the page.
+    key.currentState?.replaceMessages(messages.take(2).toList());
     await tester.pumpAndSettle();
     expect(requested, 1);
   });
@@ -1693,50 +1677,11 @@ void main() {
     expect(find.text("Working…"), findsNothing);
   });
 
-  testWidgets("a folded running turn keeps its row without a timer, the timed Working row under it", (tester) async {
-    await withClock(Clock(() => tester.binding.clock.now()), () async {
-      final harness = await _pumpTurns(
-        tester,
-        messages: _turns(count: 1, promptLines: 1, answers: 1, paragraphs: 1),
-        folded: true,
-      );
-      final sentAt = tester.binding.clock.now().millisecondsSinceEpoch - 65000;
-      harness
-        ..appendNewestMessage(
-          MessageWithParts(
-            info: Message.user(
-              promptId: null,
-              id: "u1",
-              sessionID: "session-1",
-              agent: null,
-              time: MessageTime(created: sentAt, completed: null),
-            ),
-            parts: const [MessagePart.text(id: "u1-part", sessionID: "session-1", messageID: "u1", text: "Fix it")],
-          ),
-        )
-        ..setBusy(true);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-
-      expect(find.text("Running"), findsOneWidget);
-      expect(find.text("Working… · "), findsOneWidget);
-      expect(find.text("1m 05s"), findsOneWidget);
-      await tester.pump(const Duration(seconds: 1));
-      expect(find.text("1m 06s"), findsOneWidget);
-
-      harness.setBusy(false);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text("Working… · "), findsNothing);
-    });
-  });
-
   testWidgets("the sub-agent row takes over from Working… with an ease while only sub-agents run", (tester) async {
     await withClock(Clock(() => tester.binding.clock.now()), () async {
       final harness = await _pumpTurns(
         tester,
         messages: _turns(count: 1, promptLines: 1, answers: 1, paragraphs: 1),
-        folded: false,
       );
       harness.setBusy(true);
       await tester.pump();
@@ -2341,255 +2286,23 @@ void main() {
     expect(_messageKey("user-2"), findsOneWidget);
   });
 
-  testWidgets("folded, each turn shows its prompt and one stub while the synthetic rows stay", (tester) async {
-    await tester.binding.setSurfaceSize(const Size(900, 1200));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    // RetryErrorMessageCard shimmers forever, so this test never settles.
-    const queued = QueuedSessionSubmission.text(
-      promptId: "queued-1",
-      text: "Queued behind the turn",
-      inputMode: ComposerInputMode.typed,
-      attachments: [],
-      agent: "coder",
-      agentModel: null,
-      fastMode: false,
-    );
-    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
-    await tester.pumpWidget(
-      _SessionDetailMessageListHarness(
-        key: harnessKey,
-        initialMessages: [
-          _automatedMessage(messageId: "setup", text: "Automation report", sender: MessageSender.system),
-          _message(messageId: "u1", role: "user", text: "First prompt"),
-          _message(messageId: "a1", role: "assistant", text: "First answer"),
-          _message(messageId: "u2", role: "user", text: "Second prompt", promptId: "p2"),
-          _message(messageId: "a2", role: "assistant", text: "Second answer"),
-        ],
-        initialStreamingText: const {},
-        initialQueuedMessages: const [queued],
-        initialRetryErrorMessage: "Provider is overloaded",
-      ),
-    );
-    await tester.pump();
-
-    harnessKey.currentState?.setTranscriptFolded(folded: true);
-    await _pumpListUpdate(tester);
-
-    // Oldest first: the leading segment's stub, then each prompt and its stub.
-    final tops = [
-      for (final row in [
-        "session-detail-turn-head",
-        "u1",
-        "session-detail-turn-u1",
-        "session-detail-prompt-p2",
-        "session-detail-turn-u2",
-      ])
-        tester.getTopLeft(_messageKey(row)).dy,
-    ];
-    expect(tops, [...tops]..sort());
-    expect(find.text("Before the first prompt · No steps"), findsOneWidget);
-    expect(find.text("No steps — First answer"), findsOneWidget);
-    expect(find.text("No steps — Second answer"), findsOneWidget);
-    for (final hidden in ["setup", "a1", "a2"]) {
-      expect(_messageKey(hidden), findsNothing);
-    }
-    final lastStubBottom = tester.getBottomLeft(_messageKey("session-detail-turn-u2")).dy;
-    expect(tester.getTopLeft(find.byType(RetryErrorMessageCard)).dy, greaterThanOrEqualTo(lastStubBottom));
-    expect(tester.getTopLeft(find.text("Queued behind the turn")).dy, greaterThan(lastStubBottom));
-
-    harnessKey.currentState?.setTranscriptFolded(folded: false);
-    await _pumpListUpdate(tester);
-
-    for (final shown in ["setup", "u1", "a1", "session-detail-prompt-p2", "a2"]) {
-      expect(_messageKey(shown), findsOneWidget);
-    }
-    expect(find.byType(TranscriptTurnStub), findsNothing);
-    expect(find.byType(RetryErrorMessageCard), findsOneWidget);
-    expect(find.text("Queued behind the turn"), findsOneWidget);
-  });
-
-  testWidgets("a fold switch eases no row in", (tester) async {
-    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
-    await tester.pumpWidget(
-      _SessionDetailMessageListHarness(
-        key: harnessKey,
-        initialMessages: [
-          _message(messageId: "u1", role: "user", text: "First prompt"),
-          _message(messageId: "a1", role: "assistant", text: "First answer"),
-        ],
-        initialStreamingText: const {},
-      ),
-    );
-    await tester.pumpAndSettle();
-    Iterable<String> moving() => tester
-        .stateList(find.byType(TranscriptPresence, skipOffstage: false))
-        .map((state) => "$state")
-        .where((state) => state.contains("tracking 1 ticker"));
-
-    for (final folded in [true, false]) {
-      harnessKey.currentState?.setTranscriptFolded(folded: folded);
-      await tester.pump();
-      expect(moving(), isEmpty);
-      expect(_messageKey("session-detail-turn-u1"), folded ? findsOneWidget : findsNothing);
-      expect(_messageKey("a1"), folded ? findsNothing : findsOneWidget);
-    }
-  });
-
-  group("a fold switch keeps the reader's turn in place", () {
-    // Folded, the 20 turns still overflow the 600 px viewport.
-    final shortTurns = _turns(count: 20, promptLines: 1, answers: 1, paragraphs: 12);
-    // Every prompt and answer is taller than the viewport.
-    final tallTurns = _turns(count: 16, promptLines: 40, answers: 4, paragraphs: 24);
-
-    testWidgets("mid-turn, that turn's prompt lands at the top edge", (tester) async {
-      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
-      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
-      expect(tester.getBottomLeft(_messageKey("a8-0")).dy, greaterThan(_topInset));
-
-      harness.setTranscriptFolded(folded: true);
-      await tester.pumpAndSettle();
-
-      expect(_messageKey("session-detail-turn-u8"), findsOneWidget);
-      expect(_topOf(tester, "u8"), moreOrLessEquals(_topInset, epsilon: 1));
-    });
-
-    testWidgets("a prompt on screen keeps its distance from the top edge", (tester) async {
-      final harness = await _pumpTurns(tester, messages: shortTurns, folded: true);
-      await _scrollRowTo(tester, rowId: "u8", top: _topInset - 10);
-
-      harness.setTranscriptFolded(folded: false);
-      await tester.pumpAndSettle();
-
-      expect(_messageKey("a8-0"), findsOneWidget);
-      expect(_topOf(tester, "u8"), moreOrLessEquals(_topInset - 10, epsilon: 1));
-    });
-
-    testWidgets("tapping a folded turn unfolds every turn and keeps that one in place", (tester) async {
-      await _pumpTurns(tester, messages: shortTurns, folded: true);
-      final top = _topOf(tester, "u17");
-
-      await tester.tap(_messageKey("session-detail-turn-u17"));
-      await tester.pumpAndSettle();
-
-      expect(find.byType(TranscriptTurnStub), findsNothing);
-      expect(_messageKey("a17-0"), findsOneWidget);
-      expect(_topOf(tester, "u17"), moreOrLessEquals(top, epsilon: 1));
-    }, variant: _pinchPlatforms);
-
-    testWidgets("a prompt pushed out of the built rows is searched for from below it", (tester) async {
-      final harness = await _pumpTurns(tester, messages: tallTurns, folded: true);
-      await _scrollRowTo(tester, rowId: "session-detail-turn-u12", top: _topInset - 20);
-      final moves = _recordMoves(tester);
-
-      harness.setTranscriptFolded(folded: false);
-      await tester.pump();
-      // Unfolding grew the rows below the prompt past the built ones.
-      expect(find.byKey(const ValueKey("u12"), skipOffstage: false), findsNothing);
-      await tester.pumpAndSettle();
-
-      // Up through several rows, one frame each, and never past the prompt.
-      expect(moves, hasLength(greaterThan(4)));
-      expect(moves, orderedEquals([...moves]..sort()));
-      expect(_topOf(tester, "u12"), moreOrLessEquals(_topInset, epsilon: 1));
-      expect(tester.getSize(_messageKey("u12")).height, greaterThan(600));
-    });
-
-    testWidgets("a prompt pushed out of the built rows is searched for from above it", (tester) async {
-      final harness = await _pumpTurns(tester, messages: tallTurns, folded: false);
-      await _scrollRowTo(tester, rowId: "a6-1", top: _topInset - 100);
-      final moves = _recordMoves(tester);
-
-      harness.setTranscriptFolded(folded: true);
-      await tester.pump();
-      // Folding far up rebuilt the list from its oldest row.
-      expect(find.byKey(const ValueKey("u6"), skipOffstage: false), findsNothing);
-      await tester.pumpAndSettle();
-
-      expect(moves, hasLength(greaterThan(4)));
-      expect(moves, orderedEquals(<double>[...moves]..sort((a, b) => b.compareTo(a))));
-      expect(_topOf(tester, "u6"), moreOrLessEquals(_topInset, epsilon: 1));
-    });
-
-    /// The turn at the top edge, and where its prompt should rest after a
-    /// switch: in place while any of it shows, else at the edge.
-    ({String promptId, double top}) topEdgePrompt(WidgetTester tester, {required bool folded}) {
-      for (var turn = 0; turn < 20; turn++) {
-        final lastRow = folded ? _messageKey("session-detail-turn-u$turn") : _messageKey("a$turn-0");
-        if (lastRow.evaluate().isEmpty || tester.getBottomLeft(lastRow).dy <= _topInset) continue;
-        final prompt = _messageKey("u$turn");
-        final shown = prompt.evaluate().isNotEmpty && tester.getBottomLeft(prompt).dy > _topInset;
-        return (promptId: "u$turn", top: shown ? _topOf(tester, "u$turn") : _topInset);
-      }
-      fail("no turn reaches below the top edge");
-    }
-
-    testWidgets("folding from a late turn clamps at the latest edge, and unfolding holds the top-edge turn", (
-      tester,
-    ) async {
-      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
-      await _scrollRowTo(tester, rowId: "a18-0", top: _topInset - 100);
-
-      harness.setTranscriptFolded(folded: true);
-      await tester.pumpAndSettle();
-      // Too little is folded below turn 18 to lift its prompt to the edge, yet
-      // the list stays detached, so new output does not pull the reader on.
-      expect(_position(tester).pixels, lessThan(1));
-      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
-      final held = topEdgePrompt(tester, folded: true);
-
-      harness.setTranscriptFolded(folded: false);
-      await tester.pumpAndSettle();
-
-      expect(_topOf(tester, held.promptId), moreOrLessEquals(held.top, epsilon: 1));
-      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
-    });
-
-    testWidgets("while following, a switch holds the top-edge turn and stops following", (tester) async {
-      final harness = await _pumpTurns(tester, messages: shortTurns, folded: true);
-      expect(find.byKey(_jumpToLatestKey), findsNothing);
-      final held = topEdgePrompt(tester, folded: true);
-
-      harness.setTranscriptFolded(folded: false);
-      await tester.pumpAndSettle();
-
-      expect(_topOf(tester, held.promptId), moreOrLessEquals(held.top, epsilon: 1));
-      expect(_position(tester).pixels, greaterThan(20));
-      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
-    });
-
-    testWidgets("an anchor whose row goes ends, so the row coming back moves nothing", (tester) async {
-      final harness = await _pumpTurns(tester, messages: shortTurns, folded: true);
-
-      await tester.tap(_messageKey("session-detail-turn-u17"));
-      harness.removeMessage("u17");
-      await tester.pumpAndSettle();
-      harness.replaceMessages(shortTurns);
-      await tester.pumpAndSettle();
-
-      expect(_position(tester).pixels, 0);
-      expect(find.byKey(_jumpToLatestKey), findsNothing);
-    });
-  });
-
   group("a pinch", () {
     final shortTurns = _turns(count: 20, promptLines: 1, answers: 1, paragraphs: 12);
     Offset center(WidgetTester tester) => tester.getCenter(find.byKey(_listViewKey));
 
     testWidgets("in opens the Prompts screen once, and out does nothing", (tester) async {
-      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      final harness = await _pumpTurns(tester, messages: shortTurns);
 
       await _touchPinch(tester, center: center(tester), from: 300, to: 40);
       expect(harness.pinchIns, hasLength(1));
 
       await _touchPinch(tester, center: center(tester), from: 40, to: 300);
       expect(harness.pinchIns, hasLength(1));
-      expect(harness.foldRequests, 0);
       expect(_position(tester).pixels, 0);
     }, variant: _pinchPlatforms);
 
     testWidgets("with one finger held still opens on a vertical pinch", (tester) async {
-      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      final harness = await _pumpTurns(tester, messages: shortTurns);
 
       await _touchPinch(
         tester,
@@ -2605,7 +2318,7 @@ void main() {
     }, variant: _pinchPlatforms);
 
     testWidgets("on a trackpad opens on a pinch in, not out", (tester) async {
-      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      final harness = await _pumpTurns(tester, messages: shortTurns);
 
       await _trackpadPinch(tester, center: center(tester), scale: 0.6);
       expect(harness.pinchIns, [center(tester)]);
@@ -2615,7 +2328,7 @@ void main() {
     }, variant: _pinchPlatforms);
 
     testWidgets("below the threshold opens, scrolls and detaches nothing", (tester) async {
-      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      final harness = await _pumpTurns(tester, messages: shortTurns);
 
       await _touchPinch(tester, center: center(tester), from: 200, to: 180, axis: const Offset(0, 1));
       await _trackpadPinch(tester, center: center(tester), scale: 0.9);
@@ -2626,7 +2339,7 @@ void main() {
     }, variant: _pinchPlatforms);
 
     testWidgets("while following opens, moves nothing and keeps following", (tester) async {
-      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      final harness = await _pumpTurns(tester, messages: shortTurns);
       final focalPoint = center(tester) + const Offset(-60, 90);
 
       await _trackpadPinch(tester, center: focalPoint, scale: 0.6);
@@ -2637,7 +2350,7 @@ void main() {
     }, variant: _pinchPlatforms);
 
     testWidgets("while reading history opens, moves nothing and stays detached", (tester) async {
-      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      final harness = await _pumpTurns(tester, messages: shortTurns);
       await _scrollRowTo(tester, rowId: "u8", top: 300);
 
       await _touchPinch(
@@ -2653,7 +2366,7 @@ void main() {
     }, variant: _pinchPlatforms);
 
     testWidgets("while reading history near the latest edge stays detached as output arrives", (tester) async {
-      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      final harness = await _pumpTurns(tester, messages: shortTurns);
       await _scrollRowTo(tester, rowId: "a18-0", top: _topInset - 100);
       final pixels = _position(tester).pixels;
 
@@ -2735,7 +2448,7 @@ void main() {
     }
 
     testWidgets("shows one bubble per prompt, moving with the scroll and never against it", (tester) async {
-      await _pumpTurns(tester, messages: mixedTurns, folded: false);
+      await _pumpTurns(tester, messages: mixedTurns);
       final openerIds = [for (var turn = 0; turn < 8; turn++) "u$turn"];
       final screen = tester.getRect(find.byKey(_listViewKey));
       final position = _position(tester);
@@ -2784,7 +2497,7 @@ void main() {
     testWidgets("takes over from its bubble exactly where the two coincide", (tester) async {
       final semantics = tester.ensureSemantics();
       final spoken = find.bySemanticsLabel(RegExp("Prompt 5 line 0"));
-      await _pumpTurns(tester, messages: mixedTurns, folded: false);
+      await _pumpTurns(tester, messages: mixedTurns);
       await _scrollRowTo(tester, rowId: "u5", top: pinTop - PregoSpacing.xs + 1);
       expect(pinOf(tester, "u5"), isNull, reason: "a bubble below the pin line pins nothing");
       expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u5")).hidden, isFalse);
@@ -2807,7 +2520,7 @@ void main() {
 
     testWidgets("lifts off the rows under it with a halo the pin line does not clip", (tester) async {
       debugDisableShadows = false;
-      await _pumpTurns(tester, messages: tallTurns, folded: false);
+      await _pumpTurns(tester, messages: tallTurns);
       await _scrollRowTo(tester, rowId: "a6-1", top: _topInset - 100);
 
       final pin = pinOf(tester, "u6") ?? fail("u6 is not pinned");
@@ -2825,7 +2538,7 @@ void main() {
     });
 
     testWidgets("compacts a long prompt to a three-line bubble", (tester) async {
-      await _pumpTurns(tester, messages: tallTurns, folded: false);
+      await _pumpTurns(tester, messages: tallTurns);
       await _scrollRowTo(tester, rowId: "a6-1", top: _topInset - 100);
 
       final long = pinOf(tester, "u6") ?? fail("u6 is not pinned");
@@ -2835,7 +2548,7 @@ void main() {
     });
 
     testWidgets("pins a short prompt whole", (tester) async {
-      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _pumpTurns(tester, messages: shortTurns);
       await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
 
       final short = pinOf(tester, "u8") ?? fail("u8 is not pinned");
@@ -2848,7 +2561,6 @@ void main() {
       await _pumpTurns(
         tester,
         messages: _turnsWithPrompt(id: "u4", text: "A\nB\nC"),
-        folded: false,
       );
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
       final threeLines = pinOf(tester, "u4") ?? fail("u4 is not pinned");
@@ -2875,17 +2587,6 @@ void main() {
       await expectThreeLineCompaction(tester);
     });
 
-    testWidgets("hides while folded", (tester) async {
-      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
-      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
-      expect(pinOf(tester, "u8"), isNotNull);
-
-      harness.setTranscriptFolded(folded: true);
-      await tester.pumpAndSettle();
-
-      expect(pins(tester).stickyLayout.pinned, isEmpty);
-    });
-
     testWidgets("pins nothing over the messages before the first prompt", (tester) async {
       await _pumpTurns(
         tester,
@@ -2897,7 +2598,6 @@ void main() {
           ),
           ...shortTurns,
         ],
-        folded: false,
       );
 
       await _scrollRowTo(tester, rowId: "setup", top: _topInset - 300);
@@ -2909,7 +2609,6 @@ void main() {
       await _pumpTurns(
         tester,
         messages: _turnsWithPrompt(id: "u4", text: _markdownPrompt),
-        folded: false,
       );
 
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
@@ -2927,7 +2626,6 @@ void main() {
           id: "u4",
           text: _multilineText(label: "Pasted", lines: 2000),
         ),
-        folded: false,
       );
 
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
@@ -2947,7 +2645,6 @@ void main() {
           id: "u4",
           text: "```dart\n${_multilineText(label: "// pasted", lines: 1000)}\n```",
         ),
-        folded: false,
       );
 
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
@@ -2966,10 +2663,6 @@ void main() {
           onLoadOlderMessages: () async => requested++,
         ),
       );
-      final harness = tester.state<_SessionDetailMessageListHarnessState>(
-        find.byType(_SessionDetailMessageListHarness),
-      );
-      harness.setTranscriptFolded(folded: false);
       await tester.pumpAndSettle();
 
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
@@ -2985,7 +2678,6 @@ void main() {
       await _pumpTurns(
         tester,
         messages: _turnsWithPrompt(id: "u4", text: _decoratedPrompt),
-        folded: false,
       );
 
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
@@ -3013,7 +2705,6 @@ void main() {
           id: "u4",
           text: "- Fix login\n- Fix signup\n\n| col |\n| --- |\n| cell |\n\n~~dropped~~",
         ),
-        folded: false,
       );
 
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
@@ -3037,7 +2728,6 @@ void main() {
       await _pumpTurns(
         tester,
         messages: _turnsWithPrompt(id: "u4", text: prompt),
-        folded: false,
       );
 
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
@@ -3061,7 +2751,7 @@ void main() {
     });
 
     testWidgets("a tap on the bubble glides back to its prompt, which the pin grows into", (tester) async {
-      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _pumpTurns(tester, messages: shortTurns);
       await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
       final moves = _recordMoves(tester);
 
@@ -3081,7 +2771,7 @@ void main() {
     testWidgets("a tap under reduced motion jumps back to its prompt", (tester) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
       addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _pumpTurns(tester, messages: shortTurns);
       await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
       final moves = _recordMoves(tester);
 
@@ -3093,7 +2783,7 @@ void main() {
     });
 
     testWidgets("a tap on the band beside the bubble does nothing", (tester) async {
-      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _pumpTurns(tester, messages: shortTurns);
       await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
       final offset = _position(tester).pixels;
       final bubble = pinnedBubble(tester, "u8");
@@ -3106,7 +2796,7 @@ void main() {
     });
 
     testWidgets("a drag that starts on the pin still scrolls the rows beneath", (tester) async {
-      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _pumpTurns(tester, messages: shortTurns);
       await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
       final offset = _position(tester).pixels;
 
@@ -3118,7 +2808,7 @@ void main() {
 
     testWidgets("while pinned is a labelled button that glides to its unbuilt prompt", (tester) async {
       final semantics = tester.ensureSemantics();
-      await _pumpTurns(tester, messages: tallTurns, folded: false);
+      await _pumpTurns(tester, messages: tallTurns);
       await _scrollRowTo(tester, rowId: "a6-1", top: _topInset - 100);
       expect(find.byKey(const ValueKey("u6"), skipOffstage: false), findsNothing);
 
@@ -3692,29 +3382,23 @@ void main() {
     // Where a jump rests a prompt's row: its bubble on the pin line.
     const promptRowTop = _topInset + 2;
 
-    testWidgets("names the prompt the pin names, else the next one below, folded or not", (tester) async {
+    testWidgets("names the prompt the pin names, else the next one below", (tester) async {
       final lead = _message(
         messageId: "lead",
         role: "assistant",
         text: _multilineText(label: "Lead", lines: 60),
       );
-      final harness = await _pumpTurns(tester, messages: [lead, ...shortTurns], folded: false);
+      final harness = await _pumpTurns(tester, messages: [lead, ...shortTurns]);
 
       await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
       expect(harness.currentPromptId.value, "u8");
 
-      harness.setTranscriptFolded(folded: true);
-      await tester.pumpAndSettle();
-      expect(harness.currentPromptId.value, "u8");
-
-      harness.setTranscriptFolded(folded: false);
-      await tester.pumpAndSettle();
       await _scrollRowTo(tester, rowId: "lead", top: _topInset);
       expect(harness.currentPromptId.value, "u0", reason: "no prompt opens the oldest turn");
     });
 
     testWidgets("a jump lands an unbuilt prompt on the pin line and stops following", (tester) async {
-      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: false);
+      final harness = await _pumpTurns(tester, messages: withFollowUp);
       expect(_messageKey("u3").evaluate(), isEmpty);
 
       var landed = false;
@@ -3730,7 +3414,7 @@ void main() {
     });
 
     testWidgets("a jump lands a follow-up, by its own row, just below its pinned prompt, every time", (tester) async {
-      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: false);
+      final harness = await _pumpTurns(tester, messages: withFollowUp);
       final pins = tester.renderObject<RenderTranscriptStickyPrompts>(find.byType(TranscriptStickyPromptOverlay));
       final followUpTop = promptRowTop + pins.compactHeight + transcriptStickyGap;
 
@@ -3745,32 +3429,8 @@ void main() {
       expect(_topOf(tester, "session-detail-prompt-p3f"), moreOrLessEquals(followUpTop, epsilon: 0.5));
     });
 
-    testWidgets("a jump into a folded transcript unfolds it and lands", (tester) async {
-      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: true);
-
-      unawaited(harness.jumpNotifier.jumpTo(messageId: "u5"));
-      await tester.pumpAndSettle();
-
-      expect(harness.foldRequests, 1);
-      expect(_topOf(tester, "u5"), moreOrLessEquals(promptRowTop, epsilon: 0.5));
-    });
-
-    testWidgets("a jump into a folded transcript lands a follow-up just below its pinned prompt", (tester) async {
-      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: true);
-
-      unawaited(harness.jumpNotifier.jumpTo(messageId: "u3f"));
-      await tester.pumpAndSettle();
-
-      final pins = tester.renderObject<RenderTranscriptStickyPrompts>(find.byType(TranscriptStickyPromptOverlay));
-      expect(harness.foldRequests, 1);
-      expect(
-        _topOf(tester, "session-detail-prompt-p3f"),
-        moreOrLessEquals(promptRowTop + pins.compactHeight + transcriptStickyGap, epsilon: 0.5),
-      );
-    });
-
     testWidgets("a jump reaches a prompt that arrived after the reader scrolled away", (tester) async {
-      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: false);
+      final harness = await _pumpTurns(tester, messages: withFollowUp);
       _position(tester).jumpTo(_position(tester).pixels + 2000);
       await tester.pumpAndSettle();
       expect(find.byKey(_jumpToLatestKey), findsOneWidget);
@@ -3792,7 +3452,7 @@ void main() {
     });
 
     testWidgets("a jump to a message that is gone moves nothing", (tester) async {
-      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: false);
+      final harness = await _pumpTurns(tester, messages: withFollowUp);
       final offset = _position(tester).pixels;
 
       var landed = false;

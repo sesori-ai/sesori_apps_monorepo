@@ -238,7 +238,7 @@ state.
   and Delete, from the shared dispatcher. Mark as unread always sends unread, whatever local state says.
   Archive, Delete and Mark as unread return to the session list. A sub-agent's page offers no row actions,
   and the read-only archived view offers neither those nor Changes.
-- Beside the centred title, the phone's session bar carries only Back, the fold toggle and that menu, so the
+- Beside the centred title, the phone's session bar carries only Back, Prompts and that menu, so the
   title keeps the rest of the row at 320 px and under large text scaling. It shows no Changes button and no
   busy spinner; the transcript, the composer and the sub-agents bar report the session's progress. The
   archived page is the same bar with no menu: Back returns to the archived list, whose own bar closes the

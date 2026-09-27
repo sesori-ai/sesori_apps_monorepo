@@ -279,9 +279,7 @@ one permission-gated mutation, one repeated terminal update, and a verified
 shell command with long output. Reload a root with completed/cancelled children
 and each child transcript; verify prompt provenance, tile order, and both
 lifecycle extension methods. Denial remains unverified and carries no replay
-guarantee. Fold every turn over the same mixes: a folded turn counts its step
-groups' steps on one line, and the jump button still returns to the latest
-edge (see `transcript-turn-navigation.md`).
+guarantee.
 
 ## Failure Signals
 
@@ -332,9 +330,8 @@ edge (see `transcript-turn-navigation.md`).
 - A working session shows no live row between steps, “Working…” stays beside a
   live step or streaming text or after the session goes idle, or a live label's band is invisible
   in either theme.
-- “Working…” shows a time that restarts on reopen, runs backwards, differs
-  from the folded turn's duration once it finishes, or is announced every
-  second.
+- “Working…” shows a time that restarts on reopen, runs backwards, or is
+  announced every second.
 - The sub-agent row shows “Working” or the sparkle, shows while a question or
   permission waits, beside the main agent's own running step or streaming
   text, or while the main agent waits on a foreground sub-agent, jumps instead of easing when it takes over from “Working…”, changes

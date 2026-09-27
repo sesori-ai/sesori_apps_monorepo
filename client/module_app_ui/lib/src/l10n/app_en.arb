@@ -919,43 +919,9 @@
       }
     }
   },
-  "transcriptTurnSteps": "{count, plural, =0{No steps} =1{1 step} other{{count} steps}}",
-  "@transcriptTurnSteps": {
-    "description": "Part of the one line a folded turn of a session transcript shows: how many steps the agent took in it, e.g. '3 steps · 1m 02s — Fixed the failing test'.",
-    "placeholders": {
-      "count": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptTurnRunning": "Running",
-  "@transcriptTurnRunning": {
-    "description": "The line a folded turn of a session transcript shows while the agent works on it and has taken no step yet."
-  },
-  "transcriptTurnRunningStep": "Running · step {step}",
-  "@transcriptTurnRunningStep": {
-    "description": "The line a folded turn of a session transcript shows while the agent works on it: how many steps it has taken so far, e.g. 'Running · step 3'.",
-    "placeholders": {
-      "step": {
-        "type": "int"
-      }
-    }
-  },
-  "transcriptTurnFailed": "Ended with an error",
-  "@transcriptTurnFailed": {
-    "description": "Start of the line a folded turn of a session transcript shows when the turn ended in an error, followed by the error's first line when there is one, e.g. 'Ended with an error · Rate limit reached'."
-  },
-  "transcriptTurnPartlyLoaded": "Earlier turn, partly loaded",
-  "@transcriptTurnPartlyLoaded": {
-    "description": "Start of the line a folded session transcript shows for the messages before the first loaded prompt, whose own prompt may be on an older page that has not loaded, followed by the step count, e.g. 'Earlier turn, partly loaded · 3 steps'."
-  },
-  "transcriptTurnBeforeFirstPrompt": "Before the first prompt",
-  "@transcriptTurnBeforeFirstPrompt": {
-    "description": "Start of the line a folded session transcript shows for the messages before the user's first prompt, such as automation, followed by the step count, e.g. 'Before the first prompt · 2 steps'."
-  },
   "transcriptTurnSeconds": "{seconds}s",
   "@transcriptTurnSeconds": {
-    "description": "A session transcript duration under a minute, such as how long a folded turn took or how long the agent has been working, e.g. '42s'.",
+    "description": "A session transcript duration under a minute, such as how long the agent has been working, e.g. '42s'.",
     "placeholders": {
       "seconds": {
         "type": "int"
@@ -964,7 +930,7 @@
   },
   "transcriptTurnMinutes": "{minutes}m {seconds}s",
   "@transcriptTurnMinutes": {
-    "description": "A session transcript duration under an hour, such as how long a folded turn took or how long the agent has been working. The seconds always have two digits, e.g. '1m 02s'.",
+    "description": "A session transcript duration under an hour, such as how long the agent has been working. The seconds always have two digits, e.g. '1m 02s'.",
     "placeholders": {
       "minutes": {
         "type": "int"
@@ -976,7 +942,7 @@
   },
   "transcriptTurnHours": "{hours}h {minutes}m {seconds}s",
   "@transcriptTurnHours": {
-    "description": "A session transcript duration of an hour or more, such as how long a folded turn took or how long the agent has been working. The minutes and seconds always have two digits, e.g. '1h 05m 12s'.",
+    "description": "A session transcript duration of an hour or more, such as how long the agent has been working. The minutes and seconds always have two digits, e.g. '1h 05m 12s'.",
     "placeholders": {
       "hours": {
         "type": "int"
@@ -1001,14 +967,6 @@
   "transcriptSubAgentsKeepChatting": "You can keep chatting meanwhile.",
   "@transcriptSubAgentsKeepChatting": {
     "description": "Muted second line of the transcript's sub-agent row: a prompt sent now reaches the main agent while the sub-agents keep running."
-  },
-  "transcriptFoldAll": "Fold all turns",
-  "@transcriptFoldAll": {
-    "description": "Label of the session toolbar button that folds every turn of the transcript to one line each."
-  },
-  "transcriptUnfoldAll": "Unfold all turns",
-  "@transcriptUnfoldAll": {
-    "description": "Label of the session toolbar button that unfolds every folded turn of the transcript."
   },
   "transcriptStickyPromptJumpHint": "Jump to this prompt",
   "@transcriptStickyPromptJumpHint": {

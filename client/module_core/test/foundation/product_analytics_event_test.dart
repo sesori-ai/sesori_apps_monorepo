@@ -103,11 +103,6 @@ void main() {
         "session_diff_viewed",
         const {"change_state": "non_empty"},
       ),
-      (
-        const ProductAnalyticsEvent.transcriptTurnsFolded(),
-        "transcript_turns_folded",
-        const {},
-      ),
       for (final (entry, wireValue) in [
         (AnalyticsPromptsEntry.sessionBar, "session_bar"),
         (AnalyticsPromptsEntry.pinch, "pinch"),

@@ -210,8 +210,6 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                                 ),
                           isLoadingOlderMessages: state.isLoadingOlderMessages,
                           isRefreshing: state.isRefreshing,
-                          transcriptFolded: state.transcriptFolded,
-                          onTranscriptFoldedChanged: context.read<SessionDetailCubit>().setTranscriptFolded,
                           currentPromptId: widget.currentPromptId,
                           jumpNotifier: widget.jumpNotifier,
                           onPinchIn: widget.onPinchIn,

@@ -375,94 +375,22 @@ void main() {
       });
     });
 
-    group("transcript fold", () {
-      Future<SessionDetailCubit> loadedCubit({required String pageSessionId}) async {
-        final cubit = buildCubit(pageSessionId: pageSessionId);
-        addTearDown(cubit.close);
-        await awaitState(cubit: cubit, predicate: (state) => state is SessionDetailLoaded, description: "loaded");
-        await pumpEventQueue();
-        return cubit;
-      }
+    test("reports each Prompts screen opening with its entry", () async {
+      final cubit = buildCubit(pageSessionId: sessionId);
+      addTearDown(cubit.close);
+      await awaitState(cubit: cubit, predicate: (state) => state is SessionDetailLoaded, description: "loaded");
+      await pumpEventQueue();
+      clearInteractions(mockProductAnalyticsService);
 
-      bool foldedOf(SessionDetailCubit cubit) => (cubit.state as SessionDetailLoaded).transcriptFolded;
-
-      test("switches the fold, and a request that changes nothing emits nothing", () async {
-        final cubit = await loadedCubit(pageSessionId: sessionId);
-        expect(foldedOf(cubit), isFalse);
-        final emitted = <SessionDetailState>[];
-        final subscription = cubit.stream.listen(emitted.add);
-        addTearDown(subscription.cancel);
-
-        cubit.setTranscriptFolded(folded: false);
-        await pumpEventQueue();
-        expect(emitted, isEmpty);
-
-        cubit.setTranscriptFolded(folded: true);
-        cubit.setTranscriptFolded(folded: true);
-        await pumpEventQueue();
-        expect(emitted.map((state) => (state as SessionDetailLoaded).transcriptFolded), [true]);
-
-        cubit.setTranscriptFolded(folded: false);
-        await pumpEventQueue();
-        expect(emitted.map((state) => (state as SessionDetailLoaded).transcriptFolded), [true, false]);
-      });
-
-      test("reports a fold once, and an unfold or a repeated fold reports nothing", () async {
-        final cubit = await loadedCubit(pageSessionId: sessionId);
-        clearInteractions(mockProductAnalyticsService);
-
-        cubit.setTranscriptFolded(folded: true);
-        cubit.setTranscriptFolded(folded: true);
-        await pumpEventQueue();
-        verify(
-          () => mockProductAnalyticsService.logEvent(
-            event: const ProductAnalyticsEvent.transcriptTurnsFolded(),
-            occurredAtUtc: any(named: "occurredAtUtc"),
-          ),
-        ).called(1);
-
-        cubit.setTranscriptFolded(folded: false);
-        await pumpEventQueue();
-        verifyNever(
-          () => mockProductAnalyticsService.logEvent(
-            event: any(named: "event"),
-            occurredAtUtc: any(named: "occurredAtUtc"),
-          ),
-        );
-      });
-
-      test("reports each Prompts screen opening with its entry", () async {
-        final cubit = await loadedCubit(pageSessionId: sessionId);
-        clearInteractions(mockProductAnalyticsService);
-
-        cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar);
-        cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar);
-        await pumpEventQueue();
-        verify(
-          () => mockProductAnalyticsService.logEvent(
-            event: const ProductAnalyticsEvent.transcriptPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar),
-            occurredAtUtc: any(named: "occurredAtUtc"),
-          ),
-        ).called(2);
-      });
-
-      test("keeps the fold through a full reload, while another session starts unfolded", () async {
-        final cubit = await loadedCubit(pageSessionId: sessionId);
-        cubit.setTranscriptFolded(folded: true);
-        final emitted = <SessionDetailState>[];
-        final subscription = cubit.stream.listen(emitted.add);
-        addTearDown(subscription.cancel);
-
-        await cubit.reload();
-
-        expect(emitted.first, isA<SessionDetailLoading>());
-        expect(foldedOf(cubit), isTrue);
-
-        const otherSessionId = "session-2";
-        stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: otherSessionId);
-        when(() => mockConnectionService.sessionEvents(otherSessionId)).thenAnswer((_) => const Stream.empty());
-        expect(foldedOf(await loadedCubit(pageSessionId: otherSessionId)), isFalse);
-      });
+      cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar);
+      cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar);
+      await pumpEventQueue();
+      verify(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.transcriptPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(2);
     });
 
     group("auto continuation", () {

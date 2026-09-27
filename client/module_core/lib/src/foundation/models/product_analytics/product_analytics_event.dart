@@ -174,7 +174,6 @@ sealed class const ProductAnalyticsEvent() {
   const factory sessionDiffViewed({
     required AnalyticsChangeState changeState,
   }) = SessionDiffViewedEvent;
-  const factory transcriptTurnsFolded() = TranscriptTurnsFoldedEvent;
   const factory transcriptPromptsOpened({
     required AnalyticsPromptsEntry entry,
   }) = TranscriptPromptsOpenedEvent;
@@ -365,16 +364,6 @@ final class const SessionDiffViewedEvent({required final AnalyticsChangeState ch
 
   @override
   Map<String, String> get parameters => {"change_state": changeState.wireValue};
-}
-
-/// A reader folded every turn of a transcript: reported once per fold, not on
-/// unfolding. Which control folded is not tracked.
-final class const TranscriptTurnsFoldedEvent() extends ProductAnalyticsEvent {
-  @override
-  String get wireName => "transcript_turns_folded";
-
-  @override
-  Map<String, String> get parameters => const {};
 }
 
 /// The Prompts screen opened: reported once per opening, with what opened it.

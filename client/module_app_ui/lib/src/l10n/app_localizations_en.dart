@@ -1419,35 +1419,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String transcriptTurnSteps(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count steps',
-      one: '1 step',
-      zero: 'No steps',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get transcriptTurnRunning => 'Running';
-
-  @override
-  String transcriptTurnRunningStep(int step) {
-    return 'Running · step $step';
-  }
-
-  @override
-  String get transcriptTurnFailed => 'Ended with an error';
-
-  @override
-  String get transcriptTurnPartlyLoaded => 'Earlier turn, partly loaded';
-
-  @override
-  String get transcriptTurnBeforeFirstPrompt => 'Before the first prompt';
-
-  @override
   String transcriptTurnSeconds(int seconds) {
     return '${seconds}s';
   }
@@ -1475,12 +1446,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get transcriptSubAgentsKeepChatting => 'You can keep chatting meanwhile.';
-
-  @override
-  String get transcriptFoldAll => 'Fold all turns';
-
-  @override
-  String get transcriptUnfoldAll => 'Unfold all turns';
 
   @override
   String get transcriptStickyPromptJumpHint => 'Jump to this prompt';

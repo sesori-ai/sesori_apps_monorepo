@@ -149,7 +149,6 @@ SessionDetailLoaded _loadedState({
     interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
     messages: messages,
     olderMessagesCursor: null,
-    transcriptFolded: false,
     streamingText: const {},
     sessionStatus: sessionStatus,
     pendingQuestions: pendingQuestions,
@@ -920,7 +919,6 @@ void main() {
       interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
       messages: const [],
       olderMessagesCursor: null,
-      transcriptFolded: false,
       streamingText: const {},
       sessionStatus: const SessionStatus.idle(),
       pendingQuestions: const [],
@@ -987,21 +985,20 @@ void main() {
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 
-  testWidgets("the bar carries only Prompts, fold and the menu, and the menu holds Changes", (tester) async {
+  testWidgets("the bar carries only Prompts and the menu, and the menu holds Changes", (tester) async {
     when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
     // Nothing else may share the row with the centred title: back, Prompts,
-    // fold, menu.
+    // menu.
     final barButtons = find.descendant(
       of: find.byType(PregoTopNavigation),
       matching: find.byType(PregoButtonsIconGlass),
     );
-    expect(barButtons, findsNWidgets(4));
+    expect(barButtons, findsNWidgets(3));
     expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
     expect(find.byKey(const Key("session-detail-prompts")), findsOneWidget);
-    expect(find.byIcon(TablerRegular.fold), findsOneWidget);
     expect(find.byKey(const Key("session-detail-more")), findsOneWidget);
     expect(find.byIcon(TablerRegular.git_compare), findsNothing);
     expect(find.byIcon(TablerRegular.x), findsNothing);
@@ -1322,27 +1319,6 @@ void main() {
         expect(tester.getTopLeft(layer), Offset.zero);
       }, variant: TargetPlatformVariant.only(TargetPlatform.android));
     });
-  });
-
-  testWidgets("the fold button shows whether every turn is folded and switches it", (tester) async {
-    final unfolded = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
-    final states = StreamController<SessionDetailState>();
-    addTearDown(states.close);
-    whenListen(cubit, states.stream, initialState: unfolded);
-    when(() => cubit.setTranscriptFolded(folded: any(named: "folded"))).thenReturn(null);
-    await tester.pumpWidget(_buildApp(cubit: cubit));
-    await tester.pumpAndSettle();
-
-    expect(find.byIcon(TablerRegular.fold), findsOneWidget);
-    await tester.tap(find.bySemanticsLabel("Fold all turns"));
-    verify(() => cubit.setTranscriptFolded(folded: true)).called(1);
-
-    states.add(unfolded.copyWith(transcriptFolded: true));
-    await tester.pumpAndSettle();
-    expect(find.bySemanticsLabel("Fold all turns"), findsNothing);
-    expect(find.byIcon(TablerRegular.separator_horizontal), findsOneWidget);
-    await tester.tap(find.bySemanticsLabel("Unfold all turns"));
-    verify(() => cubit.setTranscriptFolded(folded: false)).called(1);
   });
 
   testWidgets("offers no Changes entry for archived sessions", (tester) async {

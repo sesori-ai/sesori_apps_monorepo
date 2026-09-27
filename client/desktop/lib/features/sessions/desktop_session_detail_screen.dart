@@ -10,7 +10,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
-import "../../core/widgets/desktop_command_palette.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
 import "../../core/widgets/desktop_page_toolbar.dart";
 import "../../core/widgets/desktop_session_signals.dart";
@@ -169,8 +168,6 @@ class const DesktopSessionDetailView({
               composer: maxComposerWidth,
             ),
             headerBuilder: _buildToolbar,
-            foldActivator: _foldShortcut,
-            unfoldActivator: _unfoldShortcut,
           ),
           menuEntriesBuilder: null,
         ),
@@ -182,9 +179,6 @@ class const DesktopSessionDetailView({
   /// them. A text field and a pill row read as stretched long before body text
   /// does, so they stay at the narrower measure.
   static const double maxComposerWidth = 760;
-
-  static SingleActivator get _foldShortcut => desktopShortcut(key: LogicalKeyboardKey.minus);
-  static SingleActivator get _unfoldShortcut => desktopShortcut(key: LogicalKeyboardKey.equal);
 
   void _markUnread({required BuildContext context, required Session session}) {
     sessionActions.handleSessionMarkUnread(
@@ -244,18 +238,6 @@ class const DesktopSessionDetailView({
               tooltip: loc.transcriptPrompts,
               onPressed: () => onShowPrompts(origin: buttonContext.globalCentre),
               icon: const Icon(TablerRegular.list_details, size: PregoIconSize.md),
-            ),
-          ),
-        if (state case SessionDetailLoaded(:final transcriptFolded))
-          IconButton(
-            key: const Key("desktop-session-page-fold"),
-            tooltip: transcriptFolded
-                ? loc.desktopShortcutHint(loc.transcriptUnfoldAll, desktopShortcutLabel(shortcut: _unfoldShortcut))
-                : loc.desktopShortcutHint(loc.transcriptFoldAll, desktopShortcutLabel(shortcut: _foldShortcut)),
-            onPressed: () => context.read<SessionDetailCubit>().setTranscriptFolded(folded: !transcriptFolded),
-            icon: Icon(
-              transcriptFolded ? TablerRegular.separator_horizontal : TablerRegular.fold,
-              size: PregoIconSize.md,
             ),
           ),
         PregoAnchorMenu(
