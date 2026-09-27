@@ -418,7 +418,10 @@ and its adapter.
     answered. **Only this variant produces a placeholder row.** `String? title`
     is the first line of `submission.displayText` (**D2**; null for an
     attachment-only start), snapshotted at `start` so the row keeps it after
-    `releaseHandoff` drops `submission` (then null).
+    `releaseHandoff` drops the payload. `NewSessionSubmissionSnapshot? submission`
+    is null exactly when the composing route has released it: a released pending
+    launch is a real state (Back mid-create), and that absence is the fact the
+    failure outcome's two variants are decided on.
   - `CreatedSessionLaunch({…, session, submission, unsentComposer, followUps})` —
     the bridge answered with a real `Session`. **Only this variant can hand over**,
     through `takeHandoff`. `unsentComposer` is null until the composing cubit
@@ -566,8 +569,11 @@ and its adapter.
   `FailedLaunchFollowUp` back into a queued one at the head of the launch's
   unsent follow-ups and re-enters the same serial delivery loop. A Retry that only wrote to the
   repository would change the item's state with no send ever happening, because
-  the post-promotion drain has already finished by then. `cancelFollowUp` stays on
-  the repository, because cancelling is only a removal.
+  the post-promotion drain has already finished by then. The drain stops at a
+  failed follow-up, as the session queue's FIFO rule does, so removal goes through
+  the service too: `SessionLaunchService.cancelFollowUp` removes the item through
+  the repository and re-enters the drain, so removing a rejected prompt never
+  strands the ones queued behind it.
 
   Because the service is a singleton, all of that runs whether or not the
   composing route still exists. It has three collaborators (`SessionRepository`,
@@ -748,8 +754,9 @@ surface drawing a placeholder for a project also holds back any session it has
 not drawn before that appears in that project while one of the project's launches
 is still pending. The reply settles it: an associated session takes the
 placeholder's place under the rule above, and any other held session is drawn
-normally; `fail` releases the hold the same way. This lives in the same
-surface-local hold, with no wire change and no matching heuristic.
+normally once no launch in that project is still pending, because a later reply
+may still name it; `fail` settles a launch the same way. One pure resolver owns
+this decision (step 5), with no wire change and no matching heuristic.
 
 ## Design
 
@@ -863,8 +870,10 @@ the first spinner with no new state at all.
   (step 4), and otherwise removes it (the lists latched the association at
   `promote`, step 5):
   - `SessionDetailState.loading` gains
-    `required NewSessionSubmissionSnapshot? launchSubmission` and
-    `required String? launchPluginId`, and every loading emission of
+    `required NewSessionSubmissionSnapshot? launchSubmission`,
+    `required String? launchPluginId` and `required Set<String> launchFollowUpIds`
+    (taken with the handoff, because `takeHandoff` may remove the entry the
+    release predicate would otherwise read it from), and every loading emission of
     `_loadMessages` carries them through. Step 4 adds the follow-ups beside
     them, so the loading state is the one place that describes a taken launch.
   - `SessionDetailLoaded` gains the same fields. `SessionDetailFailed` and
@@ -881,7 +890,7 @@ the first spinner with no new state at all.
     `hasRenderableUserContent` in `session_detail_resolvers.dart` answers
     "does this state now show the launch's replacement?" — true when a user
     message with `hasRenderableUserContent` is present, or `bridgeQueuedPrompts`
-    contains a prompt whose id is **not** in the launch's `followUpIds`. The
+    contains a prompt whose id is **not** in the state's `launchFollowUpIds`. The
     exclusion matters: a follow-up can be delivered and appear in that list while
     the first message still has no echo, and treating it as the replacement would
     make the first bubble disappear and come back.
@@ -1033,7 +1042,7 @@ the first spinner with no new state at all.
   `SessionLaunchRepository.addFollowUp` only. It refuses
   command-plus-attachments exactly as `createSession` does (`:885-888`).
   `cancelFollowUp({required String promptId})` goes to
-  `SessionLaunchRepository.cancelFollowUp`. Keeping a second copy in the
+  `SessionLaunchService.cancelFollowUp`. Keeping a second copy in the
   sending phase would give one list two writers, which is the shape this
   plan's own single-owner decision exists to avoid.
 - **Shared promptId generation.** `SessionDetailCubit._generatePromptId()`
@@ -1094,8 +1103,9 @@ the first spinner with no new state at all.
 
   Two points about that handover, both corrections rather than restatements:
 
-  - **Retry goes to the service, not the repository.** Cancel is a removal, so it
-    goes to `SessionLaunchRepository.cancelFollowUp`. Retry is a *send*, and the
+  - **Retry goes to the service, not the repository.** Cancel goes to
+    `SessionLaunchService.cancelFollowUp`, which also resumes the stopped drain.
+    Retry is a *send*, and the
     only sender is `SessionLaunchService`'s serial delivery loop, which has already
     finished by the time a rejected bubble is on screen. A Retry written to the
     repository alone would flip the item back to undelivered and then sit there
@@ -1150,8 +1160,12 @@ the first spinner with no new state at all.
   whether the plugin accepts attachments (the unsent content stays null when
   empty); the seeded composer requests focus on its first frame when it had it. A Send while loading goes through `sendMessage` with the
   handoff's options and waits in `_promptQueue` until the load completes
-  (`session_detail_cubit.dart:2059`), as a send during any load does today.
-  Opening an existing session is unchanged.
+  (`session_detail_cubit.dart:2059`). Because `_emitQueueUpdate` publishes only
+  in loaded states today, the launch-seeded loading state also carries the
+  cubit's queued sends and `_emitQueueUpdate` publishes into it, so the loading
+  branch renders them as queued bubbles after the launch's follow-ups instead of
+  the message vanishing until the load completes. Opening an existing session is
+  unchanged.
 - **The follow-up bubbles must survive the load, not just the swap.**
   `SessionDetailLoading` gains
   `required List<LaunchFollowUp> launchFollowUps` beside step 3's
@@ -1185,9 +1199,11 @@ the first spinner with no new state at all.
   exactly what the composer holds (`command` nullable because a composer may hold
   none) — and clears the new-session draft key. The detail cubit receives it in
   `takeHandoff`, saves its draft under the session's key before its composer first
-  reads `composerDraft`, stages the command through its existing `stageCommand`
-  (`session_detail_cubit.dart:2880`) in its first loaded emission while the seeded
-  composer already shows it (**D13**), and passes the
+  reads `composerDraft`, holds the command as its staged command from that moment
+  (the same state `stageCommand`, `session_detail_cubit.dart:2880`, writes), with
+  `stageCommand` and `clearStagedCommand` accepted in the launch-seeded loading
+  state so a command sent or cleared before the load is never staged again
+  (**D13**), and passes the
   attachments as the
   composer's `initialAttachments` (today `const []`,
   `session_detail_composer_controls.dart:69`), which step 4's budget-checked
@@ -1371,9 +1387,16 @@ the first spinner with no new state at all.
   no insertion.
 
   **D12 extends the same hold backwards.** While any of the project's launches is
-  pending, `SessionListContent` leaves out a session it has not drawn before that
-  arrives for that project, and draws it once the reply lands: in the
-  placeholder's slot if the association names it, as an ordinary row otherwise.
+  pending, a session the surface has not drawn before that arrives for that
+  project is left out; once a reply names it, it takes the placeholder's slot,
+  and once no launch in the project is pending, the rest are drawn as ordinary
+  rows. The decision is one pure function beside `SessionLaunchCubit`,
+  `resolveHeldLaunchSessions` in
+  `module_core/lib/src/cubits/session_launch/session_launch_resolvers.dart`,
+  which takes the pending launches, the associations, the session ids the surface
+  drew last time and the sessions it would draw now, and returns the ids to hold.
+  `SessionListContent` and every step 6 host call it; they keep only the drawn-ids
+  snapshot and their geometry and animation keys.
 
   **Both halves of the latch matter, and the "keeps drawing" half is the one a
   first draft gets wrong.** `promote` and the `session.created` that puts the
@@ -1571,7 +1594,8 @@ being created" alert, and no menu or swipe.
   draw it — so a launch never has two rows on one surface. No new state is
   involved: the host already builds the projection it checks, and it already
   holds the association it latched. Each host applies **D12**'s hold-back for
-  sessions that arrive before the reply, exactly as step 5 does. The one-update bound from the lifetime rule
+  sessions that arrive before the reply through step 5's
+  `resolveHeldLaunchSessions`, not a copy of it. The one-update bound from the lifetime rule
   applies unchanged, so a first command that never runs cannot leave "Creating…"
   behind.
 - The desktop command palette (`desktop_command_palette.dart:48-55`) reads a

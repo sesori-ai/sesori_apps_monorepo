@@ -4,7 +4,7 @@
 
 | Step | PR title | Status | Notes |
 |---|---|---|---|
-| 1/7 | 🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7] | In review | Removes the superseded `instant-session-launch` plan. Reworked for Q3 and Q4, then for the settled D1–D9, then for six code-review waves |
+| 1/7 | 🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7] | In review | Removes the superseded `instant-session-launch` plan. Reworked for Q3 and Q4, then for the settled D1–D9, then for seven code-review waves |
 | 2/7 | ⚙️ [instant-new-session] Show the first message while a new session is created [step 2/7] | Planned | Instant screen only; composer still replaced while sending |
 | 3/7 | 🚧 [instant-new-session] Hand the first message off to the session screen [step 3/7] | Planned | Introduces the launch owner, including the typed outcome stream |
 | 4/7 | 🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 4/7] | Planned | Q3. Delivery is owned by `SessionLaunchService`, not the session screen |
@@ -190,3 +190,17 @@ Seven findings; five accepted, two declined.
 |---|---|---|
 | **D12** | Fourth wave, finding 6 (`session.created` before the create reply) | Hold back a new session in a project whose launch awaits its reply; the reply settles whether it swaps into the placeholder or appears normally. No wire change, no heuristic |
 | **D13** | Fifth wave, finding 2 (no composer between the handoff and the first load) | The session screen opened from a handoff builds its composer at once from the handoff; the transcript fills in above it. Existing sessions unchanged |
+
+## Code Review, seventh and final wave (2026-09-27)
+
+Seven findings, all fixed with minimal edits; no user decision changed.
+
+| # | Finding | Verdict |
+|---|---|---|
+| 1 | A released pending launch had no representable shape | Fixed. `PendingSessionLaunch.submission` is declared nullable, null exactly when released — the fact the failure split reads |
+| 2 | One reply released every held session while another launch in the project was still pending | Fixed. Unmatched held sessions stay held until no launch in the project is pending (D12 unchanged) |
+| 3 | `takeHandoff` can remove the entry the release predicate read `followUpIds` from | Fixed. The detail states carry `launchFollowUpIds` from the handoff |
+| 4 | D12's hold-back policy was repeated in each Flutter host | Fixed. One pure `resolveHeldLaunchSessions` beside `SessionLaunchCubit`; hosts keep only their drawn-ids snapshot and geometry |
+| 5 | Removing a failed follow-up stranded the ones queued behind it | Fixed. The drain stops at a failure; `SessionLaunchService.cancelFollowUp` removes and resumes it |
+| 6 | The handed-off command was restaged at the first loaded emission after being sent or cleared | Fixed. The cubit holds it as its staged command from `takeHandoff`; stage and clear work while loading |
+| 7 | A send from the seeded composer vanished during the first load | Fixed. The launch-seeded loading state carries and renders the cubit's queued sends |
