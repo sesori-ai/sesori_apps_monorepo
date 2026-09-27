@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
@@ -77,7 +78,36 @@ class const SessionDetailBody({
   State<SessionDetailBody> createState() => _SessionDetailBodyState();
 }
 
-class _SessionDetailBodyState() extends State<SessionDetailBody> {
+/// The Prompts screen's opening and closing, as long as a session pane's.
+const _kPromptsTransition = Duration(milliseconds: 220);
+
+/// The scale the Prompts screen grows from, around where it was opened.
+const double _kPromptsGrowFrom = 0.96;
+
+/// How dark the transcript turns beneath the open Prompts screen.
+const double _kPromptsDim = 0.2;
+
+/// The Prompts screen turns opaque in the opening's first half, and clear in
+/// the closing's, so its rows and the transcript's show through each other
+/// only briefly; the growth runs on to the end.
+const _kPromptsFade = Interval(0, 0.55, curve: Curves.easeOut);
+
+/// The strip along the Prompts screen's left edge that an iOS swipe starts
+/// in, as wide as a route's own back swipe.
+const double _kEdgeSwipeWidth = 20;
+
+/// A swipe released faster than this, in screen widths a second, closes or
+/// stays by its direction rather than by how far it went.
+const double _kEdgeSwipeFlingVelocity = 1;
+
+/// The shadow the Prompts screen casts while an edge swipe moves it.
+const _kEdgeSwipeShadow = [BoxShadow(color: Color(0x40000000), blurRadius: 18)];
+
+/// The settling speed, in screen widths a second, of a swipe released at rest:
+/// enough to give it a direction and too little to see.
+const double _kEdgeSwipeRestVelocity = 0.001;
+
+class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTickerProviderStateMixin {
   StreamSubscription<SesoriQuestionAsked>? _questionSub;
   StreamSubscription<SesoriPermissionAsked>? _permissionSub;
   StreamSubscription<SessionDetailNotice>? _noticeSub;
@@ -86,14 +116,50 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
   final _currentPromptId = ValueNotifier<String?>(null);
   final _jumpNotifier = TranscriptJumpNotifier();
 
-  /// The open Prompts screen and the prompt it opened on; null while closed.
-  /// The open Prompts screen: the prompts as they were when it opened, so an
-  /// older page landing meanwhile cannot shift the rows under the reader.
-  ({String? anchorMessageId, TranscriptPromptList list})? _prompts;
+  /// The Prompts screen while it is up: the prompts as they were when it
+  /// opened, so an older page landing meanwhile cannot shift the rows under the
+  /// reader, the prompt it opened on and the point it grows from. Null once it
+  /// has closed.
+  ({String? anchorMessageId, TranscriptPromptList list, Alignment origin})? _prompts;
+
+  /// How far the Prompts screen is in: 0 closed, 1 open. It keeps its length
+  /// when the platform removes animations, which only drops the scale.
+  late final AnimationController _transition = AnimationController(
+    vsync: this,
+    duration: _kPromptsTransition,
+    animationBehavior: AnimationBehavior.preserve,
+  );
+
+  /// The transition's growth and dim, and its fade. Closing mirrors opening
+  /// in time, so the screen starts to leave at once; a close begun midway
+  /// through opening keeps the opening's curves and so never jumps.
+  late final CurvedAnimation _shown = CurvedAnimation(
+    parent: _transition,
+    curve: Curves.easeOutCubic,
+    reverseCurve: Curves.easeOutCubic.flipped,
+  );
+  late final CurvedAnimation _fade = CurvedAnimation(
+    parent: _transition,
+    curve: _kPromptsFade,
+    reverseCurve: _kPromptsFade.flipped,
+  );
+
+  /// The iOS edge swipe moves the Prompts screen: a finger is on it, or its
+  /// release is still settling. The transition's value is then how much of
+  /// the page the screen still covers.
+  bool _swiping = false;
 
   @override
   void initState() {
     super.initState();
+    _transition.addStatusListener((status) {
+      if (status.isDismissed) {
+        setState(() {
+          _prompts = null;
+          _swiping = false;
+        });
+      }
+    });
     final cubit = context.read<SessionDetailCubit>();
     _questionSub = cubit.questionStream.listen((question) => mounted ? _showQuestionModal(question) : null);
     _permissionSub = cubit.permissionStream.listen((permission) => mounted ? _showPermissionModal(permission) : null);
@@ -108,16 +174,29 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     _noticeSub?.cancel();
     _currentPromptId.dispose();
     _jumpNotifier.dispose();
+    _shown.dispose();
+    _fade.dispose();
+    _transition.dispose();
     super.dispose();
   }
 
-  /// Opens the Prompts screen on the prompt the transcript is on. [origin] is
-  /// where its opening transition is to grow from; it opens without one yet.
+  /// Opens the Prompts screen on the prompt the transcript is on, growing it
+  /// from [origin], in global coordinates.
   void _openPrompts({required Offset origin}) {
     final cubit = context.read<SessionDetailCubit>();
     final state = cubit.state;
     if (_prompts != null || state is! SessionDetailLoaded) return;
-    setState(() => _prompts = (anchorMessageId: _currentPromptId.value, list: _promptListOf(state: state)));
+    final grownFrom = switch (context.findRenderObject()) {
+      final RenderBox box when box.hasSize && !box.size.isEmpty => FractionalOffset.fromOffsetAndSize(
+        box.globalToLocal(origin),
+        box.size,
+      ),
+      _ => Alignment.center,
+    };
+    setState(
+      () => _prompts = (anchorMessageId: _currentPromptId.value, list: _promptListOf(state: state), origin: grownFrom),
+    );
+    _transition.forward();
     cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar);
   }
 
@@ -139,14 +218,48 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     return const TranscriptPromptListBuilder().build(messages: messages, turns: turns, userMessagesBefore: null);
   }
 
+  /// Takes the Prompts screen back the way it came; one still settling from
+  /// an edge swipe slides out instead. It is removed once fully gone.
   void _closePrompts() {
-    if (mounted) setState(() => _prompts = null);
+    if (mounted) _transition.reverse();
   }
 
   /// Moves the transcript to [messageId], then closes the Prompts screen once
   /// the move has landed beneath it, so none of its jumps show.
   void _returnToPrompt({required String messageId}) {
     unawaited(_jumpNotifier.jumpTo(messageId: messageId).then((_) => _closePrompts()));
+  }
+
+  /// An edge swipe takes the open screen, or one still settling from the last
+  /// swipe, but never one midway through opening or closing.
+  void _startEdgeSwipe(DragStartDetails _) {
+    if (!_transition.isCompleted && !_swiping) return;
+    _transition.stop();
+    _swiping = true;
+  }
+
+  /// Moves the screen with the finger, pixel for pixel.
+  void _updateEdgeSwipe(DragUpdateDetails details) {
+    final width = context.size?.width ?? 0;
+    if (!_swiping || width <= 0) return;
+    _transition.value -= details.delta.dx / width;
+  }
+
+  /// Closes the screen when released past halfway or flung right, and springs
+  /// it back otherwise, carrying the finger's [pixelsPerSecond] into either.
+  void _settleEdgeSwipe({required double pixelsPerSecond}) {
+    final width = context.size?.width ?? 0;
+    if (!_swiping || width <= 0) return;
+    final velocity = -pixelsPerSecond / width;
+    final closes = velocity.abs() >= _kEdgeSwipeFlingVelocity ? velocity < 0 : _transition.value < 0.5;
+    // A release at rest still needs a direction, so it leaves from rest.
+    if (closes) {
+      _transition.fling(velocity: math.min(velocity, -_kEdgeSwipeRestVelocity));
+    } else {
+      final settled = _transition.fling(velocity: math.max(velocity, _kEdgeSwipeRestVelocity));
+      // Left to close later by the way it came; a new swipe cancels this.
+      unawaited(settled.then((_) => _swiping = false));
+    }
   }
 
   void _showNotice(SessionDetailNotice notice) {
@@ -275,16 +388,87 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
           ),
           if (promptsOpen)
             Positioned.fill(
-              child: SessionPromptsView(
-                prompts: prompts.list,
-                anchorMessageId: prompts.anchorMessageId,
-                maxWidth: pageChrome?.columnWidths.transcript,
-                onPromptTap: _returnToPrompt,
-                onClose: _closePrompts,
+              child: _buildPromptsTransition(
+                context: context,
+                origin: prompts.origin,
+                layer: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: SessionPromptsView(
+                        prompts: prompts.list,
+                        anchorMessageId: prompts.anchorMessageId,
+                        maxWidth: pageChrome?.columnWidths.transcript,
+                        onPromptTap: _returnToPrompt,
+                        onClose: _closePrompts,
+                      ),
+                    ),
+                    if (Theme.of(context).platform == TargetPlatform.iOS)
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: _kEdgeSwipeWidth + MediaQuery.paddingOf(context).left,
+                        // Translucent, so a tap in the strip still reaches the row under it.
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onHorizontalDragStart: _startEdgeSwipe,
+                          onHorizontalDragUpdate: _updateEdgeSwipe,
+                          onHorizontalDragEnd: (details) =>
+                              _settleEdgeSwipe(pixelsPerSecond: details.velocity.pixelsPerSecond.dx),
+                          onHorizontalDragCancel: () => _settleEdgeSwipe(pixelsPerSecond: 0),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
         ],
       ),
+    );
+  }
+
+  /// The Prompts [layer] over a dimmed page: it fades in while growing from
+  /// [origin] and reverses on the way out, a plain fade under reduced motion,
+  /// and follows the finger while an edge swipe moves it. Only the layer and
+  /// the dim are rebuilt per frame; the page beneath is never touched.
+  Widget _buildPromptsTransition({required BuildContext context, required Alignment origin, required Widget layer}) {
+    final reducedMotion = context.isReducedMotion;
+    return AnimatedBuilder(
+      animation: _transition,
+      child: layer,
+      builder: (context, layer) {
+        final value = _transition.value;
+        final shown = _swiping ? value : _shown.value;
+        // One tree shape in every mode, so the layer keeps its state and scroll
+        // when a swipe takes it over.
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            ColoredBox(color: Colors.black.withValues(alpha: _kPromptsDim * shown)),
+            // A leaving screen takes no more taps, so a second row tap cannot
+            // move the transcript again while it fades.
+            IgnorePointer(
+              ignoring: _transition.status == AnimationStatus.reverse,
+              child: Opacity(
+                opacity: _swiping ? 1 : _fade.value,
+                child: FractionalTranslation(
+                  translation: Offset(_swiping ? 1 - value : 0, 0),
+                  child: Transform.scale(
+                    scale: _swiping || reducedMotion ? 1 : _kPromptsGrowFrom + (1 - _kPromptsGrowFrom) * shown,
+                    alignment: origin,
+                    // The swiped screen casts a shadow on the page it uncovers. It
+                    // lies beyond the screen's edge whenever the swipe starts or ends.
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(boxShadow: _swiping ? _kEdgeSwipeShadow : null),
+                      child: layer,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
