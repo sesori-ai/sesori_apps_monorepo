@@ -1457,6 +1457,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptPrompts => 'Prompts';
 
   @override
+  String get transcriptPromptsSearchHint => 'Search prompts';
+
+  @override
+  String transcriptPromptsMatches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count matches in the prompts loaded so far',
+      one: '1 match in the prompts loaded so far',
+      zero: 'No matches in the prompts loaded so far',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get transcriptPromptsLoadEarlier => 'Load earlier prompts';
+
+  @override
   String get transcriptPromptsClose => 'Close prompts';
 
   @override

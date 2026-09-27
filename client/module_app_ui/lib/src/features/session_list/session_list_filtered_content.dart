@@ -94,6 +94,8 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
             child: ListSearchField(
               query: _query,
               hintText: loc.sessionListSearchHint,
+              autofocus: false,
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
               onChanged: (query) => setState(() => _query = query),
             ),
           ),

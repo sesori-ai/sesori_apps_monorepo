@@ -2659,11 +2659,29 @@ abstract class AppLocalizations {
   /// **'Attachment'**
   String get transcriptStickyPromptAttachment;
 
-  /// Title of the screen listing the user's own prompts in a session, and the tooltip and screen reader label of the session toolbar button that opens it.
+  /// Tooltip and screen reader label of the session toolbar button that opens the screen listing the user's own prompts in a session.
   ///
   /// In en, this message translates to:
   /// **'Prompts'**
   String get transcriptPrompts;
+
+  /// Placeholder of the search field that heads the Prompts screen and filters the prompts already loaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Search prompts'**
+  String get transcriptPromptsSearchHint;
+
+  /// Last row of the Prompts screen while searching: how many loaded prompts match. Older prompts may not have loaded yet, so it names the loaded range.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No matches in the prompts loaded so far} =1{1 match in the prompts loaded so far} other{{count} matches in the prompts loaded so far}}'**
+  String transcriptPromptsMatches(int count);
+
+  /// Button at the top of the Prompts screen that loads the session's earlier messages, adding their prompts to the list.
+  ///
+  /// In en, this message translates to:
+  /// **'Load earlier prompts'**
+  String get transcriptPromptsLoadEarlier;
 
   /// Tooltip and screen reader label of the button that closes the Prompts screen and returns to the transcript.
   ///

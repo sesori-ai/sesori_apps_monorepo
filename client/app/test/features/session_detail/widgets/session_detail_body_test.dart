@@ -1213,6 +1213,55 @@ void main() {
       expect(tester.getTopLeft(find.text("Prompt 11").last).dy, top);
     });
 
+    testWidgets("Load earlier prompts pages the transcript back and adds its prompts in place", (tester) async {
+      // More prompts than the screen holds, so the list can scroll past the
+      // control rather than settle against its end.
+      final newer = [
+        for (var turn = 0; turn < 20; turn++) ...[
+          textMessage(id: "u$turn", user: true, text: "Prompt $turn"),
+          textMessage(id: "a$turn", user: false, text: "Answer $turn"),
+        ],
+      ];
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final state = _loadedState(
+        pendingQuestions: const [],
+        pendingPermissions: const [],
+        messages: newer,
+      ).copyWith(olderMessagesCursor: 42);
+      when(() => cubit.state).thenReturn(state);
+      whenListen(cubit, states.stream, initialState: state);
+      final withOlder = _loadedState(
+        pendingQuestions: const [],
+        pendingPermissions: const [],
+        messages: [
+          for (var turn = 0; turn < 3; turn++) textMessage(id: "older-u$turn", user: true, text: "Older $turn"),
+          ...newer,
+        ],
+      );
+      when(() => cubit.loadOlderMessages()).thenAnswer((_) async {
+        when(() => cubit.state).thenReturn(withOlder);
+        states.add(withOlder);
+      });
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      await openPrompts(tester);
+      final prompts = find.descendant(of: layer, matching: find.byType(CustomScrollView));
+      await tester.drag(prompts, const Offset(0, 2000));
+      await tester.pumpAndSettle();
+      final top = tester.getTopLeft(find.text("Prompt 0").last).dy;
+
+      await tester.tap(find.byKey(const Key("session-prompts-load-earlier")));
+      await tester.pumpAndSettle();
+
+      verify(() => cubit.loadOlderMessages()).called(1);
+      expect(find.byKey(const Key("session-prompts-load-earlier")), findsNothing);
+      expect(tester.getTopLeft(find.text("Prompt 0").last).dy, top);
+      await tester.drag(prompts, const Offset(0, 2000));
+      await tester.pumpAndSettle();
+      expect(find.text("Older 0"), findsOneWidget);
+    });
+
     testWidgets("a tapped prompt closes the screen with the transcript on it", (tester) async {
       await tester.pumpWidget(_buildApp(cubit: cubit));
       await tester.pumpAndSettle();

@@ -351,6 +351,8 @@ class _ProjectListViewState() extends State<ProjectListView> {
           child: ListSearchField(
             query: _query,
             hintText: context.loc.projectListSearchHint,
+            autofocus: false,
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
             onChanged: (query) => setState(() => _query = query),
           ),
         ),
