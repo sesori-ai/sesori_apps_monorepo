@@ -11,8 +11,9 @@
   Step 2 lands in `sesori-ai/sesori_auth_server`; every other step lands here.
 - **Completed:** 2026-09-27. Step 9 ran the L3 retirement coverage (results
   under [Verification And Coverage](#verification-and-coverage)) and moved the
-  plan here at the user's instruction. The not-executed cells listed there
-  still need the user's explicit acceptance.
+  plan here at the user's instruction. The user accepted the not-executed
+  cells listed there on 2026-09-27 and confirmed the seven fixture feedback
+  documents in MongoDB. The look-and-feel findings go to follow-up PRs.
 
 ## Goal
 
@@ -443,8 +444,8 @@ Deliberately not added:
     devices); iOS failed send (no network toggle on the simulator; covered on
     Android); Android AI-error reset (shared service, covered on iOS); crash
     reset; real 14-day cooldown expiry; Remote Config threshold 2 / cooldown 1;
-    MongoDB field check and account deletion removing feedback (left to the
-    user on the dev auth server).
+    account deletion removing feedback. The user confirmed the MongoDB
+    documents.
   - Look-and-feel findings, not fixed: opening the automatic sheet while the
     composer keyboard is up shows it already raised above the keyboard with no
     slide-in, then it drops as the keyboard hides (both platforms); on a
