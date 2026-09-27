@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -17,11 +18,14 @@ import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "system_message_card.dart";
+import "transcript_glide_activity.dart";
+import "transcript_laid_out_list_view.dart";
 import "transcript_live_row.dart";
 import "transcript_motion.dart";
 import "transcript_pinch_detector.dart";
+import "transcript_prompt_slot.dart";
 import "transcript_row_reporter.dart";
-import "transcript_sticky_position.dart";
+import "transcript_sticky_layout.dart";
 import "transcript_sticky_prompt_overlay.dart";
 import "transcript_turn_stub.dart";
 import "user_message_card.dart";
@@ -178,6 +182,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// has its page ready instead of stopping dead at the edge.
   static const double _kOlderPagePrefetchExtent = 600;
 
+  /// How far below the top edge a pinned prompt's bubble rests.
+  static const double _kPinGap = 6;
+
+  /// Where a prompt's row rests once its pin glides back to it: with its
+  /// bubble on the pin line, so the pin hands over to it unseen.
+  static const double _kPinnedRowTop = _kPinGap - PregoSpacing.xs;
+
   late final ScrollFollowTracker _follow;
 
   /// Shared 0..1 progress for the horizontal timestamp-reveal "peek".
@@ -222,16 +233,19 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// the rows already there, or caught up at once, do not animate.
   Set<String>? _knownRowIds;
 
-  /// The last build's rows in order, and each message row's turn, so a fold
-  /// switch can read the turn the reader was on.
-  List<String> _rowIds = const [];
+  /// The last build's rows by their place in order, and each message row's
+  /// turn, so a fold switch can read the turn the reader was on.
+  Map<String, int> _rowIndexById = const {};
   Map<String, TranscriptTurn> _rowTurns = const {};
   TranscriptTurns _turns = const TranscriptTurns(turns: [], turnIndexByMessageId: {});
 
-  /// The prompt pinned at the top edge, measured after each frame that built
-  /// or scrolled the list. Only the sticky prompt overlay reads it.
-  final ValueNotifier<TranscriptStickyPosition?> _sticky = ValueNotifier(null);
-  bool _stickyUpdateScheduled = false;
+  /// The attached opener bubbles of prompt turns, by opener id.
+  final _promptSlots = TranscriptPromptSlots();
+  final GlobalKey _stickyKey = GlobalKey();
+
+  /// The prompts the pinned prompts hold copies of: those that could pin
+  /// next, which are the built ones and the one just above them.
+  final ValueNotifier<List<String>> _stickyOpenerIds = ValueNotifier(const []);
 
   /// The built rows by id. Only built rows are here, so every scan stays
   /// bounded by the viewport and its cache extent.
@@ -262,7 +276,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _follow.removeListener(_onFollowChanged);
     _follow.dispose();
     _revealController.dispose();
-    _sticky.dispose();
+    _stickyOpenerIds.dispose();
     super.dispose();
   }
 
@@ -387,10 +401,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   void _onRowUnmount({required String rowId}) => _rowContexts.remove(rowId);
 
   /// Where row [rowId] sits in the list's box, or null while it is not built.
+  /// During the list's layout a row can be built but not yet laid out, or on
+  /// its way out; it is not built until every box up to the list has a size.
   ({double top, double bottom})? _spanOf({required String rowId}) {
     final list = context.findRenderObject();
     final row = _rowContexts[rowId]?.findRenderObject();
-    if (list is! RenderBox || row is! RenderBox || !row.hasSize) return null;
+    if (list is! RenderBox || row is! RenderBox) return null;
+    RenderObject? node = row;
+    while (node != list) {
+      if (node == null || (node is RenderBox && !node.hasSize)) return null;
+      node = node.parent;
+    }
     final top = row.localToGlobal(Offset.zero, ancestor: list).dy;
     return (top: top, bottom: top + row.size.height);
   }
@@ -438,8 +459,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     if (!mounted || !identical(anchor, _anchor)) return;
     _anchor = null;
     final list = context.findRenderObject();
-    final rowIndex = {for (final (index, rowId) in _rowIds.indexed) rowId: index};
-    final target = rowIndex[anchor.rowId];
+    final target = _rowIndexById[anchor.rowId];
     if (list is! RenderBox || target == null || (_follow.following && !first)) return;
     final double delta;
     if (_spanOf(rowId: anchor.rowId) case final span?) {
@@ -450,7 +470,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       // from that row, so no jump passes over it.
       final built = [
         for (final rowId in _rowContexts.keys)
-          if (rowIndex[rowId] case final index?) (rowId: rowId, index: index),
+          if (_rowIndexById[rowId] case final index?) (rowId: rowId, index: index),
       ];
       if (built.isEmpty) return;
       final nearest = built.reduce((a, b) => (a.index - target).abs() <= (b.index - target).abs() ? a : b);
@@ -477,42 +497,109 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     widget.onTranscriptFoldedChanged(folded: false);
   }
 
-  /// Puts the prompt of turn [openerMessageId] at the top edge. Folded, it
-  /// unfolds every turn and holds that one in place instead. Like any hold,
-  /// the jump stops following.
-  void _jumpToTurn({required String openerMessageId}) {
+  /// Glides back to the prompt of turn [openerMessageId], landing it on the
+  /// pin line, where its pin grows back into it. Under reduced motion it jumps
+  /// there instead. Like any hold, this stops following.
+  void _glideToPrompt({required String openerMessageId}) {
     final turn = _turns.promptTurnFor(openerMessageId: openerMessageId);
     if (turn == null) return;
-    if (widget.transcriptFolded) return _unfoldAt(turn: turn);
-    _holdRow(rowId: _firstRowOf(turn: turn, folded: false), top: 0);
+    final rowId = _firstRowOf(turn: turn, folded: false);
+    final position = _follow.scrollController.position;
+    if (context.isReducedMotion || position is! ScrollPositionWithSingleContext) {
+      return _holdRow(rowId: rowId, top: _kPinnedRowTop);
+    }
+    _anchor = null;
+    _follow.detach();
+    position.beginActivity(
+      TranscriptGlideActivity(
+        position: position,
+        target: () => _glideTarget(rowId: rowId),
+      ),
+    );
   }
 
-  void _scheduleStickyUpdate() {
-    if (_stickyUpdateScheduled) return;
-    _stickyUpdateScheduled = true;
+  /// The offset that rests row [rowId] where a glide lands it. An unbuilt row
+  /// is estimated from the built rows above it, at their mean height. Null
+  /// once the row is gone, or below the built rows, where no pin leads.
+  double? _glideTarget({required String rowId}) {
+    final pixels = _follow.scrollController.position.pixels;
+    final restTop = widget.topInset + _kPinnedRowTop;
+    if (_spanOf(rowId: rowId) case final span?) return pixels + restTop - span.top;
+    final target = _rowIndexById[rowId];
+    if (target == null) return null;
+    ({int index, double top})? first;
+    var builtHeight = 0.0;
+    var builtCount = 0;
+    for (final builtRowId in _rowContexts.keys) {
+      final index = _rowIndexById[builtRowId];
+      final span = _spanOf(rowId: builtRowId);
+      if (index == null || span == null) continue;
+      builtHeight += span.bottom - span.top;
+      builtCount++;
+      if (first == null || index < first.index) first = (index: index, top: span.top);
+    }
+    if (first == null || target > first.index) return null;
+    return pixels + restTop - (first.top - (first.index - target) * builtHeight / builtCount);
+  }
+
+  /// Places the pinned prompts from where the opener bubbles are. Runs while
+  /// the transcript lays out, once the rows have and once the pins have, so
+  /// whichever lays out last places them with both current.
+  void _layOutSticky() {
+    final pins = _stickyKey.currentContext?.findRenderObject();
+    if (pins is! RenderTranscriptStickyPrompts) return;
+    // Folded, each turn shows its prompt already.
+    final openers = widget.transcriptFolded ? const <TranscriptStickyOpener>[] : _stickyOpeners();
+    final layout = layOutTranscriptStickyPrompts(
+      openers: openers,
+      fullHeights: pins.fullHeights,
+      compactHeight: pins.compactHeight,
+      pinTop: widget.topInset + _kPinGap,
+    );
+    pins.stickyLayout = layout;
+    _promptSlots.hideOnly(openerIds: layout.hiddenOpenerIds);
+    final stickyOpenerIds = [
+      for (final (index, opener) in openers.indexed)
+        if (opener.place is TranscriptStickyBuilt ||
+            opener.place is TranscriptStickyAbove &&
+                openers.elementAtOrNull(index + 1)?.place is! TranscriptStickyAbove)
+          opener.id,
+    ];
+    if (listEquals(stickyOpenerIds, _stickyOpenerIds.value)) return;
+    // Layout cannot rebuild; the copies join from the next frame, well before
+    // a prompt that could pin reaches the pin line.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _stickyUpdateScheduled = false;
-      if (mounted) _sticky.value = _stickyPosition();
+      if (mounted) _stickyOpenerIds.value = stickyOpenerIds;
     });
   }
 
-  /// The prompt to pin: unfolded, the top-edge turn's opener while that
-  /// opener is above the edge or not built. Segments without a prompt pin
-  /// nothing.
-  TranscriptStickyPosition? _stickyPosition() {
-    if (widget.transcriptFolded) return null;
-    if (_topEdgeTurn() case final TranscriptPromptTurn turn) {
-      final opener = _spanOf(rowId: _firstRowOf(turn: turn, folded: false));
-      if (opener != null && opener.bottom > widget.topInset) return null;
-      final index = _turns.turnIndexByMessageId[turn.opener.info.id];
-      final next = index == null ? null : _turns.turns.elementAtOrNull(index + 1);
-      final nextOpener = next == null ? null : _spanOf(rowId: _firstRowOf(turn: next, folded: false));
-      return TranscriptStickyPosition(
-        openerMessageId: turn.opener.info.id,
-        nextOpenerTop: nextOpener == null ? null : nextOpener.top - widget.topInset,
-      );
+  /// Every prompt turn's opener in order, with where its bubble is. A built
+  /// opener's row is its bubble and the bubble's vertical margin; the row is
+  /// read rather than the bubble because the rows are laid out by now, while
+  /// a row's own content can still be waiting for its turn.
+  List<TranscriptStickyOpener> _stickyOpeners() {
+    int? firstBuiltRow;
+    for (final rowId in _rowContexts.keys) {
+      final index = _rowIndexById[rowId];
+      if (index != null && (firstBuiltRow == null || index < firstBuiltRow)) firstBuiltRow = index;
     }
-    return null;
+    TranscriptStickyPlace placeOf({required String rowId, required int rowIndex}) {
+      if (_spanOf(rowId: rowId) case final span?) {
+        const margin = UserMessageBubble.margin;
+        return TranscriptStickyBuilt(top: span.top + margin.top, bottom: span.bottom - margin.bottom);
+      }
+      return firstBuiltRow != null && rowIndex < firstBuiltRow
+          ? const TranscriptStickyAbove()
+          : const TranscriptStickyBelow();
+    }
+
+    return [
+      for (final turn in _turns.turns)
+        if (turn case TranscriptPromptTurn(:final opener))
+          if (_entryIdForMessage(info: opener.info) case final rowId)
+            if (_rowIndexById[rowId] case final rowIndex?)
+              (id: opener.info.id, place: placeOf(rowId: rowId, rowIndex: rowIndex)),
+    ];
   }
 
   /// The turn of the built row under [globalPosition].
@@ -736,10 +823,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     );
     final knownRowIds = _knownRowIds;
     _knownRowIds = rowIds.toSet();
-    _rowIds = rowIds;
+    _rowIndexById = {for (final (index, rowId) in rowIds.indexed) rowId: index};
     _rowTurns = rowTurns;
     _turns = turns;
-    _scheduleStickyUpdate();
     // Rows held still while scrolled away never animate, and a prompt shows
     // at once: only the agent's side of the transcript eases in.
     final enteringRowIds = knownRowIds == null || snap != null || context.isReducedMotion
@@ -799,8 +885,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             dragStartBehavior: DragStartBehavior.down,
             child: Stack(
               children: [
-                ListView.builder(
+                TranscriptLaidOutListView(
                   key: _kListViewKey,
+                  onLaidOut: _layOutSticky,
                   reverse: true,
                   controller: _follow.scrollController,
                   padding: EdgeInsetsDirectional.only(
@@ -845,12 +932,23 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                     );
                   },
                 ),
-                Positioned(
-                  top: widget.topInset,
-                  left: widget.horizontalInset,
-                  right: widget.horizontalInset,
-                  bottom: 0,
-                  child: TranscriptStickyPromptOverlay(position: _sticky, turns: turns, onJumpToTurn: _jumpToTurn),
+                Positioned.fill(
+                  // The copies' code blocks scroll sideways; the list must not
+                  // read their scrolls as its own.
+                  child: NotificationListener<Notification>(
+                    onNotification: (notification) =>
+                        notification is ScrollNotification || notification is ScrollMetricsNotification,
+                    child: ValueListenableBuilder(
+                      valueListenable: _stickyOpenerIds,
+                      builder: (context, openerIds, _) => TranscriptStickyPromptOverlay(
+                        key: _stickyKey,
+                        turns: [for (final openerId in openerIds) ?turns.promptTurnFor(openerMessageId: openerId)],
+                        horizontalInset: widget.horizontalInset,
+                        onLayout: _layOutSticky,
+                        onTap: _glideToPrompt,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -906,7 +1004,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         final message = messages[index];
         return _revealable(
           createdAtMs: message.info.time?.created,
-          child: _animatedPromptRow(child: UserMessageCard(message: message)),
+          child: _animatedPromptRow(child: _userMessage(message: message)),
         );
       }
       final promptId = entryId.substring(_kPromptRowPrefix.length);
@@ -980,7 +1078,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return const SizedBox.shrink();
     }
     final card = switch (message.info) {
-      MessageUser() => UserMessageCard(message: message),
+      MessageUser() => _userMessage(message: message),
       MessageAssistant(sender: MessageSender.agent, :final id) => AssistantMessageCard(
         projectId: widget.projectId,
         blocks: transcript.blocksFor(messageId: id),
@@ -995,6 +1093,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       final MessageError messageError => ErrorMessageCard(message: messageError),
     };
     return _revealable(createdAtMs: message.info.time?.created, child: card);
+  }
+
+  /// A user message's bubble; a prompt turn's opener registers where it is,
+  /// so its pin can stand in for it.
+  Widget _userMessage({required MessageWithParts message}) {
+    final card = UserMessageCard(message: message);
+    if (_turns.promptTurnFor(openerMessageId: message.info.id) == null) return card;
+    return TranscriptPromptSlot(openerId: message.info.id, registry: _promptSlots, child: card);
   }
 
   void _cancelQueuedSubmission({required QueuedSessionSubmission submission}) {
@@ -1096,9 +1202,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       _ => false,
     };
     if (nearingOldestEdge) _requestOlderPage();
-    if (notification case ScrollUpdateNotification(depth: 0) || ScrollMetricsNotification(depth: 0)) {
-      _scheduleStickyUpdate();
-    }
     return notification is ScrollNotification && _onNestedScrollNotification(notification);
   }
 

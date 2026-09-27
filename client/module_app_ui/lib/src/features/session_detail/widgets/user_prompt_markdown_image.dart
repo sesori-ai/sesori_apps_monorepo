@@ -8,21 +8,16 @@ import "text_part_widget.dart" show MarkdownMessageImage;
 
 /// How a Markdown image inside the user's own prompt is rendered, wherever that
 /// prompt is shown: in the transcript's bubble and in the prompt pinned over
-/// the transcript's top edge.
+/// the transcript's top edge, which paints the bubble's own content.
 ///
 /// A remote image is a button that opens the URL, never an inline fetch: a
 /// prompt can name any third-party host, and reading or scrolling the
 /// transcript must not tell that host the reader is there. An image that
 /// carries its own bytes, or an asset, renders inline.
-///
-/// Pass `interactive: false` where the prompt is a preview whose own tap does
-/// something else, as the pinned prompt's is: a control that looks pressable
-/// and opens nothing is worse than naming the image in plain text.
 Widget buildUserPromptMarkdownImage({
   required BuildContext context,
   required Uri uri,
   required String? semanticLabel,
-  required bool interactive,
 }) {
   final scheme = uri.scheme.toLowerCase();
   final isSafeRemote = (scheme == "http" || scheme == "https") && uri.host.isNotEmpty && uri.userInfo.isEmpty;
@@ -32,7 +27,6 @@ Widget buildUserPromptMarkdownImage({
 
   final prego = context.prego;
   final label = userPromptMarkdownImageName(loc: context.loc, altText: semanticLabel);
-  if (!interactive) return _RemoteImageMention(label: label);
 
   final handleLink = buildSessionDetailMarkdownLinkTapHandler(context: context);
   return TextButton.icon(
@@ -64,23 +58,4 @@ Widget buildUserPromptMarkdownImage({
 String userPromptMarkdownImageName({required AppLocalizations loc, required String? altText}) {
   final normalized = altText?.trim();
   return normalized == null || normalized.isEmpty ? loc.sessionDetailImageOpen : normalized;
-}
-
-/// Names the image the prompt links to, with no surface and nothing to press.
-class const _RemoteImageMention({required final String label}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    final style = prego.textTheme.textSm.medium.copyWith(color: prego.colors.textSecondary);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(TablerRegular.photo, size: PregoIconSize.sm, color: prego.colors.textSecondary),
-        const SizedBox(width: PregoSpacing.xs),
-        Flexible(
-          child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
-        ),
-      ],
-    );
-  }
 }

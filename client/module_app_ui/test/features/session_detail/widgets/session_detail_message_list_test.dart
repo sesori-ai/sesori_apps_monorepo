@@ -8,6 +8,8 @@ import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_prompt_slot.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_layout.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_prompt_overlay.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_turn_stub.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -380,28 +382,6 @@ void main() {}
 
 /// A prompt whose words carry Markdown syntax around them.
 const _decoratedPrompt = "Fix **bold** and `code` in [the spec](https://example.com/spec)";
-
-/// A prompt reaching every block and inline element the chat renderer builds.
-const _everyBlockPrompt = '''
-# Heading with [a link](https://example.com/spec)
-
-> quoted
-
-- [ ] a task
-- item with `code`
-
-| field | type |
-|---|---|
-| id | String |
-
-```dart
-void main() {}
-```
-
-![diagram](https://example.com/diagram.png)
-
----
-''';
 
 const _listViewKey = Key("session-detail-message-list-view");
 const _jumpToLatestKey = Key("session-detail-jump-to-latest");
@@ -2675,113 +2655,216 @@ void main() {
     }, variant: _pinchPlatforms);
   });
 
-  group("the sticky prompt", () {
+  group("the pinned prompt", () {
     final shortTurns = _turns(count: 20, promptLines: 1, answers: 1, paragraphs: 12);
     // Every prompt and answer is taller than the viewport.
     final tallTurns = _turns(count: 16, promptLines: 40, answers: 4, paragraphs: 24);
+    // Short and long prompts in turn, each answered in less than a viewport.
+    final mixedTurns = [
+      for (var turn = 0; turn < 8; turn++) ...[
+        _message(
+          messageId: "u$turn",
+          role: "user",
+          text: _multilineText(label: "Prompt $turn", lines: turn.isOdd ? 12 : 1),
+        ),
+        for (var answer = 0; answer < 2; answer++)
+          _message(
+            messageId: "a$turn-$answer",
+            role: "assistant",
+            text: List.generate(5, (index) => "Answer $turn.$answer, paragraph $index").join("\n\n"),
+          ),
+      ],
+    ];
+    const pinTop = _topInset + 6;
     final overlay = find.byType(TranscriptStickyPromptOverlay);
-    // The band paints nothing of its own; it is the full-width layer that
-    // swallows a tap beside the bubble, and the only thing excluded from
-    // semantics. The bubble's box encloses anything a preview paints, so the
-    // outermost DecoratedBox is the bubble whatever the prompt renders as.
-    // Both are anchored outermost-first rather than by a property they are
-    // asserted on, so a regression trips the assertion instead of the finder.
-    final band = find.descendant(of: overlay, matching: find.byType(GestureDetector)).first;
-    final boxes = find.descendant(of: overlay, matching: find.byType(DecoratedBox));
-    final bubble = boxes.first;
-    Finder pinned(String text) => find.descendant(of: overlay, matching: find.text(text, findRichText: true));
-    RenderParagraph pinnedParagraph(WidgetTester tester) =>
-        tester.renderObject(find.descendant(of: overlay, matching: find.byType(RichText)).first);
 
-    /// Every style the pinned row paints text with.
-    List<TextStyle?> pinnedTextStyles(WidgetTester tester) {
-      final styles = <TextStyle?>[];
-      for (final element in find.descendant(of: overlay, matching: find.byType(RichText)).evaluate()) {
-        final paragraph = element.renderObject;
-        if (paragraph is! RenderParagraph) continue;
-        paragraph.text.visitChildren((span) {
-          if (span is TextSpan) styles.add(span.style);
-          return true;
-        });
-      }
-      return styles;
+    RenderTranscriptStickyPrompts pins(WidgetTester tester) => tester.renderObject(overlay);
+
+    TranscriptPinnedPrompt? pinOf(WidgetTester tester, String openerId) =>
+        pins(tester).stickyLayout.pinned.where((pin) => pin.openerId == openerId).firstOrNull;
+
+    /// The pinned copy of [openerId]'s bubble content.
+    Finder copyOf(String openerId) => find.descendant(
+      of: find.descendant(of: overlay, matching: find.byKey(ValueKey((pinnedPrompt: openerId)))),
+      matching: find.byType(UserMessageBubbleContent),
+    );
+
+    /// Where [openerId]'s pin paints its bubble.
+    Rect pinnedBubble(WidgetTester tester, String openerId) {
+      final pin = pinOf(tester, openerId) ?? fail("$openerId is not pinned");
+      final content = tester.getRect(copyOf(openerId));
+      return Rect.fromLTWH(content.left - 10, pin.top, content.width + 20, pin.height);
     }
 
-    /// Pins a prompt that renders as a single image mention and checks that the
-    /// eye and a screen reader are given the same [words]: the label is all a
-    /// reader gets, so it must never fall back to the image's source.
-    Future<void> expectPinnedImageNamed(WidgetTester tester, {required String prompt, required String words}) async {
-      final semantics = tester.ensureSemantics();
+    Finder slotOf(String openerId) =>
+        find.descendant(of: _messageKey(openerId), matching: find.byType(TranscriptPromptSlot));
+
+    /// Where [openerId]'s own bubble is, whether or not it paints.
+    Rect ownBubble(WidgetTester tester, String openerId) => tester
+        .getRect(find.descendant(of: slotOf(openerId), matching: find.byType(UserMessageBubbleContent)))
+        .inflate(10);
+
+    /// The one bubble the reader sees of each of [openerIds], pinned or its own.
+    Map<String, Rect> seenBubbles(WidgetTester tester, {required List<String> openerIds, required Rect screen}) {
+      final seen = <String, Rect>{};
+      for (final openerId in openerIds) {
+        final bubbles = [
+          if (pinOf(tester, openerId) != null) pinnedBubble(tester, openerId),
+          if (slotOf(openerId).evaluate().isNotEmpty &&
+              !tester.renderObject<RenderTranscriptPromptSlot>(slotOf(openerId)).hidden)
+            ownBubble(tester, openerId),
+        ].where((bubble) => bubble.overlaps(screen)).toList();
+        expect(bubbles.length, lessThanOrEqualTo(1), reason: "$openerId shows twice: $bubbles");
+        if (bubbles.firstOrNull case final bubble?) seen[openerId] = bubble;
+      }
+      return seen;
+    }
+
+    testWidgets("shows one bubble per prompt, moving with the scroll and never against it", (tester) async {
+      await _pumpTurns(tester, messages: mixedTurns, folded: false);
+      final openerIds = [for (var turn = 0; turn < 8; turn++) "u$turn"];
+      final screen = tester.getRect(find.byKey(_listViewKey));
+      final position = _position(tester);
+      const step = 7.0;
+      final pinnedIds = <String>{};
+      // Clear of the latest edge, where the list snaps back to following.
+      position.jumpTo(200);
+      await tester.pumpAndSettle();
+
+      // Slowly up through several short and long prompts, then back down.
+      for (final direction in [1.0, -1.0]) {
+        var before = seenBubbles(tester, openerIds: openerIds, screen: screen);
+        for (var moved = 0.0; moved < 2400; moved += step) {
+          position.jumpTo(position.pixels + direction * step);
+          await tester.pump();
+          final after = seenBubbles(tester, openerIds: openerIds, screen: screen);
+          for (final openerId in {...before.keys, ...after.keys}) {
+            final (was, now) = (before[openerId], after[openerId]);
+            if (was != null && now != null) {
+              // Older rows come down as the list scrolls up to them, a step a
+              // frame at most, so a bubble never jumps, pops or backs up.
+              final move = (now.top - was.top) * direction;
+              expect(move, inInclusiveRange(-0.01, step + 0.01), reason: "$openerId moved $move from $was to $now");
+            } else {
+              // A bubble only comes and goes across the screen's edges.
+              final edge = now ?? was ?? fail("unreachable");
+              expect(
+                edge.top >= screen.bottom - step - 0.01 || edge.bottom <= screen.top + step + 0.01,
+                isTrue,
+                reason: "$openerId ${now == null ? "vanished" : "popped in"} at $edge",
+              );
+            }
+          }
+          for (final pin in pins(tester).stickyLayout.pinned) {
+            pinnedIds.add(pin.openerId);
+            final compact = pin.fullHeight < pins(tester).compactHeight ? pin.fullHeight : pins(tester).compactHeight;
+            expect(pin.top, lessThanOrEqualTo(pinTop + 0.01));
+            expect(pin.height, inInclusiveRange(compact - 0.01, pin.fullHeight + 0.01));
+          }
+          before = after;
+        }
+      }
+      expect(pinnedIds, containsAll(["u4", "u5", "u6"]), reason: "the sweep must pass short and long prompts");
+    });
+
+    testWidgets("takes over from its bubble exactly where the two coincide", (tester) async {
+      await _pumpTurns(tester, messages: mixedTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "u5", top: pinTop - PregoSpacing.xs + 1);
+      expect(pinOf(tester, "u5"), isNull, reason: "a bubble below the pin line pins nothing");
+      expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u5")).hidden, isFalse);
+
+      await _scrollRowTo(tester, rowId: "u5", top: pinTop - PregoSpacing.xs);
+
+      final pin = pinOf(tester, "u5") ?? fail("u5 is not pinned");
+      expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u5")).hidden, isTrue);
+      final own = ownBubble(tester, "u5");
+      final pinned = pinnedBubble(tester, "u5");
+      expect(pinned.left, moreOrLessEquals(own.left, epsilon: 0.01));
+      expect(pinned.top, moreOrLessEquals(own.top, epsilon: 0.01));
+      expect(pinned.width, moreOrLessEquals(own.width, epsilon: 0.01));
+      expect(pinned.height, moreOrLessEquals(own.height, epsilon: 0.01));
+      expect(pin.elevation, 0, reason: "nothing slides under a pin that is its whole bubble");
+    });
+
+    testWidgets("lifts off the rows under it with a halo the pin line does not clip", (tester) async {
+      debugDisableShadows = false;
+      await _pumpTurns(tester, messages: tallTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a6-1", top: _topInset - 100);
+
+      final pin = pinOf(tester, "u6") ?? fail("u6 is not pinned");
+      expect(pin.elevation, 1);
+      // The pins paint from the list's top edge, behind the bar, not from the
+      // pin line, so the halo reaches up into the bar's fade.
+      expect(tester.getTopLeft(overlay).dy, tester.getTopLeft(find.byKey(_listViewKey)).dy);
+      final halo = RRect.fromRectAndRadius(
+        pinnedBubble(tester, "u6"),
+        const Radius.circular(UserMessageBubble.radius),
+      ).inflate(14);
+      expect(halo.top, lessThan(pinTop));
+      expect(pins(tester), paints..rrect(rrect: halo));
+      debugDisableShadows = true;
+    });
+
+    testWidgets("compacts a long prompt to a three-line bubble", (tester) async {
+      await _pumpTurns(tester, messages: tallTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a6-1", top: _topInset - 100);
+
+      final long = pinOf(tester, "u6") ?? fail("u6 is not pinned");
+      expect(long.top, pinTop);
+      expect(long.height, pins(tester).compactHeight);
+      expect(long.height, lessThan(long.fullHeight));
+    });
+
+    testWidgets("pins a short prompt whole", (tester) async {
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+
+      final short = pinOf(tester, "u8") ?? fail("u8 is not pinned");
+      expect(short.height, short.fullHeight);
+    });
+
+    /// Expects a 40-line prompt to compact exactly as tall as a prompt of
+    /// three short lines, which pins whole, whatever a line measures here.
+    Future<void> expectThreeLineCompaction(WidgetTester tester) async {
       await _pumpTurns(
         tester,
-        messages: _turnsWithPrompt(id: "u4", text: prompt),
+        messages: _turnsWithPrompt(id: "u4", text: "A\nB\nC"),
         folded: false,
       );
-
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+      final threeLines = pinOf(tester, "u4") ?? fail("u4 is not pinned");
+      expect(threeLines.height, threeLines.fullHeight);
 
-      final mention = find.descendant(of: overlay, matching: find.byType(Text));
-      expect(mention, findsOneWidget);
-      expect(tester.widget<Text>(mention).data, words, reason: "the words the row shows");
-      expect(
-        tester.getSemantics(bubble),
-        isSemantics(label: words, hint: "Jump to this prompt", isButton: true, hasTapAction: true),
-        reason: "the words a screen reader hears",
-      );
+      await _scrollRowTo(tester, rowId: "a3-1", top: _topInset - 100);
 
-      semantics.dispose();
+      final long = pinOf(tester, "u3") ?? fail("u3 is not pinned");
+      expect(long.fullHeight, greaterThan(threeLines.height), reason: "the fixture must compact");
+      expect(long.height, moreOrLessEquals(threeLines.height, epsilon: 1));
     }
 
-    testWidgets("pins the turn's prompt once it leaves the top edge", (tester) async {
-      await _pumpTurns(tester, messages: shortTurns, folded: false);
-      await _scrollRowTo(tester, rowId: "u8", top: 200);
-      // The earlier turn is the one at the top edge.
-      expect(pinned("Prompt 7 line 0"), findsOneWidget);
+    testWidgets("compacts to three lines at a narrow width", (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 640));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
-
-      expect(pinned("Prompt 8 line 0"), findsOneWidget);
-      expect(tester.getTopLeft(band).dy, moreOrLessEquals(_topInset, epsilon: 0.5));
+      await expectThreeLineCompaction(tester);
     });
 
-    testWidgets("paints no full-width scrim, so the rows beside it stay whole", (tester) async {
-      await _pumpTurns(tester, messages: shortTurns, folded: false);
-      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
-      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+    testWidgets("compacts to three lines at a large text scale", (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-      // The bubble is the only thing the band paints, and it is narrower than
-      // the band, so a row running past it to the left is left whole.
-      expect(boxes, findsOneWidget);
-      expect(tester.getSize(bubble).width, lessThan(tester.getSize(band).width));
-      expect(
-        tester.widget<DecoratedBox>(bubble).decoration,
-        isA<BoxDecoration>().having((decoration) => decoration.gradient, "gradient", isNull),
-      );
-    });
-
-    testWidgets("is pushed out by the next turn's prompt", (tester) async {
-      await _pumpTurns(tester, messages: shortTurns, folded: false);
-      await _scrollRowTo(tester, rowId: "u9", top: _topInset + 300);
-      expect(pinned("Prompt 8 line 0"), findsOneWidget);
-      expect(tester.getTopLeft(band).dy, moreOrLessEquals(_topInset, epsilon: 0.5));
-      final height = tester.getSize(band).height;
-
-      await _scrollRowTo(tester, rowId: "u9", top: _topInset + height / 2);
-
-      expect(pinned("Prompt 8 line 0"), findsOneWidget);
-      expect(tester.getTopLeft(band).dy, moreOrLessEquals(_topInset - height / 2, epsilon: 0.5));
-      expect(tester.getBottomLeft(band).dy, moreOrLessEquals(_topOf(tester, "u9"), epsilon: 0.5));
+      await expectThreeLineCompaction(tester);
     });
 
     testWidgets("hides while folded", (tester) async {
       final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
       await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
-      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+      expect(pinOf(tester, "u8"), isNotNull);
 
       harness.setTranscriptFolded(folded: true);
       await tester.pumpAndSettle();
 
-      expect(boxes, findsNothing);
+      expect(pins(tester).stickyLayout.pinned, isEmpty);
     });
 
     testWidgets("pins nothing over the messages before the first prompt", (tester) async {
@@ -2800,45 +2883,10 @@ void main() {
 
       await _scrollRowTo(tester, rowId: "setup", top: _topInset - 300);
 
-      expect(boxes, findsNothing);
+      expect(pins(tester).stickyLayout.pinned, isEmpty);
     });
 
-    /// Expects a 40-line prompt to be pinned exactly as tall as a prompt of
-    /// three short lines, which fits whole, whatever a line measures here.
-    Future<void> expectThreeLineCut(WidgetTester tester) async {
-      await _pumpTurns(
-        tester,
-        messages: _turnsWithPrompt(id: "u4", text: "A\nB\nC"),
-        folded: false,
-      );
-
-      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
-      expect(pinned("A\nB\nC"), findsOneWidget);
-      final threeLines = tester.getSize(bubble).height;
-
-      await _scrollRowTo(tester, rowId: "a3-1", top: _topInset - 100);
-
-      final paragraph = pinnedParagraph(tester);
-      expect(paragraph.text.toPlainText(), _multilineText(label: "Prompt 3", lines: 40));
-      expect(paragraph.size.height, greaterThan(threeLines), reason: "the fixture must overflow the cut");
-      expect(tester.getSize(bubble).height, moreOrLessEquals(threeLines, epsilon: 1));
-    }
-
-    testWidgets("cuts a long prompt at three lines at a narrow width", (tester) async {
-      await tester.binding.setSurfaceSize(const Size(320, 640));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-
-      await expectThreeLineCut(tester);
-    });
-
-    testWidgets("cuts a long prompt at three lines at a large text scale", (tester) async {
-      tester.platformDispatcher.textScaleFactorTestValue = 2;
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-
-      await expectThreeLineCut(tester);
-    });
-
-    testWidgets("renders the prompt's Markdown, and no block makes the row grow", (tester) async {
+    testWidgets("renders the prompt as its own bubble does", (tester) async {
       await _pumpTurns(
         tester,
         messages: _turnsWithPrompt(id: "u4", text: _markdownPrompt),
@@ -2846,39 +2894,11 @@ void main() {
       );
 
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
-      final markdownHeight = tester.getSize(bubble).height;
-      // The source is rendered, not shown: the emphasis markers are gone and
-      // the fence is a code block with its own surface.
-      expect(pinned(_markdownPrompt), findsNothing);
-      expect(find.descendant(of: overlay, matching: find.textContaining("Refactor", findRichText: true)), findsWidgets);
-      expect(find.descendant(of: overlay, matching: find.textContaining("**", findRichText: true)), findsNothing);
-      expect(find.descendant(of: overlay, matching: find.byType(Table)), findsOneWidget);
 
-      // A table, a fence and an image leave the row exactly as tall as a plain
-      // prompt cut at the same three lines.
-      await _scrollRowTo(tester, rowId: "a3-1", top: _topInset - 100);
-
-      expect(pinned(_multilineText(label: "Prompt 3", lines: 40)), findsOneWidget);
-      expect(markdownHeight, moreOrLessEquals(tester.getSize(bubble).height, epsilon: 0.5));
-    });
-
-    testWidgets("pins a remote image as a plain mention, never a fetch or a control", (tester) async {
-      await _pumpTurns(
-        tester,
-        messages: _turnsWithPrompt(id: "u4", text: "![diagram](https://example.com/diagram.png)"),
-        folded: false,
-      );
-
-      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
-
-      // A prompt can name any host, so pinning it must not contact that host.
-      expect(find.descendant(of: overlay, matching: find.byType(MarkdownMessageImage)), findsNothing);
-      // Nor offer a press: the bubble's tap jumps to the prompt, so the real
-      // bubble's open-image button would open nothing here. The transcript's
-      // own bubble keeps that button (see the session detail body's test).
-      expect(find.descendant(of: overlay, matching: find.byType(TextButton)), findsNothing);
-      expect(find.descendant(of: overlay, matching: find.byType(InkWell)), findsNothing);
-      expect(pinned("diagram"), findsOneWidget);
+      expect(pinOf(tester, "u4"), isNotNull);
+      expect(find.descendant(of: copyOf("u4"), matching: find.byType(Table)), findsOneWidget);
+      expect(find.descendant(of: copyOf("u4"), matching: find.byType(CodeBlock)), findsOneWidget);
+      expect(find.descendant(of: copyOf("u4"), matching: find.textContaining("**", findRichText: true)), findsNothing);
     });
 
     testWidgets("builds only the start of a pasted document", (tester) async {
@@ -2893,29 +2913,52 @@ void main() {
 
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
 
-      // Only three lines are ever painted, so the rest is not built: pinning a
-      // prompt costs the same whatever was pasted into it.
-      final built = pinnedParagraph(tester).text.toPlainText();
+      final built = tester
+          .renderObject<RenderParagraph>(find.descendant(of: copyOf("u4"), matching: find.byType(RichText)).first)
+          .text
+          .toPlainText();
       expect(built, startsWith("Pasted line 0\nPasted line 1\n"));
-      expect(built, isNot(contains("Pasted line 500")));
+      expect(built, isNot(contains("Pasted line 1500")));
     });
 
-    testWidgets("pins a link as ordinary text, not as something to press", (tester) async {
+    testWidgets("pins a fence left open by the cut as a code block, not backticks", (tester) async {
       await _pumpTurns(
         tester,
-        messages: _turnsWithPrompt(id: "u4", text: _decoratedPrompt),
+        messages: _turnsWithPrompt(
+          id: "u4",
+          text: "```dart\n${_multilineText(label: "// pasted", lines: 1000)}\n```",
+        ),
         folded: false,
       );
 
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
 
-      // The row's own tap jumps to the prompt, so link-looking text here would
-      // promise an open that never comes.
-      expect(pinned("Fix bold and code in the spec"), findsOneWidget);
-      expect(
-        pinnedTextStyles(tester).map((style) => style?.decoration),
-        everyElement(isNot(TextDecoration.underline)),
+      expect(find.descendant(of: copyOf("u4"), matching: find.byType(CodeBlock)), findsOneWidget);
+      expect(find.descendant(of: copyOf("u4"), matching: find.textContaining("```", findRichText: true)), findsNothing);
+    });
+
+    testWidgets("a pinned code block asks for no older page", (tester) async {
+      var requested = 0;
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: _turnsWithPrompt(id: "u4", text: _fencedPrompt),
+          initialStreamingText: const {},
+          topInset: _topInset,
+          onLoadOlderMessages: () async => requested++,
+        ),
       );
+      final harness = tester.state<_SessionDetailMessageListHarnessState>(
+        find.byType(_SessionDetailMessageListHarness),
+      );
+      harness.setTranscriptFolded(folded: false);
+      await tester.pumpAndSettle();
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      // The pins are the list's sibling, so a scroll view in a copy would
+      // report its metrics at depth 0 and the list would read them as its own.
+      expect(pinOf(tester, "u4"), isNotNull);
+      expect(requested, 0, reason: "the pinned prompt must not page history the reader never asked for");
     });
 
     testWidgets("labels the pinned bubble with the prompt's words, not its Markdown", (tester) async {
@@ -2928,10 +2971,10 @@ void main() {
 
       await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
 
-      // The rendered row is hidden from semantics, so this label is all a
-      // screen reader gets; it must not read out markers, backticks and URLs.
+      // The copy is hidden from semantics, so this label is all a screen
+      // reader gets; it must not read out markers, backticks and URLs.
       expect(
-        tester.getSemantics(bubble),
+        tester.getSemantics(copyOf("u4")),
         isSemantics(
           label: "Fix bold and code in the spec",
           hint: "Jump to this prompt",
@@ -2961,152 +3004,106 @@ void main() {
       // extensions the row is rendered with, or a table would be spoken as its
       // pipes and a struck word as its tildes.
       expect(
-        tester.getSemantics(bubble),
+        tester.getSemantics(copyOf("u4")),
         isSemantics(label: "Fix login\nFix signup\ncol\ncell\ndropped", isButton: true),
       );
 
       semantics.dispose();
     });
 
-    testWidgets("reads an image-only prompt out as its alt text", (tester) async {
-      await expectPinnedImageNamed(
+    /// Pins a prompt that renders as a single image and checks that a screen
+    /// reader hears [words], never the image's source.
+    Future<void> expectPinnedImageNamed(WidgetTester tester, {required String prompt, required String words}) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpTurns(
         tester,
-        prompt: "![diagram](https://example.com/diagram.png)",
-        words: "diagram",
+        messages: _turnsWithPrompt(id: "u4", text: prompt),
+        folded: false,
       );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      expect(
+        tester.getSemantics(copyOf("u4")),
+        isSemantics(label: words, hint: "Jump to this prompt", isButton: true, hasTapAction: true),
+      );
+      // A prompt can name any host, so pinning it must not contact that host.
+      expect(find.descendant(of: copyOf("u4"), matching: find.byType(MarkdownMessageImage)), findsNothing);
+
+      semantics.dispose();
+    }
+
+    testWidgets("reads an image-only prompt out as its alt text", (tester) async {
+      await expectPinnedImageNamed(tester, prompt: "![diagram](https://example.com/diagram.png)", words: "diagram");
     });
 
     testWidgets("reads an image-only prompt with no alt text out as the row names it", (tester) async {
-      await expectPinnedImageNamed(
-        tester,
-        prompt: "![](https://example.com/diagram.png)",
-        words: "Open image",
-      );
+      await expectPinnedImageNamed(tester, prompt: "![](https://example.com/diagram.png)", words: "Open image");
     });
 
-    testWidgets("pins every block with nothing pressable and nothing scrollable", (tester) async {
-      await _pumpTurns(
-        tester,
-        messages: _turnsWithPrompt(id: "u4", text: _everyBlockPrompt),
-        folded: false,
-      );
-
-      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
-
-      // A still picture: every element the renderer can build for a prompt, and
-      // not one control or scroll view among them.
-      expect(find.descendant(of: overlay, matching: find.byType(Table)), findsOneWidget);
-      expect(find.descendant(of: overlay, matching: find.byType(Scrollable)), findsNothing);
-      expect(find.descendant(of: overlay, matching: find.byType(Scrollbar)), findsNothing);
-      expect(find.descendant(of: overlay, matching: find.byType(TextButton)), findsNothing);
-      expect(find.descendant(of: overlay, matching: find.byType(IconButton)), findsNothing);
-      expect(find.descendant(of: overlay, matching: find.byType(InkWell)), findsNothing);
-      expect(find.descendant(of: overlay, matching: find.byType(PregoCopyIconButton)), findsNothing);
-      expect(
-        pinnedTextStyles(tester).map((style) => style?.decoration),
-        everyElement(isNot(TextDecoration.underline)),
-      );
-    });
-
-    testWidgets("pins a code block as a still preview, with nothing to press", (tester) async {
-      await _pumpTurns(
-        tester,
-        messages: _turnsWithPrompt(id: "u4", text: _fencedPrompt),
-        folded: false,
-      );
-
-      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
-
-      // The row's own tap jumps to the prompt, so a copy or open-all control
-      // here would do something other than what it shows.
-      expect(find.descendant(of: overlay, matching: find.byType(CodeBlockPreview)), findsOneWidget);
-      expect(find.descendant(of: overlay, matching: find.byType(CodeBlock)), findsNothing);
-      expect(find.descendant(of: overlay, matching: find.byType(PregoCopyIconButton)), findsNothing);
-      expect(find.descendant(of: overlay, matching: find.byType(TextButton)), findsNothing);
-      expect(pinned("void main() {}"), findsOneWidget);
-    });
-
-    testWidgets("a pinned code block asks for no older page", (tester) async {
-      var requested = 0;
-      await tester.pumpWidget(
-        _SessionDetailMessageListHarness(
-          initialMessages: _turnsWithPrompt(id: "u4", text: _fencedPrompt),
-          initialStreamingText: const {},
-          topInset: _topInset,
-          onLoadOlderMessages: () async => requested++,
-        ),
-      );
-      final harness = tester.state<_SessionDetailMessageListHarnessState>(
-        find.byType(_SessionDetailMessageListHarness),
-      );
-      harness.setTranscriptFolded(folded: false);
-      await tester.pumpAndSettle();
-
-      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
-
-      // The overlay is the list's sibling, so a scroll view in the pinned row
-      // reports its metrics at depth 0 and the list reads them as its own.
-      expect(requested, 0, reason: "the pinned prompt must not page history the reader never asked for");
-    });
-
-    testWidgets("pins a fence left open by the cut as a code block, not backticks", (tester) async {
-      await _pumpTurns(
-        tester,
-        messages: _turnsWithPrompt(
-          id: "u4",
-          text: "```dart\n${_multilineText(label: "// pasted", lines: 400)}\n```",
-        ),
-        folded: false,
-      );
-
-      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
-
-      expect(find.descendant(of: overlay, matching: find.byType(CodeBlockPreview)), findsOneWidget);
-      expect(find.descendant(of: overlay, matching: find.textContaining("```", findRichText: true)), findsNothing);
-    });
-
-    testWidgets("a tap on the bubble puts its prompt at the top edge and stops following", (tester) async {
+    testWidgets("a tap on the bubble glides back to its prompt, which the pin grows into", (tester) async {
       await _pumpTurns(tester, messages: shortTurns, folded: false);
       await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+      final moves = _recordMoves(tester);
 
-      await tester.tap(bubble, warnIfMissed: false);
+      await tester.tapAt(pinnedBubble(tester, "u8").center);
+      await tester.pumpAndSettle(const Duration(milliseconds: 16));
+
+      expect(moves.length, greaterThan(5), reason: "a glide, not a jump");
+      for (final (index, pixels) in moves.indexed.skip(1)) {
+        expect(pixels, greaterThanOrEqualTo(moves[index - 1]), reason: "the glide never turns back");
+      }
+      expect(ownBubble(tester, "u8").top, moreOrLessEquals(pinTop, epsilon: 0.5));
+      final pin = pinOf(tester, "u8") ?? fail("u8 is not pinned");
+      expect(pin.height, pin.fullHeight, reason: "the pin has grown back into its bubble");
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    });
+
+    testWidgets("a tap under reduced motion jumps back to its prompt", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await _pumpTurns(tester, messages: shortTurns, folded: false);
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+      final moves = _recordMoves(tester);
+
+      await tester.tapAt(pinnedBubble(tester, "u8").center);
       await tester.pumpAndSettle();
 
-      expect(_topOf(tester, "u8"), moreOrLessEquals(_topInset, epsilon: 1));
-      expect(pinned("Prompt 8 line 0"), findsNothing);
-      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+      expect(moves.length, lessThanOrEqualTo(2), reason: "a jump, not a glide");
+      expect(ownBubble(tester, "u8").top, moreOrLessEquals(pinTop, epsilon: 0.5));
     });
 
     testWidgets("a tap on the band beside the bubble does nothing", (tester) async {
       await _pumpTurns(tester, messages: shortTurns, folded: false);
       await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
       final offset = _position(tester).pixels;
+      final bubble = pinnedBubble(tester, "u8");
 
-      await tester.tapAt(Offset(tester.getTopLeft(bubble).dx / 2, tester.getCenter(band).dy));
+      await tester.tapAt(Offset(bubble.left / 2, bubble.center.dy));
       await tester.pumpAndSettle();
 
       expect(_position(tester).pixels, offset);
-      expect(pinned("Prompt 8 line 0"), findsOneWidget);
+      expect(pinOf(tester, "u8"), isNotNull);
     });
 
-    testWidgets("a drag that starts on the band still scrolls the rows beneath", (tester) async {
+    testWidgets("a drag that starts on the pin still scrolls the rows beneath", (tester) async {
       await _pumpTurns(tester, messages: shortTurns, folded: false);
       await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
       final offset = _position(tester).pixels;
 
-      await tester.drag(band, const Offset(0, -120), warnIfMissed: false);
+      await tester.dragFrom(pinnedBubble(tester, "u8").center, const Offset(0, -120));
       await tester.pumpAndSettle();
 
       expect(_position(tester).pixels, isNot(moreOrLessEquals(offset, epsilon: 1)));
     });
 
-    testWidgets("while pinned is a labelled button that jumps to its unbuilt prompt", (tester) async {
+    testWidgets("while pinned is a labelled button that glides to its unbuilt prompt", (tester) async {
       final semantics = tester.ensureSemantics();
       await _pumpTurns(tester, messages: tallTurns, folded: false);
-      await _scrollRowTo(tester, rowId: "a6-2", top: _topInset - 100);
+      await _scrollRowTo(tester, rowId: "a6-1", top: _topInset - 100);
       expect(find.byKey(const ValueKey("u6"), skipOffstage: false), findsNothing);
 
-      final node = tester.getSemantics(bubble);
+      final node = tester.getSemantics(copyOf("u6"));
       expect(
         node,
         isSemantics(
@@ -3119,20 +3116,7 @@ void main() {
       node.owner?.performAction(node.id, SemanticsAction.tap);
       await tester.pumpAndSettle();
 
-      expect(_topOf(tester, "u6"), moreOrLessEquals(_topInset, epsilon: 1));
-      semantics.dispose();
-    });
-
-    testWidgets("offers the bubble's action alone, never the band's no-op tap", (tester) async {
-      final semantics = tester.ensureSemantics();
-      await _pumpTurns(tester, messages: shortTurns, folded: false);
-      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
-
-      // The band's tap only swallows presses beside the bubble, so announcing
-      // it would put an inert action next to the real one.
-      expect(tester.getSemantics(band), isNot(isSemantics(hasTapAction: true)));
-      expect(tester.getSemantics(bubble), isSemantics(isButton: true, hasTapAction: true));
-
+      expect(ownBubble(tester, "u6").top, moreOrLessEquals(pinTop, epsilon: 0.5));
       semantics.dispose();
     });
   });
