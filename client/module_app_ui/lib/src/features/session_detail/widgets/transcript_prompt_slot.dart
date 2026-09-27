@@ -51,6 +51,7 @@ class RenderTranscriptPromptSlot({
     if (value == _hidden) return;
     _hidden = value;
     markNeedsPaint();
+    markNeedsSemanticsUpdate();
   }
 
   @override
@@ -72,6 +73,12 @@ class RenderTranscriptPromptSlot({
   @override
   void paint(PaintingContext context, Offset offset) {
     if (!_hidden) super.paint(context, offset);
+  }
+
+  /// The pin stands in for a hidden bubble with the reader too.
+  @override
+  void visitChildrenForSemantics(RenderObjectVisitor visitor) {
+    if (!_hidden) super.visitChildrenForSemantics(visitor);
   }
 
   @override

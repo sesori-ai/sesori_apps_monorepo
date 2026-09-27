@@ -73,11 +73,13 @@ class const TranscriptStickyPromptOverlay({
         hint: loc.transcriptStickyPromptJumpHint,
         onTap: () => onTap(openerMessageId: id),
         excludeSemantics: true,
-        // Hit tests never reach the copy, so nothing in it can be pressed,
-        // selected or scrolled.
-        child: UserMessageBubbleContent(
-          markdown: markdown == null ? null : _cut(markdown: markdown, budget: _copyCharacterBudget),
-          attachments: [UserMessageCard.attachmentsOf(message: opener)],
+        // Hit tests never reach the copy and focus never enters it, so nothing
+        // in it can be pressed, selected or scrolled.
+        child: ExcludeFocus(
+          child: UserMessageBubbleContent(
+            markdown: markdown == null ? null : _cut(markdown: markdown, budget: _copyCharacterBudget),
+            attachments: [UserMessageCard.attachmentsOf(message: opener)],
+          ),
         ),
       ),
     );

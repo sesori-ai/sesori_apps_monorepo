@@ -2768,12 +2768,17 @@ void main() {
     });
 
     testWidgets("takes over from its bubble exactly where the two coincide", (tester) async {
+      final semantics = tester.ensureSemantics();
+      final spoken = find.bySemanticsLabel(RegExp("Prompt 5 line 0"));
       await _pumpTurns(tester, messages: mixedTurns, folded: false);
       await _scrollRowTo(tester, rowId: "u5", top: pinTop - PregoSpacing.xs + 1);
       expect(pinOf(tester, "u5"), isNull, reason: "a bubble below the pin line pins nothing");
       expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u5")).hidden, isFalse);
+      expect(spoken, findsOneWidget);
 
       await _scrollRowTo(tester, rowId: "u5", top: pinTop - PregoSpacing.xs);
+      expect(spoken, findsOneWidget, reason: "a screen reader meets the prompt once, as the pin");
+      semantics.dispose();
 
       final pin = pinOf(tester, "u5") ?? fail("u5 is not pinned");
       expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u5")).hidden, isTrue);
