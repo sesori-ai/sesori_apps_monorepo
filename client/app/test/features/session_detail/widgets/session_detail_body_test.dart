@@ -1177,6 +1177,146 @@ void main() {
       final top = tester.getTopLeft(find.byKey(const ValueKey("u2"))).dy;
       expect(top, inInclusiveRange(0, 200), reason: "the prompt rests under the bar");
     });
+
+    group("its transition", () {
+      final listView = find.byKey(const Key("session-detail-message-list-view"));
+      // The first box the transition paints, beneath the screen.
+      Color dim(WidgetTester tester) => tester
+          .widget<ColoredBox>(
+            find
+                .descendant(
+                  of: find.ancestor(of: layer, matching: find.byType(AnimatedBuilder)).first,
+                  matching: find.byType(ColoredBox),
+                )
+                .first,
+          )
+          .color;
+      double opacity(WidgetTester tester) =>
+          tester.widget<Opacity>(find.ancestor(of: layer, matching: find.byType(Opacity)).first).opacity;
+
+      /// The transcript as the reader sees it: where its list sits, how far
+      /// it is scrolled and the element that shows it.
+      ({Rect rect, double pixels, Element element}) transcriptAsSeen(WidgetTester tester) =>
+          (rect: tester.getRect(listView), pixels: transcript(tester).pixels, element: tester.element(listView));
+
+      testWidgets("grows the screen in and back out over a dimmed transcript that never moves", (tester) async {
+        await tester.pumpWidget(_buildApp(cubit: cubit));
+        await tester.pumpAndSettle();
+        final before = transcriptAsSeen(tester);
+        final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+
+        await tester.tap(find.byKey(const Key("session-detail-prompts")));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(opacity(tester), inExclusiveRange(0, 1));
+        expect(tester.getRect(layer).width, inExclusiveRange(screen.width * 0.96, screen.width));
+        final midwayDim = dim(tester).a;
+        expect(transcriptAsSeen(tester), before);
+        await tester.pumpAndSettle();
+        expect(opacity(tester), 1);
+        expect(dim(tester).a, greaterThan(midwayDim), reason: "the transcript dims as the screen comes in");
+        expect(tester.getRect(layer), screen);
+
+        await tester.tap(find.byTooltip("Close prompts"));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(opacity(tester), inExclusiveRange(0, 1));
+        expect(tester.getRect(layer).width, inExclusiveRange(screen.width * 0.96, screen.width));
+        expect(transcriptAsSeen(tester), before);
+        await tester.pumpAndSettle();
+        expect(layer, findsNothing);
+        expect(transcriptAsSeen(tester), before);
+      });
+
+      testWidgets("is a plain fade with reduced motion", (tester) async {
+        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        await tester.pumpWidget(_buildApp(cubit: cubit));
+        await tester.pumpAndSettle();
+        final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+
+        await tester.tap(find.byKey(const Key("session-detail-prompts")));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(opacity(tester), inExclusiveRange(0, 1));
+        expect(tester.getRect(layer), screen);
+
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip("Close prompts"));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(opacity(tester), inExclusiveRange(0, 1));
+        expect(tester.getRect(layer), screen);
+        await tester.pumpAndSettle();
+        expect(layer, findsNothing);
+      });
+
+      testWidgets("an edge swipe drags the screen under the finger and springs back when let go early", (tester) async {
+        await tester.pumpWidget(_buildApp(cubit: cubit));
+        await tester.pumpAndSettle();
+        final before = transcriptAsSeen(tester);
+        await openPrompts(tester);
+        final width = tester.getSize(layer).width;
+
+        var time = Duration.zero;
+        final gesture = await tester.startGesture(const Offset(5, 300));
+        Future<void> move(double dx) async {
+          time += const Duration(milliseconds: 400);
+          await gesture.moveBy(Offset(dx, 0), timeStamp: time);
+          await tester.pump();
+        }
+
+        await move(30); // past the touch slop, which the screen does not jump by
+        expect(tester.getTopLeft(layer).dx, 0);
+        await move(100);
+        expect(tester.getTopLeft(layer).dx, moreOrLessEquals(100), reason: "the screen follows the finger exactly");
+        await move(-40);
+        expect(tester.getTopLeft(layer).dx, moreOrLessEquals(60));
+        expect(opacity(tester), 1);
+        expect(transcriptAsSeen(tester), before);
+
+        await gesture.up(timeStamp: time + const Duration(milliseconds: 400));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(tester.getTopLeft(layer).dx, inExclusiveRange(1, 59), reason: "it springs back, not snaps");
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(layer).dx, 0);
+
+        final far = await tester.startGesture(const Offset(5, 300));
+        await far.moveBy(const Offset(30, 0), timeStamp: const Duration(seconds: 10));
+        await far.moveBy(Offset(width * 0.6, 0), timeStamp: const Duration(seconds: 11));
+        await tester.pump();
+        await far.up(timeStamp: const Duration(seconds: 12));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+        expect(
+          tester.getTopLeft(layer).dx,
+          inExclusiveRange(width * 0.6 + 1, width),
+          reason: "past halfway it slides on out",
+        );
+        await tester.pumpAndSettle();
+        expect(layer, findsNothing);
+        expect(find.byType(SessionDetailBody), findsOneWidget);
+        expect(transcriptAsSeen(tester), before);
+
+        await openPrompts(tester);
+        expect(tester.getRect(layer).width, width, reason: "the next opening grows in again");
+        await tester.flingFrom(const Offset(5, 300), const Offset(120, 0), 1500);
+        await tester.pumpAndSettle();
+        expect(layer, findsNothing, reason: "a fast short swipe closes");
+        expect(transcriptAsSeen(tester), before);
+      }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+      testWidgets("an edge swipe does not move the screen off iOS", (tester) async {
+        await tester.pumpWidget(_buildApp(cubit: cubit));
+        await tester.pumpAndSettle();
+        await openPrompts(tester);
+
+        await tester.flingFrom(const Offset(5, 300), const Offset(300, 0), 1500);
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(layer), Offset.zero);
+      }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+    });
   });
 
   testWidgets("the fold button shows whether every turn is folded and switches it", (tester) async {
