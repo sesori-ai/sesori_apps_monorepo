@@ -1134,12 +1134,43 @@ void main() {
       expect(transcript(tester).pixels, offset);
     });
 
+    testWidgets("an older page landing while the screen is open leaves its rows in place", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final state = _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: turns);
+      whenListen(cubit, states.stream, initialState: state);
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      await openPrompts(tester);
+      final top = tester.getTopLeft(find.text("Prompt 11").last).dy;
+
+      final older = [
+        for (var turn = 0; turn < 3; turn++) ...[
+          textMessage(id: "older-u$turn", user: true, text: "Older $turn"),
+          textMessage(id: "older-a$turn", user: false, text: "Older answer $turn"),
+        ],
+      ];
+      final withOlder = _loadedState(
+        pendingQuestions: const [],
+        pendingPermissions: const [],
+        messages: [...older, ...turns],
+      );
+      when(() => cubit.state).thenReturn(withOlder);
+      states.add(withOlder);
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(find.text("Prompt 11").last).dy, top);
+    });
+
     testWidgets("a tapped prompt closes the screen with the transcript on it", (tester) async {
       await tester.pumpWidget(_buildApp(cubit: cubit));
       await tester.pumpAndSettle();
 
       await openPrompts(tester);
       await tester.tap(find.text("Prompt 2"));
+      await tester.pump();
+      await tester.pump();
+      expect(layer, findsOneWidget, reason: "the screen covers the transcript until the move lands");
       await tester.pumpAndSettle();
 
       expect(layer, findsNothing);

@@ -145,7 +145,13 @@ typedef _TransientSubmission = ({QueuedSessionSubmission submission, _TransientS
 /// A turn held in place across a fold switch: its first row, which should
 /// rest [top] px below the top edge. Compared by identity, so a newer anchor
 /// stops the steps of the one it replaced.
-final class _TurnAnchor({required final String rowId, required final double top});
+/// A row held [top] px below the top edge. [landed], when set, completes once
+/// the hold ends, however it ends.
+final class _TurnAnchor({
+  required final String rowId,
+  required final double top,
+  required final Completer<void>? landed,
+});
 
 class _SessionDetailMessageListState() extends State<SessionDetailMessageList> with SingleTickerProviderStateMixin {
   static const _kListViewKey = Key("session-detail-message-list-view");
@@ -453,12 +459,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _holdRow(
       rowId: _firstRowOf(turn: turn, folded: folded),
       top: top,
+      landed: null,
     );
   }
 
   /// Moves row [rowId] to rest [top] px below the top edge, from the next frame.
-  void _holdRow({required String rowId, required double top}) {
-    final anchor = _anchor = _TurnAnchor(rowId: rowId, top: top);
+  void _holdRow({required String rowId, required double top, required Completer<void>? landed}) {
+    final anchor = _anchor = _TurnAnchor(rowId: rowId, top: top, landed: landed);
     WidgetsBinding.instance.addPostFrameCallback((_) => _stepAnchor(anchor: anchor, first: true));
     WidgetsBinding.instance.ensureVisualUpdate();
   }
@@ -470,11 +477,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// or the list can move no closer, when the row goes, or when the list
   /// follows the latest edge again.
   void _stepAnchor({required _TurnAnchor anchor, required bool first}) {
-    if (!mounted || !identical(anchor, _anchor)) return;
+    if (!_advanceAnchor(anchor: anchor, first: first)) anchor.landed?.complete();
+  }
+
+  /// One step of [_stepAnchor]; whether another step follows.
+  bool _advanceAnchor({required _TurnAnchor anchor, required bool first}) {
+    if (!mounted || !identical(anchor, _anchor)) return false;
     _anchor = null;
     final list = context.findRenderObject();
     final target = _rowIndexById[anchor.rowId];
-    if (list is! RenderBox || target == null || (_follow.following && !first)) return;
+    if (list is! RenderBox || target == null || (_follow.following && !first)) return false;
     final double delta;
     if (_spanOf(rowId: anchor.rowId) case final span?) {
       delta = widget.topInset + anchor.top - span.top;
@@ -486,16 +498,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         for (final rowId in _rowContexts.keys)
           if (_rowIndexById[rowId] case final index?) (rowId: rowId, index: index),
       ];
-      if (built.isEmpty) return;
+      if (built.isEmpty) return false;
       final nearest = built.reduce((a, b) => (a.index - target).abs() <= (b.index - target).abs() ? a : b);
       final span = _spanOf(rowId: nearest.rowId);
-      if (span == null) return;
+      if (span == null) return false;
       // Older rows sit above.
       delta = target < nearest.index ? list.size.height - span.top : -span.bottom;
     }
     final position = _follow.scrollController.position;
     final pixels = (position.pixels + delta).clamp(position.minScrollExtent, position.maxScrollExtent);
-    if ((pixels - position.pixels).abs() <= 0.5) return;
+    if ((pixels - position.pixels).abs() <= 0.5) return false;
     _anchor = anchor;
     // A held turn stops following, even where the jump ends within the latest
     // edge's tolerance and the tracker would follow again, so later output
@@ -503,6 +515,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     position.jumpTo(pixels);
     _follow.detach();
     WidgetsBinding.instance.addPostFrameCallback((_) => _stepAnchor(anchor: anchor, first: false));
+    return true;
   }
 
   /// Unfolds every turn and holds [turn] in place.
@@ -512,16 +525,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }
 
   void _onJumpRequested() {
-    if (widget.jumpNotifier.take() case final messageId?) _jumpToMessage(messageId: messageId);
+    if (widget.jumpNotifier.take() case final jump?) _jumpToMessage(messageId: jump.messageId, landed: jump.landed);
   }
 
   /// Holds message [messageId]'s row where a pinned prompt's tap lands a
   /// prompt: an opener on the pin line, any other message just below the
   /// prompt pinned over it. Folded, it unfolds first. A message that is gone
-  /// moves nothing. Like any hold, this stops following.
-  void _jumpToMessage({required String messageId}) {
+  /// moves nothing. Like any hold, this stops following. [landed] completes
+  /// once the hold ends.
+  void _jumpToMessage({required String messageId, required Completer<void> landed}) {
     final message = widget.messages.where((message) => message.info.id == messageId).firstOrNull;
-    if (message == null) return;
+    if (message == null) return landed.complete();
     // A message that arrived after the list froze is listed on the Prompts
     // screen too, so the list takes the live transcript in to reach it. The
     // hold below moves the reader straight to it, so the reflow goes unseen.
@@ -537,6 +551,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     _holdRow(
       rowId: _entryIdForMessage(info: message.info),
       top: top,
+      landed: landed,
     );
     if (widget.transcriptFolded) widget.onTranscriptFoldedChanged(folded: false);
   }
@@ -550,7 +565,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final rowId = _firstRowOf(turn: turn, folded: false);
     final position = _follow.scrollController.position;
     if (context.isReducedMotion || position is! ScrollPositionWithSingleContext) {
-      return _holdRow(rowId: rowId, top: _kPinnedRowTop);
+      return _holdRow(rowId: rowId, top: _kPinnedRowTop, landed: null);
     }
     _anchor = null;
     _follow.detach();

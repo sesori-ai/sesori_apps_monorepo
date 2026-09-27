@@ -60,9 +60,14 @@ and Architecture 11, "Returning to the transcript".
   timed row sits under its day's header, so the date is not repeated. This is
   a follow-through of D38's day headers, not a new decision; the plan's line
   says so.
-- The layer closes one frame after the jump is requested, so the jump's first
-  step runs under it. There is no transition; `origin` is plumbed and unused
-  until step 12.
+- The layer stays up until the jump lands: `TranscriptJumpNotifier.jumpTo`
+  returns a future that the list completes when the hold ends, however it
+  ends, so no step of a far jump shows. There is no transition; `origin` is
+  plumbed and unused until step 12.
+- The screen lists the prompts as they were when it opened, so an older page
+  landing meanwhile (one already on its way, or one a far jump pages in) cannot
+  shift the rows under the reader. Step 16's "Load earlier prompts" replaces
+  that list when its own page lands.
 - Until step 14 the phone bar shows back, Prompts, fold and more.
 - Not done by hand on iOS or macOS: the device automation servers were
   unavailable. The PR screenshots come from widget renders with fixture data.

@@ -86,7 +86,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
   final _jumpNotifier = TranscriptJumpNotifier();
 
   /// The open Prompts screen and the prompt it opened on; null while closed.
-  ({String? anchorMessageId})? _prompts;
+  /// The open Prompts screen: the prompts as they were when it opened, so an
+  /// older page landing meanwhile cannot shift the rows under the reader.
+  ({String? anchorMessageId, TranscriptPromptList list})? _prompts;
 
   @override
   void initState() {
@@ -111,9 +113,11 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
   /// Opens the Prompts screen on the prompt the transcript is on. [origin] is
   /// where its opening transition is to grow from; it opens without one yet.
   void _openPrompts({required Offset origin}) {
-    if (_prompts != null) return;
-    setState(() => _prompts = (anchorMessageId: _currentPromptId.value));
-    context.read<SessionDetailCubit>().reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar);
+    final cubit = context.read<SessionDetailCubit>();
+    final state = cubit.state;
+    if (_prompts != null || state is! SessionDetailLoaded) return;
+    setState(() => _prompts = (anchorMessageId: _currentPromptId.value, list: _promptListOf(state: state)));
+    cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar);
   }
 
   /// The prompts the transcript renders from [state]'s messages.
@@ -139,10 +143,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
   }
 
   /// Moves the transcript to [messageId], then closes the Prompts screen once
-  /// the move's first jump has run beneath it.
+  /// the move has landed beneath it, so none of its jumps show.
   void _returnToPrompt({required String messageId}) {
-    _jumpNotifier.jumpTo(messageId: messageId);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _closePrompts());
+    unawaited(_jumpNotifier.jumpTo(messageId: messageId).then((_) => _closePrompts()));
   }
 
   void _showNotice(SessionDetailNotice notice) {
@@ -272,7 +275,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
           if (promptsOpen)
             Positioned.fill(
               child: SessionPromptsView(
-                prompts: _promptListOf(state: state),
+                prompts: prompts.list,
                 anchorMessageId: prompts.anchorMessageId,
                 maxWidth: pageChrome?.columnWidths.transcript,
                 onPromptTap: _returnToPrompt,

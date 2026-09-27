@@ -3716,11 +3716,16 @@ void main() {
       final harness = await _pumpTurns(tester, messages: withFollowUp, folded: false);
       expect(_messageKey("u3").evaluate(), isEmpty);
 
-      harness.jumpNotifier.jumpTo(messageId: "u3");
+      var landed = false;
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "u3").then((_) => landed = true));
+      await tester.pump();
+      await tester.pump();
+      expect(landed, isFalse, reason: "a far row takes more than one step");
       await tester.pumpAndSettle();
 
       expect(_topOf(tester, "u3"), moreOrLessEquals(promptRowTop, epsilon: 0.5));
       expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+      expect(landed, isTrue);
     });
 
     testWidgets("a jump lands a follow-up, by its own row, just below its pinned prompt, every time", (tester) async {
@@ -3728,13 +3733,13 @@ void main() {
       final pins = tester.renderObject<RenderTranscriptStickyPrompts>(find.byType(TranscriptStickyPromptOverlay));
       final followUpTop = promptRowTop + pins.compactHeight + transcriptStickyGap;
 
-      harness.jumpNotifier.jumpTo(messageId: "u3f");
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "u3f"));
       await tester.pumpAndSettle();
       expect(_topOf(tester, "session-detail-prompt-p3f"), moreOrLessEquals(followUpTop, epsilon: 0.5));
 
       _position(tester).jumpTo(_position(tester).pixels - 400);
       await tester.pumpAndSettle();
-      harness.jumpNotifier.jumpTo(messageId: "u3f");
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "u3f"));
       await tester.pumpAndSettle();
       expect(_topOf(tester, "session-detail-prompt-p3f"), moreOrLessEquals(followUpTop, epsilon: 0.5));
     });
@@ -3742,7 +3747,7 @@ void main() {
     testWidgets("a jump into a folded transcript unfolds it and lands", (tester) async {
       final harness = await _pumpTurns(tester, messages: withFollowUp, folded: true);
 
-      harness.jumpNotifier.jumpTo(messageId: "u5");
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "u5"));
       await tester.pumpAndSettle();
 
       expect(harness.foldRequests, 1);
@@ -3752,7 +3757,7 @@ void main() {
     testWidgets("a jump into a folded transcript lands a follow-up just below its pinned prompt", (tester) async {
       final harness = await _pumpTurns(tester, messages: withFollowUp, folded: true);
 
-      harness.jumpNotifier.jumpTo(messageId: "u3f");
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "u3f"));
       await tester.pumpAndSettle();
 
       final pins = tester.renderObject<RenderTranscriptStickyPrompts>(find.byType(TranscriptStickyPromptOverlay));
@@ -3779,7 +3784,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(_messageKey("late").evaluate(), isEmpty);
 
-      harness.jumpNotifier.jumpTo(messageId: "late");
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "late"));
       await tester.pumpAndSettle();
 
       expect(_topOf(tester, "late"), lessThan(_topInset + 100));
@@ -3789,7 +3794,10 @@ void main() {
       final harness = await _pumpTurns(tester, messages: withFollowUp, folded: false);
       final offset = _position(tester).pixels;
 
-      harness.jumpNotifier.jumpTo(messageId: "gone");
+      var landed = false;
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "gone").then((_) => landed = true));
+      await tester.pump();
+      expect(landed, isTrue, reason: "a jump that cannot move ends at once");
       await tester.pumpAndSettle();
 
       expect(_position(tester).pixels, offset);

@@ -100,7 +100,10 @@ stored or sent to the bridge.
   row keeps a subtle tint for as long as the screen is open, the same with
   reduced motion. With no such prompt it opens at the newest end with nothing
   tinted.
-- A tap on a row closes the screen with the transcript on that message: an
+- The screen keeps the prompts it opened with: an older page or a new prompt
+  arriving while it is open does not move or add rows.
+- A tap on a row closes the screen, once the transcript has landed beneath it,
+  with the transcript on that message: an
   opener on the pin line, a follow-up just below the pinned prompt, also when
   its row was not built, when the transcript was folded (it unfolds) and when
   it arrived after the reader scrolled away. A prompt gone meanwhile moves
@@ -174,6 +177,8 @@ answer and a folded line, and on a trackpad while text streams.
   out of the transcript's order, a follow-up above or away from its opener, or
   a prompt the transcript has not loaded; shows day headers out of order or
   "No date" below them.
+- The Prompts rows move while the screen is open; the transcript's jump shows
+  after the screen closes.
 - A Prompts row tap closes the screen with the transcript elsewhere, or does
   nothing; back leaves the page instead of closing the screen; closing moves
   the transcript; the covered transcript takes focus or is read out.
