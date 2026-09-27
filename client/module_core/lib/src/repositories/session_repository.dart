@@ -4,8 +4,8 @@ import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 
 import "../api/session_api.dart";
 import "../foundation/models/composer/composer_attachment.dart";
+import "../foundation/models/composer/prompt_send_failure.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
-import "models/prompt_send_failure.dart";
 import "models/session_abort_not_accepted_exception.dart";
 import "models/session_abort_rejected_exception.dart";
 import "models/session_cleanup_rejection.dart";

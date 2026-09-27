@@ -2373,9 +2373,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get diffRetry => 'Retry';
 
   @override
-  String get newSessionLoadingSemantics => 'Creating session';
-
-  @override
   String get newSessionLoadingMessage1 => 'Getting everything ready…';
 
   @override

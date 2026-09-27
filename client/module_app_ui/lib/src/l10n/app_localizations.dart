@@ -4285,12 +4285,6 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get diffRetry;
 
-  /// No description provided for @newSessionLoadingSemantics.
-  ///
-  /// In en, this message translates to:
-  /// **'Creating session'**
-  String get newSessionLoadingSemantics;
-
   /// No description provided for @newSessionLoadingMessage1.
   ///
   /// In en, this message translates to:

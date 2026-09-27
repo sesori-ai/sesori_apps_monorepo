@@ -1,7 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../foundation/models/composer/composer_attachment.dart";
-import "../../foundation/models/composer/composer_draft.dart";
+import "composer_attachment.dart";
+import "composer_draft.dart";
 
 sealed class const QueuedSessionSubmission() {
   const factory text({

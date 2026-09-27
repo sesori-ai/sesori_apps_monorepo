@@ -1,9 +1,9 @@
 import "dart:collection";
 
 import "../../foundation/models/composer/composer_attachment.dart";
-import "../../repositories/models/prompt_send_failure.dart";
+import "../../foundation/models/composer/prompt_send_failure.dart";
+import "../../foundation/models/composer/queued_session_submission.dart";
 import "local_send_phase.dart";
-import "queued_session_submission.dart";
 
 /// Manages a queue of queued submissions waiting to be sent.
 ///

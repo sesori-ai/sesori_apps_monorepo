@@ -12,6 +12,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/di/injection.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
 import "../../core/widgets/desktop_sidebar.dart";
+import "../../core/widgets/desktop_transcript_width.dart";
 import "desktop_file_access_card.dart";
 
 /// Home presentation consumes the cockpit's project inventory, never another list.
@@ -246,6 +247,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
         banner: null,
         pageChrome: NewSessionPageChrome(
           maxContentWidth: 760,
+          transcriptWidth: desktopTranscriptWidth,
           topBar: const SafeArea(bottom: false, child: DesktopFileAccessCard()),
           footer: _DesktopHomeSections(projects: projects, onOpenSession: widget.onOpenSession),
         ),

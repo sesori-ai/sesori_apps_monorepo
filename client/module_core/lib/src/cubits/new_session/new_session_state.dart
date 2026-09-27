@@ -2,12 +2,12 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
+import "../../foundation/models/composer/new_session_submission_snapshot.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/new_session_options_service.dart";
 import "../../services/session_selection_calculator.dart";
-import "new_session_submission_snapshot.dart";
 
 part "new_session_state.freezed.dart";
 

@@ -10,6 +10,7 @@ import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../errors/api_error_remote_failure_x.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
+import "../../foundation/models/composer/new_session_submission_snapshot.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../logging/logging.dart";
 import "../../repositories/composer_draft_repository.dart";
@@ -28,7 +29,6 @@ import "../../services/product_analytics_service.dart";
 import "../../services/session_selection_calculator.dart";
 import "new_session_composer_presentation.dart";
 import "new_session_state.dart";
-import "new_session_submission_snapshot.dart";
 
 class NewSessionCubit({
   required final ConnectionService _connectionService,

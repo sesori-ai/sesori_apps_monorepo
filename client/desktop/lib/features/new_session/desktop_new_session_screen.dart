@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../core/di/injection.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
 import "../../core/widgets/desktop_page_toolbar.dart";
+import "../../core/widgets/desktop_transcript_width.dart";
 
 /// Desktop composition boundary for session creation.
 class const DesktopNewSessionScreen({
@@ -82,6 +83,7 @@ class const DesktopNewSessionView({
       banner: null,
       pageChrome: NewSessionPageChrome(
         maxContentWidth: maxContentWidth,
+        transcriptWidth: desktopTranscriptWidth,
         footer: null,
         topBar: DesktopPageToolbar(
           breadcrumb: (label: _projectLabel(context: context), onPressed: onOpenProject),

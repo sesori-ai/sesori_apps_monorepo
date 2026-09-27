@@ -14,6 +14,7 @@ import "../../core/widgets/desktop_command_palette.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
 import "../../core/widgets/desktop_page_toolbar.dart";
 import "../../core/widgets/desktop_session_signals.dart";
+import "../../core/widgets/desktop_transcript_width.dart";
 
 /// Desktop composition for the shared interactive transcript and composer.
 class const DesktopSessionDetailScreen({
@@ -164,7 +165,7 @@ class const DesktopSessionDetailView({
               ),
           pageChrome: SessionDetailPageChrome(
             columnWidths: const SessionDetailColumnWidths(
-              transcript: maxTranscriptWidth,
+              transcript: desktopTranscriptWidth,
               composer: maxComposerWidth,
             ),
             headerBuilder: _buildToolbar,
@@ -176,19 +177,6 @@ class const DesktopSessionDetailView({
       ),
     );
   }
-
-  /// Caps the transcript's reading column, which is deliberately wider than
-  /// the composer's: long assistant prose reads better in a longer measure.
-  ///
-  /// Bounded above by the timestamp peek. A drag slides the row content 108 px
-  /// left and brings a 108 px gutter in from the right, so the whole reveal
-  /// stays inside the window only while the column is at most
-  /// `paneWidth - 216`. On the 1240 px window the desktop is designed around
-  /// that ceiling is 1024, leaving 960 with 64 px of headroom. Widening past
-  /// the ceiling is not guarded and does not break: the peek degrades to the
-  /// phone's behaviour, where content slides under the window edge during the
-  /// drag, and a settled reveal is never clipped at any width.
-  static const double maxTranscriptWidth = 960;
 
   /// Caps the composer, its pointer-picker pills and the needs-you cards above
   /// them. A text field and a pill row read as stretched long before body text

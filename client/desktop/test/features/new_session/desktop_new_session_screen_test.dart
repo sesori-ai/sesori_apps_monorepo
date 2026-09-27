@@ -25,17 +25,16 @@ class _MockPluginManagementService() extends Mock implements PluginManagementSer
 class _MockCatalogRescanService() extends Mock implements CatalogRescanService;
 class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
-const _state = NewSessionState.composing(
-  config: NewSessionComposeConfig(
-    availablePlugins: [],
-    selectedPlugin: null,
-    options: NewSessionOptionsLoadState.unsupported(),
-    backendScope: NewSessionBackendScope.verified(bridgeId: null),
-    isPluginDiscoveryInFlight: false,
-    projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
-  ),
-  phase: NewSessionPhase.idle(),
+const _config = NewSessionComposeConfig(
+  availablePlugins: [],
+  selectedPlugin: null,
+  options: NewSessionOptionsLoadState.unsupported(),
+  backendScope: NewSessionBackendScope.verified(bridgeId: null),
+  isPluginDiscoveryInFlight: false,
+  projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
 );
+
+const _state = NewSessionState.composing(config: _config, phase: NewSessionPhase.idle());
 
 void main() {
   testWidgets("desktop new session stays text-first with a persisted voice-first preference", (tester) async {
@@ -165,6 +164,68 @@ void main() {
     await tester.tap(find.text("Landing"));
     await tester.pumpAndSettle();
     expect(selected, ["project-2 Landing"]);
+  });
+
+  testWidgets("sending shows the message where the session's transcript will hold it", (tester) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final sending = NewSessionState.composing(
+      config: _config,
+      phase: NewSessionPhase.sending(
+        submission: NewSessionSubmissionSnapshot.text(
+          draft: ComposerDraft.typed(text: "Go"),
+          attachments: const [],
+        ),
+      ),
+    );
+    final newSessionCubit = _MockNewSessionCubit();
+    final inputModeCubit = _MockChatInputModeCubit();
+    when(() => newSessionCubit.state).thenReturn(sending);
+    whenListen(newSessionCubit, const Stream<NewSessionState>.empty(), initialState: sending);
+    when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
+    when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
+    when(() => newSessionCubit.canCreateSession).thenReturn(false);
+    when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
+    when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+    when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
+    whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
+
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<NewSessionCubit>.value(value: newSessionCubit),
+          BlocProvider<ChatInputModeCubit>.value(value: inputModeCubit),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: DesktopNewSessionView(
+            projectId: "project-1",
+            projectName: "Sesori",
+            onBack: () {},
+            onOpenProject: () {},
+            onOpenHarnessSettings: () {},
+            onSessionCreated: ({required session}) {},
+            onProjectSelected: ({required projectId, required projectName}) {},
+            projects: const [],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(DesktopPageToolbar), findsOneWidget);
+    expect(find.byType(PromptInput), findsNothing);
+    final bubble = find.byType(QueuedMessageBubble);
+    expect(find.descendant(of: bubble, matching: find.text("Go")), findsOneWidget);
+    // The session page's 960 px transcript column, centred in the 1400 px pane,
+    // with its newest row 8 px above the bottom edge.
+    final rect = tester.getRect(bubble);
+    expect(rect.left, 220);
+    expect(rect.right, 1180);
+    expect(rect.bottom, 900 - 8);
   });
 
   for (final closeFromDetail in [false, true]) {

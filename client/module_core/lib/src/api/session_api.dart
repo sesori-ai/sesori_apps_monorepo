@@ -80,6 +80,13 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  /// Creation can start a cold harness and prepare a git worktree before the
+  /// first prompt is accepted, and the cold budgets of those stages exceed an
+  /// ordinary request's deadline. The submitted message is already on screen
+  /// while it runs, so a longer honest wait beats reporting a slow success as
+  /// an uncertain failure.
+  static const Duration _createTimeout = Duration(seconds: 180);
+
   Future<ApiResponse<Session>> createSessionWithMessage({
     required String projectId,
     required String pluginId,
@@ -107,6 +114,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
           command: command,
           dedicatedWorktree: dedicatedWorktree,
         ),
+        timeout: _createTimeout,
       );
     }
 
@@ -154,6 +162,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       body: await _attachmentEncoder.convertToString(
         value: _BoundedCreateSessionBody(request: request, attachments: attachments).toJson(),
       ),
+      timeout: _createTimeout,
     );
   }
 

@@ -1531,7 +1531,6 @@
     }
   },
   "diffRetry": "Retry",
-  "newSessionLoadingSemantics": "Creating session",
   "newSessionLoadingMessage1": "Getting everything ready…",
   "newSessionLoadingMessage2": "Connecting the pieces…",
   "newSessionLoadingMessage3": "Almost ready…",

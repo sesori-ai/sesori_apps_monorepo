@@ -3,12 +3,12 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
+import "../../foundation/models/composer/queued_session_submission.dart";
 import "../../foundation/models/session_interaction_state.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/session_approval_calculator.dart";
 import "../../services/session_selection_calculator.dart";
 import "local_send_phase.dart";
-import "queued_session_submission.dart";
 
 part "session_detail_state.freezed.dart";
 

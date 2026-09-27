@@ -824,6 +824,15 @@ the first spinner with no new state at all.
   uncertain failure.
 - **Feel check:** the bubble is bottom-anchored in the same place the session
   screen puts it, so step 3's replacement moves nothing.
+- **As built:** holding that place on desktop needs the session page's
+  transcript column, which is wider than the new-session column, so
+  `SessionLaunchSubmissionView` also takes `required double? transcriptWidth`
+  and `NewSessionPageChrome` carries it from `desktopTranscriptWidth`, which moved
+  from the desktop session page into `core/widgets/` so no feature imports another;
+  step 3's loading branch passes `columnWidths?.transcript`. The composer and
+  the bubble cross-fade at Send and back on failure, with the transcript's 200 ms
+  motion and none under reduced motion. `newSessionLoadingSemantics` lost its
+  last reader and is removed.
 
 ### Step 3: First-message handoff to the session screen (module_core, module_app_ui, app, desktop)
 

@@ -1367,7 +1367,7 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byType(PregoLaunchStatus), findsNothing);
+    expect(find.byType(QueuedMessageBubble), findsNothing);
     verifyNever(
       () => sessionService.createSessionWithMessage(
         attachments: const [],
@@ -1405,7 +1405,7 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byType(PregoLaunchStatus), findsNothing);
+    expect(find.byType(QueuedMessageBubble), findsNothing);
     verifyNever(
       () => sessionService.createSessionWithMessage(
         attachments: const [],
@@ -1656,7 +1656,7 @@ void main() {
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsOneWidget);
   });
 
-  testWidgets("shows detail-shaped launch status during sending", (tester) async {
+  testWidgets("shows the submitted message as a sending bubble during sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
       () => sessionService.createSessionWithMessage(
@@ -1682,15 +1682,25 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byType(PregoLaunchStatus), findsOneWidget);
-    expect(find.byType(PromptInput), findsNothing);
-    expect(find.bySemanticsLabel(loc.newSessionLoadingSemantics), findsOneWidget);
-    expect(find.text(loc.newSessionLoadingMessage1), findsOneWidget);
+    // The first sending frame already shows the message, with no spinner page.
+    final bubble = find.byType(QueuedMessageBubble);
+    expect(bubble, findsOneWidget);
+    expect(find.descendant(of: bubble, matching: find.text("test message")), findsOneWidget);
+    expect(find.descendant(of: bubble, matching: find.text(loc.sessionDetailSendingMessage)), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsNothing);
     expect(find.text(loc.sessionListNewSession), findsOneWidget);
     expect(
-      GoRouter.of(tester.element(find.byType(PregoLaunchStatus))).routeInformationProvider.value.uri.path,
+      GoRouter.of(tester.element(bubble)).routeInformationProvider.value.uri.path,
       "/projects/project-1/sessions/new",
     );
+
+    // The composer fades out as the bubble fades in; Send stays blocked.
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.byType(PromptInput), findsNothing);
+
+    // A slow creation names the harness it waits on.
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text(loc.sessionDetailSendingToHarness("Plugin One")), findsOneWidget);
   });
 
   testWidgets("removes composer and closes its voice lifecycle while a session is sending", (tester) async {
@@ -1716,6 +1726,8 @@ void main() {
     await enterTypingMode(tester);
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
+    // Let the composer finish fading out.
+    await tester.pump(const Duration(milliseconds: 250));
 
     expect(find.byType(PromptInput), findsNothing);
     expect(find.byIcon(TablerSolid.player_stop), findsNothing);
@@ -1766,7 +1778,7 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byType(PregoLaunchStatus), findsOneWidget);
+    expect(find.byType(QueuedMessageBubble), findsOneWidget);
 
     // Simulate system back navigation (which should be allowed while sending).
     // PregoTopNavigation renders a glass back button (not a stock BackButton),
@@ -1810,7 +1822,7 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byType(PregoLaunchStatus), findsOneWidget);
+    expect(find.byType(QueuedMessageBubble), findsOneWidget);
 
     // User leaves while the creation request is still in flight.
     // PregoTopNavigation renders a glass back button (not a stock BackButton),
@@ -1857,7 +1869,7 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byType(PregoLaunchStatus), findsOneWidget);
+    expect(find.byType(QueuedMessageBubble), findsOneWidget);
 
     createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: null)));
     await tester.pumpAndSettle();
@@ -1897,7 +1909,7 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byType(PregoLaunchStatus), findsOneWidget);
+    expect(find.byType(QueuedMessageBubble), findsOneWidget);
 
     createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: "Created session")));
     await tester.pumpAndSettle();
@@ -1992,7 +2004,7 @@ void main() {
     expect(identical(submittedAttachments.last.single, attachment), isTrue);
   });
 
-  testWidgets("removes the loading overlay and keeps retry UI usable after an error", (tester) async {
+  testWidgets("removes the sending bubble and keeps retry UI usable after an error", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
       () => sessionService.createSessionWithMessage(
@@ -2016,12 +2028,12 @@ void main() {
     await enterTextAndSend(tester: tester, text: "test message");
     await tester.pump();
 
-    expect(find.byType(PregoLaunchStatus), findsOneWidget);
+    expect(find.byType(QueuedMessageBubble), findsOneWidget);
 
     createCompleter.complete(ApiResponse.error(ApiError.generic()));
     await tester.pumpAndSettle();
 
-    expect(find.byType(PregoLaunchStatus), findsNothing);
+    expect(find.byType(QueuedMessageBubble), findsNothing);
     // Error text now comes from the shared, localized ApiError mapping.
     expect(find.text("An unknown error occurred"), findsOneWidget);
 

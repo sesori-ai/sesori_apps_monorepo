@@ -152,6 +152,7 @@ void main() {
           any(),
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
+          timeout: any(named: "timeout"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(session));
 
@@ -173,6 +174,8 @@ void main() {
           "/session/create",
           fromJson: any(named: "fromJson"),
           body: captureAny(named: "body"),
+          // Creation can start a cold harness, so it outlasts an ordinary request.
+          timeout: const Duration(seconds: 180),
         ),
       )..called(1);
       final request = verification.captured.single as CreateSessionRequest;
@@ -207,6 +210,7 @@ void main() {
           any(),
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
+          timeout: any(named: "timeout"),
         ),
       ).thenAnswer((_) async {
         expect(priorEventLoopTurnRan, isTrue);
@@ -253,6 +257,8 @@ void main() {
           "/session/create",
           fromJson: any(named: "fromJson"),
           body: captureAny(named: "body"),
+          // Creation can start a cold harness, so it outlasts an ordinary request.
+          timeout: const Duration(seconds: 180),
         ),
       )..called(1);
       expect(verification.captured.single, jsonEncode(expected.toJson()));
@@ -279,6 +285,7 @@ void main() {
           any(),
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
+          timeout: any(named: "timeout"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(session));
       final attachment = ComposerAttachment(
@@ -321,6 +328,8 @@ void main() {
           "/session/create",
           fromJson: any(named: "fromJson"),
           body: captureAny(named: "body"),
+          // Creation can start a cold harness, so it outlasts an ordinary request.
+          timeout: const Duration(seconds: 180),
         ),
       )..called(1);
       final body = verification.captured.single as String;

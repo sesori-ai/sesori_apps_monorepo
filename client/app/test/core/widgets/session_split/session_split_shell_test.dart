@@ -256,7 +256,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.descendant(of: newSession, matching: find.byIcon(TablerRegular.arrow_up)));
       await tester.pump();
-      expect(find.byType(PregoLaunchStatus), findsOneWidget);
+      expect(find.byType(QueuedMessageBubble), findsOneWidget);
 
       // Open a different existing session from the list. go_router swaps the
       // underlying detail in place and pops the pushed new-session page during

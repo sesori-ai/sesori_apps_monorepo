@@ -11,6 +11,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/di/injection.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
 import "../../core/widgets/desktop_page_toolbar.dart";
+import "../../core/widgets/desktop_transcript_width.dart";
 
 /// Owns the full inventory only while the all-sessions page is mounted.
 class const DesktopSessionListCubitProvider({
@@ -213,6 +214,7 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                             ],
                           ),
                           maxContentWidth: DesktopSessionListView.maxContentWidth,
+                          transcriptWidth: desktopTranscriptWidth,
                           footer: null,
                         ),
                       ),

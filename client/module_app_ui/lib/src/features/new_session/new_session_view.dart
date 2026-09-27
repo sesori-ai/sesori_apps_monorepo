@@ -12,6 +12,8 @@ import "../session_detail/composer_presentation_scope.dart";
 import "../session_detail/widgets/agent_model_buttons.dart";
 import "../session_detail/widgets/composer_surface_style.dart";
 import "../session_detail/widgets/prompt_input.dart";
+import "../session_detail/widgets/session_launch_submission_view.dart";
+import "../session_detail/widgets/transcript_motion.dart";
 import "new_session_header.dart";
 import "new_session_no_harness_notice.dart";
 import "new_session_plugin_chooser.dart";
@@ -22,10 +24,13 @@ typedef NewSessionCreatedCallback = void Function({required Session session});
 /// A pointer surface's frame for the page: [topBar] replaces the glass bar, and
 /// the header, the options and the composer form one centred column no wider
 /// than [maxContentWidth], instead of anchoring the composer to the bottom.
-/// [footer] follows the composer in that column.
+/// [footer] follows the composer in that column. While the first message is
+/// sending it rests in a column [transcriptWidth] wide, the one the session's
+/// own transcript uses.
 class const NewSessionPageChrome({
   required final Widget topBar,
   required final double maxContentWidth,
+  required final double transcriptWidth,
   required final Widget? footer,
 });
 
@@ -259,8 +264,8 @@ class _NewSessionViewState() extends State<NewSessionView> {
   /// the pane is too short for it.
   Widget _buildChromePage({
     required NewSessionPageChrome chrome,
-    required NewSessionState state,
-    required Widget launchStatus,
+    required NewSessionSubmissionSnapshot? sendingSubmission,
+    required String? harnessName,
     required Widget header,
     required Widget? options,
     required Widget? composer,
@@ -271,31 +276,65 @@ class _NewSessionViewState() extends State<NewSessionView> {
           chrome.topBar,
           ?widget.banner,
           Expanded(
-            child: state.phase is NewSessionPhaseSending
-                ? launchStatus
-                : Center(
-                    child: SingleChildScrollView(
-                      key: const Key("new_session_options_scroll"),
-                      padding: const EdgeInsets.all(PregoSpacing.xl),
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: chrome.maxContentWidth),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          spacing: PregoSpacing.lg,
-                          children: [
-                            header,
-                            ?options,
-                            ?composer,
-                            ?chrome.footer,
-                          ],
-                        ),
+            child: _crossFadeSending(
+              // The top bar sits above the transcript, as on the session page,
+              // so nothing scrolls behind it and no top inset is needed.
+              sending: sendingSubmission == null
+                  ? null
+                  : PregoTopBarInsetScope(
+                      baseInset: 0,
+                      bannerHeight: const AlwaysStoppedAnimation<double>(0),
+                      child: SessionLaunchSubmissionView(
+                        submission: sendingSubmission,
+                        harnessName: harnessName,
+                        transcriptWidth: chrome.transcriptWidth,
                       ),
                     ),
+              composing: Center(
+                child: SingleChildScrollView(
+                  key: const Key("new_session_options_scroll"),
+                  padding: const EdgeInsets.all(PregoSpacing.xl),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: chrome.maxContentWidth),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      spacing: PregoSpacing.lg,
+                      children: [
+                        header,
+                        ?options,
+                        ?composer,
+                        ?chrome.footer,
+                      ],
+                    ),
                   ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Send turns the page into the session it is creating, showing the message
+  /// as it will sit in the session's transcript, and a failed creation turns it
+  /// back. Both directions cross-fade with the transcript's own motion rather
+  /// than cutting; reduced motion swaps at once.
+  Widget _crossFadeSending({required Widget? sending, required Widget composing}) {
+    final child = sending == null
+        ? KeyedSubtree(key: const ValueKey("new_session_composing"), child: composing)
+        : KeyedSubtree(key: const ValueKey("new_session_sending"), child: sending);
+    if (context.isReducedMotion) return child;
+    return AnimatedSwitcher(
+      duration: transcriptMotionDuration,
+      switchInCurve: transcriptMotionCurve,
+      switchOutCurve: transcriptMotionReverseCurve,
+      layoutBuilder: (current, previous) => Stack(
+        fit: StackFit.expand,
+        children: [...previous, ?current],
+      ),
+      child: child,
     );
   }
 
@@ -363,7 +402,15 @@ class _NewSessionViewState() extends State<NewSessionView> {
     final cubit = context.watch<NewSessionCubit>();
     final state = cubit.state;
     final loc = context.loc;
-    final isSending = state.phase is NewSessionPhaseSending;
+    final sendingSubmission = switch (state.phase) {
+      NewSessionPhaseSending(:final submission) => submission,
+      NewSessionPhaseIdle() ||
+      NewSessionPhaseRestoringSubmission() ||
+      NewSessionPhaseCreationError() ||
+      NewSessionPhaseDiscoveryError() ||
+      null => null,
+    };
+    final isSending = sendingSubmission != null;
     final composerData = state.agentModelData;
     final restoringSubmission = switch (state.phase) {
       NewSessionPhaseRestoringSubmission(:final submission) => submission,
@@ -381,14 +428,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
     // The listener can run while this route is being torn down. The route
     // object stays stable, so `isCurrent` remains safe to read at event time.
     final modalRoute = ModalRoute.of(context);
-    final launchStatus = PregoLaunchStatus(
-      semanticsLabel: loc.newSessionLoadingSemantics,
-      messages: [
-        loc.newSessionLoadingMessage1,
-        loc.newSessionLoadingMessage2,
-        loc.newSessionLoadingMessage3,
-      ],
-    );
+    final harnessName = composerData?.plugin?.displayName;
     final options = _buildOptions(cubit: cubit, data: composerData);
     // Typing never waits on options; only sending waits on what it needs.
     final notice = _buildBlockedNotice(cubit: cubit);
@@ -434,8 +474,8 @@ class _NewSessionViewState() extends State<NewSessionView> {
       null => null,
       final chrome => _buildChromePage(
         chrome: chrome,
-        state: state,
-        launchStatus: launchStatus,
+        sendingSubmission: sendingSubmission,
+        harnessName: harnessName,
         header: header,
         options: options,
         composer: composer,
@@ -489,59 +529,61 @@ class _NewSessionViewState() extends State<NewSessionView> {
         reserveBarSpace: false,
         scrollable: false,
         banner: widget.banner,
-        slivers: isSending
-            ? [
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: launchStatus,
-                ),
-              ]
-            : [
-                // Fill the viewport behind the bar so the variable-height options can
-                // shrink and scroll without pushing the pinned composer off-screen.
-                // With the scaffold's keyboard resize (Scaffold default), the
-                // composer rides above the keyboard when the field is focused.
-                SliverFillRemaining(
-                  hasScrollBody: true,
-                  child: Column(
-                    children: [
-                      Expanded(
-                        child: PregoTopBarInsetBuilder(
-                          builder: (context, topInset, child) => CustomScrollView(
-                            key: const Key("new_session_options_scroll"),
-                            // The composer owns keyboard focus. This supporting
-                            // pane must not become the route's primary scroll.
-                            primary: false,
-                            slivers: [
-                              SliverPadding(
-                                padding: EdgeInsetsDirectional.fromSTEB(
-                                  _optionsHorizontalPadding,
-                                  topInset + _optionRowSpacing,
-                                  _optionsHorizontalPadding,
-                                  _optionsBottomPadding,
-                                ),
-                                sliver: SliverToBoxAdapter(child: child),
-                              ),
-                            ],
+        slivers: [
+          // Fill the viewport behind the bar so the variable-height options can
+          // shrink and scroll without pushing the pinned composer off-screen.
+          // With the scaffold's keyboard resize (Scaffold default), the
+          // composer rides above the keyboard when the field is focused. The
+          // sending transcript owns its scroll too.
+          SliverFillRemaining(
+            hasScrollBody: true,
+            child: _crossFadeSending(
+              sending: sendingSubmission == null
+                  ? null
+                  : SessionLaunchSubmissionView(
+                      submission: sendingSubmission,
+                      harnessName: harnessName,
+                      transcriptWidth: null,
+                    ),
+              composing: Column(
+                children: [
+                  Expanded(
+                    child: PregoTopBarInsetBuilder(
+                      builder: (context, topInset, child) => CustomScrollView(
+                        key: const Key("new_session_options_scroll"),
+                        // The composer owns keyboard focus. This supporting
+                        // pane must not become the route's primary scroll.
+                        primary: false,
+                        slivers: [
+                          SliverPadding(
+                            padding: EdgeInsetsDirectional.fromSTEB(
+                              _optionsHorizontalPadding,
+                              topInset + _optionRowSpacing,
+                              _optionsHorizontalPadding,
+                              _optionsBottomPadding,
+                            ),
+                            sliver: SliverToBoxAdapter(child: child),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            spacing: _optionRowSpacing,
-                            children: [
-                              // The keyboard leaves this pane a few rows tall;
-                              // they belong to the options being typed against.
-                              if (MediaQuery.viewInsetsOf(context).bottom == 0) header,
-                              ?options,
-                            ],
-                          ),
-                        ),
+                        ],
                       ),
-                      if (composer != null)
-                        Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: composer),
-                    ],
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        spacing: _optionRowSpacing,
+                        children: [
+                          // The keyboard leaves this pane a few rows tall;
+                          // they belong to the options being typed against.
+                          if (MediaQuery.viewInsetsOf(context).bottom == 0) header,
+                          ?options,
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                  if (composer != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: composer),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

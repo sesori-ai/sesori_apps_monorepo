@@ -1,7 +1,7 @@
 import "package:meta/meta.dart";
 
-import "../../repositories/models/prompt_send_failure.dart";
-import "queued_session_submission.dart";
+import "../../foundation/models/composer/prompt_send_failure.dart";
+import "../../foundation/models/composer/queued_session_submission.dart";
 
 /// The head of this surface's local send queue: idle, in flight, or failed.
 @immutable

@@ -1,10 +1,10 @@
 import "dart:typed_data";
 
 import "package:sesori_dart_core/src/cubits/session_detail/prompt_send_queue.dart";
-import "package:sesori_dart_core/src/cubits/session_detail/queued_session_submission.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
-import "package:sesori_dart_core/src/repositories/models/prompt_send_failure.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/prompt_send_failure.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
 import "package:test/test.dart";
 
 const _first = QueuedSessionSubmission.text(

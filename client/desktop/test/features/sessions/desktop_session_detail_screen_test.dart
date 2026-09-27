@@ -9,6 +9,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
 import "package:sesori_desktop/core/widgets/desktop_session_signals.dart";
+import "package:sesori_desktop/core/widgets/desktop_transcript_width.dart";
 import "package:sesori_desktop/features/sessions/desktop_session_detail_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -516,13 +517,13 @@ void main() {
       expect(list.topInset, 0);
       // The transcript reads in its own, wider column; the composer keeps the
       // narrower one, both centred in the same pane.
-      expect(list.horizontalInset, (1400 - DesktopSessionDetailView.maxTranscriptWidth) / 2);
+      expect(list.horizontalInset, (1400 - desktopTranscriptWidth) / 2);
       expect(
         tester.getSize(find.byType(SessionDetailComposerControls)).width,
         DesktopSessionDetailView.maxComposerWidth,
       );
       expect(
-        DesktopSessionDetailView.maxTranscriptWidth,
+        desktopTranscriptWidth,
         greaterThan(DesktopSessionDetailView.maxComposerWidth),
       );
     });
