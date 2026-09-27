@@ -597,6 +597,53 @@ void main() {
     });
   }
 
+  testWidgets("presenter captured on a popped screen shows below the remaining screen", (tester) async {
+    final navigatorKey = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigatorKey,
+        theme: ThemeData(extensions: [PregoDesignSystem.dark]),
+        home: const PregoGlassScaffold(
+          title: "Home",
+          slivers: [SliverFillRemaining(child: SizedBox.expand())],
+        ),
+      ),
+    );
+    late BuildContext poppedContext;
+    navigatorKey.currentState?.push(
+      MaterialPageRoute<void>(
+        builder: (_) => PregoGlassScaffold(
+          title: "Detail",
+          banner: const SizedBox(height: 30),
+          slivers: [
+            SliverFillRemaining(
+              child: Builder(
+                builder: (context) {
+                  poppedContext = context;
+                  return const SizedBox.expand();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final presenter = PregoPopupAlertPresenter.of(poppedContext);
+    navigatorKey.currentState?.pop();
+    await tester.pumpAndSettle();
+
+    presenter.show(title: "After pop", duration: null);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getTopLeft(find.byType(PregoPopupAlertsNotifications)).dy,
+      PregoTopNavigation.barHeight + PregoSpacing.xl,
+    );
+  });
+
   testWidgets("explicit-overlay presenter clears the active scaffold banner", (tester) async {
     await tester.pumpWidget(
       MaterialApp(

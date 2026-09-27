@@ -20,9 +20,10 @@ class const PregoTopBarInsetScope({
 typedef PregoTopBarGeometry = ({double baseInset, ValueListenable<double> bannerHeight});
 
 /// Returns the live top-bar geometry of the enclosing Prego scaffold, or
-/// `null` when [context] is not below one.
+/// `null` when [context] is not below one. Reads without registering a
+/// dependency, so it is safe to call outside build.
 PregoTopBarGeometry? pregoTopBarGeometryOf({required BuildContext context}) {
-  final scope = context.dependOnInheritedWidgetOfExactType<PregoTopBarInsetScope>();
+  final scope = context.getInheritedWidgetOfExactType<PregoTopBarInsetScope>();
   if (scope == null) return null;
   return (baseInset: scope.baseInset, bannerHeight: scope.bannerHeight);
 }
