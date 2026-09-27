@@ -204,3 +204,15 @@ Seven findings, all fixed with minimal edits; no user decision changed.
 | 5 | Removing a failed follow-up stranded the ones queued behind it | Fixed. The drain stops at a failure; `SessionLaunchService.cancelFollowUp` removes and resumes it |
 | 6 | The handed-off command was restaged at the first loaded emission after being sent or cleared | Fixed. The cubit holds it as its staged command from `takeHandoff`; stage and clear work while loading |
 | 7 | A send from the seeded composer vanished during the first load | Fixed. The launch-seeded loading state carries and renders the cubit's queued sends |
+
+## Code Review, closing requirements (2026-09-27)
+
+Five findings, all valid, each recorded as one requirement bullet with its test in the owning step; the how is left to the implementer.
+
+| # | Finding | Step |
+|---|---|---|
+| 1 | A detail-authored prompt could release the first bubble early | 4 |
+| 2 | The handoff lacked the seeded composer's options, focus and attachment support | 4 |
+| 3 | D12 needs a baseline so a surface mounted mid-launch keeps existing rows | 5 |
+| 4 | Activity headings appeared at full height ahead of the first pending row | 6 |
+| 5 | The mutation gate refused sends in the launch-seeded loading state | 4 |

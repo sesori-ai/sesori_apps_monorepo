@@ -1166,6 +1166,23 @@ the first spinner with no new state at all.
   branch renders them as queued bubbles after the launch's follow-ups instead of
   the message vanishing until the load completes. Opening an existing session is
   unchanged.
+- **Requirement (D13, the seeded composer's inputs).** Every input the pre-load
+  composer needs — committed agent, model and fast mode, focus, attachment
+  support — has a named authoritative source in the handoff; neither
+  `NewSessionSubmissionSnapshot` nor `UnsentComposer` carries them today, so the
+  handoff gains what is missing. Test: a handoff from a non-default agent and
+  model with an image staged seeds a focused composer showing that selection and
+  accepting the image before the first load.
+- **Requirement (D13, sending before the load).** A send from the launch-seeded
+  loading state passes the mutation gates (`_refuseWhenInteractionBlocked` admits
+  only `SessionDetailLoaded` today, `session_detail_cubit.dart:2682-2686`), while
+  an ordinary loading state stays blocked. Test: a prompt sent before the first
+  load completes is queued, shown, and drained after loading; the same send on an
+  ordinary load is refused.
+- **Requirement (D13, the first bubble's release).** A prompt the detail cubit
+  authored or parked never counts as the first message's replacement. Test: a
+  detail-authored prompt's bridge-queue statement arriving before the first
+  message's echo leaves the launch bubble in place.
 - **The follow-up bubbles must survive the load, not just the swap.**
   `SessionDetailLoading` gains
   `required List<LaunchFollowUp> launchFollowUps` beside step 3's
@@ -1398,6 +1415,12 @@ the first spinner with no new state at all.
   `SessionListContent` and every step 6 host call it; they keep only the drawn-ids
   snapshot and their geometry and animation keys.
 
+  **Requirement (D12, baseline).** Only a session that first appears after the
+  launch started can be held; a surface first mounted while a launch is pending
+  still draws every session that already existed. Test: open a project's list
+  while its launch is pending and see all its existing rows, with only a
+  session that raced the reply held.
+
   **Both halves of the latch matter, and the "keeps drawing" half is the one a
   first draft gets wrong.** `promote` and the `session.created` that puts the
   session into `loaded.sessions` are delivered independently, and `promote` comes
@@ -1578,6 +1601,13 @@ being created" alert, and no menu or swipe.
   through `PregoAnimatedList` (`desktop_sidebar.dart:670`, `:763`, keyed by
   `session.id`), so an inserted or removed pending row animates there for free,
   with the item key being the `launchId`.
+- **Requirement (feel, the first Activity row).** When a pending row is the
+  first Activity content, nothing below moves ahead of its 240 ms insertion: any
+  heading that appears with it (the phone's Activity and Projects headings,
+  `project_list_view.dart:417-449`; desktop home's Running heading,
+  `desktop_home_pane.dart:279-308`) enters with the same transition. Test: the
+  offset of the first row below the section changes continuously, never in one
+  frame, when a first launch appears on an empty Activity.
 - **Step 6's surfaces also hold the row until the real row would take its
   place.** Only the sidebar renders session rows through an animated list, so
   only it keys the swapped row by `launchId` as step 5's latch does (the same kind
