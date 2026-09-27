@@ -616,11 +616,14 @@ selection revision at Send and clears it on success whether or not the route is
 still open (a PR #1774 review requirement), so a user who leaves mid-create does
 not get the chosen options reapplied to the next new session.
 
-In `close()`, a cubit that has **not** reported a successful outcome to its view
-calls `releaseHandoff` — that is, while the launch is still pending, or after a
-failure. It must not release after success, because the payload then belongs to
-the detail route that is replacing it, and the two dispositions are not ordered
-against each other. Releasing while pending is the commonest case (the user
+In `close()`, the cubit calls `releaseHandoff` for the launch it is sending or
+has created (`NewSessionState.created` carries the `launchId`). After success
+the view may have skipped navigating because the user had moved elsewhere, and
+nothing else would ever take that payload. When the view did navigate, the
+session screen took the handoff in its cubit's constructor while the new route
+built, which precedes the old route's unmount and so this close, and the
+release is then a no-op on a reconciling launch (PR 5/9, from the #1822
+review). Releasing while pending is the commonest case (the user
 pressed Back mid-create), which is why the lifetime rule defines release on the
 pending variant too: the payload and its attachment bytes go immediately, and the
 launch that eventually arrives is already reconciling. Its existing

@@ -32,8 +32,10 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
   Stream<SessionLaunchOutcome> get outcomes => _outcomes.stream;
 
   /// The follow-ups of the launch that created [sessionId], now and after
-  /// every change; empty when there is none. An accepted follow-up appears in
-  /// exactly one emission, for the watching session screen to park.
+  /// every change; empty when there is none. Watch only after [takeHandoff]:
+  /// from then on an accepted follow-up appears in exactly one emission, for
+  /// the watching session screen to park, whereas before it the handoff still
+  /// holds accepted ones and every emission repeats them.
   Stream<List<LaunchFollowUp>> watchForSession({required String sessionId}) => Rx.defer(
     () => _changes.stream
         .where((launch) => _sessionOf(launch: launch)?.id == sessionId)
