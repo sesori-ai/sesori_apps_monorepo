@@ -20,13 +20,14 @@ void main() {
     final underlying = PregoRootTopBarInsetOwner();
     final topmost = PregoRootTopBarInsetOwner();
 
-    publishPregoRootTopBarInset(overlay: overlay, owner: underlying, inset: 70);
-    publishPregoRootTopBarInset(overlay: overlay, owner: topmost, inset: 90);
-    publishPregoRootTopBarInset(overlay: overlay, owner: underlying, inset: 80);
-    expect(pregoRootTopBarInsetFor(overlay), 90);
+    const noBanner = AlwaysStoppedAnimation<double>(0);
+    publishPregoRootTopBarInset(overlay: overlay, owner: underlying, geometry: (baseInset: 70, bannerHeight: noBanner));
+    publishPregoRootTopBarInset(overlay: overlay, owner: topmost, geometry: (baseInset: 90, bannerHeight: noBanner));
+    publishPregoRootTopBarInset(overlay: overlay, owner: underlying, geometry: (baseInset: 80, bannerHeight: noBanner));
+    expect(pregoRootTopBarInsetFor(overlay)?.baseInset, 90);
 
     clearPregoRootTopBarInset(overlay: overlay, owner: topmost);
-    expect(pregoRootTopBarInsetFor(overlay), 80);
+    expect(pregoRootTopBarInsetFor(overlay)?.baseInset, 80);
     clearPregoRootTopBarInset(overlay: overlay, owner: underlying);
     expect(pregoRootTopBarInsetFor(overlay), isNull);
   });
@@ -533,6 +534,69 @@ void main() {
     );
   });
 
+  for (final source in _PresenterSource.values) {
+    testWidgets("${source.name} presenter follows a banner that appears while the alert shows", (tester) async {
+      final banner = ValueNotifier<Widget?>(null);
+      addTearDown(banner.dispose);
+      late BuildContext screenContext;
+      late BuildContext presentationContext;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.dark]),
+          home: ValueListenableBuilder<Widget?>(
+            valueListenable: banner,
+            builder: (context, banner, _) {
+              screenContext = context;
+              return PregoGlassScaffold(
+                title: "Screen",
+                banner: banner,
+                slivers: [
+                  SliverFillRemaining(
+                    child: Builder(
+                      builder: (context) {
+                        presentationContext = context;
+                        return const SizedBox.expand();
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final presenter = switch (source) {
+        _PresenterSource.insideScaffold => PregoPopupAlertPresenter.of(presentationContext),
+        _PresenterSource.aboveScaffold => PregoPopupAlertPresenter.of(screenContext),
+        _PresenterSource.explicitOverlay => PregoPopupAlertPresenter.fromOverlayState(
+          tester.state<OverlayState>(find.byType(Overlay).first),
+        ),
+      };
+      presenter.show(title: "Sent", duration: null);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(find.byType(PregoPopupAlertsNotifications)).dy,
+        PregoTopNavigation.barHeight + PregoSpacing.xl,
+      );
+
+      banner.value = const SizedBox(height: 30);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(find.byType(PregoPopupAlertsNotifications)).dy,
+        PregoTopNavigation.barHeight + 30 + PregoSpacing.xl,
+      );
+
+      banner.value = null;
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(find.byType(PregoPopupAlertsNotifications)).dy,
+        PregoTopNavigation.barHeight + PregoSpacing.xl,
+      );
+    });
+  }
+
   testWidgets("explicit-overlay presenter clears the active scaffold banner", (tester) async {
     await tester.pumpWidget(
       MaterialApp(
@@ -557,6 +621,12 @@ void main() {
       PregoTopNavigation.barHeight + 30 + PregoSpacing.xl,
     );
   });
+}
+
+enum _PresenterSource() {
+  insideScaffold,
+  aboveScaffold,
+  explicitOverlay,
 }
 
 Widget _harness(Widget child) {

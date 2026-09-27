@@ -15,16 +15,16 @@ class const PregoTopBarInsetScope({
       baseInset != oldWidget.baseInset || !identical(bannerHeight, oldWidget.bannerHeight);
 }
 
-/// Returns the current top inset, including any visible navigation banner.
-double pregoTopBarInsetOf({
-  required BuildContext context,
-  required double fallbackTopPadding,
-}) {
+/// Live top-bar geometry: the fixed bar inset plus the inline banner's
+/// current, possibly animating, height.
+typedef PregoTopBarGeometry = ({double baseInset, ValueListenable<double> bannerHeight});
+
+/// Returns the live top-bar geometry of the enclosing Prego scaffold, or
+/// `null` when [context] is not below one.
+PregoTopBarGeometry? pregoTopBarGeometryOf({required BuildContext context}) {
   final scope = context.dependOnInheritedWidgetOfExactType<PregoTopBarInsetScope>();
-  if (scope == null) {
-    return fallbackTopPadding + PregoTopNavigation.barHeight;
-  }
-  return scope.baseInset + scope.bannerHeight.value;
+  if (scope == null) return null;
+  return (baseInset: scope.baseInset, bannerHeight: scope.bannerHeight);
 }
 
 final Expando<_PregoRootTopBarInsets> _pregoRootTopBarInsetsByOverlay = Expando<_PregoRootTopBarInsets>();
@@ -33,16 +33,16 @@ final Expando<_PregoRootTopBarInsets> _pregoRootTopBarInsetsByOverlay = Expando<
 /// of the package barrel and used only by Prego scaffold/presenter internals.
 final class PregoRootTopBarInsetOwner();
 
-/// Publishes the current root inset for [owner]. A newly mounted publisher
+/// Publishes the current root geometry for [owner]. A newly mounted publisher
 /// becomes active; updates from an older mounted scaffold retain its place so
 /// a covered route cannot displace the topmost route during a shared rebuild.
 void publishPregoRootTopBarInset({
   required OverlayState overlay,
   required PregoRootTopBarInsetOwner owner,
-  required double inset,
+  required PregoTopBarGeometry geometry,
 }) {
   final insets = _pregoRootTopBarInsetsByOverlay[overlay] ??= _PregoRootTopBarInsets();
-  insets.publish(owner: owner, inset: inset);
+  insets.publish(owner: owner, geometry: geometry);
 }
 
 /// Removes [owner] and restores the previous mounted scaffold when the active
@@ -51,17 +51,19 @@ void clearPregoRootTopBarInset({required OverlayState overlay, required PregoRoo
   _pregoRootTopBarInsetsByOverlay[overlay]?.clear(owner: owner);
 }
 
-/// Returns the active top-bar inset published for [overlay], or `null` when no
-/// Prego scaffold is mounted in that overlay.
-double? pregoRootTopBarInsetFor(OverlayState overlay) => _pregoRootTopBarInsetsByOverlay[overlay]?.activeInset;
+/// Returns the active top-bar geometry published for [overlay], or `null` when
+/// no Prego scaffold is mounted in that overlay.
+PregoTopBarGeometry? pregoRootTopBarInsetFor(OverlayState overlay) =>
+    _pregoRootTopBarInsetsByOverlay[overlay]?.activeGeometry;
 
 final class _PregoRootTopBarInsets() {
-  final Map<PregoRootTopBarInsetOwner, double> _mounted = <PregoRootTopBarInsetOwner, double>{};
+  final Map<PregoRootTopBarInsetOwner, PregoTopBarGeometry> _mounted =
+      <PregoRootTopBarInsetOwner, PregoTopBarGeometry>{};
 
-  double? get activeInset => _mounted.isEmpty ? null : _mounted.values.last;
+  PregoTopBarGeometry? get activeGeometry => _mounted.isEmpty ? null : _mounted.values.last;
 
-  void publish({required PregoRootTopBarInsetOwner owner, required double inset}) {
-    _mounted[owner] = inset;
+  void publish({required PregoRootTopBarInsetOwner owner, required PregoTopBarGeometry geometry}) {
+    _mounted[owner] = geometry;
   }
 
   void clear({required PregoRootTopBarInsetOwner owner}) {
