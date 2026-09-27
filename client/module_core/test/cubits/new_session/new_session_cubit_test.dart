@@ -17,6 +17,7 @@ import "package:sesori_dart_core/src/foundation/models/product_analytics/product
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/repositories/session_launch_repository.dart";
 import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
 import "package:sesori_dart_core/src/services/models/new_session_backend_scope.dart";
 import "package:sesori_dart_core/src/services/models/new_session_options_source.dart";
@@ -24,6 +25,7 @@ import "package:sesori_dart_core/src/services/models/new_session_selection_inten
 import "package:sesori_dart_core/src/services/new_session_options_service.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
+import "package:sesori_dart_core/src/services/session_launch_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -141,9 +143,11 @@ void main() {
 
     tearDown(() => connectionStatus.close());
 
-    NewSessionCubit buildCubit({ComposerDraftRepository? composerDraftRepository}) => NewSessionCubit(
+    NewSessionCubit buildCubit({
+      ComposerDraftRepository? composerDraftRepository,
+      SessionLaunchRepository? launchRepository,
+    }) => NewSessionCubit(
       connectionService: mockConnectionService,
-      sessionRepository: mockSessionService,
       newSessionPluginService: NewSessionPluginService(
         pluginRepository: mockPluginRepository,
         pluginPreferenceRepository: mockPluginPreferenceRepository,
@@ -155,7 +159,13 @@ void main() {
       selectionTracker: selectionTracker,
       composerDraftRepository: composerDraftRepository ?? inMemoryComposerDraftRepository(),
       productAnalyticsService: mockProductAnalyticsService,
-      feedbackPromptService: feedbackPromptService,
+      sessionLaunchService: SessionLaunchService(
+        sessionRepository: mockSessionService,
+        launchRepository: launchRepository ?? inMemorySessionLaunchRepository(),
+        feedbackPromptService: feedbackPromptService,
+        productAnalyticsService: mockProductAnalyticsService,
+        selectionTracker: selectionTracker,
+      ),
       projectId: "project-1",
     );
 
@@ -537,7 +547,6 @@ void main() {
         ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-command")));
         return NewSessionCubit(
           connectionService: mockConnectionService,
-          sessionRepository: mockSessionService,
           newSessionPluginService: NewSessionPluginService(
             pluginRepository: mockPluginRepository,
             pluginPreferenceRepository: mockPluginPreferenceRepository,
@@ -549,7 +558,13 @@ void main() {
           selectionTracker: selectionTracker,
           composerDraftRepository: inMemoryComposerDraftRepository(),
           productAnalyticsService: stubbedProductAnalyticsService(),
-          feedbackPromptService: FakeFeedbackPromptService(),
+          sessionLaunchService: SessionLaunchService(
+            sessionRepository: mockSessionService,
+            launchRepository: inMemorySessionLaunchRepository(),
+            feedbackPromptService: FakeFeedbackPromptService(),
+            productAnalyticsService: stubbedProductAnalyticsService(),
+            selectionTracker: selectionTracker,
+          ),
           projectId: "project-1",
         );
       },
@@ -742,6 +757,8 @@ void main() {
 
       response.complete(ApiResponse.error(ApiError.generic()));
       await pending;
+      // The outcome reaches the cubit on the launch owner's stream.
+      await Future<void>.delayed(Duration.zero);
 
       final restoring = (cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission;
       expect(restoring.submission, same(snapshot));
@@ -792,6 +809,8 @@ void main() {
       cubit.clearStagedCommand();
       firstResponse.complete(ApiResponse.error(ApiError.generic()));
       await first;
+      // The outcome reaches the cubit on the launch owner's stream.
+      await Future<void>.delayed(Duration.zero);
 
       final restoring = (cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission;
       expect(restoring.submission, isA<NewSessionCommandSubmissionSnapshot>());
@@ -808,6 +827,8 @@ void main() {
       expect(cubit.state, composingWith<NewSessionPhaseSending>());
       secondResponse.complete(ApiResponse.success(testSession(id: "next")));
       await second;
+      // The outcome reaches the cubit on the launch owner's stream.
+      await Future<void>.delayed(Duration.zero);
       expect(cubit.state, isA<NewSessionCreated>());
     });
 
@@ -895,6 +916,8 @@ void main() {
       );
       response.complete(ApiResponse.error(ApiError.generic()));
       await pending;
+      // The outcome reaches the cubit on the launch owner's stream.
+      await Future<void>.delayed(Duration.zero);
       final restoring = (cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission;
 
       await cubit.refreshOptions();
@@ -1018,6 +1041,8 @@ void main() {
 
       firstCreate.complete(ApiResponse.error(ApiError.generic()));
       await pendingCreate;
+      // The outcome reaches the cubit on the launch owner's stream.
+      await Future<void>.delayed(Duration.zero);
 
       expect(cubit.state, composingWith<NewSessionPhaseRestoringSubmission>());
       expect(cubit.state.agentModelData?.stagedCommand, command);
@@ -2213,6 +2238,71 @@ void main() {
         expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNull);
       },
     );
+
+    group("launch handoff", () {
+      late SessionLaunchRepository launchRepository;
+      late Completer<ApiResponse<Session>> response;
+
+      setUp(() {
+        launchRepository = inMemorySessionLaunchRepository();
+        response = Completer<ApiResponse<Session>>();
+        when(
+          () => mockSessionService.createSessionWithMessage(
+            attachments: const [],
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            text: any(named: "text"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: any(named: "command"),
+            dedicatedWorktree: any(named: "dedicatedWorktree"),
+          ),
+        ).thenAnswer((_) => response.future);
+      });
+
+      Future<void> send(NewSessionCubit cubit) => cubit.createSession(
+        attachments: const [],
+        draft: ComposerDraft.typed(text: "hello"),
+        dedicatedWorktree: false,
+        command: null,
+      );
+
+      test("sending names its launch, and success leaves the first message for the session screen", () async {
+        final cubit = buildCubit(launchRepository: launchRepository);
+        await waitForComposer(cubit);
+        final before = DateTime.now();
+
+        final pending = send(cubit);
+        final sending = (cubit.state as NewSessionComposing).phase as NewSessionPhaseSending;
+        expect(sending.launchId, isNotEmpty);
+        expect(sending.startedAt.isBefore(before), isFalse);
+
+        response.complete(ApiResponse.success(testSession(id: "s-1")));
+        await pending;
+        await Future<void>.delayed(Duration.zero);
+        expect(cubit.state, NewSessionState.created(session: testSession(id: "s-1")));
+
+        await cubit.close();
+        final handoff = launchRepository.takeHandoff(sessionId: "s-1");
+        expect(handoff?.submission, same(sending.submission));
+        expect(handoff?.startedAt, sending.startedAt);
+        expect(handoff?.pluginId, "plugin-1");
+      });
+
+      test("leaving mid-create releases the first message, and the late success leaves nothing behind", () async {
+        final cubit = buildCubit(launchRepository: launchRepository);
+        await waitForComposer(cubit);
+
+        final pending = send(cubit);
+        await cubit.close();
+        response.complete(ApiResponse.success(testSession(id: "s-1")));
+        await pending;
+
+        expect(launchRepository.takeHandoff(sessionId: "s-1"), isNull);
+      });
+    });
 
     test("clears the persisted selection on success even when the cubit was closed mid-send", () async {
       selectionTracker.write(

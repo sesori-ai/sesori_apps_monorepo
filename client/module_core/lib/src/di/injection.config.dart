@@ -18,7 +18,7 @@ import 'package:sesori_dart_core/src/api/analytics_api.dart' as _i727;
 import 'package:sesori_dart_core/src/api/analytics_release_cutoff_api.dart'
     as _i649;
 import 'package:sesori_dart_core/src/api/attribution_api.dart' as _i556;
-import 'package:sesori_dart_core/src/api/bridge_api.dart' as _i384;
+import 'package:sesori_dart_core/src/api/bridge_api.dart' as _i385;
 import 'package:sesori_dart_core/src/api/bridge_settings_api.dart' as _i415;
 import 'package:sesori_dart_core/src/api/client/relay_http_client.dart'
     as _i857;
@@ -49,6 +49,8 @@ import 'package:sesori_dart_core/src/api/storage/notification_preferences_device
     as _i407;
 import 'package:sesori_dart_core/src/api/storage/product_analytics_preference_storage.dart'
     as _i197;
+import 'package:sesori_dart_core/src/api/storage/session_launch_storage.dart'
+    as _i384;
 import 'package:sesori_dart_core/src/api/view_declaration_api.dart' as _i37;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
     as _i895;
@@ -146,6 +148,8 @@ import 'package:sesori_dart_core/src/repositories/project_repository.dart'
     as _i80;
 import 'package:sesori_dart_core/src/repositories/registered_bridges_store.dart'
     as _i217;
+import 'package:sesori_dart_core/src/repositories/session_launch_repository.dart'
+    as _i818;
 import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
 import 'package:sesori_dart_core/src/repositories/view_declaration_repository.dart'
@@ -218,6 +222,8 @@ import 'package:sesori_dart_core/src/services/session_detail_load_service.dart'
     as _i709;
 import 'package:sesori_dart_core/src/services/session_interaction_calculator.dart'
     as _i414;
+import 'package:sesori_dart_core/src/services/session_launch_service.dart'
+    as _i8;
 import 'package:sesori_dart_core/src/services/session_list_service.dart'
     as _i763;
 import 'package:sesori_dart_core/src/services/session_unseen_tracker.dart'
@@ -240,6 +246,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i64.ComposerDraftStorage>(
       () => _i64.ComposerDraftStorage(),
     );
+    gh.lazySingleton<_i384.SessionLaunchStorage>(
+      () => _i384.SessionLaunchStorage(),
+    );
     gh.lazySingleton<_i456.PluginAuthenticationLoopbackServer>(
       () => _i456.PluginAuthenticationLoopbackServer(),
     );
@@ -260,8 +269,8 @@ extension GetItInjectableX on _i174.GetIt {
         imagePicker: gh<_i65.ComposerImagePicker>(),
       ),
     );
-    gh.lazySingleton<_i384.BridgeApi>(
-      () => _i384.BridgeApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
+    gh.lazySingleton<_i385.BridgeApi>(
+      () => _i385.BridgeApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
     );
     gh.lazySingleton<_i872.FeedbackApi>(
       () => _i872.FeedbackApi(client: gh<_i442.AuthenticatedHttpApiClient>()),
@@ -389,8 +398,13 @@ extension GetItInjectableX on _i174.GetIt {
         source: gh<_i345.AnalyticsReleaseCutoffSource>(),
       ),
     );
+    gh.lazySingleton<_i818.SessionLaunchRepository>(
+      () => _i818.SessionLaunchRepository(
+        storage: gh<_i384.SessionLaunchStorage>(),
+      ),
+    );
     gh.lazySingleton<_i205.BridgeRepository>(
-      () => _i205.BridgeRepository(api: gh<_i384.BridgeApi>()),
+      () => _i205.BridgeRepository(api: gh<_i385.BridgeApi>()),
     );
     gh.lazySingleton<_i843.LegacyNativeStorageMigrationService>(
       () => _i843.LegacyNativeStorageMigrationService(
@@ -658,6 +672,15 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i18.SessionViewingService(
         viewRepository: gh<_i143.ViewDeclarationRepository>(),
         lifecycleSource: gh<_i904.LifecycleSource>(),
+      ),
+    );
+    gh.lazySingleton<_i8.SessionLaunchService>(
+      () => _i8.SessionLaunchService(
+        sessionRepository: gh<_i7.SessionRepository>(),
+        launchRepository: gh<_i818.SessionLaunchRepository>(),
+        feedbackPromptService: gh<_i905.FeedbackPromptService>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+        selectionTracker: gh<_i913.NewSessionSelectionTracker>(),
       ),
     );
     gh.lazySingleton<_i531.MessageImageRepository>(

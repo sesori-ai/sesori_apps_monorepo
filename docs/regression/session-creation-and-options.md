@@ -285,7 +285,9 @@ variant, and worktree mode, and creating the session with its first input.
   After about two seconds the bubble reads "Sending to `<harness>`…". The
   composer stays replaced and duplicate Send is blocked. Creation waits up to
   180 s for the bridge before reporting an uncertain failure. Back leaves
-  creation running, and success replaces the route only when that launch route
+  creation running under an app-lifetime owner, so a success after leaving still
+  records its outcome and clears the options chosen for it exactly as an
+  in-route success does. Success replaces the route only when that launch route
   is still current and the returned session is durable.
 - Mobile and desktop compose the same new-session view while retaining
   shell-owned routing, DI, connection-banner policy, and platform capabilities.
@@ -445,8 +447,8 @@ highlight, Enter and Esc.
   one surface but not another, an agent's declared model is adopted without
   being checked against the catalog, or a screen's variant list describes a
   model it no longer has selected.
-- A successful creation does not become the next per-plugin prefill, a failed
-  creation replaces it, one plugin's selection leaks into another, or a removed
+- A successful creation does not become the next per-plugin prefill (also when
+  the user left the route before it finished), a failed creation replaces it, one plugin's selection leaks into another, or a removed
   saved value prevents current catalog defaults from loading.
 - A cache-only read starts a backend, or automatic refresh wakes a stopped one.
 - The composer or its typing is blocked while options load, sending waits for

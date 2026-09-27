@@ -28,6 +28,7 @@ import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/permission_repository.dart";
+import "../../repositories/session_launch_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/bridge_settings_service.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
@@ -111,6 +112,7 @@ class SessionDetailCubit(
   required final FailureReporter _failureReporter,
   required final BridgeSettingsService _bridgeSettingsService,
   required final SseEventTracker _sseEventTracker,
+  required SessionLaunchRepository sessionLaunchRepository,
 
   /// Cooldown between silent refreshes triggered by staleness events.
   /// Overridable so tests can exercise the coalescing without real waits.
@@ -229,6 +231,9 @@ class SessionDetailCubit(
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   this : super(const SessionDetailState.loading()) {
+    // Opening the created session discharges its launch. The session screen
+    // does not show the handed-off first message yet, so it is dropped here.
+    sessionLaunchRepository.takeHandoff(sessionId: _sessionId);
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     // Seed the connection state so the BehaviorSubject's immediate replay isn't
     // treated as a reconnect transition.

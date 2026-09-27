@@ -466,6 +466,15 @@ void main() {
     GetIt.instance.registerSingleton<ComposerDraftRepository>(composerDraftRepository);
     GetIt.instance.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
     GetIt.instance.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
+    GetIt.instance.registerSingleton<SessionLaunchService>(
+      SessionLaunchService(
+        sessionRepository: sessionService,
+        launchRepository: inMemorySessionLaunchRepository(),
+        feedbackPromptService: GetIt.instance<FeedbackPromptService>(),
+        productAnalyticsService: productAnalyticsService,
+        selectionTracker: GetIt.instance<NewSessionSelectionTracker>(),
+      ),
+    );
   });
 
   tearDown(() async {

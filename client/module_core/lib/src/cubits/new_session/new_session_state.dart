@@ -119,7 +119,15 @@ sealed class NewSessionComposeConfig with _$NewSessionComposeConfig {
 sealed class NewSessionPhase with _$NewSessionPhase {
   const factory idle() = NewSessionPhaseIdle;
 
-  const factory sending({required NewSessionSubmissionSnapshot submission}) = NewSessionPhaseSending;
+  const factory sending({
+    required NewSessionSubmissionSnapshot submission,
+
+    /// The launch carrying [submission], whose outcome this phase waits for.
+    required String launchId,
+
+    /// When Send committed; the sending bubble's slow-send copy counts from it.
+    required DateTime startedAt,
+  }) = NewSessionPhaseSending;
 
   const factory restoringSubmission({
     required NewSessionSubmissionSnapshot submission,

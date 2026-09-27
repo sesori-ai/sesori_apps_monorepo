@@ -4,13 +4,14 @@
 
 | Step | PR title | Status | Notes |
 |---|---|---|---|
-| 1/7 | 🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7] | Done (#1774) | Removes the superseded `instant-session-launch` plan. Reworked for Q3 and Q4, then for the settled D1–D9, then for seven code-review waves |
-| 2/7 | ⚙️ [instant-new-session] Show the first message while a new session is created [step 2/7] | Done | Instant screen only; composer still replaced while sending. `SessionLaunchSubmissionView` cross-fades in at Send on phone and all three desktop surfaces; desktop pages pass the session transcript's 960 px column through `NewSessionPageChrome.transcriptWidth` so the bubble rests where the session page will hold it (asserted by rect). Three models moved to `foundation/models/composer/`; create timeout 180 s on both paths; unused `newSessionLoadingSemantics` removed. Evidence: `module_core` API, new-session and session-detail tests; `module_app_ui`, `app` and `desktop` new-session widget tests; `dart analyze --fatal-infos` clean on all four packages |
-| 3/7 | 🚧 [instant-new-session] Hand the first message off to the session screen [step 3/7] | Planned | Introduces the launch owner, including the typed outcome stream |
-| 4/7 | 🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 4/7] | Planned | Q3. Delivery is owned by `SessionLaunchService`, not the session screen |
-| 5/7 | ⚙️ [instant-new-session] Show a launching row in the session lists [step 5/7] | Planned | Q4 part 1. Row is tappable (D3) and the failure alert listener lands here (D5) |
-| 6/7 | ⚙️ [instant-new-session] Show a launching row in the sidebar and Activity [step 6/7] | Planned | Q4 part 2 |
-| 7/7 | 🌿 [instant-new-session] Run new-session coverage and retire the plan [step 7/7] | Planned | Coverage, cleanup audit, retire |
+| 1/8 | 🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7] | Done (#1774) | Removes the superseded `instant-session-launch` plan. Reworked for Q3 and Q4, then for the settled D1–D9, then for seven code-review waves |
+| 2/8 | ⚙️ [instant-new-session] Show the first message while a new session is created [step 2/7] | Done | Instant screen only; composer still replaced while sending. `SessionLaunchSubmissionView` cross-fades in at Send on phone and all three desktop surfaces; desktop pages pass the session transcript's 960 px column through `NewSessionPageChrome.transcriptWidth` so the bubble rests where the session page will hold it (asserted by rect). Three models moved to `foundation/models/composer/`; create timeout 180 s on both paths; unused `newSessionLoadingSemantics` removed. Evidence: `module_core` API, new-session and session-detail tests; `module_app_ui`, `app` and `desktop` new-session widget tests; `dart analyze --fatal-infos` clean on all four packages |
+| 3/8 | 🚧 [instant-new-session] Hand new-session creation to an app-lifetime launch owner [step 3/8] | Done | Step 3 design, part 3.a (pre-approved split). EVIDENCE_3A |
+| 4/8 | 🚧 [instant-new-session] Hand the first message off to the session screen [step 4/8] | Planned | Step 3 design, part 3.b: detail state, release funnel, `sendingSince`, detail presentation, transition-free phone swap |
+| 5/8 | 🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 5/8] | Planned | Step 4 design. Q3. Delivery is owned by `SessionLaunchService`, not the session screen |
+| 6/8 | ⚙️ [instant-new-session] Show a launching row in the session lists [step 6/8] | Planned | Step 5 design. Q4 part 1. Row is tappable (D3) and the failure alert listener lands here (D5) |
+| 7/8 | ⚙️ [instant-new-session] Show a launching row in the sidebar and Activity [step 7/8] | Planned | Step 6 design. Q4 part 2 |
+| 8/8 | 🌿 [instant-new-session] Run new-session coverage and retire the plan [step 8/8] | Planned | Coverage, cleanup audit, retire |
 
 No step is blocked: every decision is settled. Each implementation step edits the
 regression documents its own PR makes true, so there is no separate

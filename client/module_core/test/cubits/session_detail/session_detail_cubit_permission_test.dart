@@ -831,6 +831,7 @@ SessionDetailCubit _buildCubit({
     failureReporter: failureReporter,
     bridgeSettingsService: stubbedBridgeSettingsService(),
     sseEventTracker: MockSseEventTracker(),
+    sessionLaunchRepository: inMemorySessionLaunchRepository(),
   );
 }
 

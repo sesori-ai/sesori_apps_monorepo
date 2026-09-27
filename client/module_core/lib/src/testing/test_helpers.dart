@@ -11,6 +11,7 @@ import "../api/filesystem_api.dart";
 import "../api/project_api.dart";
 import "../api/session_api.dart";
 import "../api/storage/composer_draft_storage.dart";
+import "../api/storage/session_launch_storage.dart";
 import "../capabilities/relay/relay_client.dart";
 import "../capabilities/relay/room_key_storage.dart";
 import "../capabilities/server_connection/connection_service.dart";
@@ -34,6 +35,7 @@ import "../repositories/plugin_preference_repository.dart";
 import "../repositories/plugin_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/registered_bridges_store.dart";
+import "../repositories/session_launch_repository.dart";
 import "../repositories/session_repository.dart";
 import "../routing/app_routes.dart";
 import "../services/bridge_settings_service.dart";
@@ -282,6 +284,8 @@ class MockSessionRepository() extends Mock implements SessionRepository;
 class MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
 ComposerDraftRepository inMemoryComposerDraftRepository() => ComposerDraftRepository(storage: ComposerDraftStorage());
+
+SessionLaunchRepository inMemorySessionLaunchRepository() => SessionLaunchRepository(storage: SessionLaunchStorage());
 
 class MockBridgeRepository() extends Mock implements BridgeRepository;
 

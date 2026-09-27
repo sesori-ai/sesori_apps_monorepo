@@ -978,10 +978,14 @@ String toString() {
 
 
 class NewSessionPhaseSending implements NewSessionPhase {
-  const NewSessionPhaseSending({required this.submission});
+  const NewSessionPhaseSending({required this.submission, required this.launchId, required this.startedAt});
   
 
  final  NewSessionSubmissionSnapshot submission;
+/// The launch carrying [submission], whose outcome this phase waits for.
+ final  String launchId;
+/// When Send committed; the sending bubble's slow-send copy counts from it.
+ final  DateTime startedAt;
 
 /// Create a copy of NewSessionPhase
 /// with the given fields replaced by the non-null parameter values.
@@ -993,18 +997,18 @@ $NewSessionPhaseSendingCopyWith<NewSessionPhaseSending> get copyWith => _$NewSes
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseSending&&(identical(other.submission, submission) || other.submission == submission));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseSending&&(identical(other.submission, submission) || other.submission == submission)&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,submission);
+    return Object.hash(runtimeType,submission,launchId,startedAt);
 }
 
 @override
 String toString() {
-    return 'NewSessionPhase.sending(submission: $submission)';
+    return 'NewSessionPhase.sending(submission: $submission, launchId: $launchId, startedAt: $startedAt)';
 }
 
 
@@ -1015,7 +1019,7 @@ abstract mixin class $NewSessionPhaseSendingCopyWith<$Res> implements $NewSessio
   factory $NewSessionPhaseSendingCopyWith(NewSessionPhaseSending value, $Res Function(NewSessionPhaseSending) _then) = _$NewSessionPhaseSendingCopyWithImpl;
 @useResult
 $Res call({
- NewSessionSubmissionSnapshot submission
+ NewSessionSubmissionSnapshot submission, String launchId, DateTime startedAt
 });
 
 
@@ -1032,10 +1036,12 @@ class _$NewSessionPhaseSendingCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionPhase
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? submission = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? submission = null,Object? launchId = null,Object? startedAt = null,}) {
   return _then(NewSessionPhaseSending(
 submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
-as NewSessionSubmissionSnapshot,
+as NewSessionSubmissionSnapshot,launchId: null == launchId ? _self.launchId : launchId // ignore: cast_nullable_to_non_nullable
+as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
+as DateTime,
   ));
 }
 

@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math";
 
 import "package:bloc/bloc.dart";
 import "package:collection/collection.dart";
@@ -12,13 +13,12 @@ import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/composer/new_session_submission_snapshot.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
+import "../../foundation/models/session_launch/session_launch_outcome.dart";
 import "../../logging/logging.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
-import "../../repositories/session_repository.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
-import "../../services/feedback_prompt_service.dart";
 import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
 import "../../services/models/new_session_selection_intent.dart";
@@ -26,20 +26,20 @@ import "../../services/new_session_options_service.dart";
 import "../../services/new_session_plugin_service.dart";
 import "../../services/new_session_selection_tracker.dart";
 import "../../services/product_analytics_service.dart";
+import "../../services/session_launch_service.dart";
 import "../../services/session_selection_calculator.dart";
 import "new_session_composer_presentation.dart";
 import "new_session_state.dart";
 
 class NewSessionCubit({
   required final ConnectionService _connectionService,
-  required final SessionRepository _sessionRepository,
   required final NewSessionPluginService _newSessionPluginService,
   required final NewSessionOptionsService _newSessionOptionsService,
   required final ProjectRepository _projectRepository,
   required final NewSessionSelectionTracker _selectionTracker,
   required final ComposerDraftRepository _composerDraftRepository,
   required final ProductAnalyticsService _productAnalyticsService,
-  required final FeedbackPromptService _feedbackPromptService,
+  required final SessionLaunchService _sessionLaunchService,
   required final String _projectId,
 }) extends Cubit<NewSessionState> {
   this
@@ -58,6 +58,7 @@ class NewSessionCubit({
       ) {
     _wasConnected = _connectionService.currentStatus is ConnectionConnected;
     _connectionStatusSubscription = _connectionService.status.listen(_onConnectionStatusChanged);
+    _launchOutcomeSubscription = _sessionLaunchService.outcomes.listen(_onLaunchOutcome);
     unawaited(_discoverPlugins());
     unawaited(_loadProjectCapability());
   }
@@ -67,6 +68,7 @@ class NewSessionCubit({
 
   ComposerDraft _composerDraft = _composerDraftRepository.readForNewSession(projectId: _projectId);
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
+  late final StreamSubscription<SessionLaunchOutcome> _launchOutcomeSubscription;
   late bool _wasConnected;
   int _loadGeneration = 0;
   int _projectLoadGeneration = 0;
@@ -896,22 +898,11 @@ class NewSessionCubit({
     final submission = hasCommand
         ? NewSessionCommandSubmissionSnapshot(draft: draft, command: normalizedCommand)
         : NewSessionTextSubmissionSnapshot(draft: draft, attachments: List.unmodifiable(attachments));
-    final analyticsSubmission = switch (submission) {
-      NewSessionCommandSubmissionSnapshot() => const AnalyticsSubmission.command(),
-      NewSessionTextSubmissionSnapshot() => AnalyticsSubmission.text(
-        inputMode: _analyticsInputMode(draft.inputMode),
-      ),
-    };
     final usesDedicatedWorktree =
         dedicatedWorktree && config.projectWorktreeCapability == NewSessionProjectWorktreeCapability.supported;
-    final requestedWorkspaceKind = usesDedicatedWorktree
-        ? AnalyticsWorkspaceKind.dedicatedWorktree
-        : AnalyticsWorkspaceKind.project;
     final pluginId = selectedPlugin.id;
-    final selectionRevisionAtSend = _selectionTracker.currentRevision(
-      projectId: _projectId,
-      pluginId: pluginId,
-    );
+    final launchId = _generateLaunchId();
+    final startedAt = DateTime.now();
     emit(
       NewSessionState.composing(
         config: NewSessionComposeConfig(
@@ -922,7 +913,7 @@ class NewSessionCubit({
           isPluginDiscoveryInFlight: false,
           projectWorktreeCapability: config.projectWorktreeCapability,
         ),
-        phase: NewSessionPhase.sending(submission: submission),
+        phase: NewSessionPhase.sending(submission: submission, launchId: launchId, startedAt: startedAt),
       ),
     );
 
@@ -935,89 +926,70 @@ class NewSessionCubit({
       ),
     );
     final selectedVariant = selectedAgentModel?.variant;
-    final response = await _sessionRepository.createSessionWithMessage(
+    // The launch outlives this cubit: its outcome arrives on
+    // [_onLaunchOutcome] only while the composer is still open.
+    await _sessionLaunchService.launch(
+      launchId: launchId,
       projectId: _projectId,
       pluginId: pluginId,
-      text: draft.text,
-      attachments: switch (submission) {
-        NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
-        NewSessionCommandSubmissionSnapshot() => const [],
-      },
+      startedAt: startedAt,
+      submission: submission,
       agent: options?.selectedAgent,
       model: selectedAgentModel == null
           ? null
           : PromptModel(providerID: selectedAgentModel.providerID, modelID: selectedAgentModel.modelID),
       variant: selectedVariant == null ? null : SessionVariant(id: selectedVariant),
       fastMode: config.runsFastMode,
-      command: switch (submission) {
-        NewSessionTextSubmissionSnapshot() => null,
-        NewSessionCommandSubmissionSnapshot(:final command) => command,
-      },
       dedicatedWorktree: usesDedicatedWorktree,
     );
+  }
 
-    switch (response) {
-      case SuccessResponse(:final data):
-        _selectionTracker.clearIfRevision(
-          projectId: _projectId,
-          pluginId: pluginId,
-          revision: selectionRevisionAtSend,
-        );
-        _reportProductEvent(
-          event: ProductAnalyticsEvent.sessionCreatedWithMessage(
-            submission: analyticsSubmission,
-            workspaceKind: data.hasWorktree ? AnalyticsWorkspaceKind.dedicatedWorktree : AnalyticsWorkspaceKind.project,
-          ),
-        );
-        unawaited(_feedbackPromptService.recordPositiveInteraction());
-      case ErrorResponse(:final error):
-        loge("New session creation failed", error);
-        unawaited(_feedbackPromptService.recordFailure());
-        // Until creation is idempotent, unconfirmed outcomes remain counted by
-        // the released failure event rather than being guessed as successes.
-        _reportProductEvent(
-          event: ProductAnalyticsEvent.sessionCreationFailed(
-            failureReason: _analyticsFailureReason(error.remoteFailureReason),
-            workspaceKind: requestedWorkspaceKind,
-          ),
-        );
-    }
-
+  void _onLaunchOutcome(SessionLaunchOutcome outcome) {
     if (isClosed) return;
-    switch (response) {
-      case SuccessResponse(:final data):
-        emit(NewSessionState.created(session: data));
-      case ErrorResponse(:final error):
-        final latest = state.agentModelData ?? config;
-        _composerDraft = submission.draft;
-        _composerDraftRepository.saveForNewSession(projectId: _projectId, draft: submission.draft);
-        final restoredOptions = switch (submission) {
-          NewSessionTextSubmissionSnapshot() => latest.optionsState,
-          NewSessionCommandSubmissionSnapshot(:final command) => _restoreStagedCommand(
-            options: latest.optionsState,
-            command: command,
-          ),
-        };
-        emit(
-          NewSessionState.composing(
-            config: NewSessionComposeConfig(
-              availablePlugins: latest.plugins,
-              selectedPlugin: latest.plugin,
-              options: restoredOptions,
-              backendScope: latest.backendScope,
-              isPluginDiscoveryInFlight: false,
-              projectWorktreeCapability: latest.projectWorktreeCapability,
-            ),
-            phase: NewSessionPhase.restoringSubmission(
-              submission: submission,
-              reason: error.remoteFailureReason,
-            ),
-          ),
-        );
-        if (!latest.backendScope.isVerified && _wasConnected) {
-          unawaited(_discoverPlugins());
-          unawaited(_loadProjectCapability());
-        }
+    final current = state;
+    if (current is! NewSessionComposing) return;
+    final phase = current.phase;
+    if (phase is! NewSessionPhaseSending || phase.launchId != outcome.launchId) return;
+    switch (outcome) {
+      case SessionLaunchSucceeded(:final session):
+        emit(NewSessionState.created(session: session));
+      case SessionLaunchFailedWhileComposing(:final reason):
+        _restoreSubmission(submission: phase.submission, reason: reason);
+      case SessionLaunchFailedAfterLeaving():
+        // Only a launch this composer released fails this way, and a composer
+        // releases its launch only as it closes.
+        break;
+    }
+  }
+
+  void _restoreSubmission({required NewSessionSubmissionSnapshot submission, required RemoteFailureReason reason}) {
+    final latest = state.agentModelData;
+    if (latest == null) return;
+    _composerDraft = submission.draft;
+    _composerDraftRepository.saveForNewSession(projectId: _projectId, draft: submission.draft);
+    final restoredOptions = switch (submission) {
+      NewSessionTextSubmissionSnapshot() => latest.optionsState,
+      NewSessionCommandSubmissionSnapshot(:final command) => _restoreStagedCommand(
+        options: latest.optionsState,
+        command: command,
+      ),
+    };
+    emit(
+      NewSessionState.composing(
+        config: NewSessionComposeConfig(
+          availablePlugins: latest.plugins,
+          selectedPlugin: latest.plugin,
+          options: restoredOptions,
+          backendScope: latest.backendScope,
+          isPluginDiscoveryInFlight: false,
+          projectWorktreeCapability: latest.projectWorktreeCapability,
+        ),
+        phase: NewSessionPhase.restoringSubmission(submission: submission, reason: reason),
+      ),
+    );
+    if (!latest.backendScope.isVerified && _wasConnected) {
+      unawaited(_discoverPlugins());
+      unawaited(_loadProjectCapability());
     }
   }
 
@@ -1086,18 +1058,16 @@ class NewSessionCubit({
     _reportProductEvent(event: const ProductAnalyticsEvent.voiceTranscriptionCompleted());
   }
 
-  AnalyticsInputMode _analyticsInputMode(ComposerInputMode inputMode) => switch (inputMode) {
-    ComposerInputMode.typed => AnalyticsInputMode.typed,
-    ComposerInputMode.voiceAssisted => AnalyticsInputMode.voiceAssisted,
-  };
+  static final Random _launchIdRandom = Random.secure();
 
-  AnalyticsSessionCreationFailureReason _analyticsFailureReason(RemoteFailureReason reason) => switch (reason) {
-    RemoteFailureReason.notAuthenticated => AnalyticsSessionCreationFailureReason.notAuthenticated,
-    RemoteFailureReason.serverRejected => AnalyticsSessionCreationFailureReason.serverRejected,
-    RemoteFailureReason.networkDown => AnalyticsSessionCreationFailureReason.networkDown,
-    RemoteFailureReason.badResponse => AnalyticsSessionCreationFailureReason.badResponse,
-    RemoteFailureReason.unknown => AnalyticsSessionCreationFailureReason.unknown,
-  };
+  /// Client-generated launch identity, the stable key of one creation.
+  static String _generateLaunchId() {
+    final buffer = StringBuffer("lch_");
+    for (var index = 0; index < 16; index++) {
+      buffer.write(_launchIdRandom.nextInt(256).toRadixString(16).padLeft(2, "0"));
+    }
+    return buffer.toString();
+  }
 
   void _reportProductEvent({required ProductAnalyticsEvent event}) {
     unawaited(
@@ -1118,6 +1088,13 @@ class NewSessionCubit({
   Future<void> close() async {
     ++_loadGeneration;
     ++_projectLoadGeneration;
+    // Until the view is told the session exists, nothing will pass the first
+    // message on, so its payload goes now. After success it belongs to the
+    // session screen replacing this one.
+    if (state.phase case NewSessionPhaseSending(:final launchId)) {
+      _sessionLaunchService.releaseHandoff(launchId: launchId);
+    }
+    await _launchOutcomeSubscription.cancel();
     await _connectionStatusSubscription.cancel();
     await super.close();
   }

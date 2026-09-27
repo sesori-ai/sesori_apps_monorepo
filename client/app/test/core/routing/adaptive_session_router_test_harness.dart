@@ -285,6 +285,16 @@ class AdaptiveSessionRouterTestHarness() {
     getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     getIt.registerSingleton<ComposerDraftRepository>(inMemoryComposerDraftRepository());
     getIt.registerLazySingleton<NewSessionSelectionTracker>(NewSessionSelectionTracker.new);
+    getIt.registerLazySingleton<SessionLaunchRepository>(inMemorySessionLaunchRepository);
+    getIt.registerLazySingleton<SessionLaunchService>(
+      () => SessionLaunchService(
+        sessionRepository: sessionRepository,
+        launchRepository: getIt<SessionLaunchRepository>(),
+        feedbackPromptService: getIt<FeedbackPromptService>(),
+        productAnalyticsService: productAnalyticsService,
+        selectionTracker: getIt<NewSessionSelectionTracker>(),
+      ),
+    );
     getIt.registerSingleton<AuthSession>(authSession);
 
     router = GoRouter(

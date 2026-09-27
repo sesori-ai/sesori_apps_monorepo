@@ -99,6 +99,7 @@ void main() {
       failureReporter: MockFailureReporter(),
       bridgeSettingsService: stubbedBridgeSettingsService(),
       sseEventTracker: MockSseEventTracker(),
+      sessionLaunchRepository: inMemorySessionLaunchRepository(),
     );
     addTearDown(cubit.close);
     await _awaitLoaded(cubit);

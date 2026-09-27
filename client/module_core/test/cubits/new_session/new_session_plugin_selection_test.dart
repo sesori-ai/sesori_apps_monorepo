@@ -17,6 +17,7 @@ import "package:sesori_dart_core/src/services/models/new_session_selection_inten
 import "package:sesori_dart_core/src/services/new_session_options_service.dart";
 import "package:sesori_dart_core/src/services/new_session_plugin_service.dart";
 import "package:sesori_dart_core/src/services/new_session_selection_tracker.dart";
+import "package:sesori_dart_core/src/services/session_launch_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -136,7 +137,6 @@ void main() {
 
     NewSessionCubit buildCubit({NewSessionOptionsService? optionsService}) => NewSessionCubit(
       connectionService: connectionService,
-      sessionRepository: sessionService,
       newSessionPluginService: NewSessionPluginService(
         pluginRepository: pluginRepository,
         pluginPreferenceRepository: pluginPreferenceRepository,
@@ -146,7 +146,13 @@ void main() {
       selectionTracker: selectionTracker,
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
-      feedbackPromptService: FakeFeedbackPromptService(),
+      sessionLaunchService: SessionLaunchService(
+        sessionRepository: sessionService,
+        launchRepository: inMemorySessionLaunchRepository(),
+        feedbackPromptService: FakeFeedbackPromptService(),
+        productAnalyticsService: stubbedProductAnalyticsService(),
+        selectionTracker: selectionTracker,
+      ),
       projectId: "project-1",
     );
 

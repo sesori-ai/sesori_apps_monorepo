@@ -140,6 +140,7 @@ void main() {
       eventRefreshMinInterval: eventRefreshMinInterval,
       bridgeSettingsService: stubbedBridgeSettingsService(),
       sseEventTracker: MockSseEventTracker(),
+      sessionLaunchRepository: inMemorySessionLaunchRepository(),
     );
 
     tearDown(() async {

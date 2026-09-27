@@ -611,9 +611,10 @@ project's composer opens. `SessionLaunchFailedWhileComposing` becomes the existi
 content to the launch with `handOverComposer` (step 4), so the handoff the
 session screen takes is complete by the time the route is replaced.
 `SessionLaunchFailedAfterLeaving` is never seen by a cubit,
-by construction. The tracker stays in the cubit rather than becoming a service
-collaborator, because a selection belongs to the composer that made it; when the
-route is already gone the revision is not cleared, exactly as today.
+by construction. As built in step 3, `SessionLaunchService.launch` captures the
+selection revision at Send and clears it on success whether or not the route is
+still open (a PR #1774 review requirement), so a user who leaves mid-create does
+not get the chosen options reapplied to the next new session.
 
 In `close()`, a cubit that has **not** reported a successful outcome to its view
 calls `releaseHandoff` — that is, while the launch is still pending, or after a
@@ -835,6 +836,13 @@ the first spinner with no new state at all.
   last reader and is removed.
 
 ### Step 3: First-message handoff to the session screen (module_core, module_app_ui, app, desktop)
+
+**As built (PR 3/8, part 3.a), which later steps extend rather than re-argue:**
+`takeHandoff` returns one `SessionLaunchHandoff` value (submission, plugin id,
+`startedAt`, `followUpIds`); `SessionDetailCubit` takes it synchronously in its
+constructor and, in 3.a, discards it, so `watchForSession` arrives with its
+first reader in a later step; and the selection revision is owned by
+`SessionLaunchService` (see "The Launch Owner").
 
 - Introduce the whole launch owner family — sealed `SessionLaunch`,
   `SessionLaunchStorage`, `SessionLaunchRepository` and `SessionLaunchService` —
@@ -2084,13 +2092,19 @@ compatibility paths were found: no step changes persistence or the wire.
 
 | Step | Exact PR title | Scope | Size |
 |---|---|---|---|
-| 1/7 | `🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7]` | This plan and `TRACKER.md`; remove the superseded `instant-session-launch` plan. | docs only |
-| 2/7 | `⚙️ [instant-new-session] Show the first message while a new session is created [step 2/7]` | Step 2 design: session-shaped creating view on every surface, `displayText`, the relocation of **two** composer models out of `cubits/` (the submission snapshot and `QueuedSessionSubmission`) and of `PromptSendFailure` out of `repositories/models/`, all three needed by a Layer 0 launch, 180 s create timeout, tests, its regression-document edits. | 650–900 |
-| 3/7 | `🚧 [instant-new-session] Hand the first message off to the session screen [step 3/7]` | Step 3 design: the launch owner family including `SessionLaunchService` and the typed outcome stream, `NewSessionCubit` handing creation over with its analytics and feedback records, detail state, the single release funnel, the `sendingSince` slow-send carry, detail presentation, transition-free phone swap, tests, its regression-document edits. | 950–1,250 |
-| 4/7 | `🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 4/7]` | Step 4 design: gate split, follow-ups owned by the launch, shared `generatePromptId`, composer mounted in both sending branches with the desktop move and chrome hiding, sealed `LaunchFollowUp`, service-owned delivery with its retry, failure log and the handoff-held accepted follow-ups, the unsent-composer handoff, the composer seeded before the first load (**D13**), the restoration budget check, failure appending into the draft, tests, its regression-document edits. | 1,200–1,550 |
-| 5/7 | `⚙️ [instant-new-session] Show a launching row in the session lists [step 5/7]` | Step 5 design: row and association streams, `SessionLaunchCubit`, shell providers and the failure alert listener, `PendingSessionLaunchTile` with its tap, the three `SessionTile` hosts, the row-key latch, the hold-until-in-its-slot rule and the **D12** hold-back, the visible-rows empty state, tests, its regression-document edits. | 700–900 |
-| 6/7 | `⚙️ [instant-new-session] Show a launching row in the sidebar and Activity [step 6/7]` | Step 6 design: two sidebar rows, pending `ActivityTile` variant, rail popout provider, the Activity emptiness gates, the phone and desktop home hosts with their 240 ms insertion transition and the projection-based hold, tests, its regression-document edits. | 600–800 |
-| 7/7 | `🌿 [instant-new-session] Run new-session coverage and retire the plan [step 7/7]` | Run the matrix below, record it in `TRACKER.md`, confirm the merged regression documents match what shipped, and move the plan to `.plan/completed/`. | docs only |
+| 1/8 | `🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7]` | This plan and `TRACKER.md`; remove the superseded `instant-session-launch` plan. | docs only |
+| 2/8 | `⚙️ [instant-new-session] Show the first message while a new session is created [step 2/7]` | Step 2 design: session-shaped creating view on every surface, `displayText`, the relocation of **two** composer models out of `cubits/` (the submission snapshot and `QueuedSessionSubmission`) and of `PromptSendFailure` out of `repositories/models/`, all three needed by a Layer 0 launch, 180 s create timeout, tests, its regression-document edits. | 650–900 |
+| 3/8 | `🚧 [instant-new-session] Hand new-session creation to an app-lifetime launch owner [step 3/8]` | Step 3 design, part 3.a: the launch owner family including `SessionLaunchService` and the typed outcome stream, `NewSessionCubit` handing creation over with its analytics and feedback records, `SessionDetailCubit` taking the handoff and discarding it so every launch is discharged, tests, its regression-document edits. | 950–1,100 authored |
+| 4/8 | `🚧 [instant-new-session] Hand the first message off to the session screen [step 4/8]` | Step 3 design, part 3.b: detail state, the single release funnel, the `sendingSince` slow-send carry, detail presentation, transition-free phone swap, tests, its regression-document edits. | 600–750 authored |
+| 5/8 | `🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 5/8]` | Step 4 design: gate split, follow-ups owned by the launch, shared `generatePromptId`, composer mounted in both sending branches with the desktop move and chrome hiding, sealed `LaunchFollowUp`, service-owned delivery with its retry, failure log and the handoff-held accepted follow-ups, the unsent-composer handoff, the composer seeded before the first load (**D13**), the restoration budget check, failure appending into the draft, tests, its regression-document edits. | 1,200–1,550 |
+| 6/8 | `⚙️ [instant-new-session] Show a launching row in the session lists [step 6/8]` | Step 5 design: row and association streams, `SessionLaunchCubit`, shell providers and the failure alert listener, `PendingSessionLaunchTile` with its tap, the three `SessionTile` hosts, the row-key latch, the hold-until-in-its-slot rule and the **D12** hold-back, the visible-rows empty state, tests, its regression-document edits. | 700–900 |
+| 7/8 | `⚙️ [instant-new-session] Show a launching row in the sidebar and Activity [step 7/8]` | Step 6 design: two sidebar rows, pending `ActivityTile` variant, rail popout provider, the Activity emptiness gates, the phone and desktop home hosts with their 240 ms insertion transition and the projection-based hold, tests, its regression-document edits. | 600–800 |
+| 8/8 | `🌿 [instant-new-session] Run new-session coverage and retire the plan [step 8/8]` | Run the matrix below, record it in `TRACKER.md`, confirm the merged regression documents match what shipped, and move the plan to `.plan/completed/`. | docs only |
+
+Step 3 ran past about 1,200 lines and was delivered as the pre-approved 3.a and
+3.b split below, so the series has eight PRs. The design sections keep their
+original numbers: "Step 4 design" ships as PR 5/8, and so on. Merged PRs keep
+the titles they merged with.
 
 Regression documents travel with the step that changes behaviour, which is why
 there is no separate reconciliation PR: each implementation PR leaves the

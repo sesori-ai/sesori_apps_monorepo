@@ -4,6 +4,7 @@ import "dart:convert";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/api/storage/session_launch_storage.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
@@ -14,11 +15,13 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/new_session_submission_snapshot.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/repositories/session_launch_repository.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_approval_service.dart";
 import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
@@ -157,6 +160,7 @@ void main() {
       bool areOptionsStale = false,
       bool supportsPromptAttachments = false,
       bool isArchived = false,
+      SessionLaunchRepository? sessionLaunchRepository,
     }) async {
       final mockLoadService = MockSessionDetailLoadService();
       when(
@@ -247,6 +251,7 @@ void main() {
         failureReporter: MockFailureReporter(),
         bridgeSettingsService: stubbedBridgeSettingsService(),
         sseEventTracker: MockSseEventTracker(),
+        sessionLaunchRepository: sessionLaunchRepository ?? inMemorySessionLaunchRepository(),
       );
       addTearDown(cubit.close);
       await cubit.stream.firstWhere((state) => state is SessionDetailLoaded);
@@ -2291,6 +2296,29 @@ void main() {
       expect(state.queuedMessages, isEmpty);
       expect(_sendingOf(state: state), isNull);
       sendCompleter.complete(ApiResponse.success(null));
+    });
+
+    test("opening the created session discharges its launch", () async {
+      final storage = SessionLaunchStorage();
+      final repository = SessionLaunchRepository(storage: storage)
+        ..start(
+          launchId: "launch-1",
+          projectId: "project-1",
+          pluginId: "claude",
+          startedAt: DateTime.utc(2026, 9, 27),
+          submission: NewSessionSubmissionSnapshot.text(
+            draft: ComposerDraft.typed(text: "Hello"),
+            attachments: const [],
+          ),
+        )
+        ..promote(
+          launchId: "launch-1",
+          session: testSession(id: _sessionId),
+        );
+
+      await createLoadedCubit(sessionLaunchRepository: repository);
+
+      expect(storage.readAll(), isEmpty);
     });
   });
 }
