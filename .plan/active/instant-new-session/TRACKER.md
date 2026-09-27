@@ -156,7 +156,7 @@ Six findings; two accepted, three declined, one raised with the maintainer.
 | 3 | Budget-checked restoration from `initState` would read `context` too early | Declined. Over-budget merges reach the live composer through `didUpdateWidget`; `initState` restores only single, already-checked sets |
 | 4 | Launch follow-ups lack stale-option recovery | Declined. They carry the options the bridge just accepted on create; a failed bubble can be removed |
 | 5 | The desktop composer changed ancestors at Send and was disposed | Accepted. One `GlobalKey` reparents the same `PromptInput` state |
-| 6 | `session.created` can arrive before the create response, before any association exists | Raised with the maintainer; plan unchanged pending a decision |
+| 6 | `session.created` can arrive before the create response, before any association exists | Raised with the maintainer; answered as **D12** |
 
 ## Code Review, fifth wave (2026-09-26)
 
@@ -165,7 +165,7 @@ Five findings; two accepted, two declined, one raised with the maintainer.
 | # | Finding | Verdict |
 |---|---|---|
 | 1 | `takeHandoff` can remove the entry, and with it the association the plan said must survive the handoff | Accepted. A list latches the association from the emission `promote` produces, which precedes any removal; the wording that the entry must outlive the handoff for the lists is corrected |
-| 2 | No composer between the route replacement and the first detail load | Raised with the maintainer; plan unchanged pending a decision |
+| 2 | No composer between the route replacement and the first detail load | Raised with the maintainer; answered as **D13** |
 | 3 | The Layer 0 launch title held localised fallback copy | Accepted. `title` is nullable raw text; the tile resolves the attachment-only fallback |
 | 4 | Launch storage survives sign-out | Declined. Same process-local shape as `ComposerDraftStorage`, which is not cleared on logout either; entries are keyed to the old bridge's sessions and bounded |
 | 5 | A failed first detail load loses the unsent command and attachments | Declined. The same rare path whose bubble loss the plan already accepts; the unsent text survives as a draft |
@@ -183,3 +183,10 @@ Seven findings; five accepted, two declined.
 | 5 | Handed-off attachments were never cleared after the detail composer adopted them | Accepted. `onInitialAttachmentsConsumed` clears the cubit's copy |
 | 6 | Split step 3.a would leave every successful launch in storage | Accepted. 3.a's `SessionDetailCubit` takes the handoff and discards it |
 | 7 | The D5 alert omitted the duplicate-risk warning | Accepted. The alert adds the existing `newSessionCreationDuplicateWarning` |
+
+## Maintainer decisions (2026-09-27)
+
+| Decision | Source | Answer |
+|---|---|---|
+| **D12** | Fourth wave, finding 6 (`session.created` before the create reply) | Hold back a new session in a project whose launch awaits its reply; the reply settles whether it swaps into the placeholder or appears normally. No wire change, no heuristic |
+| **D13** | Fifth wave, finding 2 (no composer between the handoff and the first load) | The session screen opened from a handoff builds its composer at once from the handoff; the transcript fills in above it. Existing sessions unchanged |

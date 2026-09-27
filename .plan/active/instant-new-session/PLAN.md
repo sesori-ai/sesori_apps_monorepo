@@ -52,6 +52,10 @@
     into cubit state.
 
   All eleven findings and their resolutions are tabulated in `TRACKER.md`.
+- **D12 and D13 answered by the user (2026-09-27)** after the fourth and fifth
+  code-review waves: a list holds back a new session in a project whose launch
+  still awaits its create reply (**D12**), and the session screen opened from a
+  handoff builds its composer before the first load (**D13**).
 - **Decisions D1 to D9 answered by the user (2026-09-26).** Nothing in this plan
   is open any more. The "Decisions" section records each answer and its
   consequences; D10 and D11 remain the plan's own recorded decisions and were
@@ -634,8 +638,9 @@ route closes before the response arrives at all.
 **Invariant, enforced by construction rather than left as a decision:** a
 placeholder row and its real session row never coexist, because at most one row
 is drawn per `launchId` and it is the placeholder only until the drawing surface
-would draw the associated session in the placeholder's slot (see "The launch's
-lifetime" and steps 5 and 6). The association stream produces **no rows of its own**; it
+would draw the associated session in the placeholder's slot, and a session
+that arrives before its reply is held back until the reply names it (**D12**; see
+"The launch's lifetime" and steps 5 and 6). The association stream produces **no rows of its own**; it
 only tells a list which key one row should keep across that content change.
 
 **One source of truth for the harness name.** The launch stores `pluginId` only.
@@ -735,6 +740,16 @@ placeholder's slot, the session has settled elsewhere without running on this
 client (a first command that starts no turn is the known case), and the row goes
 where the session now belongs as an ordinary state change. Steps 5 and 6 own
 that mechanism and name the widgets it lives in.
+
+**A session can arrive before the reply that identifies it (D12).** The bridge
+lets `session.created` race ahead of the `/session/create` response
+(`session_dao.dart:167-173`), and until `promote` no association exists. So a
+surface drawing a placeholder for a project also holds back any session it has
+not drawn before that appears in that project while one of the project's launches
+is still pending. The reply settles it: an associated session takes the
+placeholder's place under the rule above, and any other held session is drawn
+normally; `fail` releases the hold the same way. This lives in the same
+surface-local hold, with no wire change and no matching heuristic.
 
 ## Design
 
@@ -1117,6 +1132,26 @@ the first spinner with no new state at all.
   the voice cubit alive through creation, and dictating a follow-up works exactly
   like typing one. The resources are released when the route is replaced or the
   user leaves.
+- **The composer is there before the first load (D13).** The detail view builds
+  its composer only for `SessionDetailLoaded` today
+  (`session_detail_body.dart:346-379`), which would leave no composer for the
+  load after the handoff. When the loading state carries a launch,
+  `SessionDetailBody` builds the bottom controls at once, from what the handoff
+  already carries: the session, the launch's committed agent, model and fast mode
+  (on its first submission), and the unsent text, command and attachments. `SessionDetailComposerControls` takes
+  those inputs as a small value built from either the loaded state or the
+  handoff instead of `SessionDetailLoaded` itself; its option pickers show the
+  committed selection and stay inert until loaded, as **D9** already has them
+  while creating. The controls sit outside the state switch under one
+  `GlobalKey`, so the same `PromptInput` carries into the loaded view and the
+  transcript fills in above it; focus, keyboard and text never move. The
+  replaced new-session route cannot pass its `FocusNode`, so `handOverComposer`
+  now runs on every success and also carries whether that composer had focus and
+  whether the plugin accepts attachments (the unsent content stays null when
+  empty); the seeded composer requests focus on its first frame when it had it. A Send while loading goes through `sendMessage` with the
+  handoff's options and waits in `_promptQueue` until the load completes
+  (`session_detail_cubit.dart:2059`), as a send during any load does today.
+  Opening an existing session is unchanged.
 - **The follow-up bubbles must survive the load, not just the swap.**
   `SessionDetailLoading` gains
   `required List<LaunchFollowUp> launchFollowUps` beside step 3's
@@ -1151,13 +1186,15 @@ the first spinner with no new state at all.
   none) — and clears the new-session draft key. The detail cubit receives it in
   `takeHandoff`, saves its draft under the session's key before its composer first
   reads `composerDraft`, stages the command through its existing `stageCommand`
-  (`session_detail_cubit.dart:2880`) in its first loaded emission, and passes the
+  (`session_detail_cubit.dart:2880`) in its first loaded emission while the seeded
+  composer already shows it (**D13**), and passes the
   attachments as the
   composer's `initialAttachments` (today `const []`,
   `session_detail_composer_controls.dart:69`), which step 4's budget-checked
   restoration then stages; the composer's `onInitialAttachmentsConsumed` (a no-op
   there today) clears the cubit's copy, so a recreated composer cannot stage them
-  again. An empty composer hands over nothing. When the created
+  again. An empty composer hands over no content (**D13** still sends its focus
+  and attachment flags). When the created
   listener skips navigation because its route is no longer current, the composing
   route still holds its own composer, so nothing is lost there either.
 - **Failure (D1, settled).** Q2 restores the first submission into the composer
@@ -1332,6 +1369,11 @@ the first spinner with no new state at all.
   placeholder and the real row are one item whose content changed and whose height
   did not (**D2** fixes the geometry), and the animated list plays no removal and
   no insertion.
+
+  **D12 extends the same hold backwards.** While any of the project's launches is
+  pending, `SessionListContent` leaves out a session it has not drawn before that
+  arrives for that project, and draws it once the reply lands: in the
+  placeholder's slot if the association names it, as an ordinary row otherwise.
 
   **Both halves of the latch matter, and the "keeps drawing" half is the one a
   first draft gets wrong.** `promote` and the `session.created` that puts the
@@ -1528,7 +1570,8 @@ being created" alert, and no menu or swipe.
   home's Recent (`desktop_home_pane.dart:274`) is the one that would otherwise
   draw it — so a launch never has two rows on one surface. No new state is
   involved: the host already builds the projection it checks, and it already
-  holds the association it latched. The one-update bound from the lifetime rule
+  holds the association it latched. Each host applies **D12**'s hold-back for
+  sessions that arrive before the reply, exactly as step 5 does. The one-update bound from the lifetime rule
   applies unchanged, so a first command that never runs cannot leave "Creating…"
   behind.
 - The desktop command palette (`desktop_command_palette.dart:48-55`) reads a
@@ -1627,9 +1670,9 @@ echo-correlation state, a bubble timeout, persistence or timers of any kind, a
 byte cap on the launch queue (see **D11**), and retaining the launch through a
 failed first load. Stop and ask if implementation seems to need any of them.
 
-## Decisions (all settled, 2026-09-26)
+## Decisions (all settled, 2026-09-27)
 
-The user answered D1 to D9 on 2026-09-26. D10 and D11 were never user questions;
+The user answered D1 to D9 on 2026-09-26, and D12 and D13 on 2026-09-27. D10 and D11 were never user questions;
 they are the plan's own recorded decisions, restated here so the implementer finds
 every decision in one place. Nothing in this plan is open. Where an answer went
 against this plan's recommendation — **D1** and **D3** — the plan follows the
@@ -1860,6 +1903,27 @@ Adding one here would invent a limit new sessions have and existing sessions
 do not, for a window of a few seconds, with no observed failure. Recorded so a
 later reviewer does not reopen it without evidence.
 
+### D12. A session that arrives before its create reply
+
+The bridge can deliver `session.created` before the `/session/create` response
+(`session_dao.dart:167-173`), when no `launchId`→session association exists yet.
+
+**Decided: hold back new sessions in that project until the reply lands.** While
+a launch in a project awaits its reply, a surface does not draw a session it has
+not drawn before that appears in that project. The reply settles it: our launch's
+session takes the placeholder's place, and anyone else's appears normally. The
+surfaces that already hold the placeholder own it (steps 5 and 6). A launch id on
+the wire and accepting a brief duplicate row are **not** chosen.
+
+### D13. The session screen's composer before the first load
+
+**Decided: build it at once from the handoff.** The session screen opened from a
+new-session handoff builds its composer before the first detail load, from the
+session, the launch's agent and model, and the unsent text, command and
+attachments; the transcript fills in above it, so focus, keyboard and text never
+move (step 4). Opening an existing session is unchanged. Accepting the gap as
+today's session-open behaviour is **not** chosen.
+
 ## Edge Cases
 
 - **Duplicate submit of the *first* message:** still blocked —
@@ -1960,8 +2024,8 @@ compatibility paths were found: no step changes persistence or the wire.
 | 1/7 | `🌿 [instant-new-session] Plan opening new sessions instantly [step 1/7]` | This plan and `TRACKER.md`; remove the superseded `instant-session-launch` plan. | docs only |
 | 2/7 | `⚙️ [instant-new-session] Show the first message while a new session is created [step 2/7]` | Step 2 design: session-shaped creating view on every surface, `displayText`, the relocation of **two** composer models out of `cubits/` (the submission snapshot and `QueuedSessionSubmission`) and of `PromptSendFailure` out of `repositories/models/`, all three needed by a Layer 0 launch, 180 s create timeout, tests, its regression-document edits. | 650–900 |
 | 3/7 | `🚧 [instant-new-session] Hand the first message off to the session screen [step 3/7]` | Step 3 design: the launch owner family including `SessionLaunchService` and the typed outcome stream, `NewSessionCubit` handing creation over with its analytics and feedback records, detail state, the single release funnel, the `sendingSince` slow-send carry, detail presentation, transition-free phone swap, tests, its regression-document edits. | 950–1,250 |
-| 4/7 | `🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 4/7]` | Step 4 design: gate split, follow-ups owned by the launch, shared `generatePromptId`, composer mounted in both sending branches with the desktop move and chrome hiding, sealed `LaunchFollowUp`, service-owned delivery with its retry, failure log and the handoff-held accepted follow-ups, the unsent-composer handoff, the restoration budget check, failure appending into the draft, tests, its regression-document edits. | 1,000–1,300 |
-| 5/7 | `⚙️ [instant-new-session] Show a launching row in the session lists [step 5/7]` | Step 5 design: row and association streams, `SessionLaunchCubit`, shell providers and the failure alert listener, `PendingSessionLaunchTile` with its tap, the three `SessionTile` hosts, the row-key latch and the hold-until-in-its-slot rule, the visible-rows empty state, tests, its regression-document edits. | 700–900 |
+| 4/7 | `🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 4/7]` | Step 4 design: gate split, follow-ups owned by the launch, shared `generatePromptId`, composer mounted in both sending branches with the desktop move and chrome hiding, sealed `LaunchFollowUp`, service-owned delivery with its retry, failure log and the handoff-held accepted follow-ups, the unsent-composer handoff, the composer seeded before the first load (**D13**), the restoration budget check, failure appending into the draft, tests, its regression-document edits. | 1,200–1,550 |
+| 5/7 | `⚙️ [instant-new-session] Show a launching row in the session lists [step 5/7]` | Step 5 design: row and association streams, `SessionLaunchCubit`, shell providers and the failure alert listener, `PendingSessionLaunchTile` with its tap, the three `SessionTile` hosts, the row-key latch, the hold-until-in-its-slot rule and the **D12** hold-back, the visible-rows empty state, tests, its regression-document edits. | 700–900 |
 | 6/7 | `⚙️ [instant-new-session] Show a launching row in the sidebar and Activity [step 6/7]` | Step 6 design: two sidebar rows, pending `ActivityTile` variant, rail popout provider, the Activity emptiness gates, the phone and desktop home hosts with their 240 ms insertion transition and the projection-based hold, tests, its regression-document edits. | 600–800 |
 | 7/7 | `🌿 [instant-new-session] Run new-session coverage and retire the plan [step 7/7]` | Run the matrix below, record it in `TRACKER.md`, confirm the merged regression documents match what shipped, and move the plan to `.plan/completed/`. | docs only |
 
@@ -1984,13 +2048,15 @@ roughly 1,100 to 1,500 lines covering both presentation and new cubit state,
 and would delay the most valuable and least risky half of the feature behind
 the more contentious half.
 
-Every step is inside the ~1,500-line soft cap, and steps 3 and 4 are
+Every step but step 4's upper bound is inside the ~1,500-line soft cap, and steps 3 and 4 are
 deliberately held near 1,000 to 1,300 because they carry the cross-layer and
 state-machine risk. The second review wave raised each estimate by roughly 100 to
 250 lines; step 2 absorbs the second model relocation, which is import churn
 rather than logic. The third wave raised step 4 by about 150 to 200 lines (the
 sealed follow-up, the failure log and the unsent-composer handoff) and steps 5
-and 6 by about 50 each (the in-slot hold and the emptiness gates). If step 4's
+and 6 by about 50 each (the in-slot hold and the emptiness gates). **D13** adds
+about 200 to 250 to step 4 (the composer seeded before the first load), which
+makes the split below the expected path rather than a contingency. If step 4's
 real diff passes about 1,300 lines, the clean cut is to land the shared
 `generatePromptId` extraction and the restoration budget check first as their own
 PR, since neither depends on the live composer, and renumber the series and
@@ -2040,6 +2106,10 @@ step's design above. Nothing here waits for a later PR.
     once …" — extended by **D1**: any queued follow-ups are appended into that
     same restored draft, blank-line separated and in order, with their
     attachments re-staged and a command follow-up appended as literal text.
+  - New (step 4, **D13**): the session screen opened from a creation shows its
+    composer from its first frame, seeded with the unsent content, and the
+    transcript fills in above it. Failure signal: the keyboard drops or the
+    composer blinks after Send.
   - The L3 row's "Send immediately renders launch status at the unresolved
     route, blocks duplicate submit, and replaces with the durable session"
     becomes the sending bubble, the launch handoff, the positional release, the
@@ -2051,7 +2121,9 @@ step's design above. Nothing here waits for a later PR.
   shows no time, that a project whose only item is a launch shows the row rather
   than the empty state, that it never coexists with its own real row, that it is
   excluded from the chip counts and hidden while searching or archived (**D4**),
-  and that a failure removes it with one alert naming the project (**D5**).
+  that a new session arriving in that project before the launch's reply is
+  held back until the reply lands (**D12**), and that a failure removes it with
+  one alert naming the project (**D5**).
 - `docs/regression/session-turns.md` (steps 3 and 4): the launch bubble in the
   transient-row ordering and its positional release, and that follow-ups typed
   before a session id exists are delivered in order by the launch owner whether or
@@ -2108,6 +2180,13 @@ list composition, and each plugin's first-message echo.
   since the service, not the session screen, reports them.
 
 ## Risks And Accepted Limits
+
+- **D12** delays a session someone else creates in the same project, from another
+  device or harness, until this client's pending create reply lands or fails —
+  bounded by the 180 s create timeout, and usually well under a second.
+- **D13** makes the session screen's composer independent of the loaded state;
+  a regression shows as the keyboard dropping or the composer blinking after Send,
+  the failure signal its regression-document rule names.
 
 - Cold starts stay as slow as they are. This plan changes only what the user
   sees and can do while waiting. Q5 defers the real fix.
