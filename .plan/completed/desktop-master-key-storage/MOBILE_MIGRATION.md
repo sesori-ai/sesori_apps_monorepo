@@ -1,11 +1,26 @@
 # Native mobile migration qualification
 
-Recorded 2026-09-26. Product source: `ac488d0` (production files unchanged from
-`d550856`). Fixture: `client/app/integration_test/native_persistence_migration_test.dart`.
-Flutter 3.47.5 / Dart 3.13.4; internal app 1.9.1+1, debug fixture with explicit
-**production persistence scope**. These are not store-distributed upgrade builds.
+The original simulator/emulator observations were recorded 2026-09-26 at product
+source `ac488d0` (production files unchanged from `d550856`). That source applies
+only to the historical simulator/emulator sections below, not the physical run.
+Fixture: `client/app/integration_test/native_persistence_migration_test.dart`.
+Flutter 3.47.5 / Dart 3.13.4; debug fixture with explicit **production persistence
+scope**. These are not store-distributed upgrade builds.
 
 ## Physical-device follow-up after recovery fence
+
+Physical-run production source: `d054d533e5f916783bd46199446a1d45f6cea870`,
+whose merge parent checkpoint `0950ab7f24f31cd63f2884f30e9e72a6a918475a`
+includes #1808. No production files changed during these runs. Internal debug
+build: `1.9.1+1`, normal development signing, iPhoneOS 27.0 SDK (SDK version,
+not a claim about device OS). The restored normal app's Info.plist confirms
+that build/version; no separate per-phase binary hashes were recorded.
+
+The first three phases used that source plus the explicit physical-device opt-in
+fixture edit. The last two used the subsequently extended `recover` and
+`recoveredReopen` fixture, saved exactly in
+`11d56970db17fbe5932d8a879a082b4cc9fb6578`. Both fixture edits were uncommitted
+when executed; that commit records them afterward and changes no production code.
 
 User authorized Sesori-only changes on a connected physical iPhone 15, explicitly
 excluding whole-device erase/restore and other apps. Five independent signed
@@ -116,24 +131,37 @@ databases or comparison digests are committed.
 ## Reproduction
 
 Claim a slot with the global skill, verify ownership, use normal native signing,
-and target its exact device. From `client/app`, run each phase in a separate
-invocation; **do not omit `--no-uninstall`**:
+and target its exact device. A physical device instead requires explicit user
+authorization limited to Sesori; add
+`--dart-define=SESORI_NATIVE_PERSISTENCE_ALLOW_PHYSICAL=true` to **each** invocation.
+This opt-in does not authorize whole-device operations. From `client/app`, run
+each phase in a separate invocation; **do not omit `--no-uninstall`**:
 
 ```sh
 flutter test integration_test/native_persistence_migration_test.dart \
   -d <owned-device-id> --no-pub --no-uninstall \
   --dart-define=SESORI_NATIVE_PERSISTENCE_PHASE=seed --reporter=expanded
-# Repeat with phase=migrate, then phase=reopen.
+# Repeat the command with SESORI_NATIVE_PERSISTENCE_PHASE=migrate,
+# then reopen, then recover, then recoveredReopen (in that order).
+# On an explicitly authorized physical device, include this in all five commands:
+# --dart-define=SESORI_NATIVE_PERSISTENCE_ALLOW_PHYSICAL=true
 ```
 
 Seed refuses an existing production database/master. Do not erase an existing
-slot to rerun it. Reopen can inspect its retained migrated fixture. Restore a
-normal build in place before releasing the slot; never uninstall or clear it.
+slot to rerun it. Reopen can inspect its retained migrated fixture. The final two
+phases are intentionally destructive to that fixture's production scope: recover
+injects pending reset and a stale native token, checks cleanup/master rotation,
+and saves a fresh secret; recoveredReopen checks completion and its retention.
+Run them only when discarding that fixture state is authorized. Restore a normal
+build in place before releasing the slot; never uninstall or clear it merely to
+make a failing test pass.
 Private evidence is under ignored `.dart_tool/desktop-master-key-storage/` as
 `native-migration-*`; source/witness payloads must not be published.
 
-This narrows the remaining [qualification matrix](QUALIFICATION.md), not the
-required L4 gates. Native error/denial, interrupted copy/cleanup/marker paths,
-actual distributed upgrade and hardware restore remain distinct. The subsequent
-user-requested reset-on-migration-failure policy is not implemented or qualified
-by these happy-path observations.
+Reset-on-migration-failure is implemented by #1779/#1808 and partially qualified
+by the physical pending-reset and recovered-reopen observations above. The older
+simulator/emulator happy-path observations alone do not cover it. Actual native
+error/denial, interrupted copy/cleanup/marker paths, distributed upgrade and
+hardware restore remain distinct, unvalidated coverage. The user's explicit
+acceptance of all remaining gaps is recorded in [QUALIFICATION.md](QUALIFICATION.md);
+plan closure does not represent those gates as passing.
