@@ -395,18 +395,20 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         _snapshot = null;
         _knownRowIds = null;
       } else {
-        _snapshot ??= (
-          messages: List<MessageWithParts>.unmodifiable(widget.messages),
-          streamingText: Map<String, String>.unmodifiable(widget.streamingText),
-          children: List<Session>.unmodifiable(widget.children),
-          childStatuses: Map<String, SessionStatus>.unmodifiable(widget.childStatuses),
-          retryErrorMessage: widget.retryErrorMessage,
-          isBusy: widget.isBusy,
-          mainAgentRunning: widget.mainAgentRunning,
-        );
+        _snapshot ??= _freezeLive();
       }
     });
   }
+
+  _DetachedSnapshot _freezeLive() => (
+    messages: List<MessageWithParts>.unmodifiable(widget.messages),
+    streamingText: Map<String, String>.unmodifiable(widget.streamingText),
+    children: List<Session>.unmodifiable(widget.children),
+    childStatuses: Map<String, SessionStatus>.unmodifiable(widget.childStatuses),
+    retryErrorMessage: widget.retryErrorMessage,
+    isBusy: widget.isBusy,
+    mainAgentRunning: widget.mainAgentRunning,
+  );
 
   void _onRowMount({required String rowId, required BuildContext context}) => _rowContexts[rowId] = context;
 
@@ -518,9 +520,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// prompt pinned over it. Folded, it unfolds first. A message that is gone
   /// moves nothing. Like any hold, this stops following.
   void _jumpToMessage({required String messageId}) {
-    final messages = _snapshot?.messages ?? widget.messages;
-    final message = messages.where((message) => message.info.id == messageId).firstOrNull;
+    final message = widget.messages.where((message) => message.info.id == messageId).firstOrNull;
     if (message == null) return;
+    // A message that arrived after the list froze is listed on the Prompts
+    // screen too, so the list takes the live transcript in to reach it. The
+    // hold below moves the reader straight to it, so the reflow goes unseen.
+    // Its turn is not built yet, so a prompt taken in this way rests just below
+    // the pin, where a follow-up would.
+    if (_snapshot case final frozen? when !frozen.messages.any((message) => message.info.id == messageId)) {
+      setState(() => _snapshot = _freezeLive());
+    }
     final pins = _stickyKey.currentContext?.findRenderObject();
     final top = _turns.promptTurnFor(openerMessageId: messageId) == null && pins is RenderTranscriptStickyPrompts
         ? _kPinnedRowTop + pins.compactHeight + transcriptStickyGap

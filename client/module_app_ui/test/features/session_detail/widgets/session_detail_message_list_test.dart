@@ -3749,6 +3749,42 @@ void main() {
       expect(_topOf(tester, "u5"), moreOrLessEquals(promptRowTop, epsilon: 0.5));
     });
 
+    testWidgets("a jump into a folded transcript lands a follow-up just below its pinned prompt", (tester) async {
+      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: true);
+
+      harness.jumpNotifier.jumpTo(messageId: "u3f");
+      await tester.pumpAndSettle();
+
+      final pins = tester.renderObject<RenderTranscriptStickyPrompts>(find.byType(TranscriptStickyPromptOverlay));
+      expect(harness.foldRequests, 1);
+      expect(
+        _topOf(tester, "session-detail-prompt-p3f"),
+        moreOrLessEquals(promptRowTop + pins.compactHeight + transcriptStickyGap, epsilon: 0.5),
+      );
+    });
+
+    testWidgets("a jump reaches a prompt that arrived after the reader scrolled away", (tester) async {
+      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: false);
+      _position(tester).jumpTo(_position(tester).pixels + 2000);
+      await tester.pumpAndSettle();
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+      harness.appendNewestMessage(_message(messageId: "late", role: "user", text: "Late prompt"));
+      harness.appendNewestMessage(
+        _message(
+          messageId: "late-answer",
+          role: "assistant",
+          text: [for (var line = 0; line < 40; line++) "Late paragraph $line"].join("\n\n"),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(_messageKey("late").evaluate(), isEmpty);
+
+      harness.jumpNotifier.jumpTo(messageId: "late");
+      await tester.pumpAndSettle();
+
+      expect(_topOf(tester, "late"), lessThan(_topInset + 100));
+    });
+
     testWidgets("a jump to a message that is gone moves nothing", (tester) async {
       final harness = await _pumpTurns(tester, messages: withFollowUp, folded: false);
       final offset = _position(tester).pixels;
