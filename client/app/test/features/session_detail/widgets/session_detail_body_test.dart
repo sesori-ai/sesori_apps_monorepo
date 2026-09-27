@@ -1228,28 +1228,33 @@ void main() {
         expect(transcriptAsSeen(tester), before);
       });
 
-      testWidgets("is a plain fade with reduced motion", (tester) async {
-        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
-        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-        await tester.pumpWidget(_buildApp(cubit: cubit));
-        await tester.pumpAndSettle();
-        final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+      for (final (setting, features) in const [
+        ("reduced motion", FakeAccessibilityFeatures(reduceMotion: true)),
+        ("animations removed", FakeAccessibilityFeatures(disableAnimations: true)),
+      ]) {
+        testWidgets("is a plain fade with $setting", (tester) async {
+          tester.platformDispatcher.accessibilityFeaturesTestValue = features;
+          addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pumpAndSettle();
+          final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
 
-        await tester.tap(find.byKey(const Key("session-detail-prompts")));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
-        expect(opacity(tester), inExclusiveRange(0, 1));
-        expect(tester.getRect(layer), screen);
+          await tester.tap(find.byKey(const Key("session-detail-prompts")));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(opacity(tester), inExclusiveRange(0, 1));
+          expect(tester.getRect(layer), screen);
 
-        await tester.pumpAndSettle();
-        await tester.tap(find.byTooltip("Close prompts"));
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
-        expect(opacity(tester), inExclusiveRange(0, 1));
-        expect(tester.getRect(layer), screen);
-        await tester.pumpAndSettle();
-        expect(layer, findsNothing);
-      });
+          await tester.pumpAndSettle();
+          await tester.tap(find.byTooltip("Close prompts"));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(opacity(tester), inExclusiveRange(0, 1));
+          expect(tester.getRect(layer), screen);
+          await tester.pumpAndSettle();
+          expect(layer, findsNothing);
+        });
+      }
 
       testWidgets("an edge swipe drags the screen under the finger and springs back when let go early", (tester) async {
         await tester.pumpWidget(_buildApp(cubit: cubit));

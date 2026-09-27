@@ -121,8 +121,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// has closed.
   ({String? anchorMessageId, TranscriptPromptList list, Alignment origin})? _prompts;
 
-  /// How far the Prompts screen is in: 0 closed, 1 open.
-  late final AnimationController _transition = AnimationController(vsync: this, duration: _kPromptsTransition);
+  /// How far the Prompts screen is in: 0 closed, 1 open. It keeps its length
+  /// when the platform removes animations, which only drops the scale.
+  late final AnimationController _transition = AnimationController(
+    vsync: this,
+    duration: _kPromptsTransition,
+    animationBehavior: AnimationBehavior.preserve,
+  );
 
   /// The transition's growth and dim, and its fade. Closing mirrors opening
   /// in time, so the screen starts to leave at once; a close begun midway

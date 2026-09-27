@@ -56,11 +56,12 @@ Flutter 3.47.5:
 
 - `dart analyze --fatal-infos` is clean in `module_app_ui` and `client/app`.
 - These tests pass:
-  - `client/app` `session_detail_body_test.dart` (147), including the new
+  - `client/app` `session_detail_body_test.dart` (148), including the new
     "its transition" group:
     - open and close grow in and out over a dim, and the transcript's rect,
       offset and element do not change;
-    - reduced motion is a plain fade;
+    - reduced motion, and Android's removed animations, are a plain fade (the
+      controller preserves its duration under the latter);
     - the iOS swipe follows the finger, springs back, closes past halfway and
       on a flick, and leaves the transcript unmoved;
     - an Android swipe does nothing.
