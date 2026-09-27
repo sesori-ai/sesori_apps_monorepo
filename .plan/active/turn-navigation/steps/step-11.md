@@ -30,7 +30,8 @@ and Architecture 11, "Returning to the transcript".
   `_jumpToMessage`, unfolding first when folded.
 - `features/session_prompts/`: `SessionPromptsView`, `PromptSpineRow` and
   `PromptDayHeaderDelegate`. Day labels come from
-  `BuildContext.formatDayLabel`, beside `formatMessageTimestamp`.
+  `BuildContext.formatDayLabel` and row times from `formatTimeOfDay`, beside
+  `formatMessageTimestamp`.
 - The body's layer is a `Stack` over the page with `ExcludeFocus` and
   `ExcludeSemantics` toggling, and a `PopScope` so back closes it. There is one
   open method taking the origin, and the phone bar and desktop toolbar buttons
@@ -54,6 +55,11 @@ and Architecture 11, "Returning to the transcript".
   re-freezes a detached list's snapshot when the message arrived after the
   freeze, so every listed prompt is reachable. That prompt's turn is not built
   yet, so it lands just below the pin, where a follow-up would.
+- A timed row shows the time of day alone (`formatTimeOfDay`, the `jm` pattern
+  `formatMessageTimestamp` uses) rather than `formatMessageTimestamp`: every
+  timed row sits under its day's header, so the date is not repeated. This is
+  a follow-through of D38's day headers, not a new decision; the plan's line
+  says so.
 - The layer closes one frame after the jump is requested, so the jump's first
   step runs under it. There is no transition; `origin` is plumbed and unused
   until step 12.

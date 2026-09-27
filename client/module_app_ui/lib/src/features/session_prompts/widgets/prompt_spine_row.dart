@@ -39,7 +39,7 @@ class const PromptSpineRow({
     final isFollowUp = entry is TranscriptPromptFollowUp;
     final text = entry.text ?? loc.transcriptStickyPromptAttachment;
     final time = switch (entry.createdAt) {
-      final createdAt? when showsTime => context.formatMessageTimestamp(createdAt),
+      final createdAt? when showsTime => context.formatTimeOfDay(createdAt),
       _ => null,
     };
     final number = entry.number;

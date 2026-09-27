@@ -103,7 +103,7 @@ extension BuildContextLocalization on BuildContext {
   String formatMessageTimestamp(int ms) {
     final date = DateTime.fromMillisecondsSinceEpoch(ms);
     final now = DateTime.now();
-    final time = _dateFormat("jm").format(date);
+    final time = formatTimeOfDay(ms);
 
     final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
     if (isToday) return time;
@@ -112,6 +112,10 @@ extension BuildContextLocalization on BuildContext {
     final datePattern = date.year == now.year ? _dateFormat("MMMd") : _dateFormat("yMMMd");
     return "${datePattern.format(date)}, $time";
   }
+
+  /// The localized time of day alone (e.g. "9:41 AM"), for a row that sits
+  /// under a heading naming its day.
+  String formatTimeOfDay(int ms) => _dateFormat("jm").format(DateTime.fromMillisecondsSinceEpoch(ms));
 
   /// The day [day] falls on, as a heading: "Today", "Yesterday", else the
   /// date in [formatMessageTimestamp]'s patterns without the time.

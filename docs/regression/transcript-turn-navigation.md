@@ -88,8 +88,8 @@ stored or sent to the bridge.
   Prompts screen: a "Prompts" title with a "Close prompts" button, then one row
   per loaded prompt in the transcript's order, each follow-up indented below its
   opener with a smaller, lighter dot on the same rail. A row shows one line of
-  the prompt's text, or its first attachment's name, and its time where the
-  prompt carries one. Timed rows sit under sticky day headers ("Today",
+  the prompt's text, or its first attachment's name, and its time of day where
+  the prompt carries one, never repeating the date its header names. Timed rows sit under sticky day headers ("Today",
   "Yesterday", then the date), oldest day first, with a "No date" group above
   them for undated prompts; a session with no timed prompt shows no headers and
   no times. The list ends with "{n} prompts loaded"; an empty session reads "No
@@ -221,8 +221,7 @@ answer and a folded line, and on a trackpad while text streams.
 - The Prompts screen appears and leaves with no transition yet. It lists only
   what the transcript has loaded, with no search, and rows carry no prompt
   numbers. Grok, Antigravity, Copilot, Cursor, Hermes and OMP carry no prompt
-  times, so their sessions show no times and no day headers. A row's time
-  repeats its date under a past day's header. A prompt that arrived after the
+  times, so their sessions show no times and no day headers. A prompt that arrived after the
   reader scrolled away lands just below the pinned prompt, where a follow-up
   would, rather than on the pin line.
 

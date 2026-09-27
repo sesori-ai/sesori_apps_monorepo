@@ -104,8 +104,15 @@ void main() {
 
     final headers = ["No date", "Yesterday", "Today"].map((label) => tester.getTopLeft(find.text(label)).dy).toList();
     expect(headers, orderedEquals([...headers]..sort()));
+    // Under its day's heading a row shows the time alone, also on a past day.
+    final context = tester.element(_row("new"));
     final nineToday = _today.add(const Duration(hours: 9)).millisecondsSinceEpoch;
-    expect(find.text(tester.element(_row("new")).formatMessageTimestamp(nineToday)), findsOneWidget);
+    final nineYesterday = _yesterday.add(const Duration(hours: 9)).millisecondsSinceEpoch;
+    expect(find.descendant(of: _row("new"), matching: find.text(context.formatTimeOfDay(nineToday))), findsOneWidget);
+    expect(
+      find.descendant(of: _row("old"), matching: find.text(context.formatTimeOfDay(nineYesterday))),
+      findsOneWidget,
+    );
     // An undated row in a timed list leaves its time cell empty.
     expect(find.descendant(of: _row("undated"), matching: find.byType(Text)), findsOneWidget);
   });
