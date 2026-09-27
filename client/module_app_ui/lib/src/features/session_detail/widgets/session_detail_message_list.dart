@@ -55,6 +55,14 @@ class const SessionDetailMessageList({
   required final VoidCallback? onRetryFailedSend,
   required final VoidCallback? onRemoveFailedSend,
 
+  /// Messages sent before the session existed that its launch has not
+  /// delivered yet, shown after the ones already accepted.
+  required final List<LaunchFollowUp> launchFollowUps,
+
+  /// Null on a read-only surface, which shows the follow-ups without actions.
+  required final void Function({required String promptId})? onRetryLaunchFollowUp,
+  required final void Function({required String promptId})? onRemoveLaunchFollowUp,
+
   /// Accepted sends the bridge has not listed yet — rendered as read-only
   /// queued bubbles so the prompt never blanks between its acceptance
   /// response and the bridge's queue event.
@@ -677,6 +685,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required List<QueuedSessionSubmission> queuedMessages,
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
     required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    required List<LaunchFollowUp> launchFollowUps,
     required bool hasLaunchRow,
   }) {
     final deliveredPromptIds = <String>{
@@ -693,6 +702,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       for (final prompt in bridgeQueuedPrompts)
         if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
       for (final submission in awaitingBridgeSubmissions)
+        if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
+      // Pressed before the session existed, so ahead of this screen's sends.
+      for (final LaunchFollowUp(:submission) in launchFollowUps)
         if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
       if (localSendSubmission != null && !deliveredPromptIds.contains(localSendSubmission.promptId))
         "$_kPromptRowPrefix${localSendSubmission.promptId}",
@@ -790,6 +802,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       queuedMessages: queuedMessages,
       bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
       awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
+      launchFollowUps: widget.launchFollowUps,
       hasLaunchRow: widget.launchHandoff != null,
     );
     final knownRowIds = _knownRowIds;
@@ -1031,6 +1044,25 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         );
       }
     }
+    final launchFollowUp = widget.launchFollowUps
+        .where((followUp) => "$_kPromptRowPrefix${followUp.submission.promptId}" == entryId)
+        .firstOrNull;
+    if (launchFollowUp != null) {
+      final submission = launchFollowUp.submission;
+      return _revealable(
+        createdAtMs: null,
+        child: _animatedPromptRow(
+          child: QueuedMessageBubble(
+            key: ValueKey(entryId),
+            displayText: submission.displayText,
+            isCommand: submission.isCommand,
+            attachmentCount: submission.attachments.length,
+            localAttachments: submission.attachments,
+            presentation: _launchFollowUpPresentation(followUp: launchFollowUp),
+          ),
+        ),
+      );
+    }
     final transientSubmission = transientSubmissions[entryId];
     if (transientSubmission != null) {
       final submission = transientSubmission.submission;
@@ -1103,6 +1135,29 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final card = UserMessageCard(message: message);
     if (_turns.promptTurnFor(openerMessageId: message.info.id) == null) return card;
     return TranscriptPromptSlot(openerId: message.info.id, registry: _promptSlots, child: card);
+  }
+
+  QueuedMessageBubblePresentation _launchFollowUpPresentation({required LaunchFollowUp followUp}) {
+    final promptId = followUp.submission.promptId;
+    final onRetry = widget.onRetryLaunchFollowUp;
+    final onRemove = widget.onRemoveLaunchFollowUp;
+    return switch (followUp) {
+      SendingLaunchFollowUp() => QueuedMessageBubblePresentation.sending(
+        harnessName: widget.harnessName,
+        sendingSince: null,
+      ),
+      QueuedLaunchFollowUp() when onRemove != null => QueuedMessageBubblePresentation.pending(
+        onCancel: () => onRemove(promptId: promptId),
+      ),
+      QueuedLaunchFollowUp() || AcceptedLaunchFollowUp() => const QueuedMessageBubblePresentation.pendingReadOnly(),
+      // A lost response may already have reached the bridge, so only an
+      // authoritative rejection can be removed; Retry is safe either way,
+      // since the bridge drops a promptId it already took.
+      FailedLaunchFollowUp(:final failure) => QueuedMessageBubblePresentation.failed(
+        onRetry: onRetry == null ? null : () => onRetry(promptId: promptId),
+        onRemove: onRemove == null || failure != PromptSendFailure.rejected ? null : () => onRemove(promptId: promptId),
+      ),
+    };
   }
 
   void _cancelQueuedSubmission({required QueuedSessionSubmission submission}) {

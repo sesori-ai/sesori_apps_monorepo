@@ -162,11 +162,18 @@ $SessionCopyWith<$Res> get session {
 
 
 class SessionLaunchFailedWhileComposing implements SessionLaunchOutcome {
-  const SessionLaunchFailedWhileComposing({required this.launchId, required this.reason});
+  const SessionLaunchFailedWhileComposing({required this.launchId, required this.reason, required  List<QueuedSessionSubmission> followUps}): _followUps = followUps;
   
 
 @override final  String launchId;
  final  RemoteFailureReason reason;
+ final  List<QueuedSessionSubmission> _followUps;
+ List<QueuedSessionSubmission> get followUps {
+  if (_followUps is EqualUnmodifiableListView) return _followUps;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_followUps);
+}
+
 
 /// Create a copy of SessionLaunchOutcome
 /// with the given fields replaced by the non-null parameter values.
@@ -178,18 +185,18 @@ $SessionLaunchFailedWhileComposingCopyWith<SessionLaunchFailedWhileComposing> ge
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionLaunchFailedWhileComposing&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionLaunchFailedWhileComposing&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other.followUps, _followUps));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,launchId,reason);
+    return Object.hash(runtimeType,launchId,reason,const DeepCollectionEquality().hash(_followUps));
 }
 
 @override
 String toString() {
-    return 'SessionLaunchOutcome.failedWhileComposing(launchId: $launchId, reason: $reason)';
+    return 'SessionLaunchOutcome.failedWhileComposing(launchId: $launchId, reason: $reason, followUps: $followUps)';
 }
 
 
@@ -200,7 +207,7 @@ abstract mixin class $SessionLaunchFailedWhileComposingCopyWith<$Res> implements
   factory $SessionLaunchFailedWhileComposingCopyWith(SessionLaunchFailedWhileComposing value, $Res Function(SessionLaunchFailedWhileComposing) _then) = _$SessionLaunchFailedWhileComposingCopyWithImpl;
 @override @useResult
 $Res call({
- String launchId, RemoteFailureReason reason
+ String launchId, RemoteFailureReason reason, List<QueuedSessionSubmission> followUps
 });
 
 
@@ -217,11 +224,12 @@ class _$SessionLaunchFailedWhileComposingCopyWithImpl<$Res>
 
 /// Create a copy of SessionLaunchOutcome
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? launchId = null,Object? reason = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? launchId = null,Object? reason = null,Object? followUps = null,}) {
   return _then(SessionLaunchFailedWhileComposing(
 launchId: null == launchId ? _self.launchId : launchId // ignore: cast_nullable_to_non_nullable
 as String,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as RemoteFailureReason,
+as RemoteFailureReason,followUps: null == followUps ? _self._followUps : followUps // ignore: cast_nullable_to_non_nullable
+as List<QueuedSessionSubmission>,
   ));
 }
 

@@ -138,6 +138,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
         state.localSend is LocalSendIdle &&
         state.queuedMessages.isEmpty &&
         state.awaitingBridgeSubmissions.isEmpty &&
+        state.launchFollowUps.isEmpty &&
         state.bridgeQueuedPrompts.isEmpty &&
         state.launchHandoff == null;
     // A lost response may already have reached the bridge, so only an
@@ -202,6 +203,13 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           onRemoveFailedSend: canRemoveFailedSend
                               ? context.read<SessionDetailCubit>().removeFailedSend
                               : null,
+                          launchFollowUps: state.launchFollowUps,
+                          onRetryLaunchFollowUp: widget.readOnly || !state.interaction.canInteract
+                              ? null
+                              : context.read<SessionDetailCubit>().retryLaunchFollowUp,
+                          onRemoveLaunchFollowUp: widget.readOnly
+                              ? null
+                              : context.read<SessionDetailCubit>().removeLaunchFollowUp,
                           bridgeQueuedPrompts: state.bridgeQueuedPrompts,
                           bridgePromptAttachments: state.bridgePromptAttachments,
                           awaitingBridgeSubmissions: state.awaitingBridgeSubmissions,

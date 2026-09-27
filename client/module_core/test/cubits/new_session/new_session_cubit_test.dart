@@ -13,6 +13,7 @@ import "package:sesori_dart_core/src/cubits/new_session/new_session_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/new_session_submission_snapshot.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
@@ -768,6 +769,91 @@ void main() {
 
       cubit.acknowledgeRestoredSubmission(submission: snapshot);
       expect(cubit.state, composingWith<NewSessionPhaseCreationError>());
+    });
+
+    test("a failed creation appends its follow-ups to the restored draft and stages their images", () async {
+      final response = Completer<ApiResponse<Session>>();
+      final draftRepository = inMemoryComposerDraftRepository();
+      final launchRepository = inMemorySessionLaunchRepository();
+      ComposerAttachment image(String name) =>
+          ComposerAttachment(mime: "image/png", bytes: Uint8List.fromList([1]), filename: name);
+      final firstImage = image("first.png");
+      final followUpImage = image("follow-up.png");
+      when(mockPluginRepository.listPlugins).thenAnswer(
+        (_) async => ApiResponse.success(
+          PluginDiscoverySnapshot(
+            bridgeId: "bridge-1",
+            supportsSessionOptions: true,
+            plugins: const [
+              PluginMetadata(
+                id: "plugin-1",
+                displayName: "Plugin One",
+                isDefault: true,
+                state: PluginLifecycleState.ready,
+                actionHint: null,
+                supportsPromptAttachments: true,
+              ),
+            ],
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) => response.future);
+      final cubit = buildCubit(composerDraftRepository: draftRepository, launchRepository: launchRepository);
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      final pending = cubit.createSession(
+        draft: ComposerDraft(text: "first voice", voiceSpans: [VoiceOriginSpan(start: 6, end: 11)]),
+        dedicatedWorktree: false,
+        command: null,
+        attachments: [firstImage],
+      );
+      final launchId = ((cubit.state as NewSessionComposing).phase as NewSessionPhaseSending).launchId;
+      for (final followUp in [
+        QueuedSessionSubmission.text(
+          promptId: "prm_a",
+          text: "second",
+          inputMode: ComposerInputMode.typed,
+          attachments: [followUpImage],
+          agent: null,
+          agentModel: null,
+          fastMode: false,
+        ),
+        const QueuedSessionSubmission.command(
+          promptId: "prm_b",
+          text: "src",
+          command: "review",
+          agent: null,
+          agentModel: null,
+          fastMode: false,
+        ),
+      ]) {
+        launchRepository.addFollowUp(launchId: launchId, submission: followUp);
+      }
+      response.complete(ApiResponse.error(ApiError.generic()));
+      await pending;
+      await Future<void>.delayed(Duration.zero);
+
+      final restoring = (cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission;
+      final restored = restoring.submission as NewSessionTextSubmissionSnapshot;
+      expect(restored.draft.text, "first voice\n\nsecond\n\n/review src");
+      expect(restored.draft.voiceSpans, [VoiceOriginSpan(start: 6, end: 11)]);
+      expect(restored.attachments, [same(firstImage), same(followUpImage)]);
+      expect(cubit.composerDraft, restored.draft);
+      expect(draftRepository.readForNewSession(projectId: "project-1"), restored.draft);
     });
 
     test("failed command submission restores staged command and next submit clears warning", () async {

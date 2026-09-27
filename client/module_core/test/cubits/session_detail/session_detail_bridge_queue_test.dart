@@ -2626,6 +2626,27 @@ void main() {
         expect(sentTexts, ["after"]);
       });
 
+      test("the loaded screen shows the launch's unsent follow-ups as they change", () async {
+        final repository = launchedRepository(
+          followUps: [
+            LaunchFollowUp.queued(submission: followUp(promptId: "prm_a")),
+            LaunchFollowUp.queued(submission: followUp(promptId: "prm_b")),
+          ],
+        );
+        final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
+        List<LaunchFollowUp> shown() => (cubit.state as SessionDetailLoaded).launchFollowUps;
+        expect(shown().map((followUp) => followUp.submission.promptId), ["prm_a", "prm_b"]);
+
+        repository.beginFollowUp(launchId: "launch-1");
+        repository.followUpFailed(launchId: "launch-1", promptId: "prm_a", failure: PromptSendFailure.rejected);
+        await Future<void>.delayed(Duration.zero);
+        expect(shown().first, isA<FailedLaunchFollowUp>());
+
+        cubit.removeLaunchFollowUp(promptId: "prm_a");
+        await Future<void>.delayed(Duration.zero);
+        expect(shown().map((followUp) => followUp.submission.promptId), ["prm_b"]);
+      });
+
       test("a prompt sent here does not release the launch bubble when the bridge queues it", () async {
         final sentTexts = <String>[];
         stubSends(sentTexts: sentTexts);

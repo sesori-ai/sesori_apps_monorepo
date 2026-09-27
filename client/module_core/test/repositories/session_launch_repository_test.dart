@@ -100,7 +100,11 @@ void main() {
     expect(storage.readAll(), isEmpty);
     await Future<void>.delayed(Duration.zero);
     expect(outcomes, [
-      const SessionLaunchOutcome.failedWhileComposing(launchId: "launch-1", reason: RemoteFailureReason.networkDown),
+      const SessionLaunchOutcome.failedWhileComposing(
+        launchId: "launch-1",
+        reason: RemoteFailureReason.networkDown,
+        followUps: [],
+      ),
     ]);
   });
 
@@ -168,6 +172,24 @@ void main() {
 
       repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
       expect(begin(), "prm_b");
+    });
+
+    test("a failure while composing gives the composer every follow-up, in press order", () async {
+      final first = followUp(promptId: "prm_a");
+      final second = followUp(promptId: "prm_b");
+      start();
+      repository.addFollowUp(launchId: "launch-1", submission: first);
+      repository.addFollowUp(launchId: "launch-1", submission: second);
+      repository.fail(launchId: "launch-1", reason: RemoteFailureReason.networkDown);
+
+      await Future<void>.delayed(Duration.zero);
+      expect(outcomes, [
+        SessionLaunchOutcome.failedWhileComposing(
+          launchId: "launch-1",
+          reason: RemoteFailureReason.networkDown,
+          followUps: [first, second],
+        ),
+      ]);
     });
 
     test("a failed follow-up holds the ones behind it until it is retried or cancelled", () {
