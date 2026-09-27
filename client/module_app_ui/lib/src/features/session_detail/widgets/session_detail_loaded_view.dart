@@ -47,10 +47,11 @@ class SessionDetailLoadedView extends StatefulWidget {
   final VoidCallback onShowPendingQuestions;
   final VoidCallback onShowPendingPermissions;
 
-  /// Forwarded to the transcript: see [SessionDetailMessageList.currentPromptId]
-  /// and [SessionDetailMessageList.jumpNotifier].
+  /// Forwarded to the transcript: see [SessionDetailMessageList.currentPromptId],
+  /// [SessionDetailMessageList.jumpNotifier] and [SessionDetailMessageList.onPinchIn].
   final ValueNotifier<String?> currentPromptId;
   final TranscriptJumpNotifier jumpNotifier;
+  final void Function({required Offset focalPoint}) onPinchIn;
 
   const new readOnly({
     super.key,
@@ -63,6 +64,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.columnWidths,
     required this.currentPromptId,
     required this.jumpNotifier,
+    required this.onPinchIn,
   }) : readOnly = true;
 
   const new interactive({
@@ -76,6 +78,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.columnWidths,
     required this.currentPromptId,
     required this.jumpNotifier,
+    required this.onPinchIn,
   }) : readOnly = false;
 
   @override
@@ -211,6 +214,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           onTranscriptFoldedChanged: context.read<SessionDetailCubit>().setTranscriptFolded,
                           currentPromptId: widget.currentPromptId,
                           jumpNotifier: widget.jumpNotifier,
+                          onPinchIn: widget.onPinchIn,
                           streamingText: state.streamingText,
                           children: state.children,
                           childStatuses: state.childStatuses,

@@ -1,8 +1,8 @@
 import "package:flutter/gestures.dart";
 import "package:material_ui/material_ui.dart";
 
-/// Folds the transcript on a pinch in and unfolds it on a pinch out, by touch
-/// or trackpad.
+/// Reports a pinch in on the transcript, by touch or trackpad. A pinch out
+/// reports nothing: on the transcript there is nothing to pinch out of.
 ///
 /// A second finger claims the gesture at once, so a pinch never loses to the
 /// list's vertical drag, even with one finger held still. One finger alone
@@ -13,7 +13,7 @@ import "package:material_ui/material_ui.dart";
 /// trackpad pan never pinches.
 ///
 /// A gesture runs from its first pointer down to its last pointer up, and
-/// switches at most once.
+/// pinches in at most once.
 class const TranscriptPinchDetector({
   super.key,
 
@@ -23,9 +23,9 @@ class const TranscriptPinchDetector({
   /// The pinch won its gesture. Can repeat within one gesture.
   required final VoidCallback onPinchStart,
 
-  /// The pinch crossed a threshold, with the focal point in global
+  /// The pinch closed past its threshold, with the focal point in global
   /// coordinates.
-  required final void Function({required bool folded, required Offset focalPoint}) onFoldRequested,
+  required final void Function({required Offset focalPoint}) onPinchIn,
 
   /// The gesture's last pointer lifted, or the pinch lost its gesture.
   required final VoidCallback onGestureEnd,
@@ -36,30 +36,21 @@ class const TranscriptPinchDetector({
 }
 
 class _TranscriptPinchDetectorState() extends State<TranscriptPinchDetector> {
-  static const double _kFoldScale = 0.8;
-  static const double _kUnfoldScale = 1.25;
+  static const double _kPinchInScale = 0.8;
 
-  bool _switched = false;
+  bool _pinchedIn = false;
 
   void _onFirstPointer() {
-    _switched = false;
+    _pinchedIn = false;
     widget.onPointerDown();
   }
 
   void _onStart(ScaleStartDetails details) => widget.onPinchStart();
 
   void _onUpdate(ScaleUpdateDetails details) {
-    if (_switched) return;
-    final bool folded;
-    if (details.scale <= _kFoldScale) {
-      folded = true;
-    } else if (details.scale >= _kUnfoldScale) {
-      folded = false;
-    } else {
-      return;
-    }
-    _switched = true;
-    widget.onFoldRequested(folded: folded, focalPoint: details.focalPoint);
+    if (_pinchedIn || details.scale > _kPinchInScale) return;
+    _pinchedIn = true;
+    widget.onPinchIn(focalPoint: details.focalPoint);
   }
 
   @override
@@ -83,8 +74,6 @@ class _TranscriptPinchDetectorState() extends State<TranscriptPinchDetector> {
   }
 }
 
-/// A scale recognizer that wins as soon as a second touch pointer lands, and
-/// never on the movement of one pointer.
 class _PinchRecognizer({super.debugOwner, super.supportedDevices}) extends ScaleGestureRecognizer {
   /// A lone finger's travel that gives the gesture up. Below `kTouchSlop`, so
   /// a small drag still reaches the list at once, as the timestamp peek's

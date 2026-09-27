@@ -5,8 +5,8 @@
 A session transcript reads as turns: a prompt, the agent's steps and its
 answer. A reader folds every turn to one line to skim a long session and
 unfolds them again without losing their place. While reading unfolded, the
-prompt of the turn being read stays pinned at the top. A Prompts screen lists
-every loaded prompt in the transcript's order, opens on the one being read and
+prompt of the turn being read stays pinned at the top. A Prompts screen, opened
+by a button or a pinch, lists every loaded prompt in the transcript's order, opens on the one being read and
 returns to any prompt with one tap. Phone and desktop derive the same turns and
 prompt list from the loaded messages; turns, the fold and the list are never
 stored or sent to the bridge.
@@ -38,20 +38,20 @@ stored or sent to the bridge.
   turns" while folded. The desktop tooltip adds the shortcut: ⌘− folds and ⌘=
   unfolds on macOS, Ctrl+− and Ctrl+= elsewhere, while focus is in the session
   page; they are inert elsewhere. Tapping a folded line unfolds every turn.
-- A pinch in folds and a pinch out unfolds, by touch or trackpad, at most once
-  per gesture: at a scale of 0.8 or less, or 1.25 or more. A second finger
+- A pinch in opens the Prompts screen, by touch or trackpad, at most once per
+  gesture, at a scale of 0.8 or less; a pinch out does nothing. A second finger
   makes a touch gesture a pinch at once, even with one finger held still, so
   two fingers on a touch screen never scroll the transcript. One-finger
   scrolling, taps, the timestamp peek (finger or trackpad), a code block's
-  horizontal scroll and trackpad scrolling are unaffected.
+  horizontal scroll and trackpad scrolling are unaffected. A pinch never moves
+  the transcript and leaves following as it was: a reader following the latest
+  edge keeps following, and one reading history stays detached.
 - A switch is instant, with no animation, so reduced motion needs nothing.
-  The turn at the top edge (button or shortcut), the tapped turn or the turn
-  under the pinching fingers stays put,
+  The turn at the top edge (button or shortcut) or the tapped turn stays put,
   even while the reader follows the latest edge: a prompt on screen keeps its
   distance from the top edge, and from mid-turn the prompt lands at the top
   edge, as far as the list can scroll. A switch that moves the list stops
-  following until the reader scrolls back down. A pinch that switches nothing
-  leaves following alone, and a pinch while reading history stays detached.
+  following until the reader scrolls back down.
 - Unfolded, the prompt that opened the turn being read stays pinned at the top
   of the transcript as a header that compacts with the scroll. Each prompt shows
   as exactly one bubble, tracking the scroll in the same frame with no pop or
@@ -112,8 +112,9 @@ stored or sent to the bridge.
   covered transcript takes no focus and screen readers skip it. Screen readers
   read each row as one button: its number where known, the text ("Follow-up:
   {text}" for a follow-up) and its time, with the hint "Jump to this prompt".
-- The screen grows in from the button that opened it, fading in and scaling
-  up slightly over a lightly dimmed transcript, and shrinks back into the same
+- The screen grows in from the button or the pinching fingers that opened it,
+  fading in and scaling up slightly over a lightly dimmed transcript, and
+  shrinks back into the same
   place when it closes, also after a row tap, where it leaves only once the
   transcript has landed. With reduced motion it only fades. The transcript
   under it never moves, scrolls or rebuilds.
@@ -122,7 +123,8 @@ stored or sent to the bridge.
   and it slides off and closes; let go earlier and it springs back. Elsewhere
   the edge does nothing.
 - Each opening from the phone bar reports `transcript_prompts_opened` with
-  `entry: session_bar`; the desktop reports nothing. Closing and row taps are
+  `entry: session_bar`, and each opening by a pinch with `entry: pinch`; the
+  desktop reports nothing. Closing and row taps are
   not reported.
 - Scrolling up while folded loads older pages as it does unfolded. A partial
   leading segment joins its prompt when that page arrives.
@@ -135,8 +137,8 @@ stored or sent to the bridge.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated, no plugin: every branch of the turn rule, the leading segment, summaries and determinism; the fold state across reload and per page; the event once per fold and never on unfold or a repeated fold; folded rows and lines; holding the top-edge turn, a tapped turn and far turns not yet built, while following and after a clamp at the latest edge; both buttons and the desktop shortcuts per platform; touch and trackpad pinch per platform (iOS, Android, macOS): once per gesture, one finger held still, below the thresholds, the turn under the fingers while following and while reading history, and one-finger scroll, peek and nested horizontal scroll unaffected; the pinned prompt as one bubble per prompt through a slow scroll both ways over short and long prompts, never moving against the scroll and appearing or leaving only at the screen's edges, taking over exactly where it covers its bubble, its halo unclipped by the pin line, compacted to three lines at a narrow width and at a large text scale while a short prompt pins whole, hidden while folded and before the first prompt, rendered as its bubble with a table and a code block, only the opening of a pasted document built, a fence the cut leaves open still a code block, a pinned code block requesting no older page, the bubble's semantics label the prompt's words rather than its Markdown, an image-only prompt spoken as the row names it with and without alt text, a list, table and struck word spoken as the row lays them out, the band carrying no semantics action beside the bubble's, and gliding to its prompt on a tap on the bubble, never turning back and landing with the pin grown to full height, jumping instead with reduced motion, and through its semantics button, also when that prompt is not built, while a tap beside the bubble does nothing and a drag on the band still scrolls; the Prompts screen's rows, indentation, day headers and "No date" group, the untimed case, the count and empty rows, the opening anchor and its tint through a scroll away and back with and without reduced motion, an unknown anchor, the anchor the pin names folded and unfolded and before the first prompt, a jump to an opener, a follow-up, an unbuilt row, a folded transcript and a prompt that arrived while detached, a vanished id, back and the close button leaving the transcript unmoved, both entry buttons, the row semantics and the event per opening; the screen's transition in and out, its scale and dim, the plain fade with reduced motion, and the transcript unmoved through it; the iOS edge swipe following the finger, springing back from a short release, closing from a long one and from a flick, and doing nothing off iOS. |
-| L3 Release | Client end to end on the release-target phone and on macOS, on a session of three or more pages: the button and ⌘−/⌘= from mid-turn and from a prompt on screen keep the reader's turn in place; a line tap unfolds at its turn; a fold and unfold from one of the last turns returns to the turn at the top edge; a real-device pinch in and out on the phone and a macOS trackpad pinch, while following (the turn under the fingers stays and following stops) and while reading history (it stays detached), with one-finger scroll, the peek and a code block's horizontal scroll unaffected; a running turn's line; the pinned prompt through short and long prompts both ways with no lag, pop or jump, compacting and pushed out by the next prompt step for step with the scroll, its halo only over sliding rows, and gliding back on a tap on the bubble; the Prompts screen from the phone bar and the macOS toolbar, opening on the prompt being read with no visible scroll, and a tap landing an opener, a follow-up and a far prompt, with back and close leaving the transcript unmoved; its transition in and out, and again with Reduce Motion on, with nothing jumping; on the iPhone an edge swipe that follows the finger, springs back when let go early and closes past halfway or on a flick; paging older turns while folded; screen readers read the lines, the button and the pinned prompt, whose action jumps to it, and the Prompts rows; `transcript_turns_folded` and `transcript_prompts_opened` arrive. Android, Windows and Linux: the button, and Ctrl+−/Ctrl+= on the desktops. Live plugin plus client, every supporting production plugin: a follow-up sent while a turn runs stays in that turn, or opens one where `docs/HARNESS_CAPABILITIES.md` says so; Claude and Pi automation stays inside its turn and is never pinned; a forced Claude re-import keeps follow-ups, peers and task outcomes in their turns. |
+| L2 Routine | Automated, no plugin: every branch of the turn rule, the leading segment, summaries and determinism; the fold state across reload and per page; the event once per fold and never on unfold or a repeated fold; folded rows and lines; holding the top-edge turn, a tapped turn and far turns not yet built, while following and after a clamp at the latest edge; both buttons and the desktop shortcuts per platform; touch and trackpad pinch per platform (iOS, Android, macOS): opening the Prompts screen once per gesture on a pinch in and never on a pinch out, one finger held still, below the threshold, the transcript unmoved and still following while following and still detached while reading history, and one-finger scroll, peek and nested horizontal scroll unaffected; the pinned prompt as one bubble per prompt through a slow scroll both ways over short and long prompts, never moving against the scroll and appearing or leaving only at the screen's edges, taking over exactly where it covers its bubble, its halo unclipped by the pin line, compacted to three lines at a narrow width and at a large text scale while a short prompt pins whole, hidden while folded and before the first prompt, rendered as its bubble with a table and a code block, only the opening of a pasted document built, a fence the cut leaves open still a code block, a pinned code block requesting no older page, the bubble's semantics label the prompt's words rather than its Markdown, an image-only prompt spoken as the row names it with and without alt text, a list, table and struck word spoken as the row lays them out, the band carrying no semantics action beside the bubble's, and gliding to its prompt on a tap on the bubble, never turning back and landing with the pin grown to full height, jumping instead with reduced motion, and through its semantics button, also when that prompt is not built, while a tap beside the bubble does nothing and a drag on the band still scrolls; the Prompts screen's rows, indentation, day headers and "No date" group, the untimed case, the count and empty rows, the opening anchor and its tint through a scroll away and back with and without reduced motion, an unknown anchor, the anchor the pin names folded and unfolded and before the first prompt, a jump to an opener, a follow-up, an unbuilt row, a folded transcript and a prompt that arrived while detached, a vanished id, back and the close button leaving the transcript unmoved, both entry buttons, the row semantics and the event per opening; the screen's transition in and out, its scale and dim, the plain fade with reduced motion, and the transcript unmoved through it; the iOS edge swipe following the finger, springing back from a short release, closing from a long one and from a flick, and doing nothing off iOS. |
+| L3 Release | Client end to end on the release-target phone and on macOS, on a session of three or more pages: the button and ⌘−/⌘= from mid-turn and from a prompt on screen keep the reader's turn in place; a line tap unfolds at its turn; a fold and unfold from one of the last turns returns to the turn at the top edge; a real-device pinch in on the phone and a macOS trackpad pinch open the Prompts screen growing from the fingers, while following (following continues) and while reading history (it stays detached), with the transcript where it was on the way back, and a pinch out does nothing, with one-finger scroll, the peek and a code block's horizontal scroll unaffected; a running turn's line; the pinned prompt through short and long prompts both ways with no lag, pop or jump, compacting and pushed out by the next prompt step for step with the scroll, its halo only over sliding rows, and gliding back on a tap on the bubble; the Prompts screen from the phone bar and the macOS toolbar, opening on the prompt being read with no visible scroll, and a tap landing an opener, a follow-up and a far prompt, with back and close leaving the transcript unmoved; its transition in and out, and again with Reduce Motion on, with nothing jumping; on the iPhone an edge swipe that follows the finger, springs back when let go early and closes past halfway or on a flick; paging older turns while folded; screen readers read the lines, the button and the pinned prompt, whose action jumps to it, and the Prompts rows; `transcript_turns_folded` and `transcript_prompts_opened` arrive. Android, Windows and Linux: the button, and Ctrl+−/Ctrl+= on the desktops. Live plugin plus client, every supporting production plugin: a follow-up sent while a turn runs stays in that turn, or opens one where `docs/HARNESS_CAPABILITIES.md` says so; Claude and Pi automation stays inside its turn and is never pinned; a forced Claude re-import keeps follow-ups, peers and task outcomes in their turns. |
 | L4 Extended | Switch while text streams and while an older page loads; fold, then reopen the session and open another. |
 | L5 Full | No additional coverage. |
 
@@ -145,9 +147,9 @@ stored or sent to the bridge.
 Vary where the reader is: mid-turn, a prompt near the top edge, the latest
 edge, far back after paging. Vary turn shapes: a long prompt, no steps, a
 running or failed turn, follow-ups and automation mid-turn, a session that
-starts with automation. Vary the control between the buttons, both shortcuts,
-a line tap and a pinch, and repeat the same control twice. Open the Prompts
-screen from mid-turn, before the first prompt, folded and while text streams,
+starts with automation. Vary the control between the buttons, both shortcuts
+and a line tap, and repeat the same control twice. Open the Prompts screen by
+its button and by a pinch, from mid-turn, before the first prompt, folded and while text streams,
 on sessions with and without prompt times and across midnight, and return to an
 opener, a follow-up and a prompt far above. On iOS, swipe it away slowly
 and fast, stopping short and reversing mid-drag. Pinch slowly and
@@ -162,9 +164,10 @@ answer and a folded line, and on a trackpad while text streams.
   follow-up leaves its running turn on a harness the capability matrix marks
   supported.
 - Automation opens a turn; a line shows narration as the answer or "step 0".
-- A pinch scrolls the transcript or switches twice; a one-finger scroll,
-  a peek or a trackpad scroll folds; a pinch that switches nothing detaches
-  the list, or a pinch while reading history re-attaches it.
+- A pinch scrolls or moves the transcript, or opens the Prompts screen twice;
+  a pinch out, a one-finger scroll, a peek or a trackpad scroll opens it; the
+  screen grows from somewhere other than the fingers; a pinch detaches a
+  following list, or a pinch while reading history re-attaches it.
 - A follow-up or automation shows as the pinned prompt; a prompt shows two
   bubbles at once, or its bubble pops, jumps, lags a frame behind the rows or
   moves against the scroll; the pin covers the next prompt instead of being

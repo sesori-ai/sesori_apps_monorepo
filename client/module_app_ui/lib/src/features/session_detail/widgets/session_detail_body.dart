@@ -180,8 +180,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   }
 
   /// Opens the Prompts screen on the prompt the transcript is on, growing it
-  /// from [origin], in global coordinates.
-  void _openPrompts({required Offset origin}) {
+  /// from [origin], in global coordinates, and reports the [entry] it came from.
+  void _openPrompts({required Offset origin, required AnalyticsPromptsEntry entry}) {
     final cubit = context.read<SessionDetailCubit>();
     final state = cubit.state;
     if (_prompts != null || state is! SessionDetailLoaded) return;
@@ -196,8 +196,15 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       () => _prompts = (anchorMessageId: _currentPromptId.value, list: _promptListOf(state: state), origin: grownFrom),
     );
     _transition.forward();
-    cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar);
+    cubit.reportPromptsOpened(entry: entry);
   }
+
+  void _openPromptsFromBar({required Offset origin}) =>
+      _openPrompts(origin: origin, entry: AnalyticsPromptsEntry.sessionBar);
+
+  /// Grows the Prompts screen from the pinching fingers.
+  void _openPromptsFromPinch({required Offset focalPoint}) =>
+      _openPrompts(origin: focalPoint, entry: AnalyticsPromptsEntry.pinch);
 
   /// The prompts the transcript renders from [state]'s messages.
   static TranscriptPromptList _promptListOf({required SessionDetailLoaded state}) {
@@ -360,7 +367,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           );
     final pageChrome = widget.pageChrome;
     final content = _buildContent(context: context, state: state, columnWidths: pageChrome?.columnWidths);
-    final openPrompts = state is SessionDetailLoaded ? _openPrompts : null;
+    final openPrompts = state is SessionDetailLoaded ? _openPromptsFromBar : null;
     final prompts = _prompts;
     final promptsOpen = prompts != null && state is SessionDetailLoaded;
     // The screen lies over the page, which stays built beneath it, unmoved and
@@ -659,6 +666,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                 columnWidths: columnWidths,
                 currentPromptId: _currentPromptId,
                 jumpNotifier: _jumpNotifier,
+                onPinchIn: _openPromptsFromPinch,
               )
             : SessionDetailLoadedView.interactive(
                 projectId: widget.projectId,
@@ -677,6 +685,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                 columnWidths: columnWidths,
                 currentPromptId: _currentPromptId,
                 jumpNotifier: _jumpNotifier,
+                onPinchIn: _openPromptsFromPinch,
               ),
       SessionDetailHarnessUnavailable(:final interaction, :final session) => Center(
         child: PregoTopBarInsetBuilder(

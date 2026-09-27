@@ -57,6 +57,9 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   /// Fold switches the list asked for.
   int foldRequests = 0;
 
+  /// The focal points of the pinches in that asked for the Prompts screen.
+  final List<Offset> pinchIns = [];
+
   final currentPromptId = ValueNotifier<String?>(null);
   final jumpNotifier = TranscriptJumpNotifier();
 
@@ -256,6 +259,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           },
           currentPromptId: currentPromptId,
           jumpNotifier: jumpNotifier,
+          onPinchIn: ({required focalPoint}) => pinchIns.add(focalPoint),
           topInset: widget.topInset,
           streamingText: _streamingText,
           children: _children,
@@ -2572,19 +2576,19 @@ void main() {
     final shortTurns = _turns(count: 20, promptLines: 1, answers: 1, paragraphs: 12);
     Offset center(WidgetTester tester) => tester.getCenter(find.byKey(_listViewKey));
 
-    testWidgets("in folds once, and out unfolds once", (tester) async {
+    testWidgets("in opens the Prompts screen once, and out does nothing", (tester) async {
       final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
 
       await _touchPinch(tester, center: center(tester), from: 300, to: 40);
-      expect(find.byType(TranscriptTurnStub), findsWidgets);
-      expect(harness.foldRequests, 1);
+      expect(harness.pinchIns, hasLength(1));
 
       await _touchPinch(tester, center: center(tester), from: 40, to: 300);
-      expect(find.byType(TranscriptTurnStub), findsNothing);
-      expect(harness.foldRequests, 2);
+      expect(harness.pinchIns, hasLength(1));
+      expect(harness.foldRequests, 0);
+      expect(_position(tester).pixels, 0);
     }, variant: _pinchPlatforms);
 
-    testWidgets("with one finger held still folds on a vertical pinch", (tester) async {
+    testWidgets("with one finger held still opens on a vertical pinch", (tester) async {
       final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
 
       await _touchPinch(
@@ -2596,50 +2600,45 @@ void main() {
         stillFinger: true,
       );
 
-      expect(find.byType(TranscriptTurnStub), findsWidgets);
-      expect(harness.foldRequests, 1);
+      expect(harness.pinchIns, hasLength(1));
+      expect(_position(tester).pixels, 0);
     }, variant: _pinchPlatforms);
 
-    testWidgets("on a trackpad folds and unfolds", (tester) async {
+    testWidgets("on a trackpad opens on a pinch in, not out", (tester) async {
       final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
 
       await _trackpadPinch(tester, center: center(tester), scale: 0.6);
-      expect(find.byType(TranscriptTurnStub), findsWidgets);
+      expect(harness.pinchIns, [center(tester)]);
 
       await _trackpadPinch(tester, center: center(tester), scale: 1.6);
-      expect(find.byType(TranscriptTurnStub), findsNothing);
-      expect(harness.foldRequests, 2);
+      expect(harness.pinchIns, hasLength(1));
     }, variant: _pinchPlatforms);
 
-    testWidgets("below the thresholds switches, scrolls and detaches nothing", (tester) async {
+    testWidgets("below the threshold opens, scrolls and detaches nothing", (tester) async {
       final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
 
       await _touchPinch(tester, center: center(tester), from: 200, to: 180, axis: const Offset(0, 1));
       await _trackpadPinch(tester, center: center(tester), scale: 0.9);
 
-      expect(harness.foldRequests, 0);
+      expect(harness.pinchIns, isEmpty);
       expect(_position(tester).pixels, 0);
       expect(find.byKey(_jumpToLatestKey), findsNothing);
     }, variant: _pinchPlatforms);
 
-    testWidgets("while following holds the turn under the fingers and stops following", (tester) async {
-      await _pumpTurns(tester, messages: shortTurns, folded: true);
-      final stub = _messageKey("session-detail-turn-u17");
-      final top = _topOf(tester, "u17");
+    testWidgets("while following opens, moves nothing and keeps following", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
+      final focalPoint = center(tester) + const Offset(-60, 90);
 
-      await _trackpadPinch(tester, center: tester.getCenter(stub), scale: 1.6);
+      await _trackpadPinch(tester, center: focalPoint, scale: 0.6);
 
-      expect(_messageKey("a17-0"), findsOneWidget);
-      expect(_topOf(tester, "u17"), moreOrLessEquals(top, epsilon: 1));
-      expect(_position(tester).pixels, greaterThan(20));
-      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+      expect(harness.pinchIns, [focalPoint]);
+      expect(_position(tester).pixels, 0);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
     }, variant: _pinchPlatforms);
 
-    testWidgets("while reading history holds the turn under the fingers and stays detached", (tester) async {
-      await _pumpTurns(tester, messages: shortTurns, folded: false);
+    testWidgets("while reading history opens, moves nothing and stays detached", (tester) async {
+      final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
       await _scrollRowTo(tester, rowId: "u8", top: 300);
-      // The turn at the top edge is an earlier one.
-      expect(tester.getTopLeft(_messageKey("a7-0")).dy, lessThan(_topInset));
 
       await _touchPinch(
         tester,
@@ -2648,17 +2647,19 @@ void main() {
         to: 40,
       );
 
-      expect(_messageKey("session-detail-turn-u8"), findsOneWidget);
+      expect(harness.pinchIns, hasLength(1));
       expect(_topOf(tester, "u8"), moreOrLessEquals(300, epsilon: 1));
       expect(find.byKey(_jumpToLatestKey), findsOneWidget);
     }, variant: _pinchPlatforms);
 
-    testWidgets("while reading history stays detached when its hold clamps at the latest edge", (tester) async {
+    testWidgets("while reading history near the latest edge stays detached as output arrives", (tester) async {
       final harness = await _pumpTurns(tester, messages: shortTurns, folded: false);
       await _scrollRowTo(tester, rowId: "a18-0", top: _topInset - 100);
+      final pixels = _position(tester).pixels;
 
       await _touchPinch(tester, center: tester.getCenter(_messageKey("a18-0")), from: 300, to: 40);
-      expect(_position(tester).pixels, lessThan(1));
+      expect(harness.pinchIns, hasLength(1));
+      expect(_position(tester).pixels, pixels);
 
       harness.appendNewestMessage(_message(messageId: "late", role: "assistant", text: "Late output"));
       await tester.pumpAndSettle();

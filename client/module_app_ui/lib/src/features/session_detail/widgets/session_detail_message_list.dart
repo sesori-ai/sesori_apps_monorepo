@@ -97,6 +97,10 @@ class const SessionDetailMessageList({
   /// Asks the list to move to a message, such as a prompt tapped on the
   /// Prompts screen.
   required final TranscriptJumpNotifier jumpNotifier,
+
+  /// A pinch in on the transcript, with its focal point in global
+  /// coordinates: opens the Prompts screen, grown from there.
+  required final void Function({required Offset focalPoint}) onPinchIn,
   final String? retryErrorMessage,
 
   /// Height of the floating composer overlaying the list's bottom edge. Used
@@ -271,8 +275,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   _TurnAnchor? _anchor;
 
   /// Captured when a pinch's first pointer lands, before a trackpad pan-zoom
-  /// start detaches the list, so a pinch that switches nothing leaves
-  /// following alone.
+  /// start detaches the list, so a pinch leaves following alone.
   bool _pinchStartedFollowing = false;
   bool _pinchDetachSuppressed = false;
 
@@ -667,18 +670,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     ];
   }
 
-  /// The turn of the built row under [globalPosition].
-  TranscriptTurn? _turnAt({required Offset globalPosition}) {
-    final list = context.findRenderObject();
-    if (list is! RenderBox) return null;
-    final y = list.globalToLocal(globalPosition).dy;
-    for (final rowId in _rowContexts.keys) {
-      final span = _spanOf(rowId: rowId);
-      if (span != null && span.top <= y && y < span.bottom) return _rowTurns[rowId];
-    }
-    return null;
-  }
-
   void _onPinchPointerDown() => _pinchStartedFollowing = _follow.following;
 
   /// Keeps a list that followed when the pinch began following while it
@@ -687,18 +678,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     if (!_pinchStartedFollowing || _pinchDetachSuppressed) return;
     _pinchDetachSuppressed = true;
     _follow.suppressDetach();
-  }
-
-  /// Switches to [folded] and holds the turn under the fingers, like a button
-  /// holds the top-edge turn. The hold's jump stops following, as theirs does.
-  void _onPinchFoldRequested({required bool folded, required Offset focalPoint}) {
-    if (folded == widget.transcriptFolded) return;
-    // A switching pinch stops following, so the hold's jump must detach.
-    _releasePinchDetachSuppression();
-    if (_turnAt(globalPosition: focalPoint) ?? _topEdgeTurn() case final turn?) {
-      _holdTurn(turn: turn, folded: folded);
-    }
-    widget.onTranscriptFoldedChanged(folded: folded);
   }
 
   void _onPinchGestureEnd() {
@@ -933,7 +912,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       child: TranscriptPinchDetector(
         onPointerDown: _onPinchPointerDown,
         onPinchStart: _onPinchStart,
-        onFoldRequested: _onPinchFoldRequested,
+        onPinchIn: widget.onPinchIn,
         onGestureEnd: _onPinchGestureEnd,
         child: NotificationListener<Notification>(
           onNotification: _onScrollNotification,
