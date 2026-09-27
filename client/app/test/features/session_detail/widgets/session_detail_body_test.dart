@@ -648,6 +648,7 @@ void main() {
         pluginId: "opencode",
         startedAt: DateTime.now(),
         followUpIds: const {},
+        acceptedFollowUps: const [],
       ),
     );
     when(() => cubit.state).thenReturn(state);

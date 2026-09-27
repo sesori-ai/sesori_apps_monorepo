@@ -936,6 +936,7 @@ void main() {
           pluginId: "claude",
           startedAt: clock.now().subtract(const Duration(seconds: 3)),
           followUpIds: const {},
+          acceptedFollowUps: const [],
         ),
       ),
     );
@@ -962,6 +963,7 @@ void main() {
           pluginId: "claude",
           startedAt: clock.now(),
           followUpIds: const {},
+          acceptedFollowUps: const [],
         ),
       ),
     );

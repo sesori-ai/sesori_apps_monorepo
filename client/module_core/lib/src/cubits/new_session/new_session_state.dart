@@ -146,7 +146,9 @@ sealed class NewSessionState with _$NewSessionState {
     required NewSessionPhase phase,
   }) = NewSessionComposing;
 
-  const factory created({required Session session}) = NewSessionCreated;
+  /// [launchId] names the launch whose handoff the session screen takes; the
+  /// cubit releases it on close in case the view never navigated there.
+  const factory created({required Session session, required String launchId}) = NewSessionCreated;
 }
 
 typedef AgentModelData = ({

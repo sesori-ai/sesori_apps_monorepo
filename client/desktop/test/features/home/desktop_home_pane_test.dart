@@ -313,7 +313,7 @@ void main() {
       await pumpStart(
         tester: tester,
         entries: const {},
-        states: Stream.value(NewSessionState.created(session: created)),
+        states: Stream.value(NewSessionState.created(session: created, launchId: "launch-1")),
       );
       await tester.pump();
 

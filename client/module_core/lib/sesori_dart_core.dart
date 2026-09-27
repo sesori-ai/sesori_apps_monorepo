@@ -149,6 +149,7 @@ export "src/foundation/models/product_analytics/installation_analytics_event.dar
 export "src/foundation/models/product_analytics/product_analytics_event.dart";
 export "src/foundation/models/product_analytics/product_analytics_preference.dart";
 export "src/foundation/models/session_interaction_state.dart";
+export "src/foundation/models/session_launch/launch_follow_up.dart";
 export "src/foundation/models/session_launch/session_launch.dart";
 export "src/foundation/models/session_launch/session_launch_handoff.dart";
 export "src/foundation/models/session_launch/session_launch_outcome.dart";

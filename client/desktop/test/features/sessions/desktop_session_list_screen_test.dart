@@ -242,7 +242,7 @@ void main() {
   });
 
   testWidgets("a session started from an empty project opens", (tester) async {
-    newSessionStates = Stream.value(NewSessionState.created(session: testSession(id: "created")));
+    newSessionStates = Stream.value(NewSessionState.created(session: testSession(id: "created"), launchId: "launch-1"));
     await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: const []);
     await tester.pump();
 
@@ -278,7 +278,7 @@ void main() {
     // Archived would unmount the composer mid-creation.
     expect(tester.widget<PregoButtonsSolid>(find.byKey(const Key("desktop-project-page-archived"))).onPressed, isNull);
 
-    states.add(NewSessionState.created(session: created));
+    states.add(NewSessionState.created(session: created, launchId: "launch-1"));
     await tester.pump();
     await tester.pump();
     expect(opened, ["created"]);

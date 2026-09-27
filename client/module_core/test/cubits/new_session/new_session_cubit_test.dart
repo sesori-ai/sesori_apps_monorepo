@@ -2282,13 +2282,37 @@ void main() {
         response.complete(ApiResponse.success(testSession(id: "s-1")));
         await pending;
         await Future<void>.delayed(Duration.zero);
-        expect(cubit.state, NewSessionState.created(session: testSession(id: "s-1")));
+        expect(
+          cubit.state,
+          NewSessionState.created(
+            session: testSession(id: "s-1"),
+            launchId: sending.launchId,
+          ),
+        );
 
-        await cubit.close();
+        // The session screen takes the handoff while building, before this
+        // route unmounts and closes the cubit.
         final handoff = launchRepository.takeHandoff(sessionId: "s-1");
+        await cubit.close();
         expect(handoff?.submission, same(sending.submission));
         expect(handoff?.startedAt, sending.startedAt);
         expect(handoff?.pluginId, "plugin-1");
+      });
+
+      test("closing after success without opening the session releases the first message", () async {
+        final cubit = buildCubit(launchRepository: launchRepository);
+        await waitForComposer(cubit);
+
+        final pending = send(cubit);
+        response.complete(ApiResponse.success(testSession(id: "s-1")));
+        await pending;
+        await Future<void>.delayed(Duration.zero);
+        expect(cubit.state, isA<NewSessionCreated>());
+
+        // The view skipped navigating because the user had moved elsewhere.
+        await cubit.close();
+
+        expect(launchRepository.takeHandoff(sessionId: "s-1"), isNull);
       });
 
       test("leaving mid-create releases the first message, and the late success leaves nothing behind", () async {

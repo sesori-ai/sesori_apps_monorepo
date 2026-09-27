@@ -141,6 +141,108 @@ void main() {
     expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNotNull);
     expect(storage.readAll(), isEmpty);
   });
+
+  group("follow-ups", () {
+    late List<String> sentPromptIds;
+    late List<ApiResponse<void>> sendResponses;
+
+    QueuedSessionSubmission followUp({required String promptId}) => QueuedSessionSubmission.text(
+      promptId: promptId,
+      text: "and then $promptId",
+      inputMode: ComposerInputMode.typed,
+      attachments: const [],
+      agent: null,
+      agentModel: null,
+      fastMode: false,
+    );
+
+    setUp(() {
+      sentPromptIds = [];
+      sendResponses = [];
+      when(
+        () => sessionRepository.sendMessage(
+          sessionId: "session-1",
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((invocation) async {
+        sentPromptIds.add(invocation.namedArguments[#promptId] as String);
+        return sendResponses.isEmpty ? ApiResponse.success(null) : sendResponses.removeAt(0);
+      });
+    });
+
+    Future<void> launchWithFollowUps() async {
+      final pending = launch();
+      service.addFollowUp(
+        launchId: "launch-1",
+        submission: followUp(promptId: "prm_a"),
+      );
+      service.addFollowUp(
+        launchId: "launch-1",
+        submission: followUp(promptId: "prm_b"),
+      );
+      // The composer closes before the bridge answers; nothing watches.
+      service.releaseHandoff(launchId: "launch-1");
+      expect(sentPromptIds, isEmpty, reason: "follow-ups wait for the session");
+      response.complete(ApiResponse.success(testSession(id: "session-1")));
+      await pending;
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    test("are delivered in press order once the session exists, with no screen open", () async {
+      await launchWithFollowUps();
+
+      expect(sentPromptIds, ["prm_a", "prm_b"]);
+      expect(storage.readAll(), isEmpty);
+      expect(feedbackPromptService.positiveInteractions, 3);
+      verify(
+        () => productAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionMessageSent(
+            submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          ),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      ).called(2);
+    });
+
+    test("a failure is kept and logged with the original error, holds the rest, and retries unchanged", () async {
+      final records = <LogRecord>[];
+      setLogSink(sink: _RecordingSink(records: records));
+      addTearDown(() => setLogSink(sink: const StdoutLogSink()));
+      sendResponses.add(ApiResponse.error(ApiError.generic()));
+
+      await launchWithFollowUps();
+
+      expect(sentPromptIds, ["prm_a"]);
+      expect(storage.read(launchId: "launch-1")?.followUps.first, isA<FailedLaunchFollowUp>());
+      expect(records.single.message, "Failed to send follow-up prm_a of launch launch-1 to session session-1");
+      expect(records.single.diagnosticError, isNotNull);
+      expect(feedbackPromptService.failures, 1);
+
+      service.retryFollowUp(promptId: "prm_a");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(sentPromptIds, ["prm_a", "prm_a", "prm_b"]);
+      expect(storage.readAll(), isEmpty);
+    });
+
+    test("cancelling a failed follow-up lets the next one go", () async {
+      sendResponses.add(ApiResponse.error(ApiError.generic()));
+      await launchWithFollowUps();
+
+      service.cancelFollowUp(promptId: "prm_a");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(sentPromptIds, ["prm_a", "prm_b"]);
+      expect(storage.readAll(), isEmpty);
+    });
+  });
 }
 
 class _RecordingSink({required final List<LogRecord> records}) implements LogSink {

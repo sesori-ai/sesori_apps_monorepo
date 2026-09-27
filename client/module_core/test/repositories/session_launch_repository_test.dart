@@ -46,7 +46,13 @@ void main() {
     final handoff = repository.takeHandoff(sessionId: "session-1");
     expect(
       handoff,
-      SessionLaunchHandoff(submission: submission, pluginId: "claude", startedAt: startedAt, followUpIds: const {}),
+      SessionLaunchHandoff(
+        submission: submission,
+        pluginId: "claude",
+        startedAt: startedAt,
+        followUpIds: const {},
+        acceptedFollowUps: const [],
+      ),
     );
     expect(repository.takeHandoff(sessionId: "session-1"), isNull);
     expect(storage.readAll(), isEmpty, reason: "nothing is owed once the handoff is taken");
@@ -62,10 +68,7 @@ void main() {
   test("a launch released while pending promotes to nothing left to hand over", () async {
     start();
     repository.releaseHandoff(launchId: "launch-1");
-    expect(
-      storage.read(launchId: "launch-1"),
-      isA<PendingSessionLaunch>().having((l) => l.submission, "submission", isNull),
-    );
+    expect(storage.read(launchId: "launch-1"), isA<ReleasedPendingSessionLaunch>());
 
     repository.promote(
       launchId: "launch-1",
@@ -127,5 +130,116 @@ void main() {
 
     expect(repository.takeHandoff(sessionId: "session-2"), isNotNull);
     expect(storage.readAll().single, isA<PendingSessionLaunch>().having((l) => l.launchId, "launchId", "launch-1"));
+  });
+
+  group("follow-ups", () {
+    QueuedSessionSubmission followUp({required String promptId}) => QueuedSessionSubmission.text(
+      promptId: promptId,
+      text: "and then $promptId",
+      inputMode: ComposerInputMode.typed,
+      attachments: const [],
+      agent: null,
+      agentModel: null,
+      fastMode: false,
+    );
+
+    void promote() => repository.promote(
+      launchId: "launch-1",
+      session: testSession(id: "session-1"),
+    );
+
+    String? begin() => repository.beginFollowUp(launchId: "launch-1")?.submission.promptId;
+
+    test("wait for the session, then begin one at a time in press order", () {
+      start();
+      repository.addFollowUp(
+        launchId: "launch-1",
+        submission: followUp(promptId: "prm_a"),
+      );
+      repository.addFollowUp(
+        launchId: "launch-1",
+        submission: followUp(promptId: "prm_b"),
+      );
+      expect(begin(), isNull, reason: "there is no session to send to yet");
+
+      promote();
+      expect(repository.beginFollowUp(launchId: "launch-1")?.sessionId, "session-1");
+      expect(begin(), isNull, reason: "the one ahead is still sending");
+
+      repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+      expect(begin(), "prm_b");
+    });
+
+    test("a failed follow-up holds the ones behind it until it is retried or cancelled", () {
+      start();
+      promote();
+      repository.addFollowUp(
+        launchId: "launch-1",
+        submission: followUp(promptId: "prm_a"),
+      );
+      repository.addFollowUp(
+        launchId: "launch-1",
+        submission: followUp(promptId: "prm_b"),
+      );
+      begin();
+      repository.followUpFailed(launchId: "launch-1", promptId: "prm_a", failure: PromptSendFailure.rejected);
+      expect(begin(), isNull);
+
+      expect(repository.retryFollowUp(promptId: "prm_a"), "launch-1");
+      expect(begin(), "prm_a", reason: "a retry resends under the same promptId");
+      repository.followUpFailed(launchId: "launch-1", promptId: "prm_a", failure: PromptSendFailure.uncertain);
+
+      expect(repository.cancelFollowUp(promptId: "prm_a"), "launch-1");
+      expect(begin(), "prm_b");
+      expect(repository.cancelFollowUp(promptId: "prm_b"), isNull, reason: "a sending follow-up cannot be cancelled");
+    });
+
+    test("the handoff carries the accepted ones, and the launch goes once nothing is owed", () async {
+      start();
+      repository.addFollowUp(
+        launchId: "launch-1",
+        submission: followUp(promptId: "prm_a"),
+      );
+      repository.addFollowUp(
+        launchId: "launch-1",
+        submission: followUp(promptId: "prm_b"),
+      );
+      promote();
+      begin();
+      repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+
+      final handoff = repository.takeHandoff(sessionId: "session-1");
+      expect(handoff?.acceptedFollowUps.map((submission) => submission.promptId), ["prm_a"]);
+      expect(handoff?.followUpIds, {"prm_a", "prm_b"});
+
+      final watched = <List<LaunchFollowUp>>[];
+      final watch = repository.watchForSession(sessionId: "session-1").listen(watched.add);
+      addTearDown(watch.cancel);
+      await Future<void>.delayed(Duration.zero);
+      expect(watched.single.single, isA<QueuedLaunchFollowUp>());
+
+      begin();
+      repository.followUpAccepted(launchId: "launch-1", promptId: "prm_b");
+      await Future<void>.delayed(Duration.zero);
+
+      expect(watched.last, isEmpty);
+      expect(watched.expand((followUps) => followUps).whereType<AcceptedLaunchFollowUp>(), hasLength(1));
+      expect(storage.readAll(), isEmpty);
+    });
+
+    test("a launch released before its session still delivers its follow-ups", () {
+      start();
+      repository.addFollowUp(
+        launchId: "launch-1",
+        submission: followUp(promptId: "prm_a"),
+      );
+      repository.releaseHandoff(launchId: "launch-1");
+      promote();
+
+      expect(storage.read(launchId: "launch-1"), isA<ReconcilingSessionLaunch>());
+      expect(begin(), "prm_a");
+      repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+      expect(storage.readAll(), isEmpty);
+    });
   });
 }
