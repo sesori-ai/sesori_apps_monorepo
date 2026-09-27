@@ -26,6 +26,7 @@ class const AccountRow({
 
     return PregoGroupedRow(
       leading: const PregoAvatarUser(),
+      leadingWidth: 40,
       title: hasUsername ? Text(username, overflow: TextOverflow.ellipsis) : provider,
       subtitle: hasUsername ? provider : null,
       trailing: onTap != null ? const Icon(TablerRegular.chevron_right) : null,

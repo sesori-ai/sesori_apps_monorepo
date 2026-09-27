@@ -85,7 +85,7 @@ void main() {
       _harness(
         const PregoGroupedRows(
           children: [
-            PregoGroupedRow(leading: PregoAvatarUser(), title: Text("Avatar")),
+            PregoGroupedRow(leading: PregoAvatarUser(), leadingWidth: 40, title: Text("Avatar")),
             PregoGroupedRow(icon: TablerRegular.bell, title: Text("Glyph")),
             PregoGroupedRow(title: Text("Last")),
           ],

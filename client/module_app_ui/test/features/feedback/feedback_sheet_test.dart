@@ -256,6 +256,29 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("closing an automatic sheet before its OS prompt closes it requests no review", (tester) async {
+    final appReviewClient = _MockAppReviewClient();
+    when(() => appReviewClient.requestReviewOpensStore).thenReturn(false);
+    await cubit.close();
+    cubit = FeedbackSheetCubit(
+      appReviewClient: appReviewClient,
+      feedbackRepository: feedbackRepository,
+      feedbackPromptService: FakeFeedbackPromptService(),
+      productAnalyticsService: productAnalyticsService,
+      source: FeedbackSource.automatic,
+    );
+    await open(tester: tester);
+
+    await tester.tap(love);
+    await tester.pump();
+    // Past the confirmation handoff, before the OS prompt close.
+    await tester.pump(const Duration(milliseconds: 500));
+    await tapAndSettle(tester: tester, finder: close);
+
+    expect(outcomes.single, isA<FeedbackSheetOutcomeLoveNotNow>());
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("a handoff that falls while the sheet closes does not switch to the review step", (tester) async {
     await open(tester: tester);
     await tester.tap(love);

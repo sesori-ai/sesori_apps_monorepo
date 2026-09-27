@@ -165,13 +165,16 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
   /// the OS review prompt a beat later, while the hero keeps celebrating.
   void _celebrationTicked() {
     final cubit = context.read<FeedbackSheetCubit>();
-    if (cubit.state is! FeedbackSheetCelebrating && cubit.state is! FeedbackSheetReviewPromptPending) return;
+    if (cubit.state is! FeedbackSheetCelebrating) return;
     // A sheet closed mid-celebration keeps its content while it animates out
     // instead of switching to the review step, and is not popped twice.
     if (ModalRoute.of(context)?.isCurrent == false) return;
     final elapsed = feedbackCelebrationDuration * _celebration.value;
-    if (elapsed >= feedbackCelebrationHandoff) cubit.finishCelebration();
-    if (cubit.state is FeedbackSheetReviewPromptPending && elapsed >= feedbackReviewPromptCloseDelay) _close();
+    // The OS prompt is committed only as the sheet closes, so a dismissal
+    // before then stays a plain "not now".
+    if (elapsed < (cubit.reviewLeavesApp ? feedbackCelebrationHandoff : feedbackReviewPromptCloseDelay)) return;
+    cubit.finishCelebration();
+    if (cubit.state is FeedbackSheetReviewPromptPending) _close();
   }
 
   void _chooseCouldBeBetter() => context.read<FeedbackSheetCubit>().chooseCouldBeBetter();

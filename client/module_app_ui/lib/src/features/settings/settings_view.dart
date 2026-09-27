@@ -92,6 +92,7 @@ class const SettingsView({
                       else
                         PregoGroupedRow(
                           leading: const PregoAvatarUser(),
+                          leadingWidth: 40,
                           title: Text(loc.settingsSectionAccount),
                           trailing: const Icon(TablerRegular.chevron_right),
                           onTap: onOpenProfile,
@@ -100,6 +101,7 @@ class const SettingsView({
                       // so both rows of the section align.
                       PregoGroupedRow(
                         leading: const PregoAvatarUser(icon: TablerRegular.heart),
+                        leadingWidth: 40,
                         title: Text(loc.settingsRateSesori),
                         subtitle: Text(loc.settingsRateSesoriSubtitle),
                         trailing: const Icon(TablerRegular.chevron_right),

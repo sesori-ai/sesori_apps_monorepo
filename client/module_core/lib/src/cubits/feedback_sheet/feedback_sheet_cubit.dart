@@ -38,7 +38,7 @@ class FeedbackSheetCubit({
   void finishCelebration() {
     if (state is! FeedbackSheetCelebrating) return;
     emit(
-      _reviewLeavesApp ? const FeedbackSheetState.reviewConfirmation() : const FeedbackSheetState.reviewPromptPending(),
+      reviewLeavesApp ? const FeedbackSheetState.reviewConfirmation() : const FeedbackSheetState.reviewPromptPending(),
     );
   }
 
@@ -132,7 +132,7 @@ class FeedbackSheetCubit({
 
   /// Whether the review leaves Sesori for the store, which the user confirms
   /// first so leaving the app is never a surprise.
-  bool get _reviewLeavesApp => switch (_source) {
+  bool get reviewLeavesApp => switch (_source) {
     FeedbackSource.automatic => _appReviewClient.requestReviewOpensStore,
     FeedbackSource.settings => true,
   };
