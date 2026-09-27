@@ -31,6 +31,15 @@ const _cancelCommitRadius = 44.0;
 /// flicker the target or repeat its haptic.
 const _cancelDisengageRadius = 56.0;
 
+/// Reveals the whole composer, not just the caret, when the keyboard opens,
+/// so Send and the microphone stay above it on small screens. The bottom
+/// covers a caret on the draft's first line: the two 20px lines below it, the
+/// field's bottom padding, the gap, the 44px action row and the composer
+/// padding, plus Flutter's default 20px margin.
+final _composerScrollPadding = const EdgeInsets.all(20).copyWith(
+  bottom: 20 + 2 * 20 + PregoSpacing.md + PregoSpacing.md + 44 + PregoSpacing.sm,
+);
+
 enum _VoicePresentation() {
   idle,
   recording,
@@ -423,6 +432,7 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
               controller: _text,
               focusNode: _focus,
               scrollController: _textScroll,
+              scrollPadding: _composerScrollPadding,
               readOnly: !editable,
               keyboardType: TextInputType.multiline,
               textInputAction: TextInputAction.newline,

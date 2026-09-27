@@ -526,6 +526,36 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("the rating step holds still while a keyboard left by the screen below hides", (tester) async {
+    // A raised keyboard zeroes the bottom padding; viewPadding keeps it.
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    tester.view.padding = FakeViewPadding.zero;
+    tester.view.viewPadding = const FakeViewPadding(bottom: 34);
+    await open(tester: tester);
+    final raised = tester.getRect(improve);
+
+    tester.view.viewInsets = FakeViewPadding.zero;
+    tester.view.padding = const FakeViewPadding(bottom: 34);
+    await tester.pumpAndSettle();
+
+    expect(tester.getRect(improve), raised);
+    expect(tester.getRect(improve).bottom, lessThan(844 - 34));
+  });
+
+  testWidgets("typing on a small screen keeps Send and the microphone above the keyboard", (tester) async {
+    const keyboardTop = 640.0 - 280;
+    await open(tester: tester, size: const Size(320, 640));
+    await tapAndSettle(tester: tester, finder: improve);
+    await tester.ensureVisible(text);
+    await tester.pumpAndSettle();
+    await tester.showKeyboard(text);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 280);
+    await tester.pumpAndSettle();
+
+    expect(tester.getRect(send).bottom, lessThanOrEqualTo(keyboardTop));
+    expect(tester.getRect(find.byKey(const ValueKey("feedback-voice"))).bottom, lessThanOrEqualTo(keyboardTop));
+  });
+
   group("voice input", () {
     final microphone = find.byKey(const ValueKey("feedback-voice"));
     final waveform = find.byType(PregoVoiceWaveform);
