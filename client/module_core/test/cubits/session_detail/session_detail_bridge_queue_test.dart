@@ -16,6 +16,7 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/new_session_submission_snapshot.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/prompt_send_failure.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/launch_follow_up.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch.dart";
@@ -2553,6 +2554,49 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
+      });
+
+      test("a follow-up the bridge settled before its acceptance is not parked", () async {
+        final repository = launchedRepository(
+          followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+        );
+        final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
+        repository.beginFollowUp(launchId: "launch-1");
+
+        sessionEvents.add(
+          const SesoriSseEvent.sessionPromptSettled(sessionID: _sessionId, promptID: "prm_a") as SesoriSessionEvent,
+        );
+        await Future<void>.delayed(Duration.zero);
+        repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+        await Future<void>.delayed(Duration.zero);
+
+        expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
+      });
+
+      test("a failed follow-up the bridge settles anyway releases the prompts sent here", () async {
+        final sentTexts = <String>[];
+        stubSends(sentTexts: sentTexts);
+        final repository = launchedRepository(
+          followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+        );
+        final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
+        await cubit.sendMessage(
+          text: "after",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        );
+        repository.beginFollowUp(launchId: "launch-1");
+        repository.followUpFailed(launchId: "launch-1", promptId: "prm_a", failure: PromptSendFailure.uncertain);
+        await Future<void>.delayed(Duration.zero);
+        expect(sentTexts, isEmpty);
+
+        sessionEvents.add(
+          const SesoriSseEvent.sessionPromptSettled(sessionID: _sessionId, promptID: "prm_a") as SesoriSessionEvent,
+        );
+        await _awaitCondition(() => sentTexts.isNotEmpty);
+
+        expect(sentTexts, ["after"]);
       });
 
       test("a prompt sent here waits for the launch's follow-ups pressed before it", () async {

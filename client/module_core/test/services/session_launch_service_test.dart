@@ -242,6 +242,35 @@ void main() {
       expect(sentPromptIds, ["prm_a", "prm_b"]);
       expect(storage.readAll(), isEmpty);
     });
+
+    test("a follow-up the bridge settled while its send was in flight neither fails nor holds the rest", () async {
+      when(
+        () => sessionRepository.sendMessage(
+          sessionId: "session-1",
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((invocation) async {
+        final promptId = invocation.namedArguments[#promptId] as String;
+        sentPromptIds.add(promptId);
+        if (promptId != "prm_a") return ApiResponse.success(null);
+        // The bridge runs it and says so before the request itself errors.
+        service.settleFollowUp(promptId: promptId);
+        return ApiResponse.error(ApiError.generic());
+      });
+
+      await launchWithFollowUps();
+
+      expect(sentPromptIds, ["prm_a", "prm_b"]);
+      expect(storage.readAll(), isEmpty);
+      expect(feedbackPromptService.failures, 0);
+    });
   });
 }
 

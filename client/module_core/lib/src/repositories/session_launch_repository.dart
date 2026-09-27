@@ -120,16 +120,19 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
     _put(launch: launch.copyWith(followUps: [...followUps]..removeAt(index)));
   }
 
-  void followUpFailed({required String launchId, required String promptId, required PromptSendFailure failure}) {
+  /// Returns whether the failure was recorded; a follow-up the bridge settled
+  /// meanwhile is gone and did not fail.
+  bool followUpFailed({required String launchId, required String promptId, required PromptSendFailure failure}) {
     final launch = _storage.read(launchId: launchId);
-    if (launch == null) return;
+    if (launch == null) return false;
     final index = _indexOf(launch: launch, promptId: promptId);
-    if (index < 0) return;
+    if (index < 0) return false;
     _replaceFollowUp(
       launch: launch,
       index: index,
       followUp: LaunchFollowUp.failed(submission: launch.followUps[index].submission, failure: failure),
     );
+    return true;
   }
 
   /// Puts a failed follow-up back in its place as queued, unchanged, so its
@@ -161,6 +164,19 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
         _put(launch: launch.copyWith(followUps: [...launch.followUps]..removeAt(index)));
         return launch.launchId;
       }
+    }
+    return null;
+  }
+
+  /// Drops a follow-up the bridge has terminally accounted for, in whatever
+  /// state it is in, so its send outcome arriving later changes nothing.
+  /// Returns its launch, or null when no launch holds it.
+  String? settleFollowUp({required String promptId}) {
+    for (final launch in _storage.readAll().toList()) {
+      final index = _indexOf(launch: launch, promptId: promptId);
+      if (index < 0) continue;
+      _put(launch: launch.copyWith(followUps: [...launch.followUps]..removeAt(index)));
+      return launch.launchId;
     }
     return null;
   }

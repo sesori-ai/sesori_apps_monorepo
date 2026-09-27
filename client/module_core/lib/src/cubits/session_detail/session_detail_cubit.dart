@@ -282,17 +282,14 @@ class SessionDetailCubit(
 
   /// Parks each follow-up the launch delivered, the way this screen parks its
   /// own accepted sends, and releases this screen's queue once the launch owes
-  /// nothing more.
+  /// nothing more. The launch never reports one [_settlePrompt] already
+  /// forgot, so a settlement outrunning its acceptance leaves no ghost bubble.
   void _onLaunchFollowUps(List<LaunchFollowUp> followUps) {
     if (isClosed) return;
     var owed = false;
     var adopted = false;
     for (final followUp in followUps) {
       if (followUp case AcceptedLaunchFollowUp(:final submission)) {
-        // Its stamped user message can outrun the acceptance; one the
-        // transcript already shows is settled, and parking it would add a
-        // ghost bubble beside it.
-        if (_transcriptShowsPrompt(promptId: submission.promptId)) continue;
         _promptQueue.adoptAccepted(submission: submission, epoch: ++_parkEpoch);
         adopted = true;
       } else {
@@ -305,17 +302,13 @@ class SessionDetailCubit(
     if (released) _tryDrainQueue();
   }
 
-  /// Whether the loaded transcript renders the user message sent under
-  /// [promptId]. Before the first load the snapshot settles it instead.
-  bool _transcriptShowsPrompt({required String promptId}) {
-    final current = state;
-    if (current is! SessionDetailLoaded) return false;
-    for (final message in current.messages) {
-      if (message.info case MessageUser(promptId: final messagePromptId) when messagePromptId == promptId) {
-        return message.hasRenderableUserContent;
-      }
-    }
-    return false;
+  /// Forgets every staged copy of a prompt the bridge terminally accounted
+  /// for: this screen's, and the launch's when it is a follow-up still in
+  /// flight or failed there, so its late send outcome neither parks nor
+  /// fails it.
+  void _settlePrompt({required String promptId}) {
+    _promptQueue.removeByPromptId(promptId);
+    _sessionLaunchService.settleFollowUp(promptId: promptId);
   }
 
   void _onYoloSettings(YoloSettingsResponse settings) {
@@ -1703,7 +1696,7 @@ class SessionDetailCubit(
     if (isClosed) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
-    _promptQueue.removeByPromptId(promptId);
+    _settlePrompt(promptId: promptId);
     final bridgePrompts = [
       for (final prompt in current.bridgeQueuedPrompts)
         if (prompt.id != promptId) prompt,
@@ -1759,7 +1752,7 @@ class SessionDetailCubit(
         _noticeStream.add(const SessionDetailQueueCancellationFailed());
         return;
       }
-      _promptQueue.removeByPromptId(promptId);
+      _settlePrompt(promptId: promptId);
       final current = state;
       if (current is! SessionDetailLoaded) return;
       final bridgePrompts = [
@@ -2183,7 +2176,7 @@ class SessionDetailCubit(
         // row until its first part arrives (same gate as the live path).
         owned.add(promptId);
         if (!message.hasRenderableUserContent) continue;
-        _promptQueue.removeByPromptId(promptId);
+        _settlePrompt(promptId: promptId);
       }
     }
     // A successful snapshot that holds neither the queue entry nor the

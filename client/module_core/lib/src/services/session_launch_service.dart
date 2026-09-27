@@ -61,6 +61,13 @@ class SessionLaunchService({
     if (launchId != null) unawaited(_deliverFollowUps(launchId: launchId));
   }
 
+  /// Forgets a follow-up the bridge already delivered or settled, whatever its
+  /// send reported or will report, so the ones behind it can send.
+  void settleFollowUp({required String promptId}) {
+    final launchId = _launchRepository.settleFollowUp(promptId: promptId);
+    if (launchId != null) unawaited(_deliverFollowUps(launchId: launchId));
+  }
+
   /// Creates the session and publishes its outcome on [outcomes].
   ///
   /// Success clears the composer selection captured here at Send, whether or
@@ -140,7 +147,8 @@ class SessionLaunchService({
   /// Sends the launch's follow-ups one at a time until none is queued. The
   /// repository marks each one sending before it goes, so a second call while
   /// one is in flight finds nothing to begin; a failure stops delivery until
-  /// the user retries or cancels it.
+  /// the user retries or cancels it, or the bridge settles it anyway. A
+  /// follow-up settled while in flight is gone, so its outcome records nothing.
   Future<void> _deliverFollowUps({required String launchId}) async {
     while (true) {
       final next = _launchRepository.beginFollowUp(launchId: launchId);
@@ -188,7 +196,9 @@ class SessionLaunchService({
         logw("Failed to send $context", error, stackTrace);
         failure = PromptSendFailure.uncertain;
       }
-      _launchRepository.followUpFailed(launchId: launchId, promptId: submission.promptId, failure: failure);
+      if (!_launchRepository.followUpFailed(launchId: launchId, promptId: submission.promptId, failure: failure)) {
+        continue;
+      }
       unawaited(_feedbackPromptService.recordFailure());
       return;
     }
