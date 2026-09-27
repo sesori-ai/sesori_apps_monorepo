@@ -18,7 +18,8 @@ import "package:sesori_mobile/core/platform/flutter_persistence_directory.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart" show AuthUser;
 
-// Run only on a slot-owned simulator/emulator. Separate invocations deliberately
+// Run on a slot-owned simulator/emulator, or an explicitly authorized physical
+// device with SESORI_NATIVE_PERSISTENCE_ALLOW_PHYSICAL=true. Separate invocations deliberately
 // leave native data in place: seed -> migrate -> reopen. Use --no-uninstall.
 // Preserve existing slot records; fence all auth/analytics HTTP requests.
 // The seeder uses the released ffa5935 plugin/keyspace/protection, not new-store
@@ -28,6 +29,8 @@ enum _Phase() {
   seed,
   migrate,
   reopen,
+  recover,
+  recoveredReopen,
 }
 
 const _phaseName = String.fromEnvironment("SESORI_NATIVE_PERSISTENCE_PHASE", defaultValue: "disabled");
@@ -85,7 +88,12 @@ void main() {
     final physical = Platform.isIOS
         ? (await devices.iosInfo).isPhysicalDevice
         : (await devices.androidInfo).isPhysicalDevice;
-    expect(physical, isFalse, reason: "Only explicitly owned simulators/emulators are admitted");
+    const allowPhysical = bool.fromEnvironment("SESORI_NATIVE_PERSISTENCE_ALLOW_PHYSICAL");
+    expect(
+      !physical || allowPhysical,
+      isTrue,
+      reason: "Physical devices require explicit user authorization and the physical-device opt-in",
+    );
 
     final module = _Module();
     final source = module.legacyNativeStorage();
@@ -136,13 +144,35 @@ void main() {
       expect(databaseFile.existsSync(), isTrue, reason: "Run migrate first; reopen must reuse its database");
     }
 
+    final recovery = phase == _Phase.recover || phase == _Phase.recoveredReopen;
+    final previousMaster = recovery ? await master.read() : null;
+    if (phase == _Phase.recover) {
+      expect(fingerprintFile.existsSync(), isTrue, reason: "Only a previously qualified fixture may be reset");
+      final database = PersistenceDatabase.open(
+        persistenceDirectory: FlutterPersistenceDirectory(directories: ApplicationSupportDirectoryClient()),
+        scope: _scope,
+      );
+      try {
+        // Inject the durable pending state, not an OS error. Startup must reset,
+        // never import this stale source over credentials established afterward.
+        await database.customStatement(
+          "UPDATE bool_values SET value = 0 WHERE key = 'deprecated_native_storage_v1_completed'",
+        );
+      } finally {
+        await database.close();
+      }
+      await _legacyWriter.write(key: "access_token", value: "native-fixture-stale-auth");
+    }
+
     getIt.skipDoubleRegistration = true;
     // Keep all persistence ports native. Only networking is fenced, so synthetic
     // auth cannot be submitted and analytics cannot contact a production sink.
     getIt.registerSingleton<http.Client>(
       MockClient((_) async => throw StateError("Unexpected fixture network request")),
     );
-    if (phase == _Phase.reopen) getIt.registerSingleton<LegacyNativeStorage>(_NoLegacyReads());
+    if (phase == _Phase.reopen || phase == _Phase.recoveredReopen) {
+      getIt.registerSingleton<LegacyNativeStorage>(_NoLegacyReads());
+    }
     addTearDown(() async {
       await getIt.reset();
       getIt.skipDoubleRegistration = false;
@@ -152,6 +182,35 @@ void main() {
       scope: _scope,
       firebaseEnabled: false,
       createAnalyticsRuntimeBootstrap: ({required crawlGateService}) async {
+        if (recovery) {
+          final database = getIt<PersistenceDatabase>();
+          final marker = await database
+              .customSelect(
+                "SELECT value FROM bool_values WHERE key = 'deprecated_native_storage_v1_completed'",
+              )
+              .getSingle();
+          expect(marker.read<int>("value"), 1);
+          expect(await source.readAll(), isEmpty);
+          expect(await getIt<AuthSession>().restoreLocalSession(), isFalse);
+          expect(await database.select(database.stringValues).get(), isEmpty);
+          final secrets = getIt<SecureStorageRepository>();
+          final fresh = _FixtureSecretKey(storageKey: "native-fixture-after-recovery");
+          if (phase == _Phase.recover) {
+            expect(await database.select(database.encryptedValues).get(), isEmpty);
+            expect(await master.read() != previousMaster, isTrue, reason: "Recovery replaces the native master");
+            await secrets.write(key: fresh, value: "fresh-fixture-value");
+          }
+          expect(await secrets.read(key: fresh), "fresh-fixture-value");
+          if (phase == _Phase.recoveredReopen) {
+            expect(await master.read() == previousMaster, isTrue, reason: "Completed recovery must not rotate again");
+          }
+          return AnalyticsRuntimeBootstrap(
+            capability: const AnalyticsRuntimeCapability.disabled(
+              reason: AnalyticsRuntimeDisabledReason.analyticsSinkUnavailable,
+            ),
+            crawlGate: Future.value(AnalyticsStoreCrawlGate.allow),
+          );
+        }
         await _expectImportedValues(source: source, fingerprintFile: fingerprintFile);
         final remaining = await source.readAll();
         expect(remaining.containsKey(_unknownKey), isTrue);
@@ -177,6 +236,7 @@ void main() {
         );
       },
     );
+    if (recovery) return;
     // Ordinary post-import writes must stay in Drift; old native items must not
     // return. Reopen performs these same assertions in a fresh OS process.
     final persister = getIt<PersisterRepository>();

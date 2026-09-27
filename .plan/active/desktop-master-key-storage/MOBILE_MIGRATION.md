@@ -5,6 +5,40 @@ Recorded 2026-09-26. Product source: `ac488d0` (production files unchanged from
 Flutter 3.47.5 / Dart 3.13.4; internal app 1.9.1+1, debug fixture with explicit
 **production persistence scope**. These are not store-distributed upgrade builds.
 
+## Physical-device follow-up after recovery fence
+
+User authorized Sesori-only changes on a connected physical iPhone 15, explicitly
+excluding whole-device erase/restore and other apps. Five independent signed
+Flutter integration invocations passed after merging #1808: `seed`, `migrate`,
+`reopen`, `recover`, and `recoveredReopen`. Each used `--no-uninstall` and the
+explicit `SESORI_NATIVE_PERSISTENCE_ALLOW_PHYSICAL=true` opt-in. No uninstall was
+needed; no whole-device operation, backup restore, or broad Keychain change ran.
+No bridge or account login was needed: all fixture HTTP remained fenced.
+
+- Initial migration preserved native-format fixture values, empty/scoped values,
+  pending opt-out and unknown native entries. Separate-process reopen passed.
+- Recovery injected the persisted false completion marker plus a synthetic stale
+  legacy token. Real production startup cleared the scoped destination/source,
+  replaced the native master, committed completion and remained logged out.
+- A newly written fixture secret survived another separate-process reopen;
+  completed recovery did not rotate its master again or reimport stale auth.
+- This is real native execution with synthetic data and an injected pending
+  state, not a store-distributed upgrade, OS-denial test, or a real fresh login.
+- After testing, a normal debug app was built, installed and launched without
+  uninstalling. Fixture production-scope data remains; debug uses development.
+
+Local logs: `.dart_tool/desktop-master-key-storage/physical-ios-*.log`.
+The fixture's analyzer passed. No private device identifier is published here.
+
+The user separately confirmed a physical Android running latest main preserved
+its long-standing login through the cutover, with no reinstall, data clearing or
+manual re-login. Record this as user-reported real upgrade/login continuity,
+not instrumented proof of every stored field or backup/restore behavior.
+
+Physical iOS backup restore is **not authorized**: only Sesori app/data changes
+are allowed. Restore, OS-denied native access and distributed iOS upgrade remain
+unverified. Do not erase the device to close these gates.
+
 ## Boundary and results
 
 Used the existing global `sesori-local-testing` slot workflow: owned iPhone 17 /
