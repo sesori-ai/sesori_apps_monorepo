@@ -400,7 +400,7 @@ this plan implements them and does not reopen them.
     [Architecture 10](#10-the-prompts-screen-steps-10-and-11) and
     [Architecture 15](#15-search-step-16).
 
-### User decision of 2026-09-27 (the iOS edge swipe)
+### User decisions of 2026-09-27 (the iOS edge swipe and the anchor tint)
 
 - **D40 On iOS, an edge swipe drags the Prompts layer away under the finger.**
   Chosen over "no swipe" and over making the screen a route.
@@ -411,6 +411,10 @@ this plan implements them and does not reopen them.
     ([Architecture 10](#10-the-prompts-screen-steps-10-and-11)). Android back and
     the close affordance are unchanged.
   - Implemented by step 12; see [Architecture 14](#14-the-transition-step-12).
+- **D41 The opening anchor's tint stays for as long as the Prompts screen is
+  open.** One boolean on the anchored row, with no animation in or out, and the
+  same under reduced motion. Implemented by step 11; see
+  [Opening anchored](#opening-anchored-on-the-prompt-you-were-reading-step-11).
 
 Defaults this plan adopts for the Prompts screen. **Each is a default the user
 may override:**
@@ -1317,8 +1321,8 @@ all reusing what already exists:
   animation: the list is already there on the first frame, which is also what keeps
   the opening transition from sliding content under the reader.
 - **The highlight.** `PromptSpineRow` takes one bool; the anchored row draws a
-  subtle background tint while the screen is open. No pulse, no timer, nothing that
-  moves.
+  subtle background tint for as long as the screen is open (D41). No pulse, no
+  timer, no fade, nothing that moves, and the same under reduced motion.
 - **Nothing to anchor.** An empty list, or an anchor that is not in the list, opens
   at the newest end with no highlight. One null check, not a fallback path.
 
@@ -2099,7 +2103,8 @@ No user-visible change.
   with each follow-up below its opener; sticky day headers, oldest day first, with
   the "No date" group above them; the fully untimed case with no time column and no
   day headers, and a mixed list where only some rows have a time; the opening
-  anchor — the top-edge prompt is highlighted and on screen, and an empty list or
+  anchor — the top-edge prompt is highlighted and on screen, stays tinted after
+  scrolling it away and back, also with reduced motion (D41), and an empty list or
   an unknown anchor opens at the newest end with no highlight; the total count row;
   opening and closing the layer leaves the transcript's scroll offset and follow
   state unchanged; tapping an opener and tapping a follow-up each reach that
@@ -2258,7 +2263,7 @@ settle on its own. None of them blocks step 10.
 5. Can the Windows and Linux rows of the matrix run on real machines?
 6. Defaults D9–D18 that survive: D11 (the turn rule), D12 (no stopped state) and
    D19–D23 stand unless you say otherwise. D32–D37 are this revision's defaults
-   and are equally open, except D34, which D39 superseded. D38–D40 are the
+   and are equally open, except D34, which D39 superseded. D38–D41 are the
    user's own decisions and are settled.
 
 Answered in round 4, kept here so the record is complete: list order (D39,
