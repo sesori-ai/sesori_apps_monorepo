@@ -35,12 +35,16 @@ and render above the current route, below the top navigation bar.
 - Alerts presented from asynchronous operations remain visible when the source
   row or modal is removed, and alerts raised from a modal or full-screen image
   viewer render above that route rather than behind it.
+- Alerts sit below the top bar and any connection banner showing, and follow the
+  banner as it appears or hides, without jumping. An alert raised from a context
+  above its screen's scaffold, or after its source screen was closed, is placed
+  below the screen showing when it appears.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: the owning widget suite proves each visual variant, placement below navigation, auto-dismiss, close-on-tap, upward-swipe dismissal, replacement including replacement during dismissal, interrupted entrance, entry/exit direction and responsiveness, fade-only reduced motion and live preference changes, live-region semantics, sizing for short and long text and for action-bearing alerts, and overlay inset behavior when a modal strips top padding. |
+| L1 Smoke | Automated: the owning widget suite proves each visual variant, placement below navigation, following a banner that appears or hides while the alert is visible (from a context inside or above the scaffold and from an explicit overlay), placement after the source screen is closed, auto-dismiss, close-on-tap, upward-swipe dismissal, replacement including replacement during dismissal, interrupted entrance, entry/exit direction and responsiveness, fade-only reduced motion and live preference changes, live-region semantics, sizing for short and long text and for action-bearing alerts, and overlay inset behavior when a modal strips top padding. |
 | L2 Routine | Client end to end on the release-target client platform: an alert raised by a real asynchronous operation survives removal of its source row or modal, and renders above a modal or full-screen image viewer. |
 | L3 Release | Client end to end: a session-attributed backend alert appears on the matching session detail or diffs route and stays suppressed elsewhere, while an unattributed backend alert shows app-wide. |
 | L4 Extended | Client end to end at accessibility text sizes: supporting text and actions expand the card without clipping. |
@@ -50,6 +54,8 @@ and render above the current route, below the top navigation bar.
 
 - An alert renders behind the top navigation bar, behind a modal, or behind the
   full-screen image viewer.
+- An alert overlaps a connection banner, stays put while a banner appears or
+  hides, or throws when shown after its source screen was closed.
 - A session-attributed alert appears on an unrelated route, or an unattributed
   alert is suppressed.
 - A replacement leaves two alerts visible, or replacing an alert that is still
