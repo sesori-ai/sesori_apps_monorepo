@@ -22,6 +22,36 @@ extension SessionMessagePresentation on MessageWithParts {
       },
     );
   }
+
+  /// What a user prompt says, wherever the app names it outside its bubble:
+  /// its whole text, else its first attachment's name, else null. Views show
+  /// their localized "Attachment" for null.
+  String? get promptText {
+    final text = parts.whereType<MessagePartText>().map((part) => part.text).join("\n");
+    if (text.isNotEmpty) return text;
+    final filename = switch (parts.whereType<MessagePartFile>().firstOrNull?.attachment) {
+      MessageAttachmentInlineImage(:final filename) ||
+      MessageAttachmentRemoteUrl(:final filename) ||
+      MessageAttachmentStoredImage(:final filename) ||
+      MessageAttachmentMetadata(:final filename) => filename?.trim(),
+      MessageAttachmentUnknown() || null => null,
+    };
+    return filename == null || filename.isEmpty ? null : filename;
+  }
+}
+
+/// The first line of [text] that holds more than whitespace, trimmed; null
+/// when none does. Stops at that line, since the text can be long.
+String? firstNonBlankLine({required String text}) {
+  var start = 0;
+  while (start < text.length) {
+    final newline = text.indexOf("\n", start);
+    final end = newline < 0 ? text.length : newline;
+    final line = text.substring(start, end).trim();
+    if (line.isNotEmpty) return line;
+    start = end + 1;
+  }
+  return null;
 }
 
 extension SessionTranscriptReplies on List<MessageWithParts> {

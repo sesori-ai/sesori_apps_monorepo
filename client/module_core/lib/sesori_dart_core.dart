@@ -111,6 +111,7 @@ export "src/cubits/session_detail/session_detail_resolvers.dart";
 export "src/cubits/session_detail/session_detail_state.dart";
 export "src/cubits/session_detail/transcript_activity.dart";
 export "src/cubits/session_detail/transcript_builder.dart";
+export "src/cubits/session_detail/transcript_prompt_list.dart";
 export "src/cubits/session_detail/transcript_turns.dart";
 export "src/cubits/session_diffs/diff_cubit.dart";
 export "src/cubits/session_diffs/diff_state.dart";

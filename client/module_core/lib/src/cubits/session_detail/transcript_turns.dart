@@ -164,7 +164,7 @@ class const TranscriptTurnBuilder() {
             ending = _endingIn(part: part) ?? ending;
           }
         case MessageError(:final errorMessage):
-          ending = TranscriptTurnFailed(errorLine: _firstLine(text: errorMessage));
+          ending = TranscriptTurnFailed(errorLine: firstNonBlankLine(text: errorMessage));
         case MessageAssistant() || MessageUser():
           // Automation and follow-ups neither answer nor fail the turn.
           break;
@@ -179,7 +179,7 @@ class const TranscriptTurnBuilder() {
   /// The outcome of a turn that ends in [part], or null when [part] shows no
   /// output. Only text gives an excerpt, and only a failed step fails.
   static TranscriptTurnOutcome? _endingIn({required MessagePart part}) => switch (part) {
-    MessagePartText(:final text) => text.isEmpty ? null : TranscriptTurnDone(answerLine: _firstLine(text: text)),
+    MessagePartText(:final text) => text.isEmpty ? null : TranscriptTurnDone(answerLine: firstNonBlankLine(text: text)),
     MessagePartTool(state: ToolState(status: ToolStatus.error)) ||
     MessagePartSubtask(taskState: ToolState(status: ToolStatus.error)) => const TranscriptTurnFailed(errorLine: null),
     MessagePartTool() || MessagePartSubtask() || MessagePartFile() => const TranscriptTurnDone(answerLine: null),
@@ -204,20 +204,6 @@ class const TranscriptTurnBuilder() {
       }
     }
     return Duration(milliseconds: end - start);
-  }
-
-  /// The first line of [text] that holds more than whitespace, trimmed; null
-  /// when none does. Stops at that line, since answers can be long.
-  static String? _firstLine({required String text}) {
-    var start = 0;
-    while (start < text.length) {
-      final newline = text.indexOf("\n", start);
-      final end = newline < 0 ? text.length : newline;
-      final line = text.substring(start, end).trim();
-      if (line.isNotEmpty) return line;
-      start = end + 1;
-    }
-    return null;
   }
 }
 
