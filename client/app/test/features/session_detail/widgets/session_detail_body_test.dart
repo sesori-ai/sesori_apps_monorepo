@@ -14,6 +14,8 @@ import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_prompts/session_prompts_view.dart";
+import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_spine_row.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_composer_controls.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -985,18 +987,20 @@ void main() {
     expect(find.widgetWithText(PregoPickerButton, "xhigh"), findsNothing);
   });
 
-  testWidgets("the bar carries only fold and the menu, and the menu holds Changes", (tester) async {
+  testWidgets("the bar carries only Prompts, fold and the menu, and the menu holds Changes", (tester) async {
     when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    // Nothing else may share the row with the centred title: back, fold, menu.
+    // Nothing else may share the row with the centred title: back, Prompts,
+    // fold, menu.
     final barButtons = find.descendant(
       of: find.byType(PregoTopNavigation),
       matching: find.byType(PregoButtonsIconGlass),
     );
-    expect(barButtons, findsNWidgets(3));
+    expect(barButtons, findsNWidgets(4));
     expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
+    expect(find.byKey(const Key("session-detail-prompts")), findsOneWidget);
     expect(find.byIcon(TablerRegular.fold), findsOneWidget);
     expect(find.byKey(const Key("session-detail-more")), findsOneWidget);
     expect(find.byIcon(TablerRegular.git_compare), findsNothing);
@@ -1061,6 +1065,118 @@ void main() {
       find.text("Prompt options changed. Updated settings and retrying your message."),
       findsNothing,
     );
+  });
+
+  group("the Prompts screen", () {
+    MessageWithParts textMessage({required String id, required bool user, required String text}) => MessageWithParts(
+      info: user
+          ? Message.user(promptId: null, id: id, sessionID: "session-1", agent: null, time: null)
+          : Message.assistant(id: id, sessionID: "session-1", agent: null, modelID: null, providerID: null, time: null),
+      parts: [MessagePart.text(id: "$id-part", sessionID: "session-1", messageID: id, text: text)],
+    );
+    final turns = [
+      for (var turn = 0; turn < 12; turn++) ...[
+        textMessage(id: "u$turn", user: true, text: "Prompt $turn"),
+        textMessage(
+          id: "a$turn",
+          user: false,
+          text: List.generate(12, (index) => "Answer $turn.$index").join("\n\n"),
+        ),
+      ],
+    ];
+    final layer = find.byType(SessionPromptsView);
+
+    ScrollPosition transcript(WidgetTester tester) => tester
+        .state<ScrollableState>(
+          find.descendant(
+            of: find.byKey(const Key("session-detail-message-list-view")),
+            matching: find.byType(Scrollable),
+          ),
+        )
+        .position;
+
+    Future<void> openPrompts(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key("session-detail-prompts")));
+      await tester.pumpAndSettle();
+      expect(layer, findsOneWidget);
+    }
+
+    setUp(() {
+      final state = _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: turns);
+      when(() => cubit.state).thenReturn(state);
+      whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+      when(() => cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar)).thenReturn(null);
+    });
+
+    testWidgets("opens on the prompt being read, and back and close leave the transcript as it was", (tester) async {
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      transcript(tester).jumpTo(1500);
+      await tester.pumpAndSettle();
+      final offset = transcript(tester).pixels;
+
+      await openPrompts(tester);
+      verify(() => cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar)).called(1);
+      final anchored = tester.widgetList<PromptSpineRow>(find.byType(PromptSpineRow)).where((row) => row.highlighted);
+      expect(anchored.single.entry.messageId, isNot("u11"), reason: "the reader scrolled back from the newest prompt");
+      expect(find.byKey(const Key("session-detail-prompts")).hitTestable(), findsNothing);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(layer, findsNothing);
+      expect(find.byType(SessionDetailBody), findsOneWidget, reason: "back closed the screen, not the page");
+      expect(transcript(tester).pixels, offset);
+
+      await openPrompts(tester);
+      await tester.tap(find.byTooltip("Close prompts"));
+      await tester.pumpAndSettle();
+      expect(layer, findsNothing);
+      expect(transcript(tester).pixels, offset);
+    });
+
+    testWidgets("an older page landing while the screen is open leaves its rows in place", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final state = _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: turns);
+      whenListen(cubit, states.stream, initialState: state);
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      await openPrompts(tester);
+      final top = tester.getTopLeft(find.text("Prompt 11").last).dy;
+
+      final older = [
+        for (var turn = 0; turn < 3; turn++) ...[
+          textMessage(id: "older-u$turn", user: true, text: "Older $turn"),
+          textMessage(id: "older-a$turn", user: false, text: "Older answer $turn"),
+        ],
+      ];
+      final withOlder = _loadedState(
+        pendingQuestions: const [],
+        pendingPermissions: const [],
+        messages: [...older, ...turns],
+      );
+      when(() => cubit.state).thenReturn(withOlder);
+      states.add(withOlder);
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(find.text("Prompt 11").last).dy, top);
+    });
+
+    testWidgets("a tapped prompt closes the screen with the transcript on it", (tester) async {
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+
+      await openPrompts(tester);
+      await tester.tap(find.text("Prompt 2"));
+      await tester.pump();
+      await tester.pump();
+      expect(layer, findsOneWidget, reason: "the screen covers the transcript until the move lands");
+      await tester.pumpAndSettle();
+
+      expect(layer, findsNothing);
+      final top = tester.getTopLeft(find.byKey(const ValueKey("u2"))).dy;
+      expect(top, inInclusiveRange(0, 200), reason: "the prompt rests under the bar");
+    });
   });
 
   testWidgets("the fold button shows whether every turn is folded and switches it", (tester) async {

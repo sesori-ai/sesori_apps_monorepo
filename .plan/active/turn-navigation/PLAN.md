@@ -1272,11 +1272,12 @@ exists and none is added. Files:
   nothing reusable exists to extend.
 - `widgets/prompt_day_header.dart` and its `SliverPersistentHeaderDelegate`,
   with a fixed extent as `DiffFileHeaderDelegate` requires.
-- The time column uses `formatMessageTimestamp`, so the screen and the
-  transcript's timestamp peek agree. That formatter always includes a time, so it
-  cannot label a day: step 11 adds a small day-label helper beside it — the
-  existing `archivedSessionsToday`/`archivedSessionsYesterday` strings, then the
-  same `MMMd`/`yMMMd` date patterns without the time.
+- The time column shows the time of day alone, in `formatMessageTimestamp`'s
+  `jm` pattern, because every timed row sits under a header naming its day (a
+  follow-through of D38's day headers: repeating the date on each row is noise).
+  The headers use a small day-label helper beside that formatter — the existing
+  `archivedSessionsToday`/`archivedSessionsYesterday` strings, then the same
+  `MMMd`/`yMMMd` date patterns without the time.
 
 Entry points:
 

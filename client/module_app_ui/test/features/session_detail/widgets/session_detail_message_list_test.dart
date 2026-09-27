@@ -7,6 +7,7 @@ import "package:flutter/rendering.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_jump_notifier.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_prompt_slot.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_layout.dart";
@@ -55,6 +56,16 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
 
   /// Fold switches the list asked for.
   int foldRequests = 0;
+
+  final currentPromptId = ValueNotifier<String?>(null);
+  final jumpNotifier = TranscriptJumpNotifier();
+
+  @override
+  void dispose() {
+    currentPromptId.dispose();
+    jumpNotifier.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -243,6 +254,8 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
             foldRequests++;
             setTranscriptFolded(folded: folded);
           },
+          currentPromptId: currentPromptId,
+          jumpNotifier: jumpNotifier,
           topInset: widget.topInset,
           streamingText: _streamingText,
           children: _children,
@@ -3665,6 +3678,132 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(textFinder).dx, closeTo(restX, 0.5));
   }, variant: _pinchPlatforms);
+
+  group("the Prompts screen's seams", () {
+    final shortTurns = _turns(count: 20, promptLines: 1, answers: 1, paragraphs: 12);
+    // Turn 3 gains a follow-up, sent before the agent answered.
+    final withFollowUp = [
+      for (final message in shortTurns) ...[
+        message,
+        if (message.info.id == "u3") _message(messageId: "u3f", role: "user", text: "Also this", promptId: "p3f"),
+      ],
+    ];
+    // Where a jump rests a prompt's row: its bubble on the pin line.
+    const promptRowTop = _topInset + 2;
+
+    testWidgets("names the prompt the pin names, else the next one below, folded or not", (tester) async {
+      final lead = _message(
+        messageId: "lead",
+        role: "assistant",
+        text: _multilineText(label: "Lead", lines: 60),
+      );
+      final harness = await _pumpTurns(tester, messages: [lead, ...shortTurns], folded: false);
+
+      await _scrollRowTo(tester, rowId: "a8-0", top: _topInset - 100);
+      expect(harness.currentPromptId.value, "u8");
+
+      harness.setTranscriptFolded(folded: true);
+      await tester.pumpAndSettle();
+      expect(harness.currentPromptId.value, "u8");
+
+      harness.setTranscriptFolded(folded: false);
+      await tester.pumpAndSettle();
+      await _scrollRowTo(tester, rowId: "lead", top: _topInset);
+      expect(harness.currentPromptId.value, "u0", reason: "no prompt opens the oldest turn");
+    });
+
+    testWidgets("a jump lands an unbuilt prompt on the pin line and stops following", (tester) async {
+      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: false);
+      expect(_messageKey("u3").evaluate(), isEmpty);
+
+      var landed = false;
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "u3").then((_) => landed = true));
+      await tester.pump();
+      await tester.pump();
+      expect(landed, isFalse, reason: "a far row takes more than one step");
+      await tester.pumpAndSettle();
+
+      expect(_topOf(tester, "u3"), moreOrLessEquals(promptRowTop, epsilon: 0.5));
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+      expect(landed, isTrue);
+    });
+
+    testWidgets("a jump lands a follow-up, by its own row, just below its pinned prompt, every time", (tester) async {
+      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: false);
+      final pins = tester.renderObject<RenderTranscriptStickyPrompts>(find.byType(TranscriptStickyPromptOverlay));
+      final followUpTop = promptRowTop + pins.compactHeight + transcriptStickyGap;
+
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "u3f"));
+      await tester.pumpAndSettle();
+      expect(_topOf(tester, "session-detail-prompt-p3f"), moreOrLessEquals(followUpTop, epsilon: 0.5));
+
+      _position(tester).jumpTo(_position(tester).pixels - 400);
+      await tester.pumpAndSettle();
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "u3f"));
+      await tester.pumpAndSettle();
+      expect(_topOf(tester, "session-detail-prompt-p3f"), moreOrLessEquals(followUpTop, epsilon: 0.5));
+    });
+
+    testWidgets("a jump into a folded transcript unfolds it and lands", (tester) async {
+      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: true);
+
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "u5"));
+      await tester.pumpAndSettle();
+
+      expect(harness.foldRequests, 1);
+      expect(_topOf(tester, "u5"), moreOrLessEquals(promptRowTop, epsilon: 0.5));
+    });
+
+    testWidgets("a jump into a folded transcript lands a follow-up just below its pinned prompt", (tester) async {
+      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: true);
+
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "u3f"));
+      await tester.pumpAndSettle();
+
+      final pins = tester.renderObject<RenderTranscriptStickyPrompts>(find.byType(TranscriptStickyPromptOverlay));
+      expect(harness.foldRequests, 1);
+      expect(
+        _topOf(tester, "session-detail-prompt-p3f"),
+        moreOrLessEquals(promptRowTop + pins.compactHeight + transcriptStickyGap, epsilon: 0.5),
+      );
+    });
+
+    testWidgets("a jump reaches a prompt that arrived after the reader scrolled away", (tester) async {
+      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: false);
+      _position(tester).jumpTo(_position(tester).pixels + 2000);
+      await tester.pumpAndSettle();
+      expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+      harness.appendNewestMessage(_message(messageId: "late", role: "user", text: "Late prompt"));
+      harness.appendNewestMessage(
+        _message(
+          messageId: "late-answer",
+          role: "assistant",
+          text: [for (var line = 0; line < 40; line++) "Late paragraph $line"].join("\n\n"),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(_messageKey("late").evaluate(), isEmpty);
+
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "late"));
+      await tester.pumpAndSettle();
+
+      expect(_topOf(tester, "late"), lessThan(_topInset + 100));
+    });
+
+    testWidgets("a jump to a message that is gone moves nothing", (tester) async {
+      final harness = await _pumpTurns(tester, messages: withFollowUp, folded: false);
+      final offset = _position(tester).pixels;
+
+      var landed = false;
+      unawaited(harness.jumpNotifier.jumpTo(messageId: "gone").then((_) => landed = true));
+      await tester.pump();
+      expect(landed, isTrue, reason: "a jump that cannot move ends at once");
+      await tester.pumpAndSettle();
+
+      expect(_position(tester).pixels, offset);
+      expect(find.byKey(_jumpToLatestKey), findsNothing);
+    });
+  });
 }
 
 QueuedSessionSubmission _textSubmission({required String promptId, required String text}) =>

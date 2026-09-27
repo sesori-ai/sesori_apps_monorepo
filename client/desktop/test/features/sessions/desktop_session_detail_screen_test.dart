@@ -627,6 +627,26 @@ void main() {
       verify(() => cubit.setTranscriptFolded(folded: false)).called(1);
     });
 
+    testWidgets("the Prompts button sits before fold and opens the Prompts screen over the page", (tester) async {
+      when(() => cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar)).thenReturn(null);
+      await pumpPage(tester, session: _session);
+      final prompts = find.byKey(const Key("desktop-session-page-prompts"));
+      expect(
+        tester.getCenter(prompts).dx,
+        lessThan(tester.getCenter(find.byKey(const Key("desktop-session-page-fold"))).dx),
+      );
+      expect(tester.widget<IconButton>(prompts).tooltip, "Prompts");
+
+      await tester.tap(prompts);
+      await tester.pumpAndSettle();
+      verify(() => cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar)).called(1);
+      expect(find.byTooltip("Close prompts"), findsOneWidget);
+
+      await tester.tap(find.byTooltip("Close prompts"));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip("Close prompts"), findsNothing);
+    });
+
     testWidgets(
       "Cmd/Ctrl+- folds every turn and Cmd/Ctrl+= unfolds them before the composer is focused",
       (tester) async {

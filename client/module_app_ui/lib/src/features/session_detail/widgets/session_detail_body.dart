@@ -8,6 +8,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../session_diffs/widgets/session_changes_counts.dart";
+import "../../session_prompts/session_prompts_view.dart";
 import "../session_auto_continuation_menu.dart";
 import "../session_detail_presentation_scope.dart";
 import "agent_model_buttons.dart";
@@ -17,6 +18,7 @@ import "session_auto_continuation_notice.dart";
 import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
 import "session_harness_unavailable_notice.dart";
+import "transcript_jump_notifier.dart";
 
 typedef SessionDetailHeaderBuilder = Widget Function({
   required BuildContext context,
@@ -28,6 +30,10 @@ typedef SessionDetailHeaderBuilder = Widget Function({
 
   /// The hydrated session, or null until the page has resolved it.
   required Session? session,
+
+  /// Opens the Prompts screen from a button centred at [origin], in global
+  /// coordinates; null until the session has loaded.
+  required void Function({required Offset origin})? onShowPrompts,
 });
 
 /// The session's own actions for the glass bar's menu, built when it opens.
@@ -75,6 +81,15 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
   StreamSubscription<SesoriPermissionAsked>? _permissionSub;
   StreamSubscription<SessionDetailNotice>? _noticeSub;
 
+  /// The prompt the transcript is on, as it last laid out.
+  final _currentPromptId = ValueNotifier<String?>(null);
+  final _jumpNotifier = TranscriptJumpNotifier();
+
+  /// The open Prompts screen and the prompt it opened on; null while closed.
+  /// The open Prompts screen: the prompts as they were when it opened, so an
+  /// older page landing meanwhile cannot shift the rows under the reader.
+  ({String? anchorMessageId, TranscriptPromptList list})? _prompts;
+
   @override
   void initState() {
     super.initState();
@@ -90,7 +105,47 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     _questionSub?.cancel();
     _permissionSub?.cancel();
     _noticeSub?.cancel();
+    _currentPromptId.dispose();
+    _jumpNotifier.dispose();
     super.dispose();
+  }
+
+  /// Opens the Prompts screen on the prompt the transcript is on. [origin] is
+  /// where its opening transition is to grow from; it opens without one yet.
+  void _openPrompts({required Offset origin}) {
+    final cubit = context.read<SessionDetailCubit>();
+    final state = cubit.state;
+    if (_prompts != null || state is! SessionDetailLoaded) return;
+    setState(() => _prompts = (anchorMessageId: _currentPromptId.value, list: _promptListOf(state: state)));
+    cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar);
+  }
+
+  /// The prompts the transcript renders from [state]'s messages.
+  static TranscriptPromptList _promptListOf({required SessionDetailLoaded state}) {
+    final messages = state.messages;
+    final turns = const TranscriptTurnBuilder().build(
+      messages: messages,
+      transcript: const TranscriptBuilder().build(
+        messages: messages,
+        streamingText: state.streamingText,
+        children: state.children,
+        childStatuses: state.childStatuses,
+      ),
+      isBusy: hasActiveWork(sessionStatus: state.sessionStatus, childStatuses: state.childStatuses),
+      hasOlderMessages: state.olderMessagesCursor != null,
+    );
+    // Numbers arrive once the bridge counts the prompts before the page.
+    return const TranscriptPromptListBuilder().build(messages: messages, turns: turns, userMessagesBefore: null);
+  }
+
+  void _closePrompts() {
+    if (mounted) setState(() => _prompts = null);
+  }
+
+  /// Moves the transcript to [messageId], then closes the Prompts screen once
+  /// the move has landed beneath it, so none of its jumps show.
+  void _returnToPrompt({required String messageId}) {
+    unawaited(_jumpNotifier.jumpTo(messageId: messageId).then((_) => _closePrompts()));
   }
 
   void _showNotice(SessionDetailNotice notice) {
@@ -171,11 +226,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     };
     final canShowDiffs = state is SessionDetailLoaded && (state.isRootSession ?? false) && !state.isArchived;
     final openDiffs = canShowDiffs ? widget.onShowDiffs : null;
-    final menuEntriesBuilder = widget.menuEntriesBuilder;
-    final session = state.hydratedSession;
-    final canConfigureContinuation =
-        !widget.readOnly && session?.time?.archived == null && !(state is SessionDetailLoaded && state.isArchived);
-
     final statusWarning = switch (state) {
       SessionDetailLoaded(isArchived: true) => null,
       SessionDetailLoaded(:final SessionInteractionLegacyUnverified interaction) => interaction,
@@ -197,6 +247,61 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
           );
     final pageChrome = widget.pageChrome;
     final content = _buildContent(context: context, state: state, columnWidths: pageChrome?.columnWidths);
+    final openPrompts = state is SessionDetailLoaded ? _openPrompts : null;
+    final prompts = _prompts;
+    final promptsOpen = prompts != null && state is SessionDetailLoaded;
+    // The screen lies over the page, which stays built beneath it, unmoved and
+    // out of reach, so closing it returns to the transcript as it was left.
+    return PopScope(
+      canPop: !promptsOpen,
+      onPopInvokedWithResult: (didPop, _) => didPop ? null : _closePrompts(),
+      child: Stack(
+        children: [
+          ExcludeFocus(
+            excluding: promptsOpen,
+            child: ExcludeSemantics(
+              excluding: promptsOpen,
+              child: _buildPage(
+                context: context,
+                state: state,
+                title: title,
+                banner: banner,
+                content: content,
+                openDiffs: openDiffs,
+                openPrompts: openPrompts,
+              ),
+            ),
+          ),
+          if (promptsOpen)
+            Positioned.fill(
+              child: SessionPromptsView(
+                prompts: prompts.list,
+                anchorMessageId: prompts.anchorMessageId,
+                maxWidth: pageChrome?.columnWidths.transcript,
+                onPromptTap: _returnToPrompt,
+                onClose: _closePrompts,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPage({
+    required BuildContext context,
+    required SessionDetailState state,
+    required String title,
+    required Widget? banner,
+    required Widget content,
+    required VoidCallback? openDiffs,
+    required void Function({required Offset origin})? openPrompts,
+  }) {
+    final loc = context.loc;
+    final pageChrome = widget.pageChrome;
+    final menuEntriesBuilder = widget.menuEntriesBuilder;
+    final session = state.hydratedSession;
+    final canConfigureContinuation =
+        !widget.readOnly && session?.time?.archived == null && !(state is SessionDetailLoaded && state.isArchived);
     if (pageChrome != null) {
       final isBusy = switch (state) {
         SessionDetailLoaded(:final sessionStatus, :final childStatuses) => hasActiveWork(
@@ -221,6 +326,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                   isBusy: isBusy,
                   onShowDiffs: openDiffs,
                   session: session,
+                  onShowPrompts: openPrompts,
                 ),
                 ?banner,
                 // The header sits above the transcript, so nothing scrolls behind a
@@ -240,8 +346,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     }
     // The floating glass bar's centred title shares one row with its controls,
     // and on a phone that row runs out first: every control it carries is taken
-    // out of the title. So it keeps only the two the reader acts on here — fold
-    // and the menu — while Changes rides in that menu with its counts, and the
+    // out of the title. So it keeps only those the reader acts on here — Prompts,
+    // fold and the menu — while Changes rides in that menu with its counts, and the
     // session's progress is left to the transcript, the composer and the
     // sub-agents bar, which all report it already.
     //
@@ -250,6 +356,15 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     // made by whoever first asks this cubit for its state.
     final changesSummary = openDiffs == null ? null : context.watch<DiffSummaryCubit>().state;
     final actions = <Widget>[
+      if (openPrompts != null)
+        Builder(
+          builder: (buttonContext) => PregoButtonsIconGlass(
+            key: const Key("session-detail-prompts"),
+            icon: TablerRegular.list_details,
+            semanticLabel: loc.transcriptPrompts,
+            onPressed: () => openPrompts(origin: buttonContext.globalCentre),
+          ),
+        ),
       if (state case SessionDetailLoaded(:final transcriptFolded))
         PregoButtonsIconGlass(
           icon: transcriptFolded ? TablerRegular.separator_horizontal : TablerRegular.fold,
@@ -358,6 +473,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                 onShowPendingPermissions: _showPendingPermissions,
                 bottomControls: _buildReadOnlyControls(loaded: loaded),
                 columnWidths: columnWidths,
+                currentPromptId: _currentPromptId,
+                jumpNotifier: _jumpNotifier,
               )
             : SessionDetailLoadedView.interactive(
                 projectId: widget.projectId,
@@ -374,6 +491,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                         state: loaded,
                       ),
                 columnWidths: columnWidths,
+                currentPromptId: _currentPromptId,
+                jumpNotifier: _jumpNotifier,
               ),
       SessionDetailHarnessUnavailable(:final interaction, :final session) => Center(
         child: PregoTopBarInsetBuilder(

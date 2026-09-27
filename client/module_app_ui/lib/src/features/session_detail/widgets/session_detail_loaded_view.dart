@@ -11,6 +11,7 @@ import "../../../extensions/build_context_x.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
+import "transcript_jump_notifier.dart";
 
 typedef SessionDetailBottomControlsBuilder = Widget Function({
   required BuildContext context,
@@ -46,6 +47,11 @@ class SessionDetailLoadedView extends StatefulWidget {
   final VoidCallback onShowPendingQuestions;
   final VoidCallback onShowPendingPermissions;
 
+  /// Forwarded to the transcript: see [SessionDetailMessageList.currentPromptId]
+  /// and [SessionDetailMessageList.jumpNotifier].
+  final ValueNotifier<String?> currentPromptId;
+  final TranscriptJumpNotifier jumpNotifier;
+
   const new readOnly({
     super.key,
     required this.projectId,
@@ -55,6 +61,8 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.onShowPendingPermissions,
     required this.bottomControls,
     required this.columnWidths,
+    required this.currentPromptId,
+    required this.jumpNotifier,
   }) : readOnly = true;
 
   const new interactive({
@@ -66,6 +74,8 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.onShowPendingPermissions,
     required this.bottomControls,
     required this.columnWidths,
+    required this.currentPromptId,
+    required this.jumpNotifier,
   }) : readOnly = false;
 
   @override
@@ -199,6 +209,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           isRefreshing: state.isRefreshing,
                           transcriptFolded: state.transcriptFolded,
                           onTranscriptFoldedChanged: context.read<SessionDetailCubit>().setTranscriptFolded,
+                          currentPromptId: widget.currentPromptId,
+                          jumpNotifier: widget.jumpNotifier,
                           streamingText: state.streamingText,
                           children: state.children,
                           childStatuses: state.childStatuses,

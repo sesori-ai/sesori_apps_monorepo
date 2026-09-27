@@ -108,6 +108,15 @@ void main() {
         "transcript_turns_folded",
         const {},
       ),
+      for (final (entry, wireValue) in [
+        (AnalyticsPromptsEntry.sessionBar, "session_bar"),
+        (AnalyticsPromptsEntry.pinch, "pinch"),
+      ])
+        (
+          ProductAnalyticsEvent.transcriptPromptsOpened(entry: entry),
+          "transcript_prompts_opened",
+          {"entry": wireValue},
+        ),
       for (final (answer, wireValue) in [
         (AnalyticsFeedbackAnswer.loveReviewRequested, "love_review_requested"),
         (AnalyticsFeedbackAnswer.loveNoReview, "love_no_review"),

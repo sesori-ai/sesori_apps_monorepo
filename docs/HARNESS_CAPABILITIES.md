@@ -243,6 +243,16 @@ the client never starts its own clock.
 | Claude | ✅ Live from the `--replay-user-messages` echo's `timestamp` (verified 2026-09-26 on CLI 2.1.281), and after reload from the transcript record. A slash command's synthetic bubble is stamped at dispatch. |
 | Grok, Antigravity, Copilot, Cursor, Hermes, OMP | ❌ Not implemented: the ACP prompt carries no time, so "Working…" shows no timer. A bridge-side prompt stamp is planned. |
 
+The Prompts screen shows each prompt's time and groups the prompts under day
+headers from the same prompt time. Where it is missing the row leaves its time
+empty and sits in a "No date" group; a session with no timed prompt shows no
+times and no day headers.
+
+| Harness | Prompts screen times |
+|---|---|
+| OpenCode, Codex, Pi, DeepSeek, Claude | ✅ Live and after reload. |
+| Grok, Antigravity, Copilot, Cursor, Hermes, OMP | ❌ Not implemented: the ACP prompt carries no time, so the Prompts screen shows no times and no day headers. |
+
 While only sub-agents run (the bridge reports the main agent's turn over, and
 it streams nothing and runs no step of its own), the transcript shows "N sub-agents running in the background · time"
 and "You can keep chatting meanwhile." The time counts from the earliest

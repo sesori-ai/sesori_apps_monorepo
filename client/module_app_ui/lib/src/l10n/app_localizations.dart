@@ -2707,6 +2707,42 @@ abstract class AppLocalizations {
   /// **'Attachment'**
   String get transcriptStickyPromptAttachment;
 
+  /// Title of the screen listing the user's own prompts in a session, and the tooltip and screen reader label of the session toolbar button that opens it.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompts'**
+  String get transcriptPrompts;
+
+  /// Tooltip and screen reader label of the button that closes the Prompts screen and returns to the transcript.
+  ///
+  /// In en, this message translates to:
+  /// **'Close prompts'**
+  String get transcriptPromptsClose;
+
+  /// Last row of the Prompts screen: how many prompts the list holds. Older prompts may not have loaded yet.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 prompt loaded} other{{count} prompts loaded}}'**
+  String transcriptPromptsLoaded(int count);
+
+  /// Day header of the Prompts screen over prompts whose send time is unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'No date'**
+  String get transcriptPromptsNoDate;
+
+  /// Screen reader label of a Prompts screen row for a prompt sent into a turn another prompt opened, such as while that turn ran.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow-up: {prompt}'**
+  String transcriptPromptsFollowUp(String prompt);
+
+  /// What the Prompts screen shows when the loaded transcript holds none of the user's prompts.
+  ///
+  /// In en, this message translates to:
+  /// **'No prompts in this session yet'**
+  String get transcriptPromptsEmpty;
+
   /// Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages.
   ///
   /// In en, this message translates to:

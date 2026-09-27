@@ -65,7 +65,8 @@ class const TranscriptStickyPromptOverlay({
         container: true,
         button: true,
         label: markdown == null
-            ? _attachmentLabelOf(loc: loc, opener: opener)
+            // A prompt with no text is named by its first attachment.
+            ? opener.promptText ?? loc.transcriptStickyPromptAttachment
             : _spokenLabelOf(
                 loc: loc,
                 source: _cut(markdown: markdown, budget: _spokenCharacterBudget),
@@ -109,19 +110,6 @@ class const TranscriptStickyPromptOverlay({
     // A prompt of nothing but a horizontal rule renders no words; its own
     // short source beats an unlabelled button.
     return plain.isEmpty ? source : plain;
-  }
-
-  /// The name of the first attachment of a prompt that has no text.
-  static String _attachmentLabelOf({required AppLocalizations loc, required MessageWithParts opener}) {
-    final attachment = opener.parts.whereType<MessagePartFile>().map((part) => part.attachment).firstOrNull;
-    final filename = switch (attachment) {
-      MessageAttachmentInlineImage(:final filename) ||
-      MessageAttachmentRemoteUrl(:final filename) ||
-      MessageAttachmentStoredImage(:final filename) ||
-      MessageAttachmentMetadata(:final filename) => filename?.trim(),
-      MessageAttachmentUnknown() || null => null,
-    };
-    return filename == null || filename.isEmpty ? loc.transcriptStickyPromptAttachment : filename;
   }
 
   /// A bubble holding three lines of body text at the reader's text scale: the

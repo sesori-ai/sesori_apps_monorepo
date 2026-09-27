@@ -46,6 +46,17 @@ const double transcriptStickyGap = 8;
 /// How far the halo reaches beyond the bubble: its blur plus its spread.
 const double transcriptStickyHaloReach = 42;
 
+/// The index in [openers] of the prompt being read: the last one at or above
+/// the pin line at [pinTop]; -1 before any is.
+int currentTranscriptStickyIndex({required List<TranscriptStickyOpener> openers, required double pinTop}) =>
+    openers.lastIndexWhere(
+      (opener) => switch (opener.place) {
+        TranscriptStickyAbove() => true,
+        TranscriptStickyBuilt(:final top) => top <= pinTop,
+        TranscriptStickyBelow() => false,
+      },
+    );
+
 /// Pins the prompt of the turn being read at [pinTop], as a header that
 /// compacts with the scroll. Every position follows from the openers' current
 /// bubbles alone, so the pin tracks the rows in the frame they move and a
@@ -68,13 +79,7 @@ TranscriptStickyLayout layOutTranscriptStickyPrompts({
   required double compactHeight,
   required double pinTop,
 }) {
-  final current = openers.lastIndexWhere(
-    (opener) => switch (opener.place) {
-      TranscriptStickyAbove() => true,
-      TranscriptStickyBuilt(:final top) => top <= pinTop,
-      TranscriptStickyBelow() => false,
-    },
-  );
+  final current = currentTranscriptStickyIndex(openers: openers, pinTop: pinTop);
   if (current < 0 || !fullHeights.containsKey(openers[current].id)) return TranscriptStickyLayout.empty;
   final pinned = <TranscriptPinnedPrompt>[];
   for (final index in [current - 1, current]) {
