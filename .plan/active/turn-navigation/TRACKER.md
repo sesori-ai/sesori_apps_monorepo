@@ -23,6 +23,9 @@ step lives in `steps/step-NN.md`, written only by that step's own PR.
   (supersedes D31's "the bridge does not stamp its own time"); and the prompt list
   keeps the transcript's chronological order and opens anchored on the prompt the
   reader was nearest (supersedes D34).
+- **D40 is the user's decision of 2026-09-27.** On iOS an edge swipe drags the
+  Prompts layer away under the finger, closing past halfway or on a fling and
+  springing back otherwise; the layer stays a layer. Built by step 12.
 
 See [PLAN](PLAN.md#decisions) for each one, including which are superseded.
 
@@ -80,7 +83,7 @@ phase, and the original step 10 (retirement) is renumbered to step 18, as
 | 9 | `turn-navigation/prompts-view-plan` | [9](#fixed-pr-titles) | ≤ 1,500 | 8 |
 | 10 | `turn-navigation/prompt-list-model` | [10](#fixed-pr-titles) | ≤ 450 | 9 |
 | 11 | `turn-navigation/prompts-screen` | [11](#fixed-pr-titles) | ≤ 1,100 | 10 |
-| 12 | `turn-navigation/prompts-transition` | [12](#fixed-pr-titles) | ≤ 350 | 11 |
+| 12 | `turn-navigation/prompts-transition` | [12](#fixed-pr-titles) | ≤ 550 | 11 |
 | 13 | `turn-navigation/prompts-pinch` | [13](#fixed-pr-titles) | ≤ 400 | 12 |
 | 14 | `turn-navigation/remove-fold` | [14](#fixed-pr-titles) | ≤ 1,300 | 13 |
 | 15 | `turn-navigation/prompt-numbers` | [15](#fixed-pr-titles) | ≤ 900 | 11 |

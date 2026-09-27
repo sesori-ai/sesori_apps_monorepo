@@ -400,6 +400,18 @@ this plan implements them and does not reopen them.
     [Architecture 10](#10-the-prompts-screen-steps-10-and-11) and
     [Architecture 15](#15-search-step-16).
 
+### User decision of 2026-09-27 (the iOS edge swipe)
+
+- **D40 On iOS, an edge swipe drags the Prompts layer away under the finger.**
+  Chosen over "no swipe" and over making the screen a route.
+  - A swipe from the left edge slides the layer right, tracking the finger
+    continuously. Released past about halfway, or fast enough, it finishes
+    closing; otherwise it springs back. The session underneath stays still.
+  - It is a custom gesture on the layer, which stays a layer, not a route
+    ([Architecture 10](#10-the-prompts-screen-steps-10-and-11)). Android back and
+    the close affordance are unchanged.
+  - Implemented by step 12; see [Architecture 14](#14-the-transition-step-12).
+
 Defaults this plan adopts for the Prompts screen. **Each is a default the user
 may override:**
 
@@ -1112,8 +1124,8 @@ So the Prompts screen is a full-bleed layer inside the session page, owned by
   cubit state: only this widget reads it, and it must not survive the page.
 - A `PopScope` closes the layer on the system back gesture before the route
   pops, so back means "back to the transcript". On iOS the same `PopScope`
-  disables the route's edge swipe while the layer is open, so there the exit is a
-  row tap or the header's close affordance.
+  disables the route's own edge swipe while the layer is open, and the layer's
+  own edge swipe (D40, step 12) closes it instead, so the two never compete.
 - The transcript keeps its exact scroll offset, follow state and built rows
   while covered. This is what makes the guardrail true by construction rather
   than by tuning.
@@ -1446,7 +1458,7 @@ depends on it.
   pinch that opens nothing must still leave the follow state alone. The existing
   `suppressDetach`/`releaseDetachSuppression` pairing is kept.
 - No pinch gesture is added to the Prompts screen. Exit is the tap, the back
-  gesture and the header's close affordance.
+  gesture, the iOS edge swipe (D40) and the header's close affordance.
 - The step's pinch tests are the step 7 tests rewritten for the new outcome, not
   new ones: the same platform variants, the same one-finger-still case, the same
   unaffected one-finger scroll, peek and nested horizontal scroll.
@@ -1459,6 +1471,14 @@ depends on it.
   focal point — the pinch's focal point, or the bar button's centre — over a
   transcript that dims slightly. Reverse on the way out, including on a row tap,
   so the list appears to fall back into the transcript.
+- **The iOS edge swipe (D40).** On iOS only, a horizontal drag that starts at the
+  layer's left edge translates the layer right by the finger's distance, with no
+  lag and no animation while the finger is down. On release it closes when past
+  about half the layer's width or above a fling velocity, animating the rest of
+  the way out; otherwise it springs back to rest. The dim over the transcript
+  follows the drag's progress. The layer owns the gesture and needs no new state
+  beyond one drag offset in `_SessionDetailBodyState`; the transcript is untouched,
+  as below.
 - Reduced motion (`context.isReducedMotion`, already used by
   `buildSessionPaneTransitionPage`) gets a plain cross-fade with no scale.
 - The transcript is not rebuilt, resized or scrolled by any of this. Only opacity
@@ -1693,7 +1713,8 @@ Added by steps 11–16:
    by that widget's own `build`.
 6. **The `TranscriptJumpNotifier`**: one `ChangeNotifier` with one nullable
    message id, written by the layer's owner and consumed by the list.
-7. **The transition `AnimationController`** (step 12), owned by the same state.
+7. **The transition `AnimationController`** (step 12), owned by the same state,
+   and the iOS edge swipe's drag offset (D40), read only while a drag runs.
 8. **`SessionDetailLoaded.userMessagesBeforeOldest`**: one nullable int, written
    only where a page is merged (step 15).
 9. **The query string** in the Prompts view's state (step 16).
@@ -1831,7 +1852,7 @@ Steps 4 and 5 ship nothing users can reach, so they change none.
 | 7 | Pinch, including its follow-state rules. |
 | 8 | The sticky prompt, including its screen reader node. |
 | 11 | Rewrites the capability paragraph around the Prompts screen and adds its required behavior, levels, exploration guidance, failure signals and limitations, including the transcript's order, the opening anchor and the undated group (D38, D39). Adds the `docs/HARNESS_CAPABILITIES.md` prompt-times note for the state at this step: the six ACP harnesses still show no times. |
-| 12 | The transition, including reduced motion. |
+| 12 | The transition, including reduced motion, and the iOS edge swipe that closes the Prompts screen (D40). |
 | 13 | Pinch opens the screen; the fold clauses of pinch go in step 14. |
 | 14 | Removes the fold and pinch-to-fold behavior from `transcript-turn-navigation.md` and the fold cross-references in `session-history-and-recovery.md` and `tools-and-file-changes.md`, and re-words the `session-turns.md` one. No tombstones. |
 | 15 | Prompt numbers, their stability across an older page, and the no-number case against an older bridge. Cross-reference from `session-history-and-recovery.md` for the new response field. The ACP prompt stamp: which prompts get a time, which stay undated, and the "Working…" timer arriving on the six harnesses — in the regression document and in the `docs/HARNESS_CAPABILITIES.md` "Live timers" row that step 11 left saying otherwise. |
@@ -1852,6 +1873,8 @@ Failure signals, each added by the step that ships the behavior:
   at the end of the list instead of at the prompt that was being read; a
   fully untimed session shows a day header or an empty time column; undated
   prompts are moved out of the transcript's order into one group;
+- step 12: the iOS edge swipe does not track the finger, the layer snaps instead
+  of following or springing back, or the session underneath moves;
 - step 13: a pinch scrolls the transcript, opens the screen twice, or a
   one-finger scroll or peek opens it;
 - step 15: a number changes when an older page loads; numbers appear against a
@@ -1930,8 +1953,8 @@ Automated coverage in the steps:
   the new wire field and its plumbing in step 15, and the removal's blast radius
   in step 14. Step 16 is ordinary widget logic inside an existing screen and does
   not need it; steps 9, 17 and 18 are documentation.
-- **Size.** Targets are in the tracker. Step 13 (gesture) and step 12
-  (transition) aim lowest. Step 14 is the largest and is almost all deletion; if
+- **Size.** Targets are in the tracker. Step 13 (gesture) aims lowest; step 12
+  (transition) grew with D40's edge swipe. Step 14 is the largest and is almost all deletion; if
   it exceeds its target, the turn-model trim moves to 14.b rather than growing
   the PR.
 - **Checks.** Run `dart analyze --fatal-infos` per touched package, with the
@@ -2094,7 +2117,10 @@ No user-visible change.
 **Step 12 — the transition.** [Architecture 14](#14-the-transition-step-12).
 Verify with widget tests that the transition runs to completion in both
 directions, that reduced motion removes the scale, and that the transcript is not
-rebuilt or scrolled by it. Also a short recording on a real iPhone and on macOS.
+rebuilt or scrolled by it. For the iOS edge swipe (D40): the layer follows the
+drag, a release past halfway or a fling closes it, a short slow release springs
+back, it does nothing on other platforms, and the transcript does not move. Also
+a short recording on a real iPhone, including the edge swipe, and on macOS.
 
 **Step 13 — pinch opens the Prompts screen.**
 [Architecture 13](#13-pinch-opens-the-prompts-screen-step-13). Verify:
@@ -2232,7 +2258,7 @@ settle on its own. None of them blocks step 10.
 5. Can the Windows and Linux rows of the matrix run on real machines?
 6. Defaults D9–D18 that survive: D11 (the turn rule), D12 (no stopped state) and
    D19–D23 stand unless you say otherwise. D32–D37 are this revision's defaults
-   and are equally open, except D34, which D39 superseded. D38 and D39 are the
+   and are equally open, except D34, which D39 superseded. D38–D40 are the
    user's own decisions and are settled.
 
 Answered in round 4, kept here so the record is complete: list order (D39,
