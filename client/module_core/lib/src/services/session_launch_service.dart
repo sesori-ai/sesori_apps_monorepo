@@ -98,7 +98,9 @@ class SessionLaunchService({
         _reportProductEvent(
           event: ProductAnalyticsEvent.sessionCreationFailed(
             failureReason: _analyticsFailureReason(error.remoteFailureReason),
-            workspaceKind: dedicatedWorktree ? AnalyticsWorkspaceKind.dedicatedWorktree : AnalyticsWorkspaceKind.project,
+            workspaceKind: dedicatedWorktree
+                ? AnalyticsWorkspaceKind.dedicatedWorktree
+                : AnalyticsWorkspaceKind.project,
           ),
         );
         _launchRepository.fail(launchId: launchId, reason: error.remoteFailureReason);
