@@ -289,6 +289,10 @@ class SessionDetailCubit(
     var adopted = false;
     for (final followUp in followUps) {
       if (followUp case AcceptedLaunchFollowUp(:final submission)) {
+        // Its stamped user message can outrun the acceptance; one the
+        // transcript already shows is settled, and parking it would add a
+        // ghost bubble beside it.
+        if (_transcriptShowsPrompt(promptId: submission.promptId)) continue;
         _promptQueue.adoptAccepted(submission: submission, epoch: ++_parkEpoch);
         adopted = true;
       } else {
@@ -299,6 +303,19 @@ class SessionDetailCubit(
     _launchFollowUpsOwed = owed;
     if (adopted) _emitQueueUpdate();
     if (released) _tryDrainQueue();
+  }
+
+  /// Whether the loaded transcript renders the user message sent under
+  /// [promptId]. Before the first load the snapshot settles it instead.
+  bool _transcriptShowsPrompt({required String promptId}) {
+    final current = state;
+    if (current is! SessionDetailLoaded) return false;
+    for (final message in current.messages) {
+      if (message.info case MessageUser(promptId: final messagePromptId) when messagePromptId == promptId) {
+        return message.hasRenderableUserContent;
+      }
+    }
+    return false;
   }
 
   void _onYoloSettings(YoloSettingsResponse settings) {

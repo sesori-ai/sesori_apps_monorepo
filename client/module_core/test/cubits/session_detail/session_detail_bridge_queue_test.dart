@@ -2528,6 +2528,33 @@ void main() {
         expect(state.launchHandoff, isNotNull, reason: "a follow-up is not the first message's replacement");
       });
 
+      test("a follow-up whose message landed before its acceptance is not parked beside it", () async {
+        final repository = launchedRepository(
+          followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+        );
+        final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
+        repository.beginFollowUp(launchId: "launch-1");
+
+        sessionEvents
+          ..add(
+            const SesoriMessageUpdated(
+              info: Message.user(
+                id: "msg-a",
+                sessionID: _sessionId,
+                agent: null,
+                time: MessageTime(created: 100, completed: null),
+                promptId: "prm_a",
+              ),
+            ),
+          )
+          ..add(_textPartFor(messageId: "msg-a", text: "and then prm_a"));
+        await Future<void>.delayed(Duration.zero);
+        repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+        await Future<void>.delayed(Duration.zero);
+
+        expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
+      });
+
       test("a prompt sent here waits for the launch's follow-ups pressed before it", () async {
         final sentTexts = <String>[];
         stubSends(sentTexts: sentTexts);
