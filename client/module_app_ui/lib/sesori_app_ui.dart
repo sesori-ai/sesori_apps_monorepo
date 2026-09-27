@@ -97,6 +97,7 @@ export "src/utils/syntax_highlight.dart";
 export "src/widgets/catalog_scan_row.dart";
 export "src/widgets/code_block.dart";
 export "src/widgets/connection_banner.dart";
+export "src/widgets/defer_until_route_open.dart";
 export "src/widgets/markdown_styles.dart";
 export "src/widgets/pending_archive_alerts.dart";
 export "src/widgets/project_nav_subtitle.dart";

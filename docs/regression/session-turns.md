@@ -111,7 +111,8 @@ defaults and queued client sends coherent.
 - Reasoning uses an unboxed activity row with 14px body text, a bounded live-tail
   preview, and a one-line Markdown-stripped completed preview. Tap or keyboard
   activation opens the same full, selectable reasoning modal; its streaming
-  follow/detach behavior is unchanged. Only active reasoning and provider retry
+  follow/detach behavior is unchanged. A long thought shows a spinner until the
+  modal's entry transition ends, so the ripple and transition never stall. Only active reasoning and provider retry
   statuses shimmer; reduced motion leaves their labels visible without animation.
   Retry history is neutral rather than success-coloured. Active retries keep the
   complete backend error below a “Retrying” status; terminal errors remain red,
@@ -662,7 +663,8 @@ defaults and queued client sends coherent.
   against the page in both themes, with its language label and Copy. A block
   longer than 12 lines shows its first 12 under a fade and an “Open all N lines”
   action that opens the whole block in a modal (a dialog on desktop, a sheet on
-  the phone); Copy always takes the whole block.
+  the phone), with a very long block behind a spinner until the modal's entry
+  transition ends; Copy always takes the whole block.
 - Mobile and desktop compose the same transcript and composer presentation for
   messages, queued prompts, tool and subtask output, errors, pending
   interactions, links, image viewing, child-session navigation, text input,

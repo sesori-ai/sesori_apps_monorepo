@@ -9,6 +9,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../platform/external_link_opener.dart";
+import "../../../widgets/defer_until_route_open.dart";
 import "../../../widgets/markdown_styles.dart";
 import "follow_detach_scrollable.dart";
 import "jump_to_edge_pill.dart";
@@ -163,15 +164,18 @@ class _ReasoningModalState() extends State<ReasoningModal> {
             // stays visible behind it.
             padding: EdgeInsetsDirectional.fromSTEB(16, 16, 16, 16 + bottomSafe),
             children: [
-              PregoReadableSelectionArea(
-                child: MarkdownBody(
-                  data: data.text,
-                  selectable: false,
-                  onTapLink: buildMarkdownLinkTapHandler(openExternalLink: widget.openExternalLink),
-                  styleSheet: buildSessionMarkdownStyleSheet(
-                    prego: prego,
-                    paragraphStyle: prego.textTheme.textSm.regular.copyWith(
-                      color: prego.colors.textSecondary,
+              DeferUntilRouteOpen(
+                contentLength: data.text.length,
+                child: PregoReadableSelectionArea(
+                  child: MarkdownBody(
+                    data: data.text,
+                    selectable: false,
+                    onTapLink: buildMarkdownLinkTapHandler(openExternalLink: widget.openExternalLink),
+                    styleSheet: buildSessionMarkdownStyleSheet(
+                      prego: prego,
+                      paragraphStyle: prego.textTheme.textSm.regular.copyWith(
+                        color: prego.colors.textSecondary,
+                      ),
                     ),
                   ),
                 ),

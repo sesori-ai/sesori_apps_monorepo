@@ -54,12 +54,16 @@ class const _LegalDocumentBody() extends StatelessWidget {
       // The sheet grows with the document and scrolls once it reaches the top
       // of the screen, so the body renders in full rather than owning a scroll
       // view of its own.
-      LegalDocumentLoaded(:final markdown) => Padding(
-        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.x3l),
-        child: MarkdownBody(
-          data: markdown,
-          onTapLink: buildMarkdownLinkTapHandler(openExternalLink: openExternalLink),
-          styleSheet: buildLegalMarkdownStyleSheet(prego: prego),
+      // A fetch that lands mid-transition waits for the sheet to finish opening.
+      LegalDocumentLoaded(:final markdown) => DeferUntilRouteOpen(
+        contentLength: markdown.length,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.x3l),
+          child: MarkdownBody(
+            data: markdown,
+            onTapLink: buildMarkdownLinkTapHandler(openExternalLink: openExternalLink),
+            styleSheet: buildLegalMarkdownStyleSheet(prego: prego),
+          ),
         ),
       ),
     };

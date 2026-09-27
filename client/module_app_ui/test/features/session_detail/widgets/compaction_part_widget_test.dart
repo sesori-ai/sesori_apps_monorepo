@@ -5,9 +5,13 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/compaction_part_widget.dart";
 import "package:theme_prego/module_prego.dart";
 
-const _summary = "## Carried forward\n\n- Keep the relay contract unchanged\n- Retry with a capped backoff";
+const _shortSummary = "## Carried forward\n\n- Keep the relay contract unchanged\n- Retry with a capped backoff";
 
-Widget _app({required PregoInteractionMode mode}) {
+/// Long enough to be worth deferring past the modal's entry transition.
+final _longSummary =
+    "$_shortSummary\n${List.filled(100, "- Another carried-forward decision and its reasoning").join("\n")}";
+
+Widget _app({required PregoInteractionMode mode, required String summary}) {
   return PregoInteractionScope(
     mode: mode,
     child: MaterialApp(
@@ -24,7 +28,7 @@ Widget _app({required PregoInteractionMode mode}) {
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
         openHarnessSettings: () {},
         openBridgeSettings: () {},
-        child: const Scaffold(body: CompactionPartWidget(summary: _summary)),
+        child: Scaffold(body: CompactionPartWidget(summary: summary)),
       ),
     ),
   );
@@ -33,7 +37,7 @@ Widget _app({required PregoInteractionMode mode}) {
 void main() {
   for (final mode in PregoInteractionMode.values) {
     testWidgets("the ${mode.name} modal opens behind a spinner, then shows the summary", (tester) async {
-      await tester.pumpWidget(_app(mode: mode));
+      await tester.pumpWidget(_app(mode: mode, summary: _longSummary));
 
       await tester.tap(find.text("Context compacted"));
       await tester.pump();
@@ -56,7 +60,17 @@ void main() {
   testWidgets("under reduced motion the modal shows the summary at once", (tester) async {
     tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-    await tester.pumpWidget(_app(mode: PregoInteractionMode.pointer));
+    await tester.pumpWidget(_app(mode: PregoInteractionMode.pointer, summary: _longSummary));
+
+    await tester.tap(find.text("Context compacted"));
+    await tester.pump();
+
+    expect(find.byType(PregoActivityIndicator), findsNothing);
+    expect(find.textContaining("Keep the relay contract unchanged", findRichText: true), findsOneWidget);
+  });
+
+  testWidgets("a short summary shows at once, without a spinner", (tester) async {
+    await tester.pumpWidget(_app(mode: PregoInteractionMode.pointer, summary: _shortSummary));
 
     await tester.tap(find.text("Context compacted"));
     await tester.pump();

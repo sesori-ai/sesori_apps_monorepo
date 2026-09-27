@@ -69,9 +69,9 @@ sub-agent parts, plus the signal that a tool changed files.
   the step style; like visible text it ends a group. While it runs, Pi and Codex
   show a running `compact` tool that the finished row replaces in place. When the
   harness exposes the carried-forward summary, tapping the row opens a
-  reading-width modal at once with a spinner, and the summary replaces the
-  spinner as Markdown once the modal's entry transition ends (at once under
-  reduced motion); without a summary the row is inert. See
+  reading-width modal at once. A long summary shows a spinner that the Markdown
+  replaces once the modal's entry transition ends (at once under reduced
+  motion); a short one shows at once. Without a summary the row is inert. See
   `docs/HARNESS_CAPABILITIES.md` for which harnesses mark compaction.
 - A running tool or sub-agent is a live row: the turning outline sparkle leads
   it and a primary-text band sweeps across its dimmed label, visible in both
@@ -446,8 +446,8 @@ edge (see `transcript-turn-navigation.md`).
   measures every step kind's icon, label inset, height and label weight at
   phone and desktop density.
 - `client/module_app_ui/test/features/session_detail/widgets/compaction_part_widget_test.dart`
-  opens the compaction summary behind a spinner at both densities and shows it
-  at once under reduced motion.
+  opens a long compaction summary behind a spinner at both densities and shows
+  it at once under reduced motion or when it is short.
 - Owning Claude content/history/tracker, Pi history/dispatcher, OpenCode part
   mapper, Codex rollout/tracker/history, ACP replay/content, Grok adapter,
   Antigravity normalizer and DeepSeek replay/time tests guard backend semantics.

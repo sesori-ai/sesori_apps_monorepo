@@ -6,6 +6,7 @@ import "package:theme_prego/module_prego.dart";
 import "../extensions/build_context_x.dart";
 import "../utils/code_highlighter.dart";
 import "../utils/copy_text_to_clipboard.dart";
+import "defer_until_route_open.dart";
 
 /// [MarkdownBody.builders] entry for fenced code blocks (the `pre` element).
 ///
@@ -175,11 +176,14 @@ class _CodeBlockState() extends State<CodeBlock> {
       // A modal route sits outside the transcript's selection area, so it brings its own.
       builder: (_) => PregoReadableSelectionArea(
         child: SingleChildScrollView(
-          child: CodeBlock(
-            code: widget.code,
-            language: widget.language,
-            copyTooltip: widget.copyTooltip,
-            isFullView: true,
+          child: DeferUntilRouteOpen(
+            contentLength: widget.code.length,
+            child: CodeBlock(
+              code: widget.code,
+              language: widget.language,
+              copyTooltip: widget.copyTooltip,
+              isFullView: true,
+            ),
           ),
         ),
       ),
