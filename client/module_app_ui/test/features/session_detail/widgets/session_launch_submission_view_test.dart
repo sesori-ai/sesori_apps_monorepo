@@ -1,5 +1,6 @@
 import "dart:typed_data";
 
+import "package:clock/clock.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/queued_message_bubble.dart";
@@ -12,6 +13,7 @@ Future<AppLocalizations> _pump(
   WidgetTester tester, {
   required NewSessionSubmissionSnapshot submission,
   required double? transcriptWidth,
+  DateTime? sendingSince,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -28,6 +30,7 @@ Future<AppLocalizations> _pump(
               submission: submission,
               harnessName: "Claude",
               transcriptWidth: transcriptWidth,
+              sendingSince: sendingSince,
             ),
           ),
         ),
@@ -59,6 +62,36 @@ void main() {
 
     // A slow creation names the harness, as an existing session's send does.
     await tester.pump(const Duration(seconds: 2));
+    expect(find.text(loc.sessionDetailSendingToHarness("Claude")), findsOneWidget);
+  });
+
+  testWidgets("a send already past two seconds names the harness on its first frame", (tester) async {
+    final loc = await _pump(
+      tester,
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Hi"),
+        attachments: const [],
+      ),
+      transcriptWidth: null,
+      sendingSince: clock.now().subtract(const Duration(seconds: 3)),
+    );
+
+    expect(find.text(loc.sessionDetailSendingToHarness("Claude")), findsOneWidget);
+  });
+
+  testWidgets("a send under two seconds old names the harness when it reaches two seconds", (tester) async {
+    final loc = await _pump(
+      tester,
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Hi"),
+        attachments: const [],
+      ),
+      transcriptWidth: null,
+      sendingSince: clock.now().subtract(const Duration(milliseconds: 1500)),
+    );
+    expect(find.text(loc.sessionDetailSendingMessage), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 500));
     expect(find.text(loc.sessionDetailSendingToHarness("Claude")), findsOneWidget);
   });
 

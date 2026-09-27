@@ -22,6 +22,7 @@ class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsSer
 const _loaded = SessionDetailState.loaded(
   interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
   messages: [],
+  launchHandoff: null,
   olderMessagesCursor: null,
   transcriptFolded: false,
   streamingText: {},

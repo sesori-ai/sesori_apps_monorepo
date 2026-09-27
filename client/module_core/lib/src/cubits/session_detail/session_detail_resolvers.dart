@@ -54,6 +54,16 @@ String? firstNonBlankLine({required String text}) {
   return null;
 }
 
+extension SessionDetailLoadedLaunch on SessionDetailLoaded {
+  /// Whether this state already shows what replaces a launch's first-message
+  /// bubble: a renderable user message, or a bridge-queued prompt that is not
+  /// one of the launch's own follow-ups (whose queue statement can arrive
+  /// before the first message's echo).
+  bool showsLaunchReplacement({required Set<String> launchFollowUpIds}) =>
+      messages.any((message) => message.info is MessageUser && message.hasRenderableUserContent) ||
+      bridgeQueuedPrompts.any((prompt) => !launchFollowUpIds.contains(prompt.id));
+}
+
 extension SessionTranscriptReplies on List<MessageWithParts> {
   /// What the newest agent-authored assistant or error message ran with, or
   /// null when there is none. Automation replies and user turns are skipped.

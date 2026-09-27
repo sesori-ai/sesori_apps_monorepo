@@ -143,13 +143,17 @@ Page<void> buildSessionPaneTransitionPage({
   required BuildContext context,
   required GoRouterState state,
   required LocalKey pageKey,
+
+  /// Enters with no transition, for a page that replaces one already showing
+  /// its content in place. Leaving still animates.
+  required bool skipsEntryTransition,
   required Widget child,
 }) {
   final duration = context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220);
   final isImperative = isImperativePaneState(context: context, state: state);
   return CustomTransitionPage<void>(
     key: pageKey,
-    transitionDuration: duration,
+    transitionDuration: skipsEntryTransition ? Duration.zero : duration,
     reverseTransitionDuration: duration,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       final isSplit = SessionSplitScope.maybeOf(context)?.isSplit ?? false;
@@ -290,6 +294,7 @@ List<RouteBase> _buildAppRoutes({
                 context: context,
                 state: state,
                 pageKey: state.pageKey,
+                skipsEntryTransition: false,
                 child: Builder(
                   builder: (context) {
                     final route = switch (AppRoute.fromDef(
@@ -325,6 +330,7 @@ List<RouteBase> _buildAppRoutes({
                       context: context,
                       state: state,
                       pageKey: state.pageKey,
+                      skipsEntryTransition: false,
                       child: NewSessionScreen(
                         projectId: route.projectId,
                         projectName: route.projectName,
@@ -347,6 +353,7 @@ List<RouteBase> _buildAppRoutes({
                       context: context,
                       state: state,
                       pageKey: ValueKey((state.pageKey, route.projectId, route.sessionId)),
+                      skipsEntryTransition: route.fromLaunch,
                       child: SessionDetailScreen(
                         auditView: false,
                         onBack: null,
@@ -375,6 +382,7 @@ List<RouteBase> _buildAppRoutes({
                           context: context,
                           state: state,
                           pageKey: state.pageKey,
+                          skipsEntryTransition: false,
                           child: SessionDiffsScreen(
                             key: ValueKey("session-diffs-${route.sessionId}"),
                             projectId: route.projectId,
@@ -448,6 +456,7 @@ class const _SessionListPane({
               sessionId: session.id,
               sessionTitle: session.title,
               readOnly: false,
+              fromLaunch: false,
             ),
           );
         },

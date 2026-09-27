@@ -597,6 +597,12 @@ defaults and queued client sends coherent.
   respect reduced motion. Cancelling a pending prompt does not clear the draft
   or dismiss its keyboard. An unavailable command retains its arguments, warning,
   and removal action.
+- A session this surface just created shows its first message as the oldest
+  transient row: a sending bubble named after the launch's harness, timed from
+  the moment Send was pressed. It is released in the same update that first
+  shows a renderable user message, or a bridge-queued prompt that is not one of
+  the launch's own follow-ups, so the bubble and its replacement never show
+  together. A stop removes it, and while it shows the transcript is not empty.
 - Read-only, archived, and harness-blocked views retain inline pending bubbles
   even without a composer. Remote cancellation is disabled there; local queued
   submissions remain removable while blocked, but not on read-only routes.

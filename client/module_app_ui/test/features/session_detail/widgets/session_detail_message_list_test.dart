@@ -28,6 +28,7 @@ class const _SessionDetailMessageListHarness({
   final TargetPlatform? platform,
   final EdgeInsets systemGestureInsets = EdgeInsets.zero,
   final double topInset = 0,
+  final SessionLaunchHandoff? launchHandoff,
 }) extends StatefulWidget {
   @override
   State<_SessionDetailMessageListHarness> createState() => _SessionDetailMessageListHarnessState();
@@ -236,6 +237,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           messages: _messages,
           localSend: _localSend,
           harnessName: "OpenCode",
+          launchHandoff: widget.launchHandoff,
           onRetryFailedSend: () {
             if (_localSend case LocalSendFailed(:final submission)) {
               setState(() {
@@ -872,7 +874,7 @@ void main() {
       const harnessName = "A Very Long Custom Harness Name";
       await pumpNarrowBubble(
         tester,
-        presentation: const QueuedMessageBubblePresentation.sending(harnessName: harnessName),
+        presentation: const QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: null),
       );
       await tester.pump(const Duration(seconds: 3));
 
@@ -902,6 +904,30 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
     expect(find.text("Sending"), findsNothing);
     expect(find.text("Sending to OpenCode…"), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("a launch's first message keeps its slow-send copy when the transcript takes it over", (tester) async {
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: const [],
+        initialStreamingText: const {},
+        launchHandoff: SessionLaunchHandoff(
+          submission: NewSessionSubmissionSnapshot.text(
+            draft: ComposerDraft.typed(text: "first message"),
+            attachments: const [],
+          ),
+          pluginId: "claude",
+          startedAt: clock.now().subtract(const Duration(seconds: 3)),
+          followUpIds: const {},
+        ),
+      ),
+    );
+
+    expect(find.text("first message"), findsOneWidget);
+    // Named from the launch's plugin, not the list's harness name, so it
+    // reads as the new-session screen's bubble did.
+    expect(find.text("Sending to Claude Code…"), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

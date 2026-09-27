@@ -48,6 +48,10 @@ class const SessionDetailMessageList({
   /// The harness name a slow send names, or null until it is known.
   required final String? harnessName,
 
+  /// The first message of a session this surface just created, shown as a
+  /// sending bubble until the transcript holds its replacement.
+  required final SessionLaunchHandoff? launchHandoff,
+
   /// Null on a read-only surface, which shows the failure without actions.
   required final VoidCallback? onRetryFailedSend,
   required final VoidCallback? onRemoveFailedSend,
@@ -186,6 +190,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// session works. The row stays in the list, empty while idle, so it eases
   /// in and out as work starts and ends.
   static const _kWorkingRowId = "session-detail-working-row";
+
+  /// Synthetic id for the launch's first message, the oldest transient row. A
+  /// session has at most one, so it is never matched against echoes.
+  static const _kLaunchRowId = "session-detail-launch-row";
   static const _kPromptRowPrefix = "session-detail-prompt-";
 
   /// Folded, a prompt turn's stub row follows its prompt row, keyed by the
@@ -751,6 +759,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required List<QueuedSessionSubmission> queuedMessages,
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
     required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    required bool hasLaunchRow,
   }) {
     final deliveredPromptIds = <String>{
       for (final message in messages)
@@ -761,6 +770,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       ...messageRows,
       _kRetryErrorRowId,
       _kWorkingRowId,
+      if (hasLaunchRow) _kLaunchRowId,
       for (final prompt in bridgeQueuedPrompts)
         if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
       for (final submission in awaitingBridgeSubmissions)
@@ -885,6 +895,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       queuedMessages: queuedMessages,
       bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
       awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
+      hasLaunchRow: widget.launchHandoff != null,
     );
     final knownRowIds = _knownRowIds;
     _knownRowIds = rowIds.toSet();
@@ -1058,6 +1069,34 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     if (entryId == _kWorkingRowId) {
       return _revealable(createdAtMs: null, child: _workingRow(activity: activity));
     }
+    if (widget.launchHandoff
+        case SessionLaunchHandoff(
+          :final submission,
+          :final pluginId,
+          :final startedAt,
+        )
+        when entryId == _kLaunchRowId) {
+      final attachments = switch (submission) {
+        NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
+        NewSessionCommandSubmissionSnapshot() => const <ComposerAttachment>[],
+      };
+      return _revealable(
+        createdAtMs: null,
+        child: _animatedPromptRow(
+          child: QueuedMessageBubble(
+            key: const ValueKey(_kLaunchRowId),
+            displayText: submission.displayText,
+            isCommand: submission is NewSessionCommandSubmissionSnapshot,
+            attachmentCount: attachments.length,
+            localAttachments: attachments,
+            presentation: QueuedMessageBubblePresentation.sending(
+              harnessName: PregoBrandLogo.displayNameFor(pluginId),
+              sendingSince: startedAt,
+            ),
+          ),
+        ),
+      );
+    }
     if (entryId.startsWith(_kPromptRowPrefix)) {
       // One row serves the prompt's whole lifecycle. Resolve the most settled
       // state first: the delivered message, else the bridge-queued entry, else
@@ -1088,6 +1127,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               presentation: switch (prompt.dispatchState) {
                 QueuedPromptDispatchState.dispatched => QueuedMessageBubblePresentation.sending(
                   harnessName: widget.harnessName,
+                  sendingSince: null,
                 ),
                 QueuedPromptDispatchState.queued || QueuedPromptDispatchState.unknown =>
                   onCancel == null
@@ -1113,7 +1153,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             attachmentCount: submission.attachments.length,
             localAttachments: submission.attachments,
             presentation: switch (transientSubmission.stage) {
-              _TransientStage.sending => QueuedMessageBubblePresentation.sending(harnessName: widget.harnessName),
+              _TransientStage.sending => QueuedMessageBubblePresentation.sending(
+                harnessName: widget.harnessName,
+                sendingSince: null,
+              ),
               _TransientStage.failed => QueuedMessageBubblePresentation.failed(
                 onRetry: widget.onRetryFailedSend,
                 onRemove: widget.onRemoveFailedSend,

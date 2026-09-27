@@ -517,7 +517,7 @@ void main() {
       sessionEvents.add(permission);
       await pumpEventQueue();
 
-      expect(cubit.state, const SessionDetailState.loading());
+      expect(cubit.state, const SessionDetailState.loading(launchHandoff: null));
 
       messagesCompleter.complete(
         ApiResponse.success(

@@ -107,6 +107,7 @@ class NotificationOpenDispatcher({
       sessionId: request.sessionId,
       sessionTitle: request.sessionTitle,
       readOnly: false,
+      fromLaunch: false,
     );
 
     // Replacing the stack tears down the live session detail screen and builds

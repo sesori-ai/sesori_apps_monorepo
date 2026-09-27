@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:clock/clock.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
@@ -9,8 +10,11 @@ import "../../../extensions/build_context_x.dart";
 import "user_message_card.dart";
 
 sealed class const QueuedMessageBubblePresentation() {
-  /// [harnessName] is null until the harness status loads.
-  const factory sending({required String? harnessName}) = SendingMessageBubblePresentation;
+  /// [harnessName] is null until the harness status loads. [sendingSince] is
+  /// the instant the send began when it predates this bubble, so a bubble
+  /// rebuilt mid-send keeps its slow-send copy; null starts the clock now.
+  const factory sending({required String? harnessName, required DateTime? sendingSince}) =
+      SendingMessageBubblePresentation;
   const factory pending({required VoidCallback onCancel}) = PendingMessageBubblePresentation;
   const factory pendingReadOnly() = ReadOnlyPendingMessageBubblePresentation;
   const factory commandUnavailable({required VoidCallback? onRemove}) = UnavailableCommandBubblePresentation;
@@ -20,8 +24,10 @@ sealed class const QueuedMessageBubblePresentation() {
       FailedMessageBubblePresentation;
 }
 
-final class const SendingMessageBubblePresentation({required final String? harnessName})
-    extends QueuedMessageBubblePresentation;
+final class const SendingMessageBubblePresentation({
+  required final String? harnessName,
+  required final DateTime? sendingSince,
+}) extends QueuedMessageBubblePresentation;
 
 final class const PendingMessageBubblePresentation({required final VoidCallback onCancel})
     extends QueuedMessageBubblePresentation;
@@ -82,10 +88,16 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
     _slowSendTimer?.cancel();
     _slowSendTimer = null;
     _isSlowSend = false;
-    if (widget.presentation is! SendingMessageBubblePresentation) return;
-    _slowSendTimer = Timer(_slowSendDelay, () {
-      if (mounted) setState(() => _isSlowSend = true);
-    });
+    if (widget.presentation case SendingMessageBubblePresentation(:final sendingSince)) {
+      final remaining = sendingSince == null ? _slowSendDelay : _slowSendDelay - clock.now().difference(sendingSince);
+      if (remaining <= Duration.zero) {
+        _isSlowSend = true;
+        return;
+      }
+      _slowSendTimer = Timer(remaining, () {
+        if (mounted) setState(() => _isSlowSend = true);
+      });
+    }
   }
 
   @override

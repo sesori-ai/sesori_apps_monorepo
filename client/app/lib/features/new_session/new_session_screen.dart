@@ -53,6 +53,8 @@ class const NewSessionScreen({
           sessionId: session.id,
           sessionTitle: session.title,
           readOnly: false,
+          // The session screen takes over the first message in place.
+          fromLaunch: true,
         ),
       ),
       composerScopeBuilder: ({required child}) {

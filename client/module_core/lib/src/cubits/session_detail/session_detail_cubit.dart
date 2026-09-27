@@ -17,6 +17,7 @@ import "../../foundation/models/composer/prompt_send_failure.dart";
 import "../../foundation/models/composer/queued_session_submission.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../foundation/models/session_interaction_state.dart";
+import "../../foundation/models/session_launch/session_launch_handoff.dart";
 import "../../foundation/models/session_options/session_options_request_mode.dart";
 import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
@@ -229,11 +230,10 @@ class SessionDetailCubit(
   final StreamController<SessionDetailNotice> _noticeStream = StreamController.broadcast();
   Stream<SessionDetailNotice> get noticeStream => _noticeStream.stream;
 
+  // The launch's first message is taken before the first frame, so a session
+  // screen replacing the composer shows it where the composer left it.
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  this : super(const SessionDetailState.loading()) {
-    // Opening the created session discharges its launch. The session screen
-    // does not show the handed-off first message yet, so it is dropped here.
-    sessionLaunchRepository.takeHandoff(sessionId: _sessionId);
+  this : super(SessionDetailState.loading(launchHandoff: sessionLaunchRepository.takeHandoff(sessionId: _sessionId))) {
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     // Seed the connection state so the BehaviorSubject's immediate replay isn't
     // treated as a reconnect transition.
@@ -253,6 +253,19 @@ class SessionDetailCubit(
       ..add(_sseEventTracker.sessionActivity.listen(_onSessionActivity));
     unawaited(_pluginManagementService.refresh());
     unawaited(_loadMessages(isReload: false));
+  }
+
+  /// The one funnel every state passes through. A loaded state that already
+  /// shows what replaces the launch's first message drops its bubble here, so
+  /// no emission site can keep it past its replacement.
+  @override
+  void emit(SessionDetailState next) {
+    if (next case SessionDetailLoaded(launchHandoff: SessionLaunchHandoff(:final followUpIds))
+        when next.showsLaunchReplacement(launchFollowUpIds: followUpIds)) {
+      super.emit(next.copyWith(launchHandoff: null));
+      return;
+    }
+    super.emit(next);
   }
 
   void _onYoloSettings(YoloSettingsResponse settings) {
@@ -348,7 +361,8 @@ class SessionDetailCubit(
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
     _activeLoadingRefreshes.update(connectionGeneration, (count) => count + 1, ifAbsent: () => 1);
     final previous = state;
-    emit(const SessionDetailState.loading());
+    final launchHandoff = previous.pendingLaunchHandoff;
+    emit(SessionDetailState.loading(launchHandoff: launchHandoff));
     final parkEpochAtFetch = _parkEpoch;
     late final SessionDetailMetadataLoadResult metadataResult;
     SessionDetailLoadResult? result;
@@ -468,6 +482,7 @@ class SessionDetailCubit(
                 session: session,
                 parkEpochAtFetch: parkEpochAtFetch,
                 interaction: becameAvailable ? interactionAtLoad : _interaction,
+                launchHandoff: launchHandoff,
               ),
             );
             if (becameAvailable) {
@@ -2940,6 +2955,10 @@ class SessionDetailCubit(
   }
 
   void _clearLocalPromptQueue() {
+    // A stop ends the first message's send too.
+    if (state case final SessionDetailLoaded current when current.launchHandoff != null) {
+      emit(current.copyWith(launchHandoff: null));
+    }
     if (_promptQueue.isEmpty &&
         !_promptQueue.isSending &&
         _promptQueue.failed == null &&
@@ -2977,6 +2996,7 @@ class SessionDetailCubit(
     required Session session,
     required int parkEpochAtFetch,
     required SessionInteractionState interaction,
+    required SessionLaunchHandoff? launchHandoff,
   }) {
     _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
     final derived = _deriveSnapshot(snapshot);
@@ -3037,6 +3057,7 @@ class SessionDetailCubit(
       bridgeYolo: _bridgeSettingsService.yoloSettings.value,
       mainAgentRunning: _mainAgentRunning,
       isUpdatingApproval: _approvalUpdateInFlight,
+      launchHandoff: launchHandoff,
     );
   }
 

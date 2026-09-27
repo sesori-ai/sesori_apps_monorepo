@@ -17,6 +17,8 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_attachm
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/new_session_submission_snapshot.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
+import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch.dart";
+import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch_handoff.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
@@ -160,7 +162,9 @@ void main() {
       bool areOptionsStale = false,
       bool supportsPromptAttachments = false,
       bool isArchived = false,
+      List<MessageWithParts> snapshotMessages = const [],
       SessionLaunchRepository? sessionLaunchRepository,
+      void Function(SessionDetailState initial)? onInitialState,
     }) async {
       final mockLoadService = MockSessionDetailLoadService();
       when(
@@ -175,7 +179,7 @@ void main() {
             projectId: "project-1",
             pluginId: "claude",
             supportsPromptAttachments: supportsPromptAttachments,
-            messages: const <MessageWithParts>[],
+            messages: snapshotMessages,
             olderMessagesCursor: null,
             awaitingHarnessSync: false,
             pendingQuestions: const <PendingQuestion>[],
@@ -254,6 +258,7 @@ void main() {
         sessionLaunchRepository: sessionLaunchRepository ?? inMemorySessionLaunchRepository(),
       );
       addTearDown(cubit.close);
+      onInitialState?.call(cubit.state);
       await cubit.stream.firstWhere((state) => state is SessionDetailLoaded);
       return cubit;
     }
@@ -2319,6 +2324,157 @@ void main() {
       await createLoadedCubit(sessionLaunchRepository: repository);
 
       expect(storage.readAll(), isEmpty);
+    });
+
+    group("launch handoff", () {
+      final submission = NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Hello"),
+        attachments: const [],
+      );
+      final startedAt = DateTime.utc(2026, 9, 27, 12);
+
+      SessionLaunchRepository launchedRepository({Set<String> followUpIds = const {}}) {
+        final storage = SessionLaunchStorage();
+        storage.write(
+          launch: SessionLaunch.created(
+            launchId: "launch-1",
+            projectId: "project-1",
+            pluginId: "claude",
+            startedAt: startedAt,
+            followUpIds: followUpIds,
+            session: testSession(id: _sessionId),
+            submission: submission,
+          ),
+        );
+        return SessionLaunchRepository(storage: storage);
+      }
+
+      final expectedHandoff = SessionLaunchHandoff(
+        submission: submission,
+        pluginId: "claude",
+        startedAt: startedAt,
+        followUpIds: const {},
+      );
+
+      Iterable<SessionDetailLoaded> showingBoth(List<SessionDetailState> emissions) =>
+          emissions.whereType<SessionDetailLoaded>().where(
+            (state) =>
+                state.launchHandoff != null &&
+                state.messages.any(
+                  (message) => message.info is MessageUser && message.parts.any((part) => part is MessagePartText),
+                ),
+          );
+
+      test("the first frame and the loaded screen carry the launch's first message", () async {
+        final repository = launchedRepository();
+        SessionDetailState? initial;
+        final cubit = await createLoadedCubit(
+          sessionLaunchRepository: repository,
+          onInitialState: (state) => initial = state,
+        );
+
+        expect(initial, SessionDetailState.loading(launchHandoff: expectedHandoff));
+        expect((cubit.state as SessionDetailLoaded).launchHandoff, expectedHandoff);
+        expect(repository.takeHandoff(sessionId: _sessionId), isNull, reason: "the handoff is taken once");
+      });
+
+      test("an ordinary open has no launch bubble", () async {
+        SessionDetailState? initial;
+        final cubit = await createLoadedCubit(onInitialState: (state) => initial = state);
+
+        expect(initial, const SessionDetailState.loading(launchHandoff: null));
+        expect((cubit.state as SessionDetailLoaded).launchHandoff, isNull);
+      });
+
+      test("a snapshot that already holds the user message never shows the bubble beside it", () async {
+        final cubit = await createLoadedCubit(
+          sessionLaunchRepository: launchedRepository(),
+          snapshotMessages: [
+            const MessageWithParts(
+              info: Message.user(
+                id: "msg-1",
+                sessionID: _sessionId,
+                agent: null,
+                time: MessageTime(created: 100, completed: null),
+                promptId: null,
+              ),
+              parts: [
+                MessagePart.text(id: "part-1", sessionID: _sessionId, messageID: "msg-1", text: "Hello"),
+              ],
+            ),
+          ],
+        );
+
+        expect((cubit.state as SessionDetailLoaded).launchHandoff, isNull);
+      });
+
+      test("the bubble gives way to the streamed user message in the same frame it renders", () async {
+        final cubit = await createLoadedCubit(sessionLaunchRepository: launchedRepository());
+        final emissions = <SessionDetailState>[];
+        final subscription = cubit.stream.listen(emissions.add);
+        addTearDown(subscription.cancel);
+
+        sessionEvents.add(
+          const SesoriMessageUpdated(
+            info: Message.user(
+              id: "msg-1",
+              sessionID: _sessionId,
+              agent: null,
+              time: MessageTime(created: 100, completed: null),
+              promptId: null,
+            ),
+          ),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(
+          (cubit.state as SessionDetailLoaded).launchHandoff,
+          expectedHandoff,
+          reason: "a bare envelope cannot render yet",
+        );
+
+        sessionEvents.add(_textPartFor(messageId: "msg-1", text: "Hello"));
+        await Future<void>.delayed(Duration.zero);
+
+        expect((cubit.state as SessionDetailLoaded).launchHandoff, isNull);
+        expect(showingBoth(emissions), isEmpty);
+      });
+
+      test("a queued prompt replaces the bubble unless it is one of the launch's follow-ups", () async {
+        final cubit = await createLoadedCubit(sessionLaunchRepository: launchedRepository(followUpIds: {"prm_1"}));
+
+        sessionEvents.add(
+          const SesoriSseEvent.sessionQueuedPrompts(sessionID: _sessionId, prompts: [_queuedPrompt])
+              as SesoriSessionEvent,
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect((cubit.state as SessionDetailLoaded).launchHandoff, isNotNull);
+
+        sessionEvents.add(
+          const SesoriSseEvent.sessionQueuedPrompts(
+            sessionID: _sessionId,
+            prompts: [
+              _queuedPrompt,
+              QueuedSessionPrompt(id: "prm_2", text: "Hello", command: null, attachmentCount: 0, createdAt: 50),
+            ],
+          ) as SesoriSessionEvent,
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect((cubit.state as SessionDetailLoaded).launchHandoff, isNull);
+      });
+
+      test("abort drops the launch bubble", () async {
+        when(
+          () => mockSessionRepository.abortSession(
+            sessionId: any(named: "sessionId"),
+            subAgents: any(named: "subAgents"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(true));
+        final cubit = await createLoadedCubit(sessionLaunchRepository: launchedRepository());
+
+        await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+
+        expect((cubit.state as SessionDetailLoaded).launchHandoff, isNull);
+      });
     });
   });
 }

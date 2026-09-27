@@ -118,6 +118,7 @@ SessionDetailLoaded _loadedState({required Session session}) {
   return SessionDetailLoaded(
     interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
     messages: const [_message],
+    launchHandoff: null,
     olderMessagesCursor: null,
     transcriptFolded: false,
     streamingText: const {},

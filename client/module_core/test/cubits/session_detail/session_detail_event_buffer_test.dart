@@ -128,7 +128,7 @@ void main() {
       final cubit = createCubit(loadService: mockLoadService);
 
       // Cubit starts in loading state
-      expect(cubit.state, const SessionDetailState.loading());
+      expect(cubit.state, const SessionDetailState.loading(launchHandoff: null));
 
       // Emit a session-scoped event while still loading
       const updatedMessage = Message.assistant(
@@ -143,7 +143,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       // Still loading — event should be buffered, not processed yet
-      expect(cubit.state, const SessionDetailState.loading());
+      expect(cubit.state, const SessionDetailState.loading(launchHandoff: null));
 
       // Complete the load with an empty snapshot
       completer.complete(
@@ -291,7 +291,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       // Still loading
-      expect(cubit.state, const SessionDetailState.loading());
+      expect(cubit.state, const SessionDetailState.loading(launchHandoff: null));
 
       // Complete the load
       completer.complete(
@@ -2085,7 +2085,7 @@ void main() {
       globalEvents.add(SseEvent(data: const SesoriInstallationUpdateAvailable(version: null)));
       await Future<void>.delayed(Duration.zero);
 
-      expect(cubit.state, const SessionDetailState.loading());
+      expect(cubit.state, const SessionDetailState.loading(launchHandoff: null));
 
       // Complete the load
       completer.complete(

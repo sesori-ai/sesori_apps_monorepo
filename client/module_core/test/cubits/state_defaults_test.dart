@@ -10,6 +10,7 @@ import "package:test/test.dart";
 void main() {
   test("SessionDetailLoaded.isRefreshing defaults to false", () {
     const state = SessionDetailState.loaded(
+      launchHandoff: null,
       interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
       messages: [],
       olderMessagesCursor: null,

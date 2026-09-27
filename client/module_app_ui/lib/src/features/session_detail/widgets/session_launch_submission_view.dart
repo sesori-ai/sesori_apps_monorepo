@@ -16,6 +16,10 @@ class const SessionLaunchSubmissionView({
   /// Null until the harness is known; the bubble then only says "Sending".
   required final String? harnessName,
 
+  /// When the send began, so every rendering of this bubble reaches its
+  /// slow-send copy at the same instant.
+  required final DateTime? sendingSince,
+
   /// Caps the reading column the way a pointer surface's transcript does; null
   /// spans the pane, as the phone does.
   required final double? transcriptWidth,
@@ -31,7 +35,7 @@ class const SessionLaunchSubmissionView({
       isCommand: submission is NewSessionCommandSubmissionSnapshot,
       attachmentCount: attachments.length,
       localAttachments: attachments,
-      presentation: QueuedMessageBubblePresentation.sending(harnessName: harnessName),
+      presentation: QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: sendingSince),
     );
     return LayoutBuilder(
       builder: (context, constraints) {

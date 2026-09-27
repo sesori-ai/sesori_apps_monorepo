@@ -148,6 +148,7 @@ SessionDetailLoaded _loadedState({
   return SessionDetailLoaded(
     interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
     messages: messages,
+    launchHandoff: null,
     olderMessagesCursor: null,
     transcriptFolded: false,
     streamingText: const {},
@@ -299,7 +300,7 @@ void main() {
   });
 
   for (final auditState in [
-    const SessionDetailState.loading(),
+    const SessionDetailState.loading(launchHandoff: null),
     const SessionDetailState.failed(reason: RemoteFailureReason.unknown),
   ]) {
     testWidgets("an audit page keeps Back as its only way out in $auditState", (tester) async {
@@ -637,6 +638,28 @@ void main() {
     expect(find.text("Cold-start prompt"), findsOneWidget);
   });
 
+  testWidgets("a launch's first message stands in for the empty transcript label", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      launchHandoff: SessionLaunchHandoff(
+        submission: NewSessionSubmissionSnapshot.text(
+          draft: ComposerDraft.typed(text: "Launch prompt"),
+          attachments: const [],
+        ),
+        pluginId: "opencode",
+        startedAt: DateTime.now(),
+        followUpIds: const {},
+      ),
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+
+    expect(find.text("No messages yet"), findsNothing);
+    expect(find.descendant(of: find.byType(QueuedMessageBubble), matching: find.text("Launch prompt")), findsOneWidget);
+  });
+
   testWidgets("a busy session with no messages shows the Working row instead of the empty label", (tester) async {
     final state = _loadedState(
       pendingQuestions: const [],
@@ -919,6 +942,7 @@ void main() {
     final updatedState = SessionDetailState.loaded(
       interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
       messages: const [],
+      launchHandoff: null,
       olderMessagesCursor: null,
       transcriptFolded: false,
       streamingText: const {},

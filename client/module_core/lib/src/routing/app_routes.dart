@@ -67,6 +67,7 @@ enum AppRouteDef(final String path) {
 ///   sessionId: 's1',
 ///   sessionTitle: null,
 ///   readOnly: false,
+///   fromLaunch: false,
 /// ));
 /// ```
 sealed class const AppRoute() {
@@ -112,6 +113,7 @@ sealed class const AppRoute() {
     required String sessionId,
     required String? sessionTitle,
     required bool readOnly,
+    required bool fromLaunch,
   }) = AppRouteSessionDetail;
   const factory sessionDiffs({
     required String projectId,
@@ -333,12 +335,18 @@ class const AppRouteSessionDetail({
   required final String sessionId,
   required final String? sessionTitle,
   required final bool readOnly,
+
+  /// Set only when this route replaces the new-session screen that created
+  /// the session, which already shows its first message where this screen
+  /// will: the replacement then needs no entry transition.
+  required final bool fromLaunch,
 }) extends AppRoute {
   static const _projectIdPathParam = projectIdPathParam;
   static const _sessionIdPathParam = sessionIdPathParam;
   static const _nameQueryParam = projectNameQueryParam;
   static const _titleQueryParam = "title";
   static const _readOnlyQueryParam = "readOnly";
+  static const _fromLaunchQueryParam = "fromLaunch";
 
   /// Decodes from path/query parameter maps (inverse of [buildPath]).
   factory fromParams({
@@ -351,6 +359,7 @@ class const AppRouteSessionDetail({
       sessionId: pathParams[_sessionIdPathParam] ?? "",
       sessionTitle: queryParams[_titleQueryParam],
       readOnly: queryParams[_readOnlyQueryParam] == "true",
+      fromLaunch: queryParams[_fromLaunchQueryParam] == "1",
     );
   }
 
@@ -364,6 +373,7 @@ class const AppRouteSessionDetail({
       _readOnlyQueryParam: readOnly.toString(),
       _nameQueryParam: ?projectName,
       _titleQueryParam: ?sessionTitle,
+      if (fromLaunch) _fromLaunchQueryParam: "1",
     };
     return _appendQuery(path: base, queryParameters: queryParams);
   }

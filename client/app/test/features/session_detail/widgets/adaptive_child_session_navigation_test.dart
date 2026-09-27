@@ -34,6 +34,7 @@ Widget _presentationScope({required BuildContext context, required Widget child}
             sessionId: sessionId,
             sessionTitle: sessionTitle,
             readOnly: readOnly,
+            fromLaunch: false,
           ),
         ),
     child: child,

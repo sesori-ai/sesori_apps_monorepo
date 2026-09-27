@@ -74,6 +74,7 @@ SessionDetailLoaded _state({
   required List<MessageWithParts> messages,
 }) {
   return SessionDetailLoaded(
+    launchHandoff: null,
     interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
     messages: messages,
     olderMessagesCursor: null,

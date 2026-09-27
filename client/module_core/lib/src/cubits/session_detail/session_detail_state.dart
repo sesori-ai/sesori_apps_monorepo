@@ -5,6 +5,7 @@ import "../../errors/remote_failure_reason.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/queued_session_submission.dart";
 import "../../foundation/models/session_interaction_state.dart";
+import "../../foundation/models/session_launch/session_launch_handoff.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/session_approval_calculator.dart";
 import "../../services/session_selection_calculator.dart";
@@ -14,7 +15,12 @@ part "session_detail_state.freezed.dart";
 
 @Freezed()
 sealed class SessionDetailState with _$SessionDetailState {
-  const factory loading() = SessionDetailLoading;
+  const factory loading({
+    /// The first message of the launch this screen took over, shown as a
+    /// sending bubble until the transcript shows what replaces it. Null for
+    /// every ordinary open.
+    required SessionLaunchHandoff? launchHandoff,
+  }) = SessionDetailLoading;
 
   const factory loaded({
     required SessionInteractionState interaction,
@@ -106,6 +112,10 @@ sealed class SessionDetailState with _$SessionDetailState {
 
     /// Whether a change to the session's approval mode awaits the bridge.
     @Default(false) bool isUpdatingApproval,
+
+    /// The taken launch's first message, kept until [SessionDetailLoadedLaunch.showsLaunchReplacement]
+    /// holds; see [SessionDetailLoading.launchHandoff].
+    required SessionLaunchHandoff? launchHandoff,
   }) = SessionDetailLoaded;
 
   /// The harness is blocked *and* the bridge's store holds nothing for this
@@ -126,6 +136,12 @@ extension SessionDetailStateX on SessionDetailState {
     SessionDetailLoaded(:final isUpdatingAutoContinuation) ||
     SessionDetailHarnessUnavailable(:final isUpdatingAutoContinuation) => isUpdatingAutoContinuation,
     SessionDetailLoading() || SessionDetailFailed() => false,
+  };
+
+  /// The taken launch's first message, for the variants that carry it.
+  SessionLaunchHandoff? get pendingLaunchHandoff => switch (this) {
+    SessionDetailLoading(:final launchHandoff) || SessionDetailLoaded(:final launchHandoff) => launchHandoff,
+    SessionDetailHarnessUnavailable() || SessionDetailFailed() => null,
   };
 
   /// The hydrated session, for the variants that have one.
