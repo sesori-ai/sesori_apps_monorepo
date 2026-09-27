@@ -65,6 +65,7 @@ storedOnly: false,)).thenAnswer(
         const MessageWithPartsResponse(
           messages: <MessageWithParts>[],
           nextCursor: null,
+          userMessagesBefore: null,
           replayedPromptDefaults: null,
         ),
       ),

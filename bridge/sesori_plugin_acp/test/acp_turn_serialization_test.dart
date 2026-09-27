@@ -55,17 +55,6 @@ class _GatedSelectionPlugin({
   }
 }
 
-class _TimestampingEventMapper({
-  required super.launchDirectory,
-  required super.pluginId,
-  required super.configurationTracker,
-  required super.childSessions,
-}) extends AcpEventMapper {
-  @override
-  PluginMessageTime localUserMessageTime({required int createdAtMs}) =>
-      PluginMessageTime(created: createdAtMs, completed: null);
-}
-
 class _PromptLifecycleTrackingMapper({
   required super.launchDirectory,
   required super.pluginId,
@@ -616,34 +605,6 @@ void main() {
     });
 
     test("a queued prompt message uses its dispatch time", () async {
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      final childSessionTracker = AcpChildSessionTracker();
-      final timestampingPlugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
-        launchDirectory: cwd,
-        childSessionTracker: childSessionTracker,
-        eventMapper: _TimestampingEventMapper(
-          launchDirectory: cwd,
-          pluginId: "acp",
-          configurationTracker: configurationTracker,
-          childSessions: childSessionTracker,
-        ),
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
-        processFactory: (_) async => fake,
-      );
-      await plugin.dispose();
-      plugin = timestampingPlugin;
-      plugin.events.listen(emitted.add, onError: streamErrors.add);
-
       await connect();
       final sessionId = await createSession(cwd, "s1");
       final firstPromptId = await sendPrompt(sessionId, "first");

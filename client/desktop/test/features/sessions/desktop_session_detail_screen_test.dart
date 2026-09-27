@@ -120,6 +120,7 @@ SessionDetailLoaded _loadedState({required Session session}) {
     messages: const [_message],
     launchHandoff: null,
     olderMessagesCursor: null,
+    userMessagesBeforeOldest: null,
     streamingText: const {},
     sessionStatus: const SessionStatus.idle(),
     pendingQuestions: const [_question],

@@ -49,6 +49,9 @@ typedef SessionMessagesPage = ({
   /// Whether the store served this page while behind the harness, so newer
   /// messages may be missing. Only a store-only read can report this.
   bool awaitingHarnessSync,
+
+  /// How many of the session's user messages are older than [messages].
+  int userMessagesBefore,
 });
 
 /// The single writer of the chat history store.
@@ -210,6 +213,7 @@ class ChatHistoryService({
         nextCursor: null,
         replayedPromptDefaults: null,
         awaitingHarnessSync: true,
+        userMessagesBefore: 0,
       );
     }
     final storageScope = _storageScopeFor(session: stored);
@@ -251,6 +255,7 @@ class ChatHistoryService({
     nextCursor: page.nextCursor,
     replayedPromptDefaults: replayedPromptDefaults,
     awaitingHarnessSync: awaitingHarnessSync,
+    userMessagesBefore: page.userMessagesBefore,
   );
 
   MessageAttachmentProjection _attachmentProjectionFor({required MessageAttachmentDelivery delivery}) =>

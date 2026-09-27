@@ -24,6 +24,7 @@ const _loaded = SessionDetailState.loaded(
   messages: [],
   launchHandoff: null,
   olderMessagesCursor: null,
+  userMessagesBeforeOldest: null,
   streamingText: {},
   sessionStatus: SessionStatus.idle(),
   pendingQuestions: [],

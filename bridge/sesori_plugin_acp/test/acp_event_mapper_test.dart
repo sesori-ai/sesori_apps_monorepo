@@ -16,6 +16,17 @@ class _EnvelopeTimeEventMapper({
   }
 }
 
+class _BackendPromptTimeEventMapper({
+  required super.launchDirectory,
+  required super.pluginId,
+  required super.configurationTracker,
+  required super.childSessions,
+}) extends AcpEventMapper {
+  @override
+  PluginMessageTime localUserMessageTime({required int createdAtMs}) =>
+      const PluginMessageTime(created: 42, completed: null);
+}
+
 /// Asserts the mapper emits sesori-schema payloads — message envelopes must
 /// round-trip through `Message.fromJson`, exactly like the codex mapper.
 void main() {
@@ -470,6 +481,49 @@ void main() {
         events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text),
         ["Hello", "Cursor"],
       );
+    });
+
+    test("a sent and an initial prompt carry the instant the bridge observed", () {
+      final sent = mapper.mapSentPrompt(
+        messageId: "s1-sent-1-user",
+        promptId: "prompt-1",
+        sessionId: "s1",
+        createdAtMs: 1700000000000,
+        parts: [const PluginPromptPart.text(text: "Hello")],
+      );
+      final initial = mapper.mapInitialPrompt(
+        sessionId: "s2",
+        createdAtMs: 1700000000500,
+        parts: [const PluginPromptPart.text(text: "Hi")],
+      );
+
+      expect(
+        sent.whereType<BridgeSseMessageUpdated>().single.info.time,
+        const PluginMessageTime(created: 1700000000000, completed: null),
+      );
+      expect(
+        initial.whereType<BridgeSseMessageUpdated>().single.info.time,
+        const PluginMessageTime(created: 1700000000500, completed: null),
+      );
+    });
+
+    test("a harness override still decides the prompt's time", () {
+      mapper = _BackendPromptTimeEventMapper(
+        launchDirectory: "/repo",
+        pluginId: "cursor",
+        configurationTracker: configurationTracker,
+        childSessions: AcpChildSessionTracker(),
+      );
+
+      final events = mapper.mapSentPrompt(
+        messageId: "s1-sent-1-user",
+        promptId: "prompt-1",
+        sessionId: "s1",
+        createdAtMs: 1700000000000,
+        parts: [const PluginPromptPart.text(text: "Hello")],
+      );
+
+      expect(events.whereType<BridgeSseMessageUpdated>().single.info.time?.created, 42);
     });
 
     for (final parts in [

@@ -152,6 +152,54 @@ void main() {
       expect(unnumbered.entries.map((entry) => entry.number), [null, null]);
     });
 
+    test("keeps every number as three older pages load", () {
+      final session = [
+        _user(id: "u1"),
+        _answer(id: "a1"),
+        _user(id: "u2"),
+        _working(id: "a2"),
+        _user(id: "u3"),
+        _automation(id: "x1"),
+        _answer(id: "a3"),
+        _hiddenUser(id: "h1"),
+        _user(id: "u4"),
+        _answer(id: "a4"),
+        _user(id: "u5"),
+        _answer(id: "a5"),
+      ];
+      // What the bridge reports for a page starting at [start].
+      int userMessagesBefore({required int start}) =>
+          session.take(start).where((message) => message.info is MessageUser).length;
+
+      var start = session.length - 3;
+      var numbers = {
+        for (final entry in _list(
+          messages: session.sublist(start),
+          hasOlderMessages: true,
+          userMessagesBefore: userMessagesBefore(start: start),
+        ).entries)
+          entry.messageId: entry.number,
+      };
+      for (var page = 0; page < 3; page++) {
+        start -= 3;
+        final loaded = {
+          for (final entry in _list(
+            messages: session.sublist(start),
+            hasOlderMessages: start > 0,
+            userMessagesBefore: userMessagesBefore(start: start),
+          ).entries)
+            entry.messageId: entry.number,
+        };
+        for (final MapEntry(:key, :value) in numbers.entries) {
+          expect(loaded[key], value, reason: "$key after page ${page + 1}");
+        }
+        numbers = loaded;
+      }
+
+      expect(start, 0);
+      expect(numbers, {"u1": 1, "u2": 2, "u3": 3, "u4": 5, "u5": 6});
+    });
+
     test("reads the whole text, else the first attachment's name, and one line of it", () {
       final list = _list(
         messages: [

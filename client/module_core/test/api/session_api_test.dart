@@ -520,6 +520,7 @@ void main() {
           const MessageWithPartsResponse(
             messages: <MessageWithParts>[],
             nextCursor: null,
+            userMessagesBefore: null,
             replayedPromptDefaults: null,
           ),
         ),

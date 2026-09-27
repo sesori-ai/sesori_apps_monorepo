@@ -498,6 +498,7 @@ void main() {
                     const MessageWithPartsResponse(
                       messages: [],
                       nextCursor: null,
+                      userMessagesBefore: null,
                       replayedPromptDefaults: null,
                       awaitingHarnessSync: true,
                     ),
@@ -980,6 +981,7 @@ void main() {
           const MessageWithPartsResponse(
             messages: <MessageWithParts>[],
             nextCursor: null,
+            userMessagesBefore: null,
             replayedPromptDefaults: null,
             awaitingHarnessSync: true,
           ),
@@ -1925,6 +1927,7 @@ void main() {
           MessageWithPartsResponse(
             messages: [testMessageWithParts()],
             nextCursor: null,
+            userMessagesBefore: null,
             replayedPromptDefaults: null,
           ),
         ),
@@ -2073,6 +2076,7 @@ void main() {
             const MessageWithPartsResponse(
               messages: <MessageWithParts>[],
               nextCursor: null,
+              userMessagesBefore: null,
               replayedPromptDefaults: null,
             ),
           ),
@@ -2336,6 +2340,7 @@ void main() {
               MessageWithPartsResponse(
                 messages: [testMessageWithParts()],
                 nextCursor: null,
+                userMessagesBefore: null,
                 replayedPromptDefaults: null,
               ),
             ),
@@ -2347,6 +2352,7 @@ void main() {
             MessageWithPartsResponse(
               messages: [testMessageWithParts()],
               nextCursor: null,
+              userMessagesBefore: null,
               replayedPromptDefaults: null,
             ),
           ),
@@ -2895,6 +2901,7 @@ void main() {
               MessageWithPartsResponse(
                 messages: [testMessageWithParts()],
                 nextCursor: null,
+                userMessagesBefore: null,
                 replayedPromptDefaults: null,
               ),
             ),
@@ -2906,6 +2913,7 @@ void main() {
             MessageWithPartsResponse(
               messages: [testMessageWithParts()],
               nextCursor: null,
+              userMessagesBefore: null,
               replayedPromptDefaults: null,
             ),
           ),
@@ -3618,6 +3626,7 @@ void _stubAllDefaults(
         MessageWithPartsResponse(
           messages: [testMessageWithParts()],
           nextCursor: null,
+          userMessagesBefore: null,
           replayedPromptDefaults: null,
         ),
       ),

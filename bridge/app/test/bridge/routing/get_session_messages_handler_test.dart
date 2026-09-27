@@ -127,6 +127,24 @@ void main() {
       );
     });
 
+    test("sends how many user messages precede the page", () async {
+      plugin.messagesResult = [
+        for (final id in const ["m1", "m2", "m3"])
+          PluginMessageWithParts(
+            info: PluginMessage.user(promptId: null, id: id, sessionID: "s1", agent: null, time: null),
+            parts: const [],
+          ),
+      ];
+
+      final response = await handler.handle(
+        makeRequest("POST", "/session/messages"),
+        body: const SessionMessagesRequest(sessionId: "s1", limit: 1, before: null),
+      );
+
+      expect(response.messages.single.info.id, "m3");
+      expect(response.toJson()["userMessagesBefore"], 2);
+    });
+
     test("keeps default delivery inline and threads explicit stored references", () async {
       plugin.messagesResult = [
         PluginMessageWithParts(

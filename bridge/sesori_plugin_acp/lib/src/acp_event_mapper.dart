@@ -101,8 +101,14 @@ class AcpEventMapper({
   /// Backend extension time for a message-bearing ACP notification.
   PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) => null;
 
-  /// Backend-authoritative time for a locally projected accepted user message.
-  PluginMessageTime? localUserMessageTime({required int createdAtMs}) => null;
+  /// Time for a locally projected accepted user message.
+  ///
+  /// [createdAtMs] is the instant the bridge itself observed: when it
+  /// dispatched the prompt, or created the session for a first prompt. ACP
+  /// carries no message time, so that instant is the prompt's time; a harness
+  /// whose backend reports its own time overrides this.
+  PluginMessageTime localUserMessageTime({required int createdAtMs}) =>
+      PluginMessageTime(created: createdAtMs, completed: null);
 
   /// Last-known per-session metadata (title/times), fed by the plugin from
   /// enumeration and creation (like [setSessionProject]). `session_info_update`

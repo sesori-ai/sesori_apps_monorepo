@@ -32,6 +32,11 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// always sends the whole transcript.
     required int? olderMessagesCursor,
 
+    /// How many of the session's user messages precede [messages], from the
+    /// oldest page loaded, so prompts can be numbered absolutely. Null when
+    /// the bridge does not count them, and then no prompt shows a number.
+    required int? userMessagesBeforeOldest,
+
     /// Whether a load-older request is in flight, so the action is not
     /// re-issued while it runs.
     @Default(false) bool isLoadingOlderMessages,

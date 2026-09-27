@@ -61,13 +61,22 @@ stored or sent to the bridge.
   menu, on a loaded session. It covers the session page with the
   Prompts screen: a "Prompts" title with a "Close prompts" button, then one row
   per loaded prompt in the transcript's order, each follow-up indented below its
-  opener with a smaller, lighter dot on the same rail. A row shows one line of
-  the prompt's text, or its first attachment's name, and its time of day where
+  opener with a smaller, lighter dot on the same rail. A row shows its number,
+  one line of the prompt's text, or its first attachment's name, and its time of day where
   the prompt carries one, never repeating the date its header names. Timed rows sit under sticky day headers ("Today",
   "Yesterday", then the date), oldest day first, with a "No date" group above
   them for undated prompts; a session with no timed prompt shows no headers and
   no times. The list ends with "{n} prompts loaded"; an empty session reads "No
   prompts in this session yet".
+- A prompt's number is its place among all of the session's user messages,
+  loaded or not, counted by the bridge from its own history: the first prompt
+  is 1, and a user message the list hides still takes a number. Loading older
+  pages never changes a number already shown. A bridge that sends no count
+  leaves every row unnumbered.
+- For ACP harnesses the bridge stamps a prompt it sends with the instant it
+  dispatched it, or created the session for a first prompt, so its row and
+  "Working…" carry that time; a prompt read back from the harness's own
+  history stays undated.
 - The screen opens with the prompt the transcript's pin names already on
   screen just below its day header, with no visible scroll, or at the prompt
   just below when the top edge shows the messages before the first prompt. That
@@ -106,8 +115,8 @@ stored or sent to the bridge.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated, no plugin: every branch of the turn rule, the leading segment and determinism; touch and trackpad pinch per platform (iOS, Android, macOS): opening the Prompts screen once per gesture on a pinch in and never on a pinch out, one finger held still, below the threshold, the transcript unmoved and still following while following and still detached while reading history, and one-finger scroll, peek and nested horizontal scroll unaffected; the pinned prompt as one bubble per prompt through a slow scroll both ways over short and long prompts, never moving against the scroll and appearing or leaving only at the screen's edges, taking over exactly where it covers its bubble, its halo unclipped by the pin line, compacted to three lines at a narrow width and at a large text scale while a short prompt pins whole, hidden before the first prompt, rendered as its bubble with a table and a code block, only the opening of a pasted document built, a fence the cut leaves open still a code block, a pinned code block requesting no older page, the bubble's semantics label the prompt's words rather than its Markdown, an image-only prompt spoken as the row names it with and without alt text, a list, table and struck word spoken as the row lays them out, the band carrying no semantics action beside the bubble's, and gliding to its prompt on a tap on the bubble, never turning back and landing with the pin grown to full height, jumping instead with reduced motion, and through its semantics button, also when that prompt is not built, while a tap beside the bubble does nothing and a drag on the band still scrolls; the Prompts screen's rows, indentation, day headers and "No date" group, the untimed case, the count and empty rows, the opening anchor and its tint through a scroll away and back with and without reduced motion, an unknown anchor, the anchor the pin names and before the first prompt, a jump to an opener, a follow-up, an unbuilt row and a prompt that arrived while detached, a vanished id, back and the close button leaving the transcript unmoved, both entry buttons, the row semantics and the event per opening; the screen's transition in and out, its scale and dim, the plain fade with reduced motion, and the transcript unmoved through it; the iOS edge swipe following the finger, springing back from a short release, closing from a long one and from a flick, and doing nothing off iOS. |
-| L3 Release | Client end to end on the release-target phone and on macOS, on a session of three or more pages: a real-device pinch in on the phone and a macOS trackpad pinch open the Prompts screen growing from the fingers, while following (following continues) and while reading history (it stays detached), with the transcript where it was on the way back, and a pinch out does nothing, with one-finger scroll, the peek and a code block's horizontal scroll unaffected; the pinned prompt through short and long prompts both ways with no lag, pop or jump, compacting and pushed out by the next prompt step for step with the scroll, its halo only over sliding rows, and gliding back on a tap on the bubble; the Prompts screen from the phone bar and the macOS toolbar, opening on the prompt being read with no visible scroll, and a tap landing an opener, a follow-up and a far prompt, with back and close leaving the transcript unmoved; its transition in and out, and again with Reduce Motion on, with nothing jumping; on the iPhone an edge swipe that follows the finger, springs back when let go early and closes past halfway or on a flick; screen readers read the Prompts button, the pinned prompt, whose action jumps to it, and the Prompts rows; `transcript_prompts_opened` arrives. Android, Windows and Linux: the Prompts button and screen. Live plugin plus client, every supporting production plugin: a follow-up sent while a turn runs stays in that turn, or opens one where `docs/HARNESS_CAPABILITIES.md` says so; Claude and Pi automation stays inside its turn and is never pinned; a forced Claude re-import keeps follow-ups, peers and task outcomes in their turns. |
+| L2 Routine | Automated, no plugin: every branch of the turn rule, the leading segment and determinism; touch and trackpad pinch per platform (iOS, Android, macOS): opening the Prompts screen once per gesture on a pinch in and never on a pinch out, one finger held still, below the threshold, the transcript unmoved and still following while following and still detached while reading history, and one-finger scroll, peek and nested horizontal scroll unaffected; the pinned prompt as one bubble per prompt through a slow scroll both ways over short and long prompts, never moving against the scroll and appearing or leaving only at the screen's edges, taking over exactly where it covers its bubble, its halo unclipped by the pin line, compacted to three lines at a narrow width and at a large text scale while a short prompt pins whole, hidden before the first prompt, rendered as its bubble with a table and a code block, only the opening of a pasted document built, a fence the cut leaves open still a code block, a pinned code block requesting no older page, the bubble's semantics label the prompt's words rather than its Markdown, an image-only prompt spoken as the row names it with and without alt text, a list, table and struck word spoken as the row lays them out, the band carrying no semantics action beside the bubble's, and gliding to its prompt on a tap on the bubble, never turning back and landing with the pin grown to full height, jumping instead with reduced motion, and through its semantics button, also when that prompt is not built, while a tap beside the bubble does nothing and a drag on the band still scrolls; the Prompts screen's rows, indentation, day headers and "No date" group, the untimed case, the count and empty rows, the opening anchor and its tint through a scroll away and back with and without reduced motion, an unknown anchor, the anchor the pin names and before the first prompt, prompt numbers from the bridge's count kept through three older pages with hidden user messages and automation, no numbers without a count, the bridge's count for every page read (snapshot, stored-only, unlimited, empty and archived), the ACP dispatch stamp on sent and first prompts, a harness override and undated history replay, a jump to an opener, a follow-up, an unbuilt row and a prompt that arrived while detached, a vanished id, back and the close button leaving the transcript unmoved, both entry buttons, the row semantics and the event per opening; the screen's transition in and out, its scale and dim, the plain fade with reduced motion, and the transcript unmoved through it; the iOS edge swipe following the finger, springing back from a short release, closing from a long one and from a flick, and doing nothing off iOS. |
+| L3 Release | Client end to end on the release-target phone and on macOS, on a session of three or more pages: a real-device pinch in on the phone and a macOS trackpad pinch open the Prompts screen growing from the fingers, while following (following continues) and while reading history (it stays detached), with the transcript where it was on the way back, and a pinch out does nothing, with one-finger scroll, the peek and a code block's horizontal scroll unaffected; the pinned prompt through short and long prompts both ways with no lag, pop or jump, compacting and pushed out by the next prompt step for step with the scroll, its halo only over sliding rows, and gliding back on a tap on the bubble; the Prompts screen from the phone bar and the macOS toolbar, opening on the prompt being read with no visible scroll, its numbers matching the prompts' places in the session after paging back to the start, and a tap landing an opener, a follow-up and a far prompt, with back and close leaving the transcript unmoved; its transition in and out, and again with Reduce Motion on, with nothing jumping; on the iPhone an edge swipe that follows the finger, springs back when let go early and closes past halfway or on a flick; screen readers read the Prompts button, the pinned prompt, whose action jumps to it, and the Prompts rows; `transcript_prompts_opened` arrives. Android, Windows and Linux: the Prompts button and screen. Live plugin plus client, every supporting production plugin: a follow-up sent while a turn runs stays in that turn, or opens one where `docs/HARNESS_CAPABILITIES.md` says so; a prompt sent to an ACP harness shows its time on the Prompts screen and in "Working…"; Claude and Pi automation stays inside its turn and is never pinned; a forced Claude re-import keeps follow-ups, peers and task outcomes in their turns. |
 | L4 Extended | Open the Prompts screen and return from it while text streams and while an older page loads. |
 | L5 Full | No additional coverage. |
 
@@ -156,6 +165,9 @@ answer, and on a trackpad while text streams.
   out of the transcript's order, a follow-up above or away from its opener, or
   a prompt the transcript has not loaded; shows day headers out of order or
   "No date" below them.
+- A prompt's number changes when an older page loads, skips or repeats against
+  the session's prompts, or starts at 1 on a page that is not the session's
+  start; a prompt sent to an ACP harness shows no time.
 - The Prompts rows move while the screen is open; the transcript's jump shows
   after the screen closes.
 - The Prompts screen pops in or out, jumps mid-transition, scales under
@@ -199,9 +211,10 @@ answer, and on a trackpad while text streams.
   a prompt far above aims at an estimate that sharpens as rows are built, so
   its speed can bend on the way; it still lands exactly.
 - The Prompts screen lists only
-  what the transcript has loaded, with no search, and rows carry no prompt
-  numbers. Grok, Antigravity, Copilot, Cursor, Hermes and OMP carry no prompt
-  times, so their sessions show no times and no day headers. A prompt that arrived after the
+  what the transcript has loaded, with no search. An older bridge sends no
+  user message count, so its rows carry no numbers. On Grok, Antigravity,
+  Copilot, Cursor, Hermes and OMP a prompt read back from the harness's own
+  history carries no time. A prompt that arrived after the
   reader scrolled away lands just below the pinned prompt, where a follow-up
   would, rather than on the pin line.
 
@@ -228,4 +241,11 @@ answer, and on a trackpad while text streams.
 - `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart` and
   its test
 - `client/app/test/features/session_detail/widgets/session_detail_body_test.dart`
+- The user message count: `countUserMessagesBefore` in
+  `bridge/app/lib/src/api/database/history/chat_history_dao.dart`,
+  `bridge/app/lib/src/repositories/chat_history_repository.dart` and
+  `bridge/app/test/bridge/services/chat_history_pagination_test.dart`
+- The ACP prompt stamp: `localUserMessageTime` in
+  `bridge/sesori_plugin_acp/lib/src/acp_event_mapper.dart` and
+  `bridge/sesori_plugin_acp/test/acp_event_mapper_test.dart`
 - `.plan/active/turn-navigation/PLAN.md`

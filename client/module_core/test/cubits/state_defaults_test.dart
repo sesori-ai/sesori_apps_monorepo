@@ -14,6 +14,7 @@ void main() {
       interaction: SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
       messages: [],
       olderMessagesCursor: null,
+      userMessagesBeforeOldest: null,
       streamingText: {},
       sessionStatus: SessionStatus.idle(),
       pendingQuestions: [],

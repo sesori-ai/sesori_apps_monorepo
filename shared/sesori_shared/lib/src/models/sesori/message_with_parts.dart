@@ -28,6 +28,11 @@ sealed class MessageWithPartsResponse with _$MessageWithPartsResponse {
     /// before serving.
     // COMPATIBILITY 2026-09-09 (v1.8.4): Bridges that predate the store-only read omit awaitingHarnessSync; false is honest for them, because they always backfill before serving. Make this required once those bridges are unsupported.
     @Default(false) bool awaitingHarnessSync,
+
+    /// How many of the session's user messages are older than the oldest
+    /// message in [messages], so the client can number prompts absolutely.
+    // COMPATIBILITY 2026-09-26 (v1.9.1): older bridges omit this count, so the client shows no prompt numbers. Retire when every supported bridge sends it.
+    required int? userMessagesBefore,
   }) = _MessageWithPartsResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$MessageWithPartsResponseFromJson(json);

@@ -39,6 +39,7 @@ SessionDetailState _loadedState({
     messages: messages,
     launchHandoff: null,
     olderMessagesCursor: null,
+    userMessagesBeforeOldest: null,
     streamingText: streamingText,
     sessionStatus: const SessionStatus.idle(),
     pendingQuestions: const [],

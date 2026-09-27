@@ -30,8 +30,9 @@ class ChatHistoryArchiveVersionException({
 }
 
 /// One page of stored history, oldest-first, plus the cursor for the next
-/// older page (null when the caller has reached the start of the transcript).
-typedef ChatHistoryPage = ({List<MessageWithParts> messages, int? nextCursor});
+/// older page (null when the caller has reached the start of the transcript)
+/// and how many of the session's user messages are older than the page.
+typedef ChatHistoryPage = ({List<MessageWithParts> messages, int? nextCursor, int userMessagesBefore});
 
 /// Identity of one stored part inside its session.
 typedef StoredPartRef = ({String messageId, String partId});
@@ -138,11 +139,16 @@ class ChatHistoryRepository({
       sessionId: sessionId,
       messageIds: limit == null ? null : [for (final row in messageRows) row.messageId],
     );
+    // An unlimited or empty page has nothing before it to count.
+    final userMessagesBefore = limit == null || messageRows.isEmpty
+        ? 0
+        : await _chatHistoryDao.countUserMessagesBefore(sessionId: sessionId, seq: messageRows.first.seq);
     return await _assemblePage(
       messageRows: messageRows,
       partRows: partRows,
       storageScope: storageScope,
       limit: limit,
+      userMessagesBefore: userMessagesBefore,
       attachmentProjection: attachmentProjection,
     );
   }
@@ -179,6 +185,7 @@ class ChatHistoryRepository({
         partRows: rows.parts,
         storageScope: storageScope,
         limit: limit,
+        userMessagesBefore: rows.userMessagesBefore,
         attachmentProjection: attachmentProjection,
       ),
     );
@@ -189,6 +196,7 @@ class ChatHistoryRepository({
     required List<HistoryPartsTableData> partRows,
     required AttachmentStorageScope storageScope,
     required int? limit,
+    required int userMessagesBefore,
     required MessageAttachmentProjection attachmentProjection,
   }) async {
     final partJsonByMessage = <String, List<String>>{};
@@ -213,6 +221,7 @@ class ChatHistoryRepository({
     return (
       messages: messages,
       nextCursor: hasOlder ? messageRows.first.seq : null,
+      userMessagesBefore: userMessagesBefore,
     );
   }
 
@@ -817,6 +826,11 @@ class ChatHistoryRepository({
       nextCursor: limit != null && page.isNotEmpty && page.length == limit && eligible.length > limit
           ? page.first.seq
           : null,
+      // Audit files are sliced in memory, so the count is too.
+      userMessagesBefore: switch (page.firstOrNull) {
+        null => 0,
+        final first => ordered.where((entry) => entry.seq < first.seq && entry.info is MessageUser).length,
+      },
     );
   }
 

@@ -12,6 +12,9 @@ typedef PagedHistoryRows = ({
   HistorySyncStateTableData? syncState,
   List<HistoryMessagesTableData> messages,
   List<HistoryPartsTableData> parts,
+
+  /// How many of the session's user messages are older than [messages].
+  int userMessagesBefore,
 });
 
 @DriftAccessor(tables: [HistoryMessagesTable, HistoryPartsTable, HistorySyncStateTable])
@@ -72,8 +75,27 @@ class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistor
         sessionId: sessionId,
         messageIds: limit == null ? null : [for (final row in messages) row.messageId],
       );
-      return (syncState: syncState, messages: messages, parts: parts);
+      // Counted in the same snapshot, so a backfill cannot shift it against
+      // the page. An unlimited or empty page has nothing before it to count.
+      final userMessagesBefore = limit == null || messages.isEmpty
+          ? 0
+          : await countUserMessagesBefore(sessionId: sessionId, seq: messages.first.seq);
+      return (syncState: syncState, messages: messages, parts: parts, userMessagesBefore: userMessagesBefore);
     });
+  }
+
+  /// How many of [sessionId]'s messages ordered below [seq] have role `user`.
+  ///
+  /// The role lives only inside `info_json`, and typed Drift has no
+  /// `json_extract`, so this one statement is raw SQL.
+  Future<int> countUserMessagesBefore({required String sessionId, required int seq}) async {
+    final row = await customSelect(
+      "SELECT COUNT(*) AS c FROM history_messages "
+      r"WHERE session_id = ? AND seq < ? AND json_extract(info_json, '$.role') = 'user'",
+      variables: [Variable<String>(sessionId), Variable<int>(seq)],
+      readsFrom: {historyMessagesTable},
+    ).getSingle();
+    return row.read<int>("c");
   }
 
   /// Parts of [messageIds], or of the whole session when [messageIds] is null.

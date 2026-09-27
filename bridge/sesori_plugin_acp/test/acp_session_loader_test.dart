@@ -274,6 +274,7 @@ void main() {
 
       final user = messages.first;
       expect(user.info, isA<PluginMessageUser>());
+      expect(user.info.time, isNull, reason: "a prompt read back from history has no observed instant");
       expect(user.parts.single.text, "list md files");
 
       final toolMessage = messages[1];

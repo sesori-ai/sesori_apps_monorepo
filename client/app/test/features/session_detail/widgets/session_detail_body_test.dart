@@ -143,6 +143,7 @@ SessionDetailLoaded _loadedState({
   SessionStatus sessionStatus = const SessionStatus.idle(),
   String? pluginId = "opencode",
   bool? supportsPromptAttachments = true,
+  int? userMessagesBeforeOldest,
 }) {
   final provider = testProviderListResponse().items.first;
   return SessionDetailLoaded(
@@ -150,6 +151,7 @@ SessionDetailLoaded _loadedState({
     messages: messages,
     launchHandoff: null,
     olderMessagesCursor: null,
+    userMessagesBeforeOldest: userMessagesBeforeOldest,
     streamingText: const {},
     sessionStatus: sessionStatus,
     pendingQuestions: pendingQuestions,
@@ -943,6 +945,7 @@ void main() {
       messages: const [],
       launchHandoff: null,
       olderMessagesCursor: null,
+      userMessagesBeforeOldest: null,
       streamingText: const {},
       sessionStatus: const SessionStatus.idle(),
       pendingQuestions: const [],
@@ -1153,6 +1156,32 @@ void main() {
       await tester.pumpAndSettle();
       expect(layer, findsNothing);
       expect(transcript(tester).pixels, offset);
+    });
+
+    testWidgets("numbers the prompts from the bridge's count, and not at all without one", (tester) async {
+      Future<List<int?>> openedNumbers({required int? userMessagesBeforeOldest}) async {
+        final state = _loadedState(
+          pendingQuestions: const [],
+          pendingPermissions: const [],
+          messages: turns,
+          userMessagesBeforeOldest: userMessagesBeforeOldest,
+        );
+        when(() => cubit.state).thenReturn(state);
+        whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+        await tester.pumpWidget(_buildApp(cubit: cubit));
+        await tester.pumpAndSettle();
+        await openPrompts(tester);
+        return [for (final row in tester.widgetList<PromptSpineRow>(find.byType(PromptSpineRow))) row.entry.number];
+      }
+
+      // The list is lazy, so only the rows around the newest prompt are built.
+      final numbered = await openedNumbers(userMessagesBeforeOldest: 30);
+      final numbers = numbered.whereType<int>().toList();
+      expect(numbers, hasLength(numbered.length));
+      expect(numbers, [for (var number = numbers.first; number <= 42; number++) number]);
+
+      await tester.pumpWidget(const SizedBox());
+      expect(await openedNumbers(userMessagesBeforeOldest: null), everyElement(isNull));
     });
 
     testWidgets("an older page landing while the screen is open leaves its rows in place", (tester) async {

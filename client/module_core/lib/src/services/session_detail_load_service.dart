@@ -94,7 +94,11 @@ class SessionDetailLoadService({
       storedOnly: storedOnly,
     );
     return switch (response) {
-      SuccessResponse(:final data) => (messages: data.messages, olderMessagesCursor: data.nextCursor),
+      SuccessResponse(:final data) => (
+        messages: data.messages,
+        olderMessagesCursor: data.nextCursor,
+        userMessagesBefore: data.userMessagesBefore,
+      ),
       ErrorResponse(:final error) => () {
         logw("Failed to load older messages: ${error.toString()}");
         return null;
@@ -166,16 +170,11 @@ class SessionDetailLoadService({
         _SessionDetailOptionsAvailable(:final options) => options,
         _SessionDetailOptionsFailure(:final error, :final stackTrace) => Error.throwWithStackTrace(error, stackTrace),
       };
-      final (messages, olderMessagesCursor, replayedPromptDefaults, awaitingHarnessSync) = switch (messagesResponse) {
-        SuccessResponse(:final data) => (
-          data.messages,
-          data.nextCursor,
-          data.replayedPromptDefaults,
-          data.awaitingHarnessSync,
-        ),
+      final messagesPage = switch (messagesResponse) {
+        SuccessResponse(:final data) => data,
         ErrorResponse(:final error) => throw error,
       };
-      final promptDefaults = replayedPromptDefaults ?? session.promptDefaults;
+      final promptDefaults = messagesPage.replayedPromptDefaults ?? session.promptDefaults;
 
       final pendingQuestions = switch (questionsResponse) {
         SuccessResponse(:final data) => data.data,
@@ -215,9 +214,10 @@ class SessionDetailLoadService({
           projectId: effectiveProjectId,
           pluginId: pluginId,
           supportsPromptAttachments: supportsPromptAttachments,
-          messages: messages,
-          olderMessagesCursor: olderMessagesCursor,
-          awaitingHarnessSync: awaitingHarnessSync,
+          messages: messagesPage.messages,
+          olderMessagesCursor: messagesPage.nextCursor,
+          userMessagesBefore: messagesPage.userMessagesBefore,
+          awaitingHarnessSync: messagesPage.awaitingHarnessSync,
           pendingQuestions: pendingQuestions,
           pendingPermissions: pendingPermissions,
           bridgeQueuedPrompts: bridgeQueuedPrompts,
@@ -399,6 +399,10 @@ class const SessionDetailSnapshot({
   /// pagination and always sends everything.
   required final int? olderMessagesCursor,
 
+  /// How many of the session's user messages precede [messages], or null
+  /// from a bridge that does not count them.
+  required final int? userMessagesBefore,
+
   /// Whether the bridge answered from a store it knows is behind the harness,
   /// so [messages] may be missing the newest ones. Only a store-only read can
   /// see this true.
@@ -426,8 +430,9 @@ class const SessionDetailSnapshot({
   required final bool isArchived,
 });
 
-/// One page of history plus the cursor for the page before it.
-typedef SessionMessagePage = ({List<MessageWithParts> messages, int? olderMessagesCursor});
+/// One page of history plus the cursor for the page before it and how many
+/// user messages precede it, when the bridge counts them.
+typedef SessionMessagePage = ({List<MessageWithParts> messages, int? olderMessagesCursor, int? userMessagesBefore});
 
 typedef _SessionDetailOptions = ({
   List<AgentInfo> agents,

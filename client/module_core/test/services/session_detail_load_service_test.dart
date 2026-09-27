@@ -158,6 +158,7 @@ void main() {
           MessageWithPartsResponse(
             messages: [_messageWithParts()],
             nextCursor: null,
+            userMessagesBefore: null,
             replayedPromptDefaults: refreshed,
           ),
         ),
@@ -464,6 +465,7 @@ void main() {
           MessageWithPartsResponse(
             messages: [_messageWithParts()],
             nextCursor: null,
+            userMessagesBefore: 7,
             replayedPromptDefaults: null,
             awaitingHarnessSync: true,
           ),
@@ -486,7 +488,34 @@ void main() {
           storedOnly: true,
         ),
       ).called(1);
-      expect((result as SessionDetailLoadResultLoaded).snapshot.awaitingHarnessSync, isTrue);
+      final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
+      expect(snapshot.awaitingHarnessSync, isTrue);
+      expect(snapshot.userMessagesBefore, 7);
+    });
+
+    test("an older page carries the bridge's user message count", () async {
+      when(
+        () => repository.getMessages(
+          sessionId: "session-1",
+          limit: SessionDetailLoadService.olderPageSize,
+          before: 40,
+          storedOnly: false,
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: [_messageWithParts()],
+            nextCursor: 20,
+            userMessagesBefore: 9,
+            replayedPromptDefaults: null,
+          ),
+        ),
+      );
+
+      final page = await service.loadOlderMessages(sessionId: "session-1", before: 40, storedOnly: false);
+
+      expect(page?.olderMessagesCursor, 20);
+      expect(page?.userMessagesBefore, 9);
     });
 
     test("failed metadata retains its cause and never starts plugin history", () async {
@@ -523,6 +552,7 @@ void _stubRepositorySnapshot({
       MessageWithPartsResponse(
         messages: [_messageWithParts()],
         nextCursor: null,
+        userMessagesBefore: null,
         replayedPromptDefaults: null,
       ),
     ),

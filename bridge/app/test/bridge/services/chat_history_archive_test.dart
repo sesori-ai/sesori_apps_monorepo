@@ -131,6 +131,7 @@ void main() {
       final first = await history.service.getArchivedSessionMessages(sessionId: "ses_a", limit: 1);
       expect(first!.messages.single.info.id, "m2");
       expect(first.nextCursor, isNotNull);
+      expect(first.userMessagesBefore, 1, reason: "the audit file counts the prompts before the page");
 
       final second = await history.service.getArchivedSessionMessages(
         sessionId: "ses_a",
@@ -139,6 +140,7 @@ void main() {
       );
       expect(second!.messages.single.info.id, "m1");
       expect(second.nextCursor, isNull, reason: "the start of the transcript ends paging");
+      expect(second.userMessagesBefore, 0);
     });
 
     test("an export that cannot reach the backend is recorded as store-only", () async {

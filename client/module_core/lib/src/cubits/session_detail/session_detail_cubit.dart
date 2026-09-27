@@ -634,6 +634,7 @@ class SessionDetailCubit(
       latest.copyWith(
         messages: [...older, ...latest.messages],
         olderMessagesCursor: page.olderMessagesCursor,
+        userMessagesBeforeOldest: page.userMessagesBefore,
         isLoadingOlderMessages: false,
       ),
     );
@@ -962,6 +963,7 @@ class SessionDetailCubit(
               // Keeping older pages would leave a gap between them and the
               // refreshed page whenever the session moved on meanwhile.
               olderMessagesCursor: snapshot.olderMessagesCursor,
+              userMessagesBeforeOldest: snapshot.userMessagesBefore,
               isLoadingOlderMessages: false,
               streamingText: _streamingBuffer.snapshot(),
               sessionStatus: refreshedSessionStatus,
@@ -3009,6 +3011,7 @@ class SessionDetailCubit(
       interaction: interaction,
       messages: snapshot.messages,
       olderMessagesCursor: snapshot.olderMessagesCursor,
+      userMessagesBeforeOldest: snapshot.userMessagesBefore,
       streamingText: const {},
       sessionStatus: initialSessionStatus,
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),

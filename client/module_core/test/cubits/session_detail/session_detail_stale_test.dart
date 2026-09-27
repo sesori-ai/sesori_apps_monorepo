@@ -173,6 +173,7 @@ void main() {
             MessageWithPartsResponse(
               messages: [_messageWithParts(messageId: "msg-refreshed")],
               nextCursor: null,
+              userMessagesBefore: null,
               replayedPromptDefaults: null,
             ),
           ),
@@ -242,6 +243,7 @@ void main() {
           MessageWithPartsResponse(
             messages: [_messageWithParts(messageId: "msg-immediate")],
             nextCursor: null,
+            userMessagesBefore: null,
             replayedPromptDefaults: null,
           ),
         ),
@@ -437,6 +439,7 @@ void main() {
               ),
             ],
             nextCursor: null,
+            userMessagesBefore: null,
             replayedPromptDefaults: null,
           ),
         ),
@@ -549,6 +552,7 @@ void main() {
           MessageWithPartsResponse(
             messages: [_messageWithParts(messageId: "msg-race")],
             nextCursor: null,
+            userMessagesBefore: null,
             replayedPromptDefaults: null,
           ),
         ),
@@ -590,6 +594,7 @@ void main() {
           MessageWithPartsResponse(
             messages: [_messageWithParts(messageId: "msg-race")],
             nextCursor: null,
+            userMessagesBefore: null,
             replayedPromptDefaults: null,
           ),
         ),
@@ -620,6 +625,7 @@ void main() {
           MessageWithPartsResponse(
             messages: [_messageWithParts(messageId: "msg-provider-fallback")],
             nextCursor: null,
+            userMessagesBefore: null,
             replayedPromptDefaults: null,
           ),
         ),
@@ -686,6 +692,7 @@ void main() {
           MessageWithPartsResponse(
             messages: [_messageWithParts()],
             nextCursor: null,
+            userMessagesBefore: null,
             replayedPromptDefaults: null,
           ),
         ),
@@ -814,6 +821,7 @@ void main() {
             MessageWithPartsResponse(
               messages: [_messageWithParts()],
               nextCursor: null,
+              userMessagesBefore: null,
               replayedPromptDefaults: null,
             ),
           );
@@ -910,6 +918,7 @@ void main() {
               MessageWithPartsResponse(
                 messages: [_messageWithParts()],
                 nextCursor: null,
+                userMessagesBefore: null,
                 replayedPromptDefaults: null,
               ),
             ),
@@ -1000,6 +1009,7 @@ void main() {
           MessageWithPartsResponse(
             messages: [_messageWithParts(messageId: "msg-coalesced")],
             nextCursor: null,
+            userMessagesBefore: null,
             replayedPromptDefaults: null,
           ),
         ),
@@ -1146,6 +1156,7 @@ void main() {
             MessageWithPartsResponse(
               messages: [_messageWithParts()],
               nextCursor: null,
+              userMessagesBefore: null,
               replayedPromptDefaults: null,
             ),
           ),
@@ -1155,6 +1166,7 @@ void main() {
             MessageWithPartsResponse(
               messages: [_messageWithParts()],
               nextCursor: null,
+              userMessagesBefore: null,
               replayedPromptDefaults: null,
             ),
           ),
@@ -1231,6 +1243,7 @@ void main() {
             MessageWithPartsResponse(
               messages: [_messageWithParts()],
               nextCursor: null,
+              userMessagesBefore: null,
               replayedPromptDefaults: null,
             ),
           ),
@@ -1240,6 +1253,7 @@ void main() {
             MessageWithPartsResponse(
               messages: [_messageWithParts()],
               nextCursor: null,
+              userMessagesBefore: null,
               replayedPromptDefaults: null,
             ),
           ),
@@ -1360,6 +1374,7 @@ void main() {
             MessageWithPartsResponse(
               messages: [_messageWithParts()],
               nextCursor: null,
+              userMessagesBefore: null,
               replayedPromptDefaults: null,
             ),
           );
@@ -1446,6 +1461,7 @@ void main() {
             MessageWithPartsResponse(
               messages: [_messageWithParts()],
               nextCursor: null,
+              userMessagesBefore: null,
               replayedPromptDefaults: null,
             ),
           ),
@@ -1455,6 +1471,7 @@ void main() {
             MessageWithPartsResponse(
               messages: [_messageWithParts()],
               nextCursor: null,
+              userMessagesBefore: null,
               replayedPromptDefaults: null,
             ),
           ),
@@ -1489,6 +1506,7 @@ void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
         MessageWithPartsResponse(
           messages: [_messageWithParts()],
           nextCursor: null,
+          userMessagesBefore: null,
           replayedPromptDefaults: null,
         ),
       ),

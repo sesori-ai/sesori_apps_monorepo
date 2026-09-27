@@ -524,6 +524,7 @@ void main() {
           MessageWithPartsResponse(
             messages: [_messageWithParts()],
             nextCursor: null,
+            userMessagesBefore: null,
             replayedPromptDefaults: null,
           ),
         ),
@@ -849,6 +850,7 @@ void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
         MessageWithPartsResponse(
           messages: [_messageWithParts()],
           nextCursor: null,
+          userMessagesBefore: null,
           replayedPromptDefaults: null,
         ),
       ),

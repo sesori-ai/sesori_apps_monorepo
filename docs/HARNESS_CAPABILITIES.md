@@ -241,7 +241,7 @@ the client never starts its own clock.
 |---|---|
 | OpenCode, Codex, Pi, DeepSeek | ✅ Live and after reload. |
 | Claude | ✅ Live from the `--replay-user-messages` echo's `timestamp` (verified 2026-09-26 on CLI 2.1.281), and after reload from the transcript record. A slash command's synthetic bubble is stamped at dispatch. |
-| Grok, Antigravity, Copilot, Cursor, Hermes, OMP | ❌ Not implemented: the ACP prompt carries no time, so "Working…" shows no timer. A bridge-side prompt stamp is planned. |
+| Grok, Antigravity, Copilot, Cursor, Hermes, OMP | ✅ For prompts Sesori sent: ACP carries no message time, so the bridge stamps the instant it dispatched the prompt (or created the session for a first prompt). A prompt read back from the harness's own history (`session/load`) stays undated, so a turn it opens shows plain "Working…". |
 
 The Prompts screen shows each prompt's time and groups the prompts under day
 headers from the same prompt time. Where it is missing the row leaves its time
@@ -251,7 +251,11 @@ times and no day headers.
 | Harness | Prompts screen times |
 |---|---|
 | OpenCode, Codex, Pi, DeepSeek, Claude | ✅ Live and after reload. |
-| Grok, Antigravity, Copilot, Cursor, Hermes, OMP | ❌ Not implemented: the ACP prompt carries no time, so the Prompts screen shows no times and no day headers. |
+| Grok, Antigravity, Copilot, Cursor, Hermes, OMP | ✅ For prompts Sesori sent, from the bridge's dispatch stamp. A prompt read back from the harness's own history has no time and sits in "No date". |
+
+Prompt numbers on the Prompts screen come from the bridge's own message
+history, so every harness numbers its prompts. An older bridge sends no count,
+and the rows show no numbers.
 
 While only sub-agents run (the bridge reports the main agent's turn over, and
 it streams nothing and runs no step of its own), the transcript shows "N sub-agents running in the background · time"

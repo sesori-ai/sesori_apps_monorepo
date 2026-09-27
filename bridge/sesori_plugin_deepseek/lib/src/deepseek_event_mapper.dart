@@ -21,10 +21,6 @@ class DeepSeekEventMapper({
   PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) =>
       messageTimeParser.parse(notification.params);
 
-  @override
-  PluginMessageTime localUserMessageTime({required int createdAtMs}) =>
-      PluginMessageTime(created: createdAtMs, completed: null);
-
   final Map<String, Map<String, _DeferredDeepSeekDelegation>> _deferredDelegations = {};
 
   void resetLiveState() {

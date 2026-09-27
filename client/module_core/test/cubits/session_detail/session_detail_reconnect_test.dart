@@ -178,6 +178,7 @@ void main() {
           supportsPromptAttachments: false,
           messages: <MessageWithParts>[],
           olderMessagesCursor: null,
+          userMessagesBefore: null,
           awaitingHarnessSync: false,
           pendingQuestions: <PendingQuestion>[],
           pendingPermissions: <PendingPermission>[],
@@ -281,6 +282,7 @@ void main() {
         supportsPromptAttachments: false,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
+        userMessagesBefore: null,
         awaitingHarnessSync: false,
         pendingQuestions: <PendingQuestion>[],
         pendingPermissions: <PendingPermission>[],
@@ -382,6 +384,7 @@ void _stubLoadApis(MockSessionRepository service) {
       MessageWithPartsResponse(
         messages: [_messageWithParts()],
         nextCursor: null,
+        userMessagesBefore: null,
         replayedPromptDefaults: null,
       ),
     ),

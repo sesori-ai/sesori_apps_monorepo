@@ -40,6 +40,7 @@ class GetSessionMessagesHandler({required final ChatHistoryService _chatHistoryS
       nextCursor: page.nextCursor,
       replayedPromptDefaults: page.replayedPromptDefaults,
       awaitingHarnessSync: page.awaitingHarnessSync,
+      userMessagesBefore: page.userMessagesBefore,
     );
   }
 }

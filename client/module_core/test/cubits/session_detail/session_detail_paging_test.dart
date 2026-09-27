@@ -40,6 +40,7 @@ void main() {
   Future<void> openSession({
     required List<MessageWithParts> messages,
     required int? olderMessagesCursor,
+    required int? userMessagesBefore,
   }) async {
     loadService = MockSessionDetailLoadService();
     connectionService = MockConnectionService();
@@ -62,7 +63,11 @@ void main() {
       ),
     ).thenAnswer(
       (_) async => SessionDetailLoadResult.loaded(
-        snapshot: _snapshot(messages: messages, olderMessagesCursor: olderMessagesCursor),
+        snapshot: _snapshot(
+          messages: messages,
+          olderMessagesCursor: olderMessagesCursor,
+          userMessagesBefore: userMessagesBefore,
+        ),
       ),
     );
     when(
@@ -72,7 +77,11 @@ void main() {
       ),
     ).thenAnswer(
       (_) async => SessionDetailLoadResult.loaded(
-        snapshot: _snapshot(messages: messages, olderMessagesCursor: olderMessagesCursor),
+        snapshot: _snapshot(
+          messages: messages,
+          olderMessagesCursor: olderMessagesCursor,
+          userMessagesBefore: userMessagesBefore,
+        ),
       ),
     );
 
@@ -113,6 +122,7 @@ void main() {
           _message(id: "m6"),
         ],
         olderMessagesCursor: 5,
+        userMessagesBefore: 4,
       );
     });
 
@@ -124,20 +134,23 @@ void main() {
             _message(id: "m4"),
           ],
           olderMessagesCursor: 3,
+          userMessagesBefore: 2,
         ),
       );
+      expect((cubit.state as SessionDetailLoaded).userMessagesBeforeOldest, 4);
 
       await cubit.loadOlderMessages();
 
       final state = cubit.state as SessionDetailLoaded;
       expect(state.messages.map((message) => message.info.id), const ["m3", "m4", "m5", "m6"]);
       expect(state.olderMessagesCursor, 3);
+      expect(state.userMessagesBeforeOldest, 2, reason: "the oldest page loaded sets the numbering base");
       expect(state.isLoadingOlderMessages, isFalse);
     });
 
     test("reaching the start of the transcript clears the cursor", () async {
       when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false)).thenAnswer(
-        (_) async => (messages: [_message(id: "m4")], olderMessagesCursor: null),
+        (_) async => (messages: [_message(id: "m4")], olderMessagesCursor: null, userMessagesBefore: 3),
       );
 
       await cubit.loadOlderMessages();
@@ -148,7 +161,7 @@ void main() {
 
     test("loading older messages is a no-op once the start is loaded", () async {
       when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false)).thenAnswer(
-        (_) async => (messages: const <MessageWithParts>[], olderMessagesCursor: null),
+        (_) async => (messages: const <MessageWithParts>[], olderMessagesCursor: null, userMessagesBefore: 0),
       );
       await cubit.loadOlderMessages();
 
@@ -178,6 +191,7 @@ void main() {
             _message(id: "m5"),
           ],
           olderMessagesCursor: null,
+          userMessagesBefore: 3,
         ),
       );
 
@@ -197,7 +211,7 @@ void main() {
 
       final loading = cubit.loadOlderMessages();
       await cubit.reload();
-      pageCompleter.complete((messages: [_message(id: "m4")], olderMessagesCursor: 4));
+      pageCompleter.complete((messages: [_message(id: "m4")], olderMessagesCursor: 4, userMessagesBefore: 3));
       await loading;
 
       final state = cubit.state as SessionDetailLoaded;
@@ -207,11 +221,12 @@ void main() {
         reason: "splicing a stale page onto a refreshed transcript would leave a gap",
       );
       expect(state.olderMessagesCursor, 5, reason: "the refreshed cursor must survive");
+      expect(state.userMessagesBeforeOldest, 4);
     });
 
     test("a reload returns to the newest page and drops paged-back history", () async {
       when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false)).thenAnswer(
-        (_) async => (messages: [_message(id: "m4")], olderMessagesCursor: 4),
+        (_) async => (messages: [_message(id: "m4")], olderMessagesCursor: 4, userMessagesBefore: 3),
       );
       await cubit.loadOlderMessages();
       expect((cubit.state as SessionDetailLoaded).messages, hasLength(3));
@@ -225,6 +240,17 @@ void main() {
         reason: "keeping older pages would leave a gap if the session moved on",
       );
       expect(state.olderMessagesCursor, 5);
+      expect(state.userMessagesBeforeOldest, 4, reason: "the refreshed page is the oldest again");
+    });
+
+    test("an older bridge's page leaves the prompts unnumbered", () async {
+      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false)).thenAnswer(
+        (_) async => (messages: [_message(id: "m4")], olderMessagesCursor: 4, userMessagesBefore: null),
+      );
+
+      await cubit.loadOlderMessages();
+
+      expect((cubit.state as SessionDetailLoaded).userMessagesBeforeOldest, isNull);
     });
   });
 }
@@ -251,6 +277,7 @@ MessageWithParts _message({required String id}) => MessageWithParts(
 SessionDetailSnapshot _snapshot({
   required List<MessageWithParts> messages,
   required int? olderMessagesCursor,
+  required int? userMessagesBefore,
 }) => SessionDetailSnapshot(
   areOptionsStale: false,
   bridgeQueuedPrompts: const [],
@@ -259,6 +286,7 @@ SessionDetailSnapshot _snapshot({
   supportsPromptAttachments: true,
   messages: messages,
   olderMessagesCursor: olderMessagesCursor,
+  userMessagesBefore: userMessagesBefore,
   awaitingHarnessSync: false,
   pendingQuestions: const [],
   pendingPermissions: const [],
