@@ -215,4 +215,4 @@ Desktop neither shows the row nor opens the sheet by itself.
 - `client/app/test/core/platform/firebase_feedback_prompt_config_source_test.dart`
 - `client/app/test/core/platform/flutter_app_review_client_test.dart`
 - `client/app/test/features/settings/settings_screen_test.dart`
-- `.plan/active/feedback-flow/PLAN.md`
+- `.plan/completed/feedback-flow/PLAN.md`

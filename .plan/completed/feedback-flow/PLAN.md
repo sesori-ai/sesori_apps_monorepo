@@ -9,6 +9,10 @@
   2026-09-26), with the shared Prego fixes from #1776 and #1777.
 - **Series:** nine PRs, titles fixed in [TRACKER](TRACKER.md#fixed-pr-titles).
   Step 2 lands in `sesori-ai/sesori_auth_server`; every other step lands here.
+- **Completed:** 2026-09-27. Step 9 ran the L3 retirement coverage (results
+  under [Verification And Coverage](#verification-and-coverage)) and moved the
+  plan here at the user's instruction. The not-executed cells listed there
+  still need the user's explicit acceptance.
 
 ## Goal
 
@@ -416,6 +420,37 @@ Deliberately not added:
     closed. Android **Yes** shows the confirmation step; **Leave a review**
     opens the Play Store listing and **Not now** only closes (D10).
   - Deleting the account removes its feedback documents (dev auth server).
+- **L3 results (2026-09-27, slot 1, debug builds, iOS 26 simulator and
+  Android google_apis emulator without Play Store).** Remote Config could not
+  be lowered without console access, so the automatic cases seeded the stored
+  `feedback_prompt_v1` progress (count 8 or 9) in the dev client database.
+  - Passed on both: Settings row; Yes → review question → Not now only closes;
+    Settings Yes retires the automatic sheet (D4); typed, issues-only (iOS) and
+    voice sends with the success toast; the automatic sheet opens over the
+    session on the threshold send (new-session creation also counts on iOS)
+    and records `lastShownAt` with the count reset (D5); dismiss starts the
+    cooldown and a later threshold send stays silent; after Yes it never
+    reopens.
+  - iOS: AI retry ("Cannot connect to API") reset the count from 10 to 0; the
+    automatic Yes closes the sheet and StoreKit appears about 1.6 s after it
+    has gone. Leave a review logs "Store page did not open" (no App Store on
+    the simulator) and keeps the user in the app.
+  - Android: a send in airplane mode keeps the draft and issues with Retry,
+    and Retry succeeds after the network returns; automatic Yes shows the
+    confirmation (D10); Leave a review falls back from `market://` to the web
+    listing in Chrome (no Play Store on the emulator).
+  - Not executed: real App Store / Play Store pages (no store on the virtual
+    devices); iOS failed send (no network toggle on the simulator; covered on
+    Android); Android AI-error reset (shared service, covered on iOS); crash
+    reset; real 14-day cooldown expiry; Remote Config threshold 2 / cooldown 1;
+    MongoDB field check and account deletion removing feedback (left to the
+    user on the dev auth server).
+  - Look-and-feel findings, not fixed: opening the automatic sheet while the
+    composer keyboard is up shows it already raised above the keyboard with no
+    slide-in, then it drops as the keyboard hides (both platforms); on a
+    320×640 dp screen the keyboard hides Send and the mic in the private step;
+    on Android the sent toast overlaps the "Reconnecting…" banner after
+    network recovery.
 - Codex plan review (2026-09-26, 10 findings): applied route-visible claiming
   (later superseded by the user's D6: show right away), feedback deletion with the account, package asset namespace, the
   4,000-character client limit, empty submissions, subscription disposal,
