@@ -213,6 +213,7 @@ class const DesktopSessionDetailView({
     required bool isBusy,
     required VoidCallback? onShowDiffs,
     required Session? session,
+    required void Function({required Offset origin})? onShowPrompts,
   }) {
     final loc = context.loc;
     final state = context.read<SessionDetailCubit>().state;
@@ -246,6 +247,15 @@ class const DesktopSessionDetailView({
               hierarchy: PregoButtonsSolidHierarchy.secondary,
               size: PregoButtonsSolidSize.sm,
               onPressed: onShowDiffs,
+            ),
+          ),
+        if (onShowPrompts != null)
+          Builder(
+            builder: (buttonContext) => IconButton(
+              key: const Key("desktop-session-page-prompts"),
+              tooltip: loc.transcriptPrompts,
+              onPressed: () => onShowPrompts(origin: buttonContext.globalCentre),
+              icon: const Icon(TablerRegular.list_details, size: PregoIconSize.md),
             ),
           ),
         if (state case SessionDetailLoaded(:final transcriptFolded))

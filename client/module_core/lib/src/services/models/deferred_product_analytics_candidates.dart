@@ -60,6 +60,7 @@ final class DeferredProductAnalyticsCandidates {
     HarnessInstallFinishedEvent() ||
     SessionDiffViewedEvent(changeState: AnalyticsChangeState.empty) ||
     TranscriptTurnsFoldedEvent() ||
+    TranscriptPromptsOpenedEvent() ||
     FeedbackPromptAnsweredEvent() ||
     PrivateFeedbackSentEvent() ||
     NeedHelpMenuOpenedEvent() ||

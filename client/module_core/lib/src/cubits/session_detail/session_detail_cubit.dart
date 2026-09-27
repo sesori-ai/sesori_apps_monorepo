@@ -1406,6 +1406,10 @@ class SessionDetailCubit(
     if (folded) _reportProductEvent(event: const ProductAnalyticsEvent.transcriptTurnsFolded());
   }
 
+  /// Reports that the Prompts screen opened from [entry].
+  void reportPromptsOpened({required AnalyticsPromptsEntry entry}) =>
+      _reportProductEvent(event: ProductAnalyticsEvent.transcriptPromptsOpened(entry: entry));
+
   Future<void> setAutoContinuation({required bool enabled}) async {
     final session = state.hydratedSession;
     if (isClosed || _autoContinuationUpdateInFlight || session == null || session.time?.archived != null) return;

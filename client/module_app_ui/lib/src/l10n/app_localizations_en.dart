@@ -1489,6 +1489,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptStickyPromptAttachment => 'Attachment';
 
   @override
+  String get transcriptPrompts => 'Prompts';
+
+  @override
+  String get transcriptPromptsClose => 'Close prompts';
+
+  @override
+  String transcriptPromptsLoaded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count prompts loaded',
+      one: '1 prompt loaded',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get transcriptPromptsNoDate => 'No date';
+
+  @override
+  String transcriptPromptsFollowUp(String prompt) {
+    return 'Follow-up: $prompt';
+  }
+
+  @override
+  String get transcriptPromptsEmpty => 'No prompts in this session yet';
+
+  @override
   String get sessionDetailJumpToLatest => 'Jump to latest';
 
   @override

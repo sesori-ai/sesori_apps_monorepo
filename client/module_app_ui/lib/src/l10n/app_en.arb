@@ -1018,6 +1018,32 @@
   "@transcriptStickyPromptAttachment": {
     "description": "What the prompt pinned at the top of a session transcript shows when the prompt has no text and its first attachment has no file name."
   },
+  "transcriptPrompts": "Prompts",
+  "@transcriptPrompts": {
+    "description": "Title of the screen listing the user's own prompts in a session, and the tooltip and screen reader label of the session toolbar button that opens it."
+  },
+  "transcriptPromptsClose": "Close prompts",
+  "@transcriptPromptsClose": {
+    "description": "Tooltip and screen reader label of the button that closes the Prompts screen and returns to the transcript."
+  },
+  "transcriptPromptsLoaded": "{count, plural, =1{1 prompt loaded} other{{count} prompts loaded}}",
+  "@transcriptPromptsLoaded": {
+    "description": "Last row of the Prompts screen: how many prompts the list holds. Older prompts may not have loaded yet.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "transcriptPromptsNoDate": "No date",
+  "@transcriptPromptsNoDate": {
+    "description": "Day header of the Prompts screen over prompts whose send time is unknown."
+  },
+  "transcriptPromptsFollowUp": "Follow-up: {prompt}",
+  "@transcriptPromptsFollowUp": {
+    "description": "Screen reader label of a Prompts screen row for a prompt sent into a turn another prompt opened, such as while that turn ran.",
+    "placeholders": {"prompt": {"type": "String"}}
+  },
+  "transcriptPromptsEmpty": "No prompts in this session yet",
+  "@transcriptPromptsEmpty": {
+    "description": "What the Prompts screen shows when the loaded transcript holds none of the user's prompts."
+  },
   "sessionDetailJumpToLatest": "Jump to latest",
   "@sessionDetailJumpToLatest": {
     "description": "Text for the floating pill button that appears when the user scrolls up in the message list, allowing them to jump back to the newest messages."

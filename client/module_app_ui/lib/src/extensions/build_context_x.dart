@@ -112,4 +112,22 @@ extension BuildContextLocalization on BuildContext {
     final datePattern = date.year == now.year ? _dateFormat("MMMd") : _dateFormat("yMMMd");
     return "${datePattern.format(date)}, $time";
   }
+
+  /// The day [day] falls on, as a heading: "Today", "Yesterday", else the
+  /// date in [formatMessageTimestamp]'s patterns without the time.
+  String formatDayLabel({required DateTime day}) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final date = DateTime(day.year, day.month, day.day);
+    if (date == today) return loc.archivedSessionsToday;
+    if (date == DateTime(today.year, today.month, today.day - 1)) return loc.archivedSessionsYesterday;
+    return (date.year == now.year ? _dateFormat("MMMd") : _dateFormat("yMMMd")).format(date);
+  }
+
+  /// The centre of this context's box in global coordinates; the top-left
+  /// corner of the screen before it is laid out.
+  Offset get globalCentre => switch (findRenderObject()) {
+    final RenderBox box when box.hasSize => box.localToGlobal(box.size.center(Offset.zero)),
+    _ => Offset.zero,
+  };
 }

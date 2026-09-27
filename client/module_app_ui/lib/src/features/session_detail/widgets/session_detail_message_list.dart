@@ -19,6 +19,7 @@ import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
 import "system_message_card.dart";
 import "transcript_glide_activity.dart";
+import "transcript_jump_notifier.dart";
 import "transcript_laid_out_list_view.dart";
 import "transcript_live_row.dart";
 import "transcript_motion.dart";
@@ -87,6 +88,15 @@ class const SessionDetailMessageList({
   /// folded turn's tap. The list holds the reader's turn in place across
   /// every switch, wherever it comes from.
   required final void Function({required bool folded}) onTranscriptFoldedChanged,
+
+  /// Where the list writes, as it lays out, the prompt the reader is on: the
+  /// one the pinned prompt names, else the next prompt below. Null with no
+  /// prompt loaded. Only read, never listened to, since it changes mid-layout.
+  required final ValueNotifier<String?> currentPromptId,
+
+  /// Asks the list to move to a message, such as a prompt tapped on the
+  /// Prompts screen.
+  required final TranscriptJumpNotifier jumpNotifier,
   final String? retryErrorMessage,
 
   /// Height of the floating composer overlaying the list's bottom edge. Used
@@ -265,6 +275,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     super.initState();
     _follow = ScrollFollowTracker(edge: ScrollFollowEdge.min);
     _follow.addListener(_onFollowChanged);
+    widget.jumpNotifier.addListener(_onJumpRequested);
     _revealController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 220),
@@ -275,6 +286,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   void dispose() {
     _follow.removeListener(_onFollowChanged);
     _follow.dispose();
+    widget.jumpNotifier.removeListener(_onJumpRequested);
     _revealController.dispose();
     _stickyOpenerIds.dispose();
     super.dispose();
@@ -497,6 +509,29 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     widget.onTranscriptFoldedChanged(folded: false);
   }
 
+  void _onJumpRequested() {
+    if (widget.jumpNotifier.take() case final messageId?) _jumpToMessage(messageId: messageId);
+  }
+
+  /// Holds message [messageId]'s row where a pinned prompt's tap lands a
+  /// prompt: an opener on the pin line, any other message just below the
+  /// prompt pinned over it. Folded, it unfolds first. A message that is gone
+  /// moves nothing. Like any hold, this stops following.
+  void _jumpToMessage({required String messageId}) {
+    final messages = _snapshot?.messages ?? widget.messages;
+    final message = messages.where((message) => message.info.id == messageId).firstOrNull;
+    if (message == null) return;
+    final pins = _stickyKey.currentContext?.findRenderObject();
+    final top = _turns.promptTurnFor(openerMessageId: messageId) == null && pins is RenderTranscriptStickyPrompts
+        ? _kPinnedRowTop + pins.compactHeight + transcriptStickyGap
+        : _kPinnedRowTop;
+    _holdRow(
+      rowId: _entryIdForMessage(info: message.info),
+      top: top,
+    );
+    if (widget.transcriptFolded) widget.onTranscriptFoldedChanged(folded: false);
+  }
+
   /// Glides back to the prompt of turn [openerMessageId], landing it on the
   /// pin line, where its pin grows back into it. Under reduced motion it jumps
   /// there instead. Like any hold, this stops following.
@@ -546,15 +581,21 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// the transcript lays out, once the rows have and once the pins have, so
   /// whichever lays out last places them with both current.
   void _layOutSticky() {
+    final allOpeners = _stickyOpeners();
+    final pinTop = widget.topInset + _kPinGap;
+    // The prompt the pin names, else, before any has reached the pin line, the
+    // next one below.
+    final current = currentTranscriptStickyIndex(openers: allOpeners, pinTop: pinTop);
+    widget.currentPromptId.value = (current < 0 ? allOpeners.firstOrNull : allOpeners[current])?.id;
     final pins = _stickyKey.currentContext?.findRenderObject();
     if (pins is! RenderTranscriptStickyPrompts) return;
     // Folded, each turn shows its prompt already.
-    final openers = widget.transcriptFolded ? const <TranscriptStickyOpener>[] : _stickyOpeners();
+    final openers = widget.transcriptFolded ? const <TranscriptStickyOpener>[] : allOpeners;
     final layout = layOutTranscriptStickyPrompts(
       openers: openers,
       fullHeights: pins.fullHeights,
       compactHeight: pins.compactHeight,
-      pinTop: widget.topInset + _kPinGap,
+      pinTop: pinTop,
     );
     pins.stickyLayout = layout;
     _promptSlots.hideOnly(openerIds: layout.hiddenOpenerIds);

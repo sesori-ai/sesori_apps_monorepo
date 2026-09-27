@@ -430,6 +430,21 @@ void main() {
         );
       });
 
+      test("reports each Prompts screen opening with its entry", () async {
+        final cubit = await loadedCubit(pageSessionId: sessionId);
+        clearInteractions(mockProductAnalyticsService);
+
+        cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar);
+        cubit.reportPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar);
+        await pumpEventQueue();
+        verify(
+          () => mockProductAnalyticsService.logEvent(
+            event: const ProductAnalyticsEvent.transcriptPromptsOpened(entry: AnalyticsPromptsEntry.sessionBar),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        ).called(2);
+      });
+
       test("keeps the fold through a full reload, while another session starts unfolded", () async {
         final cubit = await loadedCubit(pageSessionId: sessionId);
         cubit.setTranscriptFolded(folded: true);

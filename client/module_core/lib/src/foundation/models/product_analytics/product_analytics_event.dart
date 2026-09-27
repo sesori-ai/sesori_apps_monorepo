@@ -111,6 +111,12 @@ enum AnalyticsChangeState({required final String wireValue}) {
   nonEmpty(wireValue: "non_empty");
 }
 
+/// What opened the Prompts screen.
+enum AnalyticsPromptsEntry({required final String wireValue}) {
+  sessionBar(wireValue: "session_bar"),
+  pinch(wireValue: "pinch");
+}
+
 enum AnalyticsFeedbackSource({required final String wireValue}) {
   automatic(wireValue: "automatic"),
   settings(wireValue: "settings");
@@ -169,6 +175,9 @@ sealed class const ProductAnalyticsEvent() {
     required AnalyticsChangeState changeState,
   }) = SessionDiffViewedEvent;
   const factory transcriptTurnsFolded() = TranscriptTurnsFoldedEvent;
+  const factory transcriptPromptsOpened({
+    required AnalyticsPromptsEntry entry,
+  }) = TranscriptPromptsOpenedEvent;
   const factory feedbackPromptAnswered({
     required AnalyticsFeedbackAnswer answer,
     required AnalyticsFeedbackSource source,
@@ -366,6 +375,16 @@ final class const TranscriptTurnsFoldedEvent() extends ProductAnalyticsEvent {
 
   @override
   Map<String, String> get parameters => const {};
+}
+
+/// The Prompts screen opened: reported once per opening, with what opened it.
+final class const TranscriptPromptsOpenedEvent({required final AnalyticsPromptsEntry entry})
+    extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "transcript_prompts_opened";
+
+  @override
+  Map<String, String> get parameters => {"entry": entry.wireValue};
 }
 
 /// A rating sheet closed: reported once per presentation, after its route has
