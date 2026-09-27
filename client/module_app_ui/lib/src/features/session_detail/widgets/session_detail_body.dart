@@ -207,13 +207,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     final messages = state.messages;
     final turns = const TranscriptTurnBuilder().build(
       messages: messages,
-      transcript: const TranscriptBuilder().build(
-        messages: messages,
-        streamingText: state.streamingText,
-        children: state.children,
-        childStatuses: state.childStatuses,
-      ),
-      isBusy: hasActiveWork(sessionStatus: state.sessionStatus, childStatuses: state.childStatuses),
       hasOlderMessages: state.olderMessagesCursor != null,
     );
     // Numbers arrive once the bridge counts the prompts before the page.

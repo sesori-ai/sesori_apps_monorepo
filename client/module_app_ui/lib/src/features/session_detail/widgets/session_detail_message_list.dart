@@ -758,8 +758,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     );
     final turns = const TranscriptTurnBuilder().build(
       messages: messages,
-      transcript: transcript,
-      isBusy: isBusy,
       hasOlderMessages: widget.onLoadOlderMessages != null,
     );
     final activity = const TranscriptActivityBuilder().build(

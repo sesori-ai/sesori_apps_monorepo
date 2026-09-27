@@ -90,6 +90,7 @@ phase, and the original step 10 (retirement) is renumbered to step 18, as
 | 12 | `turn-navigation/prompts-transition` | [12](#fixed-pr-titles) | ≤ 550 | 11 |
 | 13 | `turn-navigation/prompts-pinch` | [13](#fixed-pr-titles) | ≤ 400 | 12 |
 | 14 | `turn-navigation/remove-fold` | [14](#fixed-pr-titles) | ≤ 1,300 | 13 |
+| 14.b | `turn-navigation/turn-model-trim` | [14.b](#fixed-pr-titles) | ≤ 500 | 14 |
 | 15 | `turn-navigation/prompt-numbers` | [15](#fixed-pr-titles) | ≤ 900 | 11 |
 | 16 | `turn-navigation/prompts-search` | [16](#fixed-pr-titles) | ≤ 900 | 15 |
 | 17 | `turn-navigation/docs` | [17](#fixed-pr-titles) | ≤ 400 | 10–16 |
@@ -106,7 +107,8 @@ rather than 800.
 Step 14 is almost all deletion: about 1,050 lines measured from the merged
 diffs of steps 4–7 (~285 production, ~580 test, ~105 localization, ~85
 documentation). If the turn-model trim it also enables pushes it past target, the
-trim lands as step 14.b and the series total becomes 19.
+trim lands as step 14.b and the series total becomes 19. It did: step 14.b
+removes the turn model's outcome, summary and duration, with their tests.
 
 Steps 12 and 15 may run in parallel once step 11 has merged; step 13 follows
 step 12, whose transition its focal point feeds. Step 14 must
@@ -116,6 +118,8 @@ follow step 13, so no PR leaves the pinch without a destination.
 
 Steps 1–8 merged as `[step N/10]`. Those titles are published history and are
 left exactly as they were published; only steps 9 onwards carry `/18`.
+
+Title mapping: step 14.b ships as PR 15/19 and the plan's steps 15–18 ship as PRs 16/19–19/19; step ids are unchanged.
 
 1. `🌿 [turn-navigation] Plan folded turns, sticky prompts and pinch navigation [step 1/10]` (merged)
 2. `🌿 [turn-navigation] Derive transcript turns from loaded messages [step 2/10]` (merged)
@@ -131,6 +135,7 @@ left exactly as they were published; only steps 9 onwards carry `/18`.
 12. `🌿 [turn-navigation] Connect the transcript and the Prompts screen with one transition [step 12/18]`
 13. `⚙️ [turn-navigation] Pinch the transcript to open the Prompts screen [step 13/18]`
 14. `⚙️ [turn-navigation] Remove the in-place transcript fold [step 14/18]`
+    - 14.b: `🌱 [turn-navigation] Trim the turn model to what its readers use [step 15/19]`
 15. `🚧 [turn-navigation] Number and time prompts from the bridge [step 15/18]`
 16. `⚙️ [turn-navigation] Search the loaded prompts from the screen's header [step 16/18]`
 17. `🌱 [turn-navigation] Reconcile the turn-navigation documents with what shipped [step 17/18]`

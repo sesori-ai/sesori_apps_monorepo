@@ -75,12 +75,7 @@ TranscriptActivity _activity({
   );
   return const TranscriptActivityBuilder().build(
     transcript: transcript,
-    turns: const TranscriptTurnBuilder().build(
-      messages: messages,
-      transcript: transcript,
-      isBusy: isBusy,
-      hasOlderMessages: false,
-    ),
+    turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: false),
     messages: messages,
     isBusy: isBusy,
     mainAgentRunning: mainAgentRunning,

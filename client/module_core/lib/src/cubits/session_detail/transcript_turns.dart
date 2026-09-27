@@ -4,64 +4,28 @@ import "package:sesori_shared/sesori_shared.dart";
 import "session_detail_resolvers.dart";
 import "transcript_builder.dart";
 
-/// Where a turn stands. A finished turn's outcome comes from how it ends: its
-/// last agent output or error, with automation and follow-ups skipped.
-@immutable
-sealed class const TranscriptTurnOutcome();
-
-/// The newest turn while the session is busy.
-final class const TranscriptTurnRunning() extends TranscriptTurnOutcome;
-
-/// A turn that ends in an error message or a failed step.
-final class const TranscriptTurnFailed({
-  /// The first line of the error message; null when a failed step ends the
-  /// turn or the message has no text.
-  required final String? errorLine,
-}) extends TranscriptTurnOutcome;
-
-/// A turn that ends without failing. A cancelled last step counts as done,
-/// since there is no stopped state yet.
-final class const TranscriptTurnDone({
-  /// The first line of the text the turn ends in; null when it ends in a step,
-  /// a file or no output. Streaming text is not read.
-  required final String? answerLine,
-}) extends TranscriptTurnOutcome;
-
-/// What a folded turn's one line tells, alike for every kind of turn.
-final class const TranscriptTurnSummary({
-  /// Every step in the turn's step groups, running steps included.
-  required final int steps,
-  required final TranscriptTurnOutcome outcome,
-});
-
 /// One exchange of the rendered transcript: what a prompt set off, with the
 /// follow-ups and automation that joined it.
 @immutable
 sealed class const TranscriptTurn({
   /// The rendered messages the turn covers, in transcript order.
   required final List<String> messageIds,
-  required final TranscriptTurnSummary summary,
 });
 
 /// A turn opened by a user prompt, which stays its header.
 final class const TranscriptPromptTurn({
   /// The prompt that opened the turn; always its first message.
   required final MessageWithParts opener,
-
-  /// From the opener's creation to the latest time in the turn; null when the
-  /// opener carries no time.
-  required final Duration? duration,
   required super.messageIds,
-  required super.summary,
 }) extends TranscriptTurn;
 
 /// The messages before the first loaded prompt while older pages remain. The
 /// prompt they answer may be on a page that has not loaded.
-final class const TranscriptPartialTurn({required super.messageIds, required super.summary}) extends TranscriptTurn;
+final class const TranscriptPartialTurn({required super.messageIds}) extends TranscriptTurn;
 
 /// The messages before the first prompt once the whole history is loaded,
 /// such as automation that ran before the user wrote anything.
-final class const TranscriptPreamble({required super.messageIds, required super.summary}) extends TranscriptTurn;
+final class const TranscriptPreamble({required super.messageIds}) extends TranscriptTurn;
 
 /// The rendered transcript split into turns.
 final class const TranscriptTurns({
@@ -88,16 +52,12 @@ final class const TranscriptTurns({
 /// the first prompt form a headless leading segment.
 ///
 /// Pure and stateless like [TranscriptBuilder], so the message list can run it
-/// over whatever it renders. It reads message kinds, senders, part statuses,
-/// stored text and times, never ids, so the same messages split the same way
-/// after a re-import.
+/// over whatever it renders. It reads message kinds, senders, part statuses
+/// and stored text, never ids, so the same messages split the same way after a
+/// re-import.
 class const TranscriptTurnBuilder() {
   TranscriptTurns build({
     required List<MessageWithParts> messages,
-
-    /// [TranscriptBuilder]'s blocks for [messages], which hold the step groups.
-    required Transcript transcript,
-    required bool isBusy,
 
     /// Whether older pages remain, so the leading messages may belong to a
     /// turn whose prompt has not loaded.
@@ -124,86 +84,16 @@ class const TranscriptTurnBuilder() {
       for (final id in messageIds) {
         turnIndexByMessageId[id] = index;
       }
-      final summary = _summaryOf(
-        messages: segment.messages,
-        transcript: transcript,
-        isRunning: isBusy && index == segments.length - 1,
-      );
       turns.add(switch (segment.opener) {
-        final opener? => TranscriptPromptTurn(
-          opener: opener,
-          duration: _durationOf(opener: opener, messages: segment.messages),
-          messageIds: messageIds,
-          summary: summary,
-        ),
-        null when hasOlderMessages => TranscriptPartialTurn(messageIds: messageIds, summary: summary),
-        null => TranscriptPreamble(messageIds: messageIds, summary: summary),
+        final opener? => TranscriptPromptTurn(opener: opener, messageIds: messageIds),
+        null when hasOlderMessages => TranscriptPartialTurn(messageIds: messageIds),
+        null => TranscriptPreamble(messageIds: messageIds),
       });
     }
     return TranscriptTurns(
       turns: List.unmodifiable(turns),
       turnIndexByMessageId: Map.unmodifiable(turnIndexByMessageId),
     );
-  }
-
-  static TranscriptTurnSummary _summaryOf({
-    required List<MessageWithParts> messages,
-    required Transcript transcript,
-    required bool isRunning,
-  }) {
-    var steps = 0;
-    TranscriptTurnOutcome ending = const TranscriptTurnDone(answerLine: null);
-    for (final message in messages) {
-      for (final block in transcript.blocksFor(messageId: message.info.id)) {
-        if (block is! TranscriptGroupBlock) continue;
-        steps += block.steps.length;
-      }
-      switch (message.info) {
-        case MessageAssistant(sender: MessageSender.agent):
-          for (final part in message.parts) {
-            ending = _endingIn(part: part) ?? ending;
-          }
-        case MessageError(:final errorMessage):
-          ending = TranscriptTurnFailed(errorLine: firstNonBlankLine(text: errorMessage));
-        case MessageAssistant() || MessageUser():
-          // Automation and follow-ups neither answer nor fail the turn.
-          break;
-      }
-    }
-    return TranscriptTurnSummary(
-      steps: steps,
-      outcome: isRunning ? const TranscriptTurnRunning() : ending,
-    );
-  }
-
-  /// The outcome of a turn that ends in [part], or null when [part] shows no
-  /// output. Only text gives an excerpt, and only a failed step fails.
-  static TranscriptTurnOutcome? _endingIn({required MessagePart part}) => switch (part) {
-    MessagePartText(:final text) => text.isEmpty ? null : TranscriptTurnDone(answerLine: firstNonBlankLine(text: text)),
-    MessagePartTool(state: ToolState(status: ToolStatus.error)) ||
-    MessagePartSubtask(taskState: ToolState(status: ToolStatus.error)) => const TranscriptTurnFailed(errorLine: null),
-    MessagePartTool() || MessagePartSubtask() || MessagePartFile() => const TranscriptTurnDone(answerLine: null),
-    MessagePartReasoning(:final text) => text.isEmpty ? null : const TranscriptTurnDone(answerLine: null),
-    MessagePartStepStart() ||
-    MessagePartStepFinish() ||
-    MessagePartSnapshot() ||
-    MessagePartPatch() ||
-    MessagePartAgent() ||
-    MessagePartRetry() ||
-    MessagePartCompaction() => null,
-  };
-
-  static Duration? _durationOf({required MessageWithParts opener, required List<MessageWithParts> messages}) {
-    final start = opener.info.time?.created;
-    if (start == null) return null;
-    var end = start;
-    for (final message in messages) {
-      if (message.info.time case MessageTime(:final created, :final completed)) {
-        final latest = completed ?? created;
-        if (latest > end) end = latest;
-      }
-    }
-    return Duration(milliseconds: end - start);
   }
 }
 

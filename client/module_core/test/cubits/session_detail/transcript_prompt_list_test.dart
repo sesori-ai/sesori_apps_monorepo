@@ -73,17 +73,7 @@ TranscriptPromptList _list({
   int? userMessagesBefore,
 }) => const TranscriptPromptListBuilder().build(
   messages: messages,
-  turns: const TranscriptTurnBuilder().build(
-    messages: messages,
-    transcript: const TranscriptBuilder().build(
-      messages: messages,
-      streamingText: const {},
-      children: const [],
-      childStatuses: const {},
-    ),
-    isBusy: false,
-    hasOlderMessages: hasOlderMessages,
-  ),
+  turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: hasOlderMessages),
   userMessagesBefore: userMessagesBefore,
 );
 
