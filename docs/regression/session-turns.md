@@ -111,8 +111,9 @@ defaults and queued client sends coherent.
 - Reasoning uses an unboxed activity row with 14px body text, a bounded live-tail
   preview, and a one-line Markdown-stripped completed preview. Tap or keyboard
   activation opens the same full, selectable reasoning modal; its streaming
-  follow/detach behavior is unchanged. A long thought shows a spinner until the
-  modal's entry transition ends, so the ripple and transition never stall. Only active reasoning and provider retry
+  follow/detach behavior is unchanged. A long finished thought shows a spinner
+  until the modal's entry transition ends, so the ripple and transition never
+  stall; a streaming thought shows at once, pinned to its tail. Only active reasoning and provider retry
   statuses shimmer; reduced motion leaves their labels visible without animation.
   Retry history is neutral rather than success-coloured. Active retries keep the
   complete backend error below a “Retrying” status; terminal errors remain red,

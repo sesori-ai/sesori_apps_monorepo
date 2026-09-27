@@ -165,7 +165,9 @@ class _ReasoningModalState() extends State<ReasoningModal> {
             padding: EdgeInsetsDirectional.fromSTEB(16, 16, 16, 16 + bottomSafe),
             children: [
               DeferUntilRouteOpen(
-                contentLength: data.text.length,
+                // A streaming thought re-lays out on every token anyway, and
+                // deferring it would leave the follow pin on the placeholder.
+                contentLength: data.isStreaming ? 0 : data.text.length,
                 child: PregoReadableSelectionArea(
                   child: MarkdownBody(
                     data: data.text,
