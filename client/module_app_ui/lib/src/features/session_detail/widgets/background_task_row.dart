@@ -13,6 +13,7 @@ class const BackgroundTaskRow({
   super.key,
   required final String? projectId,
   required final Session session,
+  required final VoidCallback onOpened,
   final SessionStatus? status,
   final bool isLast = false,
 }) extends StatelessWidget {
@@ -24,12 +25,15 @@ class const BackgroundTaskRow({
 
     return PregoListTile(
       isLast: isLast,
-      onTap: () => SessionDetailPresentationScope.read(context).openSession(
-        projectId: projectId ?? session.projectID,
-        sessionId: session.id,
-        readOnly: true,
-        sessionTitle: session.title,
-      ),
+      onTap: () {
+        SessionDetailPresentationScope.read(context).openSession(
+          projectId: projectId ?? session.projectID,
+          sessionId: session.id,
+          readOnly: true,
+          sessionTitle: session.title,
+        );
+        onOpened();
+      },
       leading: _statusIcon(status: status, prego: prego),
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
       titleStyle: prego.textTheme.textSm.regular,

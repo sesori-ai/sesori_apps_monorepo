@@ -11,6 +11,7 @@ class const BackgroundTasksList({
   required final String? projectId,
   required final List<Session> tasks,
   required final Map<String, SessionStatus> childStatuses,
+  required final VoidCallback onOpened,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -31,6 +32,7 @@ class const BackgroundTasksList({
                 return BackgroundTaskRow(
                   projectId: projectId,
                   session: child,
+                  onOpened: onOpened,
                   status: childStatuses[child.id],
                   isLast: index == tasks.length - 1,
                 );
