@@ -321,20 +321,27 @@ class _NewSessionViewState() extends State<NewSessionView> {
   /// as it will sit in the session's transcript, and a failed creation turns it
   /// back. Both directions cross-fade with the transcript's own motion rather
   /// than cutting; reduced motion swaps at once.
+  ///
+  /// The fading composer gives up focus at Send, so the keyboard closes while
+  /// the bubble fades in instead of dropping the bubble once the fade ends.
   Widget _crossFadeSending({required Widget? sending, required Widget composing}) {
     final child = sending == null
         ? KeyedSubtree(key: const ValueKey("new_session_composing"), child: composing)
         : KeyedSubtree(key: const ValueKey("new_session_sending"), child: sending);
-    if (context.isReducedMotion) return child;
-    return AnimatedSwitcher(
-      duration: transcriptMotionDuration,
-      switchInCurve: transcriptMotionCurve,
-      switchOutCurve: transcriptMotionReverseCurve,
-      layoutBuilder: (current, previous) => Stack(
-        fit: StackFit.expand,
-        children: [...previous, ?current],
-      ),
-      child: child,
+    return ExcludeFocus(
+      excluding: sending != null,
+      child: context.isReducedMotion
+          ? child
+          : AnimatedSwitcher(
+              duration: transcriptMotionDuration,
+              switchInCurve: transcriptMotionCurve,
+              switchOutCurve: transcriptMotionReverseCurve,
+              layoutBuilder: (current, previous) => Stack(
+                fit: StackFit.expand,
+                children: [...previous, ?current],
+              ),
+              child: child,
+            ),
     );
   }
 

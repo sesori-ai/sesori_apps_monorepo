@@ -1694,6 +1694,11 @@ void main() {
       "/projects/project-1/sessions/new",
     );
 
+    // The fading composer has already let go of the keyboard, so it closes
+    // with the fade instead of dropping the bubble after it.
+    expect(find.byType(PromptInput), findsOneWidget);
+    expect(tester.testTextInput.isVisible, isFalse);
+
     // The composer fades out as the bubble fades in; Send stays blocked.
     await tester.pump(const Duration(milliseconds: 250));
     expect(find.byType(PromptInput), findsNothing);
