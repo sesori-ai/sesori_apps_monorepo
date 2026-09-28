@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>Sesori AI chat states</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="styles.css">
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <!-- Approved direction: three Figma-aligned chat states in one comparison page,
+         using the authored loader motion and genuinely interactive activity disclosures. -->
+    <main class="showcase" aria-labelledby="page-title">
+      <h1 id="page-title" class="sr-only">Three states of an AI chat turn</h1>
+
+      <article class="stage" aria-labelledby="thinking-title">
+        <h2 id="thinking-title" class="state-label">State 1 · Thinking</h2>
+        <div class="chat-screen" data-state="thinking">
+          <div class="chat-thread">
+            <div class="user-message">
+              Search codebase for relevant files, checking type definitions and resolving import paths.
+            </div>
+
+            <div class="activity-row thinking-row" role="status" aria-live="polite">
+              <span class="ai-loader" aria-hidden="true">
+                <span class="ai-loader-glyph">&#x1025B;</span>
+              </span>
+              <span class="shimmer-text" data-shimmer>
+                <span class="shimmer-base">Thinking...</span>
+                <span class="shimmer-window" aria-hidden="true">
+                  <span class="shimmer-copy">Thinking...</span>
+                </span>
+              </span>
+              <span class="thinking-context">Analyzing your request...</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="stage scroll-stage working-stage" aria-labelledby="working-title">
+        <h2 id="working-title" class="state-label">State 2 · Working</h2>
+        <section
+          class="chat-screen"
+          data-state="working"
+          data-scroll-viewport
+          aria-label="Working chat activity"
+          tabindex="0"
+        >
+          <div class="chat-thread">
+            <div class="user-message">
+              Search codebase for relevant files, checking type definitions and resolving import paths.
+            </div>
+
+            <div class="assistant-flow">
+              <div class="status-group">
+                <div class="activity-row" role="status" aria-label="Working">
+                  <span class="ai-loader" aria-hidden="true">
+                    <span class="ai-loader-glyph">&#x1025B;</span>
+                  </span>
+                  <span
+                    class="shimmer-text"
+                    data-shimmer
+                    data-elapsed-timer
+                    data-start-seconds="185"
+                    aria-hidden="true"
+                  >
+                    <span class="shimmer-base">Working for 3min 5s</span>
+                    <span class="shimmer-window" aria-hidden="true">
+                      <span class="shimmer-copy">Working for 3min 5s</span>
+                    </span>
+                  </span>
+                </div>
+                <div class="divider" aria-hidden="true"></div>
+              </div>
+
+              <section class="accordion search-accordion" data-accordion>
+                <button
+                  class="activity-row accordion-toggle"
+                  type="button"
+                  aria-expanded="false"
+                  aria-controls="working-search-tasks"
+                  data-accordion-toggle
+                >
+                  <span class="icon" aria-hidden="true">&#xEB1C;</span>
+                  <span>Searched for <span class="underlined">monorepo</span></span>
+                  <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                </button>
+                <div
+                  id="working-search-tasks"
+                  class="accordion-panel tool-list"
+                  data-accordion-panel
+                  hidden
+                >
+                  <div class="activity-row">
+                    <span class="icon" aria-hidden="true">&#xEA5E;</span>
+                    <span>Found workspace package roots</span>
+                  </div>
+                  <div class="activity-row">
+                    <span class="icon" aria-hidden="true">&#xEB1C;</span>
+                    <span>Matched monorepo packages</span>
+                  </div>
+                </div>
+              </section>
+
+              <p>
+                I'm using the simple skill because this is a focused visual/component change; I'll keep the
+                implementation narrow and preserve the existing panel's content, sizing, and privacy/accessibility
+                behavior. I'm also checking the current worktree first so I don't overwrite unrelated
+              </p>
+
+              <section class="accordion" data-accordion>
+                <button
+                  class="activity-row accordion-toggle"
+                  type="button"
+                  aria-expanded="true"
+                  aria-controls="working-tool-list"
+                  data-accordion-toggle
+                >
+                  <span class="icon" aria-hidden="true">&#xEBCA;</span>
+                  <span>Loaded a tool, read files, ran commands</span>
+                  <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                </button>
+
+                <div id="working-tool-list" class="accordion-panel tool-list" data-accordion-panel>
+                  <section class="accordion command-accordion" data-accordion>
+                    <button
+                      class="activity-row accordion-toggle"
+                      type="button"
+                      aria-expanded="false"
+                      aria-controls="working-command"
+                      data-accordion-toggle
+                    >
+                      <span class="icon" aria-hidden="true">&#xEBEF;</span>
+                      <span>Ran <span class="underlined">$ make catalog-build</span></span>
+                      <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                    </button>
+
+                    <div
+                      id="working-command"
+                      class="accordion-panel command-card"
+                      data-accordion-panel
+                      hidden
+                    >
+                      <div class="command-card-header">
+                        <div>
+                          <div class="command-label">Shell</div>
+                          <div class="command-line">
+                            <span class="icon" aria-hidden="true">$</span>
+                            <code>make catalog-build</code>
+                          </div>
+                        </div>
+                        <button
+                          class="icon-button copy-command"
+                          type="button"
+                          aria-label="Copy command"
+                          data-copy="make catalog-build"
+                        >
+                          <span class="icon" aria-hidden="true">&#xEA7A;</span>
+                        </button>
+                      </div>
+
+                      <div class="command-output" tabindex="0" aria-label="Command output">
+                        <code>sed -n '1,260p' .agents/skills/<br>sesori-plan-worker/SKILL.md &gt;/dev/<br>null</code>
+                        <code>gh pr view 904 --json<br>state,mergedAt,mergeCommit,url</code>
+                        <code>git status --short --branch</code>
+                      </div>
+
+                      <div class="command-success">
+                        <span class="icon" aria-hidden="true">&#xEA5E;</span>
+                        <span>Success</span>
+                      </div>
+                    </div>
+                  </section>
+                  <div class="activity-row">
+                    <span class="icon" aria-hidden="true">&#xEB1C;</span>
+                    <span>
+                      Searched for
+                      <button
+                        class="file-preview-trigger"
+                        type="button"
+                        aria-haspopup="dialog"
+                        aria-controls="file-preview-sheet"
+                        data-file-preview="agents"
+                      >AGENTS.md</button>
+                      in website
+                    </span>
+                  </div>
+                  <div class="activity-row">
+                    <span class="icon" aria-hidden="true">&#xEA39;</span>
+                    <span>
+                      Read
+                      <button
+                        class="file-preview-trigger"
+                        type="button"
+                        aria-haspopup="dialog"
+                        aria-controls="file-preview-sheet"
+                        data-file-preview="index-astro"
+                      >index.astro</button>
+                    </span>
+                  </div>
+                  <section class="accordion file-list-accordion" data-accordion>
+                    <button
+                      class="activity-row accordion-toggle"
+                      type="button"
+                      aria-expanded="false"
+                      aria-controls="working-public-files"
+                      data-accordion-toggle
+                    >
+                      <span class="icon" aria-hidden="true">&#xEAAD;</span>
+                      <span>Listed files in public</span>
+                      <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                    </button>
+                    <div
+                      id="working-public-files"
+                      class="accordion-panel tool-list"
+                      data-accordion-panel
+                      hidden
+                    >
+                      <div class="activity-row">
+                        <span class="icon" aria-hidden="true">&#xEB0A;</span>
+                        <span>images/feedback-preview.png</span>
+                      </div>
+                      <div class="activity-row">
+                        <span class="icon" aria-hidden="true">&#xEA39;</span>
+                        <span>favicon.svg</span>
+                      </div>
+                      <div class="activity-row">
+                        <span class="icon" aria-hidden="true">&#xEA39;</span>
+                        <span>robots.txt</span>
+                      </div>
+                    </div>
+                  </section>
+                  <div class="activity-row">
+                    <span class="icon" aria-hidden="true">&#xEB04;</span>
+                    <span>
+                      Created
+                      <button
+                        class="file-preview-trigger"
+                        type="button"
+                        aria-haspopup="dialog"
+                        aria-controls="file-preview-sheet"
+                        data-file-preview="tool-call"
+                      >tool-call.txt</button>
+                      <span class="added">+2</span> <span class="removed">-1</span>
+                    </span>
+                  </div>
+                  <section class="accordion image-tool" data-accordion>
+                    <button
+                      class="activity-row accordion-toggle image-toggle"
+                      type="button"
+                      aria-expanded="false"
+                      aria-controls="working-image-preview"
+                      data-accordion-toggle
+                    >
+                      <span class="icon" aria-hidden="true">&#xEB0A;</span>
+                      <span>Viewed an image.</span>
+                      <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                    </button>
+                    <div
+                      id="working-image-preview"
+                      class="accordion-panel image-preview"
+                      data-accordion-panel
+                      hidden
+                    >
+                      <img src="assets/figma-image-1.png" alt="Abstract blue reference">
+                    </div>
+                  </section>
+                </div>
+              </section>
+
+              <p>
+                The selected region is the card, not the contact section or hero. The current checkout already
+                contains unrelated in-progress hero-video edits, so I'll leave those untouched and add the new MP4
+                only to the selected card's background.
+              </p>
+
+              <section class="accordion subagent-group" data-accordion>
+                <button
+                  class="activity-row accordion-toggle subagent-toggle"
+                  type="button"
+                  aria-expanded="true"
+                  aria-controls="working-subagents"
+                  data-accordion-toggle
+                >
+                  <span class="icon" aria-hidden="true">&#xF00B;</span>
+                  <span class="shimmer-text" data-shimmer>
+                    <span class="shimmer-base">Subagents 2</span>
+                    <span class="shimmer-window" aria-hidden="true">
+                      <span class="shimmer-copy">Subagents 2</span>
+                    </span>
+                  </span>
+                  <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                </button>
+                <div
+                  id="working-subagents"
+                  class="accordion-panel subagent-list working-subagent-list"
+                  data-accordion-panel
+                >
+                  <div class="subagent">
+                    <img src="assets/figma-image-4.png" alt="">
+                    <div>
+                      <div>Inspect current implementation</div>
+                      <div class="subagent-status">Done</div>
+                    </div>
+                  </div>
+                  <div class="subagent">
+                    <img src="assets/figma-image-5.png" alt="">
+                    <div>
+                      <div
+                        class="shimmer-text"
+                        data-shimmer
+                        title="Planning video background replacement"
+                      >
+                        <span class="shimmer-base">Planning video background replacement</span>
+                        <span class="shimmer-window" aria-hidden="true">
+                          <span class="shimmer-copy">Planning video background replacement</span>
+                        </span>
+                      </div>
+                      <div class="subagent-status">Working</div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </article>
+
+      <article class="stage scroll-stage finished-stage" aria-labelledby="finished-title">
+        <h2 id="finished-title" class="state-label">State 3 · Result</h2>
+        <section
+          class="chat-screen finished-screen"
+          data-state="finished"
+          data-scroll-viewport
+          aria-label="Completed chat activity and result"
+          tabindex="0"
+        >
+          <div class="chat-thread">
+            <div class="user-message">
+              Search codebase for relevant files, checking type definitions and resolving import paths.
+            </div>
+
+            <div class="assistant-flow">
+              <section class="accordion workspace-accordion" data-accordion>
+                <div class="status-group">
+                  <button
+                    class="activity-row accordion-toggle finished-toggle"
+                    type="button"
+                    aria-expanded="false"
+                    aria-controls="finished-workspace"
+                    data-accordion-toggle
+                  >
+                    <span class="ai-loader ai-loader-finished" aria-hidden="true">
+                      <svg class="ai-loader-finished-glyph" viewBox="0 0 24 24" focusable="false">
+                        <path d="M12 3C12.375 3 12.711 3.231 12.846 3.581L14.496 7.871A2.85 2.85 0 0 0 16.128 9.504L20.419 11.154A.906.906 0 0 1 20.419 12.846L16.129 14.496A2.84 2.84 0 0 0 14.496 16.128L12.846 20.419A.906.906 0 0 1 11.154 20.419L9.504 16.129A2.84 2.84 0 0 0 7.872 14.496L3.581 12.846A.906.906 0 0 1 3.581 11.154L7.871 9.504A2.84 2.84 0 0 0 9.504 7.872L11.154 3.581A.91.91 0 0 1 12 3Z" />
+                      </svg>
+                    </span>
+                    <span>Worked for 5 min 15s</span>
+                    <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                  </button>
+                  <div class="divider status-divider" aria-hidden="true"></div>
+                </div>
+
+                <div
+                  id="finished-workspace"
+                  class="accordion-panel finished-workspace"
+                  data-accordion-panel
+                  hidden
+                >
+                  <section class="accordion search-accordion" data-accordion>
+                    <button
+                      class="activity-row accordion-toggle"
+                      type="button"
+                      aria-expanded="false"
+                      aria-controls="finished-search-tasks"
+                      data-accordion-toggle
+                    >
+                      <span class="icon" aria-hidden="true">&#xEB1C;</span>
+                      <span>Searched for <span class="underlined">monorepo</span></span>
+                      <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                    </button>
+                    <div
+                      id="finished-search-tasks"
+                      class="accordion-panel tool-list"
+                      data-accordion-panel
+                      hidden
+                    >
+                      <div class="activity-row">
+                        <span class="icon" aria-hidden="true">&#xEA5E;</span>
+                        <span>Found workspace package roots</span>
+                      </div>
+                      <div class="activity-row">
+                        <span class="icon" aria-hidden="true">&#xEB1C;</span>
+                        <span>Matched monorepo packages</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <p>
+                    I used the simple skill because this was a focused visual/component change; I kept the
+                    implementation narrow and preserved the existing panel's content, sizing, and
+                    privacy/accessibility behavior. I also checked the current worktree first so I didn't overwrite
+                    unrelated work.
+                  </p>
+
+                  <section class="accordion" data-accordion>
+                    <button
+                      class="activity-row accordion-toggle"
+                      type="button"
+                      aria-expanded="true"
+                      aria-controls="finished-tool-list"
+                      data-accordion-toggle
+                    >
+                      <span class="icon" aria-hidden="true">&#xEBCA;</span>
+                      <span>Loaded a tool, read files, ran commands</span>
+                      <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                    </button>
+
+                    <div id="finished-tool-list" class="accordion-panel tool-list" data-accordion-panel>
+                  <section class="accordion command-accordion" data-accordion>
+                    <button
+                      class="activity-row accordion-toggle"
+                      type="button"
+                      aria-expanded="false"
+                      aria-controls="finished-command"
+                      data-accordion-toggle
+                    >
+                      <span class="icon" aria-hidden="true">&#xEBEF;</span>
+                      <span>Ran <span class="underlined">$ make catalog-build</span></span>
+                      <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                    </button>
+
+                    <div
+                      id="finished-command"
+                      class="accordion-panel command-card"
+                      data-accordion-panel
+                      hidden
+                    >
+                      <div class="command-card-header">
+                        <div>
+                          <div class="command-label">Shell</div>
+                          <div class="command-line">
+                            <span class="icon" aria-hidden="true">$</span>
+                            <code>make catalog-build</code>
+                          </div>
+                        </div>
+                        <button
+                          class="icon-button copy-command"
+                          type="button"
+                          aria-label="Copy command"
+                          data-copy="make catalog-build"
+                        >
+                          <span class="icon" aria-hidden="true">&#xEA7A;</span>
+                        </button>
+                      </div>
+
+                      <div class="command-output" tabindex="0" aria-label="Command output">
+                        <code>sed -n '1,260p' .agents/skills/<br>sesori-plan-worker/SKILL.md &gt;/dev/<br>null</code>
+                        <code>gh pr view 904 --json<br>state,mergedAt,mergeCommit,url</code>
+                        <code>git status --short --branch</code>
+                      </div>
+
+                      <div class="command-success">
+                        <span class="icon" aria-hidden="true">&#xEA5E;</span>
+                        <span>Success</span>
+                      </div>
+                    </div>
+                  </section>
+
+                    <div class="activity-row">
+                      <span class="icon" aria-hidden="true">&#xEB1C;</span>
+                      <span>
+                        Searched for
+                        <button
+                          class="file-preview-trigger"
+                          type="button"
+                          aria-haspopup="dialog"
+                          aria-controls="file-preview-sheet"
+                          data-file-preview="agents"
+                        >AGENTS.md</button>
+                        in website
+                      </span>
+                    </div>
+                    <div class="activity-row">
+                      <span class="icon" aria-hidden="true">&#xEA39;</span>
+                      <span>
+                        Read
+                        <button
+                          class="file-preview-trigger"
+                          type="button"
+                          aria-haspopup="dialog"
+                          aria-controls="file-preview-sheet"
+                          data-file-preview="index-astro"
+                        >index.astro</button>
+                      </span>
+                    </div>
+                    <section class="accordion file-list-accordion" data-accordion>
+                      <button
+                        class="activity-row accordion-toggle"
+                        type="button"
+                        aria-expanded="false"
+                        aria-controls="finished-public-files"
+                        data-accordion-toggle
+                      >
+                        <span class="icon" aria-hidden="true">&#xEAAD;</span>
+                        <span>Listed files in public</span>
+                        <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                      </button>
+                      <div
+                        id="finished-public-files"
+                        class="accordion-panel tool-list"
+                        data-accordion-panel
+                        hidden
+                      >
+                        <div class="activity-row">
+                          <span class="icon" aria-hidden="true">&#xEB0A;</span>
+                          <span>images/feedback-preview.png</span>
+                        </div>
+                        <div class="activity-row">
+                          <span class="icon" aria-hidden="true">&#xEA39;</span>
+                          <span>favicon.svg</span>
+                        </div>
+                        <div class="activity-row">
+                          <span class="icon" aria-hidden="true">&#xEA39;</span>
+                          <span>robots.txt</span>
+                        </div>
+                      </div>
+                    </section>
+                    <div class="activity-row">
+                      <span class="icon" aria-hidden="true">&#xEB04;</span>
+                      <span>
+                        Created
+                        <button
+                          class="file-preview-trigger"
+                          type="button"
+                          aria-haspopup="dialog"
+                          aria-controls="file-preview-sheet"
+                          data-file-preview="tool-call"
+                        >tool-call.txt</button>
+                        <span class="added">+2</span> <span class="removed">-1</span>
+                      </span>
+                    </div>
+                    <section class="accordion image-tool" data-accordion>
+                      <button
+                        class="activity-row accordion-toggle image-toggle"
+                        type="button"
+                        aria-expanded="false"
+                        aria-controls="finished-image-preview"
+                        data-accordion-toggle
+                      >
+                        <span class="icon" aria-hidden="true">&#xEB0A;</span>
+                        <span>Viewed an image.</span>
+                        <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                      </button>
+                      <div
+                        id="finished-image-preview"
+                        class="accordion-panel image-preview"
+                        data-accordion-panel
+                        hidden
+                      >
+                        <img src="assets/figma-image-1.png" alt="Abstract blue reference">
+                      </div>
+                    </section>
+                  </div>
+                  </section>
+
+                  <p>
+                    The selected region was the card, not the contact section or hero. The checkout already contained
+                    unrelated in-progress hero-video edits, so I left those untouched and added the new MP4 only to
+                    the selected card's background.
+                  </p>
+
+                  <section class="accordion subagent-group" data-accordion>
+                    <button
+                      class="activity-row accordion-toggle subagent-toggle"
+                      type="button"
+                      aria-expanded="true"
+                      aria-controls="finished-subagents"
+                      data-accordion-toggle
+                    >
+                      <span class="icon" aria-hidden="true">&#xF00B;</span>
+                      <span>Subagents 2</span>
+                      <span class="icon chevron" aria-hidden="true">&#xEA61;</span>
+                    </button>
+                    <div
+                      id="finished-subagents"
+                      class="accordion-panel subagent-list"
+                      data-accordion-panel
+                    >
+                      <div class="subagent">
+                        <img src="assets/figma-image-4.png" alt="">
+                        <div>
+                          <div>Inspect current implementation</div>
+                          <div class="subagent-status">Done</div>
+                        </div>
+                      </div>
+                      <div class="subagent">
+                        <img src="assets/figma-image-5.png" alt="">
+                        <div>
+                          <div>Planning video background replacement</div>
+                          <div class="subagent-status">Done</div>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  <div class="divider workspace-divider" aria-hidden="true"></div>
+                </div>
+              </section>
+
+              <div class="result-copy">
+                <p>Added clickable “Common issues” pills to the written-feedback step:</p>
+                <ul>
+                  <li>Slow reconnects</li>
+                  <li>Session drops</li>
+                  <li>Late notifications</li>
+                  <li>Hard to navigate</li>
+                </ul>
+                <p>
+                  They support multi-selection, keyboard access, dark/light themes, and pill-only submission.
+                  Restart clears selections; Back preserves them. I verified both platform layouts and the existing
+                  rating branches in a real browser.
+                </p>
+              </div>
+
+              <p class="result-link">
+                Refresh the open <a href="#feedback-prototype">feedback prototype</a>
+                <span class="icon inline-icon" aria-hidden="true">&#xEADE;</span> to try it.
+              </p>
+
+              <div class="result-actions" role="group" aria-label="Response actions">
+                <button
+                  class="icon-button result-action-copy"
+                  type="button"
+                  aria-label="Copy response"
+                  data-copy="Added clickable Common issues pills to the written-feedback step."
+                >
+                  <span class="icon" aria-hidden="true">&#xEA7A;</span>
+                </button>
+                <button
+                  class="icon-button result-action-branch"
+                  type="button"
+                  aria-label="Branch from response"
+                >
+                  <span class="icon" aria-hidden="true">&#xEB8F;</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </article>
+    </main>
+
+    <dialog
+      id="file-preview-sheet"
+      class="bottom-sheet"
+      aria-labelledby="file-preview-title"
+      aria-describedby="file-preview-path"
+    >
+      <div class="bottom-sheet-handle" aria-hidden="true"></div>
+      <div class="bottom-sheet-header">
+        <div class="file-preview-heading">
+          <span class="icon" aria-hidden="true">&#xEA39;</span>
+          <div>
+            <h2 id="file-preview-title">File preview</h2>
+            <p id="file-preview-path"></p>
+          </div>
+        </div>
+        <button
+          class="icon-button bottom-sheet-close"
+          type="button"
+          aria-label="Close file preview"
+          data-file-preview-close
+          autofocus
+        >
+          <span class="icon" aria-hidden="true">&#xEB55;</span>
+        </button>
+      </div>
+      <pre class="file-preview-code" tabindex="0"><code id="file-preview-content"></code></pre>
+    </dialog>
+  </body>
+</html>
