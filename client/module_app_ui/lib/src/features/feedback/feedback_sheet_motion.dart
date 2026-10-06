@@ -8,15 +8,13 @@ const feedbackEaseOut = Cubic(0.23, 1, 0.32, 1);
 const feedbackSheetOpenDuration = Duration(milliseconds: 250);
 const feedbackSheetCloseDuration = Duration(milliseconds: 200);
 const feedbackCelebrationDuration = Duration(milliseconds: 1500);
-// The review question takes over once the love button's pink pop has peaked
-// (~200ms), while the hero celebration keeps playing above it.
-const feedbackCelebrationHandoff = Duration(milliseconds: 300);
 // Without a confirmation, the sheet leaves for the OS review prompt once the
 // button has settled back from pink and the hearts have risen, so the
 // celebration still reads as intentional.
 const feedbackReviewPromptCloseDelay = Duration(milliseconds: 800);
-// The review question's arrival: the answers leave first, then the question
-// rises into place, so the swap is legible rather than a crossfade.
+// Step changes (review question, private feedback): the old step leaves
+// first, then the new one rises into place, so the swap is legible rather
+// than a crossfade.
 const _stepInDuration = Duration(milliseconds: 360);
 const _stepOutDuration = Duration(milliseconds: 180);
 const _stepInDelay = Interval(0.25, 1, curve: feedbackEaseOut);
