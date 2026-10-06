@@ -20,8 +20,12 @@ typedef PromptExcerpt = ({String before, String match, String after});
 /// The window of [text] around [match], clipped at the text's ends; an
 /// ellipsis marks text cut before it.
 PromptExcerpt promptExcerpt({required String text, required Match match}) {
-  final start = math.max(0, match.start - _kExcerptLead);
-  final end = math.min(text.length, match.end + _kExcerptTrail);
+  // Never between the two halves of a surrogate pair, such as an emoji's.
+  bool splitsPair(int index) => index > 0 && index < text.length && (text.codeUnitAt(index) & 0xFC00) == 0xDC00;
+  final lead = math.max(0, match.start - _kExcerptLead);
+  final start = splitsPair(lead) ? lead + 1 : lead;
+  final trail = math.min(text.length, match.end + _kExcerptTrail);
+  final end = splitsPair(trail) ? trail + 1 : trail;
   String oneLine(String part) => part.replaceAll(_whitespace, " ");
   return (
     before: "${start > 0 ? "…" : ""}${oneLine(text.substring(start, match.start)).trimLeft()}",

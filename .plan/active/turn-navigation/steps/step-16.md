@@ -25,7 +25,9 @@ their own PR number earlier in the series.
   keyboard and Escape still closes it.
 - The search is case-insensitive over `fullText` (`prompt_search.dart`). Each
   kept row grows by one excerpt line: 24 characters before the first match and
-  80 after, with whitespace collapsed and the match highlighted. Day headers
+  80 after, with whitespace collapsed and the match highlighted. The row cuts
+  the lead further, behind an ellipsis, so it takes at most 60% of the line
+  and the match stays visible in wide scripts and at large text sizes. Day headers
   keep the original contiguous runs and fold away with their last row. The
   last sliver reads "{n} matches in the prompts loaded so far".
 - "Load earlier prompts" is the first sliver. It shows while
@@ -63,23 +65,36 @@ their own PR number earlier in the series.
 
 ## Evidence
 
-Flutter 3.47.5:
+Measured with Flutter 3.47.5 on the tree this note is committed with (the
+review fixes on top of `4582e62dc7`, merged with `origin/main` at
+`3ad1d5212a`). Counts are the test runner's totals; parameterised tests count
+once per case.
 
-- `dart analyze --fatal-infos` is clean in `module_app_ui` and `client/app`.
-- These tests pass:
-  - `module_app_ui` session prompts (14), session detail, session list,
-    project list and widgets (551);
-  - `client/app` session detail body (150).
+- `dart analyze --fatal-infos` reports no issues, run in `client/module_app_ui`
+  and in `client/app`.
+- In `client/module_app_ui`:
+  - `flutter test test/features/session_prompts`: 20 pass;
+  - `flutter test test/features/session_prompts test/features/session_detail
+    test/features/session_list test/features/project_list test/widgets`: 571
+    pass.
+- In `client/app`:
+  - `flutter test test/features/session_detail/widgets/session_detail_body_test.dart`:
+    150 pass;
+  - `flutter test test/features/session_detail`: 180 pass.
 - The new view tests cover:
   - filtering as the query is typed and clearing, with the reader's row held
-    at the same y on every frame of the fold;
-  - the grown row and its highlighted match;
+    at the same y on every frame of the fold, also when the row hidden beneath
+    the pinned day header folds away;
+  - a search that matched nothing, cleared, returning the reader's row;
+  - a folding row keeping its excerpt when typing goes on before it settles;
+  - the grown row and its highlighted match, the match and the count fitting
+    at twice the text size on a narrow phone, and no emoji cut in half;
   - day headers only for days with a match;
   - the match counts;
   - the control's place and its disabled state;
   - earlier prompts joining the filter with the reader's row still, including
     when the control disappears;
-  - Escape and the desktop's focused field.
+  - Escape and the desktop's focused field, also after a click outside it.
 - The body test loads earlier prompts through the cubit, and the rows stay put.
 - Before and after fixture renders and a phone GIF are on `pr-media` under
   `turn-navigation/prompts-search/`.

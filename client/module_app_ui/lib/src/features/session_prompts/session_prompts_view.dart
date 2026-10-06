@@ -78,13 +78,17 @@ typedef _Layout = ({
 typedef _Extents = ({double row, double excerpt, double header, double loadEarlier, double trailing});
 
 /// A search change still settling: how much of each row showed and how grown
-/// the rows were as it began, and the search it replaced, whose excerpts the
-/// rows it folds away keep until they are gone.
-typedef _FilterChange = ({Map<String, double> shownFrom, double grownFrom, RegExp? previous});
+/// the rows were as it began, and the match each row showed then, which the
+/// rows it folds away keep until they are gone, also through a change that
+/// replaces it before it settles.
+typedef _FilterChange = ({Map<String, double> shownFrom, double grownFrom, Map<String, Match> matchesFrom});
 
 /// The row a search change keeps in view: it moves from where it was on screen
 /// to where the row the reader was on was, so the reader's place never jumps.
 typedef _Hold = ({String messageId, double fromY, double toY});
+
+/// The row the reader was on and its y on screen.
+typedef _Place = ({String messageId, double y});
 
 class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTickerProviderStateMixin {
   ScrollController? _scrollController;
@@ -93,6 +97,10 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
   String _query = "";
   _FilterChange? _change;
   _Hold? _hold;
+
+  /// Where the reader was when a search left no rows, so the search that
+  /// brings rows back returns them to that place.
+  _Place? _parked;
 
   /// Runs each search change from 0 to 1; it rests at 1.
   late final AnimationController _filter = AnimationController(vsync: this, duration: _kFilterDuration, value: 1)
@@ -138,8 +146,7 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
       final kept = search == null || match != null;
       final to = kept ? 1.0 : 0.0;
       final shown = lerpDouble(change?.shownFrom[entry.messageId] ?? to, to, progress) ?? to;
-      final previousMatch = text == null ? null : change?.previous?.firstMatch(text);
-      return (entry: entry, shown: shown, kept: kept, match: match ?? previousMatch);
+      return (entry: entry, shown: shown, kept: kept, match: match ?? change?.matchesFrom[entry.messageId]);
     }
 
     final groups = <_ShownGroup>[];
@@ -214,7 +221,10 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
             for (final row in group.rows) row.entry.messageId: row.shown,
         },
         grownFrom: before.grown,
-        previous: previous,
+        matchesFrom: {
+          for (final group in before.groups)
+            for (final row in group.rows) row.entry.messageId: ?row.match,
+        },
       );
       _hold = _holdFor(before: before);
     });
@@ -227,7 +237,8 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
 
   /// The row to keep in view while the search change just begun settles: the
   /// row the reader is on when the search keeps it, else the next row it
-  /// keeps, else the last one before it.
+  /// keeps, else the last one before it. With no row on screen, after a
+  /// search that matched nothing, it is the place the reader left.
   _Hold? _holdFor({required _Frame before}) {
     final extents = _extents;
     final controller = _scrollController;
@@ -240,20 +251,29 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
       highlightedId: _highlightedIn(list: widget.prompts),
     );
     final readerTop = layout.rows[readerId]?.top;
-    if (readerTop == null) return null;
+    final onScreen = readerId != null && readerTop != null
+        ? (messageId: readerId, y: readerTop - position.pixels)
+        : null;
+    final reader = onScreen ?? _parked;
+    if (reader == null) return null;
     final rows = [
       for (final group in _frameOf(list: widget.prompts).groups) ...group.rows,
     ];
-    final readerIndex = rows.indexWhere((row) => row.entry.messageId == readerId);
+    final readerIndex = rows.indexWhere((row) => row.entry.messageId == reader.messageId);
     final anchor =
         rows.skip(readerIndex).where((row) => row.kept).firstOrNull ??
         rows.take(readerIndex).where((row) => row.kept).lastOrNull;
     final anchorTop = layout.rows[anchor?.entry.messageId]?.top;
-    if (anchor == null || anchorTop == null) return null;
+    if (anchor == null || anchorTop == null) {
+      _parked = reader;
+      return null;
+    }
+    _parked = null;
     return (
       messageId: anchor.entry.messageId,
-      fromY: anchorTop - position.pixels,
-      toY: readerTop - position.pixels,
+      // A row coming back from nothing unfolds in the reader's place.
+      fromY: onScreen == null ? reader.y : anchorTop - position.pixels,
+      toY: reader.y,
     );
   }
 
@@ -340,17 +360,8 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
     final prego = context.prego;
     final loc = context.loc;
     final padding = MediaQuery.paddingOf(context);
-    final textScaler = MediaQuery.textScalerOf(context);
     final list = widget.prompts;
     final countStyle = prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary);
-    final countExtent = textScaler.scale(12) * 18 / 12 + PregoSpacing.xl * 2;
-    final extents = _extents = (
-      row: promptRowExtent(textScaler: textScaler),
-      excerpt: promptExcerptExtent(textScaler: textScaler),
-      header: promptDayHeaderExtent(textScaler: textScaler),
-      loadEarlier: math.max(kMinInteractiveDimension, textScaler.scale(14) * 20 / 14) + PregoSpacing.md * 2,
-      trailing: countExtent + padding.bottom,
-    );
     final loadEarlier = widget.onLoadEarlier;
 
     return CallbackShortcuts(
@@ -404,7 +415,6 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
                         builder: (context, constraints) => _buildList(
                           context: context,
                           constraints: constraints,
-                          extents: extents,
                           countStyle: countStyle,
                         ),
                       ),
@@ -419,15 +429,35 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
   Widget _buildList({
     required BuildContext context,
     required BoxConstraints constraints,
-    required _Extents extents,
     required TextStyle countStyle,
   }) {
     final loc = context.loc;
     final padding = MediaQuery.paddingOf(context);
+    final textScaler = MediaQuery.textScalerOf(context);
     final list = widget.prompts;
     final frame = _frameOf(list: list);
     final highlightedId = _highlightedIn(list: list);
     final loadEarlier = widget.onLoadEarlier;
+    final search = _search;
+    final matchCount = frame.groups.fold(0, (count, group) => count + group.rows.where((row) => row.kept).length);
+    final count = search == null
+        ? loc.transcriptPromptsLoaded(list.promptCount)
+        : loc.transcriptPromptsMatches(matchCount);
+    // Measured, as large text or a narrow screen can wrap the count.
+    final countPainter = TextPainter(
+      text: TextSpan(text: count, style: countStyle),
+      textDirection: Directionality.of(context),
+      textScaler: textScaler,
+    )..layout(maxWidth: constraints.maxWidth);
+    final countHeight = countPainter.height;
+    countPainter.dispose();
+    final extents = _extents = (
+      row: promptRowExtent(textScaler: textScaler),
+      excerpt: promptExcerptExtent(textScaler: textScaler),
+      header: promptDayHeaderExtent(textScaler: textScaler),
+      loadEarlier: math.max(kMinInteractiveDimension, textScaler.scale(14) * 20 / 14) + PregoSpacing.md * 2,
+      trailing: countHeight + PregoSpacing.xl * 2 + padding.bottom,
+    );
     final scrollController = _scrollController ??= ScrollController(
       initialScrollOffset: _initialOffset(
         layout: _layoutOf(frame: frame, loadsEarlier: loadEarlier != null, extents: extents),
@@ -439,8 +469,6 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
     );
     final maxWidth = widget.maxWidth;
     final inset = maxWidth == null ? 0.0 : math.max(0.0, (constraints.maxWidth - maxWidth) / 2);
-    final search = _search;
-    final matchCount = frame.groups.fold(0, (count, group) => count + group.rows.where((row) => row.kept).length);
 
     SliverVariedExtentList rows({required List<_Row> rows}) => SliverVariedExtentList.builder(
       itemCount: rows.length,
@@ -512,12 +540,7 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
             child: Padding(
               padding: EdgeInsetsDirectional.only(bottom: padding.bottom),
               child: Center(
-                child: Text(
-                  search == null
-                      ? loc.transcriptPromptsLoaded(list.promptCount)
-                      : loc.transcriptPromptsMatches(matchCount),
-                  style: countStyle,
-                ),
+                child: Text(count, textAlign: TextAlign.center, style: countStyle),
               ),
             ),
           ),

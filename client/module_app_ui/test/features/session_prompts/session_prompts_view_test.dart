@@ -1,7 +1,9 @@
+import "package:flutter/rendering.dart" show RenderParagraph;
 import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_prompts/prompt_search.dart";
 import "package:sesori_app_ui/src/features/session_prompts/session_prompts_view.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_day_header.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_spine_row.dart";
@@ -266,6 +268,93 @@ void main() {
       }
       await tester.pumpAndSettle();
       expect(_topOf(tester, "p32"), readerTop);
+    });
+
+    testWidgets("a search with no match, cleared, returns the reader to the row they were on", (tester) async {
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 60), anchor: "p30");
+      final readerTop = _topOf(tester, "p30");
+
+      await tester.enterText(find.byType(TextField), "nothing like it");
+      await tester.pumpAndSettle();
+      expect(find.byType(PromptSpineRow), findsNothing);
+
+      await tester.tap(find.byTooltip("Clear search"));
+      await tester.pumpAndSettle();
+      expect(_topOf(tester, "p30"), readerTop);
+    });
+
+    testWidgets("a row still folding away keeps its excerpt when the query changes again", (tester) async {
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 4), anchor: null);
+      await tester.enterText(find.byType(TextField), "o");
+      await tester.pumpAndSettle();
+      final p0Excerpt = find.descendant(
+        of: _row("p0"),
+        matching: find.text("Prompt p0 sits on an even row", findRichText: true),
+      );
+      expect(p0Excerpt, findsOneWidget);
+
+      // Typed faster than the fold: p0 is still folding away from "od".
+      await tester.enterText(find.byType(TextField), "od");
+      await tester.pump(const Duration(milliseconds: 40));
+      await tester.enterText(find.byType(TextField), "odd");
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(p0Excerpt, findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(_row("p0"), findsNothing);
+    });
+
+    testWidgets("at a large text size on a narrow phone the match stays on its line and the count fits", (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await _pump(
+        tester,
+        entries: [
+          TranscriptPromptOpener(
+            messageId: "wide",
+            text: "Prompt wide",
+            fullText: "Prompt wide\n${"W" * 30} needle",
+            createdAt: null,
+            dayKey: null,
+            number: null,
+          ),
+        ],
+        anchor: null,
+      );
+
+      await tester.enterText(find.byType(TextField), "needle");
+      await tester.pumpAndSettle();
+      final excerpt = tester.renderObject<RenderParagraph>(
+        find.descendant(of: _row("wide"), matching: find.byType(RichText)).last,
+      );
+      final needle = excerpt.text.toPlainText().indexOf("needle");
+      final boxes = excerpt.getBoxesForSelection(TextSelection(baseOffset: needle, extentOffset: needle + 6));
+      expect(boxes, isNotEmpty);
+      expect(boxes.last.right, lessThanOrEqualTo(excerpt.size.width), reason: "the whole match shows");
+
+      final count = find.text("1 match in the prompts loaded so far");
+      final countParagraph = tester.renderObject<RenderParagraph>(count);
+      final countBox = tester.getSize(find.ancestor(of: count, matching: find.byType(SizedBox)).first);
+      expect(
+        countParagraph.getMinIntrinsicHeight(countParagraph.constraints.maxWidth) + PregoSpacing.xl * 2,
+        lessThanOrEqualTo(countBox.height),
+      );
+    });
+
+    test("an excerpt never cuts an emoji in half", () {
+      // Both cut points fall on the second half of an emoji.
+      final text = "${"😀" * 20}xneedley${"😀" * 50}";
+      final match = RegExp("needle").firstMatch(text);
+      expect(match, isNotNull);
+      if (match == null) return;
+      final excerpt = promptExcerpt(text: text, match: match);
+      for (final part in [excerpt.before, excerpt.after]) {
+        expect(part.runes.where((rune) => rune >= 0xD800 && rune <= 0xDFFF), isEmpty);
+      }
     });
 
     testWidgets("a match past the one-line cut grows the row and highlights the match", (tester) async {

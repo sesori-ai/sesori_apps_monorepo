@@ -25,6 +25,9 @@ const double _kLineHeight = 20;
 const double _kExcerptSize = 12;
 const double _kExcerptLineHeight = 18;
 
+/// The most of the excerpt's line the words before its match may take.
+const double _kExcerptLeadShare = 0.6;
+
 /// One prompt on the Prompts screen: a dot on the spine rail that runs down
 /// the list, then its number, its first line and its time. A follow-up's dot
 /// sits indented off the rail, smaller and fainter, under the prompt it joined.
@@ -150,24 +153,33 @@ class const PromptSpineRow({
                         padding: const EdgeInsetsDirectional.only(top: _kExcerptGap),
                         child: Opacity(
                           opacity: grown,
-                          child: Text.rich(
-                            TextSpan(
-                              children: [
-                                TextSpan(text: excerpt.before),
-                                TextSpan(
-                                  text: excerpt.match,
-                                  style: TextStyle(
-                                    color: colors.textPrimary,
-                                    fontWeight: FontWeight.w600,
-                                    backgroundColor: colors.bgBrandSecondary,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) => Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: _fittedLead(
+                                      context: context,
+                                      before: excerpt.before,
+                                      style: excerptStyle,
+                                      width: constraints.maxWidth * _kExcerptLeadShare,
+                                    ),
                                   ),
-                                ),
-                                TextSpan(text: excerpt.after),
-                              ],
+                                  TextSpan(
+                                    text: excerpt.match,
+                                    style: TextStyle(
+                                      color: colors.textPrimary,
+                                      fontWeight: FontWeight.w600,
+                                      backgroundColor: colors.bgBrandSecondary,
+                                    ),
+                                  ),
+                                  TextSpan(text: excerpt.after),
+                                ],
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: excerptStyle,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: excerptStyle,
                           ),
                         ),
                       ),
@@ -179,5 +191,32 @@ class const PromptSpineRow({
         ),
       ),
     );
+  }
+
+  /// [before] cut from its start, behind an ellipsis, to at most [width], so
+  /// the match after it stays on the excerpt's line in any script and at any
+  /// text size.
+  static String _fittedLead({
+    required BuildContext context,
+    required String before,
+    required TextStyle style,
+    required double width,
+  }) {
+    final direction = Directionality.of(context);
+    final painter = TextPainter(
+      text: TextSpan(text: before, style: style),
+      textDirection: direction,
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    try {
+      if (painter.width <= width) return before;
+      // The text's start is on the left for left-to-right, on the right else.
+      final x = direction == TextDirection.ltr ? painter.width - width : width;
+      final cut = painter.getPositionForOffset(Offset(x, painter.height / 2)).offset;
+      return "…${before.substring(cut).trimLeft()}";
+    } finally {
+      painter.dispose();
+    }
   }
 }
