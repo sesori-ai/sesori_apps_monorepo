@@ -32,6 +32,9 @@
   identity in the follow-ups.
 - **D8:** Grok per-model context-window selection: track only.
 - **D9:** Hermes history-replay compaction marker: track only.
+- **D10 (proposed, not yet decided):** raise Cursor's PATH floor to the oldest
+  build that negotiates `_meta.subagents` (see the Cursor findings). The owner
+  confirms it or picks the capability-gated alternative before Step 10.a.
 - All other floors stay unchanged. Antigravity keeps its exact identity/pair
   contract.
 
@@ -190,50 +193,196 @@ records its own results.
   new `headerTimeout`), `server_info`, `session_structured_error`. Audit and
   regenerate the v2 SSE events; there are no event-shape changes, so only the
   header/comment updates. v1 output is untouched.
-- **Cursor sub-agents (Steps 9, 10).** Cursor enables ACP child sessions when
-  the client advertises `clientCapabilities.subagents` or
-  `clientCapabilities._meta.subagents`.
-  - Child sessions are linked to the parent Task call, stream
-    text/thinking/tools/terminal state, and replay on `session/load`. Cursor then
-    advertises `sessionCapabilities.subagents`.
-  - **9 (probe only, no production code):** record in a step note the exact wire
-    shape: the capability response, the child-creation/link notification, the
-    child updates, terminal state, cancel semantics, and what `session/load`
-    replays for sessions created before and after the capability.
-  - **10 (implementation):**
-    - **Capability:** advertise `_meta.subagents` through Cursor's existing
-      `CursorBinary.acpCapabilityMeta` → `initializeCapabilityMeta`
-      (`acp_plugin.dart:240-242`). No change to the shared `buildClientCapabilities`.
-      If 9 shows that only the standard field works, add a per-plugin getter that
-      defaults to `false` (like `supportsFormElicitation`) rather than enabling it
-      for every ACP harness.
-    - **Mapping:** the child↔parent Task link is mapped in `CursorEventMapper`
-      through the shared hooks `AcpEventMapper.isSubagentSpawnToolCall` /
-      `mapExtension` → `mapChildSpawned` and the finish calls
-      (`acp_event_mapper.dart:650-675`). Lifecycle stays with the single existing
-      owner, `AcpChildSessionTracker`. There is no Cursor-side tracker or registry.
-    - **Replay:** state how `session/load` replay reaches the tracker, based on 9.
-    - **Stop:** declare the scoped-stop capability matching 9's observed cancel
-      semantics. `cursor_plugin_impl.dart` currently derives
-      `requiresProcessResidency`, `hasUnresolvedResidentWork` and
-      `activeScopedStopWorkCount` (plus `registerProcessResidencyChanges`) from
-      `CursorTaskTracker`. Step 10 must back these hooks with
-      `AcpChildSessionTracker` state for native children. Otherwise the root-cancel
-      path loses its confirmation and its check for surviving children. Removing
-      the hooks is allowed only together with a capability that makes no such
-      guarantee.
-  - **Cleanup:**
-    - **Delete with the native live path:** the live `cursor/task` handling in
-      `cursor_event_mapper.dart`, `trackers/cursor_task_tracker.dart`, the task
-      references in `cursor_approval_registry.dart`, and the wiring in
-      `cursor_plugin_impl.dart`.
-    - **Also delete, if 9 shows `session/load` replays old sessions' sub-agents
-      natively:** `api/models/cursor_task_dto.dart` (+ `.g`/`.freezed`),
-      `repositories/mappers/cursor_task_mapper.dart` and
+- **Cursor sub-agents (Steps 9, 10.a, 10.b).** Step 9 (`steps/step-09.md`,
+  pinned `2026.10.01-e373342`) replaced this section's earlier assumptions.
+  Everything after `initialize` is source-derived, not observed live.
+  - **Probe facts the design rests on:**
+    - **Capability.** Only `clientCapabilities._meta.subagents` enables it (the
+      bundled SDK strips a top-level `subagents`). It is per connection, and the
+      response adds `sessionCapabilities.subagents`.
+    - **Spawn and finish.** Both are `session/update` kinds on the parent session
+      (the root, or a running child for nested sub-agents): `subagent_spawned`
+      and `subagent_state_update`. `AcpEventMapper.map` drops unknown kinds, and
+      `mapExtension` never sees `session/update`.
+    - **Identity.** The child session id is the `agentId`; each resumed run is
+      `<agentId>.<n>` with its own `subagent_spawned`. The parent Task link is
+      `_meta.cursor.toolCallId`, plus `_meta.cursor.model` when known. The
+      parent's Task `tool_call`/`tool_call_update` is still emitted.
+    - **Child stream.** Text, thinking and tools arrive as ordinary
+      `session/update` frames carrying the child id. No `user_message_chunk`
+      echoes the child's prompt; it exists only in the parent Task input and the
+      `task` title.
+    - **Terminal states.** `completed`, `failed`, `cancelled`, `disconnected`.
+      There is no running update; a spawn implies running.
+    - **Background children hold the root prompt open.** Cursor drains them and
+      runs root follow-up turns before answering `end_turn`.
+    - **Cancel.** A child-id cancel is a silent no-op. A root cancel cascades:
+      it waits up to 10 s, sends `disconnected` for stragglers, then answers
+      `cancelled`.
+    - **Legacy extension.** `cursor/task` (an extension *request*) is still sent
+      while the capability is on.
+    - **Replay.** `session/load` replays only each child's start and terminal
+      state after its replayed Task call, with no child transcript.
+    - **Unverified.** Whether loading a child id returns its transcript, whether
+      `session/list` lists children, and whether pre-capability transcripts
+      carry `agentId`.
+  - **D10 (proposed; owner confirms before 10.a): raise Cursor's PATH floor**
+    from 2026.07.16 to the oldest build verified to answer `_meta.subagents`
+    with `sessionCapabilities.subagents`.
+    - **Why.** 10.a suppresses the Task card in favor of the spawn notification.
+      On a build without the capability, a Task would render nothing and lose its
+      root-cancel confirmation.
+    - **Check.** Use Step 9's unauthenticated `initialize` method on the previous
+      target `2026.09.23-86fc751` and the current floor build. If neither
+      advertises it, the floor becomes `2026.10.01-e373342`.
+    - **If the owner rejects D10:** gate spawn suppression on the negotiated
+      `sessionCapabilities.subagents` and keep the live `cursor/task` path for
+      connections without it. 10.b's live-path deletion is then dropped.
+  - **10.a (🚧 native live child sessions):**
+    - **ACP seam (backend-neutral, `acp_event_mapper.dart`, `acp_plugin.dart`):**
+      1. **Hook for harness `session/update` kinds.** `map` calls
+         `mapHarnessSessionUpdate({required String sessionId, required Map<String, dynamic> update})`
+         where its switch currently falls through to the drop. The base returns
+         `const []`, so `current_mode_update` and Grok/DeepSeek behavior are
+         unchanged.
+         - Not routed through `mapExtension`: that would change the hook's
+           non-`session/update` contract for Grok and DeepSeek.
+         - No Cursor-named case in the base.
+         - Not a `normalizeSessionUpdate` rewrite: that hook only fixes the
+           envelope.
+      2. **Spawn-call input.** `_spawnToolCalls` (today
+         `Map<String, Set<String>>`) keeps each recognized spawn call's latest
+         `rawInput`, from the `tool_call` and the `tool_call_update`s it already
+         drops. `spawnToolCallInput({required String sessionId, required String toolCallId})`
+         exposes it. Its lifetime is unchanged: `beginTurn` and `forgetSession`
+         clear it.
+      3. **Root-only stop reads the tracker.** In `_abortRootSessionOnly` (the
+         `rootSessionCancel` path, used only by Cursor), the pre-terminal work
+         count becomes `childSessionTracker.runningChildren(sessionId:)`. This
+         replaces the `activeScopedStopWorkCount` hook, which is deleted
+         together with Cursor's override.
+         - A stop addressed to a tracked child (`childSessionTracker.isChild`)
+           throws a `PluginOperationException` before any native cancel. Today
+           it would send a no-op cancel and report success.
+
+      `buildClientCapabilities`, `AcpChildSessionTracker` and the replay
+      collector do not change.
+    - **Cursor plugin:**
+      - **Capability.** `CursorBinary.acpCapabilityMeta` adds
+        `"subagents": true`. No per-plugin getter.
+      - **DTO.** New `api/models/cursor_subagent_update_dto.dart` (freezed,
+        `fromJson` only):
+        - spawned: `subagentSessionId`, `name`, `task`,
+          `_meta.cursor.{toolCallId, model}`;
+        - state update: `subagentSessionId` and a `state` enum with an unknown
+          value.
+
+        It is parsed at the boundary; a malformed frame is logged and dropped,
+        as Grok does.
+      - **Mapper.** New pure `repositories/mappers/cursor_subagent_mapper.dart`,
+        following `deepseek_subagent_mapper.dart`:
+        - `AcpChildSpawn`:
+          - `childSessionId` = `subagentSessionId`;
+          - `agent` = `name`;
+          - `description` = the non-blank `task`, else the Task input
+            `description`;
+          - `prompt` = the Task input `prompt` from `spawnToolCallInput` (keyed
+            by `_meta.cursor.toolCallId`), else the non-blank `task`;
+          - `isBackground: false` for every child: the root prompt stays open
+            and a root cancel stops background children too, the same reasoning
+            Grok uses.
+        - Status mapping:
+
+          | Cursor state | Status |
+          |---|---|
+          | `completed` | `completed` |
+          | `failed` | `error` |
+          | `cancelled` | `cancelled` |
+          | `disconnected` | `error`, because the outcome is unknown: never success or a confirmed cancel |
+          | unknown | no finish; logged |
+      - **`CursorEventMapper`:**
+        - It overrides `isSubagentSpawnToolCall` for Task calls
+          (`rawInput._toolName == task`, via the existing `CursorTaskInputDto`).
+          The spawn notification then owns the single tile.
+        - It overrides `mapHarnessSessionUpdate` for the two kinds:
+          `mapChildSpawned` (plus `setChildModel` for an announced child, as
+          Grok does) and `mapChildFinished`. Nested children resolve their root
+          through the tracker.
+        - It deletes the `cursor/task` case and its private helpers.
+      - **Approval registry.** `CursorApprovalRegistry` still acks `cursor/task`,
+        because Cursor sends it as a request that needs a reply, but no longer
+        forwards it. Because D10 always enables the capability, this is how
+        `cursor/task` gets ignored while the capability is active, with no
+        runtime branch.
+      - **`CursorPlugin`.** Drops the `requiresProcessResidency`,
+        `hasUnresolvedResidentWork` and `activeScopedStopWorkCount` overrides and
+        the `registerProcessResidencyChanges` call.
+        - Residency follows from the held-open root prompt and
+          `childSessionTracker.hasActiveWork`.
+        - `scopedStopCapability` stays `rootSessionCancel`.
+        - Cursor's 10 s cascade fits inside the 20 s
+          `rootSessionCancelSettlementTimeout`.
+      - **Leftover.** The remaining `CursorTaskTracker` Task observation becomes
+        inert: spawn calls produce no generic card. 10.b deletes it.
+    - **Replay (unchanged).** `session/load` stays replay-local and never feeds
+      `AcpChildSessionTracker`.
+      - The collector ignores native replay frames.
+        `CursorTaskReplayTracker` keeps turning completed foreground Task calls
+        into subtask tiles without a child link.
+      - Reloaded sessions therefore look as they do today; only the live tile
+        links its child. A replayed child link waits for the child-`session/load`
+        transcript question (final follow-up).
+    - **Behavior consequences**, recorded in 10.a's regression docs:
+      - the root stays busy while any child, including a background one, runs;
+      - a follow-up prompt during that time uses the shared stop-and-send, so
+        the root cancel cascade stops every child (as on Grok);
+      - stopping a child session is refused ("stop the parent");
+      - a root stop stops all children with Cursor's confirmed cascade.
+    - **Tests:**
+      - **ACP:** hook dispatch, spawn-input retention, root-only count from the
+        tracker, and the child-stop refusal (`acp_step5_policy_test.dart`
+        updated).
+      - **Cursor mapper:** spawn, nested, resumed `.n`, model, all four states,
+        unknown state, malformed frames, suppressed Task card, and `cursor/task`
+        acked but not mapped.
+      - **Plugin:** root stop with running children under the confirm and stop
+        policies, the survivor failure, and the child-stop refusal.
+      - **Floor:** manifest and descriptor floor tests.
+    - **Docs:** `tools-and-file-changes.md`, `session-turns.md` (stop), and
+      `plugin-setup-and-lifecycle.md` (floor). In `docs/HARNESS_CAPABILITIES.md`:
+      the Cursor child-session and stop rows, and the "produce no child
+      sessions" sentence. Also update the `harnesses.md` reference.
+  - **10.b (🌿 delete what 10.a made obsolete; no behavior change):**
+    - **Cursor live Task path.** Delete:
+      - `trackers/cursor_task_tracker.dart`;
+      - in `cursor_event_mapper.dart`, the Task observation in `map` and the
+        Task parts of the `beginTurn`, `forgetSession`, `mapPromptResult` and
+        `mapPromptLifecycleFailure` overrides;
+      - the `_taskTracker` wiring, reset and dispose in
+        `cursor_plugin_impl.dart`;
+      - the live-only `CursorTaskRequestDto`, `CursorSubagentTypeDto` and
+        `CursorSubagentCustomTypeDto` (regenerate);
+      - `CursorTaskMapper.livePresentation`;
+      - their tests.
+    - **ACP hooks with no producer left.** Delete `requiresProcessResidency`,
+      `hasUnresolvedResidentWork` and `registerProcessResidencyChanges`, plus the
+      root-only path's two resident-work checks.
+      - Also delete the plugin-interface `PluginAbortNotPerformed` /
+        `PluginAbortRefusalReason` and the bridge app's mapping branch, once a
+        grep confirms no other producer.
+      - The shared `SessionAbortRefusalReason.residentWorkCompletionUnknown`
+        value and the client's handling of it stay: released bridges still send
+        it.
+    - **Kept (cautious replay branch):** the replay parts of
+      `api/models/cursor_task_dto.dart` (`CursorTaskInputDto`,
+      `CursorTaskOutputDto`, `CursorSubagentUnspecifiedDto` and the `Replay`
+      DTOs), `repositories/mappers/cursor_task_mapper.dart` and
       `repositories/trackers/cursor_task_replay_tracker.dart`.
-    - **Otherwise keep exactly these three** for pre-capability transcripts and
-      delete the rest.
-  - **Review:** 10 gets a fresh architecture review after 9's note exists.
+      - Delete them only after an authenticated probe shows that pre-capability
+        transcripts carry `agentId` and that native replay with a child link can
+        replace them.
+  - **Review:** this revised design needs a fresh `architecture-plan-review`
+    before 10.a starts. The review covers 10.b.
 - **DeepSeek adapter (Step 11).** Upstream 0.2.0-rc.2 changes are covered in the
   adapter repo, not here:
   - `agent/session-start` → async `agent/created`;
@@ -260,16 +409,22 @@ records its own results.
 | 7 | ⚙️ Pi 1.0.4, floor 0.99.0, `/llama` and `/mcp` catalog fix, compat removal | ~150 lines |
 | 8 | ⚙️ Pi turn acceptance via prompt `disposition` | ~100–200 lines |
 | 9 | 🌱 Cursor ACP sub-agent wire probe note | note |
-| 10 | 🚧 Cursor native ACP sub-agent child sessions + task-path cleanup | ~400–700 lines incl. deletions |
+| 10.a | 🚧 Cursor native ACP sub-agent child sessions (ACP seam, capability, D10 floor, root-only stop) | ~1,100–1,400 lines, ~250 generated |
+| 10.b | 🌿 Delete the inert Cursor live Task path and the orphaned ACP residency hooks | ~1,000–1,400 lines, mostly deletions |
 | 11 | 🌿 DeepSeek consumer pin to the migrated adapter (after external release) | ~80 lines |
 | 12 | 🌱 Reconcile regression documents and `docs/HARNESS_CAPABILITIES.md` | docs |
 | 13 | 🌱 Final coverage run and plan retirement | docs |
 
-PR titles: `<emoji> [harness-refresh-2026-10] <description> [step <x>/13]`.
+PR titles: `<emoji> [harness-refresh-2026-10] <description> [step <x>/14]`.
 
-- **Total:** 13 counts every row above. If Step 3 is dropped, renumber the
-  remaining PRs to a 12-step total. If Step 5.b is activated, insert it after
-  Step 5 and raise the total.
+- **Total:** 14 counts every row above (Steps 10.a and 10.b are one PR each,
+  titled `[step 10.a/14]` and `[step 10.b/14]`). If Step 3 is dropped, lower
+  the total by one. If Step 5.b is activated, insert it after Step 5 and raise
+  the total.
+- **Why Step 10 splits:** a single PR would be about 2,400 changed lines of
+  lifecycle and stop code. 10.a is the behavior change, which leaves the old
+  live Task path inert. 10.b only deletes it, and each part compiles and passes
+  on its own.
 - **Already open:** keep the titles of open PRs in sync with the current total.
 
 Each pin PR updates, together:
@@ -308,9 +463,26 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
     the WebSocket transport; authentication uses stdio.
   - Pi: catalog with no `/llama`; disposition-driven settlement for prompt, steer
     and a silent command.
-  - Cursor: sub-agent child session live and after reload, and stop. Also one
-    Cursor-scoped L3 client check: the sub-agent tile renders and opens the child
-    session (`tools-and-file-changes.md` places tile rendering at L3).
+  - Cursor (10.a): these checks confirm Step 9's source-derived shapes live.
+    - **Live children:**
+      - a real `subagent_spawned` / `subagent_state_update` pair;
+      - the child streams into its own session;
+      - the Task card is replaced by one tile that carries the prompt;
+      - nested and resumed (`<agentId>.<n>`) children.
+    - **Background child:** the root stays busy until the child finishes.
+    - **Stop:**
+      - a root stop under the confirm and stop policies, through the cascade;
+      - a child stop is refused;
+      - a follow-up prompt while a child runs uses stop-and-send and stops it.
+    - **No duplicate tile** from `cursor/task`.
+    - **Reload:** shows today's replay tiles.
+    - **Record each open question's answer or its gap:** child-id
+      `session/load` transcript, children in `session/list`, and `agentId` in a
+      pre-capability transcript.
+    - **D10 floor:** the unauthenticated `initialize` probe, before 10.a.
+    - **L3 (Cursor only):** the sub-agent tile renders and opens the child
+      session (`tools-and-file-changes.md` places tile rendering at L3).
+  - Cursor (10.b): focused tests and analyze only; no behavior change.
   - OMP: open and delete a session whose model is gone.
   - OpenCode: provider list with `chunkTimeout: false`.
 - **Matrix:** the macOS arm64 host for native checks. Other platforms are covered by
@@ -336,8 +508,21 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
 - **New mutable state:** none planned for the pins.
   - Step 8 adds one enum return value and skips the existing barrier at runtime for
     `started`/`queued`; it adds no fields.
-  - Step 10 keeps child lifecycle in the existing `AcpChildSessionTracker`; there
-    is no Cursor-side tracker or registry.
+  - Step 10.a keeps child lifecycle in the existing `AcpChildSessionTracker`;
+    there is no Cursor-side tracker or registry.
+    - Its only shared-state change is that `AcpEventMapper._spawnToolCalls`
+      keeps each spawn call's `rawInput` instead of only its id, with the same
+      lifetime.
+    - It adds one backend-neutral mapper hook. `_abortRootSessionOnly` now reads
+      the tracker, which replaces one hook.
+  - Step 10.b removes state: the whole `CursorTaskTracker` and three ACP
+    residency hooks.
+- **Deliberately not added for Cursor:**
+  - per-child cancel (not supported by the harness);
+  - a runtime capability branch (the D10 floor replaces it);
+  - replayed child links (unverified);
+  - background-child detection (Cursor holds the root prompt open, so every
+    child counts as foreground).
 - **Deliberately not added:** version branches for runtimes below the new floors
   (Pi, Codex); dual `/llama` source matching; Grok context-window or Hermes
   compaction features (D8, D9).
@@ -348,8 +533,13 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
   (Step 3).
 - **Pi:** the ≤0.84.2 compat note and the `<inline:llama.cpp>` entry are deleted
   (Step 7). Step 8 deletes no structure; the barrier stays for `handled`.
-- **Cursor:** the live task path is deleted, and the replay path is deleted or kept
-  per the 10 cleanup list.
+- **Cursor:** 10.a removes the `cursor/task` mapping and the plugin's residency
+  overrides. 10.b deletes the inert live Task path, the ACP residency hooks with
+  no remaining producer, and the plugin-interface refusal type.
+  - The replay files (`cursor_task_dto` replay parts, `cursor_task_mapper`,
+    `cursor_task_replay_tracker`) are kept until an authenticated probe settles
+    the `agentId` question.
+  - The shared wire refusal value stays.
 - **Antigravity:** the legacy `agy_acp_server_` prefix and `YYYYMMDD_NN_RCNN`
   parsing would only reclassify pre-1.2.1 installs from "unknown" to "outdated".
   Leave them as they are; the value is low.
@@ -365,6 +555,22 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
   attestations.
 - **DeepSeek.** The migration depends on upstream RCs and on a separate repo
   release.
+- **Cursor wire shapes are source-derived.** Everything after `initialize` comes
+  from the bundle, not the wire. If the L2 run disagrees, fix 10.a before merge,
+  or record the gap under the retirement gate.
+- **Cursor stop-and-send now stops sub-agents.** Background children hold the
+  root prompt open, so a follow-up prompt's root cancel cascades to every
+  running child. Today background Tasks survive a follow-up. This matches Grok
+  and Cursor's own cascade, and is documented rather than worked around.
+- **Cursor D10 floor.** PATH users below the new floor get the existing
+  "outdated" setup action.
+- **Cursor reload loses the child link.** A reloaded session shows today's
+  replay tiles. A live tile's child session is not reachable from history until
+  child `session/load` is verified.
+- **Cursor `disconnected` children** show as errors: the cascade timed out, or
+  the outcome is unknown.
+- **Cursor `session/list`** may list child sessions as top-level sessions
+  (unverified). L2 checks this; a filter is a follow-up only if it does.
 
 ## Plan review
 
@@ -376,3 +582,5 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
   another review.
 - **Still needed:** Step 10 and the conditional Step 5.b each need their own
   review before implementation.
+- **2026-10-06:** Step 10 revised from Step 9 probe; architecture review
+  pending. It is split into 10.a and 10.b, and the total is now 14.

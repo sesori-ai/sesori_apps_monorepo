@@ -14,9 +14,10 @@ Evidence lives in the PRs and per-step notes. This file only orders the work.
 | 7 | ⚙️ Pi 1.0.4 + floor 0.99.0 + catalog fix | 1 | pending |
 | 8 | ⚙️ Pi turn acceptance via `disposition` | 7 | pending |
 | 9 | 🌱 Cursor ACP sub-agent wire probe | 2 | pending |
-| 10 | 🚧 Cursor native child sessions (re-reviewed) | 9 | pending |
+| 10.a | 🚧 Cursor native child sessions (re-reviewed; D10 floor decision first) | 9 | pending |
+| 10.b | 🌿 Delete the inert Cursor live Task path and orphaned ACP residency hooks | 10.a | pending |
 | 11 | 🌿 DeepSeek consumer pin | external adapter release | blocked (see below) |
-| 12 | 🌱 Regression docs reconcile | 2–10 | pending |
+| 12 | 🌱 Regression docs reconcile | 2–10.b | pending |
 | 13 | 🌱 Final coverage and retirement | 11, 12 | pending |
 
 Step 11 needs a session with `sesori-deepseek-acp` checked out (handoff in
@@ -26,6 +27,10 @@ Step 13 waits for Step 11, or for the owner's recorded exclusion of DeepSeek.
 ## Final follow-ups (collected as work proceeds)
 
 - Copilot: re-probe ACP sub-agent identity (D7); lift 🚫⁴ only if usable.
+- Cursor (needs an authenticated account): the child-id `session/load`
+  transcript, children in `session/list`, and `agentId` in pre-capability
+  transcripts. These decide replayed child links and whether the kept replay
+  files can be deleted.
 - Tracked only: Grok context-window selection (D8); Hermes replay compaction marker
   (D9); Pi codemode nested tool events; Codex `thread/items/list`; Antigravity and
   OpenCode usage/error payloads.
