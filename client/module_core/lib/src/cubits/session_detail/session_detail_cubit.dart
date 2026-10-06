@@ -152,10 +152,10 @@ class SessionDetailCubit(
   /// the parked prompts its fetch actually had a chance to observe.
   int _parkEpoch = 0;
 
-  /// Whether the launch that created this session still has follow-ups it has
-  /// not delivered. They were pressed before anything this screen queued, so
-  /// this screen's queue waits for them.
-  bool _launchFollowUpsOwed = false;
+  /// The follow-ups the launch that created this session has not delivered:
+  /// queued, sending or failed. They were pressed before anything this screen
+  /// queued, so this screen's queue waits until none is left.
+  List<LaunchFollowUp> _unsentLaunchFollowUps = const [];
 
   /// Delivered user messages already accounted for. A message becomes
   /// renderable through its envelope and then each of its parts, so without
@@ -277,26 +277,35 @@ class SessionDetailCubit(
   }
 
   /// Parks each follow-up the launch delivered, the way this screen parks its
-  /// own accepted sends, and releases this screen's queue once the launch owes
-  /// nothing more. The launch never reports one [_settlePrompt] already
-  /// forgot, so a settlement outrunning its acceptance leaves no ghost bubble.
+  /// own accepted sends, shows the rest, and releases this screen's queue once
+  /// the launch owes nothing more. The launch never reports one
+  /// [_settlePrompt] already forgot, so a settlement outrunning its acceptance
+  /// leaves no ghost bubble.
   void _onLaunchFollowUps(List<LaunchFollowUp> followUps) {
     if (isClosed) return;
-    var owed = false;
-    var adopted = false;
+    final unsent = <LaunchFollowUp>[];
     for (final followUp in followUps) {
       if (followUp case AcceptedLaunchFollowUp(:final submission)) {
         _promptQueue.adoptAccepted(submission: submission, epoch: ++_parkEpoch);
-        adopted = true;
       } else {
-        owed = true;
+        unsent.add(followUp);
       }
     }
-    final released = _launchFollowUpsOwed && !owed;
-    _launchFollowUpsOwed = owed;
-    if (adopted) _emitQueueUpdate();
+    final released = _unsentLaunchFollowUps.isNotEmpty && unsent.isEmpty;
+    _unsentLaunchFollowUps = unsent;
+    if (state case final SessionDetailLoaded current) {
+      _emitQueueUpdate(current.copyWith(launchFollowUps: unsent));
+    }
     if (released) _tryDrainQueue();
   }
+
+  /// Sends a failed launch follow-up again under its original promptId, so a
+  /// send the bridge did take lands as a no-op.
+  void retryLaunchFollowUp({required String promptId}) => _sessionLaunchService.retryFollowUp(promptId: promptId);
+
+  /// Drops a launch follow-up that is queued or was refused, so the ones
+  /// behind it can send.
+  void removeLaunchFollowUp({required String promptId}) => _sessionLaunchService.cancelFollowUp(promptId: promptId);
 
   /// Forgets every staged copy of a prompt the bridge terminally accounted
   /// for: this screen's, and the launch's when it is a follow-up still in
@@ -2219,7 +2228,7 @@ class SessionDetailCubit(
 
   Future<void> _drainQueuedMessages() async {
     if (_promptQueue.isSending || _stalePromptOptionsRefreshInFlight || _abortRequestInFlight) return;
-    if (_launchFollowUpsOwed) return;
+    if (_unsentLaunchFollowUps.isNotEmpty) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
     if (!_isConnected) return;
@@ -3082,6 +3091,7 @@ class SessionDetailCubit(
       queuedMessages: queue.queuedMessages,
       awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
       localSend: queue.localSend,
+      launchFollowUps: _unsentLaunchFollowUps,
       availableAgents: agents,
       availableProviders: providers,
       availableCommands: snapshot.commands,

@@ -124,7 +124,11 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(outcomes, [
-      const SessionLaunchOutcome.failedWhileComposing(launchId: "launch-1", reason: RemoteFailureReason.unknown),
+      const SessionLaunchOutcome.failedWhileComposing(
+        launchId: "launch-1",
+        reason: RemoteFailureReason.unknown,
+        followUps: [],
+      ),
     ]);
     expect(records.single.message, "New session creation failed");
     expect(records.single.diagnosticError, isNotNull);

@@ -27,6 +27,7 @@ class const _SessionDetailMessageListHarness({
   final EdgeInsets systemGestureInsets = EdgeInsets.zero,
   final double topInset = 0,
   final SessionLaunchHandoff? launchHandoff,
+  final List<LaunchFollowUp> launchFollowUps = const [],
 }) extends StatefulWidget {
   @override
   State<_SessionDetailMessageListHarness> createState() => _SessionDetailMessageListHarnessState();
@@ -74,6 +75,28 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     _bridgeQueuedPrompts = widget.initialBridgeQueuedPrompts;
     _retryErrorMessage = widget.initialRetryErrorMessage;
     _launchHandoff = widget.launchHandoff;
+    _launchFollowUps = widget.launchFollowUps;
+  }
+
+  late List<LaunchFollowUp> _launchFollowUps;
+  final List<String> retriedLaunchFollowUpIds = [];
+  final List<String> removedLaunchFollowUpIds = [];
+
+  void setLaunchFollowUps(List<LaunchFollowUp> followUps) {
+    setState(() => _launchFollowUps = followUps);
+  }
+
+  /// Mirrors the cubit parking an accepted launch follow-up: it leaves the
+  /// launch's unsent list and joins the parked sends in one emission.
+  void acceptLaunchFollowUp({required String promptId}) {
+    setState(() {
+      final accepted = _launchFollowUps.where((followUp) => followUp.submission.promptId == promptId);
+      _awaitingBridgeSubmissions = [
+        ..._awaitingBridgeSubmissions,
+        for (final followUp in accepted) followUp.submission,
+      ];
+      _launchFollowUps = [..._launchFollowUps.where((followUp) => followUp.submission.promptId != promptId)];
+    });
   }
 
   late SessionLaunchHandoff? _launchHandoff;
@@ -252,6 +275,9 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
             }
           },
           onRemoveFailedSend: () => setState(() => _localSend = const LocalSendPhase.idle()),
+          launchFollowUps: _launchFollowUps,
+          onRetryLaunchFollowUp: ({required promptId}) => retriedLaunchFollowUpIds.add(promptId),
+          onRemoveLaunchFollowUp: ({required promptId}) => removedLaunchFollowUpIds.add(promptId),
           awaitingBridgeSubmissions: _awaitingBridgeSubmissions,
           queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
@@ -971,6 +997,97 @@ void main() {
       tester.getTopLeft(find.text("first message")).dy,
       lessThan(tester.getTopLeft(find.byType(TranscriptWorkingRow)).dy),
     );
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("launch follow-ups sit after the first message and ahead of this screen's queue, with their actions", (
+    tester,
+  ) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        initialQueuedMessages: [_textSubmission(promptId: "prm_own", text: "own")],
+        launchHandoff: SessionLaunchHandoff(
+          submission: NewSessionSubmissionSnapshot.text(
+            draft: ComposerDraft.typed(text: "first message"),
+            attachments: const [],
+          ),
+          pluginId: "claude",
+          startedAt: clock.now(),
+          followUpIds: const {"prm_refused", "prm_waiting"},
+          acceptedFollowUps: const [],
+        ),
+        launchFollowUps: [
+          LaunchFollowUp.failed(
+            submission: _textSubmission(promptId: "prm_refused", text: "refused"),
+            failure: PromptSendFailure.rejected,
+          ),
+          LaunchFollowUp.queued(
+            submission: _textSubmission(promptId: "prm_waiting", text: "waiting"),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tops = [
+      for (final text in ["first message", "refused", "waiting", "own"]) tester.getTopLeft(find.text(text)).dy,
+    ];
+    expect(tops, orderedEquals([...tops]..sort()));
+    expect(find.text("Couldn’t send"), findsOneWidget);
+
+    Finder inBubble(String text, String action) => find.descendant(
+      of: find.ancestor(of: find.text(text), matching: find.byType(QueuedMessageBubble)),
+      matching: find.text(action),
+    );
+    await tester.tap(inBubble("refused", "Retry"));
+    await tester.tap(inBubble("refused", "Remove"));
+    await tester.tap(inBubble("waiting", "Cancel"));
+    final state = harnessKey.currentState!;
+    expect(state.retriedLaunchFollowUpIds, ["prm_refused"]);
+    expect(state.removedLaunchFollowUpIds, ["prm_refused", "prm_waiting"]);
+
+    // A lost response may have reached the bridge: Retry only.
+    state.setLaunchFollowUps([
+      LaunchFollowUp.failed(
+        submission: _textSubmission(promptId: "prm_refused", text: "refused"),
+        failure: PromptSendFailure.uncertain,
+      ),
+    ]);
+    await tester.pumpAndSettle();
+    expect(inBubble("refused", "Retry"), findsOneWidget);
+    expect(inBubble("refused", "Remove"), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("a failed launch follow-up the bridge did take turns into its message in place", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    final submission = _textSubmission(promptId: "prm_late", text: "late");
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [_message(messageId: "user-1", role: "user", text: "first message")],
+        initialStreamingText: const {},
+        launchFollowUps: [LaunchFollowUp.failed(submission: submission, failure: PromptSendFailure.uncertain)],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final row = find.ancestor(of: find.text("late"), matching: find.byType(AnimatedSize));
+    final before = tester.state(row);
+
+    // The echo lands and the launch forgets the follow-up in the same emission.
+    harnessKey.currentState!
+      ..appendNewestMessage(_message(messageId: "user-2", role: "user", text: "late", promptId: "prm_late"))
+      ..setLaunchFollowUps(const []);
+    await tester.pump();
+
+    expect(tester.state(row), same(before));
+    await tester.pumpAndSettle();
+    expect(find.text("Couldn’t send"), findsNothing);
+    expect(find.widgetWithText(UserMessageCard, "late"), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
@@ -2152,6 +2269,35 @@ void main() {
 
     expect(find.text("Command unavailable"), findsOneWidget);
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+  });
+
+  testWidgets("an accepted launch follow-up does not reattach a detached reader", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        launchFollowUps: [
+          LaunchFollowUp.sending(
+            submission: _textSubmission(promptId: "prm_follow", text: "follow"),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _detachViewport(tester);
+    final detachedPixels = _position(tester).pixels;
+
+    harnessKey.currentState?.acceptLaunchFollowUp(promptId: "prm_follow");
+    await _pumpListUpdate(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    expect(_position(tester).pixels, detachedPixels);
   });
 
   testWidgets("a new direct-to-sending submission returns a detached reader to latest", (tester) async {

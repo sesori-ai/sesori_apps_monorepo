@@ -2,6 +2,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../../errors/remote_failure_reason.dart";
+import "../composer/queued_session_submission.dart";
 
 part "session_launch_outcome.freezed.dart";
 
@@ -11,10 +12,12 @@ part "session_launch_outcome.freezed.dart";
 sealed class SessionLaunchOutcome with _$SessionLaunchOutcome {
   const factory succeeded({required String launchId, required Session session}) = SessionLaunchSucceeded;
 
-  /// The composing route still holds the payload and restores it.
+  /// The composing route still holds the payload and restores it, with the
+  /// [followUps] sent after it, none of which could be sent without a session.
   const factory failedWhileComposing({
     required String launchId,
     required RemoteFailureReason reason,
+    required List<QueuedSessionSubmission> followUps,
   }) = SessionLaunchFailedWhileComposing;
 
   /// The composing route released the payload, so no composer can restore it.

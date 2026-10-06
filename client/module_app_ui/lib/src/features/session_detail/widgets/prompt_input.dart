@@ -275,11 +275,24 @@ class _PromptInputState() extends State<PromptInput> {
     super.dispose();
   }
 
+  /// Stages the restored attachments in order under the same aggregate budget
+  /// as a paste, stopping at the first that does not fit: a restoration can
+  /// merge several prompts' attachments into one. Runs before a build, so it
+  /// stages without `setState` and shows the notice after the frame.
   void _restoreInitialAttachments() {
-    _attachments.addAll(widget.initialAttachments);
+    var exceededBudget = false;
+    for (final attachment in widget.initialAttachments) {
+      if (_attachmentsDecodedSizeWith(attachment: attachment) > maxComposerPromptAttachmentBytes) {
+        exceededBudget = true;
+        break;
+      }
+      _attachments.add(attachment);
+    }
     final onConsumed = widget.onInitialAttachmentsConsumed;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) onConsumed();
+      if (!mounted) return;
+      if (exceededBudget) _showComposerNotice(context.loc.sessionDetailAttachmentBudgetExceeded);
+      onConsumed();
     });
   }
 

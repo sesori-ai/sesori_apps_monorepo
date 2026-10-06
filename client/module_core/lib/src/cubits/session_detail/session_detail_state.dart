@@ -5,6 +5,7 @@ import "../../errors/remote_failure_reason.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/queued_session_submission.dart";
 import "../../foundation/models/session_interaction_state.dart";
+import "../../foundation/models/session_launch/launch_follow_up.dart";
 import "../../foundation/models/session_launch/session_launch_handoff.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/session_approval_calculator.dart";
@@ -81,6 +82,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     // Rendered as read-only queue rows so a prompt never blanks between
     // its acceptance response and the bridge's queue event listing it.
     @Default([]) List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    // Messages sent before this session existed that its launch has not
+    // delivered yet: queued, sending or failed, in press order. The launch
+    // owns and sends them; this screen only shows them.
+    @Default([]) List<LaunchFollowUp> launchFollowUps,
     // Available agents and providers for selection.
     required List<AgentInfo> availableAgents,
     required List<ProviderInfo> availableProviders,

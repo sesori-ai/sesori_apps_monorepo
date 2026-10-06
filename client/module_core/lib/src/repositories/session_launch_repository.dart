@@ -235,7 +235,11 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
   /// failures after the user has left.
   void fail({required String launchId, required RemoteFailureReason reason}) {
     final outcome = switch (_storage.read(launchId: launchId)) {
-      PendingSessionLaunch() => SessionLaunchOutcome.failedWhileComposing(launchId: launchId, reason: reason),
+      PendingSessionLaunch(:final followUps) => SessionLaunchOutcome.failedWhileComposing(
+        launchId: launchId,
+        reason: reason,
+        followUps: [for (final followUp in followUps) followUp.submission],
+      ),
       ReleasedPendingSessionLaunch(:final projectId) => SessionLaunchOutcome.failedAfterLeaving(
         launchId: launchId,
         projectId: projectId,

@@ -953,8 +953,11 @@ class NewSessionCubit({
     switch (outcome) {
       case SessionLaunchSucceeded(:final session):
         emit(NewSessionState.created(session: session, launchId: phase.launchId));
-      case SessionLaunchFailedWhileComposing(:final reason):
-        _restoreSubmission(submission: phase.submission, reason: reason);
+      case SessionLaunchFailedWhileComposing(:final reason, :final followUps):
+        _restoreSubmission(
+          submission: phase.submission.withFollowUps(followUps: followUps),
+          reason: reason,
+        );
       case SessionLaunchFailedAfterLeaving():
         // Only a launch this composer released fails this way, and a composer
         // releases its launch only as it closes.

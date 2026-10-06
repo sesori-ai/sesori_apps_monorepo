@@ -122,6 +122,78 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("restored attachments over the aggregate budget stage only what fits and show the notice", (
+    tester,
+  ) async {
+    final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
+    addTearDown(surfaceStyle.dispose);
+    final dispatcher = ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker());
+    final clipboard = _NoOpImageClipboard();
+    // Each fits alone; the three together exceed the 50 MB aggregate budget.
+    final images = [
+      for (var i = 0; i < 3; i++)
+        ComposerAttachment(
+          mime: "image/png",
+          bytes: Uint8List(maxComposerPromptAttachmentBytes * 2 ~/ 5),
+          filename: "Photo $i.png",
+        ),
+    ];
+    var consumed = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ComposerPresentationScope(
+          voiceSupport: ComposerVoiceSupport.unsupported,
+          inputMode: ChatInputMode.textFirst,
+          isKeyboardVisible: false,
+          sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+          presentation: ComposerPresentation.touch,
+          attachmentDispatcher: () => dispatcher,
+          imageClipboard: () => clipboard,
+          child: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 320,
+                child: PromptInput(
+                  isBusy: false,
+                  hasMessages: false,
+                  canSend: true,
+                  onSend: ({required draft, required command, required attachments}) {},
+                  onVoiceTranscriptionCompleted: null,
+                  onDraftChanged: (_) {},
+                  onDraftCleared: () {},
+                  onAbort: () {},
+                  surfaceStyleController: surfaceStyle,
+                  composerHeader: null,
+                  composerTrailing: null,
+                  availableCommands: const [],
+                  stagedCommand: null,
+                  onCommandSelected: (_) {},
+                  onCommandCleared: () {},
+                  attachmentsSupported: true,
+                  draftIdentity: "restored-session",
+                  restorationKey: null,
+                  initialDraft: ComposerDraft.typed(text: "Restored"),
+                  initialAttachments: images,
+                  onInitialAttachmentsConsumed: () => consumed = true,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(PregoImageAttachmentPreview), findsNWidgets(2));
+    expect(find.byKey(ObjectKey(images.last)), findsNothing);
+    expect(find.text("Attached images are limited to 50 MB per message."), findsOneWidget);
+    expect(consumed, isTrue);
+    await tester.pumpAndSettle(const Duration(seconds: 10));
+  });
+
   testWidgets("only the staged chip materializes; clear, voice, and retry preserve the draft", (tester) async {
     final command = ValueNotifier<CommandInfo?>(null);
     final voiceStates = StreamController<VoiceInputState>();
