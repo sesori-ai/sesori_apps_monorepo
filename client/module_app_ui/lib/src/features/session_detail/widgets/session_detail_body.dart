@@ -848,10 +848,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     required SessionDetailColumnWidths? columnWidths,
   }) {
     final cubit = context.read<SessionDetailCubit>();
-    final composer = switch (loading.launchComposer) {
-      final composer? => _buildComposer(
+    final composer = switch (loading.seededComposer) {
+      SeededComposer(:final composer, :final stagedCommand) => _buildComposer(
         context: context,
-        source: LaunchSessionComposerSource(composer: composer, stagedCommand: loading.stagedCommand),
+        source: LaunchSessionComposerSource(composer: composer, stagedCommand: stagedCommand),
       ),
       null => null,
     };

@@ -670,6 +670,19 @@ void main() {
   ) async {
     final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     final planner = testAgentInfo().copyWith(name: "planner");
+    // The launch committed a non-default agent, and its composer had focus.
+    final composer = SessionLaunchComposer(
+      agents: [testAgentInfo(), planner],
+      agent: "planner",
+      providers: loaded.availableProviders,
+      agentModel: loaded.selectedAgentModel,
+      availableVariants: loaded.availableVariants,
+      commands: const [],
+      fastMode: false,
+      supportsPromptAttachments: true,
+      hadFocus: true,
+      unsent: null,
+    );
     final handoff = SessionLaunchHandoff(
       submission: NewSessionSubmissionSnapshot.text(
         draft: ComposerDraft.typed(text: "Launch prompt"),
@@ -679,19 +692,7 @@ void main() {
       startedAt: DateTime.now(),
       followUpIds: const {},
       acceptedFollowUps: const [],
-      // The launch committed a non-default agent, and its composer had focus.
-      composer: SessionLaunchComposer(
-        agents: [testAgentInfo(), planner],
-        agent: "planner",
-        providers: loaded.availableProviders,
-        agentModel: loaded.selectedAgentModel,
-        availableVariants: loaded.availableVariants,
-        commands: const [],
-        fastMode: false,
-        supportsPromptAttachments: true,
-        hadFocus: true,
-        unsent: null,
-      ),
+      composer: composer,
     );
     final queued = QueuedSessionSubmission.text(
       promptId: "prm_follow_up",
@@ -709,8 +710,8 @@ void main() {
       states.stream,
       initialState: SessionDetailState.loading(
         launchHandoff: handoff,
+        seededComposer: SeededComposer(composer: composer, stagedCommand: null),
         queuedMessages: [queued],
-        stagedCommand: null,
       ),
     );
     when(() => cubit.launchAttachments).thenReturn([

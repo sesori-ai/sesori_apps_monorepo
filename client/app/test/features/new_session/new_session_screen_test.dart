@@ -1984,12 +1984,16 @@ void main() {
     _MockSessionDetailCubit? detailCubit;
     _MockSessionDetailCubit detailCubitFor({required String sessionId}) {
       final cubit = _MockSessionDetailCubit();
+      final handoff = GetIt.instance<SessionLaunchRepository>().takeHandoff(sessionId: sessionId);
       whenListen(
         cubit,
         const Stream<SessionDetailState>.empty(),
         initialState: SessionDetailState.loading(
-          launchHandoff: GetIt.instance<SessionLaunchRepository>().takeHandoff(sessionId: sessionId),
-          seededComposer: null,
+          launchHandoff: handoff,
+          seededComposer: switch (handoff?.composer) {
+            final composer? => SeededComposer(composer: composer, stagedCommand: null),
+            null => null,
+          },
         ),
       );
       when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
