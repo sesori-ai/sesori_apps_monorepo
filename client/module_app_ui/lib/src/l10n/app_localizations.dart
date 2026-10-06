@@ -4945,12 +4945,6 @@ abstract class AppLocalizations {
   /// **'This month'**
   String get archivedSessionsThisMonth;
 
-  /// Date heading shared by regular and archived session lists.
-  ///
-  /// In en, this message translates to:
-  /// **'One month ago'**
-  String get archivedSessionsLastMonth;
-
   /// No description provided for @sessionAutoContinuationMenu.
   ///
   /// In en, this message translates to:

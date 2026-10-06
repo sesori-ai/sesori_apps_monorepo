@@ -2796,9 +2796,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get archivedSessionsThisMonth => 'This month';
 
   @override
-  String get archivedSessionsLastMonth => 'One month ago';
-
-  @override
   String get sessionAutoContinuationMenu => 'Auto continuation';
 
   @override
