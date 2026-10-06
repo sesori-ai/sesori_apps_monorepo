@@ -650,6 +650,7 @@ void main() {
         startedAt: DateTime.now(),
         followUpIds: const {},
         acceptedFollowUps: const [],
+        composer: null,
       ),
     );
     when(() => cubit.state).thenReturn(state);
