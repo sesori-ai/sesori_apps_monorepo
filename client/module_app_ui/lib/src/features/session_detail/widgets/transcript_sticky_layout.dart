@@ -104,8 +104,9 @@ int currentTranscriptStickyIndex({required List<TranscriptStickyOpener> openers,
 /// line. That pin covers the bubble's end exactly, and the bubble keeps
 /// painting, its rest scrolling away above the line.
 ///
-/// [openers] are in transcript order; [fullHeights] holds each pinnable
-/// message's whole bubble height. Nothing pins until the current message can.
+/// [openers] are in transcript order; [fullHeights] holds the height of each
+/// pinnable message's copy, its whole bubble unless the bubble is a pasted
+/// document. Nothing pins until the current message can.
 TranscriptStickyLayout layOutTranscriptStickyPrompts({
   required List<TranscriptStickyOpener> openers,
   required Map<String, double> fullHeights,
@@ -115,7 +116,16 @@ TranscriptStickyLayout layOutTranscriptStickyPrompts({
 }) {
   final current = currentTranscriptStickyIndex(openers: openers, pinTop: pinTop);
   if (current < 0 || !fullHeights.containsKey(openers[current].id)) return TranscriptStickyLayout.empty;
-  bool showsEnd({required String id}) => (fullHeights[id] ?? 0) > viewportBottom - pinTop;
+  // A built bubble's own height decides: a copy of a pasted document holds
+  // only its end, which can be far shorter than the bubble.
+  bool showsEnd({required TranscriptStickyOpener opener}) {
+    final height = switch (opener.place) {
+      TranscriptStickyBuilt(:final top, :final bottom) => bottom - top,
+      TranscriptStickyAbove() || TranscriptStickyBelow() => fullHeights[opener.id] ?? 0,
+    };
+    return height > viewportBottom - pinTop;
+  }
+
   final pinned = <TranscriptPinnedPrompt>[];
   for (final index in [current - 1, current]) {
     if (index < 0) continue;
@@ -123,7 +133,7 @@ TranscriptStickyLayout layOutTranscriptStickyPrompts({
     final fullHeight = fullHeights[opener.id];
     if (fullHeight == null) continue;
     final compact = min(fullHeight, compactHeight);
-    final end = showsEnd(id: opener.id);
+    final end = showsEnd(opener: opener);
     // A tall bubble is still being read until its end reaches the pin.
     if (opener.place case TranscriptStickyBuilt(:final bottom) when end && bottom - pinTop > compact) continue;
     final (height, underElevation) = switch (opener.place) {
@@ -154,7 +164,7 @@ TranscriptStickyLayout layOutTranscriptStickyPrompts({
     pinned: pinned,
     hiddenOpenerIds: {
       for (final opener in openers.take(current + 1))
-        if (opener.place is TranscriptStickyBuilt && !showsEnd(id: opener.id)) opener.id,
+        if (opener.place is TranscriptStickyBuilt && !showsEnd(opener: opener)) opener.id,
     },
   );
 }

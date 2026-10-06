@@ -2909,6 +2909,34 @@ void main() {
         expect(held.view, const TranscriptPinEnd(fade: 1));
         expect(tester.getRect(copyOf("u4")).bottom, moreOrLessEquals(pinTop + compact - 10, epsilon: 0.01));
       });
+
+      testWidgets("scrolls as a row when its copied end is far shorter than it", (tester) async {
+        await _pumpTurns(
+          tester,
+          messages: [
+            for (final message in shortTurns)
+              if (message.info.id == "u4")
+                _message(
+                  messageId: "u4",
+                  role: "user",
+                  // The copy keeps only the end of the pasted code, which
+                  // collapses to a short block.
+                  text:
+                      "${_multilineText(label: "Tall", lines: 60)}\n\n```\n"
+                      "${_multilineText(label: "// pasted", lines: 1000)}\n```",
+                )
+              else
+                message,
+          ],
+        );
+        await _scrollRowTo(tester, rowId: "u4", top: pinTop - PregoSpacing.xs - 200);
+
+        final own = ownBubble(tester, "u4");
+        expect(own.bottom, greaterThan(tester.getRect(find.byKey(_listViewKey)).bottom));
+        expect(pins(tester).fullHeights["u4"], lessThan(own.height / 2));
+        expect(pinOf(tester, "u4"), isNull, reason: "a pin would hide the lines still to read");
+        expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u4")).hidden, isFalse);
+      });
     });
 
     testWidgets("lifts off the rows under it with a halo the pin line does not clip", (tester) async {
@@ -3045,6 +3073,38 @@ void main() {
 
       expect(find.descendant(of: copyOf("u4"), matching: find.byType(CodeBlock)), findsOneWidget);
       expect(find.descendant(of: copyOf("u4"), matching: find.textContaining("```", findRichText: true)), findsNothing);
+    });
+
+    testWidgets("reopens no fence the other marker only seemed to open", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(
+          id: "u4",
+          // The tildes are code inside the backtick fence, which then closes.
+          text: "```\n~~~\n```\n\n${_multilineText(label: "Pasted", lines: 1000)}",
+        ),
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      expect(pinOf(tester, "u4"), isNotNull);
+      expect(find.descendant(of: copyOf("u4"), matching: find.byType(CodeBlock)), findsNothing);
+    });
+
+    testWidgets("keeps the end of a long last line rather than an empty copy", (tester) async {
+      await _pumpTurns(
+        tester,
+        messages: _turnsWithPrompt(id: "u4", text: "Intro\n${"word " * 4000}\nEnd"),
+      );
+
+      await _scrollRowTo(tester, rowId: "a4-1", top: _topInset - 100);
+
+      final built = tester
+          .renderObject<RenderParagraph>(find.descendant(of: copyOf("u4"), matching: find.byType(RichText)).first)
+          .text
+          .toPlainText();
+      expect(built.length, greaterThan(5000), reason: "the copy keeps most of the budget");
+      expect(built, contains("word word"));
     });
 
     testWidgets("a pinned code block asks for no older page", (tester) async {

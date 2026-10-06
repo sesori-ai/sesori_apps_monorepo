@@ -1,4 +1,3 @@
-import "dart:convert";
 import "dart:math";
 
 import "package:flutter/foundation.dart";
@@ -96,22 +95,60 @@ class const TranscriptStickyPromptOverlay({
   static const _copyCharacterBudget = 10000;
 
   /// The last [_copyCharacterBudget] characters or so of [markdown], from the
-  /// start of a line. A code fence the cut lands inside opens again, so the
-  /// end renders as its bubble renders it rather than as backticks closing
-  /// nothing.
+  /// start of a line unless that would drop most of them. A code fence the cut
+  /// lands inside opens again, so the end renders as its bubble renders it
+  /// rather than as backticks closing nothing.
   static String _endOf({required String markdown}) {
     if (markdown.length <= _copyCharacterBudget) return markdown;
     final from = markdown.length - _copyCharacterBudget;
     final newline = markdown.indexOf("\n", from);
-    final start = newline < 0 ? from : newline + 1;
-    String? openFence;
-    for (final line in LineSplitter.split(markdown.substring(0, start))) {
-      final trimmed = line.trimLeft();
-      if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) openFence = openFence == null ? line : null;
+    final start = newline < 0 || newline - from > _copyCharacterBudget ~/ 2 ? from : newline + 1;
+    // Walks the lines in place, as copying the prefix would cost as much as
+    // the whole document.
+    ({int char, int length, int start, int end})? open;
+    for (var lineStart = 0; lineStart < start;) {
+      final lineBreak = markdown.indexOf("\n", lineStart);
+      final lineEnd = lineBreak < 0 || lineBreak > start ? start : lineBreak;
+      final fence = _fenceIn(text: markdown, start: lineStart, end: lineEnd);
+      if (fence != null) {
+        if (open == null) {
+          open = (char: fence.char, length: fence.length, start: lineStart, end: lineEnd);
+        } else if (fence.bare && fence.char == open.char && fence.length >= open.length) {
+          open = null;
+        }
+      }
+      lineStart = lineEnd + 1;
     }
     final end = markdown.substring(start);
-    return openFence == null ? end : "$openFence\n$end";
+    return open == null ? end : "${markdown.substring(open.start, open.end)}\n$end";
   }
+
+  /// The code fence marker the line from [start] to [end] of [text] begins
+  /// with: its character, its run length and whether nothing follows it, as
+  /// a closing fence needs. Null for any other line.
+  static ({int char, int length, bool bare})? _fenceIn({
+    required String text,
+    required int start,
+    required int end,
+  }) {
+    var at = start;
+    while (at < end && at - start < 3 && text.codeUnitAt(at) == _space) {
+      at++;
+    }
+    if (at == end) return null;
+    final char = text.codeUnitAt(at);
+    if (char != _backtick && char != _tilde) return null;
+    var run = at;
+    while (run < end && text.codeUnitAt(run) == char) {
+      run++;
+    }
+    if (run - at < 3) return null;
+    return (char: char, length: run - at, bare: text.substring(run, end).trim().isEmpty);
+  }
+
+  static const _space = 0x20;
+  static const _backtick = 0x60;
+  static const _tilde = 0x7E;
 
   /// What a screen reader hears of a pin: a few paragraphs, enough to name the
   /// prompt. Activating the pin brings the reader to the prompt's own bubble.
