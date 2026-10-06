@@ -1581,9 +1581,6 @@ abstract class AcpPlugin({
       final result = AcpPromptResult.fromJson(
         (raw as Map?)?.cast<String, dynamic>() ?? const {},
       );
-      if (identical(_turnStates[sessionId], state)) {
-        eventMapper.mapPromptResult(sessionId: sessionId, stopReason: result.stopReason).forEach(_eventBuffer.add);
-      }
       _finishTurn(
         sessionId: sessionId,
         state: state,
@@ -1604,14 +1601,6 @@ abstract class AcpPlugin({
           message: failureMessage,
         ),
       );
-      if (identical(_turnStates[sessionId], state)) {
-        eventMapper
-            .mapPromptLifecycleFailure(
-              sessionId: sessionId,
-              failureMessage: failureMessage,
-            )
-            .forEach(_eventBuffer.add);
-      }
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
       mapPromptFailure(sessionId: sessionId, error: error).forEach(_eventBuffer.add);
     }

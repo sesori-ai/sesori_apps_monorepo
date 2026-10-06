@@ -55,27 +55,6 @@ class _GatedSelectionPlugin({
   }
 }
 
-class _PromptLifecycleTrackingMapper({
-  required super.launchDirectory,
-  required super.pluginId,
-  required super.configurationTracker,
-  required super.childSessions,
-}) extends AcpEventMapper {
-  final calls = <String>[];
-
-  @override
-  List<BridgeSseEvent> mapPromptResult({required String sessionId, required AcpStopReason stopReason}) {
-    calls.add("result:$sessionId");
-    return const [];
-  }
-
-  @override
-  List<BridgeSseEvent> mapPromptLifecycleFailure({required String sessionId, required String failureMessage}) {
-    calls.add("failure:$sessionId");
-    return const [];
-  }
-}
-
 class _PromptOrderedChildMapper({
   required super.launchDirectory,
   required super.pluginId,
@@ -1156,34 +1135,7 @@ void main() {
       expect(gated.getActiveSessionsSummary(), isEmpty);
     });
 
-    test("deleted turns do not invoke stale prompt lifecycle hooks", () async {
-      await plugin.dispose();
-      final configurationTracker = AcpSessionConfigurationTracker();
-      final commandTracker = AcpCommandTracker();
-      final childSessionTracker = AcpChildSessionTracker();
-      final lifecycleMapper = _PromptLifecycleTrackingMapper(
-        launchDirectory: cwd,
-        pluginId: "acp",
-        configurationTracker: configurationTracker,
-        childSessions: childSessionTracker,
-      );
-      plugin = TestAcpPlugin(
-        id: "acp",
-        agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
-        launchDirectory: cwd,
-        eventMapper: lifecycleMapper,
-        childSessionTracker: childSessionTracker,
-        commandTracker: commandTracker,
-        sessionOptionsService: AcpSessionOptionsService(
-          configurationTracker: configurationTracker,
-          commandTracker: commandTracker,
-          pluginId: "acp",
-          agentDisplayName: "ACP",
-        ),
-        processFactory: (_) async => fake,
-      );
-      plugin.events.listen(emitted.add, onError: streamErrors.add);
+    test("deleted turns publish no stale prompt lifecycle events", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
 
@@ -1238,7 +1190,6 @@ void main() {
       for (var i = 0; i < 10; i++) {
         await pump();
       }
-      expect(lifecycleMapper.calls, isEmpty);
       expect(emitted.whereType<BridgeSseSessionIdle>(), isEmpty);
       expect(emitted.whereType<BridgeSseSessionError>(), isEmpty);
     });
