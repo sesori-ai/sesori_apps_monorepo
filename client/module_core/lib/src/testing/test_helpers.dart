@@ -15,8 +15,10 @@ import "../api/storage/session_launch_storage.dart";
 import "../capabilities/relay/relay_client.dart";
 import "../capabilities/relay/room_key_storage.dart";
 import "../capabilities/server_connection/connection_service.dart";
+import "../capabilities/server_connection/models/connection_status.dart";
 import "../capabilities/server_connection/server_connection_config.dart";
 import "../capabilities/voice/voice_api.dart";
+import "../cubits/bridge_kind/bridge_kind_cubit.dart";
 import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
@@ -728,6 +730,22 @@ Session testSession({
 
 HealthResponse testHealthResponse() {
   return const HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
+}
+
+/// A [BridgeKindCubit] that reports [kind] as connected, or no bridge when
+/// [kind] is null.
+BridgeKindCubit testBridgeKindCubit({required BridgeKind? kind}) {
+  final status = switch (kind) {
+    null => const ConnectionStatus.disconnected(),
+    final kind => ConnectionStatus.connected(
+      config: const ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token"),
+      health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false, bridgeKind: kind),
+    ),
+  };
+  final connectionService = MockConnectionService();
+  when(() => connectionService.status).thenAnswer((_) => BehaviorSubject<ConnectionStatus>.seeded(status));
+  when(() => connectionService.currentStatus).thenReturn(status);
+  return BridgeKindCubit(connectionService: connectionService);
 }
 
 BridgeSummary testBridgeSummary({

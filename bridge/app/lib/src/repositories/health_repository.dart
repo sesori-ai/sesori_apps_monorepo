@@ -1,4 +1,4 @@
-import "package:sesori_shared/sesori_shared.dart" show HealthResponse;
+import "package:sesori_shared/sesori_shared.dart" show BridgeKind, HealthResponse;
 
 /// Layer 2 repository producing the bridge health snapshot returned to clients.
 ///
@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart" show HealthResponse;
 class HealthRepository({
   required final String _bridgeVersion,
   required final bool _filesystemAccessOk,
+  required final BridgeKind _bridgeKind,
 }) {
   /// Returns the bridge health snapshot.
   HealthResponse getHealth() {
@@ -14,6 +15,7 @@ class HealthRepository({
       healthy: true,
       version: _bridgeVersion,
       filesystemAccessDegraded: !_filesystemAccessOk,
+      bridgeKind: _bridgeKind,
     );
   }
 }

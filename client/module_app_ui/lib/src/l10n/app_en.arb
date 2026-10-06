@@ -2026,5 +2026,11 @@
   "bridgeUpdateMethodBun": "bun",
   "@bridgeUpdateMethodBun": {"description": "Literal tool name 'bun'; do not translate."},
   "bridgeUpdateReinstallRestart": "Then start the bridge again.",
-  "bridgeUpdateCopyCommand": "Copy command"
+  "bridgeUpdateCopyCommand": "Copy command",
+  "bridgeUpdateDesktopTitle": "Update Sesori Desktop",
+  "@bridgeUpdateDesktopTitle": {"description": "Title of the update sheet when the connected bridge runs inside the Sesori Desktop app, which updates it."},
+  "bridgeUpdateDesktopIntro": "This bridge runs inside Sesori Desktop. On that computer:",
+  "bridgeUpdateDesktopStepUpdate": "1. Open Sesori Desktop and install the available update.",
+  "bridgeUpdateDesktopStepDownload": "2. If no update shows up, download the latest version:",
+  "bridgeUpdateCopyLink": "Copy link"
 }

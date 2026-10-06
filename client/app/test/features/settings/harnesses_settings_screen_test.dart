@@ -111,8 +111,11 @@ Widget _app({String initialLocation = "/settings/harnesses"}) {
       ),
     ],
   );
-  return BlocProvider<ConnectionOverlayCubit>.value(
-    value: StubConnectionOverlayCubit(),
+  return MultiBlocProvider(
+    providers: [
+      BlocProvider<ConnectionOverlayCubit>.value(value: StubConnectionOverlayCubit()),
+      BlocProvider(create: (_) => testBridgeKindCubit(kind: null)),
+    ],
     child: MaterialApp.router(
       routerConfig: router,
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -167,8 +170,11 @@ Widget _appPushedFromOpener({
     ],
   );
 
-  return BlocProvider<ConnectionOverlayCubit>.value(
-    value: StubConnectionOverlayCubit(),
+  return MultiBlocProvider(
+    providers: [
+      BlocProvider<ConnectionOverlayCubit>.value(value: StubConnectionOverlayCubit()),
+      BlocProvider(create: (_) => testBridgeKindCubit(kind: null)),
+    ],
     child: MaterialApp.router(
       routerConfig: router,
       theme: ThemeData(extensions: [PregoDesignSystem.light]),

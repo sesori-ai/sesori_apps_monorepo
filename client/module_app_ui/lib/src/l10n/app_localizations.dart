@@ -5166,6 +5166,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy command'**
   String get bridgeUpdateCopyCommand;
+
+  /// Title of the update sheet when the connected bridge runs inside the Sesori Desktop app, which updates it.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Sesori Desktop'**
+  String get bridgeUpdateDesktopTitle;
+
+  /// No description provided for @bridgeUpdateDesktopIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'This bridge runs inside Sesori Desktop. On that computer:'**
+  String get bridgeUpdateDesktopIntro;
+
+  /// No description provided for @bridgeUpdateDesktopStepUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Open Sesori Desktop and install the available update.'**
+  String get bridgeUpdateDesktopStepUpdate;
+
+  /// No description provided for @bridgeUpdateDesktopStepDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'2. If no update shows up, download the latest version:'**
+  String get bridgeUpdateDesktopStepDownload;
+
+  /// No description provided for @bridgeUpdateCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get bridgeUpdateCopyLink;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

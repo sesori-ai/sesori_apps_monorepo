@@ -87,6 +87,11 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
             getIt<RegisteredBridgesService>(),
           ),
         ),
+        // App-wide so every "how to update" action opens the steps for the
+        // kind of bridge that is connected.
+        BlocProvider<BridgeKindCubit>(
+          create: (_) => BridgeKindCubit(connectionService: getIt<ConnectionService>()),
+        ),
         BlocProvider<SseToastCubit>(
           lazy: false,
           create: (_) => SseToastCubit(

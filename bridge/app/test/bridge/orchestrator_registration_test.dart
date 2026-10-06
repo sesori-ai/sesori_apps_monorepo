@@ -576,6 +576,7 @@ class _RegistrationHarness._({
       failureReporter: FakeFailureReporter(),
       restartService: restartService,
       filesystemAccessOk: true,
+      bridgeKind: BridgeKind.cli,
       statusNotifier: null,
       startupRetryService: BridgeStartupRetryService(),
       reconnectBackoff: backoffPolicy,
