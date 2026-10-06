@@ -6,9 +6,9 @@ does not mirror PR state. Live status is on GitHub:
 step lives in `steps/step-NN.md`, written only by that step's own PR.
 
 Completed 2026-10-06 by step 18 (PR 20/20). Its L3 result is in
-[steps/step-18.md](steps/step-18.md); retirement rests on the user's
-acceptance of the unexecuted cells, recorded in
-[PLAN](PLAN.md#regression-coverage).
+[steps/step-18.md](steps/step-18.md). The user's acceptance of its `Not run`
+cells is **pending**; retirement needs it recorded in
+[PLAN](PLAN.md#regression-coverage) before this PR merges.
 
 ## Decisions In Force
 

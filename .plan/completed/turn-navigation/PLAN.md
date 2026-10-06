@@ -13,7 +13,7 @@
 - **Revised:** 2026-10-06, adding step 16.b for D43 (pinch out closes the
   Prompts screen). With step 14.b the series total is now 20.
 - **Completed:** 2026-10-06, by step 18, which recorded the L3 matrix and moved
-  the plan here; see [step 18](steps/step-18.md). Most cells are unexecuted, so
+  the plan here; see [step 18](steps/step-18.md). Most cells are `Not run`, so
   retirement rests on the user's acceptance recorded under
   [Regression Coverage](#regression-coverage). The pagination gaps go to a
   separate design under the user's review; see
@@ -2051,14 +2051,15 @@ busy-send check:
   top, and the same session shows both at once; a session Sesori has never
   prompted shows no time column at all; and "Working…" ticks.
 
-**L3 result, 2026-10-06 (step 18).** Only the real-device pinch in has run: on
-2026-10-06 the user reported "the pinch to zoom in works fine, like on all
-devices", which closes step 13's device check on both the real iPhone and the
-real macOS trackpad. Every other cell above is unexecuted, including the pinch out on a real device, which
-has no recording; [step 18](steps/step-18.md) lists each cell and the automated
-coverage that stands in for it.
+**L3 result, 2026-10-06 (step 18): `Partial`.** Only the real-device pinch in
+has run: on 2026-10-06 the user reported "the pinch to zoom in works fine, like
+on all devices", which closes step 13's device check on both the real iPhone
+and the real macOS trackpad. Every other cell above is `Not run`, including the
+pinch out on a real device, which has no recording.
+[Step 18](steps/step-18.md) lists each cell and the automated tests that cover
+related behavior; they do not satisfy the device, platform or live cells.
 
-**Acceptance of the unexecuted cells: pending.** The plan retires only once the
+**Acceptance of the `Not run` cells: pending.** The plan retires only once the
 user accepts them here.
 
 Automated coverage in the steps:
@@ -2381,7 +2382,7 @@ and remove anything stale. Documentation only.
 
 **Step 18 — verify and retire.** Run L3 over the matrix recorded above, record
 the result in `steps/step-18.md`, and move the plan to `.plan/completed/`.
-Done 2026-10-06 with most cells unexecuted; see
+Recorded 2026-10-06 as `Partial`, most cells `Not run`; see
 [Regression Coverage](#regression-coverage).
 
 ## Later Phases (rough intent only)

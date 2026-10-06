@@ -290,11 +290,13 @@ Live plugin plus client, every supporting production plugin:
 - A forced Claude re-import keeps follow-ups, peers and task outcomes in their
   turns.
 
-Last recorded run, 2026-10-06: the user confirmed the pinch in on their real
-devices, the iPhone and the macOS trackpad.
-Every other check above, including the pinch out on a real device, remains
-unexecuted and is covered only by the automated checks; the plan's step 18
-lists each cell.
+Last recorded run, 2026-10-06, `Partial`: the user confirmed the pinch in on
+their real devices, the iPhone and the macOS trackpad (`Pass`). Every other
+check above, including the pinch out on a real device, is `Not run`. Automated
+tests cover related behavior but do not satisfy these device, platform or live
+checks, and some, such as the real-iPhone scroll for visible lag and the
+analytics event's arrival, have no automated stand-in. The plan's step 18
+lists each cell and its coverage.
 
 ## Exploration Guidance
 

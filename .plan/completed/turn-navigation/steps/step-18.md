@@ -8,8 +8,9 @@ Branch `turn-navigation/retire`, published as PR 20/20. Documentation only.
   [PLAN](../PLAN.md#regression-coverage) as it stands on `main` at
   `3f76e3ffc50dfb4e4d6cec64158d3fb26d61a7bb`, after every implementation PR
   merged (steps 2–16.b, last #1844) and step 17 reconciled the documents
-  (#1847). A cell that was not executed is recorded as unexecuted, never as
-  passed.
+  (#1847). Cells use the statuses in
+  [the regression README](../../../../docs/regression/README.md#results-and-evidence);
+  a cell that was not executed is `Not run`, never `Pass`.
 - Moves the plan to `.plan/completed/turn-navigation/` and points the
   regression document's source at the new path.
 - No code, generated file, localization, analytics, wire or database change.
@@ -18,25 +19,34 @@ Branch `turn-navigation/retire`, published as PR 20/20. Documentation only.
 
 | Cell | Result |
 |---|---|
-| Pinch in on a real iPhone (step 13's device check) | Passed on the user's real devices, 2026-10-06 |
-| Pinch in on a real macOS trackpad (step 13's device check) | Passed on the user's real devices, 2026-10-06 |
-| iOS phone, the rest of the real-device list | Unexecuted |
-| Pinch out on the Prompts screen, real device | Unexecuted; no device recording |
-| macOS desktop | Unexecuted |
-| Android phone smoke | Unexecuted |
-| Windows and Linux smoke | Unexecuted; CI builds only |
-| Bridge plus client, live | Unexecuted |
-| Plugins, live plugin plus client | Unexecuted |
+**Overall L3: `Partial`.** The executed scope passed; the matrix is
+incomplete.
+
+| Cell | Result |
+|---|---|
+| Pinch in on a real iPhone (step 13's device check) | `Pass`, user's real devices, 2026-10-06 |
+| Pinch in on a real macOS trackpad (step 13's device check) | `Pass`, user's real devices, 2026-10-06 |
+| iOS phone, the rest of the real-device list | `Not run` |
+| Pinch out on the Prompts screen, real device | `Not run`; no device recording |
+| macOS desktop, the rest of its list | `Not run` |
+| Android phone smoke | `Not run` |
+| Windows and Linux smoke | `Not run`; CI builds only |
+| Bridge plus client, live | `Not run` |
+| Plugins, live plugin plus client | `Not run` |
+| `transcript_prompts_opened` arriving in analytics | `Not run` |
 
 The two pinch in cells rest on the user's report of 2026-10-06: "the pinch to
 zoom in works fine, like on all devices". That closes step 13's device check
 on both the iPhone and the macOS trackpad. It covers the pinch in only; the
 other checks in those platforms' lists are not covered by it.
 
-## What Covers The Unexecuted Cells Today
+## Automated Coverage Of Related Behavior
 
-Automated only, from each step's own evidence and the CI that gated each
-merged PR. Nothing below was rerun for this step.
+From each step's own evidence and the CI that gated each merged PR; nothing
+below was rerun for this step. These tests cover related behavior only. They
+do not satisfy any `Not run` cell's device, platform or live boundary, and two
+checks have no automated stand-in at all: the real-iPhone scroll for visible
+lag and the analytics event's arrival.
 
 - **iOS, macOS and Android gestures.** The pinch in (step 13) and the pinch
   out with every way out reversing the transition (step 16.b) are widget tests
@@ -65,7 +75,7 @@ merged PR. Nothing below was rerun for this step.
 
 **Pending.** [README](../../../../docs/regression/README.md) and the plan's
 matrix require the user's explicit acceptance, recorded in `PLAN.md`, of every
-unexecuted cell above before the plan retires. This step does not claim that
+`Not run` cell above before the plan retires. This step does not claim that
 acceptance. Until the user gives it in this PR, or asks for the cells to run
 first, the PR must not merge.
 
