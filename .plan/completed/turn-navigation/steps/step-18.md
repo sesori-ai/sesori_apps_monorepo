@@ -17,8 +17,6 @@ Branch `turn-navigation/retire`, published as PR 20/20. Documentation only.
 
 ## L3 Matrix
 
-| Cell | Result |
-|---|---|
 **Overall L3: `Partial`.** The executed scope passed; the matrix is
 incomplete.
 
