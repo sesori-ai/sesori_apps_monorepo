@@ -150,6 +150,10 @@ sealed class SessionDetailState with _$SessionDetailState {
   const factory failed({
     required RemoteFailureReason reason,
 
+    /// Messages sent before this session existed that its launch still owes,
+    /// so a failed load keeps their Retry and Remove actions in view.
+    @Default([]) List<LaunchFollowUp> launchFollowUps,
+
     /// Prompts sent before the first load that are still waiting for it, so
     /// a failed load never hides them. Retry sends them once it loads.
     @Default([]) List<QueuedSessionSubmission> queuedMessages,

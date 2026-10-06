@@ -514,6 +514,7 @@ class SessionDetailCubit(
           emit(
             SessionDetailState.failed(
               reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
+              launchFollowUps: _unsentLaunchFollowUps,
               queuedMessages: _promptQueue.items,
             ),
           );
@@ -647,6 +648,7 @@ class SessionDetailCubit(
             emit(
               SessionDetailState.failed(
                 reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
+                launchFollowUps: _unsentLaunchFollowUps,
                 queuedMessages: _promptQueue.items,
               ),
             );
@@ -2210,7 +2212,7 @@ class SessionDetailCubit(
       case final SessionDetailLoading current:
         emit(_withQueue(loading: current));
       case final SessionDetailFailed current:
-        emit(current.copyWith(queuedMessages: _promptQueue.items));
+        emit(current.copyWith(launchFollowUps: _unsentLaunchFollowUps, queuedMessages: _promptQueue.items));
       case SessionDetailHarnessUnavailable():
         break;
     }
