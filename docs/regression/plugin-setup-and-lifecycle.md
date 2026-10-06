@@ -281,7 +281,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   keeps the process resident for its tasks.
 - Cursor keeps its process resident only through the held-open root prompt
   and its running native sub-agent children, background ones included; it
-  records no separate background-work observation.
+  records no separate background-work residency observation.
 - A busy harness conflicts explicitly, forcing needs confirmation and is sent once, the
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.

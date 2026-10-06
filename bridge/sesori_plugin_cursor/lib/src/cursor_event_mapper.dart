@@ -119,7 +119,7 @@ class CursorEventMapper({
     try {
       dto = CursorSubagentUpdateDto.fromJson(update);
     } on Object catch (error, stack) {
-      Log.w("[cursor] malformed sub-agent update dropped", error, stack);
+      Log.w("[cursor] malformed session/update kind ${update["sessionUpdate"]} dropped", error, stack);
       return const [];
     }
     return switch (dto) {

@@ -449,8 +449,8 @@ defaults and queued client sends coherent.
   leaving the root busy or delivering tracker changes to a closed event stream.
 - Cursor Task calls render no generic card. A native `subagent_spawned`
   opens one tile linked to the child session under its direct parent, with
-  the prompt from the Task call's input, and `subagent_state_update` settles
-  it: `completed`, `failed` as error, `cancelled`, and `disconnected` as error;
+  the Task input's prompt when present, else the spawn's `task`, and
+  `subagent_state_update` settles it: `completed`, `failed` as error, `cancelled`, and `disconnected` as error;
   an unknown state leaves the child running. A resumed sub-agent run is a new
   `<agentId>.<n>` child. Each child's last text or reasoning is finalized
   when it settles, and reasoning streamed before the Task is finalized at the

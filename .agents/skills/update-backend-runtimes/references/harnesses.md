@@ -212,7 +212,8 @@ concrete problem can justify a documented temporary hold with a resolution path.
   unavailable, update the target and retain load/replay/model/mode checks in
   final follow-up. Confirm download URLs resolve before consumer publication.
 - **Audit:** model switching, history/load, the native `subagent_spawned` /
-  `subagent_state_update` shapes and Task `rawInput`, and settings. Report inaccessible upstream source rather than guessing from CLI UX.
+  `subagent_state_update` shapes and Task `rawInput`, and settings. Report
+  inaccessible upstream source rather than guessing from CLI UX.
 
 ## Claude Code
 
