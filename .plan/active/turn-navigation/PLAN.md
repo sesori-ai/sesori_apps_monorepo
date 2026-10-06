@@ -1513,7 +1513,9 @@ depends on it.
   - The pinch out is interactive. Its progress is the spread past the gesture's
     own scale of 1, reaching 1 at 1.5×. While the fingers are down the transition
     controller's value is `1 - progress`, drawn linearly, and the layer shrinks
-    toward the fingers' focal point, which becomes its origin at pinch start.
+    toward the fingers' focal point. That point is held apart from the opening
+    origin and used only while the pinch drives the controller, so after a
+    spring-back every other way out shrinks the layer back to where it opened.
   - On release it finishes closing at a progress of 0.5 (scale 1.25, the mirror
     of the 0.8 pinch in) or an outward scale velocity of at least 1/s, and
     otherwise springs back; an inward fling of the same speed springs back too.
@@ -1934,7 +1936,8 @@ Failure signals, each added by the step that ships the behavior:
   unfold;
 - step 6, kept: turns split differently after a re-import;
 - step 7 (rewritten by step 13): a pinch scrolls or a scroll folds;
-- step 8: a follow-up or automation shows as a sticky prompt;
+- step 8: automation shows as the pinned prompt, or a steer above the top edge
+  is not the one pinned (steers pin since the standalone steer-pin PR, #1842);
 - step 11: **the transcript moves, reflows or loses its place when the Prompts
   screen opens or closes**; a follow-up is listed as a peer instead of a child, or
   above its parent; a tap lands on the wrong prompt or on nothing; the screen opens
@@ -1966,14 +1969,81 @@ platform plus macOS for the desktop behavior.
 Required matrix, recorded now; any reduction needs the user's acceptance in
 this file before retirement:
 
-| Platform | Coverage |
-|---|---|
-| iOS phone, real device (release target) | On a session of three or more pages: a pinch in opens the Prompts screen and **the transcript behind it has not moved when the screen closes** — check the same row is at the same place. The bar button opens it too. **The screen opens on the prompt that was under the reader, highlighted and on screen, from both entry points.** Openers and follow-up child rows in the transcript's order, each child below its parent, with numbers ascending down the screen and no renumbering after "Load earlier prompts". Sticky day headers while scrolling, oldest day at the top. "Load earlier prompts" is at the top, and the rows already on screen do not move when it loads. Tapping an opener and tapping a follow-up each land on that message. Search: a match whose reason is past the one-line cut shows the grown excerpt, the match count names the loaded range, and "Load earlier prompts" extends it. The transition in and out, and again with Reduce Motion on. A pinch out on the screen follows the fingers, closes past halfway and springs back short of it, and the close button, a row tap and the pinch out all leave through the reversed transition. The sticky prompt appears mid-turn, is pushed out by the next prompt, clamps a long prompt, and scrolls to it on tap. One-finger scroll, the timestamp peek and a code block's horizontal scroll are unaffected. VoiceOver reads the rows, the follow-up prefix, the entry button and the pinned prompt. `transcript_prompts_opened` arrives with both entry values. |
-| macOS desktop | Trackpad pinch opens the screen, while following and while reading history, and the transcript is where it was on the way back. The toolbar button. A trackpad pinch out, Escape and ⌘[ close the screen through the reversed transition, and ⌘[ leaves the page only once it is closed. The same list order, opening anchor, numbering, day headers, tap-to-return and search checks. Trackpad scroll and the trackpad peek are unaffected. No fold shortcut does anything. |
-| Android phone | Pinch and the bar button open the screen; a pinch out and predictive back close it through the reversed transition; a list, tap-to-return and sticky prompt smoke check. |
-| Windows and Linux desktop | The toolbar button, a list and tap-to-return smoke check. |
-| Bridge plus client | A session with more than one page: the numbers match the prompts actually sent, counted independently, and do not change as pages load. One archived (read-only) session, whose pages come from the audit file rather than the database. A current app against a bridge built before step 15: no numbers, everything else works. |
-| Plugins (live plugin plus client) | A follow-up sent while a turn runs: with Claude, Codex, Pi and OpenCode it stays inside the running turn and is listed as its child. With one ACP plugin (the stop-and-send base is shared) it opens a new turn, as the capability doc records. Claude and Pi automation is never listed and is never a sticky prompt. After a forced Claude history re-import, follow-ups, peer messages and task notifications are still present, with the same ids and order. With one of the six ACP harnesses (D38): a session Sesori prompts through shows times and day headers for those prompts; a session with history from before Sesori attached shows those older prompts in the "No date" group at the top, and the same session shows both at once; a session Sesori has never prompted shows no time column at all; and "Working…" now ticks. Run together with `session-turns.md`'s busy-send check. |
+**iOS phone, real device (release target)**, on a session of three or more
+pages:
+
+- A pinch in opens the Prompts screen and **the transcript behind it has not
+  moved when the screen closes** — check the same row is at the same place. The
+  bar button opens it too.
+- **The screen opens on the prompt that was under the reader, highlighted and
+  on screen, from both entry points.**
+- Openers and follow-up child rows in the transcript's order, each child below
+  its parent, with numbers ascending down the screen and no renumbering after
+  "Load earlier prompts". Sticky day headers while scrolling, oldest day at the
+  top.
+- "Load earlier prompts" is at the top, and the rows already on screen do not
+  move when it loads.
+- Tapping an opener and tapping a follow-up each land on that message.
+- Search: a match whose reason is past the one-line cut shows the grown
+  excerpt, the match count names the loaded range, and "Load earlier prompts"
+  extends it.
+- The transition in and out, and again with Reduce Motion on. An edge swipe
+  follows the finger, springs back when let go early and closes past halfway or
+  on a flick.
+- A pinch out on the screen follows the fingers, closes past halfway and
+  springs back short of it, and the close button, a row tap and the pinch out
+  all leave through the reversed transition.
+- The pinned message: a prompt and a steer each pin mid-turn, compact and are
+  pushed out by the next user message; a prompt taller than the screen scrolls
+  to its last line before its end pins; a tap glides back to it.
+- One-finger scroll, the timestamp peek and a code block's horizontal scroll
+  are unaffected.
+- VoiceOver reads the rows, the follow-up prefix, the entry button and the
+  pinned prompt.
+- `transcript_prompts_opened` arrives with both entry values.
+
+**macOS desktop:**
+
+- A trackpad pinch opens the screen, while following and while reading
+  history, and the transcript is where it was on the way back. The toolbar
+  button opens it too.
+- A trackpad pinch out, Escape and ⌘[ close the screen through the reversed
+  transition, and ⌘[ leaves the page only once it is closed.
+- The same list order, opening anchor, numbering, day headers, tap-to-return
+  and search checks.
+- Trackpad scroll and the trackpad peek are unaffected.
+
+**Android phone:** a pinch in and the bar button open the screen; a pinch out
+and predictive back close it through the reversed transition; a list,
+tap-to-return and pinned-prompt smoke check.
+
+**Windows and Linux desktop:** the toolbar button, a list and tap-to-return
+smoke check.
+
+**Bridge plus client:**
+
+- A session with more than one page: the numbers match the prompts actually
+  sent, counted independently, and do not change as pages load.
+- One archived (read-only) session, whose pages come from the audit file rather
+  than the database.
+- A current app against a bridge built before step 15: no numbers, everything
+  else works.
+
+**Plugins (live plugin plus client)**, run together with `session-turns.md`'s
+busy-send check:
+
+- A follow-up sent while a turn runs: with Claude, Codex, Pi and OpenCode it
+  stays inside the running turn and is listed as its child. With one ACP plugin
+  (the stop-and-send base is shared) it opens a new turn, as the capability doc
+  records.
+- Claude and Pi automation is never listed and is never pinned.
+- After a forced Claude history re-import, follow-ups, peer messages and task
+  notifications are still present, with the same ids and order.
+- With one of the six ACP harnesses (D38): a session Sesori prompts through
+  shows times and day headers for those prompts; a session with history from
+  before Sesori attached shows those older prompts in the "No date" group at the
+  top, and the same session shows both at once; a session Sesori has never
+  prompted shows no time column at all; and "Working…" ticks.
 
 Automated coverage in the steps:
 
