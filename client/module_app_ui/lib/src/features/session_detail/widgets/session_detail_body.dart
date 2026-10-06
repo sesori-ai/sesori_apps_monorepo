@@ -159,6 +159,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// then how much of the page the screen still covers.
   _PromptsGesture? _gesture;
 
+  /// Where the current pinch out's fingers began; the screen shrinks toward
+  /// it only while that pinch moves it.
+  Alignment _pinchFocus = Alignment.center;
+
   @override
   void initState() {
     super.initState();
@@ -298,18 +302,14 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   }
 
   /// A pinch out takes the open screen, never one still moving, and closes
-  /// it toward the fingers. At rest the screen is unscaled, so moving its
-  /// origin there shows nothing.
+  /// it toward the fingers. At rest the screen is unscaled, so switching its
+  /// origin to the fingers, and back to the opening one after a spring-back,
+  /// shows nothing.
   bool _startPinchOut({required Offset focalPoint}) {
-    final prompts = _prompts;
-    if (prompts == null || !_transition.isCompleted) return false;
+    if (_prompts == null || !_transition.isCompleted) return false;
     setState(() {
       _gesture = _PromptsGesture.pinchOut;
-      _prompts = (
-        anchorMessageId: prompts.anchorMessageId,
-        list: prompts.list,
-        origin: _alignmentOf(globalPoint: focalPoint),
-      );
+      _pinchFocus = _alignmentOf(globalPoint: focalPoint);
     });
     return true;
   }
@@ -556,7 +556,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                   translation: Offset(swiping ? 1 - value : 0, 0),
                   child: Transform.scale(
                     scale: swiping || reducedMotion ? 1 : _kPromptsGrowFrom + (1 - _kPromptsGrowFrom) * shown,
-                    alignment: origin,
+                    alignment: _gesture == _PromptsGesture.pinchOut ? _pinchFocus : origin,
                     // The swiped screen casts a shadow on the page it uncovers. It
                     // lies beyond the screen's edge whenever the swipe starts or ends.
                     child: DecoratedBox(

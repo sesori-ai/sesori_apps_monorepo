@@ -1622,6 +1622,33 @@ void main() {
           expect(tester.getRect(layer), screen);
         }, variant: _pinchPlatforms);
 
+        testWidgets("one sprung back leaves the screen closing toward where it opened", (tester) async {
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pumpAndSettle();
+          Future<Rect> closingRect() async {
+            await tester.tap(find.byTooltip("Close prompts"));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 60));
+            final rect = tester.getRect(layer);
+            await tester.pumpAndSettle();
+            return rect;
+          }
+
+          await openPrompts(tester);
+          final untouched = await closingRect();
+
+          await openPrompts(tester);
+          final fingers = await _TwoFingers.land(
+            tester: tester,
+            center: tester.getBottomLeft(layer) + const Offset(150, -150),
+            gap: 120,
+          );
+          await fingers.spread(scale: 1.15, stepTime: slow);
+          await fingers.lift(after: slow);
+          await tester.pumpAndSettle();
+          expect(await closingRect(), untouched, reason: "the fingers' point went with their pinch");
+        }, variant: _pinchPlatforms);
+
         testWidgets("a second pinch while it springs back moves nothing", (tester) async {
           await tester.pumpWidget(_buildApp(cubit: cubit));
           await tester.pumpAndSettle();
