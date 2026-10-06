@@ -290,6 +290,11 @@ Live plugin plus client, every supporting production plugin:
 - A forced Claude re-import keeps follow-ups, peers and task outcomes in their
   turns.
 
+Last recorded run, 2026-10-06: the user confirmed the real-device pinch in.
+Every other check above, including the pinch out on a real device, remains
+unexecuted and is covered only by the automated checks; the plan's step 18
+lists each cell.
+
 ## Exploration Guidance
 
 Vary where the reader is: mid-turn, a prompt near the top edge, the latest
@@ -437,4 +442,4 @@ answer, and on a trackpad while text streams.
 - The ACP prompt stamp: `localUserMessageTime` in
   `bridge/sesori_plugin_acp/lib/src/acp_event_mapper.dart` and
   `bridge/sesori_plugin_acp/test/acp_event_mapper_test.dart`
-- `.plan/active/turn-navigation/PLAN.md`
+- `.plan/completed/turn-navigation/PLAN.md`

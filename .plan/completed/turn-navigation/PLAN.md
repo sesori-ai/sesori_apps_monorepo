@@ -12,6 +12,12 @@
   and [Superseded Steps](#superseded-steps).
 - **Revised:** 2026-10-06, adding step 16.b for D43 (pinch out closes the
   Prompts screen). With step 14.b the series total is now 20.
+- **Completed:** 2026-10-06, by step 18, which recorded the L3 matrix and moved
+  the plan here; see [step 18](steps/step-18.md). Most cells are unexecuted, so
+  retirement rests on the user's acceptance recorded under
+  [Regression Coverage](#regression-coverage). The pagination gaps go to a
+  separate design under the user's review; see
+  [Later Phases](#later-phases-rough-intent-only).
 - **Origin:** visual-hierarchy step 37 ("turn navigation: discussion and
   prototypes"). That step was left out of the series and "becomes its own plan
   once the user picks a direction" (`.plan/completed/visual-hierarchy/TRACKER.md`).
@@ -2045,6 +2051,15 @@ busy-send check:
   top, and the same session shows both at once; a session Sesori has never
   prompted shows no time column at all; and "Working…" ticks.
 
+**L3 result, 2026-10-06 (step 18).** Only the real-device pinch in has run: the
+user confirmed it on 2026-10-06, which closes step 13's device check. Every
+other cell above is unexecuted, including the pinch out on a real device, which
+has no recording; [step 18](steps/step-18.md) lists each cell and the automated
+coverage that stands in for it.
+
+**Acceptance of the unexecuted cells: pending.** The plan retires only once the
+user accepts them here.
+
 Automated coverage in the steps:
 
 - the turn model (step 2) and the prompt list model (step 10);
@@ -2365,6 +2380,8 @@ and remove anything stale. Documentation only.
 
 **Step 18 — verify and retire.** Run L3 over the matrix recorded above, record
 the result in `steps/step-18.md`, and move the plan to `.plan/completed/`.
+Done 2026-10-06 with most cells unexecuted; see
+[Regression Coverage](#regression-coverage).
 
 ## Later Phases (rough intent only)
 
@@ -2392,6 +2409,11 @@ the result in `steps/step-18.md`, and move the plan to `.plan/completed/`.
 - **A full-session prompt list** on top of F1 or F2: search and numbering over
   the whole session instead of the loaded range, which would retire the
   "in the prompts loaded so far" wording.
+- **Handed off at retirement (2026-10-06), not decided by this plan:** the
+  Prompts screen lists only loaded prompts, and the pinned prompt does not show
+  while its opener is unloaded. A bridge prompt index that would close both is
+  under the user's review as a separate design; F1 and F2 above are related
+  intent, not its plan.
 - **Deck mode.** Turn by turn, entered from an open turn.
 - **Possibly:**
   - the always-visible desktop index pane (old step 9, D6/D18), if the Prompts

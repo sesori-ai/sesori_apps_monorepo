@@ -5,6 +5,11 @@ does not mirror PR state. Live status is on GitHub:
 `gh pr list --state all --search "[turn-navigation]"`. Evidence for a finished
 step lives in `steps/step-NN.md`, written only by that step's own PR.
 
+Completed 2026-10-06 by step 18 (PR 20/20). Its L3 result is in
+[steps/step-18.md](steps/step-18.md); retirement rests on the user's
+acceptance of the unexecuted cells, recorded in
+[PLAN](PLAN.md#regression-coverage).
+
 ## Decisions In Force
 
 - D1–D8 are the user's decisions of 2026-09-25 (round 3: R5 rows, D2 desktop).
