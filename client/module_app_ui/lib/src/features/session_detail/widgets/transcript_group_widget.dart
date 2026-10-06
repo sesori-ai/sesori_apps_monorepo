@@ -48,7 +48,9 @@ class const TranscriptGroupWidget({
       onPressed: onPressed,
       style: TextButton.styleFrom(
         foregroundColor: prego.colors.textSecondary,
-        padding: EdgeInsets.zero,
+        // The chevron's slot already insets the start; the end mirrors it so
+        // the target and its hover run past the label instead of stopping at it.
+        padding: EdgeInsetsDirectional.only(end: prego.spacing.md),
         minimumSize: const Size(44, 44),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         alignment: AlignmentDirectional.centerStart,
