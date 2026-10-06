@@ -44,11 +44,13 @@ import "../services/feedback_prompt_service.dart";
 import "../services/models/catalog_rescan_state.dart";
 import "../services/models/session_activity_info.dart";
 import "../services/models/session_list_item_state.dart";
+import "../services/new_session_selection_tracker.dart";
 import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
 import "../services/project_viewing_service.dart";
 import "../services/registered_bridges_service.dart";
 import "../services/session_detail_load_service.dart";
+import "../services/session_launch_service.dart";
 import "../services/session_unseen_tracker.dart";
 import "../services/session_viewing_service.dart";
 import "../services/sse_event_tracker.dart";
@@ -286,6 +288,17 @@ class MockProductAnalyticsService() extends Mock implements ProductAnalyticsServ
 ComposerDraftRepository inMemoryComposerDraftRepository() => ComposerDraftRepository(storage: ComposerDraftStorage());
 
 SessionLaunchRepository inMemorySessionLaunchRepository() => SessionLaunchRepository(storage: SessionLaunchStorage());
+
+/// A launch service over [launchRepository] whose own sends go to an unstubbed
+/// mock, for tests that drive launches through the repository.
+SessionLaunchService inMemorySessionLaunchService({required SessionLaunchRepository launchRepository}) =>
+    SessionLaunchService(
+      sessionRepository: MockSessionRepository(),
+      launchRepository: launchRepository,
+      feedbackPromptService: FakeFeedbackPromptService(),
+      productAnalyticsService: MockProductAnalyticsService(),
+      selectionTracker: NewSessionSelectionTracker(),
+    );
 
 class MockBridgeRepository() extends Mock implements BridgeRepository;
 

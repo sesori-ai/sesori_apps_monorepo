@@ -16,7 +16,9 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/new_session_submission_snapshot.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/prompt_send_failure.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
+import "package:sesori_dart_core/src/foundation/models/session_launch/launch_follow_up.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch_handoff.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
@@ -257,7 +259,9 @@ void main() {
         failureReporter: MockFailureReporter(),
         bridgeSettingsService: stubbedBridgeSettingsService(),
         sseEventTracker: MockSseEventTracker(),
-        sessionLaunchRepository: sessionLaunchRepository ?? inMemorySessionLaunchRepository(),
+        sessionLaunchService: inMemorySessionLaunchService(
+          launchRepository: sessionLaunchRepository ?? inMemorySessionLaunchRepository(),
+        ),
       );
       addTearDown(cubit.close);
       onInitialState?.call(cubit.state);
@@ -2335,7 +2339,10 @@ void main() {
       );
       final startedAt = DateTime.utc(2026, 9, 27, 12);
 
-      SessionLaunchRepository launchedRepository({Set<String> followUpIds = const {}}) {
+      SessionLaunchRepository launchedRepository({
+        Set<String> followUpIds = const {},
+        List<LaunchFollowUp> followUps = const [],
+      }) {
         final storage = SessionLaunchStorage();
         storage.write(
           launch: SessionLaunch.created(
@@ -2343,7 +2350,8 @@ void main() {
             projectId: "project-1",
             pluginId: "claude",
             startedAt: startedAt,
-            followUpIds: followUpIds,
+            followUpIds: {...followUpIds, for (final followUp in followUps) followUp.submission.promptId},
+            followUps: followUps,
             session: testSession(id: _sessionId),
             submission: submission,
           ),
@@ -2351,11 +2359,22 @@ void main() {
         return SessionLaunchRepository(storage: storage);
       }
 
+      QueuedSessionSubmission followUp({required String promptId}) => QueuedSessionSubmission.text(
+        promptId: promptId,
+        text: "and then $promptId",
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+        agent: null,
+        agentModel: null,
+        fastMode: false,
+      );
+
       final expectedHandoff = SessionLaunchHandoff(
         submission: submission,
         pluginId: "claude",
         startedAt: startedAt,
         followUpIds: const {},
+        acceptedFollowUps: const [],
       );
 
       Iterable<SessionDetailLoaded> showingBoth(List<SessionDetailState> emissions) =>
@@ -2476,6 +2495,174 @@ void main() {
         await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
 
         expect((cubit.state as SessionDetailLoaded).launchHandoff, isNull);
+      });
+
+      void stubSends({required List<String> sentTexts}) {
+        when(
+          () => mockSessionRepository.sendMessage(
+            sessionId: any(named: "sessionId"),
+            promptId: any(named: "promptId"),
+            text: any(named: "text"),
+            attachments: any(named: "attachments"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            fastMode: any(named: "fastMode"),
+            command: any(named: "command"),
+          ),
+        ).thenAnswer((invocation) async {
+          sentTexts.add(invocation.namedArguments[#text] as String);
+          return ApiResponse.success(null);
+        });
+      }
+
+      test("a follow-up the launch delivers while the screen is open is parked beside the bubble", () async {
+        final repository = launchedRepository(
+          followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+        );
+        final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
+
+        expect(repository.beginFollowUp(launchId: "launch-1")?.submission.promptId, "prm_a");
+        repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+        await Future<void>.delayed(Duration.zero);
+
+        final state = cubit.state as SessionDetailLoaded;
+        expect(state.awaitingBridgeSubmissions.map((submission) => submission.promptId), ["prm_a"]);
+        expect(state.launchHandoff, isNotNull, reason: "a follow-up is not the first message's replacement");
+      });
+
+      test("a follow-up whose message landed before its acceptance is not parked beside it", () async {
+        final repository = launchedRepository(
+          followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+        );
+        final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
+        repository.beginFollowUp(launchId: "launch-1");
+
+        sessionEvents
+          ..add(
+            const SesoriMessageUpdated(
+              info: Message.user(
+                id: "msg-a",
+                sessionID: _sessionId,
+                agent: null,
+                time: MessageTime(created: 100, completed: null),
+                promptId: "prm_a",
+              ),
+            ),
+          )
+          ..add(_textPartFor(messageId: "msg-a", text: "and then prm_a"));
+        await Future<void>.delayed(Duration.zero);
+        repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+        await Future<void>.delayed(Duration.zero);
+
+        expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
+      });
+
+      test("a follow-up the bridge settled before its acceptance is not parked", () async {
+        final repository = launchedRepository(
+          followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+        );
+        final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
+        repository.beginFollowUp(launchId: "launch-1");
+
+        sessionEvents.add(
+          const SesoriSseEvent.sessionPromptSettled(sessionID: _sessionId, promptID: "prm_a") as SesoriSessionEvent,
+        );
+        await Future<void>.delayed(Duration.zero);
+        repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+        await Future<void>.delayed(Duration.zero);
+
+        expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
+      });
+
+      test("a failed follow-up the bridge settles anyway releases the prompts sent here", () async {
+        final sentTexts = <String>[];
+        stubSends(sentTexts: sentTexts);
+        final repository = launchedRepository(
+          followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+        );
+        final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
+        await cubit.sendMessage(
+          text: "after",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        );
+        repository.beginFollowUp(launchId: "launch-1");
+        repository.followUpFailed(launchId: "launch-1", promptId: "prm_a", failure: PromptSendFailure.uncertain);
+        await Future<void>.delayed(Duration.zero);
+        expect(sentTexts, isEmpty);
+
+        sessionEvents.add(
+          const SesoriSseEvent.sessionPromptSettled(sessionID: _sessionId, promptID: "prm_a") as SesoriSessionEvent,
+        );
+        await _awaitCondition(() => sentTexts.isNotEmpty);
+
+        expect(sentTexts, ["after"]);
+      });
+
+      test("a prompt sent here waits for the launch's follow-ups pressed before it", () async {
+        final sentTexts = <String>[];
+        stubSends(sentTexts: sentTexts);
+        final repository = launchedRepository(
+          followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+        );
+        final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
+
+        await cubit.sendMessage(
+          text: "after",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(sentTexts, isEmpty);
+        expect((cubit.state as SessionDetailLoaded).queuedMessages.map((submission) => submission.text), ["after"]);
+
+        repository.beginFollowUp(launchId: "launch-1");
+        repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+        await _awaitCondition(() => sentTexts.isNotEmpty);
+
+        expect(sentTexts, ["after"]);
+      });
+
+      test("a prompt sent here does not release the launch bubble when the bridge queues it", () async {
+        final sentTexts = <String>[];
+        stubSends(sentTexts: sentTexts);
+        final cubit = await createLoadedCubit(sessionLaunchRepository: launchedRepository());
+
+        await cubit.sendMessage(
+          text: "steer it",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        );
+        final promptId =
+            verify(
+                  () => mockSessionRepository.sendMessage(
+                    sessionId: any(named: "sessionId"),
+                    promptId: captureAny(named: "promptId"),
+                    text: any(named: "text"),
+                    attachments: any(named: "attachments"),
+                    agent: any(named: "agent"),
+                    model: any(named: "model"),
+                    variant: any(named: "variant"),
+                    fastMode: any(named: "fastMode"),
+                    command: any(named: "command"),
+                  ),
+                ).captured.single
+                as String;
+        sessionEvents.add(
+          SesoriSseEvent.sessionQueuedPrompts(
+            sessionID: _sessionId,
+            prompts: [
+              QueuedSessionPrompt(id: promptId, text: "steer it", command: null, attachmentCount: 0, createdAt: 50),
+            ],
+          ) as SesoriSessionEvent,
+        );
+        await Future<void>.delayed(Duration.zero);
+
+        expect((cubit.state as SessionDetailLoaded).launchHandoff, isNotNull);
       });
     });
   });

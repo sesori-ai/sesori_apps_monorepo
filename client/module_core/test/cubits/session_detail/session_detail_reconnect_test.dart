@@ -104,7 +104,7 @@ void main() {
       failureReporter: MockFailureReporter(),
       bridgeSettingsService: stubbedBridgeSettingsService(),
       sseEventTracker: MockSseEventTracker(),
-      sessionLaunchRepository: inMemorySessionLaunchRepository(),
+      sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
     addTearDown(cubit.close);
 
@@ -218,7 +218,7 @@ void main() {
       failureReporter: MockFailureReporter(),
       bridgeSettingsService: stubbedBridgeSettingsService(),
       sseEventTracker: MockSseEventTracker(),
-      sessionLaunchRepository: inMemorySessionLaunchRepository(),
+      sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
     addTearDown(cubit.close);
 
@@ -338,7 +338,7 @@ void main() {
       failureReporter: MockFailureReporter(),
       bridgeSettingsService: stubbedBridgeSettingsService(),
       sseEventTracker: MockSseEventTracker(),
-      sessionLaunchRepository: inMemorySessionLaunchRepository(),
+      sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
     addTearDown(cubit.close);
 

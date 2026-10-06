@@ -1395,10 +1395,11 @@ $NewSessionPhaseCopyWith<$Res> get phase {
 
 
 class NewSessionCreated implements NewSessionState {
-  const NewSessionCreated({required this.session});
+  const NewSessionCreated({required this.session, required this.launchId});
   
 
  final  Session session;
+ final  String launchId;
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
@@ -1410,18 +1411,18 @@ $NewSessionCreatedCopyWith<NewSessionCreated> get copyWith => _$NewSessionCreate
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionCreated&&(identical(other.session, session) || other.session == session));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionCreated&&(identical(other.session, session) || other.session == session)&&(identical(other.launchId, launchId) || other.launchId == launchId));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,session);
+    return Object.hash(runtimeType,session,launchId);
 }
 
 @override
 String toString() {
-    return 'NewSessionState.created(session: $session)';
+    return 'NewSessionState.created(session: $session, launchId: $launchId)';
 }
 
 
@@ -1432,7 +1433,7 @@ abstract mixin class $NewSessionCreatedCopyWith<$Res> implements $NewSessionStat
   factory $NewSessionCreatedCopyWith(NewSessionCreated value, $Res Function(NewSessionCreated) _then) = _$NewSessionCreatedCopyWithImpl;
 @useResult
 $Res call({
- Session session
+ Session session, String launchId
 });
 
 
@@ -1449,10 +1450,11 @@ class _$NewSessionCreatedCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? session = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? session = null,Object? launchId = null,}) {
   return _then(NewSessionCreated(
 session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
-as Session,
+as Session,launchId: null == launchId ? _self.launchId : launchId // ignore: cast_nullable_to_non_nullable
+as String,
   ));
 }
 

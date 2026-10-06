@@ -176,7 +176,9 @@ void _registerDependencies({
   getIt.registerSingleton<FailureReporter>(failureReporter);
   getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
   getIt.registerSingleton<ComposerDraftRepository>(inMemoryComposerDraftRepository());
-  getIt.registerSingleton<SessionLaunchRepository>(inMemorySessionLaunchRepository());
+  getIt.registerSingleton<SessionLaunchService>(
+    inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
+  );
   getIt.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
   getIt.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
 }

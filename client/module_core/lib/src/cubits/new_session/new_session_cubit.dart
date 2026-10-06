@@ -952,7 +952,7 @@ class NewSessionCubit({
     if (phase is! NewSessionPhaseSending || phase.launchId != outcome.launchId) return;
     switch (outcome) {
       case SessionLaunchSucceeded(:final session):
-        emit(NewSessionState.created(session: session));
+        emit(NewSessionState.created(session: session, launchId: phase.launchId));
       case SessionLaunchFailedWhileComposing(:final reason):
         _restoreSubmission(submission: phase.submission, reason: reason);
       case SessionLaunchFailedAfterLeaving():
@@ -1088,12 +1088,17 @@ class NewSessionCubit({
   Future<void> close() async {
     ++_loadGeneration;
     ++_projectLoadGeneration;
-    // Until the view is told the session exists, nothing will pass the first
-    // message on, so its payload goes now. After success it belongs to the
-    // session screen replacing this one.
-    if (state.phase case NewSessionPhaseSending(:final launchId)) {
-      _sessionLaunchService.releaseHandoff(launchId: launchId);
-    }
+    // Whatever the session screen has not taken by now nobody will: mid-create
+    // no view was told the session exists, and after success the view may
+    // have skipped navigating because the user had moved elsewhere. A session
+    // screen that did open took the handoff while building, before this route
+    // unmounted, so releasing it then is a no-op.
+    final launchId = switch (state) {
+      NewSessionCreated(:final launchId) => launchId,
+      NewSessionComposing(phase: NewSessionPhaseSending(:final launchId)) => launchId,
+      NewSessionComposing() => null,
+    };
+    if (launchId != null) _sessionLaunchService.releaseHandoff(launchId: launchId);
     await _launchOutcomeSubscription.cancel();
     await _connectionStatusSubscription.cancel();
     await super.close();

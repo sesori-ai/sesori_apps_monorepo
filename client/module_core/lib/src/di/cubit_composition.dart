@@ -12,7 +12,6 @@ import "../platform/route_source.dart";
 import "../repositories/composer_draft_repository.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
-import "../repositories/session_launch_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/bridge_settings_service.dart";
 import "../services/catalog_rescan_service.dart";
@@ -71,7 +70,7 @@ SessionDetailCubit createSessionDetailCubit({
     failureReporter: locator<FailureReporter>(),
     bridgeSettingsService: locator<BridgeSettingsService>(),
     sseEventTracker: locator<SseEventTracker>(),
-    sessionLaunchRepository: locator<SessionLaunchRepository>(),
+    sessionLaunchService: locator<SessionLaunchService>(),
   );
 }
 

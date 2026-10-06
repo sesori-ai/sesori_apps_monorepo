@@ -17,6 +17,7 @@ import "../../foundation/models/composer/prompt_send_failure.dart";
 import "../../foundation/models/composer/queued_session_submission.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../foundation/models/session_interaction_state.dart";
+import "../../foundation/models/session_launch/launch_follow_up.dart";
 import "../../foundation/models/session_launch/session_launch_handoff.dart";
 import "../../foundation/models/session_options/session_options_request_mode.dart";
 import "../../logging/logging.dart";
@@ -29,7 +30,6 @@ import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/permission_repository.dart";
-import "../../repositories/session_launch_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/bridge_settings_service.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
@@ -44,6 +44,7 @@ import "../../services/session_approval_service.dart";
 import "../../services/session_auto_continuation_service.dart";
 import "../../services/session_detail_load_service.dart";
 import "../../services/session_interaction_calculator.dart";
+import "../../services/session_launch_service.dart";
 import "../../services/session_selection_calculator.dart";
 import "../../services/session_viewing_service.dart";
 import "../../services/sse_event_tracker.dart";
@@ -113,7 +114,7 @@ class SessionDetailCubit(
   required final FailureReporter _failureReporter,
   required final BridgeSettingsService _bridgeSettingsService,
   required final SseEventTracker _sseEventTracker,
-  required SessionLaunchRepository sessionLaunchRepository,
+  required final SessionLaunchService _sessionLaunchService,
 
   /// Cooldown between silent refreshes triggered by staleness events.
   /// Overridable so tests can exercise the coalescing without real waits.
@@ -150,6 +151,11 @@ class SessionDetailCubit(
   /// Monotonic counter stamped on parked sends, so a snapshot can settle only
   /// the parked prompts its fetch actually had a chance to observe.
   int _parkEpoch = 0;
+
+  /// Whether the launch that created this session still has follow-ups it has
+  /// not delivered. They were pressed before anything this screen queued, so
+  /// this screen's queue waits for them.
+  bool _launchFollowUpsOwed = false;
 
   /// Delivered user messages already accounted for. A message becomes
   /// renderable through its envelope and then each of its parts, so without
@@ -229,7 +235,12 @@ class SessionDetailCubit(
   // The launch's first message is taken before the first frame, so a session
   // screen replacing the composer shows it where the composer left it.
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  this : super(SessionDetailState.loading(launchHandoff: sessionLaunchRepository.takeHandoff(sessionId: _sessionId))) {
+  this : super(SessionDetailState.loading(launchHandoff: _sessionLaunchService.takeHandoff(sessionId: _sessionId))) {
+    if (state case SessionDetailLoading(launchHandoff: SessionLaunchHandoff(:final acceptedFollowUps))) {
+      for (final submission in acceptedFollowUps) {
+        _promptQueue.adoptAccepted(submission: submission, epoch: ++_parkEpoch);
+      }
+    }
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     // Seed the connection state so the BehaviorSubject's immediate replay isn't
     // treated as a reconnect transition.
@@ -246,7 +257,8 @@ class SessionDetailCubit(
       )
       ..add(_lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged))
       ..add(_bridgeSettingsService.yoloSettings.listen(_onYoloSettings))
-      ..add(_sseEventTracker.sessionActivity.listen(_onSessionActivity));
+      ..add(_sseEventTracker.sessionActivity.listen(_onSessionActivity))
+      ..add(_sessionLaunchService.watchForSession(sessionId: _sessionId).listen(_onLaunchFollowUps));
     unawaited(_pluginManagementService.refresh());
     unawaited(_loadMessages(isReload: false));
   }
@@ -262,6 +274,37 @@ class SessionDetailCubit(
       return;
     }
     super.emit(next);
+  }
+
+  /// Parks each follow-up the launch delivered, the way this screen parks its
+  /// own accepted sends, and releases this screen's queue once the launch owes
+  /// nothing more. The launch never reports one [_settlePrompt] already
+  /// forgot, so a settlement outrunning its acceptance leaves no ghost bubble.
+  void _onLaunchFollowUps(List<LaunchFollowUp> followUps) {
+    if (isClosed) return;
+    var owed = false;
+    var adopted = false;
+    for (final followUp in followUps) {
+      if (followUp case AcceptedLaunchFollowUp(:final submission)) {
+        _promptQueue.adoptAccepted(submission: submission, epoch: ++_parkEpoch);
+        adopted = true;
+      } else {
+        owed = true;
+      }
+    }
+    final released = _launchFollowUpsOwed && !owed;
+    _launchFollowUpsOwed = owed;
+    if (adopted) _emitQueueUpdate();
+    if (released) _tryDrainQueue();
+  }
+
+  /// Forgets every staged copy of a prompt the bridge terminally accounted
+  /// for: this screen's, and the launch's when it is a follow-up still in
+  /// flight or failed there, so its late send outcome neither parks nor
+  /// fails it.
+  void _settlePrompt({required String promptId}) {
+    _promptQueue.removeByPromptId(promptId);
+    _sessionLaunchService.settleFollowUp(promptId: promptId);
   }
 
   void _onYoloSettings(YoloSettingsResponse settings) {
@@ -1639,7 +1682,7 @@ class SessionDetailCubit(
     if (isClosed) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
-    _promptQueue.removeByPromptId(promptId);
+    _settlePrompt(promptId: promptId);
     final bridgePrompts = [
       for (final prompt in current.bridgeQueuedPrompts)
         if (prompt.id != promptId) prompt,
@@ -1695,7 +1738,7 @@ class SessionDetailCubit(
         _noticeStream.add(const SessionDetailQueueCancellationFailed());
         return;
       }
-      _promptQueue.removeByPromptId(promptId);
+      _settlePrompt(promptId: promptId);
       final current = state;
       if (current is! SessionDetailLoaded) return;
       final bridgePrompts = [
@@ -2066,7 +2109,15 @@ class SessionDetailCubit(
             fastMode: fastMode,
           );
     _promptQueue.enqueue(submission);
-    _emitQueueUpdate(current is SessionDetailLoaded ? current : null);
+    _emitQueueUpdate(switch (current) {
+      // A prompt authored here is no more the first message's replacement
+      // than one the launch sent, so it must not release the launch bubble.
+      SessionDetailLoaded(launchHandoff: final handoff?) => current.copyWith(
+        launchHandoff: handoff.copyWith(followUpIds: {...handoff.followUpIds, promptId}),
+      ),
+      SessionDetailLoaded() => current,
+      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => null,
+    });
     if (_isConnected && current is SessionDetailLoaded) await _drainQueuedMessages();
   }
 
@@ -2111,7 +2162,7 @@ class SessionDetailCubit(
         // row until its first part arrives (same gate as the live path).
         owned.add(promptId);
         if (!message.hasRenderableUserContent) continue;
-        _promptQueue.removeByPromptId(promptId);
+        _settlePrompt(promptId: promptId);
       }
     }
     // A successful snapshot that holds neither the queue entry nor the
@@ -2168,6 +2219,7 @@ class SessionDetailCubit(
 
   Future<void> _drainQueuedMessages() async {
     if (_promptQueue.isSending || _stalePromptOptionsRefreshInFlight || _abortRequestInFlight) return;
+    if (_launchFollowUpsOwed) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
     if (!_isConnected) return;

@@ -7,7 +7,11 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../errors/api_error_remote_failure_x.dart";
 import "../foundation/models/composer/composer_draft.dart";
 import "../foundation/models/composer/new_session_submission_snapshot.dart";
+import "../foundation/models/composer/prompt_send_failure.dart";
+import "../foundation/models/composer/queued_session_submission.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
+import "../foundation/models/session_launch/launch_follow_up.dart";
+import "../foundation/models/session_launch/session_launch_handoff.dart";
 import "../foundation/models/session_launch/session_launch_outcome.dart";
 import "../logging/logging.dart";
 import "../repositories/models/analytics_delivery_result.dart";
@@ -19,7 +23,8 @@ import "product_analytics_service.dart";
 
 /// Owns creating a session with its first message, for the app's lifetime,
 /// so a user who leaves the composer mid-create still gets the session, its
-/// outcome analytics and its selection cleanup.
+/// outcome analytics and its selection cleanup, and delivers the messages sent
+/// after the first one whether or not any screen is open.
 @lazySingleton
 class SessionLaunchService({
   required final SessionRepository _sessionRepository,
@@ -31,6 +36,37 @@ class SessionLaunchService({
   Stream<SessionLaunchOutcome> get outcomes => _launchRepository.outcomes;
 
   void releaseHandoff({required String launchId}) => _launchRepository.releaseHandoff(launchId: launchId);
+
+  SessionLaunchHandoff? takeHandoff({required String sessionId}) => _launchRepository.takeHandoff(sessionId: sessionId);
+
+  Stream<List<LaunchFollowUp>> watchForSession({required String sessionId}) =>
+      _launchRepository.watchForSession(sessionId: sessionId);
+
+  /// Queues a message sent after the first one. It is sent once the session
+  /// exists and every follow-up before it was accepted, in press order.
+  void addFollowUp({required String launchId, required QueuedSessionSubmission submission}) {
+    _launchRepository.addFollowUp(launchId: launchId, submission: submission);
+    unawaited(_deliverFollowUps(launchId: launchId));
+  }
+
+  /// Sends a failed follow-up again under its original promptId.
+  void retryFollowUp({required String promptId}) {
+    final launchId = _launchRepository.retryFollowUp(promptId: promptId);
+    if (launchId != null) unawaited(_deliverFollowUps(launchId: launchId));
+  }
+
+  /// Drops an unsent follow-up so the ones behind it can send.
+  void cancelFollowUp({required String promptId}) {
+    final launchId = _launchRepository.cancelFollowUp(promptId: promptId);
+    if (launchId != null) unawaited(_deliverFollowUps(launchId: launchId));
+  }
+
+  /// Forgets a follow-up the bridge already delivered or settled, whatever its
+  /// send reported or will report, so the ones behind it can send.
+  void settleFollowUp({required String promptId}) {
+    final launchId = _launchRepository.settleFollowUp(promptId: promptId);
+    if (launchId != null) unawaited(_deliverFollowUps(launchId: launchId));
+  }
 
   /// Creates the session and publishes its outcome on [outcomes].
   ///
@@ -90,6 +126,7 @@ class SessionLaunchService({
         );
         unawaited(_feedbackPromptService.recordPositiveInteraction());
         _launchRepository.promote(launchId: launchId, session: session);
+        unawaited(_deliverFollowUps(launchId: launchId));
       case ErrorResponse(:final error):
         loge("New session creation failed", error);
         unawaited(_feedbackPromptService.recordFailure());
@@ -107,15 +144,78 @@ class SessionLaunchService({
     }
   }
 
+  /// Sends the launch's follow-ups one at a time until none is queued. The
+  /// repository marks each one sending before it goes, so a second call while
+  /// one is in flight finds nothing to begin; a failure stops delivery until
+  /// the user retries or cancels it, or the bridge settles it anyway. A
+  /// follow-up settled while in flight is gone, so its outcome records nothing.
+  Future<void> _deliverFollowUps({required String launchId}) async {
+    while (true) {
+      final next = _launchRepository.beginFollowUp(launchId: launchId);
+      if (next == null) return;
+      final (:sessionId, :submission) = next;
+      final context = "follow-up ${submission.promptId} of launch $launchId to session $sessionId";
+      PromptSendFailure failure;
+      try {
+        final result = await _sessionRepository.sendMessage(
+          sessionId: sessionId,
+          promptId: submission.promptId,
+          text: submission.text,
+          attachments: submission.attachments,
+          agent: submission.agent,
+          model: switch (submission.agentModel) {
+            null => null,
+            final agentModel => PromptModel(providerID: agentModel.providerID, modelID: agentModel.modelID),
+          },
+          variant: switch (submission.agentModel?.variant) {
+            null => null,
+            final variant => SessionVariant(id: variant),
+          },
+          fastMode: submission.fastMode,
+          command: submission.command,
+        );
+        switch (result) {
+          case SuccessResponse():
+            _launchRepository.followUpAccepted(launchId: launchId, promptId: submission.promptId);
+            _reportProductEvent(
+              event: ProductAnalyticsEvent.sessionMessageSent(
+                submission: switch (submission) {
+                  QueuedTextSubmission(:final inputMode) => _analyticsTextSubmission(inputMode: inputMode),
+                  QueuedCommandSubmission() ||
+                  UnavailableQueuedCommandSubmission() => const AnalyticsSubmission.command(),
+                },
+              ),
+            );
+            unawaited(_feedbackPromptService.recordPositiveInteraction());
+            continue;
+          case ErrorResponse(:final error):
+            logw("Failed to send $context", error);
+            failure = SessionRepository.sendFailureFor(error: error);
+        }
+      } on Object catch (error, stackTrace) {
+        logw("Failed to send $context", error, stackTrace);
+        failure = PromptSendFailure.uncertain;
+      }
+      if (!_launchRepository.followUpFailed(launchId: launchId, promptId: submission.promptId, failure: failure)) {
+        continue;
+      }
+      unawaited(_feedbackPromptService.recordFailure());
+      return;
+    }
+  }
+
+  static AnalyticsSubmission _analyticsTextSubmission({required ComposerInputMode inputMode}) =>
+      AnalyticsSubmission.text(
+        inputMode: switch (inputMode) {
+          ComposerInputMode.typed => AnalyticsInputMode.typed,
+          ComposerInputMode.voiceAssisted => AnalyticsInputMode.voiceAssisted,
+        },
+      );
+
   static AnalyticsSubmission _analyticsSubmission({required NewSessionSubmissionSnapshot submission}) =>
       switch (submission) {
         NewSessionCommandSubmissionSnapshot() => const AnalyticsSubmission.command(),
-        NewSessionTextSubmissionSnapshot(:final draft) => AnalyticsSubmission.text(
-          inputMode: switch (draft.inputMode) {
-            ComposerInputMode.typed => AnalyticsInputMode.typed,
-            ComposerInputMode.voiceAssisted => AnalyticsInputMode.voiceAssisted,
-          },
-        ),
+        NewSessionTextSubmissionSnapshot(:final draft) => _analyticsTextSubmission(inputMode: draft.inputMode),
       };
 
   static AnalyticsSessionCreationFailureReason _analyticsFailureReason(RemoteFailureReason reason) => switch (reason) {

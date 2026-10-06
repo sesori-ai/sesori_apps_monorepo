@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SessionLaunch {
 
- String get launchId; String get projectId; String get pluginId; DateTime get startedAt; Set<String> get followUpIds;
+ String get launchId; String get projectId; String get pluginId; DateTime get startedAt; Set<String> get followUpIds; List<LaunchFollowUp> get followUps;
 /// Create a copy of SessionLaunch
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,20 +27,20 @@ $SessionLaunchCopyWith<SessionLaunch> get copyWith => _$SessionLaunchCopyWithImp
 @override
 bool operator ==(Object other) {
   final _this = this as SessionLaunch;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionLaunch&&(identical(other.launchId, _this.launchId) || other.launchId == _this.launchId)&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&(identical(other.startedAt, _this.startedAt) || other.startedAt == _this.startedAt)&&const DeepCollectionEquality().equals(other.followUpIds, _this.followUpIds));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionLaunch&&(identical(other.launchId, _this.launchId) || other.launchId == _this.launchId)&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&(identical(other.startedAt, _this.startedAt) || other.startedAt == _this.startedAt)&&const DeepCollectionEquality().equals(other.followUpIds, _this.followUpIds)&&const DeepCollectionEquality().equals(other.followUps, _this.followUps));
 }
 
 
 @override
 int get hashCode {
   final _this = this as SessionLaunch;
-  return Object.hash(runtimeType,_this.launchId,_this.projectId,_this.pluginId,_this.startedAt,const DeepCollectionEquality().hash(_this.followUpIds));
+  return Object.hash(runtimeType,_this.launchId,_this.projectId,_this.pluginId,_this.startedAt,const DeepCollectionEquality().hash(_this.followUpIds),const DeepCollectionEquality().hash(_this.followUps));
 }
 
 @override
 String toString() {
   final _this = this as SessionLaunch;
-  return 'SessionLaunch(launchId: ${_this.launchId}, projectId: ${_this.projectId}, pluginId: ${_this.pluginId}, startedAt: ${_this.startedAt}, followUpIds: ${_this.followUpIds})';
+  return 'SessionLaunch(launchId: ${_this.launchId}, projectId: ${_this.projectId}, pluginId: ${_this.pluginId}, startedAt: ${_this.startedAt}, followUpIds: ${_this.followUpIds}, followUps: ${_this.followUps})';
 }
 
 
@@ -51,7 +51,7 @@ abstract mixin class $SessionLaunchCopyWith<$Res>  {
   factory $SessionLaunchCopyWith(SessionLaunch value, $Res Function(SessionLaunch) _then) = _$SessionLaunchCopyWithImpl;
 @useResult
 $Res call({
- String launchId, String projectId, String pluginId, DateTime startedAt, Set<String> followUpIds
+ String launchId, String projectId, String pluginId, DateTime startedAt, Set<String> followUpIds, List<LaunchFollowUp> followUps
 });
 
 
@@ -68,14 +68,15 @@ class _$SessionLaunchCopyWithImpl<$Res>
 
 /// Create a copy of SessionLaunch
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? launchId = null,Object? projectId = null,Object? pluginId = null,Object? startedAt = null,Object? followUpIds = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? launchId = null,Object? projectId = null,Object? pluginId = null,Object? startedAt = null,Object? followUpIds = null,Object? followUps = null,}) {
   return _then(_self.copyWith(
 launchId: null == launchId ? _self.launchId : launchId // ignore: cast_nullable_to_non_nullable
 as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,followUpIds: null == followUpIds ? _self.followUpIds : followUpIds // ignore: cast_nullable_to_non_nullable
-as Set<String>,
+as Set<String>,followUps: null == followUps ? _self.followUps : followUps // ignore: cast_nullable_to_non_nullable
+as List<LaunchFollowUp>,
   ));
 }
 
@@ -87,7 +88,7 @@ as Set<String>,
 
 
 class PendingSessionLaunch implements SessionLaunch {
-  const PendingSessionLaunch({required this.launchId, required this.projectId, required this.pluginId, required this.startedAt, required  Set<String> followUpIds, required this.submission}): _followUpIds = followUpIds;
+  const PendingSessionLaunch({required this.launchId, required this.projectId, required this.pluginId, required this.startedAt, required  Set<String> followUpIds, required  List<LaunchFollowUp> followUps, required this.submission}): _followUpIds = followUpIds,_followUps = followUps;
   
 
 @override final  String launchId;
@@ -101,7 +102,14 @@ class PendingSessionLaunch implements SessionLaunch {
   return EqualUnmodifiableSetView(_followUpIds);
 }
 
- final  NewSessionSubmissionSnapshot? submission;
+ final  List<LaunchFollowUp> _followUps;
+@override List<LaunchFollowUp> get followUps {
+  if (_followUps is EqualUnmodifiableListView) return _followUps;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_followUps);
+}
+
+ final  NewSessionSubmissionSnapshot submission;
 
 /// Create a copy of SessionLaunch
 /// with the given fields replaced by the non-null parameter values.
@@ -113,18 +121,18 @@ $PendingSessionLaunchCopyWith<PendingSessionLaunch> get copyWith => _$PendingSes
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingSessionLaunch&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.followUpIds, _followUpIds)&&(identical(other.submission, submission) || other.submission == submission));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingSessionLaunch&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.followUpIds, _followUpIds)&&const DeepCollectionEquality().equals(other.followUps, _followUps)&&(identical(other.submission, submission) || other.submission == submission));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,launchId,projectId,pluginId,startedAt,const DeepCollectionEquality().hash(_followUpIds),submission);
+    return Object.hash(runtimeType,launchId,projectId,pluginId,startedAt,const DeepCollectionEquality().hash(_followUpIds),const DeepCollectionEquality().hash(_followUps),submission);
 }
 
 @override
 String toString() {
-    return 'SessionLaunch.pending(launchId: $launchId, projectId: $projectId, pluginId: $pluginId, startedAt: $startedAt, followUpIds: $followUpIds, submission: $submission)';
+    return 'SessionLaunch.pending(launchId: $launchId, projectId: $projectId, pluginId: $pluginId, startedAt: $startedAt, followUpIds: $followUpIds, followUps: $followUps, submission: $submission)';
 }
 
 
@@ -135,11 +143,11 @@ abstract mixin class $PendingSessionLaunchCopyWith<$Res> implements $SessionLaun
   factory $PendingSessionLaunchCopyWith(PendingSessionLaunch value, $Res Function(PendingSessionLaunch) _then) = _$PendingSessionLaunchCopyWithImpl;
 @override @useResult
 $Res call({
- String launchId, String projectId, String pluginId, DateTime startedAt, Set<String> followUpIds, NewSessionSubmissionSnapshot? submission
+ String launchId, String projectId, String pluginId, DateTime startedAt, Set<String> followUpIds, List<LaunchFollowUp> followUps, NewSessionSubmissionSnapshot submission
 });
 
 
-$NewSessionSubmissionSnapshotCopyWith<$Res>? get submission;
+$NewSessionSubmissionSnapshotCopyWith<$Res> get submission;
 
 }
 /// @nodoc
@@ -152,15 +160,16 @@ class _$PendingSessionLaunchCopyWithImpl<$Res>
 
 /// Create a copy of SessionLaunch
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? launchId = null,Object? projectId = null,Object? pluginId = null,Object? startedAt = null,Object? followUpIds = null,Object? submission = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? launchId = null,Object? projectId = null,Object? pluginId = null,Object? startedAt = null,Object? followUpIds = null,Object? followUps = null,Object? submission = null,}) {
   return _then(PendingSessionLaunch(
 launchId: null == launchId ? _self.launchId : launchId // ignore: cast_nullable_to_non_nullable
 as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,followUpIds: null == followUpIds ? _self._followUpIds : followUpIds // ignore: cast_nullable_to_non_nullable
-as Set<String>,submission: freezed == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
-as NewSessionSubmissionSnapshot?,
+as Set<String>,followUps: null == followUps ? _self._followUps : followUps // ignore: cast_nullable_to_non_nullable
+as List<LaunchFollowUp>,submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
+as NewSessionSubmissionSnapshot,
   ));
 }
 
@@ -168,12 +177,9 @@ as NewSessionSubmissionSnapshot?,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$NewSessionSubmissionSnapshotCopyWith<$Res>? get submission {
-    if (_self.submission == null) {
-    return null;
-  }
-
-  return $NewSessionSubmissionSnapshotCopyWith<$Res>(_self.submission!, (value) {
+$NewSessionSubmissionSnapshotCopyWith<$Res> get submission {
+  
+  return $NewSessionSubmissionSnapshotCopyWith<$Res>(_self.submission, (value) {
     return _then(_self.copyWith(submission: value));
   });
 }
@@ -182,8 +188,8 @@ $NewSessionSubmissionSnapshotCopyWith<$Res>? get submission {
 /// @nodoc
 
 
-class CreatedSessionLaunch implements SessionLaunch {
-  const CreatedSessionLaunch({required this.launchId, required this.projectId, required this.pluginId, required this.startedAt, required  Set<String> followUpIds, required this.session, required this.submission}): _followUpIds = followUpIds;
+class ReleasedPendingSessionLaunch implements SessionLaunch {
+  const ReleasedPendingSessionLaunch({required this.launchId, required this.projectId, required this.pluginId, required this.startedAt, required  Set<String> followUpIds, required  List<LaunchFollowUp> followUps}): _followUpIds = followUpIds,_followUps = followUps;
   
 
 @override final  String launchId;
@@ -195,6 +201,103 @@ class CreatedSessionLaunch implements SessionLaunch {
   if (_followUpIds is EqualUnmodifiableSetView) return _followUpIds;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableSetView(_followUpIds);
+}
+
+ final  List<LaunchFollowUp> _followUps;
+@override List<LaunchFollowUp> get followUps {
+  if (_followUps is EqualUnmodifiableListView) return _followUps;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_followUps);
+}
+
+
+/// Create a copy of SessionLaunch
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$ReleasedPendingSessionLaunchCopyWith<ReleasedPendingSessionLaunch> get copyWith => _$ReleasedPendingSessionLaunchCopyWithImpl<ReleasedPendingSessionLaunch>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ReleasedPendingSessionLaunch&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.followUpIds, _followUpIds)&&const DeepCollectionEquality().equals(other.followUps, _followUps));
+}
+
+
+@override
+int get hashCode {
+    return Object.hash(runtimeType,launchId,projectId,pluginId,startedAt,const DeepCollectionEquality().hash(_followUpIds),const DeepCollectionEquality().hash(_followUps));
+}
+
+@override
+String toString() {
+    return 'SessionLaunch.pendingReleased(launchId: $launchId, projectId: $projectId, pluginId: $pluginId, startedAt: $startedAt, followUpIds: $followUpIds, followUps: $followUps)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $ReleasedPendingSessionLaunchCopyWith<$Res> implements $SessionLaunchCopyWith<$Res> {
+  factory $ReleasedPendingSessionLaunchCopyWith(ReleasedPendingSessionLaunch value, $Res Function(ReleasedPendingSessionLaunch) _then) = _$ReleasedPendingSessionLaunchCopyWithImpl;
+@override @useResult
+$Res call({
+ String launchId, String projectId, String pluginId, DateTime startedAt, Set<String> followUpIds, List<LaunchFollowUp> followUps
+});
+
+
+
+
+}
+/// @nodoc
+class _$ReleasedPendingSessionLaunchCopyWithImpl<$Res>
+    implements $ReleasedPendingSessionLaunchCopyWith<$Res> {
+  _$ReleasedPendingSessionLaunchCopyWithImpl(this._self, this._then);
+
+  final ReleasedPendingSessionLaunch _self;
+  final $Res Function(ReleasedPendingSessionLaunch) _then;
+
+/// Create a copy of SessionLaunch
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? launchId = null,Object? projectId = null,Object? pluginId = null,Object? startedAt = null,Object? followUpIds = null,Object? followUps = null,}) {
+  return _then(ReleasedPendingSessionLaunch(
+launchId: null == launchId ? _self.launchId : launchId // ignore: cast_nullable_to_non_nullable
+as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
+as DateTime,followUpIds: null == followUpIds ? _self._followUpIds : followUpIds // ignore: cast_nullable_to_non_nullable
+as Set<String>,followUps: null == followUps ? _self._followUps : followUps // ignore: cast_nullable_to_non_nullable
+as List<LaunchFollowUp>,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class CreatedSessionLaunch implements SessionLaunch {
+  const CreatedSessionLaunch({required this.launchId, required this.projectId, required this.pluginId, required this.startedAt, required  Set<String> followUpIds, required  List<LaunchFollowUp> followUps, required this.session, required this.submission}): _followUpIds = followUpIds,_followUps = followUps;
+  
+
+@override final  String launchId;
+@override final  String projectId;
+@override final  String pluginId;
+@override final  DateTime startedAt;
+ final  Set<String> _followUpIds;
+@override Set<String> get followUpIds {
+  if (_followUpIds is EqualUnmodifiableSetView) return _followUpIds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableSetView(_followUpIds);
+}
+
+ final  List<LaunchFollowUp> _followUps;
+@override List<LaunchFollowUp> get followUps {
+  if (_followUps is EqualUnmodifiableListView) return _followUps;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_followUps);
 }
 
  final  Session session;
@@ -210,18 +313,18 @@ $CreatedSessionLaunchCopyWith<CreatedSessionLaunch> get copyWith => _$CreatedSes
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CreatedSessionLaunch&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.followUpIds, _followUpIds)&&(identical(other.session, session) || other.session == session)&&(identical(other.submission, submission) || other.submission == submission));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CreatedSessionLaunch&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.followUpIds, _followUpIds)&&const DeepCollectionEquality().equals(other.followUps, _followUps)&&(identical(other.session, session) || other.session == session)&&(identical(other.submission, submission) || other.submission == submission));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,launchId,projectId,pluginId,startedAt,const DeepCollectionEquality().hash(_followUpIds),session,submission);
+    return Object.hash(runtimeType,launchId,projectId,pluginId,startedAt,const DeepCollectionEquality().hash(_followUpIds),const DeepCollectionEquality().hash(_followUps),session,submission);
 }
 
 @override
 String toString() {
-    return 'SessionLaunch.created(launchId: $launchId, projectId: $projectId, pluginId: $pluginId, startedAt: $startedAt, followUpIds: $followUpIds, session: $session, submission: $submission)';
+    return 'SessionLaunch.created(launchId: $launchId, projectId: $projectId, pluginId: $pluginId, startedAt: $startedAt, followUpIds: $followUpIds, followUps: $followUps, session: $session, submission: $submission)';
 }
 
 
@@ -232,7 +335,7 @@ abstract mixin class $CreatedSessionLaunchCopyWith<$Res> implements $SessionLaun
   factory $CreatedSessionLaunchCopyWith(CreatedSessionLaunch value, $Res Function(CreatedSessionLaunch) _then) = _$CreatedSessionLaunchCopyWithImpl;
 @override @useResult
 $Res call({
- String launchId, String projectId, String pluginId, DateTime startedAt, Set<String> followUpIds, Session session, NewSessionSubmissionSnapshot submission
+ String launchId, String projectId, String pluginId, DateTime startedAt, Set<String> followUpIds, List<LaunchFollowUp> followUps, Session session, NewSessionSubmissionSnapshot submission
 });
 
 
@@ -249,14 +352,15 @@ class _$CreatedSessionLaunchCopyWithImpl<$Res>
 
 /// Create a copy of SessionLaunch
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? launchId = null,Object? projectId = null,Object? pluginId = null,Object? startedAt = null,Object? followUpIds = null,Object? session = null,Object? submission = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? launchId = null,Object? projectId = null,Object? pluginId = null,Object? startedAt = null,Object? followUpIds = null,Object? followUps = null,Object? session = null,Object? submission = null,}) {
   return _then(CreatedSessionLaunch(
 launchId: null == launchId ? _self.launchId : launchId // ignore: cast_nullable_to_non_nullable
 as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,followUpIds: null == followUpIds ? _self._followUpIds : followUpIds // ignore: cast_nullable_to_non_nullable
-as Set<String>,session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
+as Set<String>,followUps: null == followUps ? _self._followUps : followUps // ignore: cast_nullable_to_non_nullable
+as List<LaunchFollowUp>,session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
 as Session,submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
 as NewSessionSubmissionSnapshot,
   ));
@@ -287,7 +391,7 @@ $NewSessionSubmissionSnapshotCopyWith<$Res> get submission {
 
 
 class ReconcilingSessionLaunch implements SessionLaunch {
-  const ReconcilingSessionLaunch({required this.launchId, required this.projectId, required this.pluginId, required this.startedAt, required  Set<String> followUpIds, required this.session}): _followUpIds = followUpIds;
+  const ReconcilingSessionLaunch({required this.launchId, required this.projectId, required this.pluginId, required this.startedAt, required  Set<String> followUpIds, required  List<LaunchFollowUp> followUps, required this.session}): _followUpIds = followUpIds,_followUps = followUps;
   
 
 @override final  String launchId;
@@ -299,6 +403,13 @@ class ReconcilingSessionLaunch implements SessionLaunch {
   if (_followUpIds is EqualUnmodifiableSetView) return _followUpIds;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableSetView(_followUpIds);
+}
+
+ final  List<LaunchFollowUp> _followUps;
+@override List<LaunchFollowUp> get followUps {
+  if (_followUps is EqualUnmodifiableListView) return _followUps;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_followUps);
 }
 
  final  Session session;
@@ -313,18 +424,18 @@ $ReconcilingSessionLaunchCopyWith<ReconcilingSessionLaunch> get copyWith => _$Re
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ReconcilingSessionLaunch&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.followUpIds, _followUpIds)&&(identical(other.session, session) || other.session == session));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ReconcilingSessionLaunch&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.followUpIds, _followUpIds)&&const DeepCollectionEquality().equals(other.followUps, _followUps)&&(identical(other.session, session) || other.session == session));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,launchId,projectId,pluginId,startedAt,const DeepCollectionEquality().hash(_followUpIds),session);
+    return Object.hash(runtimeType,launchId,projectId,pluginId,startedAt,const DeepCollectionEquality().hash(_followUpIds),const DeepCollectionEquality().hash(_followUps),session);
 }
 
 @override
 String toString() {
-    return 'SessionLaunch.reconciling(launchId: $launchId, projectId: $projectId, pluginId: $pluginId, startedAt: $startedAt, followUpIds: $followUpIds, session: $session)';
+    return 'SessionLaunch.reconciling(launchId: $launchId, projectId: $projectId, pluginId: $pluginId, startedAt: $startedAt, followUpIds: $followUpIds, followUps: $followUps, session: $session)';
 }
 
 
@@ -335,7 +446,7 @@ abstract mixin class $ReconcilingSessionLaunchCopyWith<$Res> implements $Session
   factory $ReconcilingSessionLaunchCopyWith(ReconcilingSessionLaunch value, $Res Function(ReconcilingSessionLaunch) _then) = _$ReconcilingSessionLaunchCopyWithImpl;
 @override @useResult
 $Res call({
- String launchId, String projectId, String pluginId, DateTime startedAt, Set<String> followUpIds, Session session
+ String launchId, String projectId, String pluginId, DateTime startedAt, Set<String> followUpIds, List<LaunchFollowUp> followUps, Session session
 });
 
 
@@ -352,14 +463,15 @@ class _$ReconcilingSessionLaunchCopyWithImpl<$Res>
 
 /// Create a copy of SessionLaunch
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? launchId = null,Object? projectId = null,Object? pluginId = null,Object? startedAt = null,Object? followUpIds = null,Object? session = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? launchId = null,Object? projectId = null,Object? pluginId = null,Object? startedAt = null,Object? followUpIds = null,Object? followUps = null,Object? session = null,}) {
   return _then(ReconcilingSessionLaunch(
 launchId: null == launchId ? _self.launchId : launchId // ignore: cast_nullable_to_non_nullable
 as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,followUpIds: null == followUpIds ? _self._followUpIds : followUpIds // ignore: cast_nullable_to_non_nullable
-as Set<String>,session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
+as Set<String>,followUps: null == followUps ? _self._followUps : followUps // ignore: cast_nullable_to_non_nullable
+as List<LaunchFollowUp>,session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
 as Session,
   ));
 }

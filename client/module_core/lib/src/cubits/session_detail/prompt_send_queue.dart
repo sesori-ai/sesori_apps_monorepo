@@ -119,6 +119,13 @@ class PromptSendQueue() {
     _awaitingBridge.add((submission: active, epoch: epoch));
   }
 
+  /// Parks a submission another owner sent and the bridge accepted, exactly as
+  /// [parkAccepted] parks one this queue sent. That owner hands over only
+  /// submissions not yet settled, so there is no mark to consume here.
+  void adoptAccepted({required QueuedSessionSubmission submission, required int epoch}) {
+    _awaitingBridge.add((submission: submission, epoch: epoch));
+  }
+
   /// Accepted submissions whose bridge-side representation has not arrived
   /// yet, oldest first.
   List<QueuedSessionSubmission> get awaitingBridge =>
