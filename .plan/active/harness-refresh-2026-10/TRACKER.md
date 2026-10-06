@@ -1,7 +1,7 @@
 # Tracker — harness-refresh-2026-10
 
 Evidence lives in the PRs and per-step notes. This file only orders the work.
-Total: 12 PRs (Steps 3 and 8 dropped and not counted; titles use `[step <x>/12]`).
+Total: 13 (highest step identifier; dropped Steps 3 and 8 get no PR; titles use `[step <x>/13]`).
 
 | Step | Title | Depends on | Status |
 |---|---|---|---|
