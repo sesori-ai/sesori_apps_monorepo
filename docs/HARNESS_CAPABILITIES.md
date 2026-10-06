@@ -734,9 +734,12 @@ busy for retained descendants. Live matrix is partial: no
 pending-input request surfaced, so that case remains automated rather than
 live-plugin coverage.
 
-⁴ Copilot CLI (plugin targets 1.0.80) runs custom agents as subagents, but its
-Agent Client Protocol server exposes no subagent lifecycle, no child session,
-and only the turn-wide `session/cancel`.
+⁴ Copilot CLI (plugin targets 1.0.92) runs custom agents as subagents. When
+probed on 1.0.80, its Agent Client Protocol server exposed no subagent
+lifecycle, no child session, and only the turn-wide `session/cancel`. Copilot's
+changelog says ACP clients receive subagent IDs since 1.0.81; Sesori has not
+re-probed, so these cells stay 🚫 until a probe confirms usable sub-agent
+identity.
 
 ⁵ Cursor (managed target `cursor-agent 2026.08.11-e8db854`, probed
 2026-09-11) emits a standard `Task: …` call and then one correlated
