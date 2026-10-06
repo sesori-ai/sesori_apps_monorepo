@@ -36,7 +36,10 @@ incomplete.
 The two pinch in cells rest on the user's report of 2026-10-06: "the pinch to
 zoom in works fine, like on all devices". That closes step 13's device check
 on both the iPhone and the macOS trackpad. It covers the pinch in only; the
-other checks in those platforms' lists are not covered by it.
+other checks in those platforms' lists are not covered by it. The exact build
+was not recorded: it was the user's own build, which contained step 13's
+pinch in (#1825) and predated the pinch out (#1844), so it validates the
+pinch in only.
 
 ## Automated Coverage Of Related Behavior
 
