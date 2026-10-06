@@ -436,6 +436,85 @@ void main() {
       expect((resumedStatus as ConnectionConnected).health.filesystemAccessDegraded, isTrue);
     });
 
+    test(
+      "the last reported health survives an offline park and its resumed reconnect, and clears on disconnect",
+      () async {
+        final sseController = StreamController<RelaySseEvent>.broadcast();
+        addTearDown(sseController.close);
+        final bridgeStatuses = StreamController<BridgeStatus>.broadcast();
+        addTearDown(bridgeStatuses.close);
+
+        const desktopHealth = HealthResponse(
+          healthy: true,
+          version: "1.9.1",
+          filesystemAccessDegraded: false,
+          bridgeKind: BridgeKind.desktop,
+        );
+
+        final initialClient = MockRelayClient();
+        final resumedClient = MockRelayClient();
+        final clients = <MockRelayClient>[initialClient, resumedClient];
+        for (final client in clients) {
+          when(() => client.isConnected).thenReturn(true);
+          when(() => client.connectionState).thenReturn(RelayClientConnectionState.connected);
+          when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
+          when(() => client.bridgeStatus).thenAnswer((_) => bridgeStatuses.stream);
+          when(client.connect).thenAnswer((_) async {});
+          when(client.disconnect).thenAnswer((_) async {});
+        }
+        when(() => initialClient.didResume).thenReturn(false);
+        when(
+          () => initialClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer(
+          (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(desktopHealth.toJson()), headers: const {}),
+        );
+        when(() => resumedClient.didResume).thenReturn(true);
+
+        var nextClient = 0;
+        final factory = _TestRelayClientFactory(
+          ({
+            required String relayHost,
+            required RelayCryptoService cryptoService,
+            required RoomKeyStorage roomKeyStorage,
+            required String? authToken,
+          }) => clients[nextClient++],
+        );
+        final service = ConnectionService(
+          cryptoService,
+          roomKeyStorage,
+          authTokenProvider,
+          authSession,
+          lifecycleSource,
+          failureReporter,
+          relayClientFactory: factory,
+        );
+        addTearDown(service.dispose);
+
+        expect(service.lastHealth.value, isNull);
+        await service.connect(config);
+        expect(service.lastHealth.value?.bridgeKind, BridgeKind.desktop);
+
+        bridgeStatuses.add(BridgeStatus.offline);
+        await pumpEventQueue();
+        expect(service.currentStatus, isA<ConnectionBridgeOffline>());
+        expect(service.lastHealth.value?.bridgeKind, BridgeKind.desktop);
+
+        bridgeStatuses.add(BridgeStatus.online);
+        await pumpEventQueue();
+
+        // The bridge coming back drove one resumed reconnect onto the second client.
+        expect(nextClient, 2);
+        expect(service.currentStatus, isA<ConnectionConnected>());
+        expect(service.lastHealth.value?.bridgeKind, BridgeKind.desktop);
+
+        service.disconnect();
+        expect(service.lastHealth.value, isNull);
+      },
+    );
+
     test("fresh reconnect with an unparseable health body fails instead of using stale health", () async {
       final sseController = StreamController<RelaySseEvent>.broadcast();
       addTearDown(sseController.close);

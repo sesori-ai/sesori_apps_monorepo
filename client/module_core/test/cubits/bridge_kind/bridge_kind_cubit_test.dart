@@ -7,7 +7,6 @@ import "package:test/test.dart";
 
 void main() {
   group("BridgeKindCubit", () {
-    const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
     const desktopHealth = HealthResponse(
       healthy: true,
       version: "1.9.1",
@@ -16,44 +15,45 @@ void main() {
     );
 
     late MockConnectionService connectionService;
-    late BehaviorSubject<ConnectionStatus> statuses;
+    late BehaviorSubject<HealthResponse?> lastHealth;
 
     setUp(() {
       connectionService = MockConnectionService();
-      statuses = BehaviorSubject<ConnectionStatus>.seeded(const ConnectionStatus.disconnected());
-      when(() => connectionService.status).thenAnswer((_) => statuses.stream);
-      when(() => connectionService.currentStatus).thenAnswer((_) => statuses.value);
+      lastHealth = BehaviorSubject<HealthResponse?>.seeded(null);
+      when(() => connectionService.lastHealth).thenAnswer((_) => lastHealth.stream);
     });
 
-    tearDown(() => statuses.close());
+    tearDown(() => lastHealth.close());
 
-    test("is unknown until a bridge connects", () async {
+    test("is unknown until a bridge reports its health", () async {
       final cubit = BridgeKindCubit(connectionService: connectionService);
       addTearDown(cubit.close);
 
       expect(cubit.state, isNull);
     });
 
-    test("reports the kind the connected bridge sent, keeps it while offline, and forgets it on disconnect", () async {
-      statuses.add(const ConnectionStatus.connected(config: config, health: desktopHealth));
+    test("starts from the cached health, e.g. when created mid-reconnect", () async {
+      lastHealth.add(desktopHealth);
       final cubit = BridgeKindCubit(connectionService: connectionService);
       addTearDown(cubit.close);
 
       expect(cubit.state, BridgeKind.desktop);
+    });
 
-      statuses.add(const ConnectionStatus.bridgeOffline(config: config, health: desktopHealth));
+    test("follows the reported health and clears with it", () async {
+      final cubit = BridgeKindCubit(connectionService: connectionService);
+      addTearDown(cubit.close);
+
+      lastHealth.add(desktopHealth);
       await pumpEventQueue();
-
       expect(cubit.state, BridgeKind.desktop);
 
-      statuses.add(const ConnectionStatus.disconnected());
+      lastHealth.add(null);
       await pumpEventQueue();
-
       expect(cubit.state, isNull);
 
-      statuses.add(ConnectionStatus.connected(config: config, health: testHealthResponse()));
+      lastHealth.add(testHealthResponse());
       await pumpEventQueue();
-
       expect(cubit.state, BridgeKind.cli);
     });
   });

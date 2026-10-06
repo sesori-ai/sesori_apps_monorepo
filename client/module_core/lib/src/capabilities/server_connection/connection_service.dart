@@ -82,10 +82,12 @@ class ConnectionService(
   final RelayRequestIdGenerator _requestIdGenerator = RelayRequestIdGenerator();
   int _authRetryCount = 0;
   Duration _relayReconnectBackoff = const Duration(seconds: 1);
-  // Last health metadata fetched on a fresh-DH connect. Resumed reconnects skip
-  // the /global/health round-trip, so this is reused to keep the degraded
+  // Last health the bridge reported. Resumed reconnects skip the
+  // /global/health round-trip, so this is reused to keep the degraded
   // filesystem-access warning stable across reconnects instead of clearing it.
-  HealthResponse? _lastHealth;
+  // It survives reconnecting, lost and bridge-offline states and is cleared
+  // only by an explicit disconnect (including sign-out).
+  final BehaviorSubject<HealthResponse?> _lastHealth = BehaviorSubject.seeded(null);
   int _reconnectAttemptId = 0;
   bool _isInBackground = false;
   DateTime? _backgroundedAt;
@@ -202,6 +204,12 @@ class ConnectionService(
 
   /// Synchronous access to the current connection status.
   ConnectionStatus get currentStatus => _status.value;
+
+  /// The health the bridge last reported, kept through reconnects and
+  /// bridge-offline parks; `null` before any bridge answered or after an
+  /// explicit disconnect. Late subscribers immediately receive the current
+  /// value.
+  ValueStream<HealthResponse?> get lastHealth => _lastHealth.stream;
 
   @visibleForTesting
   void emitStatusForTesting(ConnectionStatus status) {
@@ -346,7 +354,7 @@ class ConnectionService(
       // (the room key persists, the health does not) — we fetch and parse the
       // body so the bridge can report its kind and degraded filesystem access.
       // A malformed health response fails the connection.
-      final cachedHealth = relayClient.didResume ? _lastHealth : null;
+      final cachedHealth = relayClient.didResume ? _lastHealth.value : null;
       HealthResponse health;
       if (cachedHealth != null) {
         health = cachedHealth;
@@ -391,7 +399,7 @@ class ConnectionService(
 
       // Cache health only after the staleness gate, so a superseded attempt
       // never updates the warning shown for the live connection.
-      _lastHealth = health;
+      _lastHealth.add(health);
 
       _clearConnectingRelayClient(relayClient);
       _relayClient = relayClient;
@@ -438,6 +446,7 @@ class ConnectionService(
   void disconnect() {
     _cancelReconnectDelay();
     unawaited(_disconnectRelayClient());
+    _lastHealth.add(null);
     _status.add(const ConnectionStatus.disconnected());
   }
 
@@ -918,5 +927,6 @@ class ConnectionService(
     _dataMayBeStale.close();
     _events.close();
     _status.close();
+    _lastHealth.close();
   }
 }

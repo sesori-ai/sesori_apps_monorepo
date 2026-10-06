@@ -15,7 +15,6 @@ import "../api/storage/session_launch_storage.dart";
 import "../capabilities/relay/relay_client.dart";
 import "../capabilities/relay/room_key_storage.dart";
 import "../capabilities/server_connection/connection_service.dart";
-import "../capabilities/server_connection/models/connection_status.dart";
 import "../capabilities/server_connection/server_connection_config.dart";
 import "../capabilities/voice/voice_api.dart";
 import "../cubits/bridge_kind/bridge_kind_cubit.dart";
@@ -732,19 +731,15 @@ HealthResponse testHealthResponse() {
   return const HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 }
 
-/// A [BridgeKindCubit] that reports [kind] as connected, or no bridge when
+/// A [BridgeKindCubit] whose bridge last reported [kind], or no bridge when
 /// [kind] is null.
 BridgeKindCubit testBridgeKindCubit({required BridgeKind? kind}) {
-  final status = switch (kind) {
-    null => const ConnectionStatus.disconnected(),
-    final kind => ConnectionStatus.connected(
-      config: const ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token"),
-      health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false, bridgeKind: kind),
-    ),
+  final health = switch (kind) {
+    null => null,
+    final kind => HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false, bridgeKind: kind),
   };
   final connectionService = MockConnectionService();
-  when(() => connectionService.status).thenAnswer((_) => BehaviorSubject<ConnectionStatus>.seeded(status));
-  when(() => connectionService.currentStatus).thenReturn(status);
+  when(() => connectionService.lastHealth).thenAnswer((_) => BehaviorSubject<HealthResponse?>.seeded(health));
   return BridgeKindCubit(connectionService: connectionService);
 }
 
