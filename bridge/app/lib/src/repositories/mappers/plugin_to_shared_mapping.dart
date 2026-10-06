@@ -34,7 +34,6 @@ extension PluginAbortRejectionMapping on PluginAbortRejectedSubAgentsRunning {
 
 extension PluginAbortRefusalMapping on PluginAbortRefusalReason {
   SessionAbortRefusalReason toShared() => switch (this) {
-    PluginAbortRefusalReason.residentWorkCompletionUnknown => SessionAbortRefusalReason.residentWorkCompletionUnknown,
     PluginAbortRefusalReason.subAgentStopUnsupported => SessionAbortRefusalReason.subAgentStopUnsupported,
   };
 }

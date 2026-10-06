@@ -98,6 +98,7 @@ Future<void> _stopSessionWithScope({required BuildContext context, required Sess
 
 Future<void> _showNotAccepted({required BuildContext context, required SessionAbortNotPerformedRefusal refusal}) async {
   final message = switch (refusal.reason) {
+    // COMPATIBILITY 2026-10-06 (v1.9.1): Released bridges (v1.8.4–v1.9.x) send this refusal from the removed ACP residency path. Remove once those bridges are unsupported.
     SessionAbortRefusalReason.residentWorkCompletionUnknown =>
       context.loc.sessionDetailStopNotAcceptedBackgroundMessage,
     SessionAbortRefusalReason.subAgentStopUnsupported => context.loc.sessionDetailStopNotAcceptedSubAgentMessage,

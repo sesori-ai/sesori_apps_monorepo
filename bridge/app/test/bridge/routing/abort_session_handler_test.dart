@@ -50,10 +50,6 @@ void main() {
 
     test("returns typed 409 when plugin performs no stop", () async {
       for (final (pluginReason, sharedReason) in const [
-        (
-          PluginAbortRefusalReason.residentWorkCompletionUnknown,
-          SessionAbortRefusalReason.residentWorkCompletionUnknown,
-        ),
         (PluginAbortRefusalReason.subAgentStopUnsupported, SessionAbortRefusalReason.subAgentStopUnsupported),
       ]) {
         plugin.abortResult = PluginAbortNotPerformed(reason: pluginReason);
