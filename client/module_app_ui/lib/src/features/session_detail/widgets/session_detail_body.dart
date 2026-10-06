@@ -21,6 +21,7 @@ import "session_detail_scaffold_sections.dart";
 import "session_harness_unavailable_notice.dart";
 import "session_launch_submission_view.dart";
 import "transcript_jump_notifier.dart";
+import "transcript_pinch_detector.dart";
 
 typedef SessionDetailHeaderBuilder = Widget Function({
   required BuildContext context,
@@ -102,6 +103,21 @@ const _kEdgeSwipeShadow = [BoxShadow(color: Color(0x40000000), blurRadius: 18)];
 /// enough to give it a direction and too little to see.
 const double _kEdgeSwipeRestVelocity = 0.001;
 
+/// The least a pinch out leaves of the Prompts screen while the fingers are
+/// down: invisible, but short of gone, since a gone screen is removed and
+/// could no longer follow the fingers back.
+const double _kPinchOutLeastShown = 0.001;
+
+/// What moves the Prompts screen in place of the transition's own timing: a
+/// finger is on it, or its release is still settling.
+enum _PromptsGesture() {
+  /// The iOS edge swipe slides the screen out under the finger.
+  edgeSwipe,
+
+  /// A pinch out runs the closing transition as far as the fingers spread.
+  pinchOut,
+}
+
 class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTickerProviderStateMixin {
   StreamSubscription<SesoriQuestionAsked>? _questionSub;
   StreamSubscription<SesoriPermissionAsked>? _permissionSub;
@@ -139,10 +155,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     reverseCurve: _kPromptsFade.flipped,
   );
 
-  /// The iOS edge swipe moves the Prompts screen: a finger is on it, or its
-  /// release is still settling. The transition's value is then how much of
-  /// the page the screen still covers.
-  bool _swiping = false;
+  /// The gesture moving the Prompts screen, if any. The transition's value is
+  /// then how much of the page the screen still covers.
+  _PromptsGesture? _gesture;
+
+  /// Where the current pinch out's fingers began; the screen shrinks toward
+  /// it only while that pinch moves it.
+  Alignment _pinchFocus = Alignment.center;
 
   @override
   void initState() {
@@ -151,7 +170,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       if (status.isDismissed) {
         setState(() {
           _prompts = null;
-          _swiping = false;
+          _gesture = null;
         });
       }
     });
@@ -181,19 +200,25 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     final cubit = context.read<SessionDetailCubit>();
     final state = cubit.state;
     if (_prompts != null || state is! SessionDetailLoaded) return;
-    final grownFrom = switch (context.findRenderObject()) {
-      final RenderBox box when box.hasSize && !box.size.isEmpty => FractionalOffset.fromOffsetAndSize(
-        box.globalToLocal(origin),
-        box.size,
-      ),
-      _ => Alignment.center,
-    };
     setState(
-      () => _prompts = (anchorMessageId: _currentPromptId.value, list: _promptListOf(state: state), origin: grownFrom),
+      () => _prompts = (
+        anchorMessageId: _currentPromptId.value,
+        list: _promptListOf(state: state),
+        origin: _alignmentOf(globalPoint: origin),
+      ),
     );
     _transition.forward();
     cubit.reportPromptsOpened(entry: entry);
   }
+
+  /// Where [globalPoint] lies on the page, as the transition's scale origin.
+  Alignment _alignmentOf({required Offset globalPoint}) => switch (context.findRenderObject()) {
+    final RenderBox box when box.hasSize && !box.size.isEmpty => FractionalOffset.fromOffsetAndSize(
+      box.globalToLocal(globalPoint),
+      box.size,
+    ),
+    _ => Alignment.center,
+  };
 
   void _openPromptsFromBar({required Offset origin}) =>
       _openPrompts(origin: origin, entry: AnalyticsPromptsEntry.sessionBar);
@@ -231,8 +256,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     );
   }
 
-  /// Takes the Prompts screen back the way it came; one still settling from
-  /// an edge swipe slides out instead. It is removed once fully gone.
+  /// Takes the Prompts screen back the way it came: the close button, Escape,
+  /// back and a tapped prompt all come here. One still settling from an edge
+  /// swipe slides out instead. It is removed once fully gone.
   void _closePrompts() {
     if (mounted) _transition.reverse();
   }
@@ -246,15 +272,15 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// An edge swipe takes the open screen, or one still settling from the last
   /// swipe, but never one midway through opening or closing.
   void _startEdgeSwipe(DragStartDetails _) {
-    if (!_transition.isCompleted && !_swiping) return;
+    if (!_transition.isCompleted && _gesture != _PromptsGesture.edgeSwipe) return;
     _transition.stop();
-    _swiping = true;
+    _gesture = _PromptsGesture.edgeSwipe;
   }
 
   /// Moves the screen with the finger, pixel for pixel.
   void _updateEdgeSwipe(DragUpdateDetails details) {
     final width = context.size?.width ?? 0;
-    if (!_swiping || width <= 0) return;
+    if (_gesture != _PromptsGesture.edgeSwipe || width <= 0) return;
     _transition.value -= details.delta.dx / width;
   }
 
@@ -262,7 +288,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// it back otherwise, carrying the finger's [pixelsPerSecond] into either.
   void _settleEdgeSwipe({required double pixelsPerSecond}) {
     final width = context.size?.width ?? 0;
-    if (!_swiping || width <= 0) return;
+    if (_gesture != _PromptsGesture.edgeSwipe || width <= 0) return;
     final velocity = -pixelsPerSecond / width;
     final closes = velocity.abs() >= _kEdgeSwipeFlingVelocity ? velocity < 0 : _transition.value < 0.5;
     // A release at rest still needs a direction, so it leaves from rest.
@@ -271,7 +297,35 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     } else {
       final settled = _transition.fling(velocity: math.max(velocity, _kEdgeSwipeRestVelocity));
       // Left to close later by the way it came; a new swipe cancels this.
-      unawaited(settled.then((_) => _swiping = false));
+      unawaited(settled.then((_) => _gesture = null));
+    }
+  }
+
+  /// A pinch out takes the open screen, never one still moving, and closes
+  /// it toward the fingers. At rest the screen is unscaled, so switching its
+  /// origin to the fingers, and back to the opening one after a spring-back,
+  /// shows nothing.
+  bool _startPinchOut({required Offset focalPoint}) {
+    if (_prompts == null || !_transition.isCompleted) return false;
+    setState(() {
+      _gesture = _PromptsGesture.pinchOut;
+      _pinchFocus = _alignmentOf(globalPoint: focalPoint);
+    });
+    return true;
+  }
+
+  /// Runs the closing transition as far as the fingers have spread. Only a
+  /// pinch [_startPinchOut] took reports here.
+  void _followPinchOut({required double progress}) => _transition.value = math.max(1 - progress, _kPinchOutLeastShown);
+
+  /// Finishes closing from where the fingers let go, or springs back open,
+  /// in what is left of the transition's time.
+  void _releasePinchOut({required bool closes}) {
+    if (closes) {
+      _transition.animateBack(0, curve: Curves.easeOutCubic);
+    } else {
+      final settled = _transition.animateTo(1, curve: Curves.easeOutCubic);
+      unawaited(settled.then((_) => _gesture = null));
     }
   }
 
@@ -408,17 +462,24 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                 layer: Stack(
                   children: [
                     Positioned.fill(
-                      child: SessionPromptsView(
-                        prompts: prompts.list,
-                        anchorMessageId: prompts.anchorMessageId,
-                        maxWidth: pageChrome?.columnWidths.transcript,
-                        onLoadEarlier: promptsState.olderMessagesCursor == null
-                            ? null
-                            : () => unawaited(context.read<SessionDetailCubit>().loadOlderMessages()),
-                        isLoadingEarlier: promptsState.isLoadingOlderMessages,
-                        autofocusSearch: pageChrome != null,
-                        onPromptTap: _returnToPrompt,
-                        onClose: _closePrompts,
+                      child: TranscriptPinchDetector(
+                        pinch: TranscriptPinchOut(
+                          onStart: _startPinchOut,
+                          onProgress: _followPinchOut,
+                          onRelease: _releasePinchOut,
+                        ),
+                        child: SessionPromptsView(
+                          prompts: prompts.list,
+                          anchorMessageId: prompts.anchorMessageId,
+                          maxWidth: pageChrome?.columnWidths.transcript,
+                          onLoadEarlier: promptsState.olderMessagesCursor == null
+                              ? null
+                              : () => unawaited(context.read<SessionDetailCubit>().loadOlderMessages()),
+                          isLoadingEarlier: promptsState.isLoadingOlderMessages,
+                          autofocusSearch: pageChrome != null,
+                          onPromptTap: _returnToPrompt,
+                          onClose: _closePrompts,
+                        ),
                       ),
                     ),
                     if (Theme.of(context).platform == TargetPlatform.iOS)
@@ -460,9 +521,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   }
 
   /// The Prompts [layer] over a dimmed page: it fades in while growing from
-  /// [origin] and reverses on the way out, a plain fade under reduced motion,
-  /// and follows the finger while an edge swipe moves it. Only the layer and
-  /// the dim are rebuilt per frame; the page beneath is never touched.
+  /// [origin] and reverses on the way out, a plain fade under reduced motion.
+  /// It follows the finger while an edge swipe moves it, and a pinch out
+  /// draws the same way out in step with the fingers. Only the layer and the
+  /// dim are rebuilt per frame; the page beneath is never touched.
   Widget _buildPromptsTransition({required BuildContext context, required Alignment origin, required Widget layer}) {
     final reducedMotion = context.isReducedMotion;
     return AnimatedBuilder(
@@ -470,9 +532,16 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       child: layer,
       builder: (context, layer) {
         final value = _transition.value;
-        final shown = _swiping ? value : _shown.value;
+        final swiping = _gesture == _PromptsGesture.edgeSwipe;
+        final (shown, opacity) = switch (_gesture) {
+          null => (_shown.value, _fade.value),
+          _PromptsGesture.edgeSwipe => (value, 1.0),
+          // Linear, so the screen answers the fingers evenly; the release's
+          // own curve eases the rest of the way.
+          _PromptsGesture.pinchOut => (value, value),
+        };
         // One tree shape in every mode, so the layer keeps its state and scroll
-        // when a swipe takes it over.
+        // when a gesture takes it over.
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -482,16 +551,16 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             IgnorePointer(
               ignoring: _transition.status == AnimationStatus.reverse,
               child: Opacity(
-                opacity: _swiping ? 1 : _fade.value,
+                opacity: opacity,
                 child: FractionalTranslation(
-                  translation: Offset(_swiping ? 1 - value : 0, 0),
+                  translation: Offset(swiping ? 1 - value : 0, 0),
                   child: Transform.scale(
-                    scale: _swiping || reducedMotion ? 1 : _kPromptsGrowFrom + (1 - _kPromptsGrowFrom) * shown,
-                    alignment: origin,
+                    scale: swiping || reducedMotion ? 1 : _kPromptsGrowFrom + (1 - _kPromptsGrowFrom) * shown,
+                    alignment: _gesture == _PromptsGesture.pinchOut ? _pinchFocus : origin,
                     // The swiped screen casts a shadow on the page it uncovers. It
                     // lies beyond the screen's edge whenever the swipe starts or ends.
                     child: DecoratedBox(
-                      decoration: BoxDecoration(boxShadow: _swiping ? _kEdgeSwipeShadow : null),
+                      decoration: BoxDecoration(boxShadow: swiping ? _kEdgeSwipeShadow : null),
                       child: layer,
                     ),
                   ),

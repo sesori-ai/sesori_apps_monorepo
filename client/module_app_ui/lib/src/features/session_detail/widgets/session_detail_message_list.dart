@@ -860,10 +860,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       //   text; hijacking it for the peek would make selection impossible.
       //
       child: TranscriptPinchDetector(
-        onPointerDown: _onPinchPointerDown,
-        onPinchStart: _onPinchStart,
-        onPinchIn: widget.onPinchIn,
-        onGestureEnd: _onPinchGestureEnd,
+        pinch: TranscriptPinchIn(
+          onPointerDown: _onPinchPointerDown,
+          onPinchStart: _onPinchStart,
+          onPinchIn: widget.onPinchIn,
+          onGestureEnd: _onPinchGestureEnd,
+        ),
         child: NotificationListener<Notification>(
           onNotification: _onScrollNotification,
           child: PregoHorizontalDragGestureDetector(

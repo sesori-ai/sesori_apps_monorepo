@@ -273,6 +273,26 @@ void main() {
     expect(router.state.uri.toString(), _detail(readOnly: true).buildPath());
   });
 
+  testWidgets("Cmd/Ctrl+[ closes what a page has open before it leaves the page", (tester) async {
+    final router = _callbackRouter(initialRoute: _detail(readOnly: true));
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.tap(find.text("open overlay"));
+    await tester.pumpAndSettle();
+    await _commandBracket(tester);
+    expect(find.text("overlay open"), findsNothing, reason: "a direct page closes its screen");
+
+    await tester.tap(find.text("open child"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("open overlay").last);
+    await tester.pumpAndSettle();
+    await _commandBracket(tester);
+    expect(router.state.pathParameters[sessionIdPathParam], "child");
+    expect(find.text("overlay open"), findsNothing);
+    await _commandBracket(tester);
+    expect(router.state.uri.toString(), _detail(readOnly: true).buildPath());
+  });
+
   testWidgets("Main session pops to the parent under it and otherwise opens the parent", (tester) async {
     final router = _callbackRouter(initialRoute: _detail(readOnly: false));
     addTearDown(router.dispose);
@@ -445,6 +465,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                         button(label: "project", action: screen.onOpenProject),
                       ],
                       DesktopSessionDetailScreen() => [
+                        const _OverlayOnPage(),
                         button(label: "project", action: screen.onOpenProject),
                         button(
                           label: "open child",
@@ -493,6 +514,26 @@ Map<ShortcutActivator, VoidCallback> _shellShortcuts({required BuildContext cont
   final provider = (gate.child as Builder).builder(context) as DesktopCockpitCubitProvider;
   final cockpit = provider.child as DesktopCockpitShell;
   return {desktopShortcut(key: LogicalKeyboardKey.bracketLeft): cockpit.onGoBack};
+}
+
+/// A screen a page opens over itself, as the session page opens Prompts:
+/// while it is open, the page closes it instead of being popped.
+class const _OverlayOnPage() extends StatefulWidget {
+  @override
+  State<_OverlayOnPage> createState() => _OverlayOnPageState();
+}
+
+class _OverlayOnPageState() extends State<_OverlayOnPage> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: !_open,
+    onPopInvokedWithResult: (didPop, _) => didPop ? null : setState(() => _open = false),
+    child: _open
+        ? const Text("overlay open")
+        : TextButton(onPressed: () => setState(() => _open = true), child: const Text("open overlay")),
+  );
 }
 
 Future<void> _commandBracket(WidgetTester tester) async {
