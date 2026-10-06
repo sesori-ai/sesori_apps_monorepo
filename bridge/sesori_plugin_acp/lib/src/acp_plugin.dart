@@ -105,7 +105,6 @@ abstract class AcpPlugin({
 
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   StreamSubscription<AcpChildSessionTrackerChange>? _childSessionChanges;
-  StreamSubscription<void>? _processResidencyChanges;
 
   AcpCommandListener? _commandListener;
 
@@ -1582,9 +1581,6 @@ abstract class AcpPlugin({
       final result = AcpPromptResult.fromJson(
         (raw as Map?)?.cast<String, dynamic>() ?? const {},
       );
-      if (identical(_turnStates[sessionId], state)) {
-        eventMapper.mapPromptResult(sessionId: sessionId, stopReason: result.stopReason).forEach(_eventBuffer.add);
-      }
       _finishTurn(
         sessionId: sessionId,
         state: state,
@@ -1605,14 +1601,6 @@ abstract class AcpPlugin({
           message: failureMessage,
         ),
       );
-      if (identical(_turnStates[sessionId], state)) {
-        eventMapper
-            .mapPromptLifecycleFailure(
-              sessionId: sessionId,
-              failureMessage: failureMessage,
-            )
-            .forEach(_eventBuffer.add);
-      }
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
       mapPromptFailure(sessionId: sessionId, error: error).forEach(_eventBuffer.add);
     }
@@ -1781,24 +1769,6 @@ abstract class AcpPlugin({
 
   /// Standard ACP alone cannot promise scoped child stops.
   AcpScopedStopCapability get scopedStopCapability => AcpScopedStopCapability.unsupported;
-
-  /// Whether backend-owned work with no root/session activity representation
-  /// still requires the ACP process to remain resident.
-  bool get requiresProcessResidency => false;
-
-  /// Whether [sessionId] has resident work whose completion is not observable.
-  bool hasUnresolvedResidentWork({required String sessionId}) => false;
-
-  /// Registers one harness-owned residency signal. It only re-derives process
-  /// work state; root status, summaries, children, and stop targets are intact.
-  void registerProcessResidencyChanges({required Stream<void> changes}) {
-    if (_processResidencyChanges != null) {
-      throw StateError("$id process-residency changes were already registered");
-    }
-    _processResidencyChanges = changes.listen((_) {
-      if (_client != null) _syncWorkState();
-    });
-  }
 
   Future<AcpChildCancelResult> cancelChild({
     required AcpStdioClient client,
@@ -1972,16 +1942,11 @@ abstract class AcpPlugin({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
   }) async {
-    // Must remain first: these refusals promise that no local or native
+    // Must remain first: this refusal promises that no local or native
     // cancellation side effect occurred. Only the root accepts a native
     // cancel; a sub-agent session stops with its root.
     if (childSessionTracker.isChild(sessionId: sessionId)) {
       return const PluginAbortNotPerformed(reason: PluginAbortRefusalReason.subAgentStopUnsupported);
-    }
-    if (hasUnresolvedResidentWork(sessionId: sessionId)) {
-      return const PluginAbortNotPerformed(
-        reason: PluginAbortRefusalReason.residentWorkCompletionUnknown,
-      );
     }
 
     final runningChildCount = childSessionTracker.runningChildren(sessionId: sessionId).length;
@@ -2019,13 +1984,6 @@ abstract class AcpPlugin({
       }
     }
 
-    if (hasUnresolvedResidentWork(sessionId: sessionId)) {
-      throw const PluginOperationException(
-        "abortSession",
-        statusCode: 502,
-        message: "Root cancellation completed, but resident work completion became unknown",
-      );
-    }
     final survivingChildCount = childSessionTracker.runningChildren(sessionId: sessionId).length;
     if (survivingChildCount > 0) {
       final cause = StateError("$survivingChildCount sub-agent(s) survived root cancellation");
@@ -2548,12 +2506,6 @@ abstract class AcpPlugin({
     }
     _childSessionChanges = null;
     try {
-      await _processResidencyChanges?.cancel();
-    } on Object catch (e, st) {
-      Log.w("[$id] failed to cancel process-residency subscription", e, st);
-    }
-    _processResidencyChanges = null;
-    try {
       await childSessionTracker.dispose();
     } on Object catch (e, st) {
       Log.w("[$id] failed to close child-session tracker", e, st);
@@ -2586,8 +2538,7 @@ abstract class AcpPlugin({
         (_approvalRegistry?.hasAnyPendingInput ?? false) ||
         // A sub-agent and its autonomous root settlement live only inside the
         // resident process: no safe stop or suspension while either runs.
-        childSessionTracker.hasActiveWork ||
-        requiresProcessResidency;
+        childSessionTracker.hasActiveWork;
     _workState.set(busy ? PluginWorkState.busy : PluginWorkState.idle);
   }
 }

@@ -5,7 +5,6 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
 import "package:cursor_plugin/src/repositories/cursor_generated_image_reader.dart";
 import "package:cursor_plugin/src/repositories/mappers/cursor_subagent_mapper.dart";
-import "package:cursor_plugin/src/trackers/cursor_task_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -22,7 +21,6 @@ void main() {
         configurationTracker: configurationTracker ?? AcpSessionConfigurationTracker(),
         childSessions: childSessions ?? AcpChildSessionTracker(),
         generatedImageReader: const CursorGeneratedImageReader(),
-        taskTracker: CursorTaskTracker(),
         subagentMapper: const CursorSubagentMapper(),
         activeSessionResolver: activeSessionResolver ?? () => null,
       );
@@ -71,10 +69,6 @@ void main() {
         ),
       );
       expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "hi");
-    });
-
-    test("Task correlation has only activeModeUnknown and foregroundCompleted phases", () {
-      expect(CursorTaskPhase.values, [CursorTaskPhase.activeModeUnknown, CursorTaskPhase.foregroundCompleted]);
     });
 
     group("native sub-agents", () {

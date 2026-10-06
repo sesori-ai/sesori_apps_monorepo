@@ -1656,7 +1656,7 @@ void main() {
       );
 
       plugin.abortResult = const PluginAbortNotPerformed(
-        reason: PluginAbortRefusalReason.residentWorkCompletionUnknown,
+        reason: PluginAbortRefusalReason.subAgentStopUnsupported,
       );
       final refusalResult = await repository.abortSession(
         sessionId: "root",
@@ -1666,7 +1666,7 @@ void main() {
       expect(
         (refusalResult as SessionAbortNotPerformed).refusal,
         const SessionAbortNotPerformedRefusal(
-          reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
+          reason: SessionAbortRefusalReason.subAgentStopUnsupported,
         ),
       );
     });

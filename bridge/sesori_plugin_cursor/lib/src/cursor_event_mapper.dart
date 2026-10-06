@@ -6,7 +6,6 @@ import "api/models/cursor_subagent_update_dto.dart";
 import "api/models/cursor_task_dto.dart";
 import "repositories/cursor_generated_image_reader.dart";
 import "repositories/mappers/cursor_subagent_mapper.dart";
-import "trackers/cursor_task_tracker.dart";
 
 /// Cursor's event mapper: the standard ACP `session/update` handling from
 /// [AcpEventMapper], Cursor's native sub-agent child sessions, and its
@@ -28,7 +27,6 @@ class CursorEventMapper({
   required super.configurationTracker,
   required super.childSessions,
   required final CursorGeneratedImageReader _generatedImageReader,
-  required final CursorTaskTracker _taskTracker,
   required final CursorSubagentMapper _subagentMapper,
 
   /// The plugin's active-turn resolver ([AcpPlugin.activeTurnSessionId]) — the
@@ -40,58 +38,6 @@ class CursorEventMapper({
   /// session is deleted.
   required final String? Function() _activeSessionResolver,
 }) extends AcpEventMapper {
-  @override
-  void beginTurn({required String sessionId, required String? messageId}) {
-    _taskTracker.beginTurn(sessionId: sessionId);
-    super.beginTurn(sessionId: sessionId, messageId: messageId);
-  }
-
-  @override
-  List<BridgeSseEvent> map(AcpNotification notification) {
-    final events = super.map(notification);
-    _observeStandardTask(notification: notification, events: events);
-    return events;
-  }
-
-  @override
-  List<BridgeSseEvent> mapPromptResult({
-    required String sessionId,
-    required AcpStopReason stopReason,
-  }) {
-    if (stopReason != AcpStopReason.cancelled) return const [];
-    return [
-      for (final part in _taskTracker.takeActiveInvocations(sessionId: sessionId))
-        BridgeSseMessagePartUpdated(
-          part: _mapTerminalGeneric(
-            genericPart: part,
-            status: PluginToolStatus.cancelled,
-            error: null,
-          ),
-        ),
-    ];
-  }
-
-  @override
-  List<BridgeSseEvent> mapPromptLifecycleFailure({
-    required String sessionId,
-    required String failureMessage,
-  }) => [
-    for (final part in _taskTracker.takeActiveInvocations(sessionId: sessionId))
-      BridgeSseMessagePartUpdated(
-        part: _mapTerminalGeneric(
-          genericPart: part,
-          status: PluginToolStatus.error,
-          error: String.fromCharCodes(failureMessage.runes.take(maxToolOutputLength)),
-        ),
-      ),
-  ];
-
-  @override
-  void forgetSession(String sessionId) {
-    _taskTracker.forgetSession(sessionId: sessionId);
-    super.forgetSession(sessionId);
-  }
-
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
     switch (notification.method) {
@@ -163,96 +109,6 @@ class CursorEventMapper({
     );
   }
 
-  void _observeStandardTask({
-    required AcpNotification notification,
-    required List<BridgeSseEvent> events,
-  }) {
-    if (notification.method != AcpMethods.sessionUpdate) return;
-    final sessionId = notification.params["sessionId"];
-    final update = _map(notification.params["update"]);
-    if (sessionId is! String || sessionId.isEmpty || update == null) return;
-    final updateType = update["sessionUpdate"];
-    if (updateType != "tool_call" && updateType != "tool_call_update") return;
-    final toolCallId = update["toolCallId"];
-    if (toolCallId is! String || toolCallId.isEmpty) return;
-    final genericParts = events
-        .whereType<BridgeSseMessagePartUpdated>()
-        .map((event) => event.part)
-        .whereType<PluginMessagePartTool>()
-        .toList(growable: false);
-    if (genericParts.isEmpty) return;
-    final genericPart = genericParts.last;
-
-    final knownTask = _taskTracker.hasInvocation(
-      sessionId: sessionId,
-      toolCallId: toolCallId,
-    );
-    final taskStatus = _parseTaskUpdateStatus(rawStatus: update["status"]);
-    final terminalTaskUpdate = switch (taskStatus) {
-      _CursorTaskUpdateStatus.completed || _CursorTaskUpdateStatus.failed => true,
-      _CursorTaskUpdateStatus.active || _CursorTaskUpdateStatus.unknown => false,
-      _CursorTaskUpdateStatus.omitted => genericPart.state.status.isTerminal,
-    };
-    if (!knownTask) {
-      final input = _parseTaskInput(raw: update["rawInput"]);
-      if (input?.toolName != CursorTaskTool.task) return;
-      if (terminalTaskUpdate && updateType != "tool_call") return;
-      _taskTracker.recordActiveInvocation(
-        sessionId: sessionId,
-        toolCallId: toolCallId,
-        genericPart: genericPart,
-      );
-    } else if (!terminalTaskUpdate) {
-      _taskTracker.recordActiveInvocation(
-        sessionId: sessionId,
-        toolCallId: toolCallId,
-        genericPart: genericPart,
-      );
-    }
-    if (!terminalTaskUpdate) return;
-
-    if (genericPart.state.status != PluginToolStatus.completed) {
-      _taskTracker.forgetInvocation(sessionId: sessionId, toolCallId: toolCallId);
-      return;
-    }
-    final output = _parseTaskOutput(raw: update["rawOutput"]);
-    if (output == null) {
-      _taskTracker.forgetInvocation(sessionId: sessionId, toolCallId: toolCallId);
-      return;
-    }
-    if (output.isBackground) {
-      _taskTracker.recordUnresolvedBackgroundWork(
-        sessionId: sessionId,
-        toolCallId: toolCallId,
-      );
-      return;
-    }
-    _taskTracker.markForegroundCompleted(
-      sessionId: sessionId,
-      toolCallId: toolCallId,
-      genericPart: genericPart,
-    );
-  }
-
-  PluginMessagePart _mapTerminalGeneric({
-    required PluginMessagePartTool genericPart,
-    required PluginToolStatus status,
-    required String? error,
-  }) => PluginMessagePart.tool(
-    id: genericPart.id,
-    sessionID: genericPart.sessionID,
-    messageID: genericPart.messageID,
-    tool: genericPart.tool,
-    state: PluginToolState(
-      status: status,
-      title: genericPart.state.title,
-      shellCommand: genericPart.state.shellCommand,
-      output: null,
-      error: error,
-      attachments: genericPart.state.attachments,
-    ),
-  );
-
   CursorTaskInputDto? _parseTaskInput({required Object? raw}) {
     final json = _map(raw);
     if (json == null) return null;
@@ -260,17 +116,6 @@ class CursorEventMapper({
       return CursorTaskInputDto.fromJson(json);
     } on Object catch (error, stack) {
       Log.w("[cursor] malformed standard Task input ignored", error, stack);
-      return null;
-    }
-  }
-
-  CursorTaskOutputDto? _parseTaskOutput({required Object? raw}) {
-    final json = _map(raw);
-    if (json == null) return null;
-    try {
-      return CursorTaskOutputDto.fromJson(json);
-    } on Object catch (error, stack) {
-      Log.w("[cursor] malformed standard Task output ignored", error, stack);
       return null;
     }
   }
@@ -361,14 +206,6 @@ class CursorEventMapper({
     "check your settings to continue",
   };
 
-  static _CursorTaskUpdateStatus _parseTaskUpdateStatus({required Object? rawStatus}) => switch (rawStatus) {
-    "pending" || "in_progress" => _CursorTaskUpdateStatus.active,
-    "completed" => _CursorTaskUpdateStatus.completed,
-    "failed" => _CursorTaskUpdateStatus.failed,
-    null => _CursorTaskUpdateStatus.omitted,
-    _ => _CursorTaskUpdateStatus.unknown,
-  };
-
   static bool _isGateNotice(String text) => _gateNoticePhrases.contains(_normalize(text));
 
   /// Normalizes a notice for matching against [_gateNoticePhrases]: collapses
@@ -385,12 +222,4 @@ class CursorEventMapper({
       "",
     );
   }
-}
-
-enum _CursorTaskUpdateStatus() {
-  active,
-  completed,
-  failed,
-  unknown,
-  omitted,
 }
