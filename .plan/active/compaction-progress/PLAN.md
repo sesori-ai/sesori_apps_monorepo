@@ -288,11 +288,11 @@ the consumed ACP seam. "Working…" only.
      recorded; the capture test asserts one row and the id change. The test
      includes a previous neighbour that is a live prompt row whose id differs
      from its imported twin.
-  3. **Fallback.** If the matcher cannot pair the rows, or the list animates
-     the re-key, step 4 emits `message.removed` for the minted row and then
-     today's summary row when the summary frame arrives, accepts a
-     Claude-only swap without the cross-fade at that moment, and records why
-     in `steps/step-04.md`.
+  3. **Fallback, only with the user's approval.** If the matcher cannot pair
+     the rows, or the list animates the re-key, step 4 stops and asks the
+     user before shipping the alternative: `message.removed` for the minted
+     row and then today's summary row when the summary frame arrives, a
+     Claude-only swap without the cross-fade.
 
   A re-import that leaves two rows, or a visible re-insert, is one of this
   plan's failure signals.
@@ -309,9 +309,9 @@ the consumed ACP seam. "Working…" only.
 - A Retry action on the failed note (C5).
 - Client-side clocks for the timer (P4).
 - Codex freed tokens from diffing `thread/tokenUsage/updated`, Codex trigger
-  correlation with `thread/compact/start`, and OpenCode v1 trigger
-  correlation with the user marker's `CompactionPart.auto`. Each needs new
-  correlation state for a detail line, so these stay recorded gaps.
+  correlation with `thread/compact/start`. Each needs new correlation state
+  for a detail line, so these stay recorded gaps. (OpenCode v1's
+  `CompactionPart.auto` is reported, so step 5 carries it; see Phase 2.)
 - A duration on the settled row. C2 covers only the live row.
 - Rows for the six harnesses without a signal (C6).
 - Analytics: compaction is harness behavior, not a user action, and answers
@@ -383,8 +383,9 @@ const factory compaction({
   - `session_detail_resolvers` and `_streamedText` return a running part's
     `summary` as base text (P5).
 - `module_app_ui`, inside `CompactionPartWidget`:
-  - It takes `state`, `sinceMs` (the message's `time.created`, passed by
-    `AssistantMessageCard`) and `streamingText` (the buffered text for the
+  - It takes `state`, `sinceMs` (the message's `time.created`, passed from
+    `SessionDetailMessageList` through both card paths, `AssistantMessageCard`
+    and `SystemMessageCard`) and `streamingText` (the buffered text for the
     part, or null).
   - Running: `TranscriptStepRow` with `TranscriptLiveSparkle`, a live label
     "Compacting context", and `TranscriptElapsedTime` as detail (none when
@@ -457,8 +458,9 @@ Layers (all under `bridge/sesori_plugin_claude/lib/src/`):
     re-emits that message (P10) and the completed part with the summary,
     `freedTokens` and `trigger`. `unstarted` emits today's summary row plus
     the details.
-  - Every entry, `failed` included, is dropped on the turn's `result` frame
-    and in `_forgetRendered`, so a stale state never reaches the next
+  - Every entry, `failed` included, is dropped in `_resetTurn` (turn begin
+    and completion, so also after a process exit without `result`) and in
+    `_forgetRendered`, so a stale state never reaches the next
     compaction.
   - Rewrite the comment at `claude_event_dispatcher.dart:451-452` ("live and
     replayed rows share one message id"). It no longer holds when a start
@@ -476,7 +478,9 @@ Layers (all under `bridge/sesori_plugin_claude/lib/src/`):
   until the message completes, then completed. This fixes the #1700 early
   row, and "Working…" returns after the settle. Deltas already reach the
   client (P5), and the summary tracker already knows the summary message
-  ids. A summary message with an error becomes `failed`.
+  ids. A summary message with an error becomes `failed`. The user marker's
+  `CompactionPart.auto` maps to the trigger (C7); step 5 picks the smallest
+  plugin-owned link from marker to summary message.
 - **OpenCode v2.** Running snapshots map to a running part with
   `partId(messageId, 0)` and the partial summary.
   `session.compaction.delta` becomes a part delta on that part, which needs
@@ -697,8 +701,8 @@ Automated coverage in the steps:
   on phone and desktop from fixture sessions, plus a short recording of the
   settle. Steps 4–6 add a recording on one live harness each.
 - **Architecture implementation review:** steps 2 (wire contract, plugin
-  interface, sweep), 4 (Claude dispatcher state and id scheme) and 5 (if v2
-  adds a service map).
+  interface, sweep), 4 (Claude dispatcher state and id scheme), 5 (the
+  OpenCode v2 tracker) and 6 (the DeepSeek tracker).
 - **Checks:**
   - `dart analyze --fatal-infos` per touched package, with the pinned
     toolchain first on `PATH`;
@@ -757,7 +761,8 @@ Target ≤ 800 changed lines.
   - start then failure with the error, and a boundary and summary after the
     failure emitting nothing;
   - boundary and summary without a start (today's path plus details);
-  - a stale entry, `failed` included, cleared by `result`;
+  - a stale entry, `failed` included, cleared by the next turn's begin when
+    the process exited without `result`;
 - a DTO decode test for the camelCase `compactMetadata` and the stream's
   snake_case `compact_metadata`;
 - a catalog-repository test mapping the boundary record to
@@ -863,3 +868,10 @@ revised version was not reviewed again.
 
 Declined: moving the sweep policy into the service inside this plan. It is
 the separate refactor proposed above and waits for the user.
+
+**PR review wave 2.** Applied: the P10 fallback now needs the user's
+approval, the Claude entry clears in `_resetTurn`, `sinceMs` goes through
+`SystemMessageCard` too, OpenCode v1 carries its reported trigger, and
+steps 5–6 get implementation review. Declined: keeping failure notes past
+the second re-import (accepted low-damage risk) and moving the pre-existing
+`claude_history_mapper.dart` (out of scope).
