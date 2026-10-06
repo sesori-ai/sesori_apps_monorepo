@@ -56,7 +56,8 @@ sealed class SessionAbortResponse with _$SessionAbortResponse {
 /// Why the bridge could not safely perform an abort.
 @JsonEnum()
 enum SessionAbortRefusalReason() {
-  // COMPATIBILITY 2026-10-06 (v1.9.1): Released bridges (v1.8.4–v1.9.x) send this refusal from the removed ACP residency path. Remove once those bridges are unsupported.
+  // COMPATIBILITY 2026-10-06 (v1.9.1): Released bridges (v1.8.4–v1.9.x) send this refusal from
+  // the removed ACP residency path. Remove once those bridges are unsupported.
   @JsonValue("residentWorkCompletionUnknown")
   residentWorkCompletionUnknown,
 
