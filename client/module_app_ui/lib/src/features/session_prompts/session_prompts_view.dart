@@ -14,6 +14,10 @@ import "widgets/prompt_spine_row.dart";
 
 const double _kHeaderHeight = 52;
 
+/// The text button's own padding at normal text size, kept at every size so
+/// the control's height can be measured from its label.
+const _kLoadEarlierPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 8);
+
 /// How long a search change takes to fold away the rows it filters out, bring
 /// back the ones it lets in and grow the matches to show their excerpts.
 const _kFilterDuration = Duration(milliseconds: 200);
@@ -38,8 +42,9 @@ class const SessionPromptsView({
   /// the session's start has loaded.
   required final VoidCallback? onLoadEarlier,
 
-  /// Whether that page is loading, which disables [onLoadEarlier].
-  required final bool isLoadingEarlier,
+  /// Whether that page is loading or the transcript is refreshing, either of
+  /// which disables [onLoadEarlier].
+  required final bool isLoadEarlierBusy,
 
   /// Whether the search field takes the keyboard as the screen opens, as on a
   /// pointer surface, where typing is the quickest way in.
@@ -440,20 +445,35 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
     final count = search == null
         ? loc.transcriptPromptsLoaded(list.promptCount)
         : loc.transcriptPromptsMatches(matchCount);
-    // Measured, as large text or a narrow screen can wrap the count.
-    final countPainter = TextPainter(
-      text: TextSpan(text: count, style: countStyle),
-      textDirection: Directionality.of(context),
-      textScaler: textScaler,
-    )..layout(maxWidth: constraints.maxWidth);
-    final countHeight = countPainter.height;
-    countPainter.dispose();
+    final loadEarlierLabelStyle = Theme.of(context).textTheme.labelLarge;
+    // Measured, as large text or a narrow screen can wrap the labels.
+    double heightOf({required String text, required TextStyle? style, required double maxWidth}) {
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: Directionality.of(context),
+        textScaler: textScaler,
+      )..layout(maxWidth: maxWidth);
+      final height = painter.height;
+      painter.dispose();
+      return height;
+    }
+
+    final loadEarlierLabelHeight = heightOf(
+      text: loc.transcriptPromptsLoadEarlier,
+      style: loadEarlierLabelStyle,
+      maxWidth: math.max(0.0, constraints.maxWidth - _kLoadEarlierPadding.horizontal),
+    );
     final extents = _extents = (
       row: promptRowExtent(textScaler: textScaler),
       excerpt: promptExcerptExtent(textScaler: textScaler),
       header: promptDayHeaderExtent(textScaler: textScaler),
-      loadEarlier: math.max(kMinInteractiveDimension, textScaler.scale(14) * 20 / 14) + PregoSpacing.md * 2,
-      trailing: countHeight + PregoSpacing.xl * 2 + padding.bottom,
+      loadEarlier:
+          math.max(kMinInteractiveDimension, loadEarlierLabelHeight + _kLoadEarlierPadding.vertical) +
+          PregoSpacing.md * 2,
+      trailing:
+          heightOf(text: count, style: countStyle, maxWidth: constraints.maxWidth) +
+          PregoSpacing.xl * 2 +
+          padding.bottom,
     );
     final scrollController = _scrollController ??= ScrollController(
       initialScrollOffset: _initialOffset(
@@ -500,8 +520,13 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
               child: Center(
                 child: TextButton(
                   key: const Key("session-prompts-load-earlier"),
-                  onPressed: widget.isLoadingEarlier ? null : loadEarlier,
-                  child: Text(loc.transcriptPromptsLoadEarlier),
+                  // The label and padding the extent above is measured with.
+                  style: ButtonStyle(
+                    textStyle: WidgetStatePropertyAll(loadEarlierLabelStyle),
+                    padding: const WidgetStatePropertyAll(_kLoadEarlierPadding),
+                  ),
+                  onPressed: widget.isLoadEarlierBusy ? null : loadEarlier,
+                  child: Text(loc.transcriptPromptsLoadEarlier, textAlign: TextAlign.center),
                 ),
               ),
             ),

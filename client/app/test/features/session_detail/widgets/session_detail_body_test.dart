@@ -1264,6 +1264,42 @@ void main() {
       expect(find.text("Older 0"), findsOneWidget);
     });
 
+    testWidgets("Load earlier prompts is disabled while the transcript refreshes", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final idle = _loadedState(
+        pendingQuestions: const [],
+        pendingPermissions: const [],
+        messages: [textMessage(id: "u0", user: true, text: "Prompt 0")],
+      ).copyWith(olderMessagesCursor: 42);
+      when(() => cubit.state).thenReturn(idle);
+      whenListen(cubit, states.stream, initialState: idle);
+      when(() => cubit.loadOlderMessages()).thenAnswer((_) async {});
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      await openPrompts(tester);
+      final control = find.byKey(const Key("session-prompts-load-earlier"));
+      expect(tester.widget<TextButton>(control).onPressed, isNotNull);
+
+      // The refresh's progress bar never settles, so frames are pumped singly.
+      final refreshing = idle.copyWith(isRefreshing: true);
+      when(() => cubit.state).thenReturn(refreshing);
+      states.add(refreshing);
+      await tester.idle();
+      await tester.pump();
+      expect(tester.widget<TextButton>(control).onPressed, isNull);
+      // The short transcript has already paged back on its own.
+      clearInteractions(cubit);
+      await tester.tap(control, warnIfMissed: false);
+      await tester.pump();
+      verifyNever(() => cubit.loadOlderMessages());
+
+      when(() => cubit.state).thenReturn(idle);
+      states.add(idle);
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextButton>(control).onPressed, isNotNull);
+    });
+
     testWidgets("an older page the transcript was already loading as the screen opened joins it", (tester) async {
       final newer = [
         for (var turn = 0; turn < 3; turn++) ...[
