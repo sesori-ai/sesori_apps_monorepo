@@ -301,7 +301,7 @@ void main() {
       verify(relayClient.disconnect).called(greaterThanOrEqualTo(1));
     });
 
-    test("resumed connect skips the GET /health round-trip", () async {
+    test("a resume right after a cold launch fetches the health it has not seen yet", () async {
       final sseController = StreamController<RelaySseEvent>.broadcast();
       addTearDown(sseController.close);
 
@@ -313,6 +313,20 @@ void main() {
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
       when(relayClient.disconnect).thenAnswer((_) async {});
+      const desktopHealth = HealthResponse(
+        healthy: true,
+        version: "1.9.1",
+        filesystemAccessDegraded: false,
+        bridgeKind: BridgeKind.desktop,
+      );
+      when(
+        () => relayClient.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
+        (_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(desktopHealth.toJson()), headers: const {}),
+      );
 
       final factory = _TestRelayClientFactory(
         ({
@@ -335,13 +349,15 @@ void main() {
 
       await service.connect(config);
 
-      verifyNever(
+      verify(
         () => relayClient.sendRequest(
           request: any(named: "request"),
           timeout: any(named: "timeout"),
         ),
-      );
-      expect(service.currentStatus, isA<ConnectionConnected>());
+      ).called(1);
+      final status = service.currentStatus;
+      expect(status, isA<ConnectionConnected>());
+      expect((status as ConnectionConnected).health.bridgeKind, BridgeKind.desktop);
     });
 
     test("resumed reconnect preserves degraded filesystem-access health from the prior fresh connect", () async {

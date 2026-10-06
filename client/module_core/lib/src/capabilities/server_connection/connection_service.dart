@@ -332,21 +332,24 @@ class ConnectionService(
         return (response: ApiResponse.success(bridgeOfflineHealth), closeCode: null);
       }
 
-      // A resume_ack already proves the bridge is reachable; only fresh-DH
-      // connects need the extra health round-trip. A non-error status code is
-      // sufficient proof that the bridge request path is live. Plugin
-      // lifecycle and diagnostics are discovered through plugin-scoped APIs.
+      // A resume_ack already proves the bridge is reachable, so a resumed
+      // connect that already holds health skips the extra round-trip. A
+      // non-error status code is sufficient proof that the bridge request path
+      // is live. Plugin lifecycle and diagnostics are discovered through
+      // plugin-scoped APIs.
       //
       // On a RESUMED connect we reuse the last fetched health so a previously
       // reported degraded-filesystem warning stays stable across reconnects
       // (the bridge's access hasn't changed and we don't re-probe).
       //
-      // On a FRESH connect we parse the body so the bridge can report degraded
-      // filesystem access. A malformed health response fails the connection.
-      const defaultHealth = HealthResponse(healthy: true, version: "", filesystemAccessDegraded: false);
+      // Otherwise — a FRESH connect, or a resume right after a cold launch
+      // (the room key persists, the health does not) — we fetch and parse the
+      // body so the bridge can report its kind and degraded filesystem access.
+      // A malformed health response fails the connection.
+      final cachedHealth = relayClient.didResume ? _lastHealth : null;
       HealthResponse health;
-      if (relayClient.didResume) {
-        health = _lastHealth ?? defaultHealth;
+      if (cachedHealth != null) {
+        health = cachedHealth;
       } else {
         final response = await relayClient.sendRequest(
           request: RelayRequest(
