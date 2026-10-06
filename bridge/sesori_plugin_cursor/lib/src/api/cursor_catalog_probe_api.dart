@@ -25,6 +25,7 @@ class CursorCatalogProbeApi({required final AcpStdioClient _client}) {
       await _client.connect().timeout(_remaining(timeout: timeout, stopwatch: stopwatch));
     }
     return _initializeResult ??= await AcpAgentApi(client: _client).initialize(
+      clientIdentity: acpDefaultClientIdentity,
       formElicitation: false,
       capabilityMeta: CursorBinary.acpCapabilityMeta,
       authMethodId: CursorBinary.acpAuthMethodId,

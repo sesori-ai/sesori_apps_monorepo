@@ -86,7 +86,7 @@ concrete problem can justify a documented temporary hold with a resolution path.
   on previously accepted explicit/PATH pairs in the plan. Do not manufacture
   an independent minimum or silently change this exact-pin policy.
 - **Assets:** Sesori selects all six ZIPs from the
-  [official registry](https://github.com/agentclientprotocol/registry/blob/7384f5e98d28cbbeba10035d520bdb680b19b3d8/antigravity-acp/agent.json):
+  [official registry](https://github.com/agentclientprotocol/registry/blob/f6c0f4e8357c7f28e84e3b883695c387b04ed2b9/antigravity-acp/agent.json):
   macOS arm64/x64, Linux arm64/x64 and Windows arm64/x64. Independently hash official downloads; do not portray
   locally computed checksums as Google's signed provenance. Preserve sibling
   `agy_acp_server.par` + `localharness_external` (Windows `.exe` counterparts),
@@ -106,6 +106,13 @@ concrete problem can justify a documented temporary hold with a resolution path.
   only generic parent-local subagent tool calls, not child identity/lifecycle or
   scoped-stop authority. Reassess on new evidence; do not infer support from
   native delegation or generic ACP features. Closed source limits remain explicit.
+  Inspect model selection's client-identity gates too: the official 1.3.0 package
+  keeps non-Gemini models only for recognized Zed/JetBrains/Xcode identities.
+  Account entitlement alone does not prove what ACP advertises. Any explicitly
+  approved compatibility identity stays inside the Antigravity plugin and must
+  reach live, replay, login and validation initialization consistently; preserve
+  the standard Sesori identity for other ACP harnesses. Verify this gate again
+  on future releases rather than inferring it from product model documentation.
 
 ## Codex
 

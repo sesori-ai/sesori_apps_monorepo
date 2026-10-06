@@ -451,7 +451,7 @@ void main() {
       serverPath: pair.server,
       initialize: _initialize(),
       respondToInitialize: true,
-      versionOutput: "Build label: 1.3.0\n",
+      versionOutput: "Build label: 1.4.0\n",
     );
 
     final status = await descriptor(http: null).inspectSetup(
@@ -462,7 +462,7 @@ void main() {
     );
 
     expect(status, isA<PluginSetupManagedInstallBlockedUnknown>());
-    expect(status.runtimeVersion, "1.3.0");
+    expect(status.runtimeVersion, "1.4.0");
     expect(status.actionHint, contains("newer"));
     expect(processes.launches.single.executable, pair.server);
     expect(processes.agents, isEmpty);

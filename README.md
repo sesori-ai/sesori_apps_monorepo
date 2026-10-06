@@ -176,8 +176,8 @@ Every integration ships enabled by default — pick your assistant when you star
 <details>
 <summary><strong>Google Antigravity notes</strong></summary>
 
-- **Runtime and license:** uses Google's proprietary official ACP pair, pinned to registry package `1.2.1` /
-  exact runtime identity `1.2.1`. Review [Google's terms](https://antigravity.google/terms) and
+- **Runtime and license:** uses Google's proprietary official ACP pair, pinned to registry package `1.3.0` /
+  exact runtime identity `1.3.0`. Review [Google's terms](https://antigravity.google/terms) and
   [documentation](https://antigravity.google/docs/) before downloading or authenticating.
 - **Hosts:** macOS x64/arm64, Linux x64/arm64 and Windows x64/arm64.
   Linux managed installation requires Info-ZIP `unzip`.
@@ -190,9 +190,10 @@ Every integration ships enabled by default — pick your assistant when you star
   live in an isolated bridge-side profile.
 - **Sessions:** supervised `default` mode only, no persistent approvals. Before a real session supplies model choices,
   a new session in a fresh process uses the account default. Local deletion does not erase Google's retained history.
-- **Evidence:** package `1.2.1` has macOS arm64 extraction, version and initialize-only/teardown coverage; its complete
-  managed installation, real OAuth and authenticated sessions remain unverified. macOS x64 archive integrity/extraction
-  passed, but native execution on Intel Macs and Linux/Windows native correctness remain unverified.
+- **Evidence:** package `1.3.0` has independently verified hashes, sibling layouts and permissions for all six archives;
+  hardened macOS arm64 extraction passed. The isolated native probe aborted with SIGABRT before a usable version result,
+  so native initialization, managed installation, real OAuth and authenticated sessions remain unverified. Native
+  execution on Intel Macs and Linux/Windows also remains unverified. Earlier `1.2.1` native evidence is historical.
   See the [Antigravity guide](docs/ANTIGRAVITY.md) for setup, images/history behavior, safety boundaries and verification
   limits.
 

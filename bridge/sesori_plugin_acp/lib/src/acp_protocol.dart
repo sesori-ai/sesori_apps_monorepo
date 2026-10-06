@@ -12,10 +12,22 @@ part "acp_protocol.g.dart";
 /// The ACP protocol version this bridge implements.
 const int acpProtocolVersion = 1;
 
-/// The `clientInfo` identity every Sesori ACP connection (live plugin and
-/// isolated scratch processes alike) reports at `initialize`.
+/// The default `clientInfo` identity reported by Sesori ACP connections.
 const String acpClientName = "sesori-bridge";
 const String acpClientVersion = "0.0.0";
+
+/// Immutable standard ACP identity selected by the owning harness integration.
+class const AcpClientIdentity({
+  required final String name,
+  required final String? title,
+  required final String version,
+});
+
+const acpDefaultClientIdentity = AcpClientIdentity(
+  name: acpClientName,
+  title: null,
+  version: acpClientVersion,
+);
 
 /// Standard ACP JSON-RPC method names.
 abstract final class AcpMethods() {
@@ -256,9 +268,9 @@ Map<String, dynamic> buildClientCapabilities({
   };
 }
 
-/// Builds `initialize` params. The client identity is fixed
-/// ([acpClientName]/[acpClientVersion]); only the capabilities vary per agent.
+/// Builds `initialize` params from the integration's identity and capabilities.
 Map<String, dynamic> buildInitializeParams({
+  required AcpClientIdentity clientIdentity,
   required bool formElicitation,
   required Map<String, dynamic>? capabilityMeta,
 }) {
@@ -269,8 +281,9 @@ Map<String, dynamic> buildInitializeParams({
       meta: capabilityMeta,
     ),
     "clientInfo": {
-      "name": acpClientName,
-      "version": acpClientVersion,
+      "name": clientIdentity.name,
+      "title": ?clientIdentity.title,
+      "version": clientIdentity.version,
     },
   };
 }

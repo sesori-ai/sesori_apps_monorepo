@@ -51,7 +51,7 @@ enum AcpScopedStopCapability() {
 ///
 /// Every policy and behavior hook has a bridge-safe default, so a compliant agent
 /// needs only identity, launch spec, and trackers. A harness overrides what
-/// differs: protocol policies ([authMethodId], [authMethodAllowlist], [initializeCapabilityMeta],
+/// differs: protocol policies ([authMethodId], [authMethodAllowlist], [initializeClientIdentity], [initializeCapabilityMeta],
 /// [supportsFormElicitation], [serializesPromptsProcessWide],
 /// [cancelsActiveTurnForQueuedInput], [failsTurnOnSelectionError],
 /// [sessionCloseSettlementTimeout], [rootSessionCancelSettlementTimeout]) and behavior hooks ([buildApprovalRegistry],
@@ -236,6 +236,9 @@ abstract class AcpPlugin({
   /// Optional allowlist applied when [authMethodId] is `null`. The stock
   /// behavior accepts every advertised non-terminal method.
   Set<String>? get authMethodAllowlist => null;
+
+  /// Standard client identity used consistently by live and replay connections.
+  AcpClientIdentity get initializeClientIdentity => acpDefaultClientIdentity;
 
   /// Non-standard capability hints sent under `clientCapabilities._meta`
   /// (e.g. Cursor's `parameterizedModelPicker`).
@@ -649,6 +652,7 @@ abstract class AcpPlugin({
   Future<AcpInitializeResult> _initialize(AcpStdioClient client) async {
     try {
       final result = await AcpAgentApi(client: client).initialize(
+        clientIdentity: initializeClientIdentity,
         formElicitation: supportsFormElicitation,
         capabilityMeta: initializeCapabilityMeta,
         authMethodId: authMethodId,

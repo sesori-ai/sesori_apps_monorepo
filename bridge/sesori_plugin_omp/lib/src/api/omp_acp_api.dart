@@ -51,6 +51,7 @@ class OmpAcpApi({
     // Same handshake as the live plugin minus form elicitation, which these
     // scratch flows never answer.
     return await AcpAgentApi(client: client).initialize(
+      clientIdentity: acpDefaultClientIdentity,
       formElicitation: false,
       capabilityMeta: null,
       authMethodId: OmpBinary.acpAuthMethodId,

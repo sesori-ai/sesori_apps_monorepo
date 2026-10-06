@@ -44,11 +44,17 @@ void main() {
 
     test("initializeOnly returns auth methods without authenticating", () async {
       final initializing = api.initializeOnly(
+        clientIdentity: const AcpClientIdentity(name: "fixture-client", title: "Fixture Client", version: "1.2.3"),
         formElicitation: false,
         capabilityMeta: null,
         timeout: const Duration(seconds: 5),
       );
       final initialize = await waitForFrame("initialize");
+      expect((initialize["params"] as Map)["clientInfo"], {
+        "name": "fixture-client",
+        "title": "Fixture Client",
+        "version": "1.2.3",
+      });
       fake.emit({
         "jsonrpc": "2.0",
         "id": initialize["id"],
@@ -67,6 +73,7 @@ void main() {
 
     test("initializeOnly returns an unsupported negotiated version for probe policy", () async {
       final initializing = api.initializeOnly(
+        clientIdentity: acpDefaultClientIdentity,
         formElicitation: false,
         capabilityMeta: null,
         timeout: const Duration(seconds: 5),
@@ -86,6 +93,7 @@ void main() {
 
     test("authenticate can continue an initializeOnly result", () async {
       final initializing = api.initializeOnly(
+        clientIdentity: acpDefaultClientIdentity,
         formElicitation: false,
         capabilityMeta: null,
         timeout: const Duration(seconds: 5),
@@ -117,6 +125,7 @@ void main() {
 
     test("picks the first non-terminal auth method when none is configured", () async {
       final initializing = api.initialize(
+        clientIdentity: acpDefaultClientIdentity,
         formElicitation: false,
         capabilityMeta: null,
         authMethodId: null,
@@ -142,6 +151,7 @@ void main() {
 
     test("an allowlist selects only an advertised permitted method", () async {
       final initializing = api.initialize(
+        clientIdentity: acpDefaultClientIdentity,
         formElicitation: false,
         capabilityMeta: null,
         authMethodId: null,
@@ -167,6 +177,7 @@ void main() {
 
     test("a rejected allowlisted method becomes a typed authentication failure", () async {
       final initializing = api.initialize(
+        clientIdentity: acpDefaultClientIdentity,
         formElicitation: false,
         capabilityMeta: null,
         authMethodId: null,
@@ -204,6 +215,7 @@ void main() {
 
     test("an allowlist rejects an interactive-only advertised list", () async {
       final initializing = api.initialize(
+        clientIdentity: acpDefaultClientIdentity,
         formElicitation: false,
         capabilityMeta: null,
         authMethodId: null,
@@ -211,6 +223,7 @@ void main() {
         timeout: const Duration(seconds: 5),
       );
       final initialize = await waitForFrame("initialize");
+      expect((initialize["params"] as Map)["clientInfo"], {"name": "sesori-bridge", "version": "0.0.0"});
       fake.emit({
         "jsonrpc": "2.0",
         "id": initialize["id"],
@@ -226,6 +239,7 @@ void main() {
 
     test("a terminal-only agent fails typed, naming the connection", () async {
       final initializing = api.initialize(
+        clientIdentity: acpDefaultClientIdentity,
         formElicitation: false,
         capabilityMeta: null,
         authMethodId: null,
@@ -259,6 +273,7 @@ void main() {
       const timeout = Duration(milliseconds: 600);
       final stopwatch = Stopwatch()..start();
       final initializing = api.initialize(
+        clientIdentity: acpDefaultClientIdentity,
         formElicitation: false,
         capabilityMeta: null,
         authMethodId: "login",

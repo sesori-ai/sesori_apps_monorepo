@@ -19,6 +19,7 @@ class CopilotCatalogProbeApi({required final AcpStdioClient _client}) {
       await _client.connect().timeout(_remaining(timeout: timeout, stopwatch: stopwatch));
     }
     return _initializeResult ??= await AcpAgentApi(client: _client).initialize(
+      clientIdentity: acpDefaultClientIdentity,
       formElicitation: false,
       capabilityMeta: null,
       authMethodId: CopilotBinary.acpAuthMethodId,
