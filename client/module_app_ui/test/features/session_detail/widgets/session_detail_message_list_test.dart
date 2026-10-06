@@ -2745,6 +2745,170 @@ void main() {
       expect(pinned.width, moreOrLessEquals(own.width, epsilon: 0.01));
       expect(pinned.height, moreOrLessEquals(own.height, epsilon: 0.01));
       expect(pin.elevation, 0, reason: "nothing slides under a pin that is its whole bubble");
+      expect(pin.view, const TranscriptPinStart(), reason: "a prompt that fits on screen pins its start");
+    });
+
+    group("a steer", () {
+      // Turn 3 gains a twelve-line steer, sent before the agent answered.
+      final withSteer = [
+        for (final message in shortTurns) ...[
+          message,
+          if (message.info.id == "u3")
+            _message(
+              messageId: "u3s",
+              role: "user",
+              text: _multilineText(label: "Steer", lines: 12),
+            ),
+        ],
+      ];
+
+      testWidgets("pins, taking over from its bubble exactly where the two coincide", (tester) async {
+        await _pumpTurns(tester, messages: withSteer);
+        await _scrollRowTo(tester, rowId: "u3s", top: pinTop - PregoSpacing.xs + 1);
+        expect(pinOf(tester, "u3s"), isNull, reason: "a bubble below the pin line pins nothing");
+        expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u3s")).hidden, isFalse);
+
+        await _scrollRowTo(tester, rowId: "u3s", top: pinTop - PregoSpacing.xs);
+
+        final pin = pinOf(tester, "u3s") ?? fail("u3s is not pinned");
+        expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u3s")).hidden, isTrue);
+        final own = ownBubble(tester, "u3s");
+        final pinned = pinnedBubble(tester, "u3s");
+        expect(pinned.left, moreOrLessEquals(own.left, epsilon: 0.01));
+        expect(pinned.top, moreOrLessEquals(own.top, epsilon: 0.01));
+        expect(pinned.width, moreOrLessEquals(own.width, epsilon: 0.01));
+        expect(pinned.height, moreOrLessEquals(own.height, epsilon: 0.01));
+        expect(pin.view, const TranscriptPinStart());
+      });
+
+      testWidgets("compacts like a prompt and is pushed out by the next message", (tester) async {
+        await _pumpTurns(tester, messages: withSteer);
+
+        // The steer arrives under its prompt's pin and pushes it up.
+        await _scrollRowTo(tester, rowId: "u3s", top: pinTop - PregoSpacing.xs + 20);
+        final prompt = pinOf(tester, "u3") ?? fail("u3 is not pinned");
+        expect(
+          prompt.top,
+          moreOrLessEquals(ownBubble(tester, "u3s").top - transcriptStickyGap - prompt.height, epsilon: 0.01),
+        );
+
+        // Read past it, the steer holds three lines at the pin line.
+        await _scrollRowTo(tester, rowId: "a3-0", top: pinTop - 100);
+        final steer = pinOf(tester, "u3s") ?? fail("u3s is not pinned");
+        expect(steer.top, pinTop);
+        expect(steer.height, moreOrLessEquals(pins(tester).compactHeight, epsilon: 0.01));
+        expect(steer.height, lessThan(steer.fullHeight));
+        expect(pinOf(tester, "u3"), isNull, reason: "only the latest message above the line stays pinned");
+
+        // The next prompt pushes the steer up and out, step for step.
+        await _scrollRowTo(tester, rowId: "u4", top: pinTop - PregoSpacing.xs + 20);
+        final pushed = pinOf(tester, "u3s") ?? fail("u3s is not pinned");
+        expect(
+          pushed.top,
+          moreOrLessEquals(ownBubble(tester, "u4").top - transcriptStickyGap - pushed.height, epsilon: 0.01),
+        );
+        expect(pushed.top, lessThan(pinTop));
+      });
+
+      testWidgets("a tap on the pinned steer glides back to it", (tester) async {
+        await _pumpTurns(tester, messages: withSteer);
+        await _scrollRowTo(tester, rowId: "a3-0", top: pinTop - 100);
+
+        await tester.tapAt(pinnedBubble(tester, "u3s").center);
+        await tester.pumpAndSettle(const Duration(milliseconds: 16));
+
+        expect(ownBubble(tester, "u3s").top, moreOrLessEquals(pinTop, epsilon: 0.5));
+        final pin = pinOf(tester, "u3s") ?? fail("u3s is not pinned");
+        expect(pin.height, pin.fullHeight, reason: "the pin has grown back into its bubble");
+      });
+    });
+
+    group("a message taller than the screen", () {
+      final withTallPrompt = [
+        for (final message in shortTurns)
+          if (message.info.id == "u4")
+            _message(
+              messageId: "u4",
+              role: "user",
+              text: _multilineText(label: "Tall", lines: 60),
+            )
+          else
+            message,
+      ];
+
+      /// Moves the rows so [openerId]'s own bubble ends at [bottom].
+      Future<void> endBubbleAt(WidgetTester tester, String openerId, double bottom) async {
+        final position = _position(tester);
+        position.jumpTo(position.pixels + bottom - ownBubble(tester, openerId).bottom);
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets("scrolls as a row until its last line is read", (tester) async {
+        await _pumpTurns(tester, messages: withTallPrompt);
+        await _scrollRowTo(tester, rowId: "u4", top: pinTop - PregoSpacing.xs - 200);
+        final compact = pins(tester).compactHeight;
+        expect(ownBubble(tester, "u4").bottom, greaterThan(tester.getRect(find.byKey(_listViewKey)).bottom));
+
+        await endBubbleAt(tester, "u4", pinTop + compact + 1);
+
+        expect(pinOf(tester, "u4"), isNull, reason: "a pin would hide the lines still to read");
+        expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u4")).hidden, isFalse);
+        final paragraph = tester.renderObject<RenderParagraph>(
+          find.descendant(of: slotOf("u4"), matching: find.byType(RichText)).last,
+        );
+        const lastLine = "Tall line 59";
+        final text = paragraph.text.toPlainText();
+        expect(text, endsWith(lastLine));
+        final lastLineBox = paragraph
+            .getBoxesForSelection(TextSelection(baseOffset: text.length - lastLine.length, extentOffset: text.length))
+            .first;
+        final lastLineTop = paragraph.localToGlobal(Offset(0, lastLineBox.top)).dy;
+        expect(lastLineTop, greaterThan(pinTop), reason: "the last line shows below the pin line");
+      });
+
+      testWidgets("pins its end exactly where it covers its bubble", (tester) async {
+        await _pumpTurns(tester, messages: withTallPrompt);
+        await _scrollRowTo(tester, rowId: "u4", top: pinTop - PregoSpacing.xs - 200);
+        final compact = pins(tester).compactHeight;
+
+        // Just inside, as the row's own measure can differ in the last bit.
+        await endBubbleAt(tester, "u4", pinTop + compact - 0.001);
+
+        final pin = pinOf(tester, "u4") ?? fail("u4 is not pinned");
+        expect(pin.top, pinTop);
+        expect(pin.height, moreOrLessEquals(compact, epsilon: 0.01));
+        expect(pin.elevation, moreOrLessEquals(0, epsilon: 0.001));
+        expect(
+          pin.view,
+          isA<TranscriptPinEnd>().having((view) => view.fade, "fade", moreOrLessEquals(0, epsilon: 0.001)),
+          reason: "no fade yet where the pin takes over",
+        );
+        final own = ownBubble(tester, "u4");
+        final pinned = pinnedBubble(tester, "u4");
+        expect(pinned.left, moreOrLessEquals(own.left, epsilon: 0.01));
+        expect(pinned.width, moreOrLessEquals(own.width, epsilon: 0.01));
+        expect(pinned.bottom, moreOrLessEquals(own.bottom, epsilon: 0.01));
+        // The copy's text sits exactly on the bubble's own, line for line.
+        final ownContent = tester.getRect(
+          find.descendant(of: slotOf("u4"), matching: find.byType(UserMessageBubbleContent)),
+        );
+        final copy = tester.getRect(copyOf("u4"));
+        expect(copy.top, moreOrLessEquals(ownContent.top, epsilon: 0.01));
+        expect(copy.height, moreOrLessEquals(ownContent.height, epsilon: 0.01));
+        expect(
+          tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u4")).hidden,
+          isFalse,
+          reason: "the rest of the bubble scrolls on above the pin line",
+        );
+
+        // Read on, the pin holds its last three lines, its cut top faded in.
+        await endBubbleAt(tester, "u4", pinTop + compact - 100);
+        final held = pinOf(tester, "u4") ?? fail("u4 is not pinned");
+        expect(held.top, pinTop);
+        expect(held.height, moreOrLessEquals(compact, epsilon: 0.01));
+        expect(held.view, const TranscriptPinEnd(fade: 1));
+        expect(tester.getRect(copyOf("u4")).bottom, moreOrLessEquals(pinTop + compact - 10, epsilon: 0.01));
+      });
     });
 
     testWidgets("lifts off the rows under it with a halo the pin line does not clip", (tester) async {
@@ -2848,7 +3012,7 @@ void main() {
       expect(find.descendant(of: copyOf("u4"), matching: find.textContaining("**", findRichText: true)), findsNothing);
     });
 
-    testWidgets("builds only the start of a pasted document", (tester) async {
+    testWidgets("builds only the end of a pasted document", (tester) async {
       await _pumpTurns(
         tester,
         messages: _turnsWithPrompt(
@@ -2863,8 +3027,9 @@ void main() {
           .renderObject<RenderParagraph>(find.descendant(of: copyOf("u4"), matching: find.byType(RichText)).first)
           .text
           .toPlainText();
-      expect(built, startsWith("Pasted line 0\nPasted line 1\n"));
-      expect(built, isNot(contains("Pasted line 1500")));
+      expect(built, endsWith("Pasted line 1998\nPasted line 1999"));
+      expect(built, matches(RegExp(r"^Pasted line \d+\n")), reason: "the cut starts at a line");
+      expect(built, isNot(contains("Pasted line 500\n")));
     });
 
     testWidgets("pins a fence left open by the cut as a code block, not backticks", (tester) async {
@@ -3642,20 +3807,22 @@ void main() {
       expect(landed, isTrue);
     });
 
-    testWidgets("a jump lands a follow-up, by its own row, just below its pinned prompt, every time", (tester) async {
+    testWidgets("a jump lands a follow-up, by its own row, on the pin line, where it pins, every time", (tester) async {
       final harness = await _pumpTurns(tester, messages: withFollowUp);
       final pins = tester.renderObject<RenderTranscriptStickyPrompts>(find.byType(TranscriptStickyPromptOverlay));
-      final followUpTop = promptRowTop + pins.compactHeight + transcriptStickyGap;
+      List<String> pinnedIds() => [for (final pin in pins.stickyLayout.pinned) pin.openerId];
 
       unawaited(harness.jumpNotifier.jumpTo(messageId: "u3f"));
       await tester.pumpAndSettle();
-      expect(_topOf(tester, "session-detail-prompt-p3f"), moreOrLessEquals(followUpTop, epsilon: 0.5));
+      expect(_topOf(tester, "session-detail-prompt-p3f"), moreOrLessEquals(promptRowTop, epsilon: 0.5));
+      expect(pinnedIds(), contains("u3f"));
 
       _position(tester).jumpTo(_position(tester).pixels - 400);
       await tester.pumpAndSettle();
       unawaited(harness.jumpNotifier.jumpTo(messageId: "u3f"));
       await tester.pumpAndSettle();
-      expect(_topOf(tester, "session-detail-prompt-p3f"), moreOrLessEquals(followUpTop, epsilon: 0.5));
+      expect(_topOf(tester, "session-detail-prompt-p3f"), moreOrLessEquals(promptRowTop, epsilon: 0.5));
+      expect(pinnedIds(), contains("u3f"));
     });
 
     testWidgets("a jump reaches a prompt that arrived after the reader scrolled away", (tester) async {

@@ -17,9 +17,36 @@ final class const TranscriptStickyBelow() extends TranscriptStickyPlace;
 
 typedef TranscriptStickyOpener = ({String id, TranscriptStickyPlace place});
 
-/// A prompt painted over the transcript: its bubble spans [top] to
-/// `top + height` of a bubble [fullHeight] tall, with a halo of [elevation].
-typedef TranscriptPinnedPrompt = ({String openerId, double top, double height, double fullHeight, double elevation});
+/// Which part of its bubble a pin shows.
+@immutable
+sealed class const TranscriptPinView();
+
+/// The bubble's start, cut where the pin ends: a message the reader saw whole
+/// before it pinned.
+final class const TranscriptPinStart() extends TranscriptPinView;
+
+/// The bubble's end, cut where the pin starts: a message taller than the rows
+/// below the pin line, which pins only once the reader has scrolled to its
+/// end. [fade], from 0 to 1, is how far the cut top edge has faded in since.
+final class const TranscriptPinEnd({required final double fade}) extends TranscriptPinView {
+  @override
+  bool operator ==(Object other) => other is TranscriptPinEnd && other.fade == fade;
+
+  @override
+  int get hashCode => fade.hashCode;
+}
+
+/// A message painted over the transcript: its bubble spans [top] to
+/// `top + height` of a bubble [fullHeight] tall, showing [view], with a halo
+/// of [elevation].
+typedef TranscriptPinnedPrompt = ({
+  String openerId,
+  double top,
+  double height,
+  double fullHeight,
+  double elevation,
+  TranscriptPinView view,
+});
 
 /// What the pinned prompts paint, back to front, and the openers whose own
 /// bubbles they stand in for, which must not paint.
@@ -57,30 +84,38 @@ int currentTranscriptStickyIndex({required List<TranscriptStickyOpener> openers,
       },
     );
 
-/// Pins the prompt of the turn being read at [pinTop], as a header that
-/// compacts with the scroll. Every position follows from the openers' current
-/// bubbles alone, so the pin tracks the rows in the frame they move and a
-/// reversed scroll retraces it exactly.
+/// Pins the message being read at [pinTop], as a header that compacts with
+/// the scroll. Every position follows from the messages' current bubbles
+/// alone, so the pin tracks the rows in the frame they move and a reversed
+/// scroll retraces it exactly.
 ///
-/// The current prompt is the last opener at or above the pin line. While its
+/// The current message is the last one at or above the pin line. While its
 /// bubble reaches below the compact height, the pin's top holds at the line
 /// and its bottom rides the bubble's; from there it keeps the compact height,
 /// [compactHeight] or the whole bubble when that is shorter. Where it takes
 /// over, the pin covers its bubble exactly, which then stops painting. The
-/// next opener pushes it up and out, [transcriptStickyGap] above itself, and
+/// next message pushes it up and out, [transcriptStickyGap] above itself, and
 /// then pins the same way. The halo shows only while rows slide under the
-/// compact pin, and drains as the next opener arrives or the bubble returns.
+/// compact pin, and drains as the next message arrives or the bubble returns.
+///
+/// A bubble taller than the rows between the pin line and [viewportBottom]
+/// could never be read to its end that way, so it scrolls on as a row and
+/// pins its end only once just the compact height of it is left below the
+/// line. That pin covers the bubble's end exactly, and the bubble keeps
+/// painting, its rest scrolling away above the line.
 ///
 /// [openers] are in transcript order; [fullHeights] holds each pinnable
-/// opener's whole bubble height. Nothing pins until the current prompt can.
+/// message's whole bubble height. Nothing pins until the current message can.
 TranscriptStickyLayout layOutTranscriptStickyPrompts({
   required List<TranscriptStickyOpener> openers,
   required Map<String, double> fullHeights,
   required double compactHeight,
   required double pinTop,
+  required double viewportBottom,
 }) {
   final current = currentTranscriptStickyIndex(openers: openers, pinTop: pinTop);
   if (current < 0 || !fullHeights.containsKey(openers[current].id)) return TranscriptStickyLayout.empty;
+  bool showsEnd({required String id}) => (fullHeights[id] ?? 0) > viewportBottom - pinTop;
   final pinned = <TranscriptPinnedPrompt>[];
   for (final index in [current - 1, current]) {
     if (index < 0) continue;
@@ -88,6 +123,9 @@ TranscriptStickyLayout layOutTranscriptStickyPrompts({
     final fullHeight = fullHeights[opener.id];
     if (fullHeight == null) continue;
     final compact = min(fullHeight, compactHeight);
+    final end = showsEnd(id: opener.id);
+    // A tall bubble is still being read until its end reaches the pin.
+    if (opener.place case TranscriptStickyBuilt(:final bottom) when end && bottom - pinTop > compact) continue;
     final (height, underElevation) = switch (opener.place) {
       TranscriptStickyBuilt(:final bottom) => (
         max(compact, bottom - pinTop),
@@ -109,13 +147,14 @@ TranscriptStickyLayout layOutTranscriptStickyPrompts({
       height: height,
       fullHeight: fullHeight,
       elevation: underElevation * pushElevation,
+      view: end ? TranscriptPinEnd(fade: underElevation) : const TranscriptPinStart(),
     ));
   }
   return TranscriptStickyLayout(
     pinned: pinned,
     hiddenOpenerIds: {
       for (final opener in openers.take(current + 1))
-        if (opener.place is TranscriptStickyBuilt) opener.id,
+        if (opener.place is TranscriptStickyBuilt && !showsEnd(id: opener.id)) opener.id,
     },
   );
 }

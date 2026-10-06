@@ -3,8 +3,8 @@
 ## Capability
 
 A session transcript reads as turns: a prompt, the agent's steps and its
-answer. While reading, the prompt of the turn being read stays pinned at the
-top. A Prompts screen, opened
+answer. While reading, the latest prompt or steer above the top edge stays
+pinned there. A Prompts screen, opened
 by a button or a pinch, lists every loaded prompt in the transcript's order, opens on the one being read and
 returns to any prompt with one tap. Phone and desktop derive the same turns and
 prompt list from the loaded messages; turns and the list are never
@@ -26,26 +26,35 @@ stored or sent to the bridge.
   horizontal scroll and trackpad scrolling are unaffected. A pinch never moves
   the transcript and leaves following as it was: a reader following the latest
   edge keeps following, and one reading history stays detached.
-- The prompt that opened the turn being read stays pinned at the top
-  of the transcript as a header that compacts with the scroll. Each prompt shows
-  as exactly one bubble, tracking the scroll in the same frame with no pop or
-  lag. As a prompt's own bubble reaches the pin line its top stops there while
-  its bottom keeps travelling with the rows, so the bubble squeezes to about
-  three lines of its text, then holds that height; a prompt of three lines or
-  fewer just pins whole. The pin takes over where it and the bubble are
-  pixel-identical, its Markdown rendered as the real bubble renders it, and the
-  bubble underneath stops painting. A reversed scroll retraces every step. A
+- The latest user message above the top edge, a turn's opening prompt or a
+  steer (a follow-up sent while the turn runs) alike, stays pinned at the top
+  of the transcript as a header that compacts with the scroll. A steer pins,
+  compacts, hands over, is pushed out and glides back exactly as a prompt does.
+  Apart from the tall message below, each message shows as exactly one bubble,
+  tracking the scroll in the same
+  frame with no pop or lag. As a message's own bubble reaches the pin line its
+  top stops there while its bottom keeps travelling with the rows, so the
+  bubble squeezes to about three lines of its text, then holds that height; a
+  message of three lines or fewer just pins whole. The pin takes over where it
+  and the bubble are pixel-identical, its Markdown rendered as the real bubble
+  renders it, and the bubble underneath stops painting. A message taller than
+  the rows between the pin line and the composer stays readable to its last
+  line: it scrolls on as an ordinary row, its top passing under the bar, until
+  only about three lines of it are left below the pin line, and only then pins
+  those last lines, pixel-identical where it takes over; its cut top edge fades
+  in as the scroll continues, while the rest of its bubble scrolls on above the
+  pin line. A reversed scroll retraces every step. A
   soft page-coloured halo shows only while rows slide under the compacted
-  bubble, and the pin line never clips it. The next turn's prompt pushes the
-  pinned one up and out, step for step with the scroll. Only the start of a
-  pasted prompt is built, so pinning a pasted document costs no more than
-  pinning a sentence, and nothing in the pinned bubble takes a press or a
-  scroll of its own: a press anywhere on it glides to its prompt, and a remote
-  image stays named rather than fetched. So pinning a prompt neither contacts
-  the host it names nor pages history the reader never asked for. Only an
-  opening prompt is pinned, never a follow-up or automation, and nothing is
-  pinned over the messages before the first prompt. A tap on
-  the bubble glides back to that prompt, whose bubble grows back to full height
+  bubble, and the pin line never clips it. The next message pushes the
+  pinned one up and out, step for step with the scroll. Only the end of a
+  pasted document is built, so pinning it costs no more than pinning a
+  sentence, and nothing in the pinned bubble takes a press or a
+  scroll of its own: a press anywhere on it glides to its message, and a remote
+  image stays named rather than fetched. So pinning a message neither contacts
+  the host it names nor pages history the reader never asked for. Automation is
+  never pinned, and nothing is pinned over the messages before the first user
+  message. A tap on
+  the bubble glides back to that message, whose bubble grows back to full height
   as it lands at the top edge, which stops following like any jump; with
   reduced motion it jumps there instead. A tap on the band beside the bubble
   does nothing, and a drag or a wheel that starts anywhere on the band still
@@ -116,7 +125,7 @@ stored or sent to the bridge.
   typing and after a click outside the field, and the search is not kept.
 - A tap on a row closes the screen, once the transcript has landed beneath it,
   with the transcript on that message: an
-  opener on the pin line, a follow-up just below the pinned prompt, also when
+  opener or a follow-up on the pin line, where it pins, also when
   its row was not built and when it arrived after the reader scrolled away. A prompt gone meanwhile moves
   nothing. The close button and the system back gesture close the screen
   without leaving the page and with the transcript unmoved. While open, the
@@ -144,8 +153,8 @@ stored or sent to the bridge.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated, no plugin: every branch of the turn rule, the leading segment and determinism; touch and trackpad pinch per platform (iOS, Android, macOS): opening the Prompts screen once per gesture on a pinch in and never on a pinch out, one finger held still, below the threshold, the transcript unmoved and still following while following and still detached while reading history, and one-finger scroll, peek and nested horizontal scroll unaffected; the pinned prompt as one bubble per prompt through a slow scroll both ways over short and long prompts, never moving against the scroll and appearing or leaving only at the screen's edges, taking over exactly where it covers its bubble, its halo unclipped by the pin line, compacted to three lines at a narrow width and at a large text scale while a short prompt pins whole, hidden before the first prompt, rendered as its bubble with a table and a code block, only the opening of a pasted document built, a fence the cut leaves open still a code block, a pinned code block requesting no older page, the bubble's semantics label the prompt's words rather than its Markdown, an image-only prompt spoken as the row names it with and without alt text, a list, table and struck word spoken as the row lays them out, the band carrying no semantics action beside the bubble's, and gliding to its prompt on a tap on the bubble, never turning back and landing with the pin grown to full height, jumping instead with reduced motion, and through its semantics button, also when that prompt is not built, while a tap beside the bubble does nothing and a drag on the band still scrolls; the Prompts screen's rows, indentation, day headers and "No date" group, the untimed case, the count and empty rows, the opening anchor and its tint through a scroll away and back with and without reduced motion, an unknown anchor, search filtering as typed and clearing with the reader's row still through the fold, also when a row hidden beneath the pinned day header folds away, a search that matched nothing returning the reader's row when cleared, a folding row keeping its excerpt as typing goes on, the grown row and its highlighted match, the match and the count fitting at a large text size on a narrow phone, an excerpt never splitting a code point (surrogate pair), day headers only for days with a match, the match count, "Load earlier prompts" at the top, calling the loader, disabled while loading, and earlier prompts joining the filter below it with the reader's row still, also when the control disappears, a page the transcript was already loading as the screen opened joining it, Escape closing, also after a click outside the field, and the desktop's focused field, the anchor the pin names and before the first prompt, prompt numbers from the bridge's count kept through three older pages with hidden user messages and automation, no numbers without a count, the bridge's count for every page read (snapshot, stored-only, unlimited, empty and archived), the ACP dispatch stamp on sent and first prompts, a harness override and undated history replay, a jump to an opener, a follow-up, an unbuilt row and a prompt that arrived while detached, a vanished id, back and the close button leaving the transcript unmoved, both entry buttons, the row semantics and the event per opening; the screen's transition in and out, its scale and dim, the plain fade with reduced motion, and the transcript unmoved through it; the iOS edge swipe following the finger, springing back from a short release, closing from a long one and from a flick, and doing nothing off iOS. |
-| L3 Release | Client end to end on the release-target phone and on macOS, on a session of three or more pages: a real-device pinch in on the phone and a macOS trackpad pinch open the Prompts screen growing from the fingers, while following (following continues) and while reading history (it stays detached), with the transcript where it was on the way back, and a pinch out does nothing, with one-finger scroll, the peek and a code block's horizontal scroll unaffected; the pinned prompt through short and long prompts both ways with no lag, pop or jump, compacting and pushed out by the next prompt step for step with the scroll, its halo only over sliding rows, and gliding back on a tap on the bubble; the Prompts screen from the phone bar and the macOS toolbar, opening on the prompt being read with no visible scroll, its numbers matching the prompts' places in the session after paging back to the start, and a tap landing an opener, a follow-up and a far prompt; typing a search, clearing it and loading earlier prompts with nothing under the reader jumping, and Escape closing on macOS, with back and close leaving the transcript unmoved; its transition in and out, and again with Reduce Motion on, with nothing jumping; on the iPhone an edge swipe that follows the finger, springs back when let go early and closes past halfway or on a flick; screen readers read the Prompts button, the pinned prompt, whose action jumps to it, and the Prompts rows; `transcript_prompts_opened` arrives. Android, Windows and Linux: the Prompts button and screen. Live plugin plus client, every supporting production plugin: a follow-up sent while a turn runs stays in that turn, or opens one where `docs/HARNESS_CAPABILITIES.md` says so; a prompt sent to an ACP harness shows its time on the Prompts screen and in "Working…"; Claude and Pi automation stays inside its turn and is never pinned; a forced Claude re-import keeps follow-ups, peers and task outcomes in their turns. |
+| L2 Routine | Automated, no plugin: every branch of the turn rule, the leading segment and determinism; touch and trackpad pinch per platform (iOS, Android, macOS): opening the Prompts screen once per gesture on a pinch in and never on a pinch out, one finger held still, below the threshold, the transcript unmoved and still following while following and still detached while reading history, and one-finger scroll, peek and nested horizontal scroll unaffected; the pinned prompt as one bubble per prompt through a slow scroll both ways over short and long prompts, never moving against the scroll and appearing or leaving only at the screen's edges, taking over exactly where it covers its bubble, its halo unclipped by the pin line, compacted to three lines at a narrow width and at a large text scale while a short prompt pins whole, hidden before the first prompt, a steer pinning, taking over exactly, compacting and pushed out by the next message as a prompt is and gliding back on a tap, a message taller than the screen scrolling as a row with its last line shown below the pin line until three lines are left and then pinning its end exactly over its bubble, its cut top fading in, rendered as its bubble with a table and a code block, only the end of a pasted document built, a fence the cut leaves open reopened as a code block, a pinned code block requesting no older page, the bubble's semantics label the prompt's words rather than its Markdown, an image-only prompt spoken as the row names it with and without alt text, a list, table and struck word spoken as the row lays them out, the band carrying no semantics action beside the bubble's, and gliding to its prompt on a tap on the bubble, never turning back and landing with the pin grown to full height, jumping instead with reduced motion, and through its semantics button, also when that prompt is not built, while a tap beside the bubble does nothing and a drag on the band still scrolls; the Prompts screen's rows, indentation, day headers and "No date" group, the untimed case, the count and empty rows, the opening anchor and its tint through a scroll away and back with and without reduced motion, an unknown anchor, search filtering as typed and clearing with the reader's row still through the fold, also when a row hidden beneath the pinned day header folds away, a search that matched nothing returning the reader's row when cleared, a folding row keeping its excerpt as typing goes on, the grown row and its highlighted match, the match and the count fitting at a large text size on a narrow phone, an excerpt never splitting a code point (surrogate pair), day headers only for days with a match, the match count, "Load earlier prompts" at the top, calling the loader, disabled while loading, and earlier prompts joining the filter below it with the reader's row still, also when the control disappears, a page the transcript was already loading as the screen opened joining it, Escape closing, also after a click outside the field, and the desktop's focused field, the anchor the pin names and before the first prompt, prompt numbers from the bridge's count kept through three older pages with hidden user messages and automation, no numbers without a count, the bridge's count for every page read (snapshot, stored-only, unlimited, empty and archived), the ACP dispatch stamp on sent and first prompts, a harness override and undated history replay, a jump landing an opener and a follow-up on the pin line, an unbuilt row and a prompt that arrived while detached, a vanished id, back and the close button leaving the transcript unmoved, both entry buttons, the row semantics and the event per opening; the screen's transition in and out, its scale and dim, the plain fade with reduced motion, and the transcript unmoved through it; the iOS edge swipe following the finger, springing back from a short release, closing from a long one and from a flick, and doing nothing off iOS. |
+| L3 Release | Client end to end on the release-target phone and on macOS, on a session of three or more pages: a real-device pinch in on the phone and a macOS trackpad pinch open the Prompts screen growing from the fingers, while following (following continues) and while reading history (it stays detached), with the transcript where it was on the way back, and a pinch out does nothing, with one-finger scroll, the peek and a code block's horizontal scroll unaffected; the pinned prompt through short and long prompts and steers both ways with no lag, pop or jump, compacting and pushed out by the next message step for step with the scroll, a pasted prompt taller than the screen read to its last line before its end pins, its halo only over sliding rows, and gliding back on a tap on the bubble; the Prompts screen from the phone bar and the macOS toolbar, opening on the prompt being read with no visible scroll, its numbers matching the prompts' places in the session after paging back to the start, and a tap landing an opener, a follow-up and a far prompt; typing a search, clearing it and loading earlier prompts with nothing under the reader jumping, and Escape closing on macOS, with back and close leaving the transcript unmoved; its transition in and out, and again with Reduce Motion on, with nothing jumping; on the iPhone an edge swipe that follows the finger, springs back when let go early and closes past halfway or on a flick; screen readers read the Prompts button, the pinned prompt, whose action jumps to it, and the Prompts rows; `transcript_prompts_opened` arrives. Android, Windows and Linux: the Prompts button and screen. Live plugin plus client, every supporting production plugin: a follow-up sent while a turn runs stays in that turn, or opens one where `docs/HARNESS_CAPABILITIES.md` says so; a prompt sent to an ACP harness shows its time on the Prompts screen and in "Working…"; Claude and Pi automation stays inside its turn and is never pinned; a forced Claude re-import keeps follow-ups, peers and task outcomes in their turns. |
 | L4 Extended | Open the Prompts screen and return from it while text streams and while an older page loads. |
 | L5 Full | No additional coverage. |
 
@@ -234,11 +243,15 @@ answer, and on a trackpad while text streams.
   their own metrics, so the last visible line can be part of a block rather
   than a whole line of text. The pinned bubble shows its controls — a code
   block's copy icon, an underlined link, an open-image button — as the bubble
-  does, but a press on them glides to the prompt. Only the prompt's first few
-  thousand characters are rendered there, far more than three lines can show, so a construct that needs a later
-  line — a link reference definition — reads as source in the pinned row only.
-  The semantics label is read from that same rendered prefix, so a screen reader
-  hears the start of a pasted document and reaches the rest by activating the
+  does, but a press on them glides to the prompt. Only a message's last ten
+  thousand or so characters are rendered there, from the start of a line and
+  with a code fence the cut lands in opened again, far more than three lines
+  can show, so a construct that needs an earlier line — a link reference
+  definition, or a list or quote the cut lands in — reads differently in the
+  pinned row only. A message that long on a screen tall enough to show it
+  whole would pin that end rather than its start. The semantics label is read
+  from the message's first few thousand characters, so a screen reader hears
+  the start of a pasted document and reaches the rest by activating the
   button. A prompt that renders no words at all — nothing but a horizontal rule,
   say — is read out as its own short source rather than left unlabelled.
   While pinned, the prompt covers the top of the rows beneath it. A glide to
@@ -248,9 +261,7 @@ answer, and on a trackpad while text streams.
   "Load earlier prompts" pages back one transcript page at a time. An older bridge sends no
   user message count, so its rows carry no numbers. On Grok, Antigravity,
   Copilot, Cursor, Hermes and OMP a prompt read back from the harness's own
-  history carries no time. A prompt that arrived after the
-  reader scrolled away lands just below the pinned prompt, where a follow-up
-  would, rather than on the pin line.
+  history carries no time.
 
 ## Sources
 

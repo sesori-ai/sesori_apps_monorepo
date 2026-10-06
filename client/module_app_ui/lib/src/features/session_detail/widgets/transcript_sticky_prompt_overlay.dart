@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:math";
 
 import "package:flutter/foundation.dart";
@@ -16,19 +17,20 @@ import "transcript_sticky_layout.dart";
 import "user_message_card.dart";
 import "user_prompt_markdown_image.dart";
 
-/// The prompts pinned over the transcript's top edge, as
-/// [layOutTranscriptStickyPrompts] places them. It holds a copy of the bubble
-/// content of every prompt in [turns] that could pin next, and paints only
-/// the pinned ones, on a surface of the bubble's own shape and colour, so a
-/// pin is pixel-identical to the bubble it takes over from.
+/// The user messages, prompts and steers alike, pinned over the transcript's
+/// top edge, as [layOutTranscriptStickyPrompts] places them. It holds a copy
+/// of the bubble content of every message in [messages], those that could pin
+/// next, and paints only the pinned ones, on a surface of the bubble's own
+/// shape and colour, so a pin is pixel-identical to the bubble it takes over
+/// from.
 ///
 /// The transcript positions the pins while it lays out its rows: [onLayout]
 /// runs once this has laid out the copies, and the transcript sets
 /// [RenderTranscriptStickyPrompts.stickyLayout]. A tap on a pinned bubble, or a
-/// screen reader's activation, calls [onTap] with its prompt.
+/// screen reader's activation, calls [onTap] with its message.
 class const TranscriptStickyPromptOverlay({
   super.key,
-  required final List<TranscriptPromptTurn> turns,
+  required final List<MessageWithParts> messages,
 
   /// The side padding that centres the transcript's rows, as the list has it.
   required final double horizontalInset,
@@ -40,7 +42,7 @@ class const TranscriptStickyPromptOverlay({
     final prego = context.prego;
     final loc = context.loc;
     return _StickyPrompts(
-      openerIds: [for (final turn in turns) turn.opener.info.id],
+      openerIds: [for (final message in messages) message.info.id],
       compactHeight: _compactHeight(
         context: context,
         style: buildChatMessageMarkdownStyleSheet(prego: prego).p,
@@ -51,7 +53,7 @@ class const TranscriptStickyPromptOverlay({
       onLayout: onLayout,
       onTap: onTap,
       children: [
-        for (final turn in turns) _copy(loc: loc, opener: turn.opener),
+        for (final message in messages) _copy(loc: loc, opener: message),
       ],
     );
   }
@@ -78,7 +80,7 @@ class const TranscriptStickyPromptOverlay({
         // in it can be pressed, selected or scrolled.
         child: ExcludeFocus(
           child: UserMessageBubbleContent(
-            markdown: markdown == null ? null : _cut(markdown: markdown, budget: _copyCharacterBudget),
+            markdown: markdown == null ? null : _endOf(markdown: markdown),
             attachments: [UserMessageCard.attachmentsOf(message: opener)],
           ),
         ),
@@ -86,12 +88,30 @@ class const TranscriptStickyPromptOverlay({
     );
   }
 
-  /// As much of a prompt as a pin can show, and no more. A pasted document
+  /// As much of a message as a pin can show, and no more. A pasted document
   /// can be megabytes long, and a copy of it all would double the cost of
   /// laying out that bubble. Several screens' worth, so the part of a pin in
-  /// view always matches its bubble. Cutting mid-document can leave a code
-  /// fence open, which the parser reads as a code block running to the end.
+  /// view always matches its bubble: a message this long is taller than the
+  /// screen, so its pin shows its end.
   static const _copyCharacterBudget = 10000;
+
+  /// The last [_copyCharacterBudget] characters or so of [markdown], from the
+  /// start of a line. A code fence the cut lands inside opens again, so the
+  /// end renders as its bubble renders it rather than as backticks closing
+  /// nothing.
+  static String _endOf({required String markdown}) {
+    if (markdown.length <= _copyCharacterBudget) return markdown;
+    final from = markdown.length - _copyCharacterBudget;
+    final newline = markdown.indexOf("\n", from);
+    final start = newline < 0 ? from : newline + 1;
+    String? openFence;
+    for (final line in LineSplitter.split(markdown.substring(0, start))) {
+      final trimmed = line.trimLeft();
+      if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) openFence = openFence == null ? line : null;
+    }
+    final end = markdown.substring(start);
+    return openFence == null ? end : "$openFence\n$end";
+  }
 
   /// What a screen reader hears of a pin: a few paragraphs, enough to name the
   /// prompt. Activating the pin brings the reader to the prompt's own bubble.
@@ -292,6 +312,17 @@ class RenderTranscriptStickyPrompts({
     return Rect.fromLTWH(right - width, pin.top, width, pin.height);
   }
 
+  /// Where [pin] paints its laid-out [child] within its [bubble]: from the
+  /// bubble's top, or ending at its bottom when the pin shows the end.
+  static Offset _contentOf({required TranscriptPinnedPrompt pin, required RenderBox child, required Rect bubble}) =>
+      switch (pin.view) {
+        TranscriptPinStart() => bubble.topLeft.translate(UserMessageBubble.padding, UserMessageBubble.padding),
+        TranscriptPinEnd() => Offset(
+          bubble.left + UserMessageBubble.padding,
+          bubble.bottom - UserMessageBubble.padding - child.size.height,
+        ),
+      };
+
   /// The front-most pin whose bubble, or whole band across the row with [band],
   /// holds [position].
   TranscriptPinnedPrompt? _pinAt({required Offset position, required bool band}) {
@@ -358,11 +389,14 @@ class RenderTranscriptStickyPrompts({
         bubble,
         shape,
         (context, offset) {
-          context.paintChild(
-            child,
-            offset + bubble.topLeft.translate(UserMessageBubble.padding, UserMessageBubble.padding),
-          );
-          _paintCut(canvas: context.canvas, bubble: bubble.shift(offset), pin: pin);
+          context.paintChild(child, offset + _contentOf(pin: pin, child: child, bubble: bubble));
+          final canvas = context.canvas;
+          switch (pin.view) {
+            case TranscriptPinStart():
+              _paintCut(canvas: canvas, bubble: bubble.shift(offset), pin: pin);
+            case TranscriptPinEnd(:final fade):
+              _paintTopCut(canvas: canvas, bubble: bubble.shift(offset), fade: fade);
+          }
         },
         oldLayer: handle.layer,
       );
@@ -389,17 +423,37 @@ class RenderTranscriptStickyPrompts({
       ..drawRect(Rect.fromLTRB(bubble.left, contentBottom, bubble.right, bubble.bottom), Paint()..color = _bubbleColor);
   }
 
+  /// Fades the cut top of a pin that shows its bubble's end, as [_paintCut]
+  /// does its bottom. It fades in by [fade] from where the pin covers its
+  /// bubble exactly, so the handover stays pixel-identical.
+  void _paintTopCut({required Canvas canvas, required Rect bubble, required double fade}) {
+    if (fade <= 0) return;
+    final color = _bubbleColor.withValues(alpha: _bubbleColor.a * fade);
+    final contentTop = bubble.top + UserMessageBubble.padding;
+    final edge = Rect.fromLTRB(bubble.left, contentTop, bubble.right, contentTop + 16);
+    canvas
+      ..drawRect(Rect.fromLTRB(bubble.left, bubble.top, bubble.right, contentTop), Paint()..color = color)
+      ..drawRect(
+        edge,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [color, _bubbleColor.withValues(alpha: 0)],
+          ).createShader(edge),
+      );
+  }
+
   @override
   void applyPaintTransform(RenderBox child, Matrix4 transform) {
     final pin = _pinOf(child: child);
     if (pin == null) return;
-    final bubble = _bubbleOf(pin: pin, child: child);
-    transform.translateByDouble(
-      bubble.left + UserMessageBubble.padding,
-      bubble.top + UserMessageBubble.padding,
-      0,
-      1,
+    final content = _contentOf(
+      pin: pin,
+      child: child,
+      bubble: _bubbleOf(pin: pin, child: child),
     );
+    transform.translateByDouble(content.dx, content.dy, 0, 1);
   }
 
   @override
