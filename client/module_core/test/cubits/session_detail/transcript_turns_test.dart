@@ -315,14 +315,11 @@ void main() {
       _error(id: "e1"),
     ];
 
-    test("maps each rendered message to its turn and finds prompt turns by their opener", () {
+    test("maps each rendered message to its turn", () {
       final turns = _turns(messages: messages);
 
       expect(turns.turnIndexByMessageId, {"x1": 0, "u1": 1, "a1": 1, "u2": 1, "a2": 1, "u3": 2, "e1": 2});
-      expect(turns.promptTurnFor(openerMessageId: "u1")?.messageIds, ["u1", "a1", "u2", "a2"]);
-      expect(turns.promptTurnFor(openerMessageId: "u2"), isNull, reason: "a follow-up opens no turn");
-      expect(turns.promptTurnFor(openerMessageId: "x1"), isNull);
-      expect(turns.promptTurnFor(openerMessageId: "missing"), isNull);
+      expect(turns.turns[1].messageIds, ["u1", "a1", "u2", "a2"]);
     });
 
     test("the same messages split the same way, whatever their ids", () {

@@ -296,7 +296,9 @@ User decisions of 2026-09-25, from the review of round 3:
   the current turn, using the client's existing classification (sender not
   `agent`). Automation before the first prompt forms a preamble with no header.
 - **D4 Follow-ups sent while a turn runs do not open a turn.** Only the opening
-  prompt is the sticky header.
+  prompt is the sticky header. *The sticky-header half is SUPERSEDED on
+  2026-10-06*: at the user's request a steer pins exactly like a prompt, so the
+  pin is the latest user message above the top edge (D42 owns the pin).
 - **D5 Turns are derived, never stored.**
   - They are computed deterministically from the client's message list, with no
     stored turn state.
