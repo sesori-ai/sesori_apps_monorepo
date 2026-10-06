@@ -85,7 +85,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
             onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
             onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
-            onGoBack: () => _popPushedRoute(context: context),
+            onGoBack: () => _goBack(context: context),
             child: Builder(
               builder: (context) => SessionDetailRouteVisibility(
                 isVisible: ModalRoute.isCurrentOf(context) ?? false,
@@ -409,8 +409,9 @@ bool _pageBelowIs({required BuildContext context, required AppRoute route}) {
   return stack.length >= 2 && stack[stack.length - 2].matchedLocation == Uri.parse(route.buildPath()).path;
 }
 
-void _popPushedRoute({required BuildContext context}) {
+/// Goes back as a system back would: the page is asked first, so one with a
+/// screen open over it, such as Prompts, closes that screen instead of leaving.
+void _goBack({required BuildContext context}) {
   // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
-  final GoRouter router = GoRouter.of(context);
-  if (router.canPop()) router.pop();
+  unawaited(GoRouter.of(context).routerDelegate.popRoute());
 }

@@ -7,7 +7,8 @@
 - **Revised:** 2026-09-26, after the shipped in-place fold was rejected on a
   real device. The fold is being removed and replaced by a separate Prompts
   screen. Steps 1–8 have merged and keep their published titles and numbers;
-  the series total is now 18. See
+  the series total is now 20, after step 14.b and step 16.b (D43) were added.
+  See
   [Revision 2026-09-26](#revision-2026-09-26-the-fold-becomes-a-prompts-screen)
   and [Superseded Steps](#superseded-steps).
 - **Origin:** visual-hierarchy step 37 ("turn navigation: discussion and
@@ -15,7 +16,7 @@
   once the user picks a direction" (`.plan/completed/visual-hierarchy/TRACKER.md`).
   The user picked the direction on 2026-09-25, so this is that plan. Every PR,
   including this first one, uses the `turn-navigation` slug.
-- **Series:** eighteen PRs in one phase. The titles are fixed in
+- **Series:** twenty PRs in one phase. The titles are fixed in
   [TRACKER](TRACKER.md#fixed-pr-titles). Later phases are rough intent only.
 - **Sources:**
   - The user's review on 2026-09-25 of three local pages:
@@ -77,7 +78,9 @@ What survives from steps 2–8:
 - the row registry, `_spanOf` and the convergent `_holdRow`/anchor search
   (step 5) — they now serve the sticky prompt and returning from the Prompts
   screen instead of the fold;
-- the pinch recognizer (step 7) — repointed, and narrowed to the pinch-in half;
+- the pinch recognizer (step 7) — repointed: on the transcript its pinch-in half
+  opens the Prompts screen, and on that screen its pinch-out half closes it
+  (D43);
 - the sticky pinned prompt (step 8) — kept, minus its "only while unfolded"
   condition; its behaviour is owned by the standalone
   `sticky-prompt-continuity` PR (D42).
@@ -422,6 +425,23 @@ this plan implements them and does not reopen them.
   geometry or motion; where this plan describes step 8's pinned prompt, that PR
   supersedes it.
 
+### User decision of 2026-10-06 (pinch out closes the Prompts screen)
+
+- **D43 A pinch out on the Prompts screen closes it, and every way out runs the
+  opening transition backwards.**
+  - The pinch out follows the fingers: the screen shrinks toward their focal
+    point and fades as they spread. Released past about halfway (a scale of
+    1.25, the mirror of the 0.8 pinch in), or spread fast enough, it finishes
+    closing; otherwise it springs back open. Touch and trackpad both work.
+  - The close button, Escape, Android back and predictive back, the desktop
+    back shortcut (⌘[ or Ctrl+[), a tapped row and the pinch out all leave
+    through the same reversed transition, so the list falls back into the
+    transcript. None of them pops the screen instantly.
+  - The iOS edge swipe keeps its own drag-follow slide (D40). Reduced motion
+    keeps the plain fade.
+  - Implemented by step 16.b; see
+    [Architecture 13](#13-pinch-opens-the-prompts-screen-step-13).
+
 Defaults this plan adopts for the Prompts screen. **Each is a default the user
 may override:**
 
@@ -533,8 +553,9 @@ Planning decisions, from code evidence and the spikes:
 - **D19 The sticky prompt is an overlay over the existing reversed lazy list.**
   It is not built from slivers. See [Architecture 6](#6-sticky-prompt-step-8).
 - **D20 Pinch uses an eager two-pointer scale recognizer.** See
-  [Architecture 5](#5-pinch-step-7). Stands; step 13 repoints it and narrows it
-  to the pinch-in half.
+  [Architecture 5](#5-pinch-step-7). Stands; step 13 repoints its pinch-in half
+  to open the Prompts screen, and step 16.b uses its pinch-out half on that
+  screen to close it (D43).
 - **D21 Place-keeping uses a registry of built rows and a convergent
   scroll-to-row helper.** Nothing positions rows by index arithmetic alone.
   Stands, and after step 14 it serves the sticky prompt and returning from the
@@ -860,8 +881,9 @@ rules below stop applying to fold switches and apply to a jump instead.
 ### 5. Pinch (step 7)
 
 **Repointed by step 13.** The recognizer, its arena behavior, its thresholds and
-its follow-state rules all stand. Step 13 changes only what a pinch means and
-narrows it to pinch-in; see
+its follow-state rules all stand. Step 13 changes only what a pinch means: on
+the transcript only a pinch in counts, and step 16.b gives the Prompts screen
+the pinch-out half; see
 [Architecture 13](#13-pinch-opens-the-prompts-screen-step-13). The spike table
 below is still the evidence for the recognizer choice.
 
@@ -1136,6 +1158,10 @@ So the Prompts screen is a full-bleed layer inside the session page, owned by
   pops, so back means "back to the transcript". On iOS the same `PopScope`
   disables the route's own edge swipe while the layer is open, and the layer's
   own edge swipe (D40, step 12) closes it instead, so the two never compete.
+  Android's predictive back commits through the same `PopScope`. The desktop
+  back shortcut (⌘[ or Ctrl+[) asks the page the same way, through the router
+  delegate's `popRoute`, so it closes the layer before it leaves a pushed page
+  (step 16.b, D43).
 - The transcript keeps its exact scroll offset, follow state and built rows
   while covered. This is what makes the guardrail true by construction rather
   than by tuning.
@@ -1465,9 +1491,9 @@ depends on it.
 
 - `TranscriptPinchDetector` keeps its recognizer, its arena behavior and its
   thresholds. Its `onFoldRequested({folded, focalPoint})` becomes
-  `onPinchIn({focalPoint})`, and the `_kUnfoldScale` half goes: on the
-  transcript there is nothing to pinch out of. At most one open request per
-  gesture, as before.
+  `onPinchIn({focalPoint})`, and the transcript ignores a pinch out: there is
+  nothing on it to pinch out of. At most one open request per gesture, as
+  before.
 - The focal point is no longer used to anchor a turn — the transcript does not
   move — so `_turnAt` loses its only caller. It is passed to the transition
   instead (D35): the layer grows from where the fingers were.
@@ -1476,8 +1502,25 @@ depends on it.
   place, but a trackpad pinch still detaches through the outer `Listener`, and a
   pinch that opens nothing must still leave the follow state alone. The existing
   `suppressDetach`/`releaseDetachSuppression` pairing is kept.
-- No pinch gesture is added to the Prompts screen. Exit is the tap, the back
-  gesture, the iOS edge swipe (D40) and the header's close affordance.
+- **A pinch out closes the Prompts screen (step 16.b, D43).** The same detector
+  wraps the layer, configured by a sealed `TranscriptPinch`:
+  `TranscriptPinchIn` on the transcript, `TranscriptPinchOut` on the layer. One
+  recognizer, so touch and trackpad behave alike and one-finger scroll, row taps
+  and the search field keep winning their arenas.
+  - The pinch out is interactive. Its progress is the spread past the gesture's
+    first scale, reaching 1 at 1.5×. While the fingers are down the transition
+    controller's value is `1 - progress`, drawn linearly, and the layer shrinks
+    toward the fingers' focal point, which becomes its origin at pinch start.
+  - On release it finishes closing at a progress of 0.5 (scale 1.25, the mirror
+    of the 0.8 pinch in) or an outward scale velocity of at least 1/s, and
+    otherwise springs back; an inward fling of the same speed springs back too.
+    Both run the remaining fraction of the ~220 ms transition with an ease-out
+    curve. Reduced motion stays a fade.
+  - `_SessionDetailBodyState` tracks which gesture drives the controller with one
+    nullable enum (edge swipe or pinch out) in place of the edge swipe's boolean.
+  - Every other way out — the header's close affordance, Escape, back and
+    predictive back, the desktop back shortcut and a row tap — reverses the same
+    controller. Only the iOS edge swipe (D40) leaves by sliding.
 - The step's pinch tests are the step 7 tests rewritten for the new outcome, not
   new ones: the same platform variants, the same one-finger-still case, the same
   unaffected one-finger scroll, peek and nested horizontal scroll.
@@ -1488,8 +1531,9 @@ depends on it.
   `buildSessionPaneTransitionPage`'s duration.
 - Forward: the layer fades in while scaling up from about 0.96 around the entry
   focal point — the pinch's focal point, or the bar button's centre — over a
-  transcript that dims slightly. Reverse on the way out, including on a row tap,
-  so the list appears to fall back into the transcript.
+  transcript that dims slightly. Reverse on every way out except the iOS edge
+  swipe, including a row tap and a pinch out (D43), so the list appears to fall
+  back into the transcript.
 - **The iOS edge swipe (D40).** On iOS only, a horizontal drag that starts at the
   layer's left edge translates the layer right by the finger's distance, with no
   lag and no animation while the finger is down. On release it closes when past
@@ -1873,10 +1917,11 @@ Steps 4 and 5 ship nothing users can reach, so they change none.
 | 8 | The sticky prompt, including its screen reader node. |
 | 11 | Rewrites the capability paragraph around the Prompts screen and adds its required behavior, levels, exploration guidance, failure signals and limitations, including the transcript's order, the opening anchor and the undated group (D38, D39). Adds the `docs/HARNESS_CAPABILITIES.md` prompt-times note for the state at this step: the six ACP harnesses still show no times. |
 | 12 | The transition, including reduced motion, and the iOS edge swipe that closes the Prompts screen (D40). |
-| 13 | Pinch opens the screen and pinch out does nothing: it replaces the pinch-to-fold and pinch-to-unfold clauses, so no PR documents a gesture the product lacks. |
+| 13 | Pinch opens the screen and a pinch out on the transcript does nothing: it replaces the pinch-to-fold and pinch-to-unfold clauses, so no PR documents a gesture the product lacks. |
 | 14 | Removes the remaining fold behavior from `transcript-turn-navigation.md` and the fold cross-references in `session-history-and-recovery.md` and `tools-and-file-changes.md`, and re-words the `session-turns.md` one. No tombstones. |
 | 15 | Prompt numbers, their stability across an older page, and the no-number case against an older bridge. Cross-reference from `session-history-and-recovery.md` for the new response field. The ACP prompt stamp: which prompts get a time, which stay undated, and the "Working…" timer arriving on the six harnesses — in the regression document and in the `docs/HARNESS_CAPABILITIES.md` "Live timers" row that step 11 left saying otherwise. |
 | 16 | Search, the grown match row, and "Load earlier prompts" at the top of the list with no jump when earlier prompts arrive. |
+| 16.b | The pinch out that closes the Prompts screen, and every way out running the transition backwards, including the desktop back shortcut (D43). |
 | 17 | Reconciles every document with what shipped. |
 | 18 | Records the L3 result. |
 
@@ -1902,7 +1947,12 @@ Failure signals, each added by the step that ships the behavior:
   time; a prompt read back from a harness's history shows one;
 - step 16: a filtered row shows no reason for its match; the match count claims
   more than the loaded range; the rows under the reader move when earlier prompts
-  load.
+  load;
+- step 16.b: a pinch out on the Prompts screen does not follow the fingers,
+  snaps instead of finishing or springing back, or steals a one-finger scroll, a
+  row tap or the search field's selection; any way out other than the iOS edge
+  swipe makes the screen vanish instead of falling back into the transcript; the
+  desktop back shortcut leaves the page while the screen is open.
 
 **Highest level: L3 Release.** The boundary was client end to end; after step 15
 it runs through the real bridge, because the numbers come from a bridge query and
@@ -1915,9 +1965,9 @@ this file before retirement:
 
 | Platform | Coverage |
 |---|---|
-| iOS phone, real device (release target) | On a session of three or more pages: a pinch in opens the Prompts screen and **the transcript behind it has not moved when the screen closes** — check the same row is at the same place. The bar button opens it too. **The screen opens on the prompt that was under the reader, highlighted and on screen, from both entry points.** Openers and follow-up child rows in the transcript's order, each child below its parent, with numbers ascending down the screen and no renumbering after "Load earlier prompts". Sticky day headers while scrolling, oldest day at the top. "Load earlier prompts" is at the top, and the rows already on screen do not move when it loads. Tapping an opener and tapping a follow-up each land on that message. Search: a match whose reason is past the one-line cut shows the grown excerpt, the match count names the loaded range, and "Load earlier prompts" extends it. The transition in and out, and again with Reduce Motion on. The sticky prompt appears mid-turn, is pushed out by the next prompt, clamps a long prompt, and scrolls to it on tap. One-finger scroll, the timestamp peek and a code block's horizontal scroll are unaffected. VoiceOver reads the rows, the follow-up prefix, the entry button and the pinned prompt. `transcript_prompts_opened` arrives with both entry values. |
-| macOS desktop | Trackpad pinch opens the screen, while following and while reading history, and the transcript is where it was on the way back. The toolbar button. The same list order, opening anchor, numbering, day headers, tap-to-return and search checks. Trackpad scroll and the trackpad peek are unaffected. No fold shortcut does anything. |
-| Android phone | Pinch and the bar button open the screen; a list, tap-to-return and sticky prompt smoke check. |
+| iOS phone, real device (release target) | On a session of three or more pages: a pinch in opens the Prompts screen and **the transcript behind it has not moved when the screen closes** — check the same row is at the same place. The bar button opens it too. **The screen opens on the prompt that was under the reader, highlighted and on screen, from both entry points.** Openers and follow-up child rows in the transcript's order, each child below its parent, with numbers ascending down the screen and no renumbering after "Load earlier prompts". Sticky day headers while scrolling, oldest day at the top. "Load earlier prompts" is at the top, and the rows already on screen do not move when it loads. Tapping an opener and tapping a follow-up each land on that message. Search: a match whose reason is past the one-line cut shows the grown excerpt, the match count names the loaded range, and "Load earlier prompts" extends it. The transition in and out, and again with Reduce Motion on. A pinch out on the screen follows the fingers, closes past halfway and springs back short of it, and the close button, a row tap and the pinch out all leave through the reversed transition. The sticky prompt appears mid-turn, is pushed out by the next prompt, clamps a long prompt, and scrolls to it on tap. One-finger scroll, the timestamp peek and a code block's horizontal scroll are unaffected. VoiceOver reads the rows, the follow-up prefix, the entry button and the pinned prompt. `transcript_prompts_opened` arrives with both entry values. |
+| macOS desktop | Trackpad pinch opens the screen, while following and while reading history, and the transcript is where it was on the way back. The toolbar button. A trackpad pinch out, Escape and ⌘[ close the screen through the reversed transition, and ⌘[ leaves the page only once it is closed. The same list order, opening anchor, numbering, day headers, tap-to-return and search checks. Trackpad scroll and the trackpad peek are unaffected. No fold shortcut does anything. |
+| Android phone | Pinch and the bar button open the screen; a pinch out and predictive back close it through the reversed transition; a list, tap-to-return and sticky prompt smoke check. |
 | Windows and Linux desktop | The toolbar button, a list and tap-to-return smoke check. |
 | Bridge plus client | A session with more than one page: the numbers match the prompts actually sent, counted independently, and do not change as pages load. One archived (read-only) session, whose pages come from the audit file rather than the database. A current app against a bridge built before step 15: no numbers, everything else works. |
 | Plugins (live plugin plus client) | A follow-up sent while a turn runs: with Claude, Codex, Pi and OpenCode it stays inside the running turn and is listed as its child. With one ACP plugin (the stop-and-send base is shared) it opens a new turn, as the capability doc records. Claude and Pi automation is never listed and is never a sticky prompt. After a forced Claude history re-import, follow-ups, peer messages and task notifications are still present, with the same ids and order. With one of the six ACP harnesses (D38): a session Sesori prompts through shows times and day headers for those prompts; a session with history from before Sesori attached shows those older prompts in the "No date" group at the top, and the same session shows both at once; a session Sesori has never prompted shows no time column at all; and "Working…" now ticks. Run together with `session-turns.md`'s busy-send check. |
@@ -2149,7 +2199,8 @@ a short recording on a real iPhone, including the edge swipe, and on macOS.
 
 - The step 7 pinch tests rewritten for the new outcome, with the same iOS,
   Android and macOS variants: a pinch in opens the screen once per gesture,
-  including with one finger held still; a pinch out does nothing; one-finger
+  including with one finger held still; a pinch out on the transcript does
+  nothing; one-finger
   scroll, taps, the touch and trackpad peek and a nested horizontal scroll are
   unaffected; a pinch that opens nothing leaves the follow state alone, and a
   pinch while reading history stays detached.
@@ -2216,9 +2267,27 @@ tests:
 
 Also screenshots and the regression document.
 
+**Step 16.b — pinch out closes the Prompts screen.** D43 and
+[Architecture 13](#13-pinch-opens-the-prompts-screen-step-13). Verify with
+widget tests on the iOS, Android and macOS variants:
+
+- a pinch out follows the fingers, closes once spread past halfway, and springs
+  back when let go short of it; a quick short spread closes; a trackpad pinch
+  does the same;
+- one-finger scroll, a pinch in and the search field's double-tap selection are
+  unaffected;
+- the close button, Escape, back, Android predictive back, a tapped row and the
+  pinch out each reverse the transition rather than removing the layer, and the
+  transcript has not moved afterwards;
+- on desktop, ⌘[ or Ctrl+[ closes what a page has open before it leaves the
+  page.
+
+Also the regression document. Analyze `module_app_ui`, `client/app` and
+`client/desktop`.
+
 **Step 17 — reconcile the documents.** Reconcile
 `docs/regression/transcript-turn-navigation.md`, its cross-references and
-`docs/HARNESS_CAPABILITIES.md` with what actually shipped across steps 10–16,
+`docs/HARNESS_CAPABILITIES.md` with what actually shipped across steps 10–16.b,
 and remove anything stale. Documentation only.
 
 **Step 18 — verify and retire.** Run L3 over the matrix recorded above, record

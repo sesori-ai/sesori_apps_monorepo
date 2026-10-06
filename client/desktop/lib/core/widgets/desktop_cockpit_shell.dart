@@ -77,7 +77,8 @@ class const DesktopCockpitShell({
   required final VoidCallback onOpenProjects,
   required final VoidCallback onOpenSettings,
 
-  /// Leaves a pushed page; a page reached from the sidebar has nowhere to go.
+  /// Closes what the page has open, such as its Prompts screen, else leaves a
+  /// pushed page; a page reached from the sidebar has nowhere to go.
   required final VoidCallback onGoBack,
   required final Widget child,
 }) extends StatelessWidget {

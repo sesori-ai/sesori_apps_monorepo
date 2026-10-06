@@ -1461,6 +1461,232 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.getTopLeft(layer), Offset.zero);
       }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+      /// Whether the layer is leaving: only a reversing transition ignores taps.
+      bool leaving(WidgetTester tester) =>
+          tester.widget<IgnorePointer>(find.ancestor(of: layer, matching: find.byType(IgnorePointer)).first).ignoring;
+
+      /// Pumps frames until the transition starts to take the screen away.
+      Future<void> pumpUntilLeaving(WidgetTester tester) async {
+        for (var frame = 0; frame < 30 && !leaving(tester); frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+      }
+
+      testWidgets("every way out but the edge swipe runs the opening backwards", (tester) async {
+        await tester.pumpWidget(_buildApp(cubit: cubit));
+        await tester.pumpAndSettle();
+        final before = transcriptAsSeen(tester);
+        final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+        final waysOut = <String, Future<void> Function()>{
+          "the close button": () => tester.tap(find.byTooltip("Close prompts")),
+          "Escape": () => tester.sendKeyEvent(LogicalKeyboardKey.escape),
+          "back": () => tester.binding.handlePopRoute(),
+          "a pinch out": () async {
+            final fingers = await _TwoFingers.land(tester: tester, center: tester.getCenter(layer), gap: 120);
+            await fingers.spread(scale: 1.4, stepTime: const Duration(milliseconds: 200));
+            await fingers.lift(after: const Duration(milliseconds: 200));
+          },
+          // Last: the jump moves the transcript the others leave untouched.
+          "a tapped prompt": () => tester.tap(find.text("Prompt 10").last),
+        };
+
+        for (final MapEntry(key: way, value: leave) in waysOut.entries) {
+          await openPrompts(tester);
+          await leave();
+          await tester.pump();
+          await pumpUntilLeaving(tester);
+          await tester.pump(const Duration(milliseconds: 30));
+          expect(layer, findsOneWidget, reason: "$way takes the screen away through the transition");
+          expect(leaving(tester), isTrue, reason: "$way reverses the transition");
+          expect(opacity(tester), inExclusiveRange(0, 1), reason: "$way fades the screen out");
+          expect(
+            tester.getRect(layer).width,
+            inExclusiveRange(screen.width * 0.96, screen.width),
+            reason: "$way shrinks the screen back",
+          );
+          await tester.pumpAndSettle();
+          expect(layer, findsNothing, reason: way);
+          expect(find.byType(SessionDetailBody), findsOneWidget, reason: "$way closed the screen, not the page");
+          if (way != "a tapped prompt") expect(transcriptAsSeen(tester), before, reason: way);
+        }
+      }, variant: _pinchPlatforms);
+
+      testWidgets("Android's predictive back closes it the same way once committed", (tester) async {
+        await tester.pumpWidget(_buildApp(cubit: cubit));
+        await tester.pumpAndSettle();
+        final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+        await openPrompts(tester);
+        Future<void> backGesture(String method, {required Map<String, Object?>? arguments}) =>
+            tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+              SystemChannels.backGesture.name,
+              SystemChannels.backGesture.codec.encodeMethodCall(MethodCall(method, arguments)),
+              (_) {},
+            );
+
+        await backGesture(
+          "startBackGesture",
+          arguments: {
+            "touchOffset": [5.0, 300.0],
+            "progress": 0.0,
+            "swipeEdge": 0,
+          },
+        );
+        await backGesture(
+          "updateBackGestureProgress",
+          arguments: {
+            "touchOffset": [120.0, 300.0],
+            "progress": 0.5,
+            "swipeEdge": 0,
+          },
+        );
+        await tester.pump();
+        expect(tester.getRect(layer), screen, reason: "nothing follows a back the page will not take");
+        expect(opacity(tester), 1);
+
+        await backGesture("commitBackGesture", arguments: null);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 60));
+        expect(leaving(tester), isTrue);
+        expect(opacity(tester), inExclusiveRange(0, 1));
+        await tester.pumpAndSettle();
+        expect(layer, findsNothing);
+        expect(find.byType(SessionDetailBody), findsOneWidget);
+      }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+      group("a pinch out", () {
+        const slow = Duration(milliseconds: 200);
+        Future<_TwoFingers> land(WidgetTester tester) =>
+            _TwoFingers.land(tester: tester, center: tester.getCenter(layer), gap: 120);
+
+        testWidgets("closes the screen in step with the fingers once spread past halfway", (tester) async {
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pumpAndSettle();
+          final before = transcriptAsSeen(tester);
+          final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+          await openPrompts(tester);
+
+          final fingers = await land(tester);
+          await fingers.spread(scale: 1.1, stepTime: slow);
+          final early = opacity(tester);
+          expect(early, inExclusiveRange(0.5, 1), reason: "the screen starts to leave as the fingers part");
+          expect(tester.getRect(layer).width, inExclusiveRange(screen.width * 0.96, screen.width));
+          expect(leaving(tester), isFalse, reason: "the fingers, not the clock, move it");
+          await fingers.spread(scale: 1.4, stepTime: slow);
+          final spread = opacity(tester);
+          expect(spread, inExclusiveRange(0, early), reason: "and goes further as they spread");
+          expect(transcriptAsSeen(tester), before);
+
+          await fingers.lift(after: slow);
+          await tester.pump(const Duration(milliseconds: 20));
+          expect(layer, findsOneWidget, reason: "it finishes leaving rather than vanishing");
+          expect(opacity(tester), lessThan(spread));
+          await tester.pumpAndSettle();
+          expect(layer, findsNothing);
+          expect(find.byType(SessionDetailBody), findsOneWidget);
+          expect(transcriptAsSeen(tester), before);
+        }, variant: _pinchPlatforms);
+
+        testWidgets("let go short of halfway springs back open", (tester) async {
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pumpAndSettle();
+          final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+          await openPrompts(tester);
+
+          final fingers = await land(tester);
+          await fingers.spread(scale: 1.15, stepTime: slow);
+          final held = opacity(tester);
+          expect(held, inExclusiveRange(0, 1));
+          await fingers.lift(after: slow);
+          await tester.pump(const Duration(milliseconds: 20));
+          expect(opacity(tester), inExclusiveRange(held, 1), reason: "it springs back, not snaps");
+          await tester.pumpAndSettle();
+          expect(opacity(tester), 1);
+          expect(tester.getRect(layer), screen);
+        }, variant: _pinchPlatforms);
+
+        testWidgets("a quick short spread closes", (tester) async {
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pumpAndSettle();
+          await openPrompts(tester);
+
+          final fingers = await land(tester);
+          await fingers.spread(scale: 1.15, stepTime: const Duration(milliseconds: 10));
+          await fingers.lift(after: const Duration(milliseconds: 10));
+          await tester.pumpAndSettle();
+          expect(layer, findsNothing);
+        }, variant: _pinchPlatforms);
+
+        testWidgets("on a trackpad closes past halfway and springs back short of it", (tester) async {
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pumpAndSettle();
+          final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+          Future<void> trackpadPinch({required double scale}) async {
+            final gesture = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+            await gesture.panZoomStart(tester.getCenter(layer));
+            var time = Duration.zero;
+            for (var step = 1; step <= 5; step++) {
+              time += slow;
+              await gesture.panZoomUpdate(tester.getCenter(layer), scale: 1 + (scale - 1) * step / 5, timeStamp: time);
+              await tester.pump();
+            }
+            await gesture.panZoomEnd(timeStamp: time + slow);
+            await tester.pump();
+          }
+
+          await openPrompts(tester);
+          await trackpadPinch(scale: 1.15);
+          await tester.pumpAndSettle();
+          expect(opacity(tester), 1);
+          expect(tester.getRect(layer), screen);
+
+          await trackpadPinch(scale: 1.5);
+          await tester.pump(const Duration(milliseconds: 20));
+          expect(leaving(tester), isTrue);
+          await tester.pumpAndSettle();
+          expect(layer, findsNothing);
+        }, variant: _pinchPlatforms);
+
+        testWidgets("leaves scrolling, pinching in and the search field alone", (tester) async {
+          // Short enough that the twelve prompts overflow and the list can scroll.
+          tester.view.physicalSize = const Size(800, 400) * tester.view.devicePixelRatio;
+          addTearDown(tester.view.resetPhysicalSize);
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pumpAndSettle();
+          final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+          await openPrompts(tester);
+
+          final list = find.descendant(
+            of: layer,
+            matching: find.byWidgetPredicate((widget) => widget is Scrollable && widget.axis == Axis.vertical),
+          );
+          final position = tester.state<ScrollableState>(list.first).position;
+          final pixels = position.pixels;
+          await tester.drag(list.first, Offset(0, pixels > position.minScrollExtent ? 300 : -300));
+          await tester.pumpAndSettle();
+          expect(position.pixels, isNot(pixels), reason: "one finger scrolls the list");
+          expect(opacity(tester), 1);
+
+          final fingers = await _TwoFingers.land(tester: tester, center: tester.getCenter(layer), gap: 240);
+          await fingers.spread(scale: 0.5, stepTime: slow);
+          await fingers.lift(after: slow);
+          await tester.pumpAndSettle();
+          expect(opacity(tester), 1, reason: "pinching in on the screen does nothing");
+          expect(tester.getRect(layer), screen);
+
+          final field = find.descendant(of: layer, matching: find.byType(EditableText));
+          await tester.enterText(field, "Prompt");
+          await tester.pumpAndSettle();
+          final word = tester.getTopLeft(field) + Offset(8, tester.getSize(field).height / 2);
+          await tester.tapAt(word);
+          await tester.pump(const Duration(milliseconds: 50));
+          await tester.tapAt(word);
+          await tester.pumpAndSettle();
+          final selection = tester.widget<EditableText>(field).controller.selection;
+          expect(selection, const TextSelection(baseOffset: 0, extentOffset: 6), reason: "a double tap selects");
+          expect(layer, findsOneWidget);
+        }, variant: _pinchPlatforms);
+      });
     });
   });
 
@@ -4727,4 +4953,54 @@ void main() {
       verify(() => cubit.removeFailedSend()).called(1);
     });
   });
+}
+
+/// The platforms the transcript's pinch tests run on.
+const _pinchPlatforms = TargetPlatformVariant({TargetPlatform.iOS, TargetPlatform.android, TargetPlatform.macOS});
+
+/// Two fingers across [center], [gap] px apart along the horizontal, moved
+/// apart or together in even steps on a clock of their own, so slow steps
+/// give the release no speed and quick ones do.
+class _TwoFingers({
+  required final WidgetTester tester,
+  required final Offset center,
+  required final double gap,
+  required final TestGesture first,
+  required final TestGesture second,
+}) {
+  late double _apart = gap;
+  Duration _time = Duration.zero;
+
+  static Future<_TwoFingers> land({
+    required WidgetTester tester,
+    required Offset center,
+    required double gap,
+  }) async => _TwoFingers(
+    tester: tester,
+    center: center,
+    gap: gap,
+    first: await tester.startGesture(center - Offset(gap / 2, 0)),
+    second: await tester.startGesture(center + Offset(gap / 2, 0)),
+  );
+
+  /// Moves them to [scale] times their landing gap in four steps, [stepTime]
+  /// apart.
+  Future<void> spread({required double scale, required Duration stepTime}) async {
+    final from = _apart;
+    for (var step = 1; step <= 4; step++) {
+      _time += stepTime;
+      _apart = from + (gap * scale - from) * step / 4;
+      await first.moveTo(center - Offset(_apart / 2, 0), timeStamp: _time);
+      await second.moveTo(center + Offset(_apart / 2, 0), timeStamp: _time);
+      await tester.pump();
+    }
+  }
+
+  /// Lifts both, [after] the last move.
+  Future<void> lift({required Duration after}) async {
+    _time += after;
+    await first.up(timeStamp: _time);
+    await second.up(timeStamp: _time);
+    await tester.pump();
+  }
 }

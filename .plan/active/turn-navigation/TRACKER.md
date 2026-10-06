@@ -30,6 +30,10 @@ step lives in `steps/step-NN.md`, written only by that step's own PR.
   reduced motion. Built by step 11. The pinned prompt's behaviour belongs to the
   standalone `sticky-prompt-continuity` PR; this plan's steps keep it working and
   do not restate its geometry.
+- **D43 is the user's decision of 2026-10-06.** A pinch out on the Prompts
+  screen closes it, following the fingers and finishing or springing back on
+  release, and every way out except the iOS edge swipe runs the opening
+  transition backwards. Built by step 16.b.
 
 See [PLAN](PLAN.md#decisions) for each one, including which are superseded.
 
@@ -93,6 +97,7 @@ phase, and the original step 10 (retirement) is renumbered to step 18, as
 | 14.b | `turn-navigation/turn-model-trim` | [14.b](#fixed-pr-titles) | ≤ 500 | 14 |
 | 15 | `turn-navigation/prompt-numbers` | [15](#fixed-pr-titles) | ≤ 900 | 11 |
 | 16 | `turn-navigation/prompts-search` | [16](#fixed-pr-titles) | ≤ 900 | 15 |
+| 16.b | `turn-navigation/pinch-out-closes` | [16.b](#fixed-pr-titles) | ≤ 900 | 13 |
 | 17 | `turn-navigation/docs` | [17](#fixed-pr-titles) | ≤ 400 | 10–16 |
 | 18 | `turn-navigation/retire` | [18](#fixed-pr-titles) | ≤ 250 | 2–17 |
 
@@ -110,6 +115,10 @@ documentation). If the turn-model trim it also enables pushes it past target, th
 trim lands as step 14.b and the series total becomes 19. It did: step 14.b
 removes the turn model's outcome, summary and duration, with their tests.
 
+Step 16.b was added on 2026-10-06 for D43, after steps 15 and 16 had shipped,
+so the series total becomes 20. Most of its diff is widget tests across the
+three pinch platforms and every way out.
+
 Steps 12 and 15 may run in parallel once step 11 has merged; step 13 follows
 step 12, whose transition its focal point feeds. Step 14 must
 follow step 13, so no PR leaves the pinch without a destination.
@@ -119,7 +128,9 @@ follow step 13, so no PR leaves the pinch without a destination.
 Steps 1–8 merged as `[step N/10]`. Those titles are published history and are
 left exactly as they were published; only steps 9 onwards carry `/18`.
 
-Title mapping: step 14.b ships as PR 15/19 and the plan's steps 15–18 ship as PRs 16/19–19/19; step ids are unchanged.
+Title mapping: step 14.b shipped as PR 15/19 and steps 15 and 16 as PRs 16/19
+and 17/19. Step 16.b ships as PR 18/20 and steps 17 and 18 as PRs 19/20 and
+20/20; step ids are unchanged.
 
 1. `🌿 [turn-navigation] Plan folded turns, sticky prompts and pinch navigation [step 1/10]` (merged)
 2. `🌿 [turn-navigation] Derive transcript turns from loaded messages [step 2/10]` (merged)
@@ -136,8 +147,9 @@ Title mapping: step 14.b ships as PR 15/19 and the plan's steps 15–18 ship as 
 13. `⚙️ [turn-navigation] Pinch the transcript to open the Prompts screen [step 13/18]`
 14. `⚙️ [turn-navigation] Remove the in-place transcript fold [step 14/18]`
     - 14.b: `🌱 [turn-navigation] Trim the turn model to what its readers use [step 15/19]`
-15. `🚧 [turn-navigation] Number and time prompts from the bridge [step 15/18]`
-16. `⚙️ [turn-navigation] Search the loaded prompts from the screen's header [step 16/18]`
-17. `🌱 [turn-navigation] Reconcile the turn-navigation documents with what shipped [step 17/18]`
-18. `🌱 [turn-navigation] Record the L3 matrix and retire the plan [step 18/18]`
+15. `🚧 [turn-navigation] Number and time prompts from the bridge [step 16/19]` (merged)
+16. `⚙️ [turn-navigation] Search the loaded prompts from the screen's header [step 17/19]` (merged)
+    - 16.b: `⚙️ [turn-navigation] Pinch out to close the Prompts screen [step 18/20]`
+17. `🌱 [turn-navigation] Reconcile the turn-navigation documents with what shipped [step 19/20]`
+18. `🌱 [turn-navigation] Record the L3 matrix and retire the plan [step 20/20]`
 

@@ -1,22 +1,13 @@
 import "package:flutter/gestures.dart";
 import "package:material_ui/material_ui.dart";
 
-/// Reports a pinch in on the transcript, by touch or trackpad. A pinch out
-/// reports nothing: on the transcript there is nothing to pinch out of.
-///
-/// A second finger claims the gesture at once, so a pinch never loses to the
-/// list's vertical drag, even with one finger held still. One finger alone
-/// never pinches and gives the gesture up after a few pixels, so scrolling,
-/// taps, the timestamp peek and a code block's horizontal scroll are
-/// untouched. Two fingers on a touch screen therefore
-/// pinch and never scroll. A trackpad pinch wins once its scale changes, and a
-/// trackpad pan never pinches.
-///
-/// A gesture runs from its first pointer down to its last pointer up, and
-/// pinches in at most once.
-class const TranscriptPinchDetector({
-  super.key,
+/// What a pinch on a [TranscriptPinchDetector] does.
+sealed class const TranscriptPinch();
 
+/// The transcript's pinch: a pinch in past its threshold reports once, and a
+/// pinch out reports nothing, since on the transcript there is nothing to
+/// pinch out of.
+final class const TranscriptPinchIn({
   /// A gesture's first pointer landed, before any recognizer has won it.
   required final VoidCallback onPointerDown,
 
@@ -29,6 +20,37 @@ class const TranscriptPinchDetector({
 
   /// The gesture's last pointer lifted, or the pinch lost its gesture.
   required final VoidCallback onGestureEnd,
+}) extends TranscriptPinch;
+
+/// The Prompts screen's pinch: a pinch out is followed while the fingers
+/// spread, then let go once, and a pinch in reports nothing.
+final class const TranscriptPinchOut({
+  /// The pinch began at [focalPoint], in global coordinates. Once per gesture.
+  required final void Function({required Offset focalPoint}) onStart,
+
+  /// How far the fingers have spread since, from 0 to 1 at full spread.
+  required final void Function({required double progress}) onProgress,
+
+  /// The fingers let go, or one of them did; [closes] when they had spread
+  /// past halfway, or were spreading fast. Nothing follows in that gesture.
+  required final void Function({required bool closes}) onRelease,
+}) extends TranscriptPinch;
+
+/// Reports a pinch by touch or trackpad, as [pinch] asks.
+///
+/// A second finger claims the gesture at once, so a pinch never loses to the
+/// list's vertical drag, even with one finger held still. One finger alone
+/// never pinches and gives the gesture up after a few pixels, so scrolling,
+/// taps, the timestamp peek and a code block's horizontal scroll are
+/// untouched. Two fingers on a touch screen therefore
+/// pinch and never scroll. A trackpad pinch wins once its scale changes, and a
+/// trackpad pan never pinches.
+///
+/// A gesture runs from its first pointer down to its last pointer up, and
+/// pinches in, or is let go, at most once.
+class const TranscriptPinchDetector({
+  super.key,
+  required final TranscriptPinch pinch,
   required final Widget child,
 }) extends StatefulWidget {
   @override
@@ -38,19 +60,71 @@ class const TranscriptPinchDetector({
 class _TranscriptPinchDetectorState() extends State<TranscriptPinchDetector> {
   static const double _kPinchInScale = 0.8;
 
-  bool _pinchedIn = false;
+  /// The scale at which a pinch out has spread fully.
+  static const double _kPinchOutFullScale = 1.5;
+
+  /// The spread past which a pinch out let go closes: a scale of 1.25, the
+  /// pinch in's 0.8 turned over.
+  static const double _kPinchOutCloses = 0.5;
+
+  /// A pinch out let go faster than this, in scale a second, closes or stays
+  /// by its direction rather than by how far it spread.
+  static const double _kPinchOutFlingVelocity = 1;
+
+  /// The gesture has had its outcome: it pinched in, or was let go.
+  bool _done = false;
+
+  /// The scale a pinch out is measured from, once it has begun.
+  double? _outFrom;
+  double _outProgress = 0;
 
   void _onFirstPointer() {
-    _pinchedIn = false;
-    widget.onPointerDown();
+    _done = false;
+    _outFrom = null;
+    _outProgress = 0;
+    if (widget.pinch case TranscriptPinchIn(:final onPointerDown)) onPointerDown();
   }
 
-  void _onStart(ScaleStartDetails details) => widget.onPinchStart();
+  void _onStart(ScaleStartDetails details) {
+    if (widget.pinch case TranscriptPinchIn(:final onPinchStart)) onPinchStart();
+  }
 
   void _onUpdate(ScaleUpdateDetails details) {
-    if (_pinchedIn || details.scale > _kPinchInScale) return;
-    _pinchedIn = true;
-    widget.onPinchIn(focalPoint: details.focalPoint);
+    if (_done) return;
+    switch (widget.pinch) {
+      case TranscriptPinchIn(:final onPinchIn):
+        if (details.scale > _kPinchInScale) return;
+        _done = true;
+        onPinchIn(focalPoint: details.focalPoint);
+      case TranscriptPinchOut(:final onStart, :final onProgress):
+        // Measured from the first update, so a trackpad's own start-up scale
+        // does not move the screen on its own.
+        final from = _outFrom;
+        if (from == null) {
+          _outFrom = details.scale;
+          onStart(focalPoint: details.focalPoint);
+          return;
+        }
+        _outProgress = ((details.scale / from - 1) / (_kPinchOutFullScale - 1)).clamp(0.0, 1.0);
+        onProgress(progress: _outProgress);
+    }
+  }
+
+  /// Lets a pinch out go when its fingers lift or one of them does: a lone
+  /// finger left behind measures no spread, so it cannot carry it on.
+  void _onEnd(ScaleEndDetails details) {
+    if (_done || _outFrom == null) return;
+    if (widget.pinch case TranscriptPinchOut(:final onRelease)) {
+      _done = true;
+      final velocity = details.scaleVelocity;
+      onRelease(
+        closes: velocity.abs() >= _kPinchOutFlingVelocity ? velocity > 0 : _outProgress >= _kPinchOutCloses,
+      );
+    }
+  }
+
+  void _onLastPointerGone() {
+    if (widget.pinch case TranscriptPinchIn(:final onGestureEnd)) onGestureEnd();
   }
 
   @override
@@ -64,9 +138,10 @@ class _TranscriptPinchDetectorState() extends State<TranscriptPinchDetector> {
           ),
           (recognizer) => recognizer
             ..onFirstPointer = _onFirstPointer
-            ..onLastPointerGone = widget.onGestureEnd
+            ..onLastPointerGone = _onLastPointerGone
             ..onStart = _onStart
-            ..onUpdate = _onUpdate,
+            ..onUpdate = _onUpdate
+            ..onEnd = _onEnd,
         ),
       },
       child: widget.child,
