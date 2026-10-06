@@ -130,6 +130,7 @@ class PiRpcClient({
   final List<PiRpcFrame> _startupFrames = [];
   final List<String> _stderrTail = [];
   final Completer<int> _exited = Completer<int>();
+  final StreamController<PiExtensionUiFrame> _startupExtensionUi = StreamController.broadcast();
 
   late final StreamController<PiRpcFrame> _frames = StreamController<PiRpcFrame>.broadcast(
     onListen: _flushStartupFrames,
@@ -141,6 +142,10 @@ class PiRpcClient({
   /// on attachment, so a session started by a launch does not lose the events
   /// Pi emits while the router is still being wired.
   Stream<PiRpcFrame> get frames => _frames.stream;
+
+  /// Questions needed to unblock startup before the resident frame router is
+  /// attached. Other startup events remain buffered for that router.
+  Stream<PiExtensionUiFrame> get startupExtensionUi => _startupExtensionUi.stream;
 
   /// Completes with the process's exit code.
   Future<int> get processExit => _exited.future;
@@ -327,7 +332,7 @@ class PiRpcClient({
       pendingError: const PiRpcDisposedException(),
     );
     try {
-      await _frames.close();
+      await Future.wait([_frames.close(), _startupExtensionUi.close()]);
     } on Object catch (error, stack) {
       Log.w("[pi] failed to close the frame stream", error, stack);
     }
@@ -388,6 +393,10 @@ class PiRpcClient({
 
   void _deliver(PiRpcFrame frame) {
     if (_frames.isClosed) return;
+    if (!_attached && frame is PiExtensionUiFrame && _startupExtensionUi.hasListener) {
+      _startupExtensionUi.add(frame);
+      return;
+    }
     if (_attached) {
       _frames.add(frame);
       return;

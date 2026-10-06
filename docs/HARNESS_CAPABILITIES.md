@@ -623,6 +623,23 @@ including numbered invocation aliases, while preserving user commands with the
 same name. This command is **not supported** through Pi RPC; ordinary extension,
 prompt, and skill commands remain available.
 
+## Pi extension startup dialogs
+
+Pi RPC supports extension select, confirm, input, and editor dialogs during
+startup through Sesori's temporary startup extension. Catalog probes cancel
+these dialogs; session launches use the existing question/reply flow and do not
+grant MCP access automatically. Commands buffered during extension startup are
+handed back to native RPC unchanged, and native Pi owns later dialogs.
+
+Startup dialog fixtures and catalog discovery were verified on macOS arm64 with
+Pi 1.0.4 (npm) and managed Pi 0.85.1 and 0.84.4. Pi 1.0.4 also passed installed
+MCP adapter approvals, new/resume/fork RPC launches, and a full Sesori plugin
+session completing an authenticated GPT-6.1 request. Pi 1.0.4 currently awaits
+extension startup before reading stdin; an unanswered startup dialog can
+otherwise exit or hang the process. Sesori forwards startup questions before
+waiting for initial history. A runtime already reading stdin uses its own
+implementation directly.
+
 ## Accepted prompts without transcript output
 
 An accepted prompt must gain a bridge-queue or transcript representation, or
