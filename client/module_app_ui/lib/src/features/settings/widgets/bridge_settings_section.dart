@@ -8,6 +8,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../widgets/bridge_update_sheet.dart";
 import "../../session_detail/widgets/yolo_chip.dart";
 import "settings_section.dart";
 
@@ -43,9 +44,12 @@ class const BridgeSettingsSection({
                         (state.yoloMutation is! YoloMutationInProgress &&
                             state.pluginWarmupMutation is! PluginWarmupMutationInProgress)) =>
               () => unawaited(_editInterval(context: context, state: state)),
+            BridgeSettingsUnsupported() ||
+            BridgeSettingsReady(
+              pullRequestRefreshMutation: PullRequestRefreshMutationUnsupported(),
+            ) => () => unawaited(showBridgeUpdateSheet(context: context)),
             BridgeSettingsLoading() ||
             BridgeSettingsDisconnected() ||
-            BridgeSettingsUnsupported() ||
             BridgeSettingsFailure() ||
             BridgeSettingsReady() => null,
           },
@@ -88,6 +92,15 @@ class const _YoloSettingsRow() extends StatelessWidget {
         ready.yoloMutation is! YoloMutationUnsupported &&
         ready.pullRequestRefreshMutation is! PullRequestRefreshMutationInProgress &&
         ready.pluginWarmupMutation is! PluginWarmupMutationInProgress;
+    final bridgeOutdated = switch (state) {
+      BridgeSettingsReadyFull(yoloMutation: YoloMutationUnsupported()) ||
+      BridgeSettingsReadyLegacyPartial() ||
+      BridgeSettingsUnsupported() => true,
+      BridgeSettingsReadyFull() ||
+      BridgeSettingsLoading() ||
+      BridgeSettingsDisconnected() ||
+      BridgeSettingsFailure() => false,
+    };
 
     void toggle({required bool enabled}) {
       final current = ready;
@@ -104,18 +117,13 @@ class const _YoloSettingsRow() extends StatelessWidget {
         trailing: switch (state) {
           BridgeSettingsLoading() ||
           BridgeSettingsReadyFull(yoloMutation: YoloMutationInProgress()) => const PregoActivityIndicator(color: null),
-          BridgeSettingsReadyFull(yoloMutation: YoloMutationUnsupported()) => Text(
-            context.loc.settingsPullRequestRefreshUnavailable,
-            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
-          ),
+          BridgeSettingsReadyFull(yoloMutation: YoloMutationUnsupported()) ||
+          BridgeSettingsReadyLegacyPartial() ||
+          BridgeSettingsUnsupported() => const BridgeUpdateRowTrailing(),
           BridgeSettingsReadyFull(:final yoloEnabled) => PregoSwitch(
             key: const Key("yolo_switch"),
             value: yoloEnabled,
             onChanged: interactive ? (enabled) => toggle(enabled: enabled) : null,
-          ),
-          BridgeSettingsReadyLegacyPartial() || BridgeSettingsUnsupported() => Text(
-            context.loc.settingsPullRequestRefreshUnavailable,
-            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
           ),
           BridgeSettingsDisconnected() => null,
           BridgeSettingsFailure() || BridgeSettingsReadyFull(yoloMutation: YoloMutationUncertain()) => IconButton(
@@ -125,7 +133,11 @@ class const _YoloSettingsRow() extends StatelessWidget {
             icon: const Icon(TablerRegular.refresh),
           ),
         },
-        onTap: !interactive ? null : () => toggle(enabled: !ready.yoloEnabled),
+        onTap: bridgeOutdated
+            ? () => unawaited(showBridgeUpdateSheet(context: context))
+            : !interactive
+            ? null
+            : () => toggle(enabled: !ready.yoloEnabled),
       ),
     );
   }
@@ -148,6 +160,15 @@ class const _PluginWarmupSettingsRow() extends StatelessWidget {
         enabled != null &&
         ready.yoloMutation is! YoloMutationInProgress &&
         ready.pullRequestRefreshMutation is! PullRequestRefreshMutationInProgress;
+    final bridgeOutdated = switch (state) {
+      BridgeSettingsReadyFull(pluginWarmupMutation: PluginWarmupMutationUnsupported()) ||
+      BridgeSettingsReadyLegacyPartial() ||
+      BridgeSettingsUnsupported() => true,
+      BridgeSettingsReadyFull() ||
+      BridgeSettingsLoading() ||
+      BridgeSettingsDisconnected() ||
+      BridgeSettingsFailure() => false,
+    };
 
     void toggle({required bool enabled}) {
       final current = ready;
@@ -171,12 +192,7 @@ class const _PluginWarmupSettingsRow() extends StatelessWidget {
             PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
           BridgeSettingsReadyFull(pluginWarmupMutation: PluginWarmupMutationUnsupported()) ||
           BridgeSettingsReadyLegacyPartial() ||
-          BridgeSettingsUnsupported() => Text(
-            context.loc.settingsPullRequestRefreshUnavailable,
-            style: context.prego.textTheme.textSm.regular.copyWith(
-              color: context.prego.colors.textSecondary,
-            ),
-          ),
+          BridgeSettingsUnsupported() => const BridgeUpdateRowTrailing(),
           BridgeSettingsReadyFull(
             pluginWarmupMutation: PluginWarmupMutationIdle(:final enabled) ||
                 PluginWarmupMutationFailed(:final enabled),
@@ -195,7 +211,11 @@ class const _PluginWarmupSettingsRow() extends StatelessWidget {
             icon: const Icon(TablerRegular.refresh),
           ),
         },
-        onTap: enabled == null || !interactive ? null : () => toggle(enabled: !enabled),
+        onTap: bridgeOutdated
+            ? () => unawaited(showBridgeUpdateSheet(context: context))
+            : enabled == null || !interactive
+            ? null
+            : () => toggle(enabled: !enabled),
       ),
     );
   }
@@ -266,10 +286,8 @@ Widget? _trailing({required BuildContext context, required BridgeSettingsState s
     BridgeSettingsReady(
       pullRequestRefreshMutation: PullRequestRefreshMutationInProgress(),
     ) => const PregoActivityIndicator(color: null),
-    BridgeSettingsReady(pullRequestRefreshMutation: PullRequestRefreshMutationUnsupported()) => Text(
-      context.loc.settingsPullRequestRefreshUnavailable,
-      style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
-    ),
+    BridgeSettingsReady(pullRequestRefreshMutation: PullRequestRefreshMutationUnsupported()) ||
+    BridgeSettingsUnsupported() => const BridgeUpdateRowTrailing(),
     BridgeSettingsReady(pullRequestRefreshMutation: PullRequestRefreshMutationUncertain()) => IconButton(
       key: const Key("pull_request_refresh_retry"),
       tooltip: context.loc.settingsPullRequestRefreshRetry,
@@ -287,10 +305,6 @@ Widget? _trailing({required BuildContext context, required BridgeSettingsState s
         ),
         Icon(TablerRegular.chevron_right, size: PregoIconSize.sm, color: context.prego.colors.textTertiary),
       ],
-    ),
-    BridgeSettingsUnsupported() => Text(
-      context.loc.settingsPullRequestRefreshUnavailable,
-      style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
     ),
     BridgeSettingsDisconnected() => null,
     BridgeSettingsFailure() => IconButton(

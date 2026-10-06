@@ -6,12 +6,14 @@ import "package:theme_prego/module_prego.dart";
 import "../extensions/build_context_x.dart";
 
 /// Stands in for a composer that cannot send: why, what to do about it, and
-/// the way to harness settings and a recheck when either applies.
+/// the way to harness settings, the bridge update steps, and a recheck when
+/// each applies.
 class const HarnessBlockedNotice({
   super.key,
   required final String title,
   required final String? details,
   required final VoidCallback? onOpenHarnessSettings,
+  required final VoidCallback? onShowBridgeUpdate,
   required final VoidCallback? onRecheck,
 }) extends StatelessWidget {
   @override
@@ -20,6 +22,7 @@ class const HarnessBlockedNotice({
     final prego = context.prego;
     final details = this.details;
     final onOpenHarnessSettings = this.onOpenHarnessSettings;
+    final onShowBridgeUpdate = this.onShowBridgeUpdate;
     final onRecheck = this.onRecheck;
 
     return Semantics(
@@ -42,7 +45,7 @@ class const HarnessBlockedNotice({
                 const SizedBox(height: 8),
                 Text(details, style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary)),
               ],
-              if (onOpenHarnessSettings != null || onRecheck != null) ...[
+              if (onOpenHarnessSettings != null || onShowBridgeUpdate != null || onRecheck != null) ...[
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
@@ -55,6 +58,14 @@ class const HarnessBlockedNotice({
                         hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
                         size: PregoButtonsSolidSize.sm,
                         onPressed: onOpenHarnessSettings,
+                      ),
+                    if (onShowBridgeUpdate != null)
+                      PregoButtonsSolid(
+                        key: const Key("session_bridge_update"),
+                        label: loc.bridgeUpdateHowTo,
+                        hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                        size: PregoButtonsSolidSize.sm,
+                        onPressed: onShowBridgeUpdate,
                       ),
                     if (onRecheck != null)
                       TextButton(

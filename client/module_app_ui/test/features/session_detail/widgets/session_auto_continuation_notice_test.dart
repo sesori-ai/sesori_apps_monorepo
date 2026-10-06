@@ -223,8 +223,12 @@ void main() {
     verify(() => cubit.setAutoContinuation(enabled: false)).called(1);
 
     await pumpMenu(null);
-    expect(entry.isEnabled, isFalse);
+    expect(entry.isEnabled, isTrue);
     expect(entry.subtitle, contains("Update your bridge"));
+    entry.onTap();
+    await tester.pumpAndSettle();
+    expect(find.text("Update Sesori Bridge"), findsOneWidget);
+    verifyNever(() => cubit.setAutoContinuation(enabled: true));
     await pumpMenu(view(enabled: false, status: known, availability: AutoContinuationAvailability.unknown));
     expect(entry.isEnabled, isFalse);
     expect(entry.isSelected, isFalse);

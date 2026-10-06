@@ -11,6 +11,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../utils/copy_text_to_clipboard.dart";
+import "../../widgets/bridge_update_sheet.dart";
 import "../../widgets/catalog_scan_row.dart";
 import "widgets/settings_section.dart";
 import "widgets/settings_window_page.dart";

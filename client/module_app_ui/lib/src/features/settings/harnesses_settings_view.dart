@@ -90,6 +90,13 @@ class const _UnsupportedView() extends StatelessWidget {
       icon: TablerRegular.info_circle,
       title: Text(context.loc.harnessesUnsupportedTitle),
       subtitle: Text(context.loc.harnessesUnsupportedDescription),
+      trailing: PregoButtonsSolid(
+        key: const Key("harnesses_bridge_update"),
+        label: context.loc.bridgeUpdateHowTo,
+        hierarchy: PregoButtonsSolidHierarchy.tertiary,
+        size: PregoButtonsSolidSize.sm,
+        onPressed: () => unawaited(showBridgeUpdateSheet(context: context)),
+      ),
     );
   }
 }

@@ -23,7 +23,8 @@ defaults and queued client sends coherent.
 - Existing chats on mobile and desktop become read-only when harness management
   reports their exact harness unusable. The accessible live notice explains the
   reason, opens Harness Settings when setup is relevant, and offers Recheck only
-  when authentication is required. Composer,
+  when authentication is required. An old bridge that cannot report availability
+  offers the shared bridge update steps instead of Harness Settings. Composer,
   voice/attachment entry, slash commands, prompt selections, stop, remote queued-
   prompt cancellation and question/permission replies cannot mutate the session.
   Open response dialogs close without answering when availability changes.

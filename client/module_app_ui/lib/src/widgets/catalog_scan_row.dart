@@ -9,6 +9,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../extensions/build_context_x.dart";
 import "../l10n/app_localizations.dart";
+import "bridge_update_sheet.dart";
 
 /// How long the row takes to grow in or fold away.
 const Duration _revealDuration = Duration(milliseconds: 260);
@@ -281,6 +282,11 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
     );
   }
 
+  Future<void> _showBridgeUpdateThenDismiss() async {
+    await showBridgeUpdateSheet(context: context);
+    if (mounted) widget._onDismiss();
+  }
+
   /// The one place the scan state decides how the row reads.
   ///
   /// `null` is the idle row, which folds away to nothing.
@@ -349,14 +355,15 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
       onAction: widget._onDismiss,
     ),
     // Not a failure of this scan but of the pairing, so it reads as something
-    // to fix rather than something to retry.
+    // to fix rather than something to retry. The update steps carry what the
+    // row says, so the row folds away once they close.
     CatalogRescanUnsupported() => _RowContent(
       tone: _ScanTone.attention,
       icon: TablerRegular.arrow_up_circle,
       title: loc.catalogScanUnsupportedTitle,
       detail: loc.catalogScanUnsupportedDetail,
-      actionLabel: loc.catalogScanDismiss,
-      onAction: widget._onDismiss,
+      actionLabel: loc.bridgeUpdateHowTo,
+      onAction: () => unawaited(_showBridgeUpdateThenDismiss()),
     ),
     // No request was sent, so the row names the missing bridge connection
     // instead of falsely claiming that the user's harnesses are absent.
@@ -977,7 +984,8 @@ bool _isTextEnlarged({required BuildContext context, required TextStyle style}) 
   return fontSize != null && MediaQuery.textScalerOf(context).scale(fontSize) > fontSize;
 }
 
-/// The label-only 76×36 action from the terminal Figma variants.
+/// The label-only action from the terminal Figma variants: 76×36 at least,
+/// wider when a longer label such as "How to update" needs the room.
 class const _ScanDismissButton({
   required final String label,
   required final Color color,
@@ -990,7 +998,7 @@ class const _ScanDismissButton({
     final radius = BorderRadius.circular(PregoRadius.full);
     final actionConstraints = _isTextEnlarged(context: context, style: prego.textTheme.textSm.medium)
         ? const BoxConstraints(minWidth: 76, minHeight: 36)
-        : const BoxConstraints.tightFor(width: 76, height: 36);
+        : const BoxConstraints(minWidth: 76, minHeight: 36, maxHeight: 36);
 
     return Semantics(
       button: true,
@@ -1013,11 +1021,15 @@ class const _ScanDismissButton({
               }),
               containerBuilder: (child) => ClipRRect(borderRadius: radius, child: child),
               child: Center(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: prego.textTheme.textSm.medium.copyWith(color: color),
+                widthFactor: 1,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: prego.textTheme.textSm.medium.copyWith(color: color),
+                  ),
                 ),
               ),
             ),
