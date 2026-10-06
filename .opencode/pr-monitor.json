@@ -1,4 +1,5 @@
 {
+  "autoMerge": true,
   "ignoreCommentTag": "[Sesori reply]",
   "maxCiWaitMinutes": 30,
   "debounceMinutes": 2,
