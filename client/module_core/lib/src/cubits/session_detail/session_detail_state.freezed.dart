@@ -582,10 +582,21 @@ $SessionCopyWith<$Res> get session {
 
 
 class SessionDetailFailed implements SessionDetailState {
-  const SessionDetailFailed({required this.reason,  List<QueuedSessionSubmission> queuedMessages = const []}): _queuedMessages = queuedMessages;
+  const SessionDetailFailed({required this.reason,  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> queuedMessages = const []}): _launchFollowUps = launchFollowUps,_queuedMessages = queuedMessages;
   
 
  final  RemoteFailureReason reason;
+/// Messages sent before this session existed that its launch still owes,
+/// so a failed load keeps their Retry and Remove actions in view.
+ final  List<LaunchFollowUp> _launchFollowUps;
+/// Messages sent before this session existed that its launch still owes,
+/// so a failed load keeps their Retry and Remove actions in view.
+@JsonKey() List<LaunchFollowUp> get launchFollowUps {
+  if (_launchFollowUps is EqualUnmodifiableListView) return _launchFollowUps;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_launchFollowUps);
+}
+
 /// Prompts sent before the first load that are still waiting for it, so
 /// a failed load never hides them. Retry sends them once it loads.
  final  List<QueuedSessionSubmission> _queuedMessages;
@@ -608,18 +619,18 @@ $SessionDetailFailedCopyWith<SessionDetailFailed> get copyWith => _$SessionDetai
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailFailed&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailFailed&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other.launchFollowUps, _launchFollowUps)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,reason,const DeepCollectionEquality().hash(_queuedMessages));
+    return Object.hash(runtimeType,reason,const DeepCollectionEquality().hash(_launchFollowUps),const DeepCollectionEquality().hash(_queuedMessages));
 }
 
 @override
 String toString() {
-    return 'SessionDetailState.failed(reason: $reason, queuedMessages: $queuedMessages)';
+    return 'SessionDetailState.failed(reason: $reason, launchFollowUps: $launchFollowUps, queuedMessages: $queuedMessages)';
 }
 
 
@@ -630,7 +641,7 @@ abstract mixin class $SessionDetailFailedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailFailedCopyWith(SessionDetailFailed value, $Res Function(SessionDetailFailed) _then) = _$SessionDetailFailedCopyWithImpl;
 @useResult
 $Res call({
- RemoteFailureReason reason, List<QueuedSessionSubmission> queuedMessages
+ RemoteFailureReason reason, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> queuedMessages
 });
 
 
@@ -647,10 +658,11 @@ class _$SessionDetailFailedCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? queuedMessages = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? launchFollowUps = null,Object? queuedMessages = null,}) {
   return _then(SessionDetailFailed(
 reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as RemoteFailureReason,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
+as RemoteFailureReason,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
+as List<LaunchFollowUp>,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
 as List<QueuedSessionSubmission>,
   ));
 }

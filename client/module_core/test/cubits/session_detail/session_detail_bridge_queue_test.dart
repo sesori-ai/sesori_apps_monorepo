@@ -2776,12 +2776,16 @@ void main() {
           expect((cubit.state as SessionDetailLoading).queuedMessages, isEmpty);
         });
 
-        test("a send before a failed first load stays shown and goes out on retry", () async {
+        test("sends before a failed first load stay shown and the screen's own go out on retry", () async {
           final sentTexts = <String>[];
           stubSends(sentTexts: sentTexts);
           final gate = Completer<void>();
+          final repository = launchedRepository(
+            followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+            composer: composer(unsent: null),
+          );
           final cubit = await createLoadedCubit(
-            sessionLaunchRepository: launchedRepository(composer: composer(unsent: null)),
+            sessionLaunchRepository: repository,
             loadGate: gate,
             firstLoadFails: true,
           );
@@ -2790,6 +2794,12 @@ void main() {
           gate.complete();
           final failed = await cubit.stream.firstWhere((state) => state is SessionDetailFailed) as SessionDetailFailed;
           expect(failed.queuedMessages.map((submission) => submission.text), ["early"]);
+          expect(failed.launchFollowUps.map((followUp) => followUp.submission.promptId), ["prm_a"]);
+
+          repository.beginFollowUp(launchId: "launch-1");
+          repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+          await Future<void>.delayed(Duration.zero);
+          expect((cubit.state as SessionDetailFailed).launchFollowUps, isEmpty);
 
           await cubit.reload();
           await _awaitCondition(() => sentTexts.isNotEmpty);
