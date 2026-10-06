@@ -101,12 +101,14 @@ sent to the bridge.
   rows on screen kept in place. Before then, a new prompt arriving or another
   transcript change does not move or add rows.
 - While the session has earlier messages, "Load earlier prompts" heads the list.
-  It loads the transcript's next older page, is disabled while that runs, and
-  disappears once the session's start has loaded. The page's prompts arrive
-  below it, above the rows already there, and the rows on screen stay exactly
-  where they were, also when the control disappears in the same load, unless
-  the list cannot scroll that far: one shorter than the screen, or a last page
-  smaller than the control loaded from the very top.
+  It loads the transcript's next older page, is disabled while that runs or
+  while the transcript refreshes, and disappears once the session's start has
+  loaded. At a large text size or a narrow width its label wraps and shows
+  whole, also under Bold Text and platform spacing overrides. The page's
+  prompts arrive below it, above the rows already there, and the rows on
+  screen stay exactly where they were, also when the control disappears in
+  the same load, unless the list cannot scroll that far: one shorter than the
+  screen, or a last page smaller than the control loaded from the very top.
 - Typing in the search field filters the rows as it is typed, ignoring case,
   over each prompt's whole text. Each remaining row grows by one line showing
   the words around its first match, the match highlighted, so a match past the
@@ -223,7 +225,9 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
   - Escape closing, also after a click outside the field, and the desktop's
     focused field.
 - "Load earlier prompts": at the top, calling the loader, disabled while
-  loading; earlier prompts joining the filter below it with the reader's row
+  loading and while the transcript refreshes; its wrapped label shown whole
+  at a large text size and under a platform letter-spacing override; earlier
+  prompts joining the filter below it with the reader's row
   still, also when the control disappears; a page the transcript was already
   loading as the screen opened joining it.
 - Numbers and times: prompt numbers from the bridge's count kept through three
@@ -347,7 +351,8 @@ answer, and on a trackpad while text streams.
   in or out instead of folding; a filtered row shows no reason for its match;
   a day header stays over no rows; the match count claims more than the loaded
   range; the rows under the reader move when earlier prompts load or when
-  "Load earlier prompts" disappears; the control stays enabled while loading.
+  "Load earlier prompts" disappears; the control stays enabled while loading
+  or refreshing, or its wrapped label is clipped.
 - The Prompts screen pops in or out, jumps mid-transition, scales under
   reduced motion, or the transcript moves or reflows behind it. The iOS edge
   swipe does not track the finger, the screen snaps instead of following or

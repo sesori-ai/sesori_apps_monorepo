@@ -64,7 +64,7 @@ Future<({List<String> taps, List<String> closes})> _pump(
   required List<TranscriptPromptEntry> entries,
   required String? anchor,
   VoidCallback? onLoadEarlier,
-  bool isLoadingEarlier = false,
+  bool isLoadEarlierBusy = false,
   bool autofocusSearch = false,
 }) async {
   final taps = <String>[];
@@ -79,7 +79,7 @@ Future<({List<String> taps, List<String> closes})> _pump(
         anchorMessageId: anchor,
         maxWidth: null,
         onLoadEarlier: onLoadEarlier,
-        isLoadingEarlier: isLoadingEarlier,
+        isLoadEarlierBusy: isLoadEarlierBusy,
         autofocusSearch: autofocusSearch,
         onPromptTap: ({required messageId}) => taps.add(messageId),
         onClose: () => closes.add("close"),
@@ -413,8 +413,53 @@ void main() {
       await tester.tap(control);
       expect(loads, 1);
 
-      await _pump(tester, entries: entries, anchor: null, onLoadEarlier: () => loads++, isLoadingEarlier: true);
+      await _pump(tester, entries: entries, anchor: null, onLoadEarlier: () => loads++, isLoadEarlierBusy: true);
       expect(tester.widget<TextButton>(control).onPressed, isNull);
+    });
+
+    /// Expects the control's label to wrap and every line of it to show above
+    /// the first row.
+    void expectWholeWrappedLabel(WidgetTester tester) {
+      final control = find.byKey(const Key("session-prompts-load-earlier"));
+      final label = find.descendant(of: control, matching: find.byType(RichText));
+      final paragraph = tester.renderObject<RenderParagraph>(label);
+      final lineTops = paragraph
+          .getBoxesForSelection(TextSelection(baseOffset: 0, extentOffset: paragraph.text.toPlainText().length))
+          .map((box) => box.top)
+          .toSet();
+      expect(lineTops.length, greaterThan(1), reason: "the label wraps");
+      expect(
+        paragraph.getMinIntrinsicHeight(paragraph.size.width),
+        lessThanOrEqualTo(paragraph.size.height),
+        reason: "every line of the label is laid out",
+      );
+      final sliver = tester.getRect(find.ancestor(of: control, matching: find.byType(SizedBox)).first);
+      final labelRect = tester.getRect(label);
+      expect(labelRect.top, greaterThanOrEqualTo(sliver.top));
+      expect(labelRect.bottom, lessThanOrEqualTo(sliver.bottom));
+      expect(_topOf(tester, "p0"), greaterThanOrEqualTo(sliver.bottom));
+    }
+
+    testWidgets("at a large text size on a narrow phone Load earlier prompts wraps and shows whole", (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 3;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 3), anchor: null, onLoadEarlier: () {});
+
+      expectWholeWrappedLabel(tester);
+    });
+
+    testWidgets("Load earlier prompts wrapped by the platform's letter spacing shows whole", (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.letterSpacingOverrideTestValue = 25;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearAllTestValues);
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 3), anchor: null, onLoadEarlier: () {});
+
+      expectWholeWrappedLabel(tester);
     });
 
     testWidgets("earlier prompts join the search below the control and leave the reader's row still", (tester) async {

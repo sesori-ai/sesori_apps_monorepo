@@ -475,7 +475,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                           onLoadEarlier: promptsState.olderMessagesCursor == null
                               ? null
                               : () => unawaited(context.read<SessionDetailCubit>().loadOlderMessages()),
-                          isLoadingEarlier: promptsState.isLoadingOlderMessages,
+                          // The cubit ignores an older-page load while a refresh runs.
+                          isLoadEarlierBusy: promptsState.isLoadingOlderMessages || promptsState.isRefreshing,
                           autofocusSearch: pageChrome != null,
                           onPromptTap: _returnToPrompt,
                           onClose: _closePrompts,
