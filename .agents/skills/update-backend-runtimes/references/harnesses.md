@@ -198,6 +198,8 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Pin:** `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_runtime_manifest.dart`.
   Target is the exact `YYYY.MM.DD-<build>` string. PATH comparison uses the leading
   calendar date; preserve that separate minimum and the raw bundled build value.
+  The minimum is `2026.09.23`, the oldest build with evidence for the native
+  sub-agent child sessions Sesori always enables (`_meta.subagents`).
 - **Assets:** four self-hashed archives at
   `https://downloads.cursor.com/lab/<build>/<os>/<arch>/agent-cli-package.tar.gz`,
   for `darwin`/`linux` and `arm64`/`x64`. No Windows package. Download/hash all
@@ -209,8 +211,8 @@ concrete problem can justify a documented temporary hold with a resolution path.
   configured load/replay behavior used by the adapter. If that fixture is
   unavailable, update the target and retain load/replay/model/mode checks in
   final follow-up. Confirm download URLs resolve before consumer publication.
-- **Audit:** model switching, history/load, native Task/subagent coverage and
-  settings. Report inaccessible upstream source rather than guessing from CLI UX.
+- **Audit:** model switching, history/load, the native `subagent_spawned` /
+  `subagent_state_update` shapes and Task `rawInput`, and settings. Report inaccessible upstream source rather than guessing from CLI UX.
 
 ## Claude Code
 

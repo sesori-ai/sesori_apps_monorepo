@@ -1789,9 +1789,6 @@ abstract class AcpPlugin({
   /// Whether [sessionId] has resident work whose completion is not observable.
   bool hasUnresolvedResidentWork({required String sessionId}) => false;
 
-  /// Exact pre-terminal work count used only by [rootSessionCancel].
-  int activeScopedStopWorkCount({required String sessionId}) => 0;
-
   /// Registers one harness-owned residency signal. It only re-derives process
   /// work state; root status, summaries, children, and stop targets are intact.
   void registerProcessResidencyChanges({required Stream<void> changes}) {
@@ -1975,19 +1972,23 @@ abstract class AcpPlugin({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
   }) async {
-    // Must remain first: this refusal promises that no local or native
-    // cancellation side effect occurred.
+    // Must remain first: these refusals promise that no local or native
+    // cancellation side effect occurred. Only the root accepts a native
+    // cancel; a sub-agent session stops with its root.
+    if (childSessionTracker.isChild(sessionId: sessionId)) {
+      return const PluginAbortNotPerformed(reason: PluginAbortRefusalReason.subAgentStopUnsupported);
+    }
     if (hasUnresolvedResidentWork(sessionId: sessionId)) {
       return const PluginAbortNotPerformed(
         reason: PluginAbortRefusalReason.residentWorkCompletionUnknown,
       );
     }
 
-    final activeTaskCount = activeScopedStopWorkCount(sessionId: sessionId);
+    final runningChildCount = childSessionTracker.runningChildren(sessionId: sessionId).length;
     final state = _turnStates[sessionId];
-    if (activeTaskCount > 0 && subAgents != PluginAbortSubAgentPolicy.stop) {
+    if (runningChildCount > 0 && subAgents != PluginAbortSubAgentPolicy.stop) {
       return PluginAbortRejectedSubAgentsRunning(
-        runningSubAgentCount: activeTaskCount,
+        runningSubAgentCount: runningChildCount,
         mainAgentRunning: (state?.pending ?? 0) > 0,
         mainAgentOnlySupported: false,
       );
@@ -1998,8 +1999,13 @@ abstract class AcpPlugin({
     final client = _client;
     client?.notify(method: AcpMethods.sessionCancel, params: {"sessionId": sessionId});
     // Match _abortSession: native cancellation precedes input resolution so
-    // unblocking a permission/question cannot start more work first.
+    // unblocking a permission/question cannot start more work first. The root
+    // cancel cascades to every descendant, so their pending input goes too;
+    // a child blocked on a permission would otherwise stall the cascade.
     _approvalRegistry?.cancelForSession(sessionId: sessionId);
+    for (final childSessionId in childSessionTracker.childSessionIds(sessionId: sessionId)) {
+      _approvalRegistry?.cancelForSession(sessionId: childSessionId);
+    }
     if (activeSettlement != null && client != null) {
       try {
         await activeSettlement.timeout(rootSessionCancelSettlementTimeout);
@@ -2020,17 +2026,18 @@ abstract class AcpPlugin({
         message: "Root cancellation completed, but resident work completion became unknown",
       );
     }
-    final survivingWorkCount = activeScopedStopWorkCount(sessionId: sessionId);
-    if (survivingWorkCount > 0) {
-      final cause = StateError("$survivingWorkCount active scoped-stop work item(s) survived root cancellation");
+    final survivingChildCount = childSessionTracker.runningChildren(sessionId: sessionId).length;
+    if (survivingChildCount > 0) {
+      final cause = StateError("$survivingChildCount sub-agent(s) survived root cancellation");
       throw PluginOperationException(
         "abortSession",
         statusCode: 502,
-        message: "Root cancellation settled without retiring all active scoped-stop work",
+        message: "Root cancellation settled without stopping every sub-agent",
         cause: cause,
       );
     }
-    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+    // The confirmed cascade stopped every child that was running.
+    return PluginAbortAccepted(workKept: false, subAgentsHandled: runningChildCount > 0);
   }
 
   Future<AcpChildCancelResult> _cancelScopedSession({

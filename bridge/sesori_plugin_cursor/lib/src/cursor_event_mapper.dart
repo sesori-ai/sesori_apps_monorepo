@@ -2,13 +2,19 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "api/models/cursor_subagent_update_dto.dart";
 import "api/models/cursor_task_dto.dart";
 import "repositories/cursor_generated_image_reader.dart";
-import "repositories/mappers/cursor_task_mapper.dart";
+import "repositories/mappers/cursor_subagent_mapper.dart";
 import "trackers/cursor_task_tracker.dart";
 
 /// Cursor's event mapper: the standard ACP `session/update` handling from
-/// [AcpEventMapper] plus Cursor's `cursor/*` notification extensions.
+/// [AcpEventMapper], Cursor's native sub-agent child sessions, and its
+/// `cursor/*` notification extensions.
+///
+/// A Task tool call is a sub-agent spawn: its generic card is suppressed and
+/// the `subagent_spawned` notification owns the single tile, linked to the
+/// child session.
 ///
 /// cursor-agent sends some extensions (`cursor/generate_image`,
 /// `cursor/update_todos`) as `extMethod` JSON-RPC *requests* even though it
@@ -23,7 +29,7 @@ class CursorEventMapper({
   required super.childSessions,
   required final CursorGeneratedImageReader _generatedImageReader,
   required final CursorTaskTracker _taskTracker,
-  required final CursorTaskMapper _taskMapper,
+  required final CursorSubagentMapper _subagentMapper,
 
   /// The plugin's active-turn resolver ([AcpPlugin.activeTurnSessionId]) — the
   /// last-resort attribution for Cursor extension payloads that omit
@@ -95,11 +101,66 @@ class CursorEventMapper({
         return [BridgeSseTodoUpdated(sessionID: sessionId)];
       case "cursor/generate_image":
         return _mapGenerateImage(notification: notification);
-      case "cursor/task":
-        return _mapTaskRequest(notification: notification);
     }
     // Other extension notifications have no sesori analog.
     return super.mapExtension(notification);
+  }
+
+  @override
+  bool isSubagentSpawnToolCall({required Map<String, dynamic> update}) =>
+      _parseTaskInput(raw: update["rawInput"])?.toolName == CursorTaskTool.task;
+
+  @override
+  List<BridgeSseEvent> mapHarnessSessionUpdate({
+    required String sessionId,
+    required Map<String, dynamic> update,
+  }) {
+    final CursorSubagentUpdateDto dto;
+    try {
+      dto = CursorSubagentUpdateDto.fromJson(update);
+    } on Object catch (error, stack) {
+      Log.w("[cursor] malformed sub-agent update dropped", error, stack);
+      return const [];
+    }
+    return switch (dto) {
+      CursorSubagentSpawnedDto() => _mapSpawned(sessionId: sessionId, update: dto),
+      CursorSubagentStateUpdateDto() => _mapState(update: dto),
+      CursorSubagentUpdateUnknownDto() => const [],
+    };
+  }
+
+  List<BridgeSseEvent> _mapSpawned({required String sessionId, required CursorSubagentSpawnedDto update}) {
+    final toolCallId = update.meta?.cursor?.toolCallId;
+    final taskInput = toolCallId == null
+        ? null
+        : _parseTaskInput(
+            raw: spawnToolCallInput(sessionId: sessionId, toolCallId: toolCallId),
+          );
+    final events = mapChildSpawned(
+      sessionId: sessionId,
+      spawn: _subagentMapper.mapSpawned(update: update, taskInput: taskInput),
+    );
+    // Only a child that was actually announced gets the reported model, so a
+    // rejected spawn leaves no stray override behind.
+    final model = update.meta?.cursor?.model;
+    if (events.isNotEmpty && model != null) {
+      setChildModel(childSessionId: update.subagentSessionId, modelId: model);
+    }
+    return events;
+  }
+
+  List<BridgeSseEvent> _mapState({required CursorSubagentStateUpdateDto update}) {
+    final finish = _subagentMapper.mapState(state: update.state);
+    if (finish == null) {
+      Log.w("[cursor] unknown sub-agent state for ${update.subagentSessionId} ignored");
+      return const [];
+    }
+    return mapChildFinished(
+      childSessionId: update.subagentSessionId,
+      status: finish.status,
+      output: null,
+      error: finish.error,
+    );
   }
 
   void _observeStandardTask({
@@ -173,28 +234,6 @@ class CursorEventMapper({
     );
   }
 
-  List<BridgeSseEvent> _mapTaskRequest({required AcpNotification notification}) {
-    final request = _parseTaskRequest(raw: notification.params);
-    if (request == null) return const [];
-    final sessionId = switch (_taskSessionLookup(params: notification.params)) {
-      CursorTaskSessionFound(:final sessionId) => sessionId,
-      CursorTaskSessionNotFound() || CursorTaskSessionAmbiguous() => null,
-    };
-    if (sessionId == null) return const [];
-    final genericPart = _taskTracker.takeForegroundCompleted(
-      sessionId: sessionId,
-      toolCallId: request.toolCallId,
-    );
-    if (genericPart == null) return const [];
-    final replacement = _taskMapper.completedForeground(
-      genericPart: genericPart,
-      prompt: request.prompt,
-      description: request.description,
-      subagentPresentation: _taskMapper.livePresentation(subagentType: request.subagentType),
-    );
-    return replacement == null ? const [] : [BridgeSseMessagePartUpdated(part: replacement)];
-  }
-
   PluginMessagePart _mapTerminalGeneric({
     required PluginMessagePartTool genericPart,
     required PluginToolStatus status,
@@ -236,17 +275,6 @@ class CursorEventMapper({
     }
   }
 
-  CursorTaskRequestDto? _parseTaskRequest({required Object? raw}) {
-    final json = _map(raw);
-    if (json == null) return null;
-    try {
-      return CursorTaskRequestDto.fromJson(json);
-    } on Object catch (error, stack) {
-      Log.w("[cursor] malformed cursor/task request ignored", error, stack);
-      return null;
-    }
-  }
-
   static Map<String, dynamic>? _map(Object? raw) => raw is Map ? raw.cast<String, dynamic>() : null;
 
   List<BridgeSseEvent> _mapGenerateImage({required AcpNotification notification}) {
@@ -274,23 +302,6 @@ class CursorEventMapper({
       messageId: rawMessageId is String && rawMessageId.isNotEmpty ? rawMessageId : null,
       blocks: blocks,
     );
-  }
-
-  CursorTaskSessionLookup _taskSessionLookup({required Map<String, dynamic> params}) {
-    final explicit = params["sessionId"];
-    if (explicit is String) {
-      final trimmed = explicit.trim();
-      if (trimmed.isNotEmpty) return CursorTaskSessionFound(sessionId: trimmed);
-    }
-    final toolCallId = params["toolCallId"];
-    if (toolCallId is String && toolCallId.isNotEmpty) {
-      final lookup = _taskTracker.lookupSessionForToolCallId(toolCallId: toolCallId);
-      if (lookup is! CursorTaskSessionNotFound) return lookup;
-    }
-    final activeSessionId = _activeSessionResolver();
-    return activeSessionId == null
-        ? const CursorTaskSessionNotFound()
-        : CursorTaskSessionFound(sessionId: activeSessionId);
   }
 
   /// The session an extension payload belongs to: its explicit `sessionId`

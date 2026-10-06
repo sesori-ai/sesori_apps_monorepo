@@ -27,7 +27,7 @@ Antigravity retains its exact-pair policy rather than an independent floor.
 | Antigravity | package/server `1.3.0` | Exact package/server/ACP 1 | Six archive hashes/layouts/permissions independently verified; macOS ARM64 hardened extraction passed. A 2026-10-06 network-denied macOS ARM64 rerun passed managed installation (archive from the verified local copy), `--version`, initialize and teardown after a first probe aborted with SIGABRT. Other native targets and authenticated behavior remain unverified; earlier `1.2.1` observations are historical. |
 | Codex | `0.160.1` | `0.139.0` | Current-target native package/install, stdio and WebSocket app-server checks remain unverified. |
 | GitHub Copilot | `1.0.92` | `1.0.78` | Current-target native install/version, ACP initialize and configured lifecycle remain unverified. |
-| Cursor | `2026.10.01-e373342` | date `2026.07.16` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. |
+| Cursor | `2026.10.01-e373342` | date `2026.09.23` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. The floor is the oldest build with evidence for native sub-agent child sessions, which Sesori always enables; an older PATH build is reported outdated and asked to update. |
 | Claude Code | `2.1.291` | `2.1.221` | Current-target native stream-json/permissions/replay/interrupt and real authentication/provider behavior remain unverified. |
 | Hermes Agent | `0.21.5` (`v2026.9.24`) | `0.20.0` | Current-target real CLI ACP initialize/list, configured new/load/replay and persisted deletion remain unverified. |
 | Pi | `1.0.4` | `0.99.0` | Six archive hashes match the published `SHA256SUMS` and GitHub digests. A 2026-10-06 sandboxed macOS arm64 production install (digest sentinel), `--version`, inspect-setup, RPC command listing and the production catalog probe passed with no credentials and network denied after download; `/llama` is hidden. An authenticated Pi 1.0.4 session completed during the startup-dialog work (see `HARNESS_CAPABILITIES.md`). Settlement/retry/compaction, queue and fresh-process reuse on the current target remain unverified. |
@@ -279,14 +279,9 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   work state stays busy so a safe stop or suspension refuses, and only a forced stop, a
   full-scope session stop, delete, or process exit ends it. A main-agent-only stop
   keeps the process resident for its tasks.
-- Cursor records one root-level unresolved-background observation when a Task
-  launch explicitly reports `isBackground: true`. It keeps only process work state
-  busy, preventing safe suspension without changing UI status, summaries, child
-  counts, or idle events. It survives later turns and clears only on exact session
-  cleanup, process reset/forced teardown, or disposal because Cursor exposes no
-  terminal fact. Bounded production-composition QA observed root idle first, a
-  later background permission, busy process work state, and a new session on
-  the same resident process.
+- Cursor keeps its process resident only through the held-open root prompt
+  and its running native sub-agent children, background ones included; it
+  records no separate background-work observation.
 - A busy harness conflicts explicitly, forcing needs confirmation and is sent once, the
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.

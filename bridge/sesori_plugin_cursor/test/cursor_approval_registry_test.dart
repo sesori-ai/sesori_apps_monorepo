@@ -334,7 +334,7 @@ void main() {
       expect(forwarded.single.params["toolCallId"], "todo-1");
     });
 
-    test("cursor/task request is acked and re-injected unchanged", () async {
+    test("cursor/task request is acked but not forwarded", () async {
       fake.emit({
         "jsonrpc": "2.0",
         "id": 44,
@@ -357,9 +357,8 @@ void main() {
       expect(reply["id"], 44);
       expect(reply["result"], isA<Map<String, Object?>>());
       expect(reply.containsKey("error"), isFalse);
-      expect(forwarded.single.method, "cursor/task");
-      expect(forwarded.single.params["toolCallId"], "task-1");
-      expect(forwarded.single.params.containsKey("sessionId"), isFalse);
+      // Native sub-agent notifications own the tile; the request is only acked.
+      expect(forwarded, isEmpty);
     });
 
     test("a throwing notification forward never breaks the approval channel", () async {
