@@ -149,9 +149,10 @@ sent to the bridge.
   never moves, scrolls or rebuilds.
 - A pinch out on the Prompts screen, by touch or trackpad, closes it in step
   with the fingers: the screen shrinks toward them and fades as they spread.
-  Let go past a scale of 1.25, or spread quickly, and it finishes closing; let
-  go short of it and it springs back open. The slight slide of fingers lifting
-  off a phone's glass never turns a wide spread back. One-finger scrolling, row taps, a
+  On release the spread is carried 0.1 s ahead at its current speed: past a
+  scale of 1.25 it finishes closing, short of it it springs back open. The
+  slight slide of fingers lifting off a phone's glass only nudges that
+  projection, so a wide spread still closes. One-finger scrolling, row taps, a
   pinch in and the search field, including its text selection, are unaffected.
 - On iOS a drag from the screen's left edge moves the Prompts screen with the
   finger, lightening the dim as it goes. Let go past halfway or with a flick
