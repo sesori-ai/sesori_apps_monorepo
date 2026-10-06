@@ -2051,9 +2051,10 @@ busy-send check:
   top, and the same session shows both at once; a session Sesori has never
   prompted shows no time column at all; and "Working…" ticks.
 
-**L3 result, 2026-10-06 (step 18).** Only the real-device pinch in has run: the
-user confirmed it on 2026-10-06, which closes step 13's device check. Every
-other cell above is unexecuted, including the pinch out on a real device, which
+**L3 result, 2026-10-06 (step 18).** Only the real-device pinch in has run: on
+2026-10-06 the user reported "the pinch to zoom in works fine, like on all
+devices", which closes step 13's device check on both the real iPhone and the
+real macOS trackpad. Every other cell above is unexecuted, including the pinch out on a real device, which
 has no recording; [step 18](steps/step-18.md) lists each cell and the automated
 coverage that stands in for it.
 

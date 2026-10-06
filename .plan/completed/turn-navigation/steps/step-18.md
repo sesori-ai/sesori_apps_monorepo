@@ -18,7 +18,8 @@ Branch `turn-navigation/retire`, published as PR 20/20. Documentation only.
 
 | Cell | Result |
 |---|---|
-| Pinch in on real hardware (step 13's device check) | Passed: the user confirmed it on 2026-10-06 |
+| Pinch in on a real iPhone (step 13's device check) | Passed on the user's real devices, 2026-10-06 |
+| Pinch in on a real macOS trackpad (step 13's device check) | Passed on the user's real devices, 2026-10-06 |
 | iOS phone, the rest of the real-device list | Unexecuted |
 | Pinch out on the Prompts screen, real device | Unexecuted; no device recording |
 | macOS desktop | Unexecuted |
@@ -26,6 +27,11 @@ Branch `turn-navigation/retire`, published as PR 20/20. Documentation only.
 | Windows and Linux smoke | Unexecuted; CI builds only |
 | Bridge plus client, live | Unexecuted |
 | Plugins, live plugin plus client | Unexecuted |
+
+The two pinch in cells rest on the user's report of 2026-10-06: "the pinch to
+zoom in works fine, like on all devices". That closes step 13's device check
+on both the iPhone and the macOS trackpad. It covers the pinch in only; the
+other checks in those platforms' lists are not covered by it.
 
 ## What Covers The Unexecuted Cells Today
 

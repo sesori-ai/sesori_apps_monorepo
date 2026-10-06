@@ -290,7 +290,8 @@ Live plugin plus client, every supporting production plugin:
 - A forced Claude re-import keeps follow-ups, peers and task outcomes in their
   turns.
 
-Last recorded run, 2026-10-06: the user confirmed the real-device pinch in.
+Last recorded run, 2026-10-06: the user confirmed the pinch in on their real
+devices, the iPhone and the macOS trackpad.
 Every other check above, including the pinch out on a real device, remains
 unexecuted and is covered only by the automated checks; the plan's step 18
 lists each cell.
