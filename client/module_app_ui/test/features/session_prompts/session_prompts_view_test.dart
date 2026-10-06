@@ -417,14 +417,9 @@ void main() {
       expect(tester.widget<TextButton>(control).onPressed, isNull);
     });
 
-    testWidgets("at a large text size on a narrow phone Load earlier prompts wraps and shows whole", (tester) async {
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
-      tester.platformDispatcher.textScaleFactorTestValue = 3;
-      addTearDown(tester.view.reset);
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
-      await _pump(tester, entries: _parityPrompts(from: 0, to: 3), anchor: null, onLoadEarlier: () {});
-
+    /// Expects the control's label to wrap and every line of it to show above
+    /// the first row.
+    void expectWholeWrappedLabel(WidgetTester tester) {
       final control = find.byKey(const Key("session-prompts-load-earlier"));
       final label = find.descendant(of: control, matching: find.byType(RichText));
       final paragraph = tester.renderObject<RenderParagraph>(label);
@@ -443,6 +438,28 @@ void main() {
       expect(labelRect.top, greaterThanOrEqualTo(sliver.top));
       expect(labelRect.bottom, lessThanOrEqualTo(sliver.bottom));
       expect(_topOf(tester, "p0"), greaterThanOrEqualTo(sliver.bottom));
+    }
+
+    testWidgets("at a large text size on a narrow phone Load earlier prompts wraps and shows whole", (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 3;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 3), anchor: null, onLoadEarlier: () {});
+
+      expectWholeWrappedLabel(tester);
+    });
+
+    testWidgets("Load earlier prompts wrapped by the platform's letter spacing shows whole", (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.letterSpacingOverrideTestValue = 25;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearAllTestValues);
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 3), anchor: null, onLoadEarlier: () {});
+
+      expectWholeWrappedLabel(tester);
     });
 
     testWidgets("earlier prompts join the search below the control and leave the reader's row still", (tester) async {

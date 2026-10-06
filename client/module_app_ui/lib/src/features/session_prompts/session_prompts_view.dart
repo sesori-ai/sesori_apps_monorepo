@@ -446,10 +446,17 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
         ? loc.transcriptPromptsLoaded(list.promptCount)
         : loc.transcriptPromptsMatches(matchCount);
     final loadEarlierLabelStyle = Theme.of(context).textTheme.labelLarge;
-    // Measured, as large text or a narrow screen can wrap the labels.
+    // Measured, as large text or a narrow screen can wrap the labels. Bold Text
+    // and the platform's spacing overrides apply, as [Text] applies them.
+    final typography = TextStyle(
+      fontWeight: MediaQuery.boldTextOf(context) ? FontWeight.bold : null,
+      height: MediaQuery.maybeLineHeightScaleFactorOverrideOf(context),
+      letterSpacing: MediaQuery.maybeLetterSpacingOverrideOf(context),
+      wordSpacing: MediaQuery.maybeWordSpacingOverrideOf(context),
+    );
     double heightOf({required String text, required TextStyle? style, required double maxWidth}) {
       final painter = TextPainter(
-        text: TextSpan(text: text, style: style),
+        text: TextSpan(text: text, style: style?.merge(typography) ?? typography),
         textDirection: Directionality.of(context),
         textScaler: textScaler,
       )..layout(maxWidth: maxWidth);
