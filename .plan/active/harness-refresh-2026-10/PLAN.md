@@ -507,12 +507,11 @@ records its own results.
 | 12 | 🌱 Reconcile regression documents and `docs/HARNESS_CAPABILITIES.md` | docs |
 | 13 | 🌱 Final coverage run and plan retirement | docs |
 
-PR titles: `<emoji> [harness-refresh-2026-10] <description> [step <x>/12]`.
+PR titles: `<emoji> [harness-refresh-2026-10] <description> [step <x>/13]`.
 
-- **Total:** 12 counts every row above except the dropped Steps 3 and 8 (Steps
-  10.a and 10.b are one PR each, titled `[step 10.a/12]` and
-  `[step 10.b/12]`). Step numbers are stable identifiers, so they are not
-  renumbered after a drop.
+- **Total:** 13 is the highest step identifier, so `x` never exceeds it. Dropped
+  Steps 3 and 8 keep their numbers and get no PR. Steps 10.a and 10.b are one PR
+  each, titled `[step 10.a/13]` and `[step 10.b/13]`.
 - **Why Step 10 splits:** a single PR would be about 2,400 changed lines of
   lifecycle and stop code. 10.a is the behavior change, which leaves the old
   live Task path inert. 10.b only deletes it, and each part compiles and passes
@@ -673,7 +672,7 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
 - **Still needed:** Step 10 needs another review only under the condition in
   its Review bullet. Step 5.b was not activated (D12).
 - **2026-10-06:** Step 10 revised from Step 9 probe and split into 10.a and
-  10.b. Steps 3 and 8 were dropped the same day, so the total is 12.
+  10.b. Steps 3 and 8 were dropped the same day; the total stays 13 (highest step identifier).
 - Architecture plan review 2026-10-06: rejected with 5 findings; all applied
   without re-review per AGENTS.md. The findings covered:
   - the child-stop refusal contract (first statement; its 409

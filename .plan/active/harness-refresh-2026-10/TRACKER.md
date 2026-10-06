@@ -5,15 +5,15 @@ Total: 12 PRs (Steps 3 and 8 dropped and not counted; titles use `[step <x>/12]`
 
 | Step | Title | Depends on | Status |
 |---|---|---|---|
-| 1 | 🌱 Publish the plan | — | in progress |
-| 2 | 🌿 Mechanical pins: Claude, Copilot, Cursor, Grok, Codex | 1 | pending |
+| 1 | 🌱 Publish the plan | — | merged (#1854) |
+| 2 | 🌿 Mechanical pins: Claude, Copilot, Cursor, Grok, Codex | 1 | merged (#1855) |
 | 3 | 🌱 Codex floor 0.148.0 | 2 | dropped (D4 keeps 0.139.0; see PLAN) |
-| 4 | 🌿 Antigravity 1.3.0 | 1 | pending |
+| 4 | 🌿 Antigravity 1.3.0 | 1 | merged (#1856; pin landed on main in f197395731) |
 | 5 | 🌿 OMP model-restore probe | 1 | done: no pin change (D12; #1863 closed) |
-| 6 | ⚙️ OpenCode 2.0.24 + regeneration | 1 | pending |
-| 7 | ⚙️ Pi 1.0.4 + floor 0.99.0 + catalog fix | 1 | pending |
+| 6 | ⚙️ OpenCode 2.0.24 + regeneration | 1 | merged (#1857) |
+| 7 | ⚙️ Pi 1.0.4 + floor 0.99.0 + catalog fix | 1 | merged (#1862) |
 | 8 | ⚙️ Pi turn acceptance via `disposition` | 7 | dropped (#1867 closed; see PLAN) |
-| 9 | 🌱 Cursor ACP sub-agent wire probe | 2 | pending |
+| 9 | 🌱 Cursor ACP sub-agent wire probe | 2 | merged (#1864) |
 | 10.a | 🚧 Cursor native child sessions (D10 floor 2026.09.23, D11) | 9 | pending |
 | 10.b | 🌿 Delete the inert Cursor live Task path and orphaned ACP residency hooks | 10.a | pending |
 | 11 | 🌿 DeepSeek consumer pin | external adapter release | blocked (see below) |
