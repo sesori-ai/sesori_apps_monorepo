@@ -9,6 +9,7 @@ import "../api/models/pi_event.dart";
 import "../api/models/pi_extension_ui_request.dart";
 import "../api/models/pi_rpc_frame.dart";
 import "../api/pi_rpc_client.dart";
+import "../models/pi_prompt_disposition.dart";
 import "../repositories/mappers/pi_quota_interruption_mapper.dart";
 import "../repositories/pi_session_catalog_repository.dart";
 import "../repositories/pi_session_process_repository.dart";
@@ -543,13 +544,15 @@ final class PiSessionService({
         ..promptDispatched = true
         ..agentStarted = state.agentRunning;
       if (turn is _PiQueuedPromptTurn) _emitQueueUpdate(sessionId: sessionId, state: state);
+      final PiPromptDisposition disposition;
       if (turn case _PiCompactionTurn(:final customInstructions)) {
         await _processes.dispatchCompaction(
           connection: connection,
           customInstructions: customInstructions,
         );
+        disposition = PiPromptDisposition.handled;
       } else {
-        await _processes.dispatchPrompt(connection: connection, payload: turn.payload);
+        disposition = await _processes.dispatchPrompt(connection: connection, payload: turn.payload);
       }
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
       turn.responseSucceeded = true;
@@ -571,7 +574,13 @@ final class PiSessionService({
         _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
         return;
       }
-      if (turn.settlementObservedBeforeAcceptance || !turn.agentStarted) {
+      if (disposition != PiPromptDisposition.handled && !turn.settlementObservedBeforeAcceptance) {
+        // Pi declared that this prompt started or steered into an agent run, so a
+        // state barrier would only confirm work that already exists. A settlement
+        // seen before the response is ambiguous and keeps the barrier below.
+        turn.agentStarted = true;
+        state.agentRunning = true;
+      } else if (turn.settlementObservedBeforeAcceptance || !turn.agentStarted) {
         var agentState = observedAgentState ?? await _processes.getState(connection: connection);
         turn.effectiveSelection = agentState.selection;
         await Future<void>.delayed(Duration.zero);

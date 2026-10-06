@@ -14,6 +14,7 @@ import "../api/pi_launch_spec.dart";
 import "../api/pi_process_factory.dart";
 import "../api/pi_rpc_client.dart";
 import "../api/pi_session_storage_api.dart";
+import "../models/pi_prompt_disposition.dart";
 import "../models/pi_rpc_command.dart";
 import "../models/pi_thinking_level.dart";
 import "../trackers/pi_message_identity_tracker.dart";
@@ -451,12 +452,12 @@ final class PiSessionProcessRepository({
     return selection;
   }
 
-  Future<void> dispatchPrompt({
+  Future<PiPromptDisposition> dispatchPrompt({
     required PiSessionConnection connection,
     required PiPromptPayload payload,
   }) async {
     final resident = _requiredResident(connection);
-    await resident.client.send(
+    final response = await resident.client.send(
       command: PiRpcCommand.prompt,
       arguments: {
         "message": payload.message,
@@ -465,6 +466,7 @@ final class PiSessionProcessRepository({
       },
       timeout: _promptRpcTimeout,
     );
+    return PiPromptDisposition.parse(value: response.data["disposition"]);
   }
 
   Future<void> dispatchCompaction({

@@ -1014,6 +1014,121 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
   });
 
+  test("started prompts and queued steers skip the state barrier", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    for (final (promptId, text) in [("started-prompt", "first"), ("queued-steer", "steer")]) {
+      await service.sendPrompt(
+        sessionId: "session",
+        promptId: promptId,
+        directory: "/project",
+        parts: [PluginPromptPart.text(text: text)],
+        userVisibleText: text,
+        variant: null,
+        model: null,
+      );
+    }
+
+    await _answerEntries(process);
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt", data: {"disposition": "started"});
+    final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+
+    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt", data: {"disposition": "queued"});
+    await pump();
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+    expect(service.currentWorkState, PluginWorkState.busy);
+
+    process.emit(frame: {"type": "agent_start"});
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+
+    expect(process.written.where((frame) => frame["type"] == "get_state"), isEmpty);
+    expect(service.queuedPrompts(sessionId: "session"), isEmpty);
+  });
+
+  test("a queued steer after pre-response settlement keeps the state barrier", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+
+    for (final (promptId, text) in [("running", "first"), ("late-steer", "steer")]) {
+      await service.sendPrompt(
+        sessionId: "session",
+        promptId: promptId,
+        directory: "/project",
+        parts: [PluginPromptPart.text(text: text)],
+        userVisibleText: text,
+        variant: null,
+        model: null,
+      );
+    }
+
+    await _answerEntries(process);
+    final firstPrompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt", data: {"disposition": "started"});
+    final steeringPrompt = await _waitForNthCommand(process: process, type: "prompt", count: 2);
+
+    process.emit(frame: {"type": "agent_settled"});
+    process.emitResponse(id: steeringPrompt["id"]! as String, command: "prompt", data: {"disposition": "queued"});
+    final stateCommand = await waitForCommand(process: process, type: "get_state");
+    process.emitResponse(
+      id: stateCommand["id"]! as String,
+      command: "get_state",
+      data: _stateData(process: process, streaming: false),
+    );
+    final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
+    process.emitResponse(
+      id: confirmedState["id"]! as String,
+      command: "get_state",
+      data: _stateData(process: process, streaming: false),
+    );
+    await _waitForIdle(service: service, sessionId: "session");
+  });
+
+  for (final disposition in ["handled", "unrecognized"]) {
+    test("a silent command reporting $disposition keeps the two-snapshot state barrier", () async {
+      final process = FakePiProcess();
+      final fixture = _Fixture(processes: [process]);
+      addTearDown(fixture.dispose);
+      final service = fixture.service();
+      final events = <BridgeSseEvent>[];
+      service.events.listen(events.add);
+
+      final accepted = service.sendCommand(
+        sessionId: "session",
+        promptId: "silent-command",
+        directory: "/project",
+        command: "fast",
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        model: null,
+      );
+      await _answerEntries(process);
+      final prompt = await waitForCommand(process: process, type: "prompt");
+      process.emitResponse(id: prompt["id"]! as String, command: "prompt", data: {"disposition": disposition});
+      await accepted;
+      for (var count = 1; count <= 2; count++) {
+        final state = await _waitForNthCommand(process: process, type: "get_state", count: count);
+        expect(events.whereType<BridgeSsePromptSettled>(), isEmpty);
+        process.emitResponse(
+          id: state["id"]! as String,
+          command: "get_state",
+          data: _stateData(process: process, streaming: false),
+        );
+      }
+      await _waitForEvent<BridgeSsePromptSettled>(events: events);
+      await _waitForIdle(service: service, sessionId: "session");
+      expect(process.written.where((frame) => frame["type"] == "get_state"), hasLength(2));
+    });
+  }
+
   test("a selection-changing follow-up waits for the active Pi run boundary", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
