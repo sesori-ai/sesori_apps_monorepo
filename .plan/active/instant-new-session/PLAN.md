@@ -2121,8 +2121,8 @@ between the owner's delivery and everything the user touches. The user-facing
 half was then split once more, taking the pre-approved cut below: the parts that
 do not need the live composer (the session screen's follow-up rows, the
 restoration budget check and the follow-ups' **D1** append) land first as 6/10.
-The rest measured about 2,100 lines and was cut once more between its state and
-its views: 7/11 lands the cubits' follow-up queue and composer handoff with no
+The rest, implemented in full on one branch, measured about 2,100 changed lines
+and was cut once more between its state and its views: 7/11 lands the cubits' follow-up queue and composer handoff with no
 entry point, and 8/11 the views that use them. The series therefore has eleven
 PRs. The design sections keep their original numbers: "Step 4 design" ships as
 PRs 5/10, 6/10, 7/11 and 8/11, and so on. Merged PRs keep the titles they merged
@@ -2155,12 +2155,11 @@ rather than logic. The third wave raised step 4 by about 150 to 200 lines (the
 sealed follow-up, the failure log and the unsent-composer handoff) and steps 5
 and 6 by about 50 each (the in-slot hold and the emptiness gates). **D13** adds
 about 200 to 250 to step 4 (the composer seeded before the first load), which
-makes the split below the expected path rather than a contingency. If step 4's
-real diff passes about 1,300 lines, the clean cut is to land the shared
-`generatePromptId` extraction and the restoration budget check first as their own
-PR, since neither depends on the live composer, and renumber the series and
-update `TRACKER.md` as the step 3 split below describes; that is a pre-approved
-split of already approved work.
+made a split the expected path rather than a contingency. Step 4 did run long,
+and shipped as the four PRs described after the table (5/10, 6/10, 7/11 and
+8/11), with the series renumbered in `TRACKER.md`; those cuts replaced the
+earlier idea of landing `generatePromptId` and the restoration budget check on
+their own.
 
 **Pre-approved split if step 3 runs long.** Step 3 is the largest step and now
 carries the launch-owner family as well as the detail-side handoff. If the real
