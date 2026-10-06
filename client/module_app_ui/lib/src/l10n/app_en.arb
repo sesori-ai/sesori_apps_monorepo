@@ -1953,8 +1953,6 @@
   "@archivedSessionsLastWeek": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsThisMonth": "This month",
   "@archivedSessionsThisMonth": {"description": "Date heading shared by regular and archived session lists."},
-  "archivedSessionsLastMonth": "One month ago",
-  "@archivedSessionsLastMonth": {"description": "Date heading shared by regular and archived session lists."},
   "sessionAutoContinuationMenu": "Auto continuation",
   "sessionAutoContinuationAfterQuotaResets": "After quota resets",
   "sessionAutoContinuationEnable": "Enable auto continuation",

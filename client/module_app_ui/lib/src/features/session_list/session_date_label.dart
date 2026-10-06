@@ -15,6 +15,5 @@ String sessionDateLabel({required DateTime? date, required DateTime now, require
   if (!calendarDate.isBefore(week)) return loc.archivedSessionsThisWeek;
   if (!calendarDate.isBefore(lastWeek)) return loc.archivedSessionsLastWeek;
   if (!calendarDate.isBefore(DateTime(today.year, today.month))) return loc.archivedSessionsThisMonth;
-  if (!calendarDate.isBefore(DateTime(today.year, today.month - 1))) return loc.archivedSessionsLastMonth;
   return DateFormat.yMMMM(loc.localeName).format(calendarDate);
 }

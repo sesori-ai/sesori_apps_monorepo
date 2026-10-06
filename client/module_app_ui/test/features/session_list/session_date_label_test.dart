@@ -15,7 +15,7 @@ void main() {
       DateTime(2026, 9, 13): "Last week",
       DateTime(2026, 9, 7): "Last week",
       DateTime(2026, 9, 6): "This month",
-      DateTime(2026, 8, 31): "One month ago",
+      DateTime(2026, 8, 31): "August 2026",
       DateTime(2026, 7, 31): "July 2026",
     };
     for (final entry in cases.entries) {
