@@ -1704,6 +1704,60 @@ void main() {
           expect(tester.getRect(layer), screen);
         }, variant: _pinchPlatforms);
 
+        testWidgets("closes for real fingers, which land apart in time and slide as they lift", (tester) async {
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pumpAndSettle();
+          await openPrompts(tester);
+
+          // A thumb and finger landing together on a row, the second 64 ms
+          // after the first, both drifting up a little before they spread.
+          const frame = Duration(milliseconds: 8);
+          var time = Duration.zero;
+          final row = tester.getCenter(find.text("Prompt 10").last);
+          var thumb = row - const Offset(15, 0);
+          var finger = row + const Offset(15, -3);
+          final first = await tester.createGesture();
+          final second = await tester.createGesture();
+          Future<void> step({required Offset thumbBy, required Offset fingerBy}) async {
+            time += frame;
+            thumb += thumbBy;
+            finger += fingerBy;
+            await first.moveTo(thumb, timeStamp: time);
+            await second.moveTo(finger, timeStamp: time);
+            await tester.pump(frame);
+          }
+
+          await first.down(thumb, timeStamp: time);
+          for (var move = 0; move < 8; move++) {
+            time += frame;
+            thumb -= const Offset(0, 0.4);
+            await first.moveTo(thumb, timeStamp: time);
+            await tester.pump(frame);
+          }
+          await second.down(finger, timeStamp: time);
+          await tester.pump();
+          for (var move = 0; move < 4; move++) {
+            await step(thumbBy: const Offset(0, -1.5), fingerBy: const Offset(0, -1.5));
+          }
+          for (var move = 0; move < 12; move++) {
+            await step(thumbBy: const Offset(-6, 2), fingerBy: const Offset(6, -2));
+          }
+          expect(opacity(tester), lessThan(0.1), reason: "the spread has taken the screen almost away");
+
+          // As they lift off the glass, the fingers slide a pixel back together.
+          for (var move = 0; move < 3; move++) {
+            await step(thumbBy: const Offset(1, 0), fingerBy: const Offset(-1, 0));
+          }
+          time += frame;
+          await first.up(timeStamp: time);
+          await tester.pump(frame);
+          time += const Duration(milliseconds: 30);
+          await second.up(timeStamp: time);
+          await tester.pumpAndSettle();
+          expect(layer, findsNothing, reason: "a wide spread closes the screen");
+          expect(find.byType(SessionDetailBody), findsOneWidget);
+        }, variant: _pinchPlatforms);
+
         testWidgets("a quick short spread closes", (tester) async {
           await tester.pumpWidget(_buildApp(cubit: cubit));
           await tester.pumpAndSettle();
