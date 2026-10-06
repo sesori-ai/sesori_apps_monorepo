@@ -114,6 +114,12 @@ records its own results.
   malformed foreign stdout, without a compat marker; no DTO or parse change.
   Update the floor tests in `pi_plugin_descriptor_test.dart` (0.84.x cases → 0.98.x
   rejected, 0.99.0 accepted).
+- **Step 8 dropped (2026-10-06, #1867 closed).** In Pi 1.0.4 `started` is reported
+  after `before_agent_start`, where an extension may call `setModel` without any RPC
+  event, so skipping the `get_state` barrier leaves the turn and resident selection
+  stale. Skipping only on `queued` duplicates the existing `agent_start` path. A
+  round-trip-free design needs Pi to report the effective model in the prompt
+  response or emit a model-change event. The text below is historical.
 - **Pi turn acceptance (Step 8).** `prompt`/`steer`/`follow_up` responses carry
   `data.disposition` (`started | queued | handled`) since 0.99.0. Sesori currently
   ignores the response body and always runs a one- or two-snapshot `get_state`

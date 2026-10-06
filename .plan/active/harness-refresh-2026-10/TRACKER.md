@@ -12,7 +12,7 @@ Evidence lives in the PRs and per-step notes. This file only orders the work.
 | 5.b | 🌿 OMP cleanup fix (only if the Step 5 probe needs it; re-reviewed) | 5 | conditional |
 | 6 | ⚙️ OpenCode 2.0.24 + regeneration | 1 | pending |
 | 7 | ⚙️ Pi 1.0.4 + floor 0.99.0 + catalog fix | 1 | pending |
-| 8 | ⚙️ Pi turn acceptance via `disposition` | 7 | pending |
+| 8 | ⚙️ Pi turn acceptance via `disposition` | 7 | dropped (#1867 closed; see PLAN) |
 | 9 | 🌱 Cursor ACP sub-agent wire probe | 2 | pending |
 | 10.a | 🚧 Cursor native child sessions (re-reviewed; D10 floor decision first) | 9 | pending |
 | 10.b | 🌿 Delete the inert Cursor live Task path and orphaned ACP residency hooks | 10.a | pending |
