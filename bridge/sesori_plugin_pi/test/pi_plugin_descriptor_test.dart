@@ -4,6 +4,7 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 import "package:pi_plugin/pi_plugin.dart";
+import "package:pi_plugin/src/api/pi_rpc_startup_extension.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -395,7 +396,10 @@ void main() {
       );
 
       expect(processes.executables, ["/managed/pi"]);
-      expect(processes.arguments.single, ["--mode", "rpc", "--no-session", "--approve"]);
+      final arguments = processes.arguments.single;
+      expect(arguments.take(5), ["--mode", "rpc", "--no-session", "--approve", "--extension"]);
+      final startupExtension = File(arguments.last);
+      expect(await startupExtension.readAsString(), piRpcStartupExtensionSource);
       expect(processes.environments.single, {
         "ANTHROPIC_API_KEY": "secret",
         "PI_SKIP_VERSION_CHECK": "1",
@@ -403,6 +407,34 @@ void main() {
       process.kill(signal: ProcessSignal.sigterm);
       expect(processes.gracefulSignals, [1]);
       await factory.dispose();
+      expect(startupExtension.parent.existsSync(), isFalse);
+    });
+
+    test("concurrent Pi launches share one temporary startup extension", () async {
+      final processes = _Processes(
+        outputs: const [
+          _Output(stdout: "", exitCode: 0),
+          _Output(stdout: "", exitCode: 0),
+        ],
+      );
+      final factory = HostPiProcessFactory(processes: processes);
+      addTearDown(factory.dispose);
+      await Future.wait([
+        for (final launch in [PiNewSession(sessionId: "new-session"), const PiNoSession()])
+          factory.spawn(
+            spec: PiLaunchSpec(
+              binaryPath: "pi",
+              workingDirectory: "/project",
+              launch: launch,
+              model: null,
+              thinkingLevel: null,
+              environment: const {},
+            ),
+          ),
+      ]);
+
+      expect(processes.arguments[0].last, processes.arguments[1].last);
+      expect(File(processes.arguments[0].last).existsSync(), isTrue);
     });
   });
 }

@@ -16,6 +16,74 @@ import "package:test/test.dart";
 import "support/pi_rpc_client_test_factory.dart";
 
 void main() {
+  test("startup questions can be answered before the initial history response", () async {
+    final process = FakePiProcess();
+    final repository = _repository(processFactory: ({required spec}) async => process);
+    addTearDown(repository.dispose);
+    final frames = <PiSessionProcessFrame>[];
+    final subscription = repository.frames.listen(frames.add);
+    addTearDown(subscription.cancel);
+    final connecting = repository.ensureResident(
+      sessionId: "session",
+      knownDirectories: const {},
+      model: null,
+      variant: null,
+    );
+    final history = await waitForCommand(process: process, type: "get_entries");
+    process.emit(
+      frame: {
+        "type": "extension_ui_request",
+        "id": "startup-dialog",
+        "method": "select",
+        "title": "Fixture approval",
+        "options": ["Deny", "Allow"],
+      },
+    );
+    await pump();
+    final startup = frames.single;
+    expect(startup.sessionId, "session");
+    expect((startup.frame as PiExtensionUiFrame).request.id, "startup-dialog");
+    expect(
+      repository.sendExtensionUiResponse(
+        ownerSessionId: "session",
+        generation: startup.generation + 1,
+        requestId: "startup-dialog",
+        reply: const PiExtensionUiCancelledReply(),
+      ),
+      isFalse,
+    );
+    expect(
+      repository.sendExtensionUiResponse(
+        ownerSessionId: "session",
+        generation: startup.generation,
+        requestId: "startup-dialog",
+        reply: const PiExtensionUiCancelledReply(),
+      ),
+      isTrue,
+    );
+    final reply = await waitForCommand(process: process, type: "extension_ui_response");
+    expect(reply["id"], "startup-dialog");
+    expect(reply["cancelled"], isTrue);
+    process.emitResponse(
+      id: history["id"]! as String,
+      command: "get_entries",
+      data: _historyJson(text: "history"),
+    );
+    await connecting;
+    await pump();
+    expect(frames.where((frame) => frame.frame is PiExtensionUiFrame), hasLength(1));
+    process.emit(
+      frame: {
+        "type": "extension_ui_request",
+        "id": "native-dialog",
+        "method": "input",
+        "title": "Fixture input",
+      },
+    );
+    await pump();
+    expect(frames.where((frame) => frame.frame is PiExtensionUiFrame), hasLength(2));
+  });
+
   group("PiSessionProcessRepository.loadHistory", () {
     test("resumes exact path in header cwd, sends get_entries, maps response, and disposes", () async {
       final process = FakePiProcess();

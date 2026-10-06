@@ -342,6 +342,13 @@ variant, and worktree mode, and creating the session with its first input.
   same scoped authentication-required state rather than an empty successful snapshot or
   a global runtime failure. Its bounded action directs the user to Pi's local `/login`;
   provider diagnostics and local paths never enter that guidance.
+- Pi startup extension dialogs use the existing RPC question/reply path before
+  native RPC begins reading stdin and before initial session history completes.
+  Catalog probes cancel those dialogs without
+  granting MCP access; new, resumed, and forked sessions retain their normal
+  extension dialogs. Buffered commands and partial UTF-8 input reach native RPC
+  in their original order after startup, and subsequent dialogs use native Pi.
+  Installed extensions, credentials, and MCP approval settings remain intact.
 - Authentication-required discovery preserves any last-good durable options without
   reporting them as a successful refresh. `/session/options` carries the condition as a
   typed response. New Session replaces the composer with a login card
@@ -431,6 +438,10 @@ highlight, Enter and Esc.
 
 ## Failure Signals
 
+- Pi exits or hangs on an extension's startup question, a catalog refresh leaves
+  newly available models missing for that reason, or an early command is lost,
+  duplicated, or corrupted when native RPC starts reading input; startup
+  questions cannot be answered until initial history finishes.
 - Options are empty or reported successfully where authentication-required
   discovery should be explicit, a partial observation overwrites a complete
   cache, Create remains enabled, Recheck becomes unavailable, the plugin runtime

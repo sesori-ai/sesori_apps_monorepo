@@ -309,6 +309,17 @@ final class PiSessionProcessRepository({
     );
     final connecting = _ConnectingClient(client: client, generation: generation);
     _connectingClients[sessionId] = connecting;
+    final startupUi = client.startupExtensionUi.listen((frame) {
+      if (!identical(_connectingClients[sessionId], connecting) || _frames.isClosed) return;
+      _frames.add(
+        PiSessionProcessFrame(
+          sessionId: sessionId,
+          generation: generation,
+          frame: frame,
+          selectionUpdate: const PiSessionSelectionUnchanged(),
+        ),
+      );
+    });
     try {
       await client.start();
       if (_disposed || _generations[sessionId] != generation) {
@@ -382,6 +393,7 @@ final class PiSessionProcessRepository({
       }
       rethrow;
     } finally {
+      await startupUi.cancel();
       if (identical(_connectingClients[sessionId], connecting)) {
         _connectingClients.remove(sessionId);
       }
@@ -537,8 +549,12 @@ final class PiSessionProcessRepository({
     required PiExtensionUiReply reply,
   }) {
     final resident = _residents[ownerSessionId];
-    return resident != null && resident.generation == generation
-        ? resident.client.sendExtensionUiResponse(id: requestId, reply: reply)
+    if (resident != null && resident.generation == generation) {
+      return resident.client.sendExtensionUiResponse(id: requestId, reply: reply);
+    }
+    final connecting = _connectingClients[ownerSessionId];
+    return connecting != null && connecting.generation == generation
+        ? connecting.client.sendExtensionUiResponse(id: requestId, reply: reply)
         : false;
   }
 

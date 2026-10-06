@@ -417,6 +417,48 @@ void main() {
   });
 
   group("startup buffering", () {
+    test("routes startup UI immediately without replaying it or dropping other buffered events", () async {
+      final started = await startTestClient();
+      addTearDown(started.client.dispose);
+      final startupUi = <PiExtensionUiFrame>[];
+      final startupSubscription = started.client.startupExtensionUi.listen(startupUi.add);
+      addTearDown(startupSubscription.cancel);
+      started.process.emit(
+        frame: piEventFixture(type: "agent_start", fields: const {}),
+      );
+      started.process.emit(
+        frame: {
+          "type": "extension_ui_request",
+          "id": "startup-dialog",
+          "method": "select",
+          "title": "Fixture approval",
+          "options": ["Deny", "Allow"],
+        },
+      );
+      await pump();
+      expect(startupUi.single.request.id, "startup-dialog");
+      expect(
+        started.client.sendExtensionUiResponse(id: "startup-dialog", reply: const PiExtensionUiCancelledReply()),
+        isTrue,
+      );
+
+      final frames = <PiRpcFrame>[];
+      started.client.frames.listen(frames.add);
+      await pump();
+      expect((frames.single as PiEventFrame).event, isA<PiAgentStartEvent>());
+      started.process.emit(
+        frame: {
+          "type": "extension_ui_request",
+          "id": "native-dialog",
+          "method": "input",
+          "title": "Fixture input",
+        },
+      );
+      await pump();
+      expect(startupUi, hasLength(1));
+      expect((frames.last as PiExtensionUiFrame).request.id, "native-dialog");
+    });
+
     test("replays frames parsed before the first listener attached", () async {
       final started = await startTestClient();
       addTearDown(started.client.dispose);
