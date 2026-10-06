@@ -381,9 +381,6 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
                 constraints: BoxConstraints(minHeight: padding.top + _kHeaderHeight),
                 alignment: Alignment.center,
                 padding: EdgeInsetsDirectional.only(top: padding.top, start: PregoSpacing.lg, end: PregoSpacing.sm),
-                decoration: BoxDecoration(
-                  border: Border(bottom: BorderSide(color: prego.colors.borderSecondary, width: 0.5)),
-                ),
                 // As wide as the list's column, so the field sits over the rows.
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: widget.maxWidth ?? double.infinity),

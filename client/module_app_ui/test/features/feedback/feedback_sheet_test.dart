@@ -157,18 +157,14 @@ void main() {
 
     await tester.tap(love);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 299));
-    expect(tester.widget<TextButton>(love).onPressed, isNull);
-    expect(tester.widget<TextButton>(improve).onPressed, isNull);
-    expect(find.text(_reviewTitle), findsNothing, reason: "The love button's pop registers first.");
-
-    // The question takes over right after the pop, not after the celebration.
-    await tester.pump(const Duration(milliseconds: 1));
-    await tester.pump();
+    // The question takes over at the tap, not after the celebration.
     expect(find.text(_reviewTitle), findsOneWidget);
     expect(find.text(_ratingTitle), findsOneWidget, reason: "The answers leave while the question arrives.");
+    await tester.tap(improve, warnIfMissed: false);
+    await tester.pump();
+    expect(cubit.state, const FeedbackSheetState.reviewConfirmation(), reason: "The leaving answers are locked.");
 
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 500));
     expect(heroAnimation.value, closeTo(0.25, 0.0001), reason: "The first 1.2s retain the authored Figma timing.");
     expect(find.text(_ratingTitle), findsNothing);
     expect(find.text(_reviewBody), findsOneWidget);
@@ -188,11 +184,9 @@ void main() {
     // Measured from the hero, so the sheet's own resize does not count.
     double below({required String text}) =>
         tester.getTopLeft(find.text(text)).dy - tester.getBottomLeft(find.byType(FeedbackRatingHero)).dy;
+    final restingAnswers = below(text: _ratingTitle);
     await tester.tap(love);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump();
-    final restingAnswers = below(text: _ratingTitle);
 
     await tester.pump(const Duration(milliseconds: 120));
     expect(below(text: _ratingTitle), lessThan(restingAnswers - 4));
@@ -200,6 +194,21 @@ void main() {
 
     await tester.pumpAndSettle();
     expect(arriving - below(text: _reviewTitle), greaterThan(8));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("Could be better hands over with the same rise as the review question", (tester) async {
+    await open(tester: tester);
+    // Measured from the sheet's top, so the sheet's own resize does not count.
+    double fromTop() =>
+        tester.getTopLeft(find.text("What should we improve?")).dy - tester.getTopLeft(find.byType(BottomSheet)).dy;
+    await tester.tap(improve);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final arriving = fromTop();
+
+    await tester.pumpAndSettle();
+    expect(arriving - fromTop(), greaterThan(8));
     expect(tester.takeException(), isNull);
   });
 
@@ -275,24 +284,6 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tapAndSettle(tester: tester, finder: close);
 
-    expect(outcomes.single, isA<FeedbackSheetOutcomeLoveNotNow>());
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets("a handoff that falls while the sheet closes does not switch to the review step", (tester) async {
-    await open(tester: tester);
-    await tester.tap(love);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 200));
-
-    await tester.tap(close);
-    await tester.pump();
-    // The handoff time passes 100 ms into the 200 ms exit animation.
-    await tester.pump(const Duration(milliseconds: 150));
-    expect(find.byType(BottomSheet, skipOffstage: false), findsOneWidget);
-    expect(cubit.state, const FeedbackSheetState.celebrating());
-
-    await tester.pumpAndSettle();
     expect(outcomes.single, isA<FeedbackSheetOutcomeLoveNotNow>());
     expect(tester.takeException(), isNull);
   });

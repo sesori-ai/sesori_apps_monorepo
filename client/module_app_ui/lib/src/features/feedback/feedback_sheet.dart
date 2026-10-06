@@ -152,7 +152,10 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
   }
 
   void _chooseLove() {
-    context.read<FeedbackSheetCubit>().chooseLove();
+    final cubit = context.read<FeedbackSheetCubit>()..chooseLove();
+    // The review question takes over at the tap while the hero celebrates
+    // above it.
+    if (cubit.reviewLeavesApp) cubit.finishCelebration();
     if (prefersReducedMotion(context)) {
       // Jumps past every celebration beat at once.
       _celebration.value = 1;
@@ -161,18 +164,17 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
     }
   }
 
-  /// Hands over to the review step early in the celebration, and closes for
-  /// the OS review prompt a beat later, while the hero keeps celebrating.
+  /// Closes for the in-app OS review prompt a beat into the celebration,
+  /// while the hero keeps celebrating.
   void _celebrationTicked() {
     final cubit = context.read<FeedbackSheetCubit>();
     if (cubit.state is! FeedbackSheetCelebrating) return;
-    // A sheet closed mid-celebration keeps its content while it animates out
-    // instead of switching to the review step, and is not popped twice.
+    // A sheet closed mid-celebration is not popped twice.
     if (ModalRoute.of(context)?.isCurrent == false) return;
     final elapsed = feedbackCelebrationDuration * _celebration.value;
     // The OS prompt is committed only as the sheet closes, so a dismissal
     // before then stays a plain "not now".
-    if (elapsed < (cubit.reviewLeavesApp ? feedbackCelebrationHandoff : feedbackReviewPromptCloseDelay)) return;
+    if (elapsed < feedbackReviewPromptCloseDelay) return;
     cubit.finishCelebration();
     if (cubit.state is FeedbackSheetReviewPromptPending) _close();
   }
@@ -193,8 +195,7 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     final reducedMotion = prefersReducedMotion(context);
     final privateStep = state is FeedbackSheetPrivateFeedback;
-    final content = FeedbackContentTransition(
-      layoutBuilder: (current, previous) => feedbackStepLayout(current: current, previous: previous),
+    final content = FeedbackStepTransition(
       child: privateStep
           ? KeyedSubtree(
               key: _privateStepKey,

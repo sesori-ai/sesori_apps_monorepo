@@ -21,9 +21,8 @@ Desktop neither shows the row nor opens the sheet by itself.
   a dark disc so it stays legible over the celebration artwork.
 - An answer is final. After the first tap, both answers are locked, so repeated
   or crossed taps cannot change it.
-- **Yes, love it!** plays the 1.5 s celebration. 300 ms in, once the button's
-  pink pop has peaked, the answers lift away and "Thanks! Leave a review?"
-  rises into place while the hero keeps celebrating above it. The body does
+- **Yes, love it!** plays the 1.5 s celebration. At the tap, the answers lift
+  away and "Thanks! Leave a review?" rises into place while the hero keeps celebrating above it. The body does
   not name a store. The actions are **Leave a review** (primary) and
   **Not now** (secondary).
 - **Leave a review** closes the sheet. The store opens only after the sheet's
@@ -46,10 +45,10 @@ Desktop neither shows the row nor opens the sheet by itself.
     it after Sesori's own question.
 - **Not now**, the close button, and a swipe down after **Yes** all count as a
   positive answer without a review, and no store or StoreKit prompt opens. This
-  includes closing the sheet during the celebration, before the review step
-  takes over or before the automatic iOS sheet closes itself. A sheet closed
-  before the takeover keeps its content while it animates out.
-- **Could be better** replaces the rating step with "What should we improve?".
+  includes closing the sheet during the celebration, before the automatic iOS
+  sheet closes itself.
+- **Could be better** hands over to "What should we improve?" with the same
+  step transition: the rating step lifts away and the new step rises into place.
   It shows four issue pills (Hard to navigate, Connection drops, Notifications
   don’t arrive, App feels slow) and a text composer. A quiet line below the
   composer says "Sent privately to the Sesori team."
@@ -137,7 +136,7 @@ Desktop neither shows the row nor opens the sheet by itself.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated. The sheet widget suite proves the 300 ms review takeover with visible travel and the confirmation copy; the locked answers; that the outcome resolves only after the sheet has closed; that the automatic iOS sheet closes itself at 800 ms without switching content, and that closing it earlier requests no review; that a takeover falling during the exit does not switch steps; the outcomes for dismiss, **Not now**, a close during the celebration, and **Cancel**; private send with its toast after closing and the recipient line; that nothing dismisses the sheet mid-send; a failed send that keeps the draft and retries; the 4,000-character limit and counter; reduced motion (at open, turned on mid-flight, while writing, and while recording); and the narrow large-text layout. Its voice group proves hold-to-talk with the waveform, the disabled send, and the transcript appended without sending; discard by the cancel target and a quick tap; the permission and network-failure notices keeping the draft; the transcript cut at the limit; and that closing mid-recording discards it. The cubit, repository, API, and store-client suites prove the outcome mapping, send locking, failure, and a stale in-flight send, message trimming and omission, the request's wire values, the store URLs with the Android fallback, the StoreKit request (and its logged failure) on iOS, and the Play Store listing instead of In-App Review on Android. The Settings suite proves the row's position, that the store opens only after the confirmed sheet has closed, and a send with the `settings` source. The counter suites prove the stored state's round trip and discard of unreadable values, the Remote Config fetch, fallbacks, and defaults, the threshold and cooldown, that a showing restarts the count and records the time, that AI-error events and failures restart the count, that **Yes** stops it for good, that nothing is counted before the counter starts (desktop), and that the session-detail and new-session cubits count only successful sends, creations, and replies. The listener test proves the sheet opens over the current screen, right away without a keyboard and only after 500 ms when one is raised. The event, cubit, and sheet suites prove both analytics events' wire names and values, one answer per closed sheet, `private_feedback_sent` only after a successful send, and `voice_assisted` after a dictated transcript. |
+| L1 Smoke | Automated. The sheet widget suite proves the review takeover at the tap with visible travel, the same travel for **Could be better**, and the confirmation copy; the locked answers; that the outcome resolves only after the sheet has closed; that the automatic iOS sheet closes itself at 800 ms without switching content, and that closing it earlier requests no review; the outcomes for dismiss, **Not now**, a close during the celebration, and **Cancel**; private send with its toast after closing and the recipient line; that nothing dismisses the sheet mid-send; a failed send that keeps the draft and retries; the 4,000-character limit and counter; reduced motion (at open, turned on mid-flight, while writing, and while recording); and the narrow large-text layout. Its voice group proves hold-to-talk with the waveform, the disabled send, and the transcript appended without sending; discard by the cancel target and a quick tap; the permission and network-failure notices keeping the draft; the transcript cut at the limit; and that closing mid-recording discards it. The cubit, repository, API, and store-client suites prove the outcome mapping, send locking, failure, and a stale in-flight send, message trimming and omission, the request's wire values, the store URLs with the Android fallback, the StoreKit request (and its logged failure) on iOS, and the Play Store listing instead of In-App Review on Android. The Settings suite proves the row's position, that the store opens only after the confirmed sheet has closed, and a send with the `settings` source. The counter suites prove the stored state's round trip and discard of unreadable values, the Remote Config fetch, fallbacks, and defaults, the threshold and cooldown, that a showing restarts the count and records the time, that AI-error events and failures restart the count, that **Yes** stops it for good, that nothing is counted before the counter starts (desktop), and that the session-detail and new-session cubits count only successful sends, creations, and replies. The listener test proves the sheet opens over the current screen, right away without a keyboard and only after 500 ms when one is raised. The event, cubit, and sheet suites prove both analytics events' wire names and values, one answer per closed sheet, `private_feedback_sent` only after a successful send, and `voice_assisted` after a dictated transcript. |
 | L2 Routine | Client end to end on the release-target client platform against the dev auth server: Settings shows **Rate Sesori**; **Yes**, then **Leave a review**, opens the store review page after the sheet has closed; **Not now** returns to Settings without leaving the app; **Could be better** sends ticked issues and fixture text (typed, then extended by a held voice recording), closes the sheet, and shows the toast, and the stored document matches (message omitted when blank). |
 | L3 Release | Client end to end on the alternate client platform: the same journey opens that platform's store. On a phone with Remote Config setting the threshold to 2 and the cooldown to 1 day, two sent messages open the automatic sheet over the session, and an AI retry between them restarts the count. On iOS **Yes** closes the sheet and the StoreKit prompt appears only after it has gone; on Android **Yes** shows the confirmation, **Leave a review** opens the Play Store listing, and **Not now** only closes. After a dismissal the sheet does not reopen by itself on the next two sends; after **Yes** it never reopens by itself. |
 | L4 Extended | Client end to end with Reduce Motion or Remove animations enabled and at accessibility text sizes. On Android, a device without the Play Store app falls back to the web listing. Sending offline or past the server's rate limit shows the inline error, keeps the draft, and **Retry** succeeds once the server accepts it. |
@@ -149,10 +148,8 @@ Desktop neither shows the row nor opens the sheet by itself.
   animating out, or opens after **Not now**, the close button, or a swipe
   down.
 - A second tap changes a recorded answer, or reopening resumes a finished step.
-- Closing the sheet before the review step's takeover switches it to the review
-  step while it animates out.
-- The review question waits for the whole celebration, or swaps in without
-  visible travel when motion is allowed.
+- The review question or the private step waits after the tap, or swaps in
+  without visible travel when motion is allowed.
 - An automatic sheet on iOS shows the review confirmation, switches content
   while it closes, closes before the celebration has read, or asks StoreKit
   after the user closed it first.
