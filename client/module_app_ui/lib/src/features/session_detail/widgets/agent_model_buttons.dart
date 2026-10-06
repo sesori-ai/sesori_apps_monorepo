@@ -16,8 +16,8 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "composer_surface_style.dart";
 import "model_picker.dart";
+import "page_halo.dart";
 
 /// Composer header exposing the available agent / model / variant selections
 /// as solid pill buttons ([PregoPickerButton]). Tapping a pill opens its popup
@@ -97,7 +97,10 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     // One agent is no choice: the entry appears only when there is another.
     final hasAgentSelection = widget.agents.length > 1 && selectedAgent != null;
     final compact = widget.compact;
-    Widget slot(Widget menu) => _pickerSlot(compact: compact, child: menu);
+    Widget slot(Widget menu) => _pickerSlot(
+      compact: compact,
+      child: _pillHalo(child: menu),
+    );
     final selectors = [
       if (hasAgentSelection)
         slot(
@@ -130,13 +133,15 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
           ),
         ),
       if (widget.fastModeControl != FastModeControl.hidden)
-        _FastModeButton(
-          surfaceStyle: widget.surfaceStyle,
-          control: widget.fastModeControl,
-          decide: widget.decideFastModeToggle,
-          onFastModeChanged: widget.onFastModeChanged,
+        _pillHalo(
+          child: _FastModeButton(
+            surfaceStyle: widget.surfaceStyle,
+            control: widget.fastModeControl,
+            decide: widget.decideFastModeToggle,
+            onFastModeChanged: widget.onFastModeChanged,
+          ),
         ),
-      ...widget.trailing,
+      for (final chip in widget.trailing) _pillHalo(child: chip),
     ];
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
@@ -164,14 +169,20 @@ class const ReadOnlyAgentModelPills({
     final agent = this.agent;
     final model = this.model;
     final variant = model?.variant;
+    // The bottom-most row: each halo runs on to the bottom edge, so nothing
+    // shows below the pills.
     Widget pill({required IconData icon, required String label}) => _pickerSlot(
       compact: compact,
-      child: _pickerButton(
-        hugLabel: compact,
-        leadingIcon: icon,
-        label: label,
-        surfaceStyle: PregoComposerSurfaceStyle.subtle,
-        onPressed: null,
+      child: PageHalo(
+        radius: PregoRadius.full,
+        reachesLayerBottom: true,
+        child: _pickerButton(
+          hugLabel: compact,
+          leadingIcon: icon,
+          label: label,
+          surfaceStyle: PregoComposerSurfaceStyle.subtle,
+          onPressed: null,
+        ),
       ),
     );
     final pills = [
@@ -185,15 +196,16 @@ class const ReadOnlyAgentModelPills({
       if (variant != null) pill(icon: TablerRegular.gauge, label: variant),
     ];
     if (pills.isEmpty) return const SizedBox.shrink();
-    return DecoratedBox(
-      decoration: composerScrimDecoration(prego: context.prego),
-      child: Padding(
-        padding: EdgeInsetsDirectional.fromSTEB(16, 6, 16, MediaQuery.paddingOf(context).bottom + 8),
-        child: Row(spacing: 8, children: pills),
-      ),
+    return Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(16, 6, 16, MediaQuery.paddingOf(context).bottom + 8),
+      child: Row(spacing: 8, children: pills),
     );
   }
 }
+
+/// A pill's [PageHalo], so the content passing under the strip fades around it.
+Widget _pillHalo({required Widget child}) =>
+    PageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: child);
 
 /// A pill's share of the strip: a pointer (compact) pill hugs its label up to a
 /// cap, while touch pills split the width equally.

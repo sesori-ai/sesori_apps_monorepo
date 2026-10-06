@@ -19,6 +19,7 @@ import "command_picker.dart";
 import "composer_options_accordion.dart";
 import "composer_surface_style.dart";
 import "image_attachment_viewer.dart";
+import "page_halo.dart";
 import "prompt_editor_sheet.dart";
 
 // WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors in this file.
@@ -1079,55 +1080,63 @@ class _PromptInputState() extends State<PromptInput> {
         ? context.watch<VoiceInputCubit>().state
         : const VoiceInputState.idle();
 
-    return DecoratedBox(
-      // Floating composer: no bar surface, no separator line.
-      decoration: composerScrimDecoration(prego: context.prego),
-      child: Column(
-        mainAxisSize: .min,
-        children: [
-          ?widget.header,
-          // A focused composer consumes the first route pop so Android back
-          // dismisses the keyboard before a later back leaves the screen.
-          Builder(
-            builder: (context) {
-              final shouldDismissKeyboardBeforePop =
-                  Theme.of(context).platform == TargetPlatform.android &&
-                  _focusNode.hasFocus &&
-                  capabilities.isKeyboardVisible;
-              return PopScope(
-                canPop: !shouldDismissKeyboardBeforePop,
-                onPopInvokedWithResult: (didPop, _) {
-                  if (!didPop && shouldDismissKeyboardBeforePop) _focusNode.unfocus();
-                },
-                child: switch (widget.composerTrailing) {
-                  null => _buildComposerTopSlot(context),
-                  final trailing => Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    spacing: 8,
-                    children: [
-                      Expanded(child: _buildComposerTopSlot(context)),
-                      Padding(padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2), child: trailing),
-                    ],
-                  ),
-                },
-              );
-            },
-          ),
+    // Floating composer: no bar surface, no separator line. Each control's
+    // [PageHalo] fades the content passing under it.
+    return Column(
+      mainAxisSize: .min,
+      children: [
+        ?widget.header,
+        // A focused composer consumes the first route pop so Android back
+        // dismisses the keyboard before a later back leaves the screen.
+        Builder(
+          builder: (context) {
+            final shouldDismissKeyboardBeforePop =
+                Theme.of(context).platform == TargetPlatform.android &&
+                _focusNode.hasFocus &&
+                capabilities.isKeyboardVisible;
+            return PopScope(
+              canPop: !shouldDismissKeyboardBeforePop,
+              onPopInvokedWithResult: (didPop, _) {
+                if (!didPop && shouldDismissKeyboardBeforePop) _focusNode.unfocus();
+              },
+              child: switch (widget.composerTrailing) {
+                null => _buildComposerTopSlot(context),
+                final trailing => Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  spacing: 8,
+                  children: [
+                    Expanded(child: _buildComposerTopSlot(context)),
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
+                      child: PageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
+                    ),
+                  ],
+                ),
+              },
+            );
+          },
+        ),
 
-          // Group only the input container with the text field via a
-          // TextFieldTapRegion. The field's default `onTapOutside` unfocuses
-          // (and dismisses the keyboard) on any pointer-down outside this
-          // region; keeping the send button inside stops the hide/re-show
-          // flicker that came from [_handleSend] re-requesting focus right
-          // after. The agent/model/variant pills in [composerHeader] are
-          // deliberately left outside the region, so tapping them dismisses the
-          // keyboard (their menus want the screen space the keyboard occupies).
-          TextFieldTapRegion(
-            child: Padding(
-              padding: EdgeInsetsDirectional.only(
-                top: widget.header != null ? 4 : 8,
-                bottom: MediaQuery.paddingOf(context).bottom + 8,
-              ),
+        // Group only the input container with the text field via a
+        // TextFieldTapRegion. The field's default `onTapOutside` unfocuses
+        // (and dismisses the keyboard) on any pointer-down outside this
+        // region; keeping the send button inside stops the hide/re-show
+        // flicker that came from [_handleSend] re-requesting focus right
+        // after. The agent/model/variant pills in [composerHeader] are
+        // deliberately left outside the region, so tapping them dismisses the
+        // keyboard (their menus want the screen space the keyboard occupies).
+        TextFieldTapRegion(
+          child: Padding(
+            padding: EdgeInsetsDirectional.only(
+              top: widget.header != null ? 4 : 8,
+              bottom: MediaQuery.paddingOf(context).bottom + 8,
+            ),
+            // The composer's halo runs on to the bottom edge, so nothing
+            // shows below it. It follows the animated size rather than one
+            // layout's surface, so it stays put while layouts cross-fade.
+            child: PageHalo(
+              radius: PregoRadius.x3l,
+              reachesLayerBottom: true,
               child: AnimatedSize(
                 duration: _morphDuration,
                 curve: _morphCurve,
@@ -1174,8 +1183,8 @@ class _PromptInputState() extends State<PromptInput> {
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1202,10 +1211,14 @@ class _PromptInputState() extends State<PromptInput> {
           padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 2),
           child: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: GlassChip(
-              label: "/${commandInfo.name}",
-              onDeleted: widget.onCommandCleared,
-              deleteIcon: const Icon(TablerRegular.x, size: PregoIconSize.md),
+            child: PageHalo(
+              radius: PregoRadius.full,
+              reachesLayerBottom: false,
+              child: GlassChip(
+                label: "/${commandInfo.name}",
+                onDeleted: widget.onCommandCleared,
+                deleteIcon: const Icon(TablerRegular.x, size: PregoIconSize.md),
+              ),
             ),
           ),
         ),
@@ -1244,31 +1257,35 @@ class _PromptInputState() extends State<PromptInput> {
 
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 12, 2),
-      child: Row(
-        spacing: PregoSpacing.sm,
-        children: [
-          Expanded(
-            child: Text(
-              loc.voiceRecordingSaved,
-              style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+      child: PageHalo(
+        radius: PregoRadius.full,
+        reachesLayerBottom: false,
+        child: Row(
+          spacing: PregoSpacing.sm,
+          children: [
+            Expanded(
+              child: Text(
+                loc.voiceRecordingSaved,
+                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+              ),
             ),
-          ),
-          PregoButtonsSolid(
-            key: const Key("voice_saved_discard"),
-            label: loc.voiceDiscard,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.sm,
-            onPressed: _discardSavedRecording,
-          ),
-          PregoButtonsSolid(
-            key: const Key("voice_saved_retry"),
-            label: loc.voiceRetry,
-            leadingIcon: TablerRegular.refresh,
-            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-            size: PregoButtonsSolidSize.sm,
-            onPressed: _retrySavedRecording,
-          ),
-        ],
+            PregoButtonsSolid(
+              key: const Key("voice_saved_discard"),
+              label: loc.voiceDiscard,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.sm,
+              onPressed: _discardSavedRecording,
+            ),
+            PregoButtonsSolid(
+              key: const Key("voice_saved_retry"),
+              label: loc.voiceRetry,
+              leadingIcon: TablerRegular.refresh,
+              hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+              size: PregoButtonsSolidSize.sm,
+              onPressed: _retrySavedRecording,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1284,27 +1301,31 @@ class _PromptInputState() extends State<PromptInput> {
       // The design floats the helper spacing-3xl above the pill, less the
       // padding the tap-region below already contributes.
       padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs, bottom: PregoSpacing.xl),
-      child: SizedBox(
-        width: double.infinity,
-        child: ValueListenableBuilder<double>(
-          valueListenable: _cancelDragProgress,
-          builder: (context, progress, _) {
-            final cancelling = progress >= 1;
-            return Semantics(
-              liveRegion: true,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 150),
-                child: Text(
-                  cancelling ? loc.voiceReleaseToCancel : loc.voiceReleaseToTranscribe,
-                  key: ValueKey(cancelling),
-                  textAlign: TextAlign.center,
-                  style: prego.textTheme.textMd.regular.copyWith(
-                    color: cancelling ? prego.colors.textErrorPrimary : prego.colors.textPrimary,
+      child: PageHalo(
+        radius: PregoRadius.full,
+        reachesLayerBottom: false,
+        child: SizedBox(
+          width: double.infinity,
+          child: ValueListenableBuilder<double>(
+            valueListenable: _cancelDragProgress,
+            builder: (context, progress, _) {
+              final cancelling = progress >= 1;
+              return Semantics(
+                liveRegion: true,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 150),
+                  child: Text(
+                    cancelling ? loc.voiceReleaseToCancel : loc.voiceReleaseToTranscribe,
+                    key: ValueKey(cancelling),
+                    textAlign: TextAlign.center,
+                    style: prego.textTheme.textMd.regular.copyWith(
+                      color: cancelling ? prego.colors.textErrorPrimary : prego.colors.textPrimary,
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
