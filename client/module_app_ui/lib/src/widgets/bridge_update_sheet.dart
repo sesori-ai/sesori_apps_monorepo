@@ -165,7 +165,7 @@ class const _CommandBox({required final String command, required final String co
             PregoCopyIconButton(
               key: ValueKey("bridge_update_copy_$command"),
               tooltip: copyTooltip,
-              onCopy: () => copyTextToClipboard(text: command, operation: "bridge update command"),
+              onCopy: () => copyTextToClipboard(text: command, operation: "bridge update step text"),
             ),
           ],
         ),

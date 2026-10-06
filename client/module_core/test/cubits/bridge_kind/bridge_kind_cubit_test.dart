@@ -34,7 +34,7 @@ void main() {
       expect(cubit.state, isNull);
     });
 
-    test("reports the kind the connected bridge sent, and forgets it when the bridge goes away", () async {
+    test("reports the kind the connected bridge sent, keeps it while offline, and forgets it on disconnect", () async {
       statuses.add(const ConnectionStatus.connected(config: config, health: desktopHealth));
       final cubit = BridgeKindCubit(connectionService: connectionService);
       addTearDown(cubit.close);
@@ -42,6 +42,11 @@ void main() {
       expect(cubit.state, BridgeKind.desktop);
 
       statuses.add(const ConnectionStatus.bridgeOffline(config: config, health: desktopHealth));
+      await pumpEventQueue();
+
+      expect(cubit.state, BridgeKind.desktop);
+
+      statuses.add(const ConnectionStatus.disconnected());
       await pumpEventQueue();
 
       expect(cubit.state, isNull);
