@@ -22,6 +22,11 @@ void main() {
     );
     expect(refusal.toJson(), {"kind": "notPerformed", "reason": "residentWorkCompletionUnknown"});
     expect(SessionAbortRefusal.fromJson(refusal.toJson()), refusal);
+    const subAgentRefusal = SessionAbortRefusal.notPerformed(
+      reason: SessionAbortRefusalReason.subAgentStopUnsupported,
+    );
+    expect(subAgentRefusal.toJson(), {"kind": "notPerformed", "reason": "subAgentStopUnsupported"});
+    expect(SessionAbortRefusal.fromJson(subAgentRefusal.toJson()), subAgentRefusal);
     expect(
       SessionAbortRefusal.fromJson(const {"kind": "notPerformed", "reason": "future"}),
       const SessionAbortRefusal.notPerformed(reason: SessionAbortRefusalReason.unknownEnumValue),
