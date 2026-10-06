@@ -822,16 +822,26 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
               onRetry: () => context.read<SessionDetailCubit>().reload(),
             ),
           ),
-          // Sent before the load failed: Retry sends them, so they stay in view.
-          for (final submission in queuedMessages)
-            QueuedMessageBubble(
-              key: ValueKey(submission.promptId),
-              displayText: submission.displayText,
-              isCommand: submission.isCommand,
-              attachmentCount: submission.attachments.length,
-              localAttachments: submission.attachments,
-              presentation: const QueuedMessageBubblePresentation.pendingReadOnly(),
+          // Sent before the load failed: Retry sends them, so they stay in
+          // view, scrolling when they outgrow their half of the screen.
+          Flexible(
+            child: SingleChildScrollView(
+              reverse: true,
+              child: Column(
+                children: [
+                  for (final submission in queuedMessages)
+                    QueuedMessageBubble(
+                      key: ValueKey(submission.promptId),
+                      displayText: submission.displayText,
+                      isCommand: submission.isCommand,
+                      attachmentCount: submission.attachments.length,
+                      localAttachments: submission.attachments,
+                      presentation: const QueuedMessageBubblePresentation.pendingReadOnly(),
+                    ),
+                ],
+              ),
             ),
+          ),
         ],
       ),
     };

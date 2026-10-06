@@ -753,19 +753,20 @@ void main() {
     expect(find.descendant(of: prompt, matching: find.byType(Image)), findsOneWidget);
   });
 
-  testWidgets("a message sent before a failed first load stays in view", (tester) async {
-    const state = SessionDetailState.failed(
+  testWidgets("messages sent before a failed first load stay in view, scrolling when many", (tester) async {
+    final state = SessionDetailState.failed(
       reason: RemoteFailureReason.unknown,
       queuedMessages: [
-        QueuedSessionSubmission.text(
-          promptId: "prm_follow_up",
-          text: "Sent before the load",
-          inputMode: ComposerInputMode.typed,
-          attachments: [],
-          agent: null,
-          agentModel: null,
-          fastMode: false,
-        ),
+        for (var i = 0; i < 20; i++)
+          QueuedSessionSubmission.text(
+            promptId: "prm_follow_up_$i",
+            text: "Sent before the load $i",
+            inputMode: ComposerInputMode.typed,
+            attachments: const [],
+            agent: null,
+            agentModel: null,
+            fastMode: false,
+          ),
       ],
     );
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
@@ -773,9 +774,11 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pump();
 
+    // Twenty rows outgrow the screen without overflowing it; the newest shows.
+    expect(tester.takeException(), isNull);
     expect(find.byType(SessionDetailErrorView), findsOneWidget);
     expect(
-      find.descendant(of: find.byType(QueuedMessageBubble), matching: find.text("Sent before the load")),
+      find.descendant(of: find.byType(QueuedMessageBubble), matching: find.text("Sent before the load 19")),
       findsOneWidget,
     );
   });

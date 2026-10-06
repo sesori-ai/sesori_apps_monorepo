@@ -927,12 +927,17 @@ class _RenderSlideFromLastPosition({required Animation<double> progress, require
   @override
   void paint(PaintingContext context, Offset offset) {
     final position = localToGlobal(Offset.zero);
+    final done = _towardSending ? _progress.value : 1 - _progress.value;
+    final remaining = 1 - Curves.easeOutCubic.transform(done);
     if (_moved) {
-      _from = (_lastPosition ?? position) - position;
+      // A flip mid-move (a launch failing within the motion) resumes from
+      // where the child painted, scaled to the part of the curve still left.
+      final gap = (_lastPosition ?? position) - position;
+      _from = remaining < 1e-6 ? Offset.zero : gap / remaining;
       _moved = false;
     }
-    _lastPosition = position;
-    final done = _towardSending ? _progress.value : 1 - _progress.value;
-    super.paint(context, offset + _from * (1 - Curves.easeOutCubic.transform(done)));
+    final shift = _from * remaining;
+    _lastPosition = position + shift;
+    super.paint(context, offset + shift);
   }
 }
