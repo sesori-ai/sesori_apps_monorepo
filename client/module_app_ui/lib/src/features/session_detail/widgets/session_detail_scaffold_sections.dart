@@ -7,7 +7,6 @@ import "package:theme_prego/theme/primitives/prego_color_primitives.g.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/remote_failure_view.dart";
-import "page_halo.dart";
 
 /// A pale amber card docked above the composer while the session waits on
 /// the user for a question or permission: amber means it needs you. It names
@@ -27,7 +26,7 @@ class const SessionDetailNeedsYouCard({
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, PregoSpacing.md),
-      child: PageHalo(
+      child: PregoPageHalo(
         radius: PregoRadius.x2l,
         reachesLayerBottom: false,
         child: DecoratedBox(

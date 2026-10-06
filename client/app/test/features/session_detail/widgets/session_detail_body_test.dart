@@ -14,7 +14,6 @@ import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
-import "package:sesori_app_ui/src/features/session_detail/widgets/page_halo.dart";
 import "package:sesori_app_ui/src/features/session_prompts/session_prompts_view.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_spine_row.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -582,18 +581,18 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    final halos = find.descendant(of: find.byType(PromptInput), matching: find.byType(PageHalo));
+    final halos = find.descendant(of: find.byType(PromptInput), matching: find.byType(PregoPageHalo));
     // The composer and each picker pill carry a halo, all painted by the one
     // layer over the bottom controls.
     expect(halos, findsAtLeastNWidgets(2));
     for (final halo in halos.evaluate()) {
       expect(
-        find.ancestor(of: find.byWidget(halo.widget), matching: find.byType(PageHaloLayer)),
+        find.ancestor(of: find.byWidget(halo.widget), matching: find.byType(PregoPageHaloLayer)),
         findsOneWidget,
       );
     }
     // Only the composer's runs on to the bottom edge.
-    expect(tester.widgetList<PageHalo>(halos).where((halo) => halo.reachesLayerBottom), hasLength(1));
+    expect(tester.widgetList<PregoPageHalo>(halos).where((halo) => halo.reachesLayerBottom), hasLength(1));
   });
 
   testWidgets("an empty newest page keeps older transcript paging reachable", (tester) async {

@@ -19,7 +19,6 @@ import "command_picker.dart";
 import "composer_options_accordion.dart";
 import "composer_surface_style.dart";
 import "image_attachment_viewer.dart";
-import "page_halo.dart";
 import "prompt_editor_sheet.dart";
 
 // WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors in this file.
@@ -1081,7 +1080,7 @@ class _PromptInputState() extends State<PromptInput> {
         : const VoiceInputState.idle();
 
     // Floating composer: no bar surface, no separator line. Each control's
-    // [PageHalo] fades the content passing under it.
+    // [PregoPageHalo] fades the content passing under it.
     return Column(
       mainAxisSize: .min,
       children: [
@@ -1108,7 +1107,7 @@ class _PromptInputState() extends State<PromptInput> {
                     Expanded(child: _buildComposerTopSlot(context)),
                     Padding(
                       padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-                      child: PageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
+                      child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
                     ),
                   ],
                 ),
@@ -1134,7 +1133,7 @@ class _PromptInputState() extends State<PromptInput> {
             // The composer's halo runs on to the bottom edge, so nothing
             // shows below it. It follows the animated size rather than one
             // layout's surface, so it stays put while layouts cross-fade.
-            child: PageHalo(
+            child: PregoPageHalo(
               radius: PregoRadius.x3l,
               reachesLayerBottom: true,
               child: AnimatedSize(
@@ -1211,7 +1210,7 @@ class _PromptInputState() extends State<PromptInput> {
           padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 2),
           child: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: PageHalo(
+            child: PregoPageHalo(
               radius: PregoRadius.full,
               reachesLayerBottom: false,
               child: GlassChip(
@@ -1257,7 +1256,7 @@ class _PromptInputState() extends State<PromptInput> {
 
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 12, 2),
-      child: PageHalo(
+      child: PregoPageHalo(
         radius: PregoRadius.full,
         reachesLayerBottom: false,
         child: Row(
@@ -1301,11 +1300,11 @@ class _PromptInputState() extends State<PromptInput> {
       // The design floats the helper spacing-3xl above the pill, less the
       // padding the tap-region below already contributes.
       padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs, bottom: PregoSpacing.xl),
-      child: PageHalo(
-        radius: PregoRadius.full,
-        reachesLayerBottom: false,
-        child: SizedBox(
-          width: double.infinity,
+      child: Center(
+        // The halo hugs the label, not the full-width strip.
+        child: PregoPageHalo(
+          radius: PregoRadius.full,
+          reachesLayerBottom: false,
           child: ValueListenableBuilder<double>(
             valueListenable: _cancelDragProgress,
             builder: (context, progress, _) {

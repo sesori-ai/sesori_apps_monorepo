@@ -5,7 +5,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
-import "page_halo.dart";
 
 /// Whether the session needs the auto-continuation card above the composer:
 /// a quota reset to offer or explain, a continuation waiting to send, or an
@@ -53,7 +52,7 @@ class const SessionAutoContinuationNotice({
       liveRegion: true,
       child: Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.xl, 0, PregoSpacing.xl, PregoSpacing.md),
-        child: PageHalo(
+        child: PregoPageHalo(
           radius: PregoRadius.x2l,
           reachesLayerBottom: false,
           child: DecoratedBox(

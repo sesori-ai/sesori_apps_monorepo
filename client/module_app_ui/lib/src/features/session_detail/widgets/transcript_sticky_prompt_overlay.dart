@@ -12,7 +12,6 @@ import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
 import "../../../utils/markdown_plain_text.dart";
 import "../../../widgets/markdown_styles.dart";
-import "page_halo.dart";
 import "transcript_sticky_layout.dart";
 import "user_message_card.dart";
 import "user_prompt_markdown_image.dart";
@@ -438,7 +437,7 @@ class RenderTranscriptStickyPrompts({
       final shape = RRect.fromRectAndRadius(bubble, const Radius.circular(UserMessageBubble.radius));
       if (pin.elevation > 0) {
         // Unclipped, so above the pin line it melts into the bar's fade.
-        final halo = pageHaloShadow(color: _haloColor.withValues(alpha: _haloColor.a * pin.elevation));
+        final halo = pregoPageHaloShadow(color: _haloColor.withValues(alpha: _haloColor.a * pin.elevation));
         context.canvas.drawRRect(shape.shift(offset).inflate(halo.spreadRadius), halo.toPaint());
       }
       context.canvas.drawRRect(shape.shift(offset), Paint()..color = _bubbleColor);

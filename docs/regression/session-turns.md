@@ -862,10 +862,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 - A normalized user message fails to advance the existing activity marker, or
   assistant/tool/title-only updates replace an established marker and move the
   running session as if they were user activity.
-- Scrolled transcript text remains clearly visible through the fade or halos and
-  collides with the navigation title or floating composer controls, a halo paints
-  over a neighbouring control, or a halo lags behind its control as it moves,
-  resizes, or fades.
+- Scrolled transcript text collides with the navigation title or a floating
+  composer control, or stays clearly legible where it passes under the fade or a
+  control's halo; a halo paints over a neighbouring control; or a halo lags
+  behind its control as it moves, resizes, or fades.
 - A live append or streaming update moves a detached viewport, an outgoing
   prompt blanks or duplicates during its sending-to-sent transition, keyboard
   and composer insets obscure newest content, or the keyboard reveals a black

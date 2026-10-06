@@ -43,6 +43,7 @@ export 'components/surfaces/prego_bottom_sheet.dart';
 export 'components/surfaces/prego_grouped_notice_row.dart';
 export 'components/surfaces/prego_grouped_rows.dart';
 export 'components/surfaces/prego_modal.dart';
+export 'components/surfaces/prego_page_halo.dart';
 export 'components/surfaces/prego_sheet_actions.dart';
 export 'components/surfaces/prego_surfaces.dart';
 export 'icons/tabler_icons.g.dart';

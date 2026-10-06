@@ -1,6 +1,6 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/src/features/session_detail/widgets/page_halo.dart";
+import "package:theme_prego/module_prego.dart";
 
 const _page = Color(0xFF112233);
 
@@ -16,7 +16,7 @@ Widget _layer({required List<Widget> children}) {
         child: SizedBox(
           width: 200,
           height: 100,
-          child: PageHaloLayer(child: Stack(children: children)),
+          child: PregoPageHaloLayer(child: Stack(children: children)),
         ),
       ),
     ),
@@ -36,21 +36,21 @@ void main() {
             top: 10,
             width: 40,
             height: 20,
-            child: PageHalo(radius: 8, reachesLayerBottom: false, child: _control(color: pill)),
+            child: PregoPageHalo(radius: 8, reachesLayerBottom: false, child: _control(color: pill)),
           ),
           Positioned(
             left: 56,
             top: 10,
             width: 40,
             height: 20,
-            child: PageHalo(radius: 8, reachesLayerBottom: false, child: _control(color: neighbour)),
+            child: PregoPageHalo(radius: 8, reachesLayerBottom: false, child: _control(color: neighbour)),
           ),
           Positioned(
             left: 10,
             top: 40,
             width: 100,
             height: 30,
-            child: PageHalo(radius: 10, reachesLayerBottom: true, child: _control(color: composer)),
+            child: PregoPageHalo(radius: 10, reachesLayerBottom: true, child: _control(color: composer)),
           ),
         ],
       ),
@@ -64,7 +64,7 @@ void main() {
       topRight: const Radius.circular(10),
     );
     expect(
-      tester.renderObject(find.byType(PageHaloLayer)),
+      tester.renderObject(find.byType(PregoPageHaloLayer)),
       paints
         ..rrect(rrect: pillShape.inflate(14), color: _page)
         ..rrect(rrect: pillShape, color: _page)
@@ -89,7 +89,11 @@ void main() {
             height: 20,
             child: Opacity(
               opacity: 0.5,
-              child: PageHalo(radius: 8, reachesLayerBottom: false, child: _control(color: const Color(0xFFFF0000))),
+              child: PregoPageHalo(
+                radius: 8,
+                reachesLayerBottom: false,
+                child: _control(color: const Color(0xFFFF0000)),
+              ),
             ),
           ),
         ],
@@ -97,7 +101,7 @@ void main() {
     );
 
     expect(
-      tester.renderObject(find.byType(PageHaloLayer)),
+      tester.renderObject(find.byType(PregoPageHaloLayer)),
       paints..rrect(color: _page.withValues(alpha: 0.5)),
     );
   });

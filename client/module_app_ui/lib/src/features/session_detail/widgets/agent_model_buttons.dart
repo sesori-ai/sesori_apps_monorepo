@@ -17,7 +17,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "model_picker.dart";
-import "page_halo.dart";
 
 /// Composer header exposing the available agent / model / variant selections
 /// as solid pill buttons ([PregoPickerButton]). Tapping a pill opens its popup
@@ -173,7 +172,7 @@ class const ReadOnlyAgentModelPills({
     // shows below the pills.
     Widget pill({required IconData icon, required String label}) => _pickerSlot(
       compact: compact,
-      child: PageHalo(
+      child: PregoPageHalo(
         radius: PregoRadius.full,
         reachesLayerBottom: true,
         child: _pickerButton(
@@ -203,9 +202,9 @@ class const ReadOnlyAgentModelPills({
   }
 }
 
-/// A pill's [PageHalo], so the content passing under the strip fades around it.
+/// A pill's [PregoPageHalo], so the content passing under the strip fades around it.
 Widget _pillHalo({required Widget child}) =>
-    PageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: child);
+    PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: child);
 
 /// A pill's share of the strip: a pointer (compact) pill hugs its label up to a
 /// cap, while touch pills split the width equally.

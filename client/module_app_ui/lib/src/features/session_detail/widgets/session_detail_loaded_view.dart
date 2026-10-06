@@ -8,7 +8,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "page_halo.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
 import "session_detail_scaffold_sections.dart";
@@ -288,7 +287,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                 if (!mounted) return;
                 _bottomControlsHeight.value = size.height;
               },
-              child: PageHaloLayer(
+              child: PregoPageHaloLayer(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [

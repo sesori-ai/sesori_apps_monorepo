@@ -6,25 +6,25 @@ import "package:material_ui/material_ui.dart";
 /// content passing under it without the glyphs its edge cuts through crowding
 /// it. The pinned prompt and the floating bottom controls share it. Judge it
 /// with shadows enabled: `flutter_test` disables the blur.
-BoxShadow pageHaloShadow({required Color color}) => BoxShadow(color: color, blurRadius: 28, spreadRadius: 14);
+BoxShadow pregoPageHaloShadow({required Color color}) => BoxShadow(color: color, blurRadius: 28, spreadRadius: 14);
 
-/// Paints the [PageHalo] of every control below it in one layer beneath all of
+/// Paints the [PregoPageHalo] of every control below it in one layer beneath all of
 /// them, so the halos of neighbouring controls merge into one cloud of the
 /// page's background instead of one halo covering the control beside it.
-class const PageHaloLayer({super.key, required super.child}) extends SingleChildRenderObjectWidget {
+class const PregoPageHaloLayer({super.key, required super.child}) extends SingleChildRenderObjectWidget {
   @override
-  RenderPageHaloLayer createRenderObject(BuildContext context) =>
-      RenderPageHaloLayer(color: Theme.of(context).scaffoldBackgroundColor);
+  RenderPregoPageHaloLayer createRenderObject(BuildContext context) =>
+      RenderPregoPageHaloLayer(color: Theme.of(context).scaffoldBackgroundColor);
 
   @override
-  void updateRenderObject(BuildContext context, RenderPageHaloLayer renderObject) {
+  void updateRenderObject(BuildContext context, RenderPregoPageHaloLayer renderObject) {
     renderObject.color = Theme.of(context).scaffoldBackgroundColor;
   }
 }
 
-/// Gives a floating control a [pageHaloShadow], painted by the nearest
-/// [PageHaloLayer] above it. Without a layer the control has no halo.
-class const PageHalo({
+/// Gives a floating control a [pregoPageHaloShadow], painted by the nearest
+/// [PregoPageHaloLayer] above it. Without a layer the control has no halo.
+class const PregoPageHalo({
   super.key,
 
   /// The control's corner radius, which the halo follows.
@@ -36,18 +36,18 @@ class const PageHalo({
   required super.child,
 }) extends SingleChildRenderObjectWidget {
   @override
-  RenderPageHalo createRenderObject(BuildContext context) =>
-      RenderPageHalo(radius: radius, reachesLayerBottom: reachesLayerBottom);
+  RenderPregoPageHalo createRenderObject(BuildContext context) =>
+      RenderPregoPageHalo(radius: radius, reachesLayerBottom: reachesLayerBottom);
 
   @override
-  void updateRenderObject(BuildContext context, RenderPageHalo renderObject) {
+  void updateRenderObject(BuildContext context, RenderPregoPageHalo renderObject) {
     renderObject
       ..radius = radius
       ..reachesLayerBottom = reachesLayerBottom;
   }
 }
 
-class RenderPageHaloLayer({required Color color}) extends RenderProxyBox {
+class RenderPregoPageHaloLayer({required Color color}) extends RenderProxyBox {
   Color _color = color;
   Color get color => _color;
   set color(Color value) {
@@ -56,15 +56,15 @@ class RenderPageHaloLayer({required Color color}) extends RenderProxyBox {
     markNeedsPaint();
   }
 
-  final Set<RenderPageHalo> _halos = {};
+  final Set<RenderPregoPageHalo> _halos = {};
   bool _repaintScheduled = false;
 
-  void _add(RenderPageHalo halo) {
+  void _add(RenderPregoPageHalo halo) {
     _halos.add(halo);
     markNeedsPaint();
   }
 
-  void _remove(RenderPageHalo halo) {
+  void _remove(RenderPregoPageHalo halo) {
     _halos.remove(halo);
     if (attached) markNeedsPaint();
   }
@@ -77,7 +77,7 @@ class RenderPageHaloLayer({required Color color}) extends RenderProxyBox {
     SchedulerBinding.instance.addPostFrameCallback((_) {
       _repaintScheduled = false;
       if (attached) markNeedsPaint();
-    }, debugLabel: "PageHaloLayer.repaint");
+    }, debugLabel: "PregoPageHaloLayer.repaint");
   }
 
   @override
@@ -99,7 +99,7 @@ class RenderPageHaloLayer({required Color color}) extends RenderProxyBox {
               topRight: radius,
             )
           : RRect.fromRectAndRadius(rect, radius);
-      final shadow = pageHaloShadow(color: color);
+      final shadow = pregoPageHaloShadow(color: color);
       // The solid core keeps a translucent control, or the gap below the
       // bottom-most one, as opaque as the page.
       context.canvas
@@ -112,7 +112,7 @@ class RenderPageHaloLayer({required Color color}) extends RenderProxyBox {
   }
 }
 
-class RenderPageHalo({required double radius, required bool reachesLayerBottom}) extends RenderProxyBox {
+class RenderPregoPageHalo({required double radius, required bool reachesLayerBottom}) extends RenderProxyBox {
   double _radius = radius;
   double get radius => _radius;
   set radius(double value) {
@@ -129,7 +129,7 @@ class RenderPageHalo({required double radius, required bool reachesLayerBottom})
     _layer?.markNeedsPaint();
   }
 
-  RenderPageHaloLayer? _layer;
+  RenderPregoPageHaloLayer? _layer;
 
   /// Where [_layer] last painted this halo, in the layer's coordinates.
   Rect? _paintedRect;
@@ -138,7 +138,7 @@ class RenderPageHalo({required double radius, required bool reachesLayerBottom})
   void attach(PipelineOwner owner) {
     super.attach(owner);
     for (var node = parent; node != null; node = node.parent) {
-      if (node is RenderPageHaloLayer) {
+      if (node is RenderPregoPageHaloLayer) {
         _layer = node.._add(this);
         return;
       }
@@ -152,11 +152,11 @@ class RenderPageHalo({required double radius, required bool reachesLayerBottom})
     super.detach();
   }
 
-  Rect _rectIn({required RenderPageHaloLayer layer}) =>
+  Rect _rectIn({required RenderPregoPageHaloLayer layer}) =>
       MatrixUtils.transformRect(getTransformTo(layer), Offset.zero & size);
 
   /// This control's opacity within [layer], and whether a fade is changing it.
-  ({double opacity, bool animating}) _opacityIn({required RenderPageHaloLayer layer}) {
+  ({double opacity, bool animating}) _opacityIn({required RenderPregoPageHaloLayer layer}) {
     var opacity = 1.0;
     var animating = false;
     for (var node = parent; node != null && node != layer; node = node.parent) {
