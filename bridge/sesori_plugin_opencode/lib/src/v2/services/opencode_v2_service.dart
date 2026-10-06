@@ -111,7 +111,8 @@ class OpenCodeV2Service({
       throw const PluginOperationException(
         "createSession",
         statusCode: 501,
-        message: "OpenCode v2 does not expose child-session creation. Create a standalone session instead.",
+        message:
+            "Sesori does not implement child-session creation for OpenCode v2. Create a standalone session instead.",
       );
     }
     final selection = model == null
