@@ -211,8 +211,10 @@ sub-agent parts, plus the signal that a tool changed files.
   is the Task input's prompt, else the `task`. The child's model is stamped when
   Cursor announces one. `cursor/task` requests are acknowledged and ignored.
   Replay keeps projecting a completed foreground Task into a childless tile.
-  The shapes come from the CLI bundle; live confirmation that no generic Task
-  card renders next to the tile is pending.
+  The shapes come from the CLI bundle. Live confirmation on an authenticated
+  account is pending: a real spawn/state pair, the child streaming into its own
+  session, nested and resumed children, no generic Task card next to the tile,
+  and (L3) the tile rendering and opening its child session.
 - Antigravity normalizes its `formatted_output`, `exit_code`, `command_line`, and `working_dir` aliases before the
   shared ACP live or replay mapper retains tool state. Raw provider payloads and canonical output are independently
   bounded; local image paths remain metadata and are never read. Exact duplicate text is removed, differing standard

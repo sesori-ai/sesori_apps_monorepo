@@ -14,10 +14,10 @@ Total: 13 (highest step identifier; dropped Steps 3 and 8 get no PR; titles use 
 | 7 | ⚙️ Pi 1.0.4 + floor 0.99.0 + catalog fix | 1 | merged (#1862) |
 | 8 | ⚙️ Pi turn acceptance via `disposition` | 7 | dropped (#1867 closed; see PLAN) |
 | 9 | 🌱 Cursor ACP sub-agent wire probe | 2 | merged (#1864) |
-| 10.a | 🚧 Cursor native child sessions (D10 floor 2026.09.23, D11) | 9 | pending |
-| 10.b | 🌿 Delete the inert Cursor live Task path and orphaned ACP residency hooks | 10.a | pending |
+| 10.a | 🚧 Cursor native child sessions (D10 floor 2026.09.23, D11) | 9 | merged (#1870, #1871) |
+| 10.b | 🌿 Delete the inert Cursor live Task path and orphaned ACP residency hooks | 10.a | merged (#1874) |
 | 11 | 🌿 DeepSeek consumer pin | external adapter release | blocked (see below) |
-| 12 | 🌱 Regression docs reconcile | 2–10.b | pending |
+| 12 | 🌱 Regression docs reconcile | 2–10.b | in review |
 | 13 | 🌱 Final coverage and retirement | 11, 12 | pending |
 
 Step 11 needs a session with `sesori-deepseek-acp` checked out (handoff in

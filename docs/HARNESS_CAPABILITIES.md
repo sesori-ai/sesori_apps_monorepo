@@ -146,8 +146,9 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
   duration; others give no reset. Other providers/formats remain unverified.
   A positive duration is anchored to the original assistant timestamp. Unknown
   or malformed resets remain unknown. Synthetic-provider RPC probes on the
-  managed target (0.85.1) and PATH floor (0.84.1) confirmed that `agent_settled`
-  follows final retry resolution. Those probes did not exhaust a real account;
+  then-current managed target (0.85.1) and PATH floor (0.84.1) confirmed that
+  `agent_settled` follows final retry resolution; they have not been re-run on
+  the current target (1.0.4) or floor (0.99.0). Those probes did not exhaust a real account;
   provider-format evidence comes from local errors and pinned upstream source.
   This evidence does not establish support for Oh My Pi's ACP seam.
 - Codex local rollouts and documented app-server account limits contain reset
@@ -311,9 +312,9 @@ package `1.3.0`, including managed installation and explicit/PATH pair selection
 and local harness as siblings, uses a conservative two-minute bound for each archive listing/extraction command,
 and must pass the isolated initialize-only
 identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install.
-Package `1.3.0` macOS arm64 hardened extraction passed, but the isolated native probe aborted with SIGABRT before a usable
-version result. Native initialization, managed installation and authenticated behavior remain unverified on every
-target. The earlier `1.2.1` initialize/teardown and macOS x64 extraction observations are historical evidence, not
+Package `1.3.0` macOS arm64 hardened extraction passed, and a 2026-10-06 network-denied macOS arm64 run passed the
+production managed installation, `--version`, initialize and teardown. Other native targets and authenticated behavior
+remain unverified. The earlier `1.2.1` initialize/teardown and macOS x64 extraction observations are historical evidence, not
 verification of the current pin.
 Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
 The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual setup, remote personal login and
@@ -763,6 +764,9 @@ prompt open while any sub-agent runs, background ones included, so the root
 stays busy until they finish. `cursor/task` requests are acknowledged and
 ignored. Reloaded history (`session/load`) keeps its childless tiles for
 completed foreground Task calls; only live tiles link a child session.
+Unverified: whether loading a child id returns its transcript, whether
+`session/list` lists child sessions, and whether pre-capability transcripts
+carry `agentId`.
 Cursor can cancel only the root: `session/cancel` cascades to every
 descendant. A stop on the root while sub-agents run asks for confirmation;
 `stop` sends one root cancel, resolves pending input for the root and every

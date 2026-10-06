@@ -12,14 +12,18 @@ Targets audited on **2026-09-24**, covering all eleven registered harnesses.
 OpenCode was refreshed on **2026-09-26** with the scoped evidence below.
 Claude, Copilot, Cursor, Grok and Codex targets were refreshed on **2026-10-06**
 (release metadata and managed-asset digests re-audited; native checks on these targets pending).
+Antigravity moved to `1.3.0` and OpenCode to `2.0.24` the same day.
 Pi was refreshed on **2026-10-06** to `1.0.4`, and its approved PATH minimum rose to
-`0.99.0`; older PATH installs get the existing update action.
+`0.99.0`. Cursor's PATH minimum rose to `2026.09.23` on 2026-10-06 with native sub-agent
+child sessions. Older PATH installs of either get the existing update action.
+Hermes was already on its latest release. OMP stays on `18.3.0` and DeepSeek on adapter
+`0.1.7`; the rows below record why.
 Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 6,
 Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. GitHub digests and available
 checksum lists agree; Cursor/Antigravity hashes are locally computed, not publisher
 attestations. Direct-CLI targets are recommendation metadata, not forced upgrades.
-Compatible PATH binaries remain authoritative. Independent minimums are unchanged except Pi's;
-Antigravity retains its exact-pair policy rather than an independent floor.
+Compatible PATH binaries remain authoritative. Independent minimums are unchanged except
+Pi's and Cursor's; Antigravity retains its exact-pair policy rather than an independent floor.
 
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
@@ -27,12 +31,12 @@ Antigravity retains its exact-pair policy rather than an independent floor.
 | Antigravity | package/server `1.3.0` | Exact package/server/ACP 1 | Six archive hashes/layouts/permissions independently verified; macOS ARM64 hardened extraction passed. A 2026-10-06 network-denied macOS ARM64 rerun passed managed installation (archive from the verified local copy), `--version`, initialize and teardown after a first probe aborted with SIGABRT. Other native targets and authenticated behavior remain unverified; earlier `1.2.1` observations are historical. |
 | Codex | `0.160.1` | `0.139.0` | Current-target native package/install, stdio and WebSocket app-server checks remain unverified. |
 | GitHub Copilot | `1.0.92` | `1.0.78` | Current-target native install/version, ACP initialize and configured lifecycle remain unverified. |
-| Cursor | `2026.10.01-e373342` | date `2026.09.23` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. The floor is the oldest build with evidence for native sub-agent child sessions, which Sesori always enables; an older PATH build is reported outdated and asked to update. |
+| Cursor | `2026.10.01-e373342` | date `2026.09.23` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. The floor is the oldest build with evidence for native sub-agent child sessions, which Sesori always enables; an older PATH build is reported outdated and asked to update. Sub-agent frame shapes come from the CLI bundle; the authenticated live checks (spawn/state pair, child streaming, nested and resumed children, root stop cascade, refused child stop, stop-and-send) and the open questions (child-id `session/load` transcript, children in `session/list`, `agentId` in pre-capability transcripts) remain pending. |
 | Claude Code | `2.1.291` | `2.1.221` | Current-target native stream-json/permissions/replay/interrupt and real authentication/provider behavior remain unverified. |
 | Hermes Agent | `0.21.5` (`v2026.9.24`) | `0.20.0` | Current-target real CLI ACP initialize/list, configured new/load/replay and persisted deletion remain unverified. |
 | Pi | `1.0.4` | `0.99.0` | Six archive hashes match the published `SHA256SUMS` and GitHub digests. A 2026-10-06 sandboxed macOS arm64 production install (digest sentinel), `--version`, inspect-setup, RPC command listing and the production catalog probe passed with no credentials and network denied after download; `/llama` is hidden. An authenticated Pi 1.0.4 session completed during the startup-dialog work (see `HARNESS_CAPABILITIES.md`). Settlement/retry/compaction, queue and fresh-process reuse on the current target remain unverified. |
-| Oh My Pi | `18.3.0` | `17.2.13` | Eight verified direct-binary mappings. Current-target native install/version/ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
-| DeepSeek | `0.1.7` (unchanged) | `0.1.5` | Latest stable owned adapter, embedding DeepSeek Harness `0.1.5-rc.2`. Six hashes rechecked; no fresh native or authenticated run. Newer upstream RCs require separate producer work, not an invented consumer release. |
+| Oh My Pi | `18.3.0` | `17.2.13` | Eight verified direct-binary mappings. `18.6.3` was rejected on 2026-10-06: its `session/load` and `session/resume` fail with "Could not restore model" for a session whose model was removed, which breaks resume-then-delete cleanup and history; `18.3.0` does not. Re-probing the next release for that failure is pending. Current-target native install/version/ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
+| DeepSeek | `0.1.7` (unchanged) | `0.1.5` | Latest stable owned adapter, embedding DeepSeek Harness `0.1.5-rc.2`. Six hashes rechecked; no fresh native or authenticated run. Moving to upstream `0.2.0-rc.2` waits on an adapter release from `sesori-ai/sesori-deepseek-acp`; the consumer pin follows that release. |
 | Grok Build | `1.0.46` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
 
 Target/asset/descriptor unit coverage does not prove native or authenticated
@@ -279,9 +283,8 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   work state stays busy so a safe stop or suspension refuses, and only a forced stop, a
   full-scope session stop, delete, or process exit ends it. A main-agent-only stop
   keeps the process resident for its tasks.
-- Cursor keeps its process resident only through the held-open root prompt
-  and its running native sub-agent children, background ones included; it
-  records no separate background-work residency observation.
+- Cursor keeps its process resident through the held-open root prompt and its
+  running native sub-agent children, background ones included.
 - A busy harness conflicts explicitly, forcing needs confirmation and is sent once, the
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.
