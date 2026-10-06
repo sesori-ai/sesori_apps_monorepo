@@ -129,8 +129,10 @@ needs no browser of its own, but does need a current connected client for initia
 
 Implementation is not a claim of completed cross-platform end-to-end verification. All six official `1.3.0` archives
 were independently downloaded and hashed, and their sibling layouts and archived permissions inspected. Hardened
-macOS arm64 extraction passed. The isolated native probe exited with SIGABRT before returning a usable `--version`
-label, so native `1.3.0` initialization and managed installation remain unverified. Automated tests verify the
+macOS arm64 extraction passed. A first isolated native probe exited with SIGABRT before returning a usable
+`--version` label. A 2026-10-06 rerun on macOS arm64 (network denied, fresh HOME, no login) passed the production
+managed installation through `ProvisionReady`, `--version` (`1.3.0`), initialize-only validation and SIGTERM
+teardown; the archive came from the verified local copy, not the network. Automated tests verify the
 compatibility identity on live/replay/login/probe requests and exact dispatch of synthetic mixed-provider catalogs.
 Packaged `1.2.1` and `1.3.0` model-selection source establishes the upstream filtering and client-identity gate;
 it does not prove an authenticated account's catalog or model execution.
