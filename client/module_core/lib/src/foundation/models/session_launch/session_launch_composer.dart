@@ -24,6 +24,7 @@ final class const SessionLaunchComposer({
   required final List<ProviderInfo> providers,
   required final AgentModel? agentModel,
   required final List<SessionVariant> availableVariants,
+  required final List<CommandInfo> commands,
 
   /// Whether the launch runs in fast mode, already resolved against [agentModel].
   required final bool fastMode,

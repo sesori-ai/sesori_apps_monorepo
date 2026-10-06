@@ -2703,6 +2703,7 @@ void main() {
           providers: const [],
           agentModel: null,
           availableVariants: const [],
+          commands: const [],
           fastMode: false,
           supportsPromptAttachments: true,
           hadFocus: true,

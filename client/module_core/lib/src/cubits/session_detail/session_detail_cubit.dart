@@ -2179,14 +2179,12 @@ class SessionDetailCubit(
     if (_isConnected && current is SessionDetailLoaded) await _drainQueuedMessages();
   }
 
+  /// Also before the first load, where the launch-seeded composer queues.
   void cancelQueuedMessage(int index) {
-    final current = state;
-    if (current is! SessionDetailLoaded) return;
-
     final removed = _promptQueue.cancel(index);
     if (removed != null) {
       _staleOptionsRecoveryAttemptedPromptIds.remove(removed.promptId);
-      _emitQueueUpdate(current);
+      _emitQueueUpdate();
       _tryDrainQueue();
     }
   }

@@ -1035,6 +1035,7 @@ class NewSessionCubit({
         providers: data.providers,
         agentModel: data.agentModel,
         availableVariants: data.availableVariants,
+        commands: data.commands,
         fastMode: data.runsFastMode,
         supportsPromptAttachments: data.plugin?.supportsPromptAttachments ?? false,
         hadFocus: _composerFocused,

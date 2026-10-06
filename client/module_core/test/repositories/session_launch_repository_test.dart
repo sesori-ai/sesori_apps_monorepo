@@ -101,6 +101,7 @@ void main() {
       providers: [],
       agentModel: null,
       availableVariants: [],
+      commands: [],
       fastMode: false,
       supportsPromptAttachments: true,
       hadFocus: true,
