@@ -22,9 +22,10 @@
 - **D3:** Pi floor **0.84.1 → 0.99.0**. The planned follow-up that simplified
   turn acceptance using the prompt response `disposition` (Step 8) was dropped
   on 2026-10-06 (#1867 closed); see the Pi findings.
-- **D4:** Codex floor 0.139.0 → 0.148.0, **pending round 3**. Round 1 chose it on
-  the premise that it deletes a guard, and that premise was wrong (see the Step 3
-  findings). Step 3 runs only if the owner keeps the raise.
+- **D4 (user-decided 2026-10-06):** Codex keeps floor 0.139.0, and Step 3 is
+  dropped. Round 1 chose 0.148.0 on the premise that the raise deletes a guard;
+  that premise was wrong, because the `_recordAcceptedTurn` guard is still needed
+  on 0.148+ (see the Codex findings).
 - **D5:** DeepSeek: plan the adapter migration to upstream `0.2.0-rc.2` in
   `sesori-ai/sesori-deepseek-acp`, then pin the consumer to the new adapter release.
 - **D6:** Cursor: adopt native ACP sub-agent child sessions in a feature PR after
@@ -33,10 +34,19 @@
   identity in the follow-ups.
 - **D8:** Grok per-model context-window selection: track only.
 - **D9:** Hermes history-replay compaction marker: track only.
-- **D10 (proposed, not yet decided):** raise Cursor's PATH floor from
-  2026.07.16 to `2026.09.23`. The probe and the bundle comparison are in the
-  Cursor findings. The owner confirms it before Step 10.a. Rejecting it
-  requires a revised Step 10 and a fresh architecture review.
+- **D10 (user-decided 2026-10-06):** raise Cursor's PATH floor from
+  2026.07.16 to `2026.09.23`, implemented in Step 10.a. The probe and the
+  bundle comparison are in the Cursor findings. 10.b's deletions stand; the
+  capability-gated alternative is rejected.
+- **D11 (user-decided 2026-10-06):** Cursor background sub-agents are
+  accepted as foreground work: a follow-up prompt cancels the held-open root
+  and its running sub-agents, matching Grok. 10.a documents it.
+- **D12 (user-decided 2026-10-06):** OMP stays on 18.3.0. 18.6.3 fails
+  `session/load` and `session/resume` with "Could not restore model" for
+  sessions whose model was removed, which breaks resume-then-delete cleanup and
+  history; 18.3.0 does not. PR #1863 is closed, Step 5 is complete as "no pin
+  change", and Step 5.b is not activated. The next OMP release is re-probed in
+  the final follow-ups.
 - All other floors stay unchanged. Antigravity keeps its exact identity/pair
   contract.
 
@@ -46,13 +56,13 @@
 |---|---|---|---|
 | OpenCode | 2.0.18 → **2.0.24** (`e7a34f09`) | v1 1.14.0, v2 2.0.11 | npm + self (6) |
 | Antigravity | 1.2.1 → **1.3.0** (registry `f6c0f4e8`) | exact pair | self (6 + 2 members) |
-| Codex | 0.156.1 → **0.160.1** (`d27764b8`) | 0.139.0 (→ 0.148.0 if D4) | SHA256SUMS (6) |
+| Codex | 0.156.1 → **0.160.1** (`d27764b8`) | 0.139.0 (D4) | SHA256SUMS (6) |
 | Copilot | 1.0.88 → **1.0.92** (`a9ba11a1`) | 1.0.78 | SHA256SUMS (6) |
 | Cursor | 2026.09.23-86fc751 → **2026.10.01-e373342** | 2026.07.16 | self (4) |
 | Claude Code | 2.1.281 → **2.1.291** (`8e60c4ca`) | 2.1.221 | PATH only |
 | Hermes | 0.21.5, already latest (`f97608f1`) | 0.20.0 | PATH only |
 | Pi | 0.87.1 → **1.0.4** (`7c10bd43`) | 0.84.1 → **0.99.0** | SHA256SUMS (6) |
-| OMP | 18.3.0 → **18.6.3** (`09327511`) | 17.2.13 | SHA256SUMS (8) |
+| OMP | **18.3.0**, unchanged (18.6.3 rejected, D12) | 17.2.13 | SHA256SUMS (8) |
 | DeepSeek | adapter 0.1.7 → **0.2.x** (harness 0.2.0-rc.2) | 0.1.5 | adapter assets |
 | Grok | 1.0.41 → **1.0.46** | 1.0.5 | PATH only |
 
@@ -61,15 +71,14 @@ Work per harness:
 - **OpenCode:** pin; REST model regeneration (fixes the `chunkTimeout: false`
   decode failure seen on PATH 2.0.23+); bump the SSE manifest comment.
 - **Antigravity:** pin, fixtures and docs; native initialize identity probe.
-- **Codex:** pin; the floor raise only if D4 is kept.
+- **Codex:** pin; the floor stays (D4).
 - **Copilot:** pin; footnote ⁴.
 - **Cursor:** pin; then the D6 feature.
 - **Claude Code, Grok:** pin.
 - **Hermes:** none.
 - **Pi:** pin, floor, `/llama` source fix, compat removal (Step 8's
   `disposition` simplification was dropped).
-- **OMP:** pin (18.6.3 was released the same day, so re-check for a newer stable);
-  model-restore probe.
+- **OMP:** none; the probe rejected 18.6.3 (D12).
 - **DeepSeek:** the D5 external adapter release comes first.
 
 Re-resolve each candidate immediately before its PR. When a newer stable release
@@ -91,7 +100,7 @@ records its own results.
 | Claude Code | npm `@anthropic-ai/claude-code@2.1.291` (`latest`) | PATH |
 | Hermes | `NousResearch/hermes-agent` release `v2026.9.24` | PATH |
 | Pi | `github.com/earendil-works/pi` release `v1.0.4` | managed, 6 |
-| OMP | `github.com/can1357/oh-my-pi` release `v18.6.3` | managed bare binaries, 8 |
+| OMP | `github.com/can1357/oh-my-pi` release `v18.3.0` (unchanged, D12) | managed bare binaries, 8 |
 | DeepSeek | `sesori-ai/sesori-deepseek-acp` (new release pending) | managed, 6 |
 | Grok | `x.ai/cli/stable` = 1.0.46 | PATH |
 
@@ -123,7 +132,7 @@ records its own results.
   response or emit a model-change event. Until then, the existing one- or
   two-snapshot `get_state` barrier (`pi_session_service.dart:574-608`) stays for
   every accepted prompt, and no Pi turn-acceptance code changes in this plan.
-- **Codex floor (Step 3, re-asked in round 3).** The audit claimed that raising the
+- **Codex floor (Step 3 dropped, D4).** The audit claimed that raising the
   floor to 0.148.0 deletes a ~3-line guard. Code reading disproves that.
   - `_recordAcceptedTurn` (`codex_plugin_impl.dart:1318-1337`) uses the
     `if (!_activeTurnByThread.containsKey)` block for every accepted turn. On a fresh
@@ -132,29 +141,17 @@ records its own results.
     `COMPATIBILITY` comment would change.
   - The 0.144.x notes in `codex_rollout_tool_mapper.dart:496,550` depend on rollout
     content, not the floor, and stay.
-  - If the owner still wants the raise: update `minPathVersion`, its rationale
-    comment, the `COMPATIBILITY` marker → plain rationale, tests and docs. Otherwise
-    drop Step 3.
+  - The owner kept 0.139.0, so Step 3 is dropped and nothing changes.
 - **Codex interrupted turns.** From 0.160 an interrupted `turn/completed` can carry
   `turn.error` (opt-in Guardian `tooManyDenials`). Check it in the interrupt smoke;
   an error row is acceptable if it reflects a real denial stop.
-- **OMP model restore (Step 5).** From 18.6.3, ACP `loadSession`/`resumeSession`
-  throw `Could not restore model` when a session's saved model is gone. Probe history
-  open and Sesori's resume-based cleanup (`omp_session_cleanup_repository.dart:38-50`).
-  - Step 5 itself is the pin plus the probe.
-  - History-open for such a session must surface a typed failure through the existing
-    plugin failure path, not a crash.
-  - If the probe shows cleanup cannot delete these sessions, the fix becomes its own
-    step 5.b and gets a fresh architecture review before implementation. The fix
-    must actually delete the session. A "skipped" failure alone is not enough:
-    `DeletedSessionStorageCleanupService` already catches, logs and retries each
-    cleanup failure on every startup. Candidates, in order of preference:
-    1. a resume parameter or option that skips model restore;
-    2. a named `OmpSessionStorageApi` behind the existing repository that deletes
-       the session files (a new Layer-1 owner, so last resort).
-
-    If neither is feasible, record the owner's explicit acceptance of the orphaned
-    storage instead of shipping a no-op fix.
+- **OMP model restore (Step 5, D12).** From 18.6.3, ACP `loadSession` and
+  `resumeSession` throw `Could not restore model` when a session's saved model is
+  gone. The Step 5 probe confirmed it breaks Sesori's resume-then-delete cleanup
+  (`omp_session_cleanup_repository.dart:38-50`) and history open, while 18.3.0
+  does not. OMP therefore stays on 18.3.0 with no code change, and Step 5.b is
+  not activated. The next OMP release is re-probed with the same probe (final
+  follow-ups).
 - **Antigravity (Step 4).** The `.par` embeds `__version__ = "1.3.0"`. Confirm the
   build label, `agentInfo` version, protocol 1, advertised load/list/resume/logout
   and the absence of close, all through `AntigravityRuntimeVersionValidator` in an
@@ -204,7 +201,7 @@ records its own results.
     - **Unverified.** Whether loading a child id returns its transcript, whether
       `session/list` lists children, and whether pre-capability transcripts
       carry `agentId`.
-  - **D10 (proposed; owner confirms before 10.a): raise Cursor's PATH floor
+  - **D10 (user-decided 2026-10-06): raise Cursor's PATH floor
     from 2026.07.16 to `2026.09.23`** (build `2026.09.23-86fc751`, the previous
     managed target).
     - **Why.** 10.a suppresses the Task card in favor of the spawn notification.
@@ -233,20 +230,9 @@ records its own results.
         - The Task `rawInput` extractor.
       - **Not checked.** Builds older than `2026.09.23-86fc751` were not
         checked, so `2026.09.23` is the oldest build with evidence.
-    - **If the owner rejects D10,** 10.a and 10.b need a revised section and a
-      fresh architecture review before 10.a. That revision must name at least:
-      - **One flag owner.** The Cursor plugin's live-connection `_initResult`
-        (`sessionCapabilities.subagents`) is the single owner of the
-        "capability active" flag. It is injected read-only, by constructor,
-        into `CursorEventMapper` (spawn suppression and the `cursor/task` case)
-        and `CursorApprovalRegistry` (`cursor/task` forwarding).
-      - **Hooks stay.** `activeScopedStopWorkCount`,
-        `requiresProcessResidency`, `hasUnresolvedResidentWork` and
-        `registerProcessResidencyChanges` remain, and 10.b does not delete them
-        or the live Task path.
-      - **Counting.** How `_abortRootSessionOnly` counts pre-terminal work on a
-        connection without the capability: the `CursorTaskTracker` count
-        instead of the child tracker.
+    - **Rejected alternative.** Gating spawn suppression on the negotiated
+      `sessionCapabilities.subagents` and keeping the live Task path was
+      rejected with D10.
   - **10.a (🚧 native live child sessions):**
     - **ACP seam (backend-neutral, `acp_event_mapper.dart`, `acp_plugin.dart`):**
       1. **Hook for harness `session/update` kinds.** `map` calls
@@ -420,7 +406,8 @@ records its own results.
     - **Behavior consequences**, recorded in 10.a's regression docs:
       - the root stays busy while any child, including a background one, runs;
       - a follow-up prompt during that time uses the shared stop-and-send, so
-        the root cancel cascade stops every child (as on Grok);
+        the root cancel cascade stops every child, background ones included
+        (as on Grok; accepted as D11);
       - stopping a child session is refused with a typed "stop the parent
         session" refusal, and the queued prompts stay;
       - a root stop stops all children with Cursor's confirmed cascade.
@@ -484,9 +471,9 @@ records its own results.
         transcripts carry `agentId` and that native replay with a child link can
         replace them.
   - **Review:** the 2026-10-06 `architecture-plan-review` of this design (10.a
-    and 10.b) rejected it with 5 findings, all applied without re-review. A
-    fresh review is needed only if the owner rejects D10 (the gated
-    alternative) or if the typed-refusal reversal of finding 1 is judged
+    and 10.b) rejected it with 5 findings, all applied without re-review. The
+    owner accepted D10, so the gated alternative needs no review. A fresh
+    review is needed only if the typed-refusal reversal of finding 1 is judged
     considerable before 10.a starts.
 - **DeepSeek adapter (Step 11).** Upstream 0.2.0-rc.2 changes are covered in the
   adapter repo, not here:
@@ -507,9 +494,9 @@ records its own results.
 |---|---|---|
 | 1 | 🌱 Publish this plan | docs |
 | 2 | 🌿 Mechanical pins for Claude, Copilot (+ footnote ⁴), Cursor, Grok, Codex | ~150 lines |
-| 3 | 🌱 Codex floor 0.148.0 (only if round 3 keeps D4; no code deletion) | ~20 lines |
+| 3 | Dropped 2026-10-06 (D4 keeps the Codex floor); not counted | — |
 | 4 | 🌿 Antigravity 1.3.0 with native initialize identity probe | ~120 lines |
-| 5 | 🌿 OMP 18.6.3 (or newer stable) with model-restore probe (fix → 5.b, re-reviewed) | ~50 lines |
+| 5 | 🌿 OMP model-restore probe: complete as "no pin change" (D12, #1863 closed) | — |
 | 6 | ⚙️ OpenCode 2.0.24 with REST model and SSE regeneration | ~300–500 lines, mostly generated headers |
 | 7 | ⚙️ Pi 1.0.4, floor 0.99.0, `/llama` and `/mcp` catalog fix, compat removal | ~150 lines |
 | 8 | Dropped 2026-10-06 (#1867 closed; see the Pi findings); not counted | — |
@@ -520,12 +507,12 @@ records its own results.
 | 12 | 🌱 Reconcile regression documents and `docs/HARNESS_CAPABILITIES.md` | docs |
 | 13 | 🌱 Final coverage run and plan retirement | docs |
 
-PR titles: `<emoji> [harness-refresh-2026-10] <description> [step <x>/13]`.
+PR titles: `<emoji> [harness-refresh-2026-10] <description> [step <x>/12]`.
 
-- **Total:** 13 counts every row above except the dropped Step 8 (Steps 10.a
-  and 10.b are one PR each, titled `[step 10.a/13]` and `[step 10.b/13]`). If Step 3 is dropped, lower
-  the total by one. If Step 5.b is activated, insert it after Step 5 and raise
-  the total.
+- **Total:** 12 counts every row above except the dropped Steps 3 and 8 (Steps
+  10.a and 10.b are one PR each, titled `[step 10.a/12]` and
+  `[step 10.b/12]`). Step numbers are stable identifiers, so they are not
+  renumbered after a drop.
 - **Why Step 10 splits:** a single PR would be about 2,400 changed lines of
   lifecycle and stop code. 10.a is the behavior change, which leaves the old
   live Task path inert. 10.b only deletes it, and each part compiles and passes
@@ -590,7 +577,6 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
     - **L3 (Cursor only):** the sub-agent tile renders and opens the child
       session (`tools-and-file-changes.md` places tile rendering at L3).
   - Cursor (10.b): focused tests and analyze only; no behavior change.
-  - OMP: open and delete a session whose model is gone.
   - OpenCode: provider list with `chunkTimeout: false`.
 - **Matrix:** the macOS arm64 host for native checks. Other platforms are covered by
   digest agreement only and stay **untested**.
@@ -604,10 +590,8 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
   - `plugin-runtime-installation.md`
   - `antigravity-descriptor-and-setup.md`
   - `session-history-and-recovery.md` and `tools-and-file-changes.md` (Cursor
-    sub-agents, OMP restore)
+    sub-agents)
   - `session-creation-and-options.md` (Pi catalog)
-  - `session-archiving-and-deletion.md`, only if Step 5.b replaces OMP's
-    resume-and-`/session delete` cleanup path
 
 ## Complexity budget
 
@@ -623,8 +607,8 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
     residency hooks.
 - **Deliberately not added for Cursor:**
   - per-child cancel (not supported by the harness);
-  - a runtime capability branch (the D10 floor replaces it when the owner keeps
-    D10; rejecting D10 adds the `sessionCapabilities.subagents` gate instead);
+  - a runtime capability branch (the D10 floor replaces it; the gated
+    alternative was rejected);
   - replayed child links (unverified);
   - background-child detection (Cursor holds the root prompt open, so every
     child counts as foreground).
@@ -634,8 +618,7 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
 
 ## Cleanup assessment
 
-- **Codex:** nothing to delete. A kept D4 only rewrites the `COMPATIBILITY` comment
-  (Step 3).
+- **Codex:** nothing to delete; the floor stays (D4).
 - **Pi:** the ≤0.84.2 compat note and the `<inline:llama.cpp>` entry are deleted
   (Step 7).
 - **Cursor:** 10.a removes the `cursor/task` mapping and the plugin's residency
@@ -655,8 +638,6 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
 
 - **Pi 1.0 is a major line.** The floor raise forces PATH users on 0.84–0.98 to
   update; they get the existing "outdated" setup action.
-- **Codex floor raise (only if round 3 keeps D4).** PATH users on 0.139–0.147 are
-  asked to update.
 - **Antigravity exact pair.** 1.2.1 users must upgrade, as with every bump.
 - **Self-computed digests.** Cursor and Antigravity digests are not upstream
   attestations.
@@ -665,13 +646,14 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
 - **Cursor wire shapes are source-derived.** Everything after `initialize` comes
   from the bundle, not the wire. If the L2 run disagrees, fix 10.a before merge,
   or record the gap under the retirement gate.
-- **Cursor stop-and-send now stops sub-agents.** Background children hold the
-  root prompt open, so a follow-up prompt's root cancel cascades to every
-  running child. Today background Tasks survive a follow-up. This matches Grok
-  and Cursor's own cascade, and is documented rather than worked around.
+- **Cursor stop-and-send now stops sub-agents (accepted, D11).** Background
+  children hold the root prompt open, so a follow-up prompt's root cancel
+  cascades to every running child. Today background Tasks survive a follow-up.
+  This matches Grok and Cursor's own cascade, and is documented rather than
+  worked around.
 - **Cursor D10 floor (`2026.09.23`).** PATH users on 2026.07.16–2026.09.22
-  get the existing "outdated" setup action. Older builds were not checked and
-  might already have supported the capability.
+  get the existing "outdated" setup action (accepted, D10). Older builds were
+  not checked and might already have supported the capability.
 - **Cursor reload loses the child link.** A reloaded session shows today's
   replay tiles. A live tile's child session is not reachable from history until
   child `session/load` is verified.
@@ -688,11 +670,10 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
 - **Second pass:** confirmed the design passes. It rejected only on stale cleanup,
   budget and risk text, which has since been fixed as text-only edits without
   another review.
-- **Still needed:** the conditional Step 5.b needs its own review before
-  implementation. Step 10 needs another only under the conditions in its
-  Review bullet.
+- **Still needed:** Step 10 needs another review only under the condition in
+  its Review bullet. Step 5.b was not activated (D12).
 - **2026-10-06:** Step 10 revised from Step 9 probe and split into 10.a and
-  10.b. Step 8 was dropped the same day, so the total is 13.
+  10.b. Steps 3 and 8 were dropped the same day, so the total is 12.
 - Architecture plan review 2026-10-06: rejected with 5 findings; all applied
   without re-review per AGENTS.md. The findings covered:
   - the child-stop refusal contract (first statement; its 409
