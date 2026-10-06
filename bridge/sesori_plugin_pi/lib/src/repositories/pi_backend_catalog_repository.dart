@@ -49,8 +49,8 @@ class PiBackendCatalogRepository({
     // Pi's bundled llama.cpp extension only exposes /llama, whose handler
     // requires TUI mode. Match its origin so numbered aliases are excluded
     // without hiding user commands with the same name. Revisit if Pi adds RPC
-    // support to this extension (verified against Pi 0.84.4).
-    "<inline:llama.cpp>",
+    // support to this extension (verified against Pi 1.0.4).
+    "builtin:llama.cpp",
   };
 
   Future<bool> healthCheck() async {

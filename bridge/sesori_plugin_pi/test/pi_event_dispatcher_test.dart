@@ -178,7 +178,7 @@ void main() {
     expect(ended, isEmpty);
   });
 
-  test("legacy toolcall_start waits for toolcall_end metadata", () {
+  test("toolcall_start without metadata waits for toolcall_end metadata", () {
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": _assistant(content: const [], timestamp: 102)}),
@@ -200,7 +200,7 @@ void main() {
         "assistantMessageEvent": {
           "type": "toolcall_end",
           "contentIndex": 0,
-          "toolCall": {"id": "call-legacy", "name": "write", "arguments": <String, Object?>{}},
+          "toolCall": {"id": "call-late", "name": "write", "arguments": <String, Object?>{}},
         },
       }),
     );

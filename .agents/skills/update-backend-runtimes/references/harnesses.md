@@ -268,6 +268,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   must not be parsed as wire events without evidence; RPC can instead expose
   `extension_ui_request`. Inspect exact field casing, delta shape, retry/
   compaction, queue controls, models/auth, history and package changes.
+  Check `get_commands` `sourceInfo.path` for bundled extensions: since 0.99.0
+  they report `builtin:<name>` (`src/extensions/index.ts`), not `<inline:name>`,
+  and the catalog's excluded-source set must match the current form.
 - **Lifecycle:** preserve delta-only updates and `message_end` authority.
   `agent_end` is a low-level boundary that can precede retries or queued work;
   inspect `agent_settled` for user-visible completion, and distinguish per-turn/

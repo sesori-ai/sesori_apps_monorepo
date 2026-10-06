@@ -970,7 +970,7 @@ final class _CommandExecutor() implements CommandExecutor {
     Duration? timeout,
   }) async {
     calls.add((executable, arguments));
-    return const CommandResult(exitCode: 0, stdout: "pi 0.84.1", stderr: "");
+    return const CommandResult(exitCode: 0, stdout: "pi 0.99.0", stderr: "");
   }
 }
 

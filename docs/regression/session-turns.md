@@ -388,7 +388,9 @@ defaults and queued client sends coherent.
   Pi's bundled `llama` extension advertises itself over RPC but refuses non-TUI
   execution, so the plugin omits commands from that bundled source through an
   explicit exclusion set. Exclusions apply to numbered invocation aliases too;
-  user extensions and prompts named `llama` remain available. Because Pi omits
+  user extensions and prompts named `llama` remain available. The bundled `mcp`
+  command stays listed because it works over RPC through notifications and
+  dialogs. Because Pi omits
   its other built-in TUI commands from `get_commands`, the plugin appends one
   `compact` command and dispatches it through Pi's native `compact` RPC with optional user instructions
   rather than sending `/compact` as a prompt. If an upstream command already owns

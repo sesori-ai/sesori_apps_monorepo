@@ -627,11 +627,17 @@ show no row.
 
 ## Command limitations
 
-Pi 0.84.4 advertises its bundled `/llama` command over RPC, but the handler
-supports only the interactive TUI. Sesori excludes this bundled command source,
-including numbered invocation aliases, while preserving user commands with the
-same name. This command is **not supported** through Pi RPC; ordinary extension,
-prompt, and skill commands remain available.
+Pi advertises its bundled `/llama` command over RPC, but the handler supports
+only the interactive TUI. Sesori excludes this bundled command source
+(`builtin:llama.cpp` since Pi 0.99.0), including numbered invocation aliases,
+while preserving user commands with the same name. This command is **not
+supported** through Pi RPC; ordinary extension, prompt, and skill commands
+remain available. The bundled `/mcp` command stays listed: over RPC it reports
+server status and handles `reconnect`, `logout` and `login` through Pi
+notifications and an input dialog, although `login` opens its browser on the
+bridge host. A sandboxed, credential-free Pi 1.0.4 RPC probe on macOS arm64
+(2026-10-06) confirmed both sources, the `/mcp` status reply and the hidden
+`/llama`; OAuth sign-in against a real MCP server was not exercised.
 
 ## Pi extension startup dialogs
 
