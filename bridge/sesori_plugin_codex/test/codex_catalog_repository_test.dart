@@ -96,6 +96,23 @@ void main() {
       }
     });
 
+    test("an unreadable rollout modification time logs the cause and keeps index activity", () async {
+      const rolloutId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
+      final repository = CodexCatalogRepository(
+        rolloutApi: _UnreadableActivityRolloutApi(rolloutId: rolloutId),
+      );
+
+      final logs = await _captureDebugLogs(() async {
+        final record = (await repository.listSessionRecords()).single;
+        expect(record.createdAt, DateTime.utc(2026, 8, 1));
+        expect(record.updatedAt, DateTime.utc(2026, 8, 1, 12));
+      });
+
+      expect(logs, contains("failed to read rollout modification time"));
+      expect(logs, contains("fixture stat failure"));
+      expect(logs, contains(rolloutId));
+    });
+
     test("filters normalized project directories before paginating", () async {
       final repository = _StubCodexCatalogRepository(
         [
@@ -382,6 +399,21 @@ class _DiagnosticsRolloutApi({required final String rolloutId}) extends CodexRol
       ),
     ],
   );
+}
+
+class _UnreadableActivityRolloutApi({required super.rolloutId}) extends _DiagnosticsRolloutApi {
+  @override
+  DateTime? lastModified({required String rolloutPath}) =>
+      throw FileSystemException("fixture stat failure", rolloutPath);
+
+  @override
+  List<CodexSessionIndexEntryDto> readSessionIndex() => [
+    CodexSessionIndexEntryDto(
+      id: rolloutId,
+      threadName: "Indexed title",
+      updatedAt: "2026-08-01T12:00:00Z",
+    ),
+  ];
 }
 
 class _LogLevelCheckingRolloutApi() extends CodexRolloutApi {
