@@ -292,7 +292,8 @@ Historical verification notes keep their original versions.
    digests, plus tests.
 
 This needs a session with that repository checked out. Record the blocker in
-`TRACKER.md` and keep Step 11 open; it does not hold the other steps.
+`TRACKER.md` and keep Step 11 open; it does not hold Steps 2–12. Step 13
+retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
 
 ## Verification
 
@@ -307,7 +308,9 @@ This needs a session with that repository checked out. Record the blocker in
     the WebSocket transport; authentication uses stdio.
   - Pi: catalog with no `/llama`; disposition-driven settlement for prompt, steer
     and a silent command.
-  - Cursor: sub-agent child session live and after reload, and stop.
+  - Cursor: sub-agent child session live and after reload, and stop. Also one
+    Cursor-scoped L3 client check: the sub-agent tile renders and opens the child
+    session (`tools-and-file-changes.md` places tile rendering at L3).
   - OMP: open and delete a session whose model is gone.
   - OpenCode: provider list with `chunkTimeout: false`.
 - **Matrix:** the macOS arm64 host for native checks. Other platforms are covered by
@@ -325,6 +328,8 @@ This needs a session with that repository checked out. Record the blocker in
   - `session-history-and-recovery.md` and `tools-and-file-changes.md` (Cursor
     sub-agents, OMP restore)
   - `session-creation-and-options.md` (Pi catalog)
+  - `session-archiving-and-deletion.md`, only if Step 5.b replaces OMP's
+    resume-and-`/session delete` cleanup path
 
 ## Complexity budget
 

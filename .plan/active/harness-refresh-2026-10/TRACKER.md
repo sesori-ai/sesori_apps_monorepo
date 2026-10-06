@@ -17,10 +17,11 @@ Evidence lives in the PRs and per-step notes. This file only orders the work.
 | 10 | 🚧 Cursor native child sessions (re-reviewed) | 9 | pending |
 | 11 | 🌿 DeepSeek consumer pin | external adapter release | blocked (see below) |
 | 12 | 🌱 Regression docs reconcile | 2–10 | pending |
-| 13 | 🌱 Final coverage and retirement | 12 | pending |
+| 13 | 🌱 Final coverage and retirement | 11, 12 | pending |
 
 Step 11 needs a session with `sesori-deepseek-acp` checked out (handoff in
-`PLAN.md`). It does not hold Steps 12–13; its own PR updates the docs it touches.
+`PLAN.md`). It does not hold Steps 2–12; its own PR updates the docs it touches.
+Step 13 waits for Step 11, or for the owner's recorded exclusion of DeepSeek.
 
 ## Final follow-ups (collected as work proceeds)
 
