@@ -10,8 +10,10 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 - C1–C7 are the user's final decisions of 2026-10-06. Do not reopen them.
 - P1–P12 are planning decisions from code evidence. See
   [PLAN](PLAN.md#decisions).
-- Q1 and Q2 are open. The plan proceeds with the suggested picks until the
-  user answers. Q2 gates step 2's merge, and Q1 gates step 3's.
+- Q1–Q3 are open. The plan proceeds with the suggested picks until the
+  user answers. Q2 gates step 2's merge, Q1 step 3's, and Q3 step 5's.
+- This plan approves the phase-1 architecture only. The step-5 PR details
+  phase 2 and runs `architecture-plan-review` on it before code.
 
 ## Guardrails
 
@@ -37,7 +39,7 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | 2 | `compaction-progress/contract` | [2](#fixed-pr-titles) | ≤ 1,100 (about 550 generated) | 1, Q2 |
 | 3 | `compaction-progress/app` | [3](#fixed-pr-titles) | ≤ 800 | 2, Q1 |
 | 4 | `compaction-progress/claude` | [4](#fixed-pr-titles) | ≤ 700 | 3 |
-| 5 | `compaction-progress/opencode` | [5](#fixed-pr-titles) | ≤ 800 | 3 |
+| 5 | `compaction-progress/opencode` | [5](#fixed-pr-titles) | ≤ 800 | 3, Q3 |
 | 6 | `compaction-progress/pi-codex-deepseek` | [6](#fixed-pr-titles) | ≤ 900 | 3, step 5's plan detail |
 | 7 | `compaction-progress/docs` | [7](#fixed-pr-titles) | ≤ 300 | 2–6 |
 | 8 | `compaction-progress/retire` | [8](#fixed-pr-titles) | ≤ 250 | 7 |

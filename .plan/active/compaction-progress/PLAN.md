@@ -13,6 +13,10 @@
   app, Claude) is detailed below. Phase 2 (steps 5–6: OpenCode, then Pi,
   Codex and DeepSeek) is rough intent. The step-5 PR details steps 5–6 in this
   file before it changes code. Steps 7–8 reconcile the docs and retire the plan.
+- **Approval scope:** this plan PR approves the phase-1 architecture only.
+  Phase 2 is approved as intent. Its file and class ownership, lifecycle and
+  data flow are designed in the step-5 PR, which runs
+  `architecture-plan-review` on that section before any phase-2 code.
 - **Supersedes** the "Compaction running row" bullet under step-timers'
   later phases (`.plan/active/step-timers/PLAN.md`). That plan's retirement
   must not reopen it.
@@ -90,15 +94,80 @@ this plan:
 
 ### Per-harness facts (code, plus the live Claude probe)
 
-| Harness | Signals | Today |
-|---|---|---|
-| Claude (CLI 2.1.291 probe) | `system/status status:"compacting"` at +5 ms, re-sent every 30 s. Then `status:null` with `compact_result:"success"\|"failed"` and an optional `compact_error`, `system/init`, and `system/compact_boundary` with `compact_metadata{trigger, pre_tokens, post_tokens, duration_ms, …}`. Then a synthetic user summary frame, the replayed `<local-command-stdout>`, and `result` with `local_command:"compact"`. No streamed summary. | Status is parsed (`claude_stream_message.dart:52-57`, which has no `compact_result` or `compact_error` fields) and dropped (`claude_event_dispatcher.dart:203-215`). The boundary only sets `_awaitingCompactionSummary` (`:442-445`). The summary frame becomes its own message, id = frame uuid, part `"$uuid-compaction"` (`:452-468`, `claude_content_mapper.dart:268-299`). History builds the same row from the `isCompactSummary` record. The transcript's boundary record carries camelCase `compactMetadata{trigger, preTokens, postTokens, …}`, which is unparsed. A failure shows nothing. |
-| OpenCode v1 | The summary assistant message (`summary: true`) streams text parts. `session.compacted` arrives at the end. | Each summary text part maps to a compaction part with the same ids (`message_part_mapper.dart:58-66`), so a still "Context compacted" row shows at once. Its deltas flow to the client invisibly and hide "Working…" (the #1700 regression). The user marker `CompactionPart.auto` is dropped. |
-| OpenCode v2 | `session.compaction.started/delta/ended/failed`. Snapshots `SessionMessageCompactionRunning/Completed/Failed` carry `reason` (auto/manual) and `time.created`. | Running maps to no parts (`v2_message_mapper.dart:181-184`). Completed maps to a compaction part, id `partId(messageId, 0)`. Failed maps to an error message. Delta is dropped (`opencode_v2_service.dart:455`). |
-| Codex | `item/started` / `item/completed` with `contextCompaction`. No status, tokens, trigger or summary. | A running untitled `compact` tool part `"$itemId-tool"`, replaced in place by the compaction part (`codex_event_mapper.dart:557-584`). There is no failure handling: a missing completion leaves the tool running until the idle sweep marks it errored. History ids are `codex-compaction-N`. |
-| Pi | `compaction_start{reason}` and `compaction_end{reason, aborted, willRetry, errorMessage, result{summary, tokensBefore}}`. Reasons are `manual\|threshold\|overflow`. | A running `compact` tool part on a reserved compaction message, replaced in place on success (`pi_event_dispatcher.dart:641-700`). On failure or abort the message is removed and a session error raised. `willRetry` keeps the row. |
-| DeepSeek | `deepseek/session/status` `kind: compaction_started\|compaction_completed`, with no ids, tokens, trigger or failure kind. | Start dropped, completion → `BridgeSseSessionCompacted` only (`deepseek_event_mapper.dart:145-147`). No row, live or in history. |
-| Antigravity, Copilot, Cursor, Hermes, OMP, Grok | No compaction signal on the consumed ACP seam. | "Working…" only. |
+**Claude (CLI 2.1.291 probe).**
+
+- Signals, in order:
+  - `system/status status:"compacting"` at +5 ms, re-sent every 30 s;
+  - `status:null` with `compact_result:"success"|"failed"` and an optional
+    `compact_error`;
+  - `system/init`;
+  - `system/compact_boundary` with
+    `compact_metadata{trigger, pre_tokens, post_tokens, duration_ms, …}`;
+  - a synthetic user summary frame, the replayed `<local-command-stdout>`,
+    and `result` with `local_command:"compact"`.
+
+  The summary is not streamed.
+- Today:
+  - status is parsed (`claude_stream_message.dart:52-57`, with no
+    `compact_result` or `compact_error` fields) and dropped
+    (`claude_event_dispatcher.dart:203-215`);
+  - the boundary only sets `_awaitingCompactionSummary` (`:442-445`);
+  - the summary frame becomes its own message, id = frame uuid, part
+    `"$uuid-compaction"` (`:452-468`, `claude_content_mapper.dart:268-299`);
+  - history builds the same row from the `isCompactSummary` record;
+  - the transcript's boundary record carries the camelCase
+    `compactMetadata{trigger, preTokens, postTokens, …}`, unparsed;
+  - a failure shows nothing.
+
+**OpenCode v1.**
+
+- Signals: the summary assistant message (`summary: true`) streams text
+  parts, and `session.compacted` arrives at the end.
+- Today: each summary text part maps to a compaction part with the same ids
+  (`message_part_mapper.dart:58-66`), so a still "Context compacted" row
+  shows at once. Its deltas reach the client invisibly and hide "Working…"
+  (the #1700 regression, unreleased: the v1.9.0 bridge still sent the summary
+  as visible text). The user marker `CompactionPart.auto` is dropped.
+
+**OpenCode v2.**
+
+- Signals: `session.compaction.started/delta/ended/failed`. The snapshots
+  `SessionMessageCompactionRunning/Completed/Failed` carry `reason`
+  (auto/manual) and `time.created`.
+- Today: running maps to no parts (`v2_message_mapper.dart:181-184`).
+  Completed maps to a compaction part with id `partId(messageId, 0)`. Failed
+  maps to an error message. Deltas are dropped (`opencode_v2_service.dart:455`).
+
+**Codex.**
+
+- Signals: `item/started` and `item/completed` with `contextCompaction`. No
+  status, tokens, trigger or summary.
+- Today: a running untitled `compact` tool part `"$itemId-tool"`, replaced
+  in place by the compaction part (`codex_event_mapper.dart:557-584`). There
+  is no failure handling: a missing completion leaves the tool running until
+  the idle sweep marks it errored. History ids are `codex-compaction-N`.
+
+**Pi.**
+
+- Signals: `compaction_start{reason}` and
+  `compaction_end{reason, aborted, willRetry, errorMessage, result{summary, tokensBefore}}`.
+  Reasons are `manual|threshold|overflow`.
+- Today: a running `compact` tool part on a reserved compaction message,
+  replaced in place on success (`pi_event_dispatcher.dart:641-700`). On
+  failure or abort the message is removed and a session error raised.
+  `willRetry` keeps the row.
+
+**DeepSeek.**
+
+- Signals: `deepseek/session/status` with
+  `kind: compaction_started|compaction_completed`. No ids, tokens, trigger or
+  failure kind.
+- Today: the start is dropped, and the completion becomes only
+  `BridgeSseSessionCompacted` (`deepseek_event_mapper.dart:145-147`). No row,
+  live or in history.
+
+**Antigravity, Copilot, Cursor, Hermes, OMP, Grok.** No compaction signal on
+the consumed ACP seam. "Working…" only.
 
 ## Decisions
 
@@ -112,7 +181,8 @@ this plan:
 - **C4** Apps at v1.9.0 or older that talk to a newer bridge keep showing
   "Working…". There is no legacy fallback. On Pi and Codex they also lose
   today's running `compact` tool card once step 6 lands, which is the fallback
-  C4 option B offered and the user declined.
+  C4 option B offered and the user declined. On OpenCode the old app shows
+  less than "Working…"; see [Compatibility](#compatibility) and Q3.
 - **C5** A failure is a quiet "Compaction failed" note that carries the error
   and stays in the transcript.
 - **C6** A live row where a start exists and nothing where there is no
@@ -164,7 +234,11 @@ this plan:
   "The turn ended before compaction finished." That matches the tool sweep's
   wording and owner. Without it a process death or a Stop mid-compaction
   would leave a row ticking forever. The existing `"status":"running"`
-  prefilter already admits the nested key. The provisional pick is pending
+  prefilter already admits the nested key. The read path runs the sweep only
+  when `ChatHistoryService._containsOpenToolPart` finds an open tool or
+  subtask, so that predicate also admits a running compaction; otherwise a
+  bridge that died before idle would never sweep a transcript whose only
+  open part is the compaction. The provisional pick is pending
   open question Q2. The plan review noted that this policy sits in a
   repository, Layer 2, by legacy. Moving the whole sweep's policy into
   `ChatHistoryService` is a separate refactor of pre-existing code. It is
@@ -193,18 +267,35 @@ this plan:
   Success settles that same part. When the summary frame arrives, the plugin
   re-emits that message, built by the same `compactionMessage` builder as the
   history row, with `time.created` set to the summary frame's timestamp, and
-  the completed part with the summary and the details. History keeps today's
-  id (the summary record's uuid). A later re-import matches the two rows
-  through the existing semantic fingerprint: same info, same neighbours,
-  equal creation time. Step 4 proves this with a capture test, and the test
-  result picks the path, not judgement. The test must include a previous
-  neighbour that is a live prompt row with an id different from its imported
-  twin. If the matcher cannot pair them, step 4 instead emits
-  `message.removed` for the minted row and then today's summary row, accepts
-  a Claude-only swap without the cross-fade, and records why in
-  `steps/step-04.md`. A re-import that left both rows, or that swapped the
-  id while the session was open, would re-insert the row, which is one of
-  this plan's failure signals.
+  the completed part with the summary and the details.
+
+  The id after a history re-import, decided by the step-4 probe and capture
+  test, in this order:
+
+  1. **Same id on both paths.** If the transcript persists something the live
+     start also sees (for example the `compacting` status record, or a uuid
+     the summary record links back to), the history mapper keys the row by
+     it, and a re-import keeps the live id. The capture test asserts the
+     same message and part id before and after the re-import.
+  2. **One re-key on a later refresh.** Otherwise history keeps today's id
+     (the summary record's uuid). `replaceSessionMessages` pairs the minted
+     row with it through the semantic fingerprint (same info, same
+     neighbours, equal creation time) and drops the minted row, so one row
+     remains, now under the history id. An open session sees that only on a
+     refresh after a re-import, as a settled row with identical content
+     changing key at the same index. Step 4 checks that the message list
+     shows this without a visible insert. If so, the swap is accepted and
+     recorded; the capture test asserts one row and the id change. The test
+     includes a previous neighbour that is a live prompt row whose id differs
+     from its imported twin.
+  3. **Fallback.** If the matcher cannot pair the rows, or the list animates
+     the re-key, step 4 emits `message.removed` for the minted row and then
+     today's summary row when the summary frame arrives, accepts a
+     Claude-only swap without the cross-fade at that moment, and records why
+     in `steps/step-04.md`.
+
+  A re-import that leaves two rows, or a visible re-insert, is one of this
+  plan's failure signals.
 - **P11 — A failure note keeps one line.** The error is a single ellipsized
   line in the row's detail. The full error is in the row's semantics label.
   There is no modal and no Retry (C5 declined Retry).
@@ -277,6 +368,8 @@ const factory compaction({
 - `ChatHistoryRepository.finalizeOpenToolParts` gains the compaction branch
   of P6, and its doc comment names compaction. The method keeps its name to
   avoid churn in the orchestrator and service. The sweep's tests move with it.
+- `ChatHistoryService._containsOpenToolPart` also returns true for a running
+  compaction part (P6), so the read path sweeps it.
 - Client in step 2: `CompactionPartWidget` reads the summary from
   `CompactionStateCompleted`. Running and failed render as nothing until
   step 3, and no plugin emits them before step 4. Remove the dead
@@ -345,29 +438,37 @@ Layers (all under `bridge/sesori_plugin_claude/lib/src/`):
   details survive a reload.
 - **Dispatcher:**
   - Replace `_awaitingCompactionSummary: Set<String>` with one
-    `Map<String, _ClaudeCompaction>`. `_ClaudeCompaction` is an immutable
-    record of `runningMessageId?` and `metadata?`.
+    `Map<String, _ClaudeCompaction>`. `_ClaudeCompaction` is a small
+    plugin-private sealed type with immutable variants:
+    `started{messageId, metadata?}`, `failed` and `unstarted{metadata?}`.
   - The first `compacting` status with no entry emits the running message
-    and part (P10). The message is stamped now, and the part id is
-    `"$messageId-compaction"`. Repeats every 30 s do nothing.
+    and part (P10) and stores `started`. The message is stamped now, and the
+    part id is `"$messageId-compaction"`. Repeats every 30 s do nothing.
   - `compact_result: failed` emits `failed(error: compactError)` on the
-    running part and drops the entry.
+    running part and stores `failed`. A boundary or summary frame that
+    follows a `failed` entry emits nothing, so no completed row appears
+    beside the failure note. The step-4 probe records whether the CLI sends
+    either after a failure.
   - `compact_result: success` emits `completed` on the running part at once,
     so the settle happens when compaction actually ends.
-  - The boundary stores its metadata. It creates an entry when no start was
-    seen, so an older CLI keeps today's path.
-  - The summary frame consumes the entry. With a running id, it re-emits that
-    message (P10) and the completed part with the summary, `freedTokens` and
-    `trigger`. Without one, it emits today's summary row plus the details.
-  - The entry is also dropped on the turn's `result` frame and in
-    `_forgetRendered`, so a stale id is never reused by the next compaction.
+  - The boundary adds its metadata to a `started` entry. With no entry it
+    stores `unstarted`, so an older CLI keeps today's path.
+  - The summary frame consumes a `started` or `unstarted` entry. `started`
+    re-emits that message (P10) and the completed part with the summary,
+    `freedTokens` and `trigger`. `unstarted` emits today's summary row plus
+    the details.
+  - Every entry, `failed` included, is dropped on the turn's `result` frame
+    and in `_forgetRendered`, so a stale state never reaches the next
+    compaction.
   - Rewrite the comment at `claude_event_dispatcher.dart:451-452` ("live and
     replayed rows share one message id"). It no longer holds when a start
     was seen, and the comment must say which path P10's capture test chose.
 - Probe in step 4, recorded in `steps/step-04.md` and the capability doc:
   how to force `compact_result: "failed"` (for example `/compact` on an
-  almost empty session), whether a failure leaves a transcript record, and
-  whether the live summary frame timestamp equals the transcript record's.
+  almost empty session), whether a failure leaves a transcript record or is
+  followed by a boundary or summary frame, whether the live summary frame
+  timestamp equals the transcript record's, and which start-time uuid, if
+  any, the transcript persists (P10 option 1).
 
 ### 4. Phase 2 (steps 5–6, rough; detailed by the step-5 PR)
 
@@ -422,6 +523,14 @@ compaction also shows "manual".
 - **v1.9.0 app with a new bridge.** It ignores `state` and renders compaction
   parts as nothing, so it keeps "Working…" during compaction (C4). The part
   type is unchanged, so nothing fails to decode.
+- **Exception: OpenCode on a v1.9.0 app.** The v1.9.0 app buffers deltas for
+  every part id, and any buffered text hides "Working…". The streamed
+  summary deltas (v1 today on `main`, v2 from step 5) therefore leave such an
+  app with neither "Working…" nor a row while the summary streams. The rows
+  appear normally afterwards. With the released v1.9.0 bridge the summary was
+  plain visible text, so this is the unreleased #1700 regression carried
+  forward for old apps only. The plan accepts it pending Q3 and records it in
+  `tools-and-file-changes.md` (step 5).
 - **New app with a v1.9.0 bridge.** The missing `state` decodes as completed
   with no details (P2), which is the honest meaning of every released part.
 - **New app with a later bridge that adds a status:** P3.
@@ -440,10 +549,12 @@ New mutable parts, each justified:
 
 | Part | Where | Why |
 |---|---|---|
-| `Map<String, _ClaudeCompaction>` (replaces an existing `Set<String>`) | Claude dispatcher | Holds the running message id across 30-s repeats and until the summary arrives. It is a net zero in map count. |
-| One per-session running-part-id map | An OpenCode v2 tracker (step 5) | Deltas carry only `sessionID`. |
-| One per-session running-message-id map | A DeepSeek tracker (step 6) | No ids on the status notifications. |
-| One `Timer` per visible live row | Existing `TranscriptElapsedTime` | Reused, not new. |
+| `Map<String, _ClaudeCompaction>` (a) | Claude dispatcher | Running id and outcome until `result` |
+| Per-session running-part-id map | OpenCode v2 tracker (step 5) | Deltas carry only `sessionID` |
+| Per-session running-message-id map | DeepSeek tracker (step 6) | No ids on status notifications |
+| One `Timer` per visible live row | `TranscriptElapsedTime` | Reused, not new |
+
+(a) It replaces the existing `Set<String>`, so the map count is unchanged.
 
 Not added: a session status, a part type, a client clock, a bridge-side
 correlation of compaction across messages, Codex token diffing, an old-app
@@ -481,8 +592,12 @@ ids.
   - A failed Claude compaction may leave no transcript trace (the step-4
     probe records it).
   - A v1.9.0 app on Pi or Codex loses the running `compact` card (C4).
+  - A v1.9.0 app on OpenCode shows no activity while the summary streams
+    (Q3, suggested A).
   - If two Claude compactions somehow share neighbours, the P10 re-import
     match may keep both rows for one import.
+  - Under P10 option 2, a Claude row changes id once on a refresh after a
+    re-import.
 - **Evidence level:** the Claude event order comes from one live probe on CLI
   2.1.291. Step 4 repeats it on the current CLI before relying on it.
 
@@ -490,14 +605,28 @@ ids.
 
 Each implementation step updates the documents for the behavior it ships.
 
-| Step | Document changes |
-|---|---|
-| 2 | `tools-and-file-changes.md`: the compatibility lines (older clients ignore the state; a missing state reads as finished). `session-history-and-recovery.md`: the idle and read sweep finalizes a running compaction as failed. |
-| 3 | `tools-and-file-changes.md`: the live row, the timer, the strip, the settle in place, the failed note, the details and the "Working…" rule, with failure signals. |
-| 4 | `docs/HARNESS_CAPABILITIES.md` "Context compaction row": split into Live row, Failure note, Details (freed tokens, trigger) and Summary columns, and fill in Claude with the probe version. `session-turns.md`: Claude's compaction lines. |
-| 5 | The capability rows for OpenCode v1 and v2 (strip, trigger), plus the OpenCode lines in `session-turns.md`. |
-| 6 | The capability rows for Pi, Codex and DeepSeek. Rewrite the Pi and Codex running-`compact`-card lines in `session-turns.md` and `tools-and-file-changes.md`, and the DeepSeek compaction line in `session-turns.md`. |
-| 7 | Reconcile every document with what shipped. |
+- **Step 2:**
+  - `tools-and-file-changes.md`: the compatibility lines (older clients
+    ignore the state; a missing state reads as finished);
+  - `session-history-and-recovery.md`: the idle and read sweep finalizes a
+    running compaction as failed.
+- **Step 3:** `tools-and-file-changes.md`: the live row, the timer, the
+  strip, the settle in place, the failed note, the details and the
+  "Working…" rule, with failure signals.
+- **Step 4:**
+  - `docs/HARNESS_CAPABILITIES.md` "Context compaction row": split into Live
+    row, Failure note, Details (freed tokens, trigger) and Summary columns,
+    and fill in Claude with the probe version;
+  - `session-turns.md`: Claude's compaction lines.
+- **Step 5:** the capability rows for OpenCode v1 and v2 (strip, trigger),
+  the OpenCode lines in `session-turns.md`, and the OpenCode old-app line
+  in `tools-and-file-changes.md` (Q3).
+- **Step 6:**
+  - the capability rows for Pi, Codex and DeepSeek;
+  - the Pi and Codex running-`compact`-card lines in `session-turns.md` and
+    `tools-and-file-changes.md`;
+  - the DeepSeek compaction line in `session-turns.md`.
+- **Step 7:** reconcile every document with what shipped.
 
 Failure signals, added by the step that ships the behavior:
 
@@ -517,19 +646,28 @@ harness's events and the motion must be seen on a device.
 Required matrix, recorded now. Any reduction needs the user's acceptance in
 this file before retirement.
 
-| Platform or plugin | Coverage |
-|---|---|
-| iOS phone, real device (release target) | Live row ticking, settle in place with no jump (a recording), details, failed note, VoiceOver reads the row once, not every second, and reload keeps one settled row. |
-| macOS desktop | The same rows and the settle. |
-| Android phone | Smoke: live row and settle. |
-| Claude Code | Manual `/compact` and one automatic compaction: live row, settle with freed tokens and trigger, details after reload, one row after a history re-import, a forced failure note, and Stop mid-compaction leaving the swept failed note. |
-| OpenCode v1 | Live row with strip, "Working…" back after the settle, summary modal. |
-| OpenCode v2 | Live row with strip from deltas, settle, failure note when reproducible. |
-| Codex | Live row and settle, and Stop mid-compaction leaving the swept note. |
-| Pi | Manual and threshold compaction, the failure note, and a `willRetry` row staying live. |
-| DeepSeek | Live row and settle, live only. Record the reload gap. |
-| One ACP harness without a signal | Plain "Working…". |
-| v1.9.0 App Store app with the new bridge (L5) | "Working…" during compaction, no decode failure, and the transcript loads after reload. |
+- **iOS phone, real device (release target):** live row ticking, settle in
+  place with no jump (a recording), details, failed note, VoiceOver reading
+  the row once rather than every second, and one settled row after reload.
+- **macOS desktop:** the same rows and the settle.
+- **Android phone:** smoke of the live row and the settle.
+- **Claude Code:** a manual `/compact` and one automatic compaction: live
+  row, settle with freed tokens and trigger, details after reload, one row
+  after a history re-import, a forced failure note, and Stop
+  mid-compaction leaving the swept failed note.
+- **OpenCode v1:** live row with strip, "Working…" back after the settle,
+  summary modal.
+- **OpenCode v2:** live row with strip from deltas, settle, failure note
+  when reproducible.
+- **Codex:** live row and settle, and Stop mid-compaction leaving the swept
+  note.
+- **Pi:** manual and threshold compaction, the failure note, and a
+  `willRetry` row staying live.
+- **DeepSeek:** live row and settle, live only. Record the reload gap.
+- **One ACP harness without a signal:** plain "Working…".
+- **v1.9.0 App Store app with the new bridge (L5):** "Working…" during a
+  Claude, Codex or Pi compaction, the OpenCode behavior Q3 settles, no
+  decode failure, and the transcript loads after reload.
 
 Automated coverage in the steps:
 
@@ -546,9 +684,11 @@ Automated coverage in the steps:
   needs only step 2's contract and step 3's rendering. Step 7 needs 2–6, and
   step 8 needs 7.
 - **The step-5 PR first details steps 5–6 in this file** (code-informed, like
-  phase 1), then implements step 5.
+  phase 1), runs `architecture-plan-review` on that section, then implements
+  step 5.
 - **Open questions:** Q2 must be answered before step 2 merges (the sweep's
-  outcome). Q1 must be answered before step 3 merges (copy).
+  outcome). Q1 must be answered before step 3 merges (copy), and Q3 before
+  step 5 merges.
 - **Coordination:** the `step-timers` plan also edits `transcript_activity.dart`
   and `app_en.arb`. Rebase on whichever lands first; the conflicts are
   textual.
@@ -583,6 +723,8 @@ Verify:
 - the mapping test for each state;
 - sweep tests: a stored running compaction becomes failed with the sweep
   error at idle and on a read, and completed or failed parts are untouched;
+- a service test of the abrupt-death read path: a transcript whose only open
+  part is a running compaction is swept on read;
 - plugin tests updated for the moved summary, with all emitters still
   completed;
 - the client widget test for a completed part.
@@ -612,9 +754,10 @@ Target ≤ 800 changed lines.
 - dispatcher tests for:
   - start, then a repeat, success, boundary and summary: one message id
     throughout, in-place states and details;
-  - start then failure with the error;
+  - start then failure with the error, and a boundary and summary after the
+    failure emitting nothing;
   - boundary and summary without a start (today's path plus details);
-  - a stale entry cleared by `result`;
+  - a stale entry, `failed` included, cleared by `result`;
 - a DTO decode test for the camelCase `compactMetadata` and the stream's
   snake_case `compact_metadata`;
 - a catalog-repository test mapping the boundary record to
@@ -624,7 +767,8 @@ Target ≤ 800 changed lines.
 - a history mapper test where the metadata reaches the next summary row;
 - a `bridge/app` capture test: the live minted row, then a re-import of the
   history row with the equal timestamp and a live prompt neighbour whose id
-  differs, leaves one row (P10). The result picks P10's path;
+  differs, leaves one row and asserts the id outcome of the P10 option
+  chosen (the same id under option 1, the recorded re-key under option 2);
 - the live probe on the current CLI;
 - a recording on a device.
 
@@ -658,6 +802,12 @@ pick until answered.
     rule for every harness. (Suggested.)
   - B: Remove the row, as Pi does today. Nothing records that the
     compaction was cut short, and the sweep needs a removal path.
+- **Q3 — What does a v1.9.0 app show while OpenCode streams a summary?**
+  - A: Nothing, as on `main` today: neither "Working…" nor a row, until the
+    summary finishes and the turn goes on. No old-app code. (Suggested.)
+  - B: Keep "Working…" on old apps. The OpenCode plugin sends the running
+    summary as throttled whole-part updates instead of deltas, which needs a
+    throttle and makes the new app's strip less smooth.
 
 Proposed separate refactor, not part of this plan: move the idle and read
 sweep's finalize policy (which parts are stranded, and their terminal state
@@ -698,3 +848,18 @@ findings were applied directly:
 
 Per the reviewer and AGENTS.md, the fixed findings need no re-review. This
 revised version was not reviewed again.
+
+**PR review wave 1 (#1858), 2026-10-06.** Applied:
+
+- the OpenCode old-app exception to C4, with Q3;
+- the Claude `failed` entry kept until `result`, so no completed row follows
+  a failure note;
+- the read-sweep predicate admitting a running compaction, with a test;
+- P10's id outcome after a re-import made explicit, as three ordered
+  options that the step-4 probe and capture test choose between;
+- the approval scoped to phase 1, with a plan review of phase 2 in the
+  step-5 PR;
+- tables shortened to fit 120 characters.
+
+Declined: moving the sweep policy into the service inside this plan. It is
+the separate refactor proposed above and waits for the user.
