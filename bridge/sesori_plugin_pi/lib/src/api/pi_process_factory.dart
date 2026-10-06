@@ -27,7 +27,14 @@ final class HostPiProcessFactory({required final HostProcessService _processes})
 
   Future<PiProcessHandle> spawn({required PiLaunchSpec spec}) async {
     try {
-      final startupExtension = await (_startupExtension ??= _writeStartupExtension());
+      final startupExtensionFuture = _startupExtension ??= _writeStartupExtension();
+      final io.File startupExtension;
+      try {
+        startupExtension = await startupExtensionFuture;
+      } on Object {
+        if (identical(_startupExtension, startupExtensionFuture)) _startupExtension = null;
+        rethrow;
+      }
       final process = await _processes.spawn(
         includeParentEnvironment: true,
         executable: spec.binaryPath,

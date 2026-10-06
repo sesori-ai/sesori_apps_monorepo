@@ -410,6 +410,32 @@ void main() {
       expect(startupExtension.parent.existsSync(), isFalse);
     });
 
+    test("retries startup extension creation after a temporary filesystem failure", () async {
+      final directory = await Directory.systemTemp.createTemp("pi-startup-retry-");
+      addTearDown(() => directory.delete(recursive: true));
+      final blockedTemp = await File(p.join(directory.path, "not-a-directory")).writeAsString("fixture");
+      final processes = _Processes(outputs: const [_Output(stdout: "", exitCode: 0)]);
+      final factory = HostPiProcessFactory(processes: processes);
+      addTearDown(factory.dispose);
+      final spec = PiLaunchSpec(
+        binaryPath: "pi",
+        workingDirectory: "/project",
+        launch: const PiNoSession(),
+        model: null,
+        thinkingLevel: null,
+        environment: const {},
+      );
+
+      await IOOverrides.runZoned(
+        () => expectLater(factory.spawn(spec: spec), throwsA(isA<FileSystemException>())),
+        getSystemTempDirectory: () => Directory(blockedTemp.path),
+      );
+      expect(processes.executables, isEmpty);
+      await factory.spawn(spec: spec);
+      expect(processes.executables, ["pi"]);
+      expect(await File(processes.arguments.single.last).readAsString(), piRpcStartupExtensionSource);
+    });
+
     test("concurrent Pi launches share one temporary startup extension", () async {
       final processes = _Processes(
         outputs: const [
