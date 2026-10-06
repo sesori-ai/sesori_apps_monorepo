@@ -12,38 +12,87 @@
 
 ## Owner decisions (2026-10-06)
 
-| # | Decision |
-|---|---|
-| D1 | Claude Code target follows npm/GitHub `latest`: **2.1.291**, not the stable channel's 2.1.285. |
-| D2 | OpenCode v2 keeps floor 2.0.11; no `parentID` feature. Round 1 chose the raise, but round 2 found no production flow that creates parent-linked sessions (`session_creation_service.dart:79,146` always pass `null`), and the owner dropped it. Restate the matrix row at 2.0.24: the native API accepts `parentID` since 2.0.23; Sesori has no parent-creation flow. |
-| D3 | Pi floor **0.84.1 → 0.99.0**, plus a separate PR that simplifies turn acceptance using the prompt response `disposition`. |
-| D4 | Codex floor **0.139.0 → 0.148.0**. Chosen on the premise that it deletes a guard; that premise was wrong (see Step 3 findings). Re-asked in round 3. |
-| D5 | DeepSeek: plan the adapter migration to upstream `0.2.0-rc.2` in `sesori-ai/sesori-deepseek-acp`, then pin the consumer to the new adapter release. |
-| D6 | Cursor: adopt native ACP sub-agent child sessions in a feature PR after the pins. |
-| D7 | Copilot: fix the stale sub-agent footnote ⁴ now; re-probe ACP sub-agent identity in the follow-ups. |
-| D8 | Grok per-model context-window selection: track only. |
-| D9 | Hermes history-replay compaction marker: track only. |
-| — | All other floors stay unchanged. Antigravity keeps its exact identity/pair contract. |
+- **D1:** Claude Code target follows npm/GitHub `latest` (**2.1.291**), not the
+  stable channel's 2.1.285.
+- **D2:** OpenCode v2 keeps floor 2.0.11; no `parentID` feature. Round 1 chose the
+  raise. Round 2 found that no production flow creates parent-linked sessions
+  (`session_creation_service.dart:79,146` always pass `null`), and the owner
+  dropped it. Restate the matrix row at 2.0.24: the native API accepts `parentID`
+  since 2.0.23, but Sesori has no parent-creation flow.
+- **D3:** Pi floor **0.84.1 → 0.99.0**, plus a separate PR that simplifies turn
+  acceptance using the prompt response `disposition`.
+- **D4:** Codex floor 0.139.0 → 0.148.0, **pending round 3**. Round 1 chose it on
+  the premise that it deletes a guard, and that premise was wrong (see the Step 3
+  findings). Step 3 runs only if the owner keeps the raise.
+- **D5:** DeepSeek: plan the adapter migration to upstream `0.2.0-rc.2` in
+  `sesori-ai/sesori-deepseek-acp`, then pin the consumer to the new adapter release.
+- **D6:** Cursor: adopt native ACP sub-agent child sessions in a feature PR after
+  the pins.
+- **D7:** Copilot: fix the stale sub-agent footnote ⁴ now; re-probe ACP sub-agent
+  identity in the follow-ups.
+- **D8:** Grok per-model context-window selection: track only.
+- **D9:** Hermes history-replay compaction marker: track only.
+- All other floors stay unchanged. Antigravity keeps its exact identity/pair
+  contract.
 
 ## Harness inventory
 
-| Harness | Target: current → candidate | Floor | Digests | Work |
-|---|---|---|---|---|
-| OpenCode | 2.0.18 → **2.0.24** (`e7a34f09`) | v1 1.14.0, v2 2.0.11 | npm integrity + self SHA-256 (all 6) | Pin, REST model regen (fixes `chunkTimeout: false` decode failure seen on PATH 2.0.23+), bump SSE manifest comment |
-| Antigravity | 1.2.1 → **1.3.0** (registry `f6c0f4e8`) | exact pair | self-computed (6 + 2 members) | Pin, fixtures, docs; native initialize identity probe |
-| Codex | 0.156.1 → **0.160.1** (`d27764b8`) | 0.139.0 → **0.148.0** | published + SHA256SUMS | Pin; floor + compat removal |
-| Copilot | 1.0.88 → **1.0.92** (`a9ba11a1`) | 1.0.78 | published + SHA256SUMS | Pin; footnote ⁴ |
-| Cursor | 2026.09.23-86fc751 → **2026.10.01-e373342** | 2026.07.16 | self-computed (4) | Pin; then D6 feature |
-| Claude Code | 2.1.281 → **2.1.291** (`8e60c4ca`) | 2.1.221 | PATH only | Pin |
-| Hermes | 0.21.5 (already latest, `f97608f1`) | 0.20.0 | PATH only | None |
-| Pi | 0.87.1 → **1.0.4** (`7c10bd43`) | 0.84.1 → **0.99.0** | published + SHA256SUMS | Pin, floor, `/llama` source fix, compat removal; then D3 simplification |
-| OMP | 18.3.0 → **18.6.3** (`09327511`, released same day; re-check) | 17.2.13 | published + SHA256SUMS | Pin; model-restore probe |
-| DeepSeek | adapter 0.1.7 (harness 0.1.5-rc.2) → adapter **0.2.x** (harness 0.2.0-rc.2) | 0.1.5 | adapter release assets | D5 external adapter release first |
-| Grok | 1.0.41 → **1.0.46** | 1.0.5 | GCS md5 only, PATH | Pin |
+| Harness | Target: current → candidate | Floor | Digests |
+|---|---|---|---|
+| OpenCode | 2.0.18 → **2.0.24** (`e7a34f09`) | v1 1.14.0, v2 2.0.11 | npm + self (6) |
+| Antigravity | 1.2.1 → **1.3.0** (registry `f6c0f4e8`) | exact pair | self (6 + 2 members) |
+| Codex | 0.156.1 → **0.160.1** (`d27764b8`) | 0.139.0 (→ 0.148.0 if D4) | SHA256SUMS (6) |
+| Copilot | 1.0.88 → **1.0.92** (`a9ba11a1`) | 1.0.78 | SHA256SUMS (6) |
+| Cursor | 2026.09.23-86fc751 → **2026.10.01-e373342** | 2026.07.16 | self (4) |
+| Claude Code | 2.1.281 → **2.1.291** (`8e60c4ca`) | 2.1.221 | PATH only |
+| Hermes | 0.21.5, already latest (`f97608f1`) | 0.20.0 | PATH only |
+| Pi | 0.87.1 → **1.0.4** (`7c10bd43`) | 0.84.1 → **0.99.0** | SHA256SUMS (6) |
+| OMP | 18.3.0 → **18.6.3** (`09327511`) | 17.2.13 | SHA256SUMS (8) |
+| DeepSeek | adapter 0.1.7 → **0.2.x** (harness 0.2.0-rc.2) | 0.1.5 | adapter assets |
+| Grok | 1.0.41 → **1.0.46** | 1.0.5 | PATH only |
+
+Work per harness:
+
+- **OpenCode:** pin; REST model regeneration (fixes the `chunkTimeout: false`
+  decode failure seen on PATH 2.0.23+); bump the SSE manifest comment.
+- **Antigravity:** pin, fixtures and docs; native initialize identity probe.
+- **Codex:** pin; the floor raise only if D4 is kept.
+- **Copilot:** pin; footnote ⁴.
+- **Cursor:** pin; then the D6 feature.
+- **Claude Code, Grok:** pin.
+- **Hermes:** none.
+- **Pi:** pin, floor, `/llama` source fix, compat removal; then the D3
+  simplification.
+- **OMP:** pin (18.6.3 was released the same day, so re-check for a newer stable);
+  model-restore probe.
+- **DeepSeek:** the D5 external adapter release comes first.
 
 Re-resolve each candidate immediately before its PR. When a newer stable release
 exists, take it and re-check its delta. Hashes come from machine-readable records,
 never from this table.
+
+### Release evidence
+
+Verification status starts as **Not run** for every harness; each step's PR
+records its own results.
+
+| Harness | Release source | Distribution |
+|---|---|---|
+| OpenCode | npm `@opencode/cli@2.0.24`; tag `anomalyco/opencode` v2.0.24 | managed tgz, 6 platforms |
+| Antigravity | `agentclientprotocol/registry` `antigravity-acp/agent.json` @ `f6c0f4e8` | managed zip, 6 |
+| Codex | `github.com/openai/codex` release `rust-v0.160.1` | managed tgz, 6 |
+| Copilot | `github.com/github/copilot-cli` release `v1.0.92` | managed, 6 |
+| Cursor | `cursor.com/install` (2026-10-06 text) | managed tgz, 4 (no Windows) |
+| Claude Code | npm `@anthropic-ai/claude-code@2.1.291` (`latest`) | PATH |
+| Hermes | `NousResearch/hermes-agent` release `v2026.9.24` | PATH |
+| Pi | `github.com/earendil-works/pi` release `v1.0.4` | managed, 6 |
+| OMP | `github.com/can1357/oh-my-pi` release `v18.6.3` | managed bare binaries, 8 |
+| DeepSeek | `sesori-ai/sesori-deepseek-acp` (new release pending) | managed, 6 |
+| Grok | `x.ai/cli/stable` = 1.0.46 | PATH |
+
+- **Protocol identities:** ACP v1 everywhere, except Codex (app-server v2),
+  OpenCode (REST/SSE v2), Pi (RPC) and Claude (stream-json).
+- **DeepSeek:** keeps extension protocol v2 unless the adapter bumps it.
 
 ## Findings that shape implementation
 
@@ -75,12 +124,18 @@ never from this table.
   - **Decision in `PiSessionService`** (after `responseSucceeded`; command turns keep
     their existing `getState` at :563 unchanged):
 
-    | Disposition | `agentSettled` | `settlementObservedBeforeAcceptance` | Result |
-    |---|---|---|---|
-    | any | true | any | `_finish` (unchanged) |
-    | `started` / `queued` | false | false | Skip the barrier. Set `agentStarted = true`, `state.agentRunning = true`, then `_moveInFlight`. `effectiveSelection` keeps the value from `applySelection` (:528). The barrier's refresh only re-reads what `applySelection` just returned for a prompt turn. |
-    | `started` / `queued` | false | true | Existing barrier (ambiguous ordering; keep proven path) |
-    | `handled` / unknown | false | any | Existing one- or two-snapshot barrier, unchanged: an extension command can start a turn through fire-and-forget `sendUserMessage`. |
+    - Any disposition with `agentSettled`: `_finish`, unchanged.
+    - `started` or `queued`, not settled, and no settlement observed before
+      acceptance: skip the barrier. Set `agentStarted = true` and
+      `state.agentRunning = true`, then `_moveInFlight`. `effectiveSelection` keeps
+      the value from `applySelection` (:528); for a prompt turn the barrier's
+      refresh only re-reads what `applySelection` just returned.
+    - `started` or `queued`, not settled, but a settlement was observed before
+      acceptance: the existing barrier (the ordering is ambiguous, so keep the
+      proven path).
+    - `handled` or unknown, not settled: the existing one- or two-snapshot
+      barrier, unchanged. An extension command can start a turn through
+      fire-and-forget `sendUserMessage`.
 
     `queued` means Pi steered the input into the running agent (Sesori always sends
     `streamingBehavior: steer`), so agent work exists for the turn. `_PiQueuedPromptTurn`
@@ -109,38 +164,47 @@ never from this table.
   - History-open for such a session must surface a typed failure through the existing
     plugin failure path, not a crash.
   - If the probe shows cleanup cannot delete these sessions, the fix becomes its own
-    step 5.b and gets a fresh architecture review before implementation. Candidates,
-    in order of preference:
+    step 5.b and gets a fresh architecture review before implementation. The fix
+    must actually delete the session. A "skipped" failure alone is not enough:
+    `DeletedSessionStorageCleanupService` already catches, logs and retries each
+    cleanup failure on every startup. Candidates, in order of preference:
     1. a resume parameter or option that skips model restore;
-    2. a typed cleanup failure that marks the session skipped and logs it;
-    3. a named `OmpSessionStorageApi` behind the existing repository (new Layer-1
-       owner; last resort).
+    2. a named `OmpSessionStorageApi` behind the existing repository that deletes
+       the session files (a new Layer-1 owner, so last resort).
+
+    If neither is feasible, record the owner's explicit acceptance of the orphaned
+    storage instead of shipping a no-op fix.
 - **Antigravity (Step 4).** The `.par` embeds `__version__ = "1.3.0"`. Confirm the
   build label, `agentInfo` version, protocol 1, advertised load/list/resume/logout
   and the absence of close, all through `AntigravityRuntimeVersionValidator` in an
   isolated probe before merge. Also check the Linux x64 extracted size (926.5 MB)
   against the shared installer limits.
-- **OpenCode regen (Step 6).** Run
-  `dart run tool/generate_opencode_client.dart --tag v2.0.24 --surface tool/opencode_v2_surface.json --out-dir lib/src/v2`.
+- **OpenCode regen (Step 6).** Run:
+
+  ```sh
+  dart run tool/generate_opencode_client.dart --tag v2.0.24 \
+    --surface tool/opencode_v2_surface.json --out-dir lib/src/v2
+  ```
+
   Expected real model changes: `provider_settings` (`chunkTimeout` becomes `Object?`,
   new `headerTimeout`), `server_info`, `session_structured_error`. Audit and
   regenerate the v2 SSE events; there are no event-shape changes, so only the
   header/comment updates. v1 output is untouched.
-- **Cursor sub-agents (Steps 9.a, 9.b).** Cursor enables ACP child sessions when
+- **Cursor sub-agents (Steps 9, 10).** Cursor enables ACP child sessions when
   the client advertises `clientCapabilities.subagents` or
   `clientCapabilities._meta.subagents`.
   - Child sessions are linked to the parent Task call, stream
     text/thinking/tools/terminal state, and replay on `session/load`. Cursor then
     advertises `sessionCapabilities.subagents`.
-  - **9.a (probe only, no production code):** record in a step note the exact wire
+  - **9 (probe only, no production code):** record in a step note the exact wire
     shape: the capability response, the child-creation/link notification, the
     child updates, terminal state, cancel semantics, and what `session/load`
     replays for sessions created before and after the capability.
-  - **9.b (implementation):**
+  - **10 (implementation):**
     - **Capability:** advertise `_meta.subagents` through Cursor's existing
       `CursorBinary.acpCapabilityMeta` → `initializeCapabilityMeta`
       (`acp_plugin.dart:240-242`). No change to the shared `buildClientCapabilities`.
-      If 9.a shows that only the standard field works, add a per-plugin getter that
+      If 9 shows that only the standard field works, add a per-plugin getter that
       defaults to `false` (like `supportsFormElicitation`) rather than enabling it
       for every ACP harness.
     - **Mapping:** the child↔parent Task link is mapped in `CursorEventMapper`
@@ -148,22 +212,29 @@ never from this table.
       `mapExtension` → `mapChildSpawned` and the finish calls
       (`acp_event_mapper.dart:650-675`). Lifecycle stays with the single existing
       owner, `AcpChildSessionTracker`. There is no Cursor-side tracker or registry.
-    - **Replay:** state how `session/load` replay reaches the tracker, based on 9.a.
-    - **Stop:** declare the scoped-stop capability matching 9.a's observed cancel
-      semantics.
+    - **Replay:** state how `session/load` replay reaches the tracker, based on 9.
+    - **Stop:** declare the scoped-stop capability matching 9's observed cancel
+      semantics. `cursor_plugin_impl.dart` currently derives
+      `requiresProcessResidency`, `hasUnresolvedResidentWork` and
+      `activeScopedStopWorkCount` (plus `registerProcessResidencyChanges`) from
+      `CursorTaskTracker`. Step 10 must back these hooks with
+      `AcpChildSessionTracker` state for native children. Otherwise the root-cancel
+      path loses its confirmation and its check for surviving children. Removing
+      the hooks is allowed only together with a capability that makes no such
+      guarantee.
   - **Cleanup:**
     - **Delete with the native live path:** the live `cursor/task` handling in
       `cursor_event_mapper.dart`, `trackers/cursor_task_tracker.dart`, the task
       references in `cursor_approval_registry.dart`, and the wiring in
       `cursor_plugin_impl.dart`.
-    - **Also delete, if 9.a shows `session/load` replays old sessions' sub-agents
+    - **Also delete, if 9 shows `session/load` replays old sessions' sub-agents
       natively:** `api/models/cursor_task_dto.dart` (+ `.g`/`.freezed`),
       `repositories/mappers/cursor_task_mapper.dart` and
       `repositories/trackers/cursor_task_replay_tracker.dart`.
     - **Otherwise keep exactly these three** for pre-capability transcripts and
       delete the rest.
-  - **Review:** 9.b gets a fresh architecture review after 9.a's note exists.
-- **DeepSeek adapter (Step 10).** Upstream 0.2.0-rc.2 changes are covered in the
+  - **Review:** 10 gets a fresh architecture review after 9's note exists.
+- **DeepSeek adapter (Step 11).** Upstream 0.2.0-rc.2 changes are covered in the
   adapter repo, not here:
   - `agent/session-start` → async `agent/created`;
   - deprecated `snapshotEvents` (adapter `src/sessions.ts:2544,2553`);
@@ -173,7 +244,7 @@ never from this table.
   - model catalog removals.
 
   This workspace may not create another checkout, so the adapter change and
-  release are a handoff (see Step 10). The consumer pin follows the published
+  release are a handoff (see Step 11). The consumer pin follows the published
   release, with the extension protocol still v2 unless the adapter bumps it.
 
 ## Steps
@@ -181,20 +252,25 @@ never from this table.
 | Step | Title | Size |
 |---|---|---|
 | 1 | 🌱 Publish this plan | docs |
-| 2 | 🌿 Mechanical pins: Claude 2.1.291, Copilot 1.0.92 (+ footnote ⁴), Cursor 2026.10.01-e373342, Grok 1.0.46, Codex 0.160.1 | ~150 lines |
+| 2 | 🌿 Mechanical pins for Claude, Copilot (+ footnote ⁴), Cursor, Grok, Codex | ~150 lines |
 | 3 | 🌱 Codex floor 0.148.0 (only if round 3 keeps D4; no code deletion) | ~20 lines |
 | 4 | 🌿 Antigravity 1.3.0 with native initialize identity probe | ~120 lines |
 | 5 | 🌿 OMP 18.6.3 (or newer stable) with model-restore probe (fix → 5.b, re-reviewed) | ~50 lines |
 | 6 | ⚙️ OpenCode 2.0.24 with REST model and SSE regeneration | ~300–500 lines, mostly generated headers |
 | 7 | ⚙️ Pi 1.0.4, floor 0.99.0, `/llama` and `/mcp` catalog fix, compat removal | ~150 lines |
 | 8 | ⚙️ Pi turn acceptance via prompt `disposition` | ~100–200 lines |
-| 9.a | 🌱 Cursor ACP sub-agent wire probe note | note |
-| 9.b | 🚧 Cursor native ACP sub-agent child sessions + task-path cleanup | ~400–700 lines incl. deletions |
-| 10 | 🌿 DeepSeek consumer pin to the migrated adapter (after external release) | ~80 lines |
-| 11 | 🌱 Reconcile regression documents and `docs/HARNESS_CAPABILITIES.md` | docs |
-| 12 | 🌱 Final coverage run and plan retirement | docs |
+| 9 | 🌱 Cursor ACP sub-agent wire probe note | note |
+| 10 | 🚧 Cursor native ACP sub-agent child sessions + task-path cleanup | ~400–700 lines incl. deletions |
+| 11 | 🌿 DeepSeek consumer pin to the migrated adapter (after external release) | ~80 lines |
+| 12 | 🌱 Reconcile regression documents and `docs/HARNESS_CAPABILITIES.md` | docs |
+| 13 | 🌱 Final coverage run and plan retirement | docs |
 
-PR titles: `<emoji> [harness-refresh-2026-10] <description> [step <x>/<y>]`.
+PR titles: `<emoji> [harness-refresh-2026-10] <description> [step <x>/13]`.
+
+- **Total:** 13 counts every row above. If Step 3 is dropped, renumber the
+  remaining PRs to a 12-step total. If Step 5.b is activated, insert it after
+  Step 5 and raise the total.
+- **Already open:** keep the titles of open PRs in sync with the current total.
 
 Each pin PR updates, together:
 - the manifest/descriptor;
@@ -206,7 +282,7 @@ Each pin PR updates, together:
 
 Historical verification notes keep their original versions.
 
-### Step 10 handoff (external dependency)
+### Step 11 handoff (external dependency)
 
 1. In `sesori-ai/sesori-deepseek-acp`, migrate to `@deepseek-ai/dsh-*` `0.2.0-rc.2`
    (or a newer RC/stable published by then). Address the five areas listed above,
@@ -216,7 +292,7 @@ Historical verification notes keep their original versions.
    digests, plus tests.
 
 This needs a session with that repository checked out. Record the blocker in
-`TRACKER.md` and keep Step 10 open; it does not hold the other steps.
+`TRACKER.md` and keep Step 11 open; it does not hold the other steps.
 
 ## Verification
 
@@ -227,14 +303,20 @@ This needs a session with that repository checked out. Record the blocker in
   host (macOS arm64).
 - **Highest level: L2 Routine.** Do one normal turn per updated harness through the
   production seam, where credentials are available, plus the feature checks:
+  - Codex: initialize and list over **both** app-server transports. Sessions use
+    the WebSocket transport; authentication uses stdio.
   - Pi: catalog with no `/llama`; disposition-driven settlement for prompt, steer
     and a silent command.
   - Cursor: sub-agent child session live and after reload, and stop.
   - OMP: open and delete a session whose model is gone.
   - OpenCode: provider list with `chunkTimeout: false`.
 - **Matrix:** the macOS arm64 host for native checks. Other platforms are covered by
-  digest agreement only and stay **untested**. Authenticated turns that need
-  credentials I don't have go to the final follow-up list, not holds.
+  digest agreement only and stay **untested**.
+- **Unavailable checks:** authenticated turns that need credentials I don't have go
+  to the final follow-up list. They do not hold back the pins.
+- **Retirement gate:** these checks remain part of the L2 matrix. Step 13 retires
+  the plan only after they pass or after the owner's explicit acceptance of each
+  remaining gap is recorded in this file (`docs/regression/README.md`).
 - **Regression docs affected:**
   - `plugin-setup-and-lifecycle.md`
   - `plugin-runtime-installation.md`
@@ -249,7 +331,7 @@ This needs a session with that repository checked out. Record the blocker in
 - **New mutable state:** none planned for the pins.
   - Step 8 adds one enum return value and skips the existing barrier at runtime for
     `started`/`queued`; it adds no fields.
-  - Step 9.b keeps child lifecycle in the existing `AcpChildSessionTracker`; there
+  - Step 10 keeps child lifecycle in the existing `AcpChildSessionTracker`; there
     is no Cursor-side tracker or registry.
 - **Deliberately not added:** version branches for runtimes below the new floors
   (Pi, Codex); dual `/llama` source matching; Grok context-window or Hermes
@@ -262,7 +344,7 @@ This needs a session with that repository checked out. Record the blocker in
 - **Pi:** the ≤0.84.2 compat note and the `<inline:llama.cpp>` entry are deleted
   (Step 7). Step 8 deletes no structure; the barrier stays for `handled`.
 - **Cursor:** the live task path is deleted, and the replay path is deleted or kept
-  per the 9.b cleanup list.
+  per the 10 cleanup list.
 - **Antigravity:** the legacy `agy_acp_server_` prefix and `YYYYMMDD_NN_RCNN`
   parsing would only reclassify pre-1.2.1 installs from "unknown" to "outdated".
   Leave them as they are; the value is low.
@@ -287,5 +369,5 @@ This needs a session with that repository checked out. Record the blocker in
 - **Second pass:** confirmed the design passes. It rejected only on stale cleanup,
   budget and risk text, which has since been fixed as text-only edits without
   another review.
-- **Still needed:** Step 9.b and the conditional Step 5.b each need their own
+- **Still needed:** Step 10 and the conditional Step 5.b each need their own
   review before implementation.
