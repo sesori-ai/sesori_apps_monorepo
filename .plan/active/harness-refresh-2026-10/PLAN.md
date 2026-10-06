@@ -19,8 +19,9 @@
   (`session_creation_service.dart:79,146` always pass `null`), and the owner
   dropped it. Restate the matrix row at 2.0.24: the native API accepts `parentID`
   since 2.0.23, but Sesori has no parent-creation flow.
-- **D3:** Pi floor **0.84.1 → 0.99.0**, plus a separate PR that simplifies turn
-  acceptance using the prompt response `disposition`.
+- **D3:** Pi floor **0.84.1 → 0.99.0**. The planned follow-up that simplified
+  turn acceptance using the prompt response `disposition` (Step 8) was dropped
+  on 2026-10-06 (#1867 closed); see the Pi findings.
 - **D4:** Codex floor 0.139.0 → 0.148.0, **pending round 3**. Round 1 chose it on
   the premise that it deletes a guard, and that premise was wrong (see the Step 3
   findings). Step 3 runs only if the owner keeps the raise.
@@ -65,8 +66,8 @@ Work per harness:
 - **Cursor:** pin; then the D6 feature.
 - **Claude Code, Grok:** pin.
 - **Hermes:** none.
-- **Pi:** pin, floor, `/llama` source fix, compat removal; then the D3
-  simplification.
+- **Pi:** pin, floor, `/llama` source fix, compat removal (Step 8's
+  `disposition` simplification was dropped).
 - **OMP:** pin (18.6.3 was released the same day, so re-check for a newer stable);
   model-restore probe.
 - **DeepSeek:** the D5 external adapter release comes first.
@@ -119,39 +120,9 @@ records its own results.
   event, so skipping the `get_state` barrier leaves the turn and resident selection
   stale. Skipping only on `queued` duplicates the existing `agent_start` path. A
   round-trip-free design needs Pi to report the effective model in the prompt
-  response or emit a model-change event. The text below is historical.
-- **Pi turn acceptance (Step 8).** `prompt`/`steer`/`follow_up` responses carry
-  `data.disposition` (`started | queued | handled`) since 0.99.0. Sesori currently
-  ignores the response body and always runs a one- or two-snapshot `get_state`
-  barrier (`pi_session_service.dart:574-608`) to decide whether an accepted prompt
-  produced agent work.
-  - **Boundary:** add `enum PiPromptDisposition { started, queued, handled }` in
-    `lib/src/models/`. `PiSessionProcessRepository.dispatchPrompt`
-    (`pi_session_process_repository.dart:442`) parses `data.disposition` from the
-    response and returns it. A missing or unknown value maps to `handled`, which
-    keeps today's barrier. No strings reach the service. `dispatchCompaction` is
-    unchanged.
-  - **Decision in `PiSessionService`** (after `responseSucceeded`; command turns keep
-    their existing `getState` at :563 unchanged):
-
-    - Any disposition with `agentSettled`: `_finish`, unchanged.
-    - `started` or `queued`, not settled, and no settlement observed before
-      acceptance: skip the barrier. Set `agentStarted = true` and
-      `state.agentRunning = true`, then `_moveInFlight`. `effectiveSelection` keeps
-      the value from `applySelection` (:528); for a prompt turn the barrier's
-      refresh only re-reads what `applySelection` just returned.
-    - `started` or `queued`, not settled, but a settlement was observed before
-      acceptance: the existing barrier (the ordering is ambiguous, so keep the
-      proven path).
-    - `handled` or unknown, not settled: the existing one- or two-snapshot
-      barrier, unchanged. An extension command can start a turn through
-      fire-and-forget `sendUserMessage`.
-
-    `queued` means Pi steered the input into the running agent (Sesori always sends
-    `streamingBehavior: steer`), so agent work exists for the turn. `_PiQueuedPromptTurn`
-    queue state is Sesori's own pre-dispatch queue and is not affected.
-  - **Deleted:** nothing structural; the barrier remains for `handled`. The gain is no
-    `get_state` round trip on ordinary prompts and steers.
+  response or emit a model-change event. Until then, the existing one- or
+  two-snapshot `get_state` barrier (`pi_session_service.dart:574-608`) stays for
+  every accepted prompt, and no Pi turn-acceptance code changes in this plan.
 - **Codex floor (Step 3, re-asked in round 3).** The audit claimed that raising the
   floor to 0.148.0 deletes a ~3-line guard. Code reading disproves that.
   - `_recordAcceptedTurn` (`codex_plugin_impl.dart:1318-1337`) uses the
@@ -303,19 +274,40 @@ records its own results.
          count becomes `childSessionTracker.runningChildren(sessionId:)`. This
          replaces the `activeScopedStopWorkCount` hook, which is deleted
          together with Cursor's override.
+         - **Survivor check.** The post-cascade check (today the second
+           `activeScopedStopWorkCount` read) also reads
+           `childSessionTracker.runningChildren(sessionId:)`, so the 502
+           `PluginOperationException` still fires when a child survives the
+           settlement timeout.
+         - **Result.** When the cascade settles with no survivor,
+           `_abortRootSessionOnly` returns
+           `PluginAbortAccepted(workKept: false, subAgentsHandled: true)`: the
+           cascade stopped the children. It returns `subAgentsHandled: false`
+           only when there were no running children to begin with.
          - **Child-stop refusal.** The first statement of
            `_abortRootSessionOnly` is the check for a stop addressed to a
            tracked child (`childSessionTracker.isChild`). It runs before
            `_prepareSessionAbort` and before any `session/cancel`.
-         - **Error.** It throws a `PluginOperationException` with status
-           **409** and the fixed, user-safe message "Stop the parent session;
-           this harness cannot stop sub-agents individually". 409 keeps a
-           refused stop distinct from a failed cascade, which uses 502 in the
-           same method.
+         - **Typed refusal.** It returns `PluginAbortNotPerformed` with a new
+           `PluginAbortRefusalReason.subAgentStopUnsupported`. The bridge app
+           maps it to a new shared
+           `SessionAbortRefusalReason.subAgentStopUnsupported` (regenerate),
+           which travels in the existing 409 refusal body.
+         - **Client.** `_showNotAccepted` in `session_abort_scope_dialog.dart`
+           gains a localized message ("Stop the parent session; this harness
+           cannot stop sub-agents individually"). `SessionDetailCubit.abort`
+           already keeps the local prompt queue for a refusal.
+         - **Older clients** decode the new value as `unknownEnumValue`
+           (`_abortRefusalReasonFromJson`) and show the generic "stop not
+           accepted" message, still keeping their queue. That is the graceful
+           degradation the wire rule asks for.
+         - **Why not a 409 `PluginOperationException`** (review finding 1,
+           reversed): `SessionApi.abortSession` parses only 409 bodies with a
+           `kind`, so the client would see a generic failure and
+           `SessionDetailCubit.abort` would clear the user's queued prompts.
+           Review finding 1 assumed an unknown shared value breaks older
+           clients; the existing unknown fallback shows it does not.
          - **Today** such a stop sends a no-op cancel and reports success.
-         - **No shared wire enum value is added:** older clients could not
-           decode it, and the exception already reaches them through the
-           existing error path.
 
       `buildClientCapabilities`, `AcpChildSessionTracker` and the replay
       collector do not change.
@@ -411,6 +403,14 @@ records its own results.
         inert: spawn calls produce no generic card. 10.b deletes it.
     - **Replay (unchanged).** `session/load` stays replay-local and never feeds
       `AcpChildSessionTracker`.
+      - **Why the new hook never sees replayed frames.** History open uses a
+        separate replay client whose notifications go to
+        `replayCollector.consumeNotification`; only `available_commands_update`
+        reaches `eventMapper.map`. A live resume-load suppresses the loaded
+        session's `session/update` frames (`_suppressedSessions`,
+        `isResumeReplayNotification`). Replayed `subagent_spawned` /
+        `subagent_state_update` therefore never reach
+        `mapHarnessSessionUpdate`.
       - The collector ignores native replay frames.
         `CursorTaskReplayTracker` keeps turning completed foreground Task calls
         into subtask tiles without a child link.
@@ -421,18 +421,24 @@ records its own results.
       - the root stays busy while any child, including a background one, runs;
       - a follow-up prompt during that time uses the shared stop-and-send, so
         the root cancel cascade stops every child (as on Grok);
-      - stopping a child session is refused (409, "stop the parent session");
+      - stopping a child session is refused with a typed "stop the parent
+        session" refusal, and the queued prompts stay;
       - a root stop stops all children with Cursor's confirmed cascade.
     - **Tests:**
-      - **ACP:** hook dispatch, spawn-input retention, root-only count from the
-        tracker, and the child-stop refusal (`acp_step5_policy_test.dart`
-        updated).
+      - **ACP:** hook dispatch, spawn-input retention, root-only count and
+        survivor check from the tracker, `subAgentsHandled: true` after a
+        cascade with running children, and the child-stop refusal
+        (`acp_step5_policy_test.dart` updated).
       - **Cursor mapper:** spawn, nested, resumed `.n`, model, all four states,
         unknown state, malformed frames, suppressed Task card, and `cursor/task`
         acked but not mapped.
       - **Plugin:** root stop with running children under the confirm and stop
         policies, and the survivor failure (502). The child-stop refusal
-        returns 409 with the fixed message and sends no `session/cancel`.
+        returns `PluginAbortNotPerformed(subAgentStopUnsupported)` and sends
+        no `session/cancel`.
+      - **Shared, app and client:** the new value round-trips, an unknown
+        value decodes to `unknownEnumValue`, the bridge app maps the reason to
+        a 409 refusal body, and the client dialog shows the new message.
       - **Floor:** manifest and descriptor floor tests for `2026.09.23`.
     - **Docs:**
       - `tools-and-file-changes.md`;
@@ -460,15 +466,11 @@ records its own results.
     - **ACP hooks with no producer left.** Delete `requiresProcessResidency`,
       `hasUnresolvedResidentWork` and `registerProcessResidencyChanges`, plus the
       root-only path's two resident-work checks.
-      - Also delete the plugin-interface `PluginAbortNotPerformed` /
-        `PluginAbortRefusalReason` and the bridge app's mapping branch, once a
-        grep confirms no other producer.
-        - **Why delete rather than reuse for the child-stop refusal:** its only
-          reason, `residentWorkCompletionUnknown`, means "completion unknown",
-          not "unsupported target".
-        - Reusing it would mislabel the refusal. Adding a reason would need a
-          new shared wire value that older clients cannot decode. The refusal
-          therefore stays a 409 `PluginOperationException` (10.a).
+      - Also delete the plugin-interface
+        `PluginAbortRefusalReason.residentWorkCompletionUnknown` value and the
+        bridge app's mapping branch for it, once a grep confirms no other
+        producer. `PluginAbortNotPerformed` itself stays: 10.a's child-stop
+        refusal uses it.
       - The shared `SessionAbortRefusalReason.residentWorkCompletionUnknown`
         value and the client's handling of it stay: released bridges still send
         it.
@@ -481,8 +483,11 @@ records its own results.
       - Delete them only after an authenticated probe shows that pre-capability
         transcripts carry `agentId` and that native replay with a child link can
         replace them.
-  - **Review:** this revised design needs a fresh `architecture-plan-review`
-    before 10.a starts. The review covers 10.b.
+  - **Review:** the 2026-10-06 `architecture-plan-review` of this design (10.a
+    and 10.b) rejected it with 5 findings, all applied without re-review. A
+    fresh review is needed only if the owner rejects D10 (the gated
+    alternative) or if the typed-refusal reversal of finding 1 is judged
+    considerable before 10.a starts.
 - **DeepSeek adapter (Step 11).** Upstream 0.2.0-rc.2 changes are covered in the
   adapter repo, not here:
   - `agent/session-start` → async `agent/created`;
@@ -507,18 +512,18 @@ records its own results.
 | 5 | 🌿 OMP 18.6.3 (or newer stable) with model-restore probe (fix → 5.b, re-reviewed) | ~50 lines |
 | 6 | ⚙️ OpenCode 2.0.24 with REST model and SSE regeneration | ~300–500 lines, mostly generated headers |
 | 7 | ⚙️ Pi 1.0.4, floor 0.99.0, `/llama` and `/mcp` catalog fix, compat removal | ~150 lines |
-| 8 | ⚙️ Pi turn acceptance via prompt `disposition` | ~100–200 lines |
+| 8 | Dropped 2026-10-06 (#1867 closed; see the Pi findings); not counted | — |
 | 9 | 🌱 Cursor ACP sub-agent wire probe note | note |
-| 10.a | 🚧 Cursor native ACP sub-agent child sessions (ACP seam, capability, D10 floor, root-only stop) | ~1,100–1,400 lines, ~250 generated |
+| 10.a | 🚧 Cursor native ACP sub-agent child sessions (ACP seam, capability, D10 floor, root-only stop) | ~1,200–1,500 lines, ~300 generated |
 | 10.b | 🌿 Delete the inert Cursor live Task path and the orphaned ACP residency hooks | ~1,000–1,400 lines, mostly deletions |
 | 11 | 🌿 DeepSeek consumer pin to the migrated adapter (after external release) | ~80 lines |
 | 12 | 🌱 Reconcile regression documents and `docs/HARNESS_CAPABILITIES.md` | docs |
 | 13 | 🌱 Final coverage run and plan retirement | docs |
 
-PR titles: `<emoji> [harness-refresh-2026-10] <description> [step <x>/14]`.
+PR titles: `<emoji> [harness-refresh-2026-10] <description> [step <x>/13]`.
 
-- **Total:** 14 counts every row above (Steps 10.a and 10.b are one PR each,
-  titled `[step 10.a/14]` and `[step 10.b/14]`). If Step 3 is dropped, lower
+- **Total:** 13 counts every row above except the dropped Step 8 (Steps 10.a
+  and 10.b are one PR each, titled `[step 10.a/13]` and `[step 10.b/13]`). If Step 3 is dropped, lower
   the total by one. If Step 5.b is activated, insert it after Step 5 and raise
   the total.
 - **Why Step 10 splits:** a single PR would be about 2,400 changed lines of
@@ -561,8 +566,7 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
   production seam, where credentials are available, plus the feature checks:
   - Codex: initialize and list over **both** app-server transports. Sessions use
     the WebSocket transport; authentication uses stdio.
-  - Pi: catalog with no `/llama`; disposition-driven settlement for prompt, steer
-    and a silent command.
+  - Pi: catalog with no `/llama`.
   - Cursor (10.a): these checks confirm Step 9's source-derived shapes live.
     - **Live children:**
       - a real `subagent_spawned` / `subagent_state_update` pair;
@@ -599,7 +603,6 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
   - `plugin-setup-and-lifecycle.md`
   - `plugin-runtime-installation.md`
   - `antigravity-descriptor-and-setup.md`
-  - `session-turns.md` (Pi acceptance)
   - `session-history-and-recovery.md` and `tools-and-file-changes.md` (Cursor
     sub-agents, OMP restore)
   - `session-creation-and-options.md` (Pi catalog)
@@ -609,8 +612,6 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
 ## Complexity budget
 
 - **New mutable state:** none planned for the pins.
-  - Step 8 adds one enum return value and skips the existing barrier at runtime for
-    `started`/`queued`; it adds no fields.
   - Step 10.a keeps child lifecycle in the existing `AcpChildSessionTracker`;
     there is no Cursor-side tracker or registry.
     - Its only shared-state change is that `AcpEventMapper._spawnToolCalls`
@@ -622,7 +623,8 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
     residency hooks.
 - **Deliberately not added for Cursor:**
   - per-child cancel (not supported by the harness);
-  - a runtime capability branch (the D10 floor replaces it);
+  - a runtime capability branch (the D10 floor replaces it when the owner keeps
+    D10; rejecting D10 adds the `sessionCapabilities.subagents` gate instead);
   - replayed child links (unverified);
   - background-child detection (Cursor holds the root prompt open, so every
     child counts as foreground).
@@ -635,10 +637,12 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
 - **Codex:** nothing to delete. A kept D4 only rewrites the `COMPATIBILITY` comment
   (Step 3).
 - **Pi:** the ≤0.84.2 compat note and the `<inline:llama.cpp>` entry are deleted
-  (Step 7). Step 8 deletes no structure; the barrier stays for `handled`.
+  (Step 7).
 - **Cursor:** 10.a removes the `cursor/task` mapping and the plugin's residency
   overrides. 10.b deletes the inert live Task path, the ACP residency hooks with
-  no remaining producer, and the plugin-interface refusal type.
+  no remaining producer, and the plugin-interface
+  `residentWorkCompletionUnknown` refusal value (the refusal type stays for the
+  child-stop refusal).
   - The replay files (`cursor_task_dto` replay parts, `cursor_task_mapper`,
     `cursor_task_replay_tracker`) are kept until an authenticated probe settles
     the `agentId` question.
@@ -684,13 +688,16 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
 - **Second pass:** confirmed the design passes. It rejected only on stale cleanup,
   budget and risk text, which has since been fixed as text-only edits without
   another review.
-- **Still needed:** Step 10 and the conditional Step 5.b each need their own
-  review before implementation.
-- **2026-10-06:** Step 10 revised from Step 9 probe; architecture review
-  pending. It is split into 10.a and 10.b, and the total is now 14.
+- **Still needed:** the conditional Step 5.b needs its own review before
+  implementation. Step 10 needs another only under the conditions in its
+  Review bullet.
+- **2026-10-06:** Step 10 revised from Step 9 probe and split into 10.a and
+  10.b. Step 8 was dropped the same day, so the total is 13.
 - Architecture plan review 2026-10-06: rejected with 5 findings; all applied
   without re-review per AGENTS.md. The findings covered:
-  - the child-stop refusal contract (409 as the first statement);
+  - the child-stop refusal contract (first statement; its 409
+    `PluginOperationException` form was later reversed to a typed refusal in
+    the PR #1866 review, because a generic failure clears the client's queue);
   - the Task input DTO;
   - the sealed sub-agent update DTO;
   - Task classification, settled from the bundle source;
