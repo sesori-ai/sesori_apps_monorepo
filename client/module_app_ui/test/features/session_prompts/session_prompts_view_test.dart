@@ -246,6 +246,28 @@ void main() {
       expect(_row("p31"), findsOneWidget);
     });
 
+    testWidgets("holds the first row showing below the pinned day header, not one hidden beneath it", (tester) async {
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 80), anchor: null);
+      final rowExtent = promptRowExtent(textScaler: TextScaler.noScaling);
+      // p31 ends exactly where the pinned "Today" ends, so p32 is the first row
+      // the reader sees.
+      tester
+          .state<ScrollableState>(find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)))
+          .position
+          .jumpTo(32 * rowExtent);
+      await tester.pump();
+      final readerTop = _topOf(tester, "p32");
+      expect(readerTop, _headerHeight + dayHeaderExtent);
+
+      await tester.enterText(find.byType(TextField), "even");
+      for (var frame = 0; frame < 4; frame++) {
+        await tester.pump(const Duration(milliseconds: 40));
+        expect(_topOf(tester, "p32"), readerTop, reason: "the row in view stays put as the hidden p31 folds away");
+      }
+      await tester.pumpAndSettle();
+      expect(_topOf(tester, "p32"), readerTop);
+    });
+
     testWidgets("a match past the one-line cut grows the row and highlights the match", (tester) async {
       await _pump(tester, entries: _parityPrompts(from: 0, to: 2), anchor: null);
 
@@ -337,6 +359,19 @@ void main() {
       expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus, isTrue);
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       expect(desktop.closes, ["close"]);
+    });
+
+    testWidgets("Escape still closes after a click outside the search field takes its focus", (tester) async {
+      final calls = await _pump(tester, entries: _parityPrompts(from: 0, to: 3), anchor: null, autofocusSearch: true);
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), "even");
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text("2 matches in the prompts loaded so far"));
+      await tester.pump();
+      expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus, isFalse);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      expect(calls.closes, ["close"]);
     });
   });
 }

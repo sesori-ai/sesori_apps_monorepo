@@ -24,10 +24,12 @@ class const ListSearchField({
 
 class _ListSearchFieldState() extends State<ListSearchField> {
   late final _controller = TextEditingController(text: widget.query);
+  final _focusNode = FocusNode();
 
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -38,11 +40,14 @@ class _ListSearchFieldState() extends State<ListSearchField> {
       padding: widget.padding,
       child: TextField(
         controller: _controller,
+        focusNode: _focusNode,
         autofocus: widget.autofocus,
         autocorrect: false,
         textInputAction: TextInputAction.search,
         onChanged: widget.onChanged,
-        onTapOutside: (_) => FocusScope.of(context).unfocus(),
+        // Hands the focus to the enclosing scope, so the keys the screen
+        // around the field handles keep reaching it.
+        onTapOutside: (_) => _focusNode.unfocus(),
         decoration: InputDecoration(
           hintText: widget.hintText,
           prefixIcon: const Icon(TablerRegular.search, size: PregoIconSize.md),

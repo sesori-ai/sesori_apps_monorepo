@@ -65,9 +65,14 @@ typedef _ShownGroup = ({DateTime? day, double shown, List<_Row> rows});
 /// grown, and whether days head the rows at all.
 typedef _Frame = ({List<_ShownGroup> groups, double grown, bool grouped});
 
-/// Every prompt row's top and height in the scrolling list, and the list's
-/// whole height.
-typedef _Layout = ({Map<String, ({double top, double extent})> rows, double total});
+/// Every prompt row's top and height in the scrolling list, where each day
+/// starts and ends with how tall its pinned heading is, and the list's whole
+/// height.
+typedef _Layout = ({
+  Map<String, ({double top, double extent})> rows,
+  List<({double start, double end, double header})> groups,
+  double total,
+});
 
 /// The fixed heights the list is laid out from.
 typedef _Extents = ({double row, double excerpt, double header, double loadEarlier, double trailing});
@@ -150,28 +155,42 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
   static _Layout _layoutOf({required _Frame frame, required bool loadsEarlier, required _Extents extents}) {
     var top = loadsEarlier ? extents.loadEarlier : 0.0;
     final rows = <String, ({double top, double extent})>{};
+    final groups = <({double start, double end, double header})>[];
     for (final group in frame.groups) {
-      if (frame.grouped) top += extents.header * group.shown;
+      final start = top;
+      final header = frame.grouped ? extents.header * group.shown : 0.0;
+      top += header;
       for (final row in group.rows) {
         final extent = _rowExtent(row: row, frame: frame, extents: extents);
         rows[row.entry.messageId] = (top: top, extent: extent);
         top += extent;
       }
+      groups.add((start: start, end: top, header: header));
     }
-    return (rows: rows, total: top + extents.trailing);
+    return (rows: rows, groups: groups, total: top + extents.trailing);
+  }
+
+  /// Where the rows start showing when the list is scrolled to [pixels]: below
+  /// the pinned heading of the day running there, which rides up as that
+  /// day's last row leaves.
+  static double _visibleTop({required _Layout layout, required double pixels}) {
+    final day = layout.groups.where((group) => group.start <= pixels && pixels < group.end).firstOrNull;
+    return day == null ? pixels : pixels + math.min(day.header, day.end - pixels);
   }
 
   static double _rowExtent({required _Row row, required _Frame frame, required _Extents extents}) =>
       row.shown * (extents.row + frame.grown * extents.excerpt);
 
   /// The row the reader is on: the tinted one while any of it is on screen,
-  /// else the first one reaching below the top edge.
+  /// else the first one reaching below the top edge. Rows hidden beneath the
+  /// pinned day heading are not on screen.
   static String? _readerRow({
     required _Layout layout,
     required ScrollPosition position,
     required String? highlightedId,
   }) {
-    bool reachesBelow(({double top, double extent}) row) => row.extent > 0 && row.top + row.extent > position.pixels;
+    final top = _visibleTop(layout: layout, pixels: position.pixels);
+    bool reachesBelow(({double top, double extent}) row) => row.extent > 0 && row.top + row.extent > top;
     final highlighted = layout.rows[highlightedId];
     if (highlightedId != null &&
         highlighted != null &&
@@ -338,8 +357,9 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
       bindings: <ShortcutActivator, VoidCallback>{
         const SingleActivator(LogicalKeyboardKey.escape): widget.onClose,
       },
-      // Holds the keyboard when the field does not, so Escape lands here.
-      child: Focus(
+      // Holds the keyboard when the field does not, also once a click outside
+      // has taken it from the field, so Escape lands here.
+      child: FocusScope(
         autofocus: !widget.autofocusSearch,
         child: Material(
           color: Theme.of(context).scaffoldBackgroundColor,

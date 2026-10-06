@@ -20,7 +20,9 @@ their own PR number earlier in the series.
 
 - The header's title row is now `ListSearchField` plus the close button, capped
   to the list's width on the desktop. `ListSearchField` gains `autofocus` and
-  `padding`; its two existing callers pass their old values.
+  `padding`; its two existing callers pass their old values. A tap outside now
+  unfocuses only the field, so the screen's own focus scope keeps the
+  keyboard and Escape still closes it.
 - The search is case-insensitive over `fullText` (`prompt_search.dart`). Each
   kept row grows by one excerpt line: 24 characters before the first match and
   80 after, with whitespace collapsed and the match highlighted. Day headers
@@ -46,7 +48,7 @@ their own PR number earlier in the series.
   All of this is view-local and has no new class or ownership, so no
   architecture review was run.
 - The row being read is the tinted row while it is on screen, otherwise the
-  top row. During a change, the kept row nearest after it (or else before it)
+  top row showing below the pinned day header. During a change, the kept row nearest after it (or else before it)
   moves from its own y to the reader's y, so clearing a search leaves the match
   that was being read in place. A list shorter than the screen settles against
   its ends. So does a last page smaller than the control when it is loaded from
