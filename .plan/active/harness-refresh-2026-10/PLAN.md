@@ -277,8 +277,11 @@ records its own results.
          - **Typed refusal.** It returns `PluginAbortNotPerformed` with a new
            `PluginAbortRefusalReason.subAgentStopUnsupported`. The bridge app
            maps it to a new shared
-           `SessionAbortRefusalReason.subAgentStopUnsupported` (regenerate),
-           which travels in the existing 409 refusal body.
+           `SessionAbortRefusalReason.subAgentStopUnsupported`, which travels
+           in the existing 409 refusal body. The shared enum's
+           `_abortRefusalReasonFromJson` and `_abortRefusalReasonToJson` are
+           hand-written: edit both (the `fromJson` ternary otherwise decodes the
+           new value as `unknownEnumValue` silently), then regenerate.
          - **Client.** `_showNotAccepted` in `session_abort_scope_dialog.dart`
            gains a localized message ("Stop the parent session; this harness
            cannot stop sub-agents individually"). `SessionDetailCubit.abort`
@@ -460,7 +463,9 @@ records its own results.
         refusal uses it.
       - The shared `SessionAbortRefusalReason.residentWorkCompletionUnknown`
         value and the client's handling of it stay: released bridges still send
-        it.
+        it. Add a marker directly above the shared enum value and above the
+        client `_showNotAccepted` branch:
+        `// COMPATIBILITY 2026-10-06 (v1.9.1): Released bridges (v1.8.4–v1.9.x) send this refusal from the removed ACP residency path. Remove once those bridges are unsupported.`
     - **Kept (cautious replay branch):** the replay parts of
       `api/models/cursor_task_dto.dart` (`CursorTaskInputDto`, now also
       10.a's spawn-input DTO,
@@ -682,3 +687,8 @@ retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
   - the sealed sub-agent update DTO;
   - Task classification, settled from the bundle source;
   - the D10 floor evidence and the requirements of the gated alternative.
+
+- Focused architecture re-review 2026-10-06 of the typed child-stop refusal
+  (which reverses review finding 1 after the Codex queue-clearing finding):
+  design confirmed; one finding (compatibility markers in 10.b) and one
+  implementation note (hand-written shared enum JSON) applied without re-review.
