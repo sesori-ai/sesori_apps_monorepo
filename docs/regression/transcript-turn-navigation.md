@@ -149,8 +149,10 @@ sent to the bridge.
   never moves, scrolls or rebuilds.
 - A pinch out on the Prompts screen, by touch or trackpad, closes it in step
   with the fingers: the screen shrinks toward them and fades as they spread.
-  Let go past a scale of 1.25, or spread quickly, and it finishes closing; let
-  go short of it and it springs back open. One-finger scrolling, row taps, a
+  On release the spread is carried 0.1 s ahead at its current speed: past a
+  scale of 1.25 it finishes closing, short of it it springs back open. The
+  slight slide of fingers lifting off a phone's glass only nudges that
+  projection, so a wide spread still closes. One-finger scrolling, row taps, a
   pinch in and the search field, including its text selection, are unaffected.
 - On iOS a drag from the screen's left edge moves the Prompts screen with the
   finger, lightening the dim as it goes. Let go past halfway or with a flick
@@ -243,7 +245,9 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
 - The iOS edge swipe: following the finger, springing back from a short
   release, closing from a long one and from a flick, and doing nothing off iOS.
 - Pinch out on the screen: following the fingers, closing past halfway,
-  springing back short of it, closing on a quick short spread and by trackpad;
+  springing back short of it, closing on a quick short spread and by trackpad,
+  and closing for realistic touch (fingers landing close together and 64 ms
+  apart over a row, drifting, then sliding back a pixel as they lift);
   a second pinch during a spring-back moving nothing; one-finger scroll, a
   pinch in and the search field's selection unaffected.
 - Every way out: the close button, Escape, back, predictive back, a row tap and
@@ -357,7 +361,8 @@ answer, and on a trackpad while text streams.
   reduced motion, or the transcript moves or reflows behind it. The iOS edge
   swipe does not track the finger, the screen snaps instead of following or
   springing back, or the session underneath moves. A pinch out on the screen
-  lags the fingers, snaps instead of finishing or springing back, or takes a
+  lags the fingers, snaps instead of finishing or springing back, springs back
+  from a wide spread on a phone (the lift-off slide read as a flick), or takes a
   one-finger scroll, a row tap or a selection in the search field; a way out
   other than the iOS edge swipe removes the screen without shrinking it back.
 - A Prompts row tap closes the screen with the transcript elsewhere, or does

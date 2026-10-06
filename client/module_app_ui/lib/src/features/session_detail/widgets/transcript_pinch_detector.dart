@@ -34,7 +34,8 @@ final class const TranscriptPinchOut({
   required final void Function({required double progress}) onProgress,
 
   /// The fingers let go, or one of them did; [closes] when they had spread
-  /// past halfway, or were spreading fast. Nothing follows in that gesture.
+  /// past halfway, or would have a moment later at the speed they were
+  /// moving. Nothing follows in that gesture.
   required final void Function({required bool closes}) onRelease,
 }) extends TranscriptPinch;
 
@@ -69,21 +70,24 @@ class _TranscriptPinchDetectorState() extends State<TranscriptPinchDetector> {
   /// pinch in's 0.8 turned over.
   static const double _kPinchOutCloses = 0.5;
 
-  /// A pinch out let go faster than this, in scale a second, closes or stays
-  /// by its direction rather than by how far it spread.
-  static const double _kPinchOutFlingVelocity = 1;
+  /// How far ahead, in seconds, a pinch out let go is carried at the speed its
+  /// scale was changing; the spread it would reach decides whether it closes.
+  /// A flick still closes or stays by its direction, but the pixel fingers
+  /// slide as they lift off a phone's glass, a fast change of scale when they
+  /// landed close together, cannot turn a wide spread back.
+  static const double _kPinchOutCarry = 0.1;
 
   /// The gesture has had its outcome: it pinched in, or was let go.
   bool _done = false;
 
   /// A pinch out has begun and been taken.
   bool _outStarted = false;
-  double _outProgress = 0;
+  double _outScale = 1;
 
   void _onFirstPointer() {
     _done = false;
     _outStarted = false;
-    _outProgress = 0;
+    _outScale = 1;
     if (widget.pinch case TranscriptPinchIn(:final onPointerDown)) onPointerDown();
   }
 
@@ -105,12 +109,15 @@ class _TranscriptPinchDetectorState() extends State<TranscriptPinchDetector> {
           _done = !_outStarted;
           if (_done) return;
         }
-        // Measured from the gesture's own scale of 1, so the spread the
-        // recognizer needed to accept the pinch counts too.
-        _outProgress = ((details.scale - 1) / (_kPinchOutFullScale - 1)).clamp(0.0, 1.0);
-        onProgress(progress: _outProgress);
+        _outScale = details.scale;
+        onProgress(progress: _outProgressOf(scale: _outScale));
     }
   }
+
+  /// How far a pinch out at [scale] has spread. Measured from the gesture's
+  /// own scale of 1, so the spread the recognizer needed to accept the pinch
+  /// counts too.
+  static double _outProgressOf({required double scale}) => ((scale - 1) / (_kPinchOutFullScale - 1)).clamp(0.0, 1.0);
 
   /// Lets a pinch out go when its fingers lift or one of them does: a lone
   /// finger left behind measures no spread, so it cannot carry it on.
@@ -118,10 +125,8 @@ class _TranscriptPinchDetectorState() extends State<TranscriptPinchDetector> {
     if (_done || !_outStarted) return;
     if (widget.pinch case TranscriptPinchOut(:final onRelease)) {
       _done = true;
-      final velocity = details.scaleVelocity;
-      onRelease(
-        closes: velocity.abs() >= _kPinchOutFlingVelocity ? velocity > 0 : _outProgress >= _kPinchOutCloses,
-      );
+      final carried = _outScale + details.scaleVelocity * _kPinchOutCarry;
+      onRelease(closes: _outProgressOf(scale: carried) >= _kPinchOutCloses);
     }
   }
 
