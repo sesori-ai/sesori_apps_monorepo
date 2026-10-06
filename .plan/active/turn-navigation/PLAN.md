@@ -6,11 +6,12 @@
 - **Created:** 2026-09-26
 - **Revised:** 2026-09-26, after the shipped in-place fold was rejected on a
   real device. The fold is being removed and replaced by a separate Prompts
-  screen. Steps 1–8 have merged and keep their published titles and numbers;
-  the series total is now 20, after step 14.b and step 16.b (D43) were added.
+  screen. Steps 1–8 have merged and keep their published titles and numbers.
   See
   [Revision 2026-09-26](#revision-2026-09-26-the-fold-becomes-a-prompts-screen)
   and [Superseded Steps](#superseded-steps).
+- **Revised:** 2026-10-06, adding step 16.b for D43 (pinch out closes the
+  Prompts screen). With step 14.b the series total is now 20.
 - **Origin:** visual-hierarchy step 37 ("turn navigation: discussion and
   prototypes"). That step was left out of the series and "becomes its own plan
   once the user picks a direction" (`.plan/completed/visual-hierarchy/TRACKER.md`).
@@ -1508,7 +1509,7 @@ depends on it.
   recognizer, so touch and trackpad behave alike and one-finger scroll, row taps
   and the search field keep winning their arenas.
   - The pinch out is interactive. Its progress is the spread past the gesture's
-    first scale, reaching 1 at 1.5×. While the fingers are down the transition
+    own scale of 1, reaching 1 at 1.5×. While the fingers are down the transition
     controller's value is `1 - progress`, drawn linearly, and the layer shrinks
     toward the fingers' focal point, which becomes its origin at pinch start.
   - On release it finishes closing at a progress of 0.5 (scale 1.25, the mirror

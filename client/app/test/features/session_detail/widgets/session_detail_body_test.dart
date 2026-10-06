@@ -1605,6 +1605,25 @@ void main() {
           expect(tester.getRect(layer), screen);
         }, variant: _pinchPlatforms);
 
+        testWidgets("a second pinch while it springs back moves nothing", (tester) async {
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pumpAndSettle();
+          final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+          await openPrompts(tester);
+
+          final first = await land(tester);
+          await first.spread(scale: 1.15, stepTime: slow);
+          await first.lift(after: slow);
+          await tester.pump(const Duration(milliseconds: 20));
+          final second = await land(tester);
+          await second.spread(scale: 1.45, stepTime: slow);
+          await second.lift(after: slow);
+          await tester.pumpAndSettle();
+          expect(layer, findsOneWidget, reason: "the spring-back finishes; the late pinch is not taken");
+          expect(opacity(tester), 1);
+          expect(tester.getRect(layer), screen);
+        }, variant: _pinchPlatforms);
+
         testWidgets("a quick short spread closes", (tester) async {
           await tester.pumpWidget(_buildApp(cubit: cubit));
           await tester.pumpAndSettle();
@@ -1640,7 +1659,7 @@ void main() {
           expect(opacity(tester), 1);
           expect(tester.getRect(layer), screen);
 
-          await trackpadPinch(scale: 1.5);
+          await trackpadPinch(scale: 1.4);
           await tester.pump(const Duration(milliseconds: 20));
           expect(leaving(tester), isTrue);
           await tester.pumpAndSettle();

@@ -98,7 +98,7 @@ phase, and the original step 10 (retirement) is renumbered to step 18, as
 | 15 | `turn-navigation/prompt-numbers` | [15](#fixed-pr-titles) | ≤ 900 | 11 |
 | 16 | `turn-navigation/prompts-search` | [16](#fixed-pr-titles) | ≤ 900 | 15 |
 | 16.b | `turn-navigation/pinch-out-closes` | [16.b](#fixed-pr-titles) | ≤ 900 | 13 |
-| 17 | `turn-navigation/docs` | [17](#fixed-pr-titles) | ≤ 400 | 10–16 |
+| 17 | `turn-navigation/docs` | [17](#fixed-pr-titles) | ≤ 400 | 10–16.b |
 | 18 | `turn-navigation/retire` | [18](#fixed-pr-titles) | ≤ 250 | 2–17 |
 
 Step 9 is documentation only; its target is the plain soft cap, and the whole

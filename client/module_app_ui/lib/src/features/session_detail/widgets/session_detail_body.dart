@@ -295,9 +295,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// A pinch out takes the open screen, never one still moving, and closes
   /// it toward the fingers. At rest the screen is unscaled, so moving its
   /// origin there shows nothing.
-  void _startPinchOut({required Offset focalPoint}) {
+  bool _startPinchOut({required Offset focalPoint}) {
     final prompts = _prompts;
-    if (prompts == null || !_transition.isCompleted) return;
+    if (prompts == null || !_transition.isCompleted) return false;
     setState(() {
       _gesture = _PromptsGesture.pinchOut;
       _prompts = (
@@ -306,17 +306,16 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         origin: _alignmentOf(globalPoint: focalPoint),
       );
     });
+    return true;
   }
 
-  /// Runs the closing transition as far as the fingers have spread.
-  void _followPinchOut({required double progress}) {
-    if (_gesture == _PromptsGesture.pinchOut) _transition.value = 1 - progress;
-  }
+  /// Runs the closing transition as far as the fingers have spread. Only a
+  /// pinch [_startPinchOut] took reports here.
+  void _followPinchOut({required double progress}) => _transition.value = 1 - progress;
 
   /// Finishes closing from where the fingers let go, or springs back open,
   /// in what is left of the transition's time.
   void _releasePinchOut({required bool closes}) {
-    if (_gesture != _PromptsGesture.pinchOut) return;
     if (closes) {
       _transition.animateBack(0, curve: Curves.easeOutCubic);
     } else {

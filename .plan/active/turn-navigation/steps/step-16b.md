@@ -33,7 +33,8 @@ Architecture 13.
   progress callback and one release decision.
 - `TranscriptPinchDetector` takes a sealed `TranscriptPinch`: `TranscriptPinchIn`
   keeps the transcript's callbacks; `TranscriptPinchOut` reports the start's
-  focal point, the progress (spread past the first scale, reaching 1 at 1.5×)
+  focal point (the screen may refuse a pinch, which then reports nothing
+  more), the progress (spread past a scale of 1, reaching 1 at 1.5×)
   and whether a release closes (progress 0.5, scale 1.25, or an outward scale
   velocity of at least 1/s). The recognizer is unchanged.
 - `SessionDetailBody` wraps the layer in the detector. A pinch out moves the
@@ -64,10 +65,11 @@ Flutter 3.47.5:
 - These tests pass:
   - `module_app_ui` `test/features/session_detail` and
     `test/features/session_prompts` (409), including the step 13 pinch tests;
-  - `client/app` `session_detail_body_test.dart` (170), with new tests on the
+  - `client/app` `session_detail_body_test.dart` (173), with new tests on the
     iOS, Android and macOS variants: a pinch out following the fingers and
-    closing, springing back short of halfway, a quick short spread, a trackpad
-    pinch both ways, scroll, pinch in and the search field's selection
+    closing, springing back short of halfway, a second pinch during that
+    spring-back moving nothing, a quick short spread, a trackpad pinch both
+    ways, scroll, pinch in and the search field's selection
     unaffected, every way out but the edge swipe reversing the transition, and
     Android predictive back;
   - `client/desktop` `test/core` (234), including ⌘[ closing what a page has

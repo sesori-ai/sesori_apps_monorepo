@@ -26,9 +26,11 @@ final class const TranscriptPinchIn({
 /// spread, then let go once, and a pinch in reports nothing.
 final class const TranscriptPinchOut({
   /// The pinch began at [focalPoint], in global coordinates. Once per gesture.
-  required final void Function({required Offset focalPoint}) onStart,
+  /// Returns whether the screen takes it; one it does not take reports
+  /// nothing more.
+  required final bool Function({required Offset focalPoint}) onStart,
 
-  /// How far the fingers have spread since, from 0 to 1 at full spread.
+  /// How far the fingers have spread, from 0 to 1 at full spread.
   required final void Function({required double progress}) onProgress,
 
   /// The fingers let go, or one of them did; [closes] when they had spread
@@ -74,13 +76,13 @@ class _TranscriptPinchDetectorState() extends State<TranscriptPinchDetector> {
   /// The gesture has had its outcome: it pinched in, or was let go.
   bool _done = false;
 
-  /// The scale a pinch out is measured from, once it has begun.
-  double? _outFrom;
+  /// A pinch out has begun and been taken.
+  bool _outStarted = false;
   double _outProgress = 0;
 
   void _onFirstPointer() {
     _done = false;
-    _outFrom = null;
+    _outStarted = false;
     _outProgress = 0;
     if (widget.pinch case TranscriptPinchIn(:final onPointerDown)) onPointerDown();
   }
@@ -97,15 +99,15 @@ class _TranscriptPinchDetectorState() extends State<TranscriptPinchDetector> {
         _done = true;
         onPinchIn(focalPoint: details.focalPoint);
       case TranscriptPinchOut(:final onStart, :final onProgress):
-        // Measured from the first update, so a trackpad's own start-up scale
-        // does not move the screen on its own.
-        final from = _outFrom;
-        if (from == null) {
-          _outFrom = details.scale;
-          onStart(focalPoint: details.focalPoint);
-          return;
+        if (!_outStarted) {
+          _outStarted = onStart(focalPoint: details.focalPoint);
+          // A screen that does not take the pinch hears nothing more from it.
+          _done = !_outStarted;
+          if (_done) return;
         }
-        _outProgress = ((details.scale / from - 1) / (_kPinchOutFullScale - 1)).clamp(0.0, 1.0);
+        // Measured from the gesture's own scale of 1, so the spread the
+        // recognizer needed to accept the pinch counts too.
+        _outProgress = ((details.scale - 1) / (_kPinchOutFullScale - 1)).clamp(0.0, 1.0);
         onProgress(progress: _outProgress);
     }
   }
@@ -113,7 +115,7 @@ class _TranscriptPinchDetectorState() extends State<TranscriptPinchDetector> {
   /// Lets a pinch out go when its fingers lift or one of them does: a lone
   /// finger left behind measures no spread, so it cannot carry it on.
   void _onEnd(ScaleEndDetails details) {
-    if (_done || _outFrom == null) return;
+    if (_done || !_outStarted) return;
     if (widget.pinch case TranscriptPinchOut(:final onRelease)) {
       _done = true;
       final velocity = details.scaleVelocity;
