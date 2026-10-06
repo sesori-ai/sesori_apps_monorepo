@@ -783,6 +783,41 @@ void main() {
     );
   });
 
+  testWidgets("a failed first load keeps the launch's follow-ups and Cancel on queued messages", (tester) async {
+    QueuedSessionSubmission submission({required String promptId, required String text}) =>
+        QueuedSessionSubmission.text(
+          promptId: promptId,
+          text: text,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+          agent: null,
+          agentModel: null,
+          fastMode: false,
+        );
+    final state = SessionDetailState.failed(
+      reason: RemoteFailureReason.unknown,
+      launchFollowUps: [
+        LaunchFollowUp.queued(
+          submission: submission(promptId: "prm_launch", text: "Sent while creating"),
+        ),
+      ],
+      queuedMessages: [submission(promptId: "prm_early", text: "Sent before the load")],
+    );
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+
+    expect(find.text("Sent while creating"), findsOneWidget);
+    expect(find.text("Sent before the load"), findsOneWidget);
+    final cancels = find.widgetWithText(TextButton, "Cancel");
+    expect(cancels, findsNWidgets(2));
+    await tester.tap(cancels.first);
+    verify(() => cubit.removeLaunchFollowUp(promptId: "prm_launch")).called(1);
+    await tester.tap(cancels.last);
+    verify(() => cubit.cancelQueuedMessage(0)).called(1);
+  });
+
   testWidgets("a busy session with no messages shows the Working row instead of the empty label", (tester) async {
     final state = _loadedState(
       pendingQuestions: const [],

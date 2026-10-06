@@ -724,7 +724,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             SessionDetailLoading(:final launchHandoff) => launchHandoff != null,
             SessionDetailLoaded() || SessionDetailHarnessUnavailable() => true,
             // Queued messages sit below the error, which then fills the rest.
-            SessionDetailFailed(:final queuedMessages) => queuedMessages.isNotEmpty,
+            SessionDetailFailed(:final launchFollowUps, :final queuedMessages) =>
+              launchFollowUps.isNotEmpty || queuedMessages.isNotEmpty,
           },
           child: content,
         ),
@@ -810,41 +811,63 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           ),
         ),
       ),
-      SessionDetailFailed(:final reason, queuedMessages: []) => SessionDetailErrorView(
+      SessionDetailFailed(:final reason, launchFollowUps: [], queuedMessages: []) => SessionDetailErrorView(
         reason: reason,
         onRetry: () => context.read<SessionDetailCubit>().reload(),
       ),
-      SessionDetailFailed(:final reason, :final queuedMessages) => Column(
-        children: [
-          Expanded(
-            child: SessionDetailErrorView(
-              reason: reason,
-              onRetry: () => context.read<SessionDetailCubit>().reload(),
-            ),
-          ),
-          // Sent before the load failed: Retry sends them, so they stay in
-          // view, scrolling when they outgrow their half of the screen.
-          Flexible(
-            child: SingleChildScrollView(
-              reverse: true,
-              child: Column(
-                children: [
-                  for (final submission in queuedMessages)
-                    QueuedMessageBubble(
-                      key: ValueKey(submission.promptId),
-                      displayText: submission.displayText,
-                      isCommand: submission.isCommand,
-                      attachmentCount: submission.attachments.length,
-                      localAttachments: submission.attachments,
-                      presentation: const QueuedMessageBubblePresentation.pendingReadOnly(),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+      final SessionDetailFailed failed => _buildFailedWithQueue(context: context, failed: failed),
     };
+  }
+
+  /// A failed first load with messages still owed: the error above them, and
+  /// below it the same bubbles and actions the loading screen gave them,
+  /// scrolling when they outgrow their half of the screen.
+  Widget _buildFailedWithQueue({required BuildContext context, required SessionDetailFailed failed}) {
+    final cubit = context.read<SessionDetailCubit>();
+    QueuedMessageBubble bubble({
+      required QueuedSessionSubmission submission,
+      required QueuedMessageBubblePresentation presentation,
+    }) => QueuedMessageBubble(
+      key: ValueKey(submission.promptId),
+      displayText: submission.displayText,
+      isCommand: submission.isCommand,
+      attachmentCount: submission.attachments.length,
+      localAttachments: submission.attachments,
+      presentation: presentation,
+    );
+    return Column(
+      children: [
+        Expanded(
+          child: SessionDetailErrorView(reason: failed.reason, onRetry: cubit.reload),
+        ),
+        Flexible(
+          child: SingleChildScrollView(
+            reverse: true,
+            child: Column(
+              children: [
+                for (final followUp in failed.launchFollowUps)
+                  bubble(
+                    submission: followUp.submission,
+                    presentation: launchFollowUpPresentation(
+                      followUp: followUp,
+                      harnessName: null,
+                      onRetry: cubit.retryLaunchFollowUp,
+                      onRemove: cubit.removeLaunchFollowUp,
+                    ),
+                  ),
+                for (final (index, submission) in failed.queuedMessages.indexed)
+                  bubble(
+                    submission: submission,
+                    presentation: QueuedMessageBubblePresentation.pending(
+                      onCancel: () => cubit.cancelQueuedMessage(index),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   /// The session this surface just created, before its first load: the first
