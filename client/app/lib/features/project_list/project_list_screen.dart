@@ -10,7 +10,6 @@ import "package:share_plus/share_plus.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/bridge_install.dart";
 import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";

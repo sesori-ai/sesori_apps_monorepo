@@ -2258,9 +2258,14 @@ void main() {
     });
   });
 
-  for (final (name, interaction) in [
-    ("legacy", const SessionInteractionState.legacyUnverified()),
-    ("refresh-error", SessionInteractionState.available(displayName: "Claude Code", refreshError: ApiError.generic())),
+  for (final (name, interaction, actionKey) in [
+    // An old bridge offers its update steps in place of harness settings.
+    ("legacy", const SessionInteractionState.legacyUnverified(), const Key("session_bridge_update")),
+    (
+      "refresh-error",
+      SessionInteractionState.available(displayName: "Claude Code", refreshError: ApiError.generic()),
+      const Key("session_harness_settings"),
+    ),
   ]) {
     testWidgets("archiving hides the $name harness warning", (tester) async {
       final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
@@ -2272,13 +2277,13 @@ void main() {
 
       await tester.pumpWidget(_buildApp(cubit: cubit));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key("session_harness_settings")), findsOneWidget);
+      expect(find.byKey(actionKey), findsOneWidget);
       expect(find.byType(PromptInput), findsOneWidget);
 
       states.add(loaded.copyWith(isArchived: true));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key("session_harness_settings")), findsNothing);
+      expect(find.byKey(actionKey), findsNothing);
       expect(find.text("This session is archived and read-only."), findsOneWidget);
       expect(find.byType(PromptInput), findsNothing);
       expect(tester.takeException(), isNull);

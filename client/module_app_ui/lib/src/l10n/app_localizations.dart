@@ -961,12 +961,6 @@ abstract class AppLocalizations {
   /// **'The bridge setting changed while you were editing. Try again.'**
   String get settingsPullRequestRefreshStateChanged;
 
-  /// No description provided for @settingsPullRequestRefreshUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Unavailable'**
-  String get settingsPullRequestRefreshUnavailable;
-
   /// No description provided for @settingsPullRequestRefreshRetry.
   ///
   /// In en, this message translates to:
@@ -1528,7 +1522,7 @@ abstract class AppLocalizations {
   /// No description provided for @harnessesUnsupportedTitle.
   ///
   /// In en, this message translates to:
-  /// **'Harnesses aren\'t supported'**
+  /// **'Your bridge needs an update'**
   String get harnessesUnsupportedTitle;
 
   /// No description provided for @harnessesUnsupportedDescription.
@@ -5094,6 +5088,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Auto continuation disabled. The previous continuation was already sent; future automatic sends are disabled.'**
   String get sessionAutoContinuationAlreadySubmitted;
+
+  /// Action beside any notice that the connected bridge is too old for a feature. Opens the sheet with the update steps.
+  ///
+  /// In en, this message translates to:
+  /// **'How to update'**
+  String get bridgeUpdateHowTo;
+
+  /// No description provided for @bridgeUpdateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Sesori Bridge'**
+  String get bridgeUpdateTitle;
+
+  /// No description provided for @bridgeUpdateIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'On the computer running the bridge:'**
+  String get bridgeUpdateIntro;
+
+  /// No description provided for @bridgeUpdateStepUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Update the bridge'**
+  String get bridgeUpdateStepUpdate;
+
+  /// Ctrl+C is the literal key combination that stops the bridge in its terminal; keep it as is.
+  ///
+  /// In en, this message translates to:
+  /// **'2. Stop it with Ctrl+C, then start it again'**
+  String get bridgeUpdateStepRestart;
+
+  /// Introduces the installer commands. Bridges older than the update command need a reinstall instead.
+  ///
+  /// In en, this message translates to:
+  /// **'If step 1 fails or the command isn\'t found, reinstall:'**
+  String get bridgeUpdateReinstallIntro;
+
+  /// No description provided for @bridgeUpdateMethodMacLinux.
+  ///
+  /// In en, this message translates to:
+  /// **'macOS / Linux'**
+  String get bridgeUpdateMethodMacLinux;
+
+  /// No description provided for @bridgeUpdateMethodWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows (PowerShell)'**
+  String get bridgeUpdateMethodWindows;
+
+  /// Literal tool name 'npm'; do not translate.
+  ///
+  /// In en, this message translates to:
+  /// **'npm'**
+  String get bridgeUpdateMethodNpm;
+
+  /// Literal tool name 'bun'; do not translate.
+  ///
+  /// In en, this message translates to:
+  /// **'bun'**
+  String get bridgeUpdateMethodBun;
+
+  /// No description provided for @bridgeUpdateReinstallRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Then start the bridge again.'**
+  String get bridgeUpdateReinstallRestart;
+
+  /// No description provided for @bridgeUpdateCopyCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy command'**
+  String get bridgeUpdateCopyCommand;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

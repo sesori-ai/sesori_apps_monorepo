@@ -145,6 +145,7 @@ class const _HarnessControlCard({
       CatalogRescanStartUnsupported() => loc.harnessManagementScanUnsupported,
       CatalogRescanStartFailed() => loc.harnessManagementScanFailed,
     };
+    final scanBridgeOutdated = scanRejection is CatalogRescanStartUnsupported;
     final showTimeout = showOperational && supportsIdleTimeout;
     final supportsAuthentication = capabilities.contains(PluginManagementCapability.authentication);
     final showAuthentication = supportsAuthentication && plugin.setup.state == PluginSetupState.authenticationRequired;
@@ -323,9 +324,17 @@ class const _HarnessControlCard({
                       verticalPadding: PregoSpacing.lg,
                       title: Text(loc.harnessManagementScan),
                       subtitle: Text(scanRejectionText ?? loc.harnessManagementScanDescription),
-                      trailing: scanning ? const PregoActivityIndicator(color: null) : null,
+                      trailing: scanning
+                          ? const PregoActivityIndicator(color: null)
+                          : scanBridgeOutdated
+                          ? const BridgeUpdateRowTrailing()
+                          : null,
+                      // Scanning again cannot help a bridge too old to scan, so
+                      // the row offers its update steps instead.
                       onTap: blocked || scanning
                           ? null
+                          : scanBridgeOutdated
+                          ? () => unawaited(showBridgeUpdateSheet(context: context))
                           : () => context.read<PluginManagementCubit>().startCatalogScanFor(pluginId: pluginId),
                     ),
                 ],

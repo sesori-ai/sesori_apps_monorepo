@@ -354,7 +354,6 @@
   "settingsPullRequestRefreshUncertain": "The update status is unknown. Refresh before trying again.",
   "settingsPullRequestRefreshUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
   "settingsPullRequestRefreshStateChanged": "The bridge setting changed while you were editing. Try again.",
-  "settingsPullRequestRefreshUnavailable": "Unavailable",
   "settingsPullRequestRefreshRetry": "Retry pull request refresh setting",
   "settingsPullRequestRefreshDialogTitle": "Pull request refresh interval",
   "settingsPullRequestRefreshSecondsLabel": "Seconds",
@@ -489,7 +488,7 @@
   "harnessesEmptyTitle": "No harnesses registered",
   "harnessesEmptyDescription": "The connected bridge hasn't registered any coding harnesses.",
   "harnessesLoading": "Loading harnesses",
-  "harnessesUnsupportedTitle": "Harnesses aren't supported",
+  "harnessesUnsupportedTitle": "Your bridge needs an update",
   "harnessesUnsupportedDescription": "Update the connected bridge to view and manage its harnesses.",
   "harnessesLoadFailedTitle": "Failed to load harnesses",
   "harnessesLoadFailedDescription": "Check your connection and try again.",
@@ -2009,5 +2008,22 @@
         "type": "String"
       }
     }
-  }
+  },
+  "bridgeUpdateHowTo": "How to update",
+  "@bridgeUpdateHowTo": {"description": "Action beside any notice that the connected bridge is too old for a feature. Opens the sheet with the update steps."},
+  "bridgeUpdateTitle": "Update Sesori Bridge",
+  "bridgeUpdateIntro": "On the computer running the bridge:",
+  "bridgeUpdateStepUpdate": "1. Update the bridge",
+  "bridgeUpdateStepRestart": "2. Stop it with Ctrl+C, then start it again",
+  "@bridgeUpdateStepRestart": {"description": "Ctrl+C is the literal key combination that stops the bridge in its terminal; keep it as is."},
+  "bridgeUpdateReinstallIntro": "If step 1 fails or the command isn't found, reinstall:",
+  "@bridgeUpdateReinstallIntro": {"description": "Introduces the installer commands. Bridges older than the update command need a reinstall instead."},
+  "bridgeUpdateMethodMacLinux": "macOS / Linux",
+  "bridgeUpdateMethodWindows": "Windows (PowerShell)",
+  "bridgeUpdateMethodNpm": "npm",
+  "@bridgeUpdateMethodNpm": {"description": "Literal tool name 'npm'; do not translate."},
+  "bridgeUpdateMethodBun": "bun",
+  "@bridgeUpdateMethodBun": {"description": "Literal tool name 'bun'; do not translate."},
+  "bridgeUpdateReinstallRestart": "Then start the bridge again.",
+  "bridgeUpdateCopyCommand": "Copy command"
 }

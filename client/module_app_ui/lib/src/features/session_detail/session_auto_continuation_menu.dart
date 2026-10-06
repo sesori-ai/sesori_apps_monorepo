@@ -7,6 +7,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "../../widgets/bridge_update_sheet.dart";
 
 /// Shared by the phone's glass bar and desktop's page toolbar.
 PregoMenuItem sessionAutoContinuationMenuEntry({required BuildContext context, required Session session}) {
@@ -20,18 +21,22 @@ PregoMenuItem sessionAutoContinuationMenuEntry({required BuildContext context, r
   };
   final available = view?.availability == AutoContinuationAvailability.conditional && canInteract;
   final updating = state.autoContinuationUpdatePending;
+  // An older bridge sends no view; the entry then opens its update steps.
+  final bridgeOutdated = view == null;
   return PregoMenuItem(
     key: const Key("session-auto-continuation-toggle"),
     title: context.loc.sessionAutoContinuationMenu,
     subtitle: available
         ? context.loc.sessionAutoContinuationAfterQuotaResets
-        : view == null
+        : bridgeOutdated
         ? context.loc.sessionAutoContinuationOlderBridge
         : context.loc.sessionAutoContinuationUnavailable,
     leadingIcon: TablerRegular.clock,
     isSelected: enabled,
-    isEnabled: !updating && (enabled || available),
+    isEnabled: bridgeOutdated || (!updating && (enabled || available)),
     shortcutLabel: null,
-    onTap: () => unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: !enabled)),
+    onTap: bridgeOutdated
+        ? () => unawaited(showBridgeUpdateSheet(context: context))
+        : () => unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: !enabled)),
   );
 }

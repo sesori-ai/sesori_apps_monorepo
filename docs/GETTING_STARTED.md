@@ -106,6 +106,30 @@ The Bridge has to be running for the app to reach OpenCode on your laptop.
 
 For a quick session, leave it open in a terminal. For a longer setup, run it in the background with `nohup`, `tmux`, or a launchd/systemd unit. See the [headless VM guide](SETUP_HEADLESS_VM.md) for a full systemd example.
 
+## Updating the Bridge
+
+When the app says a feature needs a newer bridge, update it on the computer running the Bridge. The app shows these same steps under **How to update**.
+
+1. Update the Bridge:
+
+   ```bash
+   sesori-bridge update
+   ```
+
+2. Stop the running Bridge with `Ctrl+C`, then start it again:
+
+   ```bash
+   sesori-bridge
+   ```
+
+If step 1 fails or `sesori-bridge update` is not found (Bridges released before 2026-06-23 do not have it), reinstall with the same command you installed with, then start the Bridge again:
+
+- macOS / Linux: `curl -fsSL https://sesori.com/install.sh | bash`
+- Windows (PowerShell): `irm https://sesori.com/install.ps1 | iex`
+- npm or bun: `npx @sesori/bridge` or `bunx @sesori/bridge`
+
+The Bridge also updates itself in the background, but a running Bridge keeps using its old version until you restart it. Set the `SESORI_NO_UPDATE` environment variable to turn off background updates; `sesori-bridge update` still works when it is set.
+
 ## Troubleshooting
 
 - **"Port already in use"** — another Bridge is already running. Close the other one, or on macOS/Linux run `pkill sesori-bridge`.

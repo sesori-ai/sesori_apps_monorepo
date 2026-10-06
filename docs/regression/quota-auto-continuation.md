@@ -100,8 +100,8 @@ provider and platform verification remains in the
 - Unknown reset, paused, submitted, unconfirmed and failed attempts have distinct
   explanations. Unavailable harnesses cannot enable, but can disable an existing
   preference. An already-submitted prompt cannot be retracted by disabling.
-- An older bridge without the view exposes an unavailable menu entry with an
-  update explanation. Read-only and archived chats do not expose mutation controls.
+- An older bridge without the view exposes a menu entry with an update explanation
+  that opens the shared bridge update steps. Read-only and archived chats do not expose mutation controls.
 - Session rows (the shared `SessionTile` on phone and desktop project lists, and
   both desktop sidebar rows) replace their relative time with a clock and
   "Resumes <time>" (the narrow sidebar shows only the clock and time) while the

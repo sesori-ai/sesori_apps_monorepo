@@ -360,8 +360,14 @@ void main() {
 
     snapshots.add(const PluginManagementLoadResult.unsupported());
     await tester.pumpAndSettle();
-    expect(find.text("Harnesses aren't supported"), findsOneWidget);
+    expect(find.text("Your bridge needs an update"), findsOneWidget);
     expect(find.text("Update the connected bridge to view and manage its harnesses."), findsOneWidget);
+    await tester.tap(find.byKey(const Key("harnesses_bridge_update")));
+    await tester.pumpAndSettle();
+    expect(find.text("Update Sesori Bridge"), findsOneWidget);
+    expect(find.text("sesori-bridge update"), findsOneWidget);
+    await tester.tapAt(const Offset(4, 4));
+    await tester.pumpAndSettle();
 
     snapshots.add(PluginManagementLoadResult.failure(error: ApiError.dartHttpClient(Exception("offline"))));
     await tester.pumpAndSettle();

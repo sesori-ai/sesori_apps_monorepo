@@ -9,6 +9,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../extensions/build_context_x.dart";
 import "../l10n/app_localizations.dart";
+import "bridge_update_sheet.dart";
 
 /// How long the row takes to grow in or fold away.
 const Duration _revealDuration = Duration(milliseconds: 260);
@@ -281,6 +282,11 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
     );
   }
 
+  Future<void> _showBridgeUpdateThenDismiss() async {
+    await showBridgeUpdateSheet(context: context);
+    if (mounted) widget._onDismiss();
+  }
+
   /// The one place the scan state decides how the row reads.
   ///
   /// `null` is the idle row, which folds away to nothing.
@@ -349,14 +355,15 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
       onAction: widget._onDismiss,
     ),
     // Not a failure of this scan but of the pairing, so it reads as something
-    // to fix rather than something to retry.
+    // to fix rather than something to retry. The update steps carry what the
+    // row says, so the row folds away once they close.
     CatalogRescanUnsupported() => _RowContent(
       tone: _ScanTone.attention,
       icon: TablerRegular.arrow_up_circle,
       title: loc.catalogScanUnsupportedTitle,
       detail: loc.catalogScanUnsupportedDetail,
-      actionLabel: loc.catalogScanDismiss,
-      onAction: widget._onDismiss,
+      actionLabel: loc.bridgeUpdateHowTo,
+      onAction: () => unawaited(_showBridgeUpdateThenDismiss()),
     ),
     // No request was sent, so the row names the missing bridge connection
     // instead of falsely claiming that the user's harnesses are absent.

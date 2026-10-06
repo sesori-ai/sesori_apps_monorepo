@@ -243,6 +243,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
         title: loc.newSessionAuthenticationRequiredTitle(harnessName),
         details: actionHint,
         onOpenHarnessSettings: widget.onOpenHarnessSettings,
+        onShowBridgeUpdate: null,
         onRecheck: cubit.refreshOptions,
       ),
       NewSessionComposerProjectUnavailable() => HarnessBlockedNotice(
@@ -250,6 +251,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
         title: loc.newSessionProjectUnavailable,
         details: null,
         onOpenHarnessSettings: null,
+        onShowBridgeUpdate: null,
         onRecheck: cubit.refreshOptions,
       ),
       NewSessionComposerPending() ||

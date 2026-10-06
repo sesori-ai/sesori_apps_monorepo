@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -7,6 +9,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
+import "../../widgets/bridge_update_sheet.dart";
 import "new_folder_dialog.dart";
 import "widgets/project_tile.dart";
 
@@ -265,9 +268,19 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
           variant: PregoPopupAlertsNotificationsVariant.warning,
         );
       case CreateDirectoryUnsupported():
-        _showPopupAlert(
-          message: loc.newFolderUnsupported,
+        final presenter = PregoPopupAlertPresenter.of(context);
+        presenter.show(
+          title: loc.newFolderUnsupported,
           variant: PregoPopupAlertsNotificationsVariant.warning,
+          content: PregoPopupAlertContent(
+            primaryAction: PregoPopupAlertsNotificationsAction(
+              label: loc.bridgeUpdateHowTo,
+              onPressed: () {
+                presenter.dismiss();
+                if (mounted) unawaited(showBridgeUpdateSheet(context: context));
+              },
+            ),
+          ),
         );
       case CreateDirectoryError():
         _showPopupAlert(
