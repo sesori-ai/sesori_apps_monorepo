@@ -19,7 +19,7 @@ Antigravity retains its exact-pair policy rather than an independent floor.
 
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
-| OpenCode | `2.0.18` | PATH `1.14.0`; v2 `2.0.11` | Six archive hashes/layouts verified. Sandboxed macOS arm64 production install/version validation, native authenticated info/catalog/activity reads, SSE startup and teardown passed. Provider turns, history/write parity, native reconnect and upgrade from v1 remain unverified. |
+| OpenCode | `2.0.24` | PATH `1.14.0`; v2 `2.0.11` | Six archive hashes (npm integrity agrees) and layouts verified. The provider-list decode of `chunkTimeout: false` is covered by a model test only. Current-target native install/version, authenticated provider list and reads, SSE startup and teardown remain unverified; earlier `2.0.18` sandboxed macOS arm64 install and authenticated read observations are historical. Provider turns, history/write parity, native reconnect and upgrade from v1 remain unverified. |
 | Antigravity | package/server `1.3.0` | Exact package/server/ACP 1 | Six archive hashes/layouts/permissions independently verified; macOS ARM64 hardened extraction passed. A 2026-10-06 network-denied macOS ARM64 rerun passed managed installation (archive from the verified local copy), `--version`, initialize and teardown after a first probe aborted with SIGABRT. Other native targets and authenticated behavior remain unverified; earlier `1.2.1` observations are historical. |
 | Codex | `0.156.1` | `0.139.0` | Current-target native package/install, stdio and WebSocket app-server checks remain unverified. |
 | GitHub Copilot | `1.0.88` | `1.0.78` | Current-target native install/version, ACP initialize and configured lifecycle remain unverified. |
@@ -164,7 +164,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   v2 adapter at 2.0.11 or newer; v1 retains its existing adapter. Below-minimum v2
   fails with an upgrade hint, never a downgrade recommendation. An owned runtime
   is stopped before refusal; an attached server is never stopped. Cancellation
-  during the probe wins over refusal. Managed downloads target `2.0.18` via npm;
+  during the probe wins over refusal. Managed downloads target `2.0.24` via npm;
   first v2 launch migrates the native database one-way, while PATH v1 stays supported.
   Attach mode without a server retains degraded v1 recovery; a later-started v2
   server requires a bridge restart to select its adapter.

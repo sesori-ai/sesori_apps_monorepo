@@ -545,7 +545,8 @@ startup-extension file failure, retry once the filesystem is usable.
 - Live client end-to-end coverage remains phone-only. The desktop shell can
   create through the shared view and has automated capability/routing coverage,
   but still needs a live desktop release exercise.
-- OpenCode v2 has no public parent-linked creation API. Forks are standalone
+- Sesori does not create parent-linked OpenCode v2 sessions; the native
+  `parentID` create field (2.0.23+) is unused. Forks are standalone
   sessions, not a substitute for child creation; experimental transcript import
   is not used to bypass that limitation.
 - Prompt attachments are capability-gated, so absence is expected, not failure.

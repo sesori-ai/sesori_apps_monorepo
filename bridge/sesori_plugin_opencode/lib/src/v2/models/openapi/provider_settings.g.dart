@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.18 (cd9a14a6b688d4021bee381dfd39d2cef9c0f862)
+// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
@@ -10,6 +10,7 @@ import 'provider_transport.g.dart';
 class ProviderSettings {
   const ProviderSettings({
     required this.timeout,
+    required this.headerTimeout,
     required this.chunkTimeout,
     required this.compaction,
     required this.transport,
@@ -18,7 +19,8 @@ class ProviderSettings {
   factory ProviderSettings.fromJson(Map<String, dynamic> json) {
     return ProviderSettings(
       timeout: json["timeout"] as Object?,
-      chunkTimeout: (json["chunkTimeout"] as num?)?.toDouble(),
+      headerTimeout: json["headerTimeout"] as Object?,
+      chunkTimeout: json["chunkTimeout"] as Object?,
       compaction: json["compaction"] == null ? null : ProviderCompaction.fromJson(json["compaction"] as Object),
       transport: json["transport"] == null ? null : ProviderTransport.fromJson(json["transport"] as String),
     );
@@ -27,6 +29,7 @@ class ProviderSettings {
   Map<String, dynamic> toJson() {
     return <String, dynamic>{
       "timeout": ?timeout,
+      "headerTimeout": ?headerTimeout,
       "chunkTimeout": ?chunkTimeout,
       "compaction": ?compaction?.toJson(),
       "transport": ?transport?.toJson(),
@@ -37,12 +40,14 @@ class ProviderSettings {
   /// Nullable fields cannot be set to null through this helper; null means keep.
   ProviderSettings copyWith({
     Object? timeout,
-    double? chunkTimeout,
+    Object? headerTimeout,
+    Object? chunkTimeout,
     ProviderCompaction? compaction,
     ProviderTransport? transport,
   }) {
     return ProviderSettings(
       timeout: timeout ?? this.timeout,
+      headerTimeout: headerTimeout ?? this.headerTimeout,
       chunkTimeout: chunkTimeout ?? this.chunkTimeout,
       compaction: compaction ?? this.compaction,
       transport: transport ?? this.transport,
@@ -54,15 +59,17 @@ class ProviderSettings {
       identical(this, other) ||
       (other is ProviderSettings &&
           const DeepCollectionEquality().equals(other.timeout, timeout) &&
-          other.chunkTimeout == chunkTimeout &&
+          const DeepCollectionEquality().equals(other.headerTimeout, headerTimeout) &&
+          const DeepCollectionEquality().equals(other.chunkTimeout, chunkTimeout) &&
           other.compaction == compaction &&
           other.transport == transport);
 
   @override
-  int get hashCode => Object.hash(const DeepCollectionEquality().hash(timeout), chunkTimeout, compaction, transport);
+  int get hashCode => Object.hash(const DeepCollectionEquality().hash(timeout), const DeepCollectionEquality().hash(headerTimeout), const DeepCollectionEquality().hash(chunkTimeout), compaction, transport);
 
   final Object? timeout;
-  final double? chunkTimeout;
+  final Object? headerTimeout;
+  final Object? chunkTimeout;
   final ProviderCompaction? compaction;
   final ProviderTransport? transport;
 }
