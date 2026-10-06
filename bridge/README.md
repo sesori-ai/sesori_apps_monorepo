@@ -136,10 +136,9 @@ removes Sesori's record but not Google's retained conversation/profile files.
 The [Antigravity operator guide](../docs/ANTIGRAVITY.md) covers complete setup,
 remote login, retained history and limits. Package `1.3.0` has independently
 verified hashes, sibling layouts and permissions for all six archives, plus
-hardened macOS arm64 extraction. The isolated native probe aborted with SIGABRT
-before a usable version result; native initialization, complete managed
-installation and authenticated end-to-end behavior remain unverified on every
-target. Earlier `1.2.1` native evidence is historical. Do not confuse implemented
+hardened macOS arm64 extraction. A network-denied macOS arm64 run passed the
+production managed installation, `--version`, initialize and teardown. Other
+native targets and authenticated end-to-end behavior remain unverified. Earlier `1.2.1` native evidence is historical. Do not confuse implemented
 capabilities with completed L5 QA.
 
 ### Catalog reads

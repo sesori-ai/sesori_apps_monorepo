@@ -316,6 +316,10 @@ concrete problem can justify a documented temporary hold with a resolution path.
   roots; use an allowlist, not inherited credentials, and preserve production
   approval policy. Missing fixtures become final checks while the target moves
   forward. Current-host execution is the ordinary existing-platform scope.
+  Also run the model-restore probe: `session/load` and `session/resume` must
+  succeed for a session whose saved model was removed. `18.6.3` failed it with
+  "Could not restore model" (2026-10-06), which breaks resume-then-delete
+  cleanup and history, so the pin stays on `18.3.0` until a release passes.
   A new Windows ARM64 mapping needs native install/version/ACP smoke to claim
   native verification; another host is not that proof. If a runner is missing,
   retain the approved implementation and record the native check for final
