@@ -724,8 +724,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             SessionDetailLoading(:final launchHandoff) => launchHandoff != null,
             SessionDetailLoaded() || SessionDetailHarnessUnavailable() => true,
             // Queued messages sit below the error, which then fills the rest.
-            SessionDetailFailed(:final launchFollowUps, :final queuedMessages) =>
-              launchFollowUps.isNotEmpty || queuedMessages.isNotEmpty,
+            final SessionDetailFailed failed => _owesMessages(failed),
           },
           child: content,
         ),
@@ -811,13 +810,21 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           ),
         ),
       ),
-      SessionDetailFailed(:final reason, launchFollowUps: [], queuedMessages: []) => SessionDetailErrorView(
+      final SessionDetailFailed failed when _owesMessages(failed) => _buildFailedWithQueue(
+        context: context,
+        failed: failed,
+      ),
+      SessionDetailFailed(:final reason) => SessionDetailErrorView(
         reason: reason,
         onRetry: () => context.read<SessionDetailCubit>().reload(),
       ),
-      final SessionDetailFailed failed => _buildFailedWithQueue(context: context, failed: failed),
     };
   }
+
+  static bool _owesMessages(SessionDetailFailed failed) =>
+      failed.awaitingBridgeSubmissions.isNotEmpty ||
+      failed.launchFollowUps.isNotEmpty ||
+      failed.queuedMessages.isNotEmpty;
 
   /// A failed first load with messages still owed: the error above them, and
   /// below it the same bubbles and actions the loading screen gave them,
@@ -845,6 +852,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             reverse: true,
             child: Column(
               children: [
+                for (final submission in failed.awaitingBridgeSubmissions)
+                  bubble(submission: submission, presentation: const QueuedMessageBubblePresentation.pendingReadOnly()),
                 for (final followUp in failed.launchFollowUps)
                   bubble(
                     submission: followUp.submission,

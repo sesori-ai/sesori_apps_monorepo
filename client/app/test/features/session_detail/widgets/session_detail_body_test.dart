@@ -796,6 +796,7 @@ void main() {
         );
     final state = SessionDetailState.failed(
       reason: RemoteFailureReason.unknown,
+      awaitingBridgeSubmissions: [submission(promptId: "prm_taken", text: "Taken by the bridge")],
       launchFollowUps: [
         LaunchFollowUp.queued(
           submission: submission(promptId: "prm_launch", text: "Sent while creating"),
@@ -808,6 +809,7 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pump();
 
+    expect(find.text("Taken by the bridge"), findsOneWidget);
     expect(find.text("Sent while creating"), findsOneWidget);
     expect(find.text("Sent before the load"), findsOneWidget);
     final cancels = find.widgetWithText(TextButton, "Cancel");
