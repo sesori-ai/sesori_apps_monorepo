@@ -283,12 +283,12 @@ sub-agents finish.
 
 ## OpenCode v2 adapter
 
-Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.0.18.
+Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.0.24.
 V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the native database one-way.
 
 | Capability | Status |
 |---|---|
-| Explicit parent-linked creation | Not supported by the native create API; refused before mutation. Native forks remain standalone roots, never children of their source. |
+| Explicit parent-linked creation | Not implemented. The native create API accepts `parentID` since 2.0.23, but no Sesori flow creates parent-linked sessions and the 2.0.11 floor lacks it, so the request is refused before mutation. Native forks remain standalone roots, never children of their source. |
 | Conditional/external form rendering | Not implemented; native-only. Visible replies preserve native keys/types and numeric bounds; native validation remains authoritative. |
 | Native archival | Not supported; archival stays in the bridge database. |
 | Prompt/compaction correlation | Implemented with caller-supplied native IDs and stateless projection. |
@@ -660,7 +660,7 @@ end with `session.prompt-settled` so clients can remove its optimistic row.
 | Claude | ✅ Command dispatch publishes a correlated synthetic user message. |
 | OpenCode v1 | ✅ Correlated backend user echoes cover prompts, commands and manual compaction. |
 | OpenCode v2 prompts / fallback compaction | ✅ Caller-supplied native IDs correlate prompt echoes; completed or failed compaction snapshots emit explicit prompt settlement. |
-| OpenCode v2 native commands | 🚫 The 2.0.18 command route exposes neither caller nor result message identity. There is no correlated echo or explicit settlement; an optimistic command row can remain after acceptance. |
+| OpenCode v2 native commands | 🚫 The 2.0.24 command route exposes neither caller nor result message identity. There is no correlated echo or explicit settlement; an optimistic command row can remain after acceptance. |
 | Codex | ✅ Turn-backed commands correlate their user echo; native `compact` emits explicit prompt settlement because it returns no turn identity. |
 | Pi | ✅ User echoes and agent-running fallback synthesis remain transcript-backed; an accepted slash command with no agent work emits explicit prompt settlement after its state barrier. |
 | Antigravity, Copilot, Cursor, Hermes, OMP, DeepSeek, Grok | ✅ Shared ACP dispatch publishes a correlated user message; no silent accepted-command path is exposed. |

@@ -58,12 +58,12 @@ void main() {
       )!;
       expect(
         manifest.downloadUrlFor(asset: asset),
-        equals("https://registry.npmjs.org/@opencode/cli-darwin-arm64/-/cli-darwin-arm64-2.0.18.tgz"),
+        equals("https://registry.npmjs.org/@opencode/cli-darwin-arm64/-/cli-darwin-arm64-2.0.24.tgz"),
       );
     });
 
     test("bundled version is at least the minimum supported version", () {
-      expect(OpenCodeRuntimeManifest.targetVersion, "2.0.18");
+      expect(OpenCodeRuntimeManifest.targetVersion, "2.0.24");
       expect(manifest.bundledVersion.toString(), OpenCodeRuntimeManifest.targetVersion);
       expect(manifest.minPathVersion.toString(), "1.14.0");
       expect(

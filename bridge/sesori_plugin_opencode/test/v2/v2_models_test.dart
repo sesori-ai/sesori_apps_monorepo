@@ -7,6 +7,7 @@ import "package:opencode_plugin/src/v2/models/openapi/form_multiselect_field.g.d
 import "package:opencode_plugin/src/v2/models/openapi/form_string_field.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_reply.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_source.g.dart";
+import "package:opencode_plugin/src/v2/models/openapi/provider_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/server_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_inbox_compaction_payload.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_info.g.dart";
@@ -141,6 +142,22 @@ void main() {
     expect(ServerInfo.fromJson(payload).version, "2.0.16");
     payload.remove("version");
     expect(() => ServerInfo.fromJson(payload), throwsA(isA<TypeError>()));
+  });
+
+  test("decodes providers whose chunk timeout is disabled", () {
+    // OpenCode 2.0.23+ reports a disabled chunk timeout as `false`.
+    const payload = <String, dynamic>{
+      "id": "anthropic",
+      "name": "Anthropic",
+      "activation": "auto",
+      "package": "@ai-sdk/anthropic",
+      "settings": <String, dynamic>{"chunkTimeout": false, "headerTimeout": 30000},
+    };
+    final provider = ProviderInfo.fromJson(payload);
+
+    expect(provider.settings?.chunkTimeout, false);
+    expect(provider.settings?.headerTimeout, 30000);
+    expect(ProviderInfo.fromJson(provider.toJson()), provider);
   });
 
   group("SessionInfo", () {
