@@ -22,9 +22,14 @@ pr_monitor(action: "start", pr: "owner/repo#123")
   resuming PR work in a fresh opencode instance, check `pr_monitor(action: "status")`
   and re-start monitors as needed.
 - Tuning (debounce, poll interval, CI wait, ignored comment tag, `autoMerge`)
-  lives in `.opencode/pr-monitor.json` — not in tool arguments. This repository
+  lives in the repository-root `.pr-monitor.json` — not in tool arguments. This repository
   enables `autoMerge`: automatic readiness and `mark_ready` can squash-merge
   the accepted PR head.
+- OpenCode, Claude Code, Codex, Pi/OMP, and Hermes read this shared project
+  config. DeepSeek intentionally ignores project config because its plugin API
+  has no project-trust signal; configure it globally or through a trusted
+  `SESORI_PR_MONITOR_AUTO_MERGE` environment value. An explicit value of that
+  variable overrides `autoMerge` from config.
 
 ## Handling a `[PR Monitor]` report
 
