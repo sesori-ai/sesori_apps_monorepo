@@ -15,6 +15,7 @@ import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/composer/prompt_send_failure.dart";
 import "../../foundation/models/composer/queued_session_submission.dart";
+import "../../foundation/models/composer/unsent_composer.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../foundation/models/session_interaction_state.dart";
 import "../../foundation/models/session_launch/launch_follow_up.dart";
@@ -53,6 +54,7 @@ import "../../services/transcript_snapshot_calculator.dart";
 import "deferred_part_event_buffer.dart";
 import "local_send_phase.dart";
 import "prompt_send_queue.dart";
+import "seeded_composer.dart";
 import "session_abort_outcome.dart";
 import "session_detail_notice.dart";
 import "session_detail_resolvers.dart";
@@ -279,7 +281,10 @@ class SessionDetailCubit(
 
   static SessionDetailState _launchState({required SessionLaunchHandoff? launchHandoff}) => SessionDetailState.loading(
     launchHandoff: launchHandoff,
-    stagedCommand: launchHandoff?.composer?.unsent?.command,
+    seededComposer: switch (launchHandoff?.composer) {
+      final composer? => SeededComposer(composer: composer, stagedCommand: composer.unsent?.command),
+      null => null,
+    },
   );
 
   /// The one funnel every state passes through. A loaded state that already
@@ -434,8 +439,7 @@ class SessionDetailCubit(
       _withQueue(
         loading: SessionDetailLoading(
           launchHandoff: launchHandoff,
-          // Only the launch's seeded composer stages a command before a load.
-          stagedCommand: previous is SessionDetailLoading ? previous.stagedCommand : null,
+          seededComposer: previous is SessionDetailLoading ? previous.seededComposer : null,
         ),
       ),
     );
@@ -2100,7 +2104,7 @@ class SessionDetailCubit(
   }) async {
     if (_refuseComposerInput(action: "send a prompt")) return;
     final current = state;
-    final launchComposer = _launchComposer;
+    final seeded = _seededComposer;
     final trimmed = text.trim();
     final normalizedCommand = command?.normalize();
     if (trimmed.isEmpty && normalizedCommand == null && attachments.isEmpty) return;
@@ -2119,7 +2123,7 @@ class SessionDetailCubit(
     // capability refuses as well, so unsupported images never enter the queue.
     // Before the first load, the launch's composer supplies what the loaded
     // state would.
-    final options = switch ((current, launchComposer)) {
+    final options = switch ((current, seeded?.composer)) {
       (final SessionDetailLoaded loaded, _) => (
         supportsPromptAttachments: loaded.supportsPromptAttachments,
         agent: loaded.selectedAgent,
@@ -2815,15 +2819,15 @@ class SessionDetailCubit(
 
   /// The launch's composer while this screen's first load builds it, so what
   /// the user sends or stages before the transcript arrives is kept for it.
-  SessionLaunchComposer? get _launchComposer => switch (state) {
-    final SessionDetailLoading loading => loading.launchComposer,
+  SeededComposer? get _seededComposer => switch (state) {
+    SessionDetailLoading(:final seededComposer) => seededComposer,
     SessionDetailLoaded() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => null,
   };
 
   /// [_refuseWhenInteractionBlocked], except that the launch's composer takes
   /// input before the first load.
   bool _refuseComposerInput({required String action}) =>
-      _launchComposer == null && _refuseWhenInteractionBlocked(action: action);
+      _seededComposer == null && _refuseWhenInteractionBlocked(action: action);
 
   bool _refuseWhenArchived({required String action}) {
     final current = state;
@@ -3026,7 +3030,13 @@ class SessionDetailCubit(
       case final SessionDetailLoaded current:
         emit(current.copyWith(stagedCommand: command));
       case final SessionDetailLoading current:
-        emit(current.copyWith(stagedCommand: command));
+        if (current.seededComposer case final seeded?) {
+          emit(
+            current.copyWith(
+              seededComposer: SeededComposer(composer: seeded.composer, stagedCommand: command),
+            ),
+          );
+        }
       case SessionDetailHarnessUnavailable() || SessionDetailFailed():
         break;
     }
@@ -3167,7 +3177,7 @@ class SessionDetailCubit(
       selectedAgentModel: reconciled.model,
       promptDefaults: snapshot.promptDefaults,
       fastMode: snapshot.promptDefaults?.fastMode ?? false,
-      stagedCommand: loading is SessionDetailLoading ? loading.stagedCommand : null,
+      stagedCommand: loading is SessionDetailLoading ? loading.seededComposer?.stagedCommand : null,
       isRefreshing: false,
       availableVariants: reconciled.availableVariants,
       bridgeYolo: _bridgeSettingsService.yoloSettings.value,

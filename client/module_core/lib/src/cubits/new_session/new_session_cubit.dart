@@ -14,6 +14,7 @@ import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/composer/new_session_submission_snapshot.dart";
 import "../../foundation/models/composer/queued_session_submission.dart";
+import "../../foundation/models/composer/unsent_composer.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../foundation/models/session_launch/launch_follow_up.dart";
 import "../../foundation/models/session_launch/session_launch_composer.dart";

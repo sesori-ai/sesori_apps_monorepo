@@ -1,17 +1,7 @@
 import "package:meta/meta.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../composer/composer_attachment.dart";
-import "../composer/composer_draft.dart";
-
-/// What the composing route's composer still held, unsent, when the session it
-/// created took over: typed text, a staged command and staged images.
-@immutable
-final class const UnsentComposer({
-  required final ComposerDraft draft,
-  required final CommandInfo? command,
-  required final List<ComposerAttachment> attachments,
-});
+import "../composer/unsent_composer.dart";
 
 /// The composing route's composer as the session it created takes it over, so
 /// the session screen can build the same composer before its first load: the

@@ -12,6 +12,7 @@ import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/session_approval_calculator.dart";
 import "../../services/session_selection_calculator.dart";
 import "local_send_phase.dart";
+import "seeded_composer.dart";
 
 part "session_detail_state.freezed.dart";
 
@@ -23,14 +24,16 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// every ordinary open.
     required SessionLaunchHandoff? launchHandoff,
 
-    // A load whose handoff carries the launch's composer builds that composer
-    // before the transcript, so what it sends or stages shows at once: the
-    // follow-ups the launch has not delivered, those this screen parked, the
-    // prompts sent here, and the staged command. An ordinary load has none.
+    /// The launch's composer, when this load builds it before the transcript.
+    /// Null for every ordinary open.
+    required SeededComposer? seededComposer,
+
+    // What the seeded composer's sends show at once: the follow-ups the
+    // launch has not delivered, those this screen parked, and the prompts
+    // sent here. An ordinary load has none.
     @Default([]) List<LaunchFollowUp> launchFollowUps,
     @Default([]) List<QueuedSessionSubmission> awaitingBridgeSubmissions,
     @Default([]) List<QueuedSessionSubmission> queuedMessages,
-    required CommandInfo? stagedCommand,
   }) = SessionDetailLoading;
 
   const factory loaded({
@@ -171,11 +174,6 @@ extension SessionDetailStateX on SessionDetailState {
     SessionDetailLoaded(:final session) || SessionDetailHarnessUnavailable(:final session) => session,
     SessionDetailLoading() || SessionDetailFailed() => null,
   };
-}
-
-extension SessionDetailLoadingX on SessionDetailLoading {
-  /// The launch's composer, when this load builds it before the transcript.
-  SessionLaunchComposer? get launchComposer => launchHandoff?.composer;
 }
 
 extension SessionLaunchComposerX on SessionLaunchComposer {
