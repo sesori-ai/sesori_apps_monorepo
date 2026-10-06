@@ -151,10 +151,11 @@ as QueuedSessionSubmission,
 
 
 class SendingLaunchFollowUp implements LaunchFollowUp {
-  const SendingLaunchFollowUp({required this.submission});
+  const SendingLaunchFollowUp({required this.submission, required this.since});
   
 
 @override final  QueuedSessionSubmission submission;
+ final  DateTime since;
 
 /// Create a copy of LaunchFollowUp
 /// with the given fields replaced by the non-null parameter values.
@@ -166,18 +167,18 @@ $SendingLaunchFollowUpCopyWith<SendingLaunchFollowUp> get copyWith => _$SendingL
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SendingLaunchFollowUp&&(identical(other.submission, submission) || other.submission == submission));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SendingLaunchFollowUp&&(identical(other.submission, submission) || other.submission == submission)&&(identical(other.since, since) || other.since == since));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,submission);
+    return Object.hash(runtimeType,submission,since);
 }
 
 @override
 String toString() {
-    return 'LaunchFollowUp.sending(submission: $submission)';
+    return 'LaunchFollowUp.sending(submission: $submission, since: $since)';
 }
 
 
@@ -188,7 +189,7 @@ abstract mixin class $SendingLaunchFollowUpCopyWith<$Res> implements $LaunchFoll
   factory $SendingLaunchFollowUpCopyWith(SendingLaunchFollowUp value, $Res Function(SendingLaunchFollowUp) _then) = _$SendingLaunchFollowUpCopyWithImpl;
 @override @useResult
 $Res call({
- QueuedSessionSubmission submission
+ QueuedSessionSubmission submission, DateTime since
 });
 
 
@@ -205,10 +206,11 @@ class _$SendingLaunchFollowUpCopyWithImpl<$Res>
 
 /// Create a copy of LaunchFollowUp
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? submission = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? submission = null,Object? since = null,}) {
   return _then(SendingLaunchFollowUp(
 submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
-as QueuedSessionSubmission,
+as QueuedSessionSubmission,since: null == since ? _self.since : since // ignore: cast_nullable_to_non_nullable
+as DateTime,
   ));
 }
 

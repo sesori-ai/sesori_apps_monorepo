@@ -13,8 +13,9 @@ sealed class LaunchFollowUp with _$LaunchFollowUp {
   /// Not sent yet; it waits for the session, or for the one ahead of it.
   const factory queued({required QueuedSessionSubmission submission}) = QueuedLaunchFollowUp;
 
-  /// The one being sent now.
-  const factory sending({required QueuedSessionSubmission submission}) = SendingLaunchFollowUp;
+  /// The one being sent now, since [since], so its bubble names the harness
+  /// on time however often it is rebuilt.
+  const factory sending({required QueuedSessionSubmission submission, required DateTime since}) = SendingLaunchFollowUp;
 
   /// The bridge accepted it; held only until a session screen parks it.
   const factory accepted({required QueuedSessionSubmission submission}) = AcceptedLaunchFollowUp;

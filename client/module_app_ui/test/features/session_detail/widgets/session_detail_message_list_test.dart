@@ -2287,6 +2287,7 @@ void main() {
         launchFollowUps: [
           LaunchFollowUp.sending(
             submission: _textSubmission(promptId: "prm_follow", text: "follow"),
+            since: DateTime(2026),
           ),
         ],
       ),

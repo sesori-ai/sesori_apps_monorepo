@@ -1147,9 +1147,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final onRetry = widget.onRetryLaunchFollowUp;
     final onRemove = widget.onRemoveLaunchFollowUp;
     return switch (followUp) {
-      SendingLaunchFollowUp() => QueuedMessageBubblePresentation.sending(
+      SendingLaunchFollowUp(:final since) => QueuedMessageBubblePresentation.sending(
         harnessName: widget.harnessName,
-        sendingSince: null,
+        sendingSince: since,
       ),
       QueuedLaunchFollowUp() when onRemove != null => QueuedMessageBubblePresentation.pending(
         onCancel: () => onRemove(promptId: promptId),
