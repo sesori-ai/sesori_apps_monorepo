@@ -101,7 +101,11 @@ class const SessionLaunchSubmissionView({
               : QueuedMessageBubblePresentation.pending(onCancel: () => onCancelQueuedMessage(index)),
         ),
     ];
-    final column = Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
+    final column = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: rows,
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
         final transcriptWidth = this.transcriptWidth;
@@ -149,7 +153,10 @@ QueuedMessageBubblePresentation launchFollowUpPresentation({
 }) {
   final promptId = followUp.submission.promptId;
   return switch (followUp) {
-    SendingLaunchFollowUp() => QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: null),
+    SendingLaunchFollowUp(:final since) => QueuedMessageBubblePresentation.sending(
+      harnessName: harnessName,
+      sendingSince: since,
+    ),
     QueuedLaunchFollowUp() when onRemove != null => QueuedMessageBubblePresentation.pending(
       onCancel: () => onRemove(promptId: promptId),
     ),

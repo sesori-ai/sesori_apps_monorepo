@@ -101,7 +101,7 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
       _replaceFollowUp(
         launch: launch,
         index: index,
-        followUp: LaunchFollowUp.sending(submission: submission),
+        followUp: LaunchFollowUp.sending(submission: submission, since: DateTime.now()),
       );
       return (sessionId: session.id, submission: submission);
     }
