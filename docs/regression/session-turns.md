@@ -605,6 +605,21 @@ defaults and queued client sends coherent.
   shows a renderable user message, or a bridge-queued prompt that is neither one
   of the launch's own follow-ups nor a prompt sent from the session screen, so
   the bubble and its replacement never show together. A stop removes it, and while it shows the transcript is not empty.
+- Messages sent while that session was still being created follow the first
+  one as transient rows. They send in press order once the session exists,
+  after the first message and before anything sent from the session screen,
+  with the options committed at the first Send. A delivered one stays as a
+  bubble until the transcript or the harness's queue shows it, exactly like a
+  prompt the session screen sent. A failed one offers Retry, and Remove once
+  the rejection is authoritative.
+- The session screen of a session this surface just created shows its composer
+  from the first frame, before the transcript loads, in the new-session
+  composer's place and with its options, unsent text, command, images and
+  focus; the options stay inert until the load. A message sent there before the
+  load queues behind the launch's follow-ups, stays cancellable, and sends when
+  the load lands. The composer and every bubble stay put through the load. If
+  the first load fails, the queued messages stay in view under the error and
+  Retry sends them; none is dropped silently.
 - Read-only, archived, and harness-blocked views retain inline pending bubbles
   even without a composer. Remote cancellation is disabled there; local queued
   submissions remain removable while blocked, but not on read-only routes.
