@@ -897,6 +897,10 @@ class _RenderSlideFromLastPosition({required Animation<double> progress, require
 
   /// How far the child was from its new place when the move began.
   Offset _from = Offset.zero;
+
+  /// Where the child paints relative to its layout, so taps and semantics
+  /// follow what is on screen during the move.
+  Offset _shift = Offset.zero;
   bool _moved = false;
 
   void update({required Animation<double> progress, required bool towardSending}) {
@@ -936,8 +940,19 @@ class _RenderSlideFromLastPosition({required Animation<double> progress, require
       _from = remaining < 1e-6 ? Offset.zero : gap / remaining;
       _moved = false;
     }
-    final shift = _from * remaining;
-    _lastPosition = position + shift;
-    super.paint(context, offset + shift);
+    _shift = _from * remaining;
+    _lastPosition = position + _shift;
+    super.paint(context, offset + _shift);
   }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) => result.addWithPaintOffset(
+    offset: _shift,
+    position: position,
+    hitTest: (result, transformed) => super.hitTestChildren(result, position: transformed),
+  );
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) =>
+      transform.translateByDouble(_shift.dx, _shift.dy, 0, 1);
 }

@@ -230,8 +230,13 @@ void main() {
     when(() => newSessionCubit.canSubmitFollowUp).thenReturn(true);
     states.add(sending);
     await tester.pump();
-    // The move is animated: the toolbar is still fading out.
+    // The move is animated: the toolbar is still fading out, and the composer
+    // (where it paints, and so where it takes taps) is on its way down.
     expect(find.byType(DesktopPageToolbar), findsOneWidget);
+    await tester.pump();
+    expect(tester.getRect(prompt).top, closeTo(centredRect.top, 0.01));
+    await tester.pump(const Duration(milliseconds: 120));
+    final midwayRect = tester.getRect(prompt);
     await tester.pumpAndSettle();
 
     // The same composer, not a new one, now spans the session page's 760 px
@@ -240,6 +245,7 @@ void main() {
     expect(find.byType(DesktopPageToolbar), findsNothing);
     final bottomRect = tester.getRect(prompt);
     expect(bottomRect.bottom, greaterThan(centredRect.bottom));
+    expect(midwayRect.top, inExclusiveRange(centredRect.top, bottomRect.top));
     expect(bottomRect.left, (1400 - 760) / 2 + 16);
     expect(bottomRect.right, 1400 - (1400 - 760) / 2 - 16);
     final bubble = find.byType(QueuedMessageBubble);
