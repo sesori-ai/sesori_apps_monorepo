@@ -582,10 +582,21 @@ $SessionCopyWith<$Res> get session {
 
 
 class SessionDetailFailed implements SessionDetailState {
-  const SessionDetailFailed({required this.reason,  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> queuedMessages = const []}): _launchFollowUps = launchFollowUps,_queuedMessages = queuedMessages;
+  const SessionDetailFailed({required this.reason,  List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> queuedMessages = const []}): _awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_queuedMessages = queuedMessages;
   
 
  final  RemoteFailureReason reason;
+/// Sends the bridge took that it has not listed yet, shown read-only so
+/// a failed load does not hide a message that went out.
+ final  List<QueuedSessionSubmission> _awaitingBridgeSubmissions;
+/// Sends the bridge took that it has not listed yet, shown read-only so
+/// a failed load does not hide a message that went out.
+@JsonKey() List<QueuedSessionSubmission> get awaitingBridgeSubmissions {
+  if (_awaitingBridgeSubmissions is EqualUnmodifiableListView) return _awaitingBridgeSubmissions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_awaitingBridgeSubmissions);
+}
+
 /// Messages sent before this session existed that its launch still owes,
 /// so a failed load keeps their Retry and Remove actions in view.
  final  List<LaunchFollowUp> _launchFollowUps;
@@ -619,18 +630,18 @@ $SessionDetailFailedCopyWith<SessionDetailFailed> get copyWith => _$SessionDetai
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailFailed&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other.launchFollowUps, _launchFollowUps)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailFailed&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.launchFollowUps, _launchFollowUps)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,reason,const DeepCollectionEquality().hash(_launchFollowUps),const DeepCollectionEquality().hash(_queuedMessages));
+    return Object.hash(runtimeType,reason,const DeepCollectionEquality().hash(_awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_launchFollowUps),const DeepCollectionEquality().hash(_queuedMessages));
 }
 
 @override
 String toString() {
-    return 'SessionDetailState.failed(reason: $reason, launchFollowUps: $launchFollowUps, queuedMessages: $queuedMessages)';
+    return 'SessionDetailState.failed(reason: $reason, awaitingBridgeSubmissions: $awaitingBridgeSubmissions, launchFollowUps: $launchFollowUps, queuedMessages: $queuedMessages)';
 }
 
 
@@ -641,7 +652,7 @@ abstract mixin class $SessionDetailFailedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailFailedCopyWith(SessionDetailFailed value, $Res Function(SessionDetailFailed) _then) = _$SessionDetailFailedCopyWithImpl;
 @useResult
 $Res call({
- RemoteFailureReason reason, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> queuedMessages
+ RemoteFailureReason reason, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> queuedMessages
 });
 
 
@@ -658,10 +669,11 @@ class _$SessionDetailFailedCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? launchFollowUps = null,Object? queuedMessages = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? awaitingBridgeSubmissions = null,Object? launchFollowUps = null,Object? queuedMessages = null,}) {
   return _then(SessionDetailFailed(
 reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as RemoteFailureReason,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
+as RemoteFailureReason,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self._awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable
+as List<QueuedSessionSubmission>,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
 as List<LaunchFollowUp>,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
 as List<QueuedSessionSubmission>,
   ));

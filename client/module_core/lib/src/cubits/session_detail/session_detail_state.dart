@@ -150,6 +150,10 @@ sealed class SessionDetailState with _$SessionDetailState {
   const factory failed({
     required RemoteFailureReason reason,
 
+    /// Sends the bridge took that it has not listed yet, shown read-only so
+    /// a failed load does not hide a message that went out.
+    @Default([]) List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+
     /// Messages sent before this session existed that its launch still owes,
     /// so a failed load keeps their Retry and Remove actions in view.
     @Default([]) List<LaunchFollowUp> launchFollowUps,
