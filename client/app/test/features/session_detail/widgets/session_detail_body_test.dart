@@ -301,7 +301,7 @@ void main() {
   });
 
   for (final auditState in [
-    const SessionDetailState.loading(launchHandoff: null),
+    const SessionDetailState.loading(launchHandoff: null, stagedCommand: null),
     const SessionDetailState.failed(reason: RemoteFailureReason.unknown),
   ]) {
     testWidgets("an audit page keeps Back as its only way out in $auditState", (tester) async {

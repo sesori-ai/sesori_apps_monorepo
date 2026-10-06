@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../composer/new_session_submission_snapshot.dart";
 import "launch_follow_up.dart";
+import "session_launch_composer.dart";
 
 part "session_launch.freezed.dart";
 
@@ -53,6 +54,10 @@ sealed class SessionLaunch with _$SessionLaunch {
     required List<LaunchFollowUp> followUps,
     required Session session,
     required NewSessionSubmissionSnapshot submission,
+
+    /// Null until the composing route hands its composer over, which it does
+    /// as it learns the session exists.
+    required SessionLaunchComposer? composer,
   }) = CreatedSessionLaunch;
 
   /// The handoff was taken or released; the launch is retained only while a

@@ -11,6 +11,7 @@ import "../foundation/models/composer/prompt_send_failure.dart";
 import "../foundation/models/composer/queued_session_submission.dart";
 import "../foundation/models/session_launch/launch_follow_up.dart";
 import "../foundation/models/session_launch/session_launch.dart";
+import "../foundation/models/session_launch/session_launch_composer.dart";
 import "../foundation/models/session_launch/session_launch_handoff.dart";
 import "../foundation/models/session_launch/session_launch_outcome.dart";
 
@@ -45,6 +46,11 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
               const [],
         ),
   );
+
+  /// The follow-ups of [launchId] after every change, for the composing route
+  /// that queues them.
+  Stream<List<LaunchFollowUp>> watchFollowUps({required String launchId}) =>
+      _changes.stream.where((launch) => launch.launchId == launchId).map((launch) => launch.followUps);
 
   void start({
     required String launchId,
@@ -204,6 +210,7 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
             followUps: followUps,
             session: session,
             submission: submission,
+            composer: null,
           ),
         );
       case ReleasedPendingSessionLaunch(
@@ -252,6 +259,14 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
     _outcomes.add(outcome);
   }
 
+  /// Adds the composing route's composer to the handoff of a created launch,
+  /// before the session screen takes it.
+  void handOverComposer({required String launchId, required SessionLaunchComposer composer}) {
+    if (_storage.read(launchId: launchId) case final CreatedSessionLaunch launch) {
+      _put(launch: launch.copyWith(composer: composer));
+    }
+  }
+
   /// Hands the first message of the created launch for [sessionId] to the
   /// session screen, once, with the follow-ups accepted so far. Null for any
   /// other session, or while the launch is still pending.
@@ -272,6 +287,7 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
         for (final followUp in launch.followUps)
           if (followUp case AcceptedLaunchFollowUp(:final submission)) submission,
       ],
+      composer: launch.composer,
     );
   }
 

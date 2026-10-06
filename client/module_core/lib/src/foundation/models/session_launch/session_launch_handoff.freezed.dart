@@ -24,7 +24,9 @@ mixin _$SessionLaunchHandoff {
 /// replacement.
  Set<String> get followUpIds;/// Follow-ups the bridge accepted before the handoff was taken, oldest
 /// first. The taker parks them so their bubbles never blank.
- List<QueuedSessionSubmission> get acceptedFollowUps;
+ List<QueuedSessionSubmission> get acceptedFollowUps;/// The composing route's composer, for the session screen to build its own
+/// before the first load; null when the route handed none over.
+ SessionLaunchComposer? get composer;
 /// Create a copy of SessionLaunchHandoff
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -36,20 +38,20 @@ $SessionLaunchHandoffCopyWith<SessionLaunchHandoff> get copyWith => _$SessionLau
 @override
 bool operator ==(Object other) {
   final _this = this as SessionLaunchHandoff;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionLaunchHandoff&&(identical(other.submission, _this.submission) || other.submission == _this.submission)&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&(identical(other.startedAt, _this.startedAt) || other.startedAt == _this.startedAt)&&const DeepCollectionEquality().equals(other.followUpIds, _this.followUpIds)&&const DeepCollectionEquality().equals(other.acceptedFollowUps, _this.acceptedFollowUps));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionLaunchHandoff&&(identical(other.submission, _this.submission) || other.submission == _this.submission)&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&(identical(other.startedAt, _this.startedAt) || other.startedAt == _this.startedAt)&&const DeepCollectionEquality().equals(other.followUpIds, _this.followUpIds)&&const DeepCollectionEquality().equals(other.acceptedFollowUps, _this.acceptedFollowUps)&&(identical(other.composer, _this.composer) || other.composer == _this.composer));
 }
 
 
 @override
 int get hashCode {
   final _this = this as SessionLaunchHandoff;
-  return Object.hash(runtimeType,_this.submission,_this.pluginId,_this.startedAt,const DeepCollectionEquality().hash(_this.followUpIds),const DeepCollectionEquality().hash(_this.acceptedFollowUps));
+  return Object.hash(runtimeType,_this.submission,_this.pluginId,_this.startedAt,const DeepCollectionEquality().hash(_this.followUpIds),const DeepCollectionEquality().hash(_this.acceptedFollowUps),_this.composer);
 }
 
 @override
 String toString() {
   final _this = this as SessionLaunchHandoff;
-  return 'SessionLaunchHandoff(submission: ${_this.submission}, pluginId: ${_this.pluginId}, startedAt: ${_this.startedAt}, followUpIds: ${_this.followUpIds}, acceptedFollowUps: ${_this.acceptedFollowUps})';
+  return 'SessionLaunchHandoff(submission: ${_this.submission}, pluginId: ${_this.pluginId}, startedAt: ${_this.startedAt}, followUpIds: ${_this.followUpIds}, acceptedFollowUps: ${_this.acceptedFollowUps}, composer: ${_this.composer})';
 }
 
 
@@ -60,7 +62,7 @@ abstract mixin class $SessionLaunchHandoffCopyWith<$Res>  {
   factory $SessionLaunchHandoffCopyWith(SessionLaunchHandoff value, $Res Function(SessionLaunchHandoff) _then) = _$SessionLaunchHandoffCopyWithImpl;
 @useResult
 $Res call({
- NewSessionSubmissionSnapshot submission, String pluginId, DateTime startedAt, Set<String> followUpIds, List<QueuedSessionSubmission> acceptedFollowUps
+ NewSessionSubmissionSnapshot submission, String pluginId, DateTime startedAt, Set<String> followUpIds, List<QueuedSessionSubmission> acceptedFollowUps, SessionLaunchComposer? composer
 });
 
 
@@ -77,14 +79,15 @@ class _$SessionLaunchHandoffCopyWithImpl<$Res>
 
 /// Create a copy of SessionLaunchHandoff
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? submission = null,Object? pluginId = null,Object? startedAt = null,Object? followUpIds = null,Object? acceptedFollowUps = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? submission = null,Object? pluginId = null,Object? startedAt = null,Object? followUpIds = null,Object? acceptedFollowUps = null,Object? composer = freezed,}) {
   return _then(SessionLaunchHandoff(
 submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
 as NewSessionSubmissionSnapshot,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,followUpIds: null == followUpIds ? _self.followUpIds : followUpIds // ignore: cast_nullable_to_non_nullable
 as Set<String>,acceptedFollowUps: null == acceptedFollowUps ? _self.acceptedFollowUps : acceptedFollowUps // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,
+as List<QueuedSessionSubmission>,composer: freezed == composer ? _self.composer : composer // ignore: cast_nullable_to_non_nullable
+as SessionLaunchComposer?,
   ));
 }
 /// Create a copy of SessionLaunchHandoff
@@ -105,7 +108,7 @@ $NewSessionSubmissionSnapshotCopyWith<$Res> get submission {
 
 
 class _SessionLaunchHandoff implements SessionLaunchHandoff {
-  const _SessionLaunchHandoff({required this.submission, required this.pluginId, required this.startedAt, required  Set<String> followUpIds, required  List<QueuedSessionSubmission> acceptedFollowUps}): _followUpIds = followUpIds,_acceptedFollowUps = acceptedFollowUps;
+  const _SessionLaunchHandoff({required this.submission, required this.pluginId, required this.startedAt, required  Set<String> followUpIds, required  List<QueuedSessionSubmission> acceptedFollowUps, required this.composer}): _followUpIds = followUpIds,_acceptedFollowUps = acceptedFollowUps;
   
 
 @override final  NewSessionSubmissionSnapshot submission;
@@ -140,6 +143,9 @@ class _SessionLaunchHandoff implements SessionLaunchHandoff {
   return EqualUnmodifiableListView(_acceptedFollowUps);
 }
 
+/// The composing route's composer, for the session screen to build its own
+/// before the first load; null when the route handed none over.
+@override final  SessionLaunchComposer? composer;
 
 /// Create a copy of SessionLaunchHandoff
 /// with the given fields replaced by the non-null parameter values.
@@ -151,18 +157,18 @@ _$SessionLaunchHandoffCopyWith<_SessionLaunchHandoff> get copyWith => __$Session
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionLaunchHandoff&&(identical(other.submission, submission) || other.submission == submission)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.followUpIds, _followUpIds)&&const DeepCollectionEquality().equals(other.acceptedFollowUps, _acceptedFollowUps));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionLaunchHandoff&&(identical(other.submission, submission) || other.submission == submission)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.followUpIds, _followUpIds)&&const DeepCollectionEquality().equals(other.acceptedFollowUps, _acceptedFollowUps)&&(identical(other.composer, composer) || other.composer == composer));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,submission,pluginId,startedAt,const DeepCollectionEquality().hash(_followUpIds),const DeepCollectionEquality().hash(_acceptedFollowUps));
+    return Object.hash(runtimeType,submission,pluginId,startedAt,const DeepCollectionEquality().hash(_followUpIds),const DeepCollectionEquality().hash(_acceptedFollowUps),composer);
 }
 
 @override
 String toString() {
-    return 'SessionLaunchHandoff(submission: $submission, pluginId: $pluginId, startedAt: $startedAt, followUpIds: $followUpIds, acceptedFollowUps: $acceptedFollowUps)';
+    return 'SessionLaunchHandoff(submission: $submission, pluginId: $pluginId, startedAt: $startedAt, followUpIds: $followUpIds, acceptedFollowUps: $acceptedFollowUps, composer: $composer)';
 }
 
 
@@ -173,7 +179,7 @@ abstract mixin class _$SessionLaunchHandoffCopyWith<$Res> implements $SessionLau
   factory _$SessionLaunchHandoffCopyWith(_SessionLaunchHandoff value, $Res Function(_SessionLaunchHandoff) _then) = __$SessionLaunchHandoffCopyWithImpl;
 @override @useResult
 $Res call({
- NewSessionSubmissionSnapshot submission, String pluginId, DateTime startedAt, Set<String> followUpIds, List<QueuedSessionSubmission> acceptedFollowUps
+ NewSessionSubmissionSnapshot submission, String pluginId, DateTime startedAt, Set<String> followUpIds, List<QueuedSessionSubmission> acceptedFollowUps, SessionLaunchComposer? composer
 });
 
 
@@ -190,14 +196,15 @@ class __$SessionLaunchHandoffCopyWithImpl<$Res>
 
 /// Create a copy of SessionLaunchHandoff
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? submission = null,Object? pluginId = null,Object? startedAt = null,Object? followUpIds = null,Object? acceptedFollowUps = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? submission = null,Object? pluginId = null,Object? startedAt = null,Object? followUpIds = null,Object? acceptedFollowUps = null,Object? composer = freezed,}) {
   return _then(_SessionLaunchHandoff(
 submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
 as NewSessionSubmissionSnapshot,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,followUpIds: null == followUpIds ? _self._followUpIds : followUpIds // ignore: cast_nullable_to_non_nullable
 as Set<String>,acceptedFollowUps: null == acceptedFollowUps ? _self._acceptedFollowUps : acceptedFollowUps // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,
+as List<QueuedSessionSubmission>,composer: freezed == composer ? _self.composer : composer // ignore: cast_nullable_to_non_nullable
+as SessionLaunchComposer?,
   ));
 }
 

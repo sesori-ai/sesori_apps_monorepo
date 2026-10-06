@@ -47,13 +47,35 @@ $SessionDetailStateCopyWith(SessionDetailState _, $Res Function(SessionDetailSta
 
 
 class SessionDetailLoading implements SessionDetailState {
-  const SessionDetailLoading({required this.launchHandoff});
+  const SessionDetailLoading({required this.launchHandoff,  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],  List<QueuedSessionSubmission> queuedMessages = const [], required this.stagedCommand}): _launchFollowUps = launchFollowUps,_awaitingBridgeSubmissions = awaitingBridgeSubmissions,_queuedMessages = queuedMessages;
   
 
 /// The first message of the launch this screen took over, shown as a
 /// sending bubble until the transcript shows what replaces it. Null for
 /// every ordinary open.
  final  SessionLaunchHandoff? launchHandoff;
+ final  List<LaunchFollowUp> _launchFollowUps;
+@JsonKey() List<LaunchFollowUp> get launchFollowUps {
+  if (_launchFollowUps is EqualUnmodifiableListView) return _launchFollowUps;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_launchFollowUps);
+}
+
+ final  List<QueuedSessionSubmission> _awaitingBridgeSubmissions;
+@JsonKey() List<QueuedSessionSubmission> get awaitingBridgeSubmissions {
+  if (_awaitingBridgeSubmissions is EqualUnmodifiableListView) return _awaitingBridgeSubmissions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_awaitingBridgeSubmissions);
+}
+
+ final  List<QueuedSessionSubmission> _queuedMessages;
+@JsonKey() List<QueuedSessionSubmission> get queuedMessages {
+  if (_queuedMessages is EqualUnmodifiableListView) return _queuedMessages;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_queuedMessages);
+}
+
+ final  CommandInfo? stagedCommand;
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
@@ -65,18 +87,18 @@ $SessionDetailLoadingCopyWith<SessionDetailLoading> get copyWith => _$SessionDet
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailLoading&&(identical(other.launchHandoff, launchHandoff) || other.launchHandoff == launchHandoff));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailLoading&&(identical(other.launchHandoff, launchHandoff) || other.launchHandoff == launchHandoff)&&const DeepCollectionEquality().equals(other.launchFollowUps, _launchFollowUps)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,launchHandoff);
+    return Object.hash(runtimeType,launchHandoff,const DeepCollectionEquality().hash(_launchFollowUps),const DeepCollectionEquality().hash(_awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_queuedMessages),stagedCommand);
 }
 
 @override
 String toString() {
-    return 'SessionDetailState.loading(launchHandoff: $launchHandoff)';
+    return 'SessionDetailState.loading(launchHandoff: $launchHandoff, launchFollowUps: $launchFollowUps, awaitingBridgeSubmissions: $awaitingBridgeSubmissions, queuedMessages: $queuedMessages, stagedCommand: $stagedCommand)';
 }
 
 
@@ -87,11 +109,11 @@ abstract mixin class $SessionDetailLoadingCopyWith<$Res> implements $SessionDeta
   factory $SessionDetailLoadingCopyWith(SessionDetailLoading value, $Res Function(SessionDetailLoading) _then) = _$SessionDetailLoadingCopyWithImpl;
 @useResult
 $Res call({
- SessionLaunchHandoff? launchHandoff
+ SessionLaunchHandoff? launchHandoff, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<QueuedSessionSubmission> queuedMessages, CommandInfo? stagedCommand
 });
 
 
-$SessionLaunchHandoffCopyWith<$Res>? get launchHandoff;
+$SessionLaunchHandoffCopyWith<$Res>? get launchHandoff;$CommandInfoCopyWith<$Res>? get stagedCommand;
 
 }
 /// @nodoc
@@ -104,10 +126,14 @@ class _$SessionDetailLoadingCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? launchHandoff = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? launchHandoff = freezed,Object? launchFollowUps = null,Object? awaitingBridgeSubmissions = null,Object? queuedMessages = null,Object? stagedCommand = freezed,}) {
   return _then(SessionDetailLoading(
 launchHandoff: freezed == launchHandoff ? _self.launchHandoff : launchHandoff // ignore: cast_nullable_to_non_nullable
-as SessionLaunchHandoff?,
+as SessionLaunchHandoff?,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
+as List<LaunchFollowUp>,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self._awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable
+as List<QueuedSessionSubmission>,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
+as List<QueuedSessionSubmission>,stagedCommand: freezed == stagedCommand ? _self.stagedCommand : stagedCommand // ignore: cast_nullable_to_non_nullable
+as CommandInfo?,
   ));
 }
 
@@ -122,6 +148,18 @@ $SessionLaunchHandoffCopyWith<$Res>? get launchHandoff {
 
   return $SessionLaunchHandoffCopyWith<$Res>(_self.launchHandoff!, (value) {
     return _then(_self.copyWith(launchHandoff: value));
+  });
+}/// Create a copy of SessionDetailState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CommandInfoCopyWith<$Res>? get stagedCommand {
+    if (_self.stagedCommand == null) {
+    return null;
+  }
+
+  return $CommandInfoCopyWith<$Res>(_self.stagedCommand!, (value) {
+    return _then(_self.copyWith(stagedCommand: value));
   });
 }
 }
@@ -554,10 +592,21 @@ $SessionCopyWith<$Res> get session {
 
 
 class SessionDetailFailed implements SessionDetailState {
-  const SessionDetailFailed({required this.reason});
+  const SessionDetailFailed({required this.reason,  List<QueuedSessionSubmission> queuedMessages = const []}): _queuedMessages = queuedMessages;
   
 
  final  RemoteFailureReason reason;
+/// Prompts sent before the first load that are still waiting for it, so
+/// a failed load never hides them. Retry sends them once it loads.
+ final  List<QueuedSessionSubmission> _queuedMessages;
+/// Prompts sent before the first load that are still waiting for it, so
+/// a failed load never hides them. Retry sends them once it loads.
+@JsonKey() List<QueuedSessionSubmission> get queuedMessages {
+  if (_queuedMessages is EqualUnmodifiableListView) return _queuedMessages;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_queuedMessages);
+}
+
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
@@ -569,18 +618,18 @@ $SessionDetailFailedCopyWith<SessionDetailFailed> get copyWith => _$SessionDetai
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailFailed&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailFailed&&(identical(other.reason, reason) || other.reason == reason)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,reason);
+    return Object.hash(runtimeType,reason,const DeepCollectionEquality().hash(_queuedMessages));
 }
 
 @override
 String toString() {
-    return 'SessionDetailState.failed(reason: $reason)';
+    return 'SessionDetailState.failed(reason: $reason, queuedMessages: $queuedMessages)';
 }
 
 
@@ -591,7 +640,7 @@ abstract mixin class $SessionDetailFailedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailFailedCopyWith(SessionDetailFailed value, $Res Function(SessionDetailFailed) _then) = _$SessionDetailFailedCopyWithImpl;
 @useResult
 $Res call({
- RemoteFailureReason reason
+ RemoteFailureReason reason, List<QueuedSessionSubmission> queuedMessages
 });
 
 
@@ -608,10 +657,11 @@ class _$SessionDetailFailedCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? queuedMessages = null,}) {
   return _then(SessionDetailFailed(
 reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as RemoteFailureReason,
+as RemoteFailureReason,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
+as List<QueuedSessionSubmission>,
   ));
 }
 
