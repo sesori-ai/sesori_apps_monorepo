@@ -10,6 +10,8 @@ idle suspension, the management snapshot, and lifecycle commands.
 
 Targets audited on **2026-09-24**, covering all eleven registered harnesses.
 OpenCode was refreshed on **2026-09-26** with the scoped evidence below.
+Claude, Copilot, Cursor, Grok and Codex targets were refreshed on **2026-10-06**
+(release metadata and managed-asset digests re-audited; native checks on these targets pending).
 Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 6,
 Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. GitHub digests and available
 checksum lists agree; Cursor/Antigravity hashes are locally computed, not publisher
@@ -21,15 +23,15 @@ Antigravity retains its exact-pair policy rather than an independent floor.
 |---|---|---|---|
 | OpenCode | `2.0.18` | PATH `1.14.0`; v2 `2.0.11` | Six archive hashes/layouts verified. Sandboxed macOS arm64 production install/version validation, native authenticated info/catalog/activity reads, SSE startup and teardown passed. Provider turns, history/write parity, native reconnect and upgrade from v1 remain unverified. |
 | Antigravity | package/server `1.3.0` | Exact package/server/ACP 1 | Six archive hashes/layouts/permissions independently verified; macOS ARM64 hardened extraction passed. A 2026-10-06 network-denied macOS ARM64 rerun passed managed installation (archive from the verified local copy), `--version`, initialize and teardown after a first probe aborted with SIGABRT. Other native targets and authenticated behavior remain unverified; earlier `1.2.1` observations are historical. |
-| Codex | `0.156.1` | `0.139.0` | Current-target native package/install, stdio and WebSocket app-server checks remain unverified. |
-| GitHub Copilot | `1.0.88` | `1.0.78` | Current-target native install/version, ACP initialize and configured lifecycle remain unverified. |
-| Cursor | `2026.09.23-86fc751` | date `2026.07.16` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. |
-| Claude Code | `2.1.281` | `2.1.221` | Current-target native stream-json/permissions/replay/interrupt and real authentication/provider behavior remain unverified. |
+| Codex | `0.160.1` | `0.139.0` | Current-target native package/install, stdio and WebSocket app-server checks remain unverified. |
+| GitHub Copilot | `1.0.92` | `1.0.78` | Current-target native install/version, ACP initialize and configured lifecycle remain unverified. |
+| Cursor | `2026.10.01-e373342` | date `2026.07.16` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. |
+| Claude Code | `2.1.291` | `2.1.221` | Current-target native stream-json/permissions/replay/interrupt and real authentication/provider behavior remain unverified. |
 | Hermes Agent | `0.21.5` (`v2026.9.24`) | `0.20.0` | Current-target real CLI ACP initialize/list, configured new/load/replay and persisted deletion remain unverified. |
 | Pi | `0.87.1` | `0.84.1` | Current-target native package/RPC, settlement/retry/compaction, queue and fresh-process reuse remain unverified. |
 | Oh My Pi | `18.3.0` | `17.2.13` | Eight verified direct-binary mappings. Current-target native install/version/ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
 | DeepSeek | `0.1.7` (unchanged) | `0.1.5` | Latest stable owned adapter, embedding DeepSeek Harness `0.1.5-rc.2`. Six hashes rechecked; no fresh native or authenticated run. Newer upstream RCs require separate producer work, not an invented consumer release. |
-| Grok Build | `1.0.41` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
+| Grok Build | `1.0.46` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
 
 Target/asset/descriptor unit coverage does not prove native or authenticated
 behavior. Other-platform native behavior is not inferred from macOS ARM64.
