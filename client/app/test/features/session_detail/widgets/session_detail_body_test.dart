@@ -1605,6 +1605,23 @@ void main() {
           expect(tester.getRect(layer), screen);
         }, variant: _pinchPlatforms);
 
+        testWidgets("spread all the way and brought back, it springs back open", (tester) async {
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pumpAndSettle();
+          final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
+          await openPrompts(tester);
+
+          final fingers = await land(tester);
+          await fingers.spread(scale: 1.7, stepTime: slow);
+          expect(layer, findsOneWidget, reason: "a full spread keeps the screen while the fingers are down");
+          await fingers.spread(scale: 1, stepTime: slow);
+          expect(opacity(tester), 1, reason: "and it follows them back");
+          await fingers.lift(after: slow);
+          await tester.pumpAndSettle();
+          expect(opacity(tester), 1);
+          expect(tester.getRect(layer), screen);
+        }, variant: _pinchPlatforms);
+
         testWidgets("a second pinch while it springs back moves nothing", (tester) async {
           await tester.pumpWidget(_buildApp(cubit: cubit));
           await tester.pumpAndSettle();

@@ -103,6 +103,11 @@ const _kEdgeSwipeShadow = [BoxShadow(color: Color(0x40000000), blurRadius: 18)];
 /// enough to give it a direction and too little to see.
 const double _kEdgeSwipeRestVelocity = 0.001;
 
+/// The least a pinch out leaves of the Prompts screen while the fingers are
+/// down: invisible, but short of gone, since a gone screen is removed and
+/// could no longer follow the fingers back.
+const double _kPinchOutLeastShown = 0.001;
+
 /// What moves the Prompts screen in place of the transition's own timing: a
 /// finger is on it, or its release is still settling.
 enum _PromptsGesture() {
@@ -311,7 +316,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
 
   /// Runs the closing transition as far as the fingers have spread. Only a
   /// pinch [_startPinchOut] took reports here.
-  void _followPinchOut({required double progress}) => _transition.value = 1 - progress;
+  void _followPinchOut({required double progress}) => _transition.value = math.max(1 - progress, _kPinchOutLeastShown);
 
   /// Finishes closing from where the fingers let go, or springs back open,
   /// in what is left of the transition's time.

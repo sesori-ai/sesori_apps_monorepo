@@ -65,9 +65,10 @@ Flutter 3.47.5:
 - These tests pass:
   - `module_app_ui` `test/features/session_detail` and
     `test/features/session_prompts` (409), including the step 13 pinch tests;
-  - `client/app` `session_detail_body_test.dart` (173), with new tests on the
+  - `client/app` `session_detail_body_test.dart` (176), with new tests on the
     iOS, Android and macOS variants: a pinch out following the fingers and
-    closing, springing back short of halfway, a second pinch during that
+    closing, springing back short of halfway, a full spread brought back
+    springing back open, a second pinch during that
     spring-back moving nothing, a quick short spread, a trackpad pinch both
     ways, scroll, pinch in and the search field's selection
     unaffected, every way out but the edge swipe reversing the transition, and
