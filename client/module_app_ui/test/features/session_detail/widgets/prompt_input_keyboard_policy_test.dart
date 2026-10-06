@@ -135,6 +135,8 @@ Future<void> _pumpComposer({
             restorationKey: null,
             initialDraft: ComposerDraft.typed(text: ""),
             initialAttachments: const [],
+            onAttachmentsChanged: null,
+            autofocus: false,
             onInitialAttachmentsConsumed: () {},
           ),
         ),

@@ -254,7 +254,10 @@ void main() {
     expect(find.byType(PregoReadableSelectionArea), findsOneWidget);
     final loadedView = tester.widget<SessionDetailLoadedView>(find.byType(SessionDetailLoadedView));
     expect(loadedView.readOnly, isFalse);
-    expect(loadedView.bottomControls, isA<SessionDetailComposerControls>());
+    expect(
+      find.descendant(of: find.byType(SessionDetailLoadedView), matching: find.byType(SessionDetailComposerControls)),
+      findsOneWidget,
+    );
     expect(find.bySemanticsLabel("Start recording"), findsNothing);
     expect(messageImageRepositoryResolutions, 0);
     expect(imageSaverResolutions, 0);

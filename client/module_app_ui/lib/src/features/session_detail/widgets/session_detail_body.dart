@@ -15,6 +15,7 @@ import "../session_detail_presentation_scope.dart";
 import "agent_model_buttons.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
+import "queued_message_bubble.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
@@ -126,6 +127,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// The prompt the transcript is on, as it last laid out.
   final _currentPromptId = ValueNotifier<String?>(null);
   final _jumpNotifier = TranscriptJumpNotifier();
+  final _composerKey = GlobalKey();
+
+  /// The launch-seeded composer's height as last laid out.
+  double _composerHeight = 0;
 
   /// The Prompts screen while it is up: the prompts as they were when it
   /// opened or an older page last landed, so other transcript changes
@@ -718,7 +723,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           hasScrollBody: switch (state) {
             SessionDetailLoading(:final launchHandoff) => launchHandoff != null,
             SessionDetailLoaded() || SessionDetailHarnessUnavailable() => true,
-            SessionDetailFailed() => false,
+            // Queued messages sit below the error, which then fills the rest.
+            SessionDetailFailed(:final queuedMessages) => queuedMessages.isNotEmpty,
           },
           child: content,
         ),
@@ -735,13 +741,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     return switch (state) {
       // A session this surface just created keeps showing its first message,
       // in the rect the new-session screen drew it, instead of a status.
-      SessionDetailLoading(launchHandoff: SessionLaunchHandoff(:final submission, :final pluginId, :final startedAt)) =>
-        SessionLaunchSubmissionView(
-          submission: submission,
-          harnessName: PregoBrandLogo.displayNameFor(pluginId),
-          transcriptWidth: columnWidths?.transcript,
-          sendingSince: startedAt,
-        ),
+      SessionDetailLoading(launchHandoff: final handoff?) => _buildLaunch(
+        context: context,
+        loading: state,
+        handoff: handoff,
+        columnWidths: columnWidths,
+      ),
       SessionDetailLoading() => PregoLaunchStatus(
         semanticsLabel: loc.sessionDetailLoadingSemantics,
         messages: [
@@ -763,6 +768,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                 currentPromptId: _currentPromptId,
                 jumpNotifier: _jumpNotifier,
                 onPinchIn: _openPromptsFromPinch,
+                initialBottomControlsHeight: _composerHeight,
               )
             : SessionDetailLoadedView.interactive(
                 projectId: widget.projectId,
@@ -772,16 +778,15 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                 onShowPendingPermissions: _showPendingPermissions,
                 bottomControls: !loaded.interaction.canInteract
                     ? _buildHarnessNotice(interaction: loaded.interaction, historyUnavailable: false)
-                    : widget.bottomControlsBuilder?.call(
+                    : _buildComposer(
                         context: context,
-                        projectId: widget.projectId,
-                        sessionId: widget.sessionId,
-                        state: loaded,
+                        source: LoadedSessionComposerSource(state: loaded),
                       ),
                 columnWidths: columnWidths,
                 currentPromptId: _currentPromptId,
                 jumpNotifier: _jumpNotifier,
                 onPinchIn: _openPromptsFromPinch,
+                initialBottomControlsHeight: _composerHeight,
               ),
       SessionDetailHarnessUnavailable(:final interaction, :final session) => Center(
         child: PregoTopBarInsetBuilder(
@@ -805,12 +810,95 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           ),
         ),
       ),
-      SessionDetailFailed(:final reason) => SessionDetailErrorView(
+      SessionDetailFailed(:final reason, queuedMessages: []) => SessionDetailErrorView(
         reason: reason,
         onRetry: () => context.read<SessionDetailCubit>().reload(),
       ),
+      SessionDetailFailed(:final reason, :final queuedMessages) => Column(
+        children: [
+          Expanded(
+            child: SessionDetailErrorView(
+              reason: reason,
+              onRetry: () => context.read<SessionDetailCubit>().reload(),
+            ),
+          ),
+          // Sent before the load failed: Retry sends them, so they stay in view.
+          for (final submission in queuedMessages)
+            QueuedMessageBubble(
+              key: ValueKey(submission.promptId),
+              displayText: submission.displayText,
+              isCommand: submission.isCommand,
+              attachmentCount: submission.attachments.length,
+              localAttachments: submission.attachments,
+              presentation: const QueuedMessageBubblePresentation.pendingReadOnly(),
+            ),
+        ],
+      ),
     };
   }
+
+  /// The session this surface just created, before its first load: the first
+  /// message in the rect the new-session screen drew it, the messages sent
+  /// after it, and the composer the launch handed over, so the transcript
+  /// fills in above a composer that never moves.
+  Widget _buildLaunch({
+    required BuildContext context,
+    required SessionDetailLoading loading,
+    required SessionLaunchHandoff handoff,
+    required SessionDetailColumnWidths? columnWidths,
+  }) {
+    final cubit = context.read<SessionDetailCubit>();
+    final composer = switch (loading.launchComposer) {
+      final composer? => _buildComposer(
+        context: context,
+        source: LaunchSessionComposerSource(composer: composer, stagedCommand: loading.stagedCommand),
+      ),
+      null => null,
+    };
+    final transcript = SessionLaunchSubmissionView(
+      submission: handoff.submission,
+      harnessName: PregoBrandLogo.displayNameFor(handoff.pluginId),
+      transcriptWidth: columnWidths?.transcript,
+      sendingSince: handoff.startedAt,
+      awaitingBridgeSubmissions: loading.awaitingBridgeSubmissions,
+      launchFollowUps: loading.launchFollowUps,
+      queuedMessages: loading.queuedMessages,
+      onRetryLaunchFollowUp: cubit.retryLaunchFollowUp,
+      onRemoveLaunchFollowUp: cubit.removeLaunchFollowUp,
+      onCancelQueuedMessage: cubit.cancelQueuedMessage,
+      // The composer sits below rather than over it, so nothing covers it.
+      bottomInset: composer == null ? null : 0,
+    );
+    if (composer == null) return transcript;
+    Widget column({required double composerInset}) => Column(
+      children: [
+        Expanded(child: transcript),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: composerInset),
+          // The loaded view starts its transcript clear of this height, as
+          // its own measurement only lands after its first frame.
+          child: PregoSizeObserver(onSizeChanged: (size) => _composerHeight = size.height, child: composer),
+        ),
+      ],
+    );
+    if (columnWidths == null) return column(composerInset: 0);
+    return LayoutBuilder(
+      builder: (context, constraints) =>
+          column(composerInset: math.max(0, (constraints.maxWidth - columnWidths.composer) / 2)),
+    );
+  }
+
+  /// The session composer, under one key in every state that shows it, so the
+  /// launch-seeded composer is the loaded view's: its text, attachments, focus
+  /// and keyboard carry over the first load.
+  Widget? _buildComposer({required BuildContext context, required SessionComposerSource source}) =>
+      switch (widget.bottomControlsBuilder) {
+        final builder? => KeyedSubtree(
+          key: _composerKey,
+          child: builder(context: context, projectId: widget.projectId, sessionId: widget.sessionId, source: source),
+        ),
+        null => null,
+      };
 
   void _showPendingQuestions() {
     final state = context.read<SessionDetailCubit>().state;

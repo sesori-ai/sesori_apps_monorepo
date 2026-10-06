@@ -11,7 +11,7 @@ class const MobileSessionDetailComposerControls({
   super.key,
   required final String projectId,
   required final String sessionId,
-  required final SessionDetailLoaded state,
+  required final SessionComposerSource source,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -25,7 +25,7 @@ class const MobileSessionDetailComposerControls({
         child: SessionDetailComposerControls(
           projectId: projectId,
           sessionId: sessionId,
-          state: state,
+          source: source,
         ),
       ),
     );

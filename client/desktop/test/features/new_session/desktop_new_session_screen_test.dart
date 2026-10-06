@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -166,7 +168,7 @@ void main() {
     expect(selected, ["project-2 Landing"]);
   });
 
-  testWidgets("sending shows the message where the session's transcript will hold it", (tester) async {
+  testWidgets("at Send the page becomes the session, moving the same composer to the bottom edge", (tester) async {
     tester.view.physicalSize = const Size(1400, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -179,15 +181,18 @@ void main() {
         ),
         launchId: "launch-1",
         startedAt: DateTime.utc(2026, 9, 27),
+        followUps: const [],
       ),
     );
     final newSessionCubit = _MockNewSessionCubit();
     final inputModeCubit = _MockChatInputModeCubit();
-    when(() => newSessionCubit.state).thenReturn(sending);
-    whenListen(newSessionCubit, const Stream<NewSessionState>.empty(), initialState: sending);
+    final states = StreamController<NewSessionState>();
+    addTearDown(states.close);
+    whenListen(newSessionCubit, states.stream, initialState: _state);
     when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
     when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
-    when(() => newSessionCubit.canCreateSession).thenReturn(false);
+    when(() => newSessionCubit.canCreateSession).thenReturn(true);
+    when(() => newSessionCubit.canSubmitFollowUp).thenReturn(false);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
@@ -217,17 +222,34 @@ void main() {
       ),
     );
     await tester.pump();
+    final prompt = find.byType(PromptInput);
+    final promptState = tester.state(prompt);
+    final centredRect = tester.getRect(prompt);
 
+    when(() => newSessionCubit.canCreateSession).thenReturn(false);
+    when(() => newSessionCubit.canSubmitFollowUp).thenReturn(true);
+    states.add(sending);
+    await tester.pump();
+    // The move is animated: the toolbar is still fading out.
     expect(find.byType(DesktopPageToolbar), findsOneWidget);
-    expect(find.byType(PromptInput), findsNothing);
+    await tester.pumpAndSettle();
+
+    // The same composer, not a new one, now spans the session page's 760 px
+    // composer column at the bottom edge; the toolbar is gone.
+    expect(tester.state(prompt), same(promptState));
+    expect(find.byType(DesktopPageToolbar), findsNothing);
+    final bottomRect = tester.getRect(prompt);
+    expect(bottomRect.bottom, greaterThan(centredRect.bottom));
+    expect(bottomRect.left, (1400 - 760) / 2 + 16);
+    expect(bottomRect.right, 1400 - (1400 - 760) / 2 - 16);
     final bubble = find.byType(QueuedMessageBubble);
     expect(find.descendant(of: bubble, matching: find.text("Go")), findsOneWidget);
     // The session page's 960 px transcript column, centred in the 1400 px pane,
-    // with its newest row 8 px above the bottom edge.
+    // with its newest row 8 px above the composer.
     final rect = tester.getRect(bubble);
     expect(rect.left, 220);
     expect(rect.right, 1180);
-    expect(rect.bottom, 900 - 8);
+    expect(rect.bottom, closeTo(bottomRect.top - 8, 0.01));
   });
 
   for (final closeFromDetail in [false, true]) {

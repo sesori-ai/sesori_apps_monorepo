@@ -161,11 +161,11 @@ class const _MobileSessionDetailBody({
                 session: session,
                 readEntry: SessionReadMenuEntry.markUnread,
               ),
-        bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
+        bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>
             MobileSessionDetailComposerControls(
               projectId: projectId,
               sessionId: sessionId,
-              state: state,
+              source: source,
             ),
       ),
     );

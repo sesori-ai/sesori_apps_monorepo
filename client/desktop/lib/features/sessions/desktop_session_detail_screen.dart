@@ -156,11 +156,11 @@ class const DesktopSessionDetailView({
           // The page goes back with Cmd/Ctrl+[, so its toolbar has no Back.
           onBack: null,
           onShowDiffs: onShowDiffs,
-          bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
+          bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>
               SessionDetailComposerControls(
                 projectId: projectId,
                 sessionId: sessionId,
-                state: state,
+                source: source,
               ),
           pageChrome: SessionDetailPageChrome(
             columnWidths: const SessionDetailColumnWidths(
