@@ -984,6 +984,10 @@ class NewSessionCubit({
       return;
     }
     final data = current.config.agentModelData;
+    if (attachments.isNotEmpty && data.plugin?.supportsPromptAttachments != true) {
+      logw("Refused ${attachments.length} follow-up attachment(s) for plugin ${data.plugin?.id}");
+      return;
+    }
     final submission = hasCommand
         ? QueuedSessionSubmission.command(
             promptId: generatePromptId(),

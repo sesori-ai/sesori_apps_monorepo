@@ -2452,6 +2452,12 @@ void main() {
             command: "review",
             attachments: [image],
           );
+          // The default plugin declares no attachment support.
+          cubit.queueFollowUp(
+            draft: ComposerDraft.typed(text: "with an image"),
+            command: null,
+            attachments: [image],
+          );
           await Future<void>.delayed(Duration.zero);
 
           final followUps = followUpsOf(cubit);
