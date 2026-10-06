@@ -762,6 +762,32 @@ void main() {
     verify(() => service.startAuthentication(pluginId: "codex")).called(1);
   });
 
+  testWidgets("an old bridge's login failure closes the login sheet and shows the update steps", (tester) async {
+    _useTallSurface(tester);
+    when(() => service.startAuthentication(pluginId: "codex")).thenAnswer(
+      (_) async => const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.unsupported()),
+    );
+    await tester.pumpWidget(_app());
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [_authenticationRequired]),
+        refreshError: null,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("harness_authentication_retry")), findsNothing);
+    await tester.tap(find.byKey(const Key("harness_authentication_bridge_update")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Log in to harness"), findsNothing);
+    expect(find.text("Update Sesori Bridge"), findsOneWidget);
+  });
+
   testWidgets("cancel waits and terminal cancellation remains explicit until Close", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app());

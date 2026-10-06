@@ -331,10 +331,12 @@ class const _HarnessControlCard({
                           : null,
                       // Scanning again cannot help a bridge too old to scan, so
                       // the row offers its update steps instead.
-                      onTap: blocked || scanning
-                          ? null
-                          : scanBridgeOutdated
+                      // The update steps are informational, so another
+                      // harness's action does not disable them.
+                      onTap: scanBridgeOutdated
                           ? () => unawaited(showBridgeUpdateSheet(context: context))
+                          : blocked || scanning
+                          ? null
                           : () => context.read<PluginManagementCubit>().startCatalogScanFor(pluginId: pluginId),
                     ),
                 ],

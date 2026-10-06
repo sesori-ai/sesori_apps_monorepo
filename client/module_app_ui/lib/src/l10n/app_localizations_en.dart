@@ -2903,7 +2903,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bridgeUpdateStepUpdate => '1. Update the bridge';
 
   @override
-  String get bridgeUpdateStepRestart => '2. Stop it with Ctrl+C, then start it again';
+  String get bridgeUpdateStepRestart => '2. Restart it. In its terminal, press Ctrl+C, then run:';
+
+  @override
+  String get bridgeUpdateRestartService => 'Running it as a service (launchd, systemd)? Restart the service instead.';
 
   @override
   String get bridgeUpdateReinstallIntro => 'If step 1 fails or the command isn\'t found, reinstall:';

@@ -984,7 +984,8 @@ bool _isTextEnlarged({required BuildContext context, required TextStyle style}) 
   return fontSize != null && MediaQuery.textScalerOf(context).scale(fontSize) > fontSize;
 }
 
-/// The label-only 76×36 action from the terminal Figma variants.
+/// The label-only action from the terminal Figma variants: 76×36 at least,
+/// wider when a longer label such as "How to update" needs the room.
 class const _ScanDismissButton({
   required final String label,
   required final Color color,
@@ -997,7 +998,7 @@ class const _ScanDismissButton({
     final radius = BorderRadius.circular(PregoRadius.full);
     final actionConstraints = _isTextEnlarged(context: context, style: prego.textTheme.textSm.medium)
         ? const BoxConstraints(minWidth: 76, minHeight: 36)
-        : const BoxConstraints.tightFor(width: 76, height: 36);
+        : const BoxConstraints(minWidth: 76, minHeight: 36, maxHeight: 36);
 
     return Semantics(
       button: true,
@@ -1020,11 +1021,15 @@ class const _ScanDismissButton({
               }),
               containerBuilder: (child) => ClipRRect(borderRadius: radius, child: child),
               child: Center(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: prego.textTheme.textSm.medium.copyWith(color: color),
+                widthFactor: 1,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: prego.textTheme.textSm.medium.copyWith(color: color),
+                  ),
                 ),
               ),
             ),

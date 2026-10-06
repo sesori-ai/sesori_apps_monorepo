@@ -287,7 +287,7 @@ Future<void> _showAuthenticationSheet({
   required BuildContext context,
   required PluginManagementCubit cubit,
 }) async {
-  await showPregoModal<void>(
+  final showBridgeUpdate = await showPregoModal<bool>(
     context: _flowPresentationContext(context: context),
     title: context.loc.harnessAuthenticationSheetTitle,
     builder: (_) => BlocProvider<PluginManagementCubit>.value(
@@ -298,6 +298,12 @@ Future<void> _showAuthenticationSheet({
   // Dismissing presentation is not cancellation. Retain the cubit's challenge
   // until terminal progress settles the upstream operation so peer harnesses
   // remain gated and the owning row can reopen this same sheet.
+  //
+  // The update steps replace the closed login sheet rather than stacking on
+  // it, so a bridge restart cannot strand a non-current login route.
+  if ((showBridgeUpdate ?? false) && context.mounted) {
+    await showBridgeUpdateSheet(context: _flowPresentationContext(context: context));
+  }
 }
 
 class const _AuthenticationSheet() extends StatefulWidget {
@@ -327,9 +333,9 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
     );
   }
 
-  void _close() {
+  void _close({required bool showBridgeUpdate}) {
     context.read<PluginManagementCubit>().dismissAuthentication();
-    context.pop();
+    context.pop(showBridgeUpdate);
   }
 
   @override
@@ -696,7 +702,7 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
             hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
             size: PregoButtonsSolidSize.lg,
             fullWidth: true,
-            onPressed: _close,
+            onPressed: () => _close(showBridgeUpdate: false),
           ),
         ],
       ],
@@ -742,7 +748,7 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
             hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
             size: PregoButtonsSolidSize.lg,
             fullWidth: true,
-            onPressed: () => unawaited(showBridgeUpdateSheet(context: context)),
+            onPressed: () => _close(showBridgeUpdate: true),
           ),
         ],
         const SizedBox(height: PregoSpacing.md),
@@ -752,7 +758,7 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
           hierarchy: PregoButtonsSolidHierarchy.secondary,
           size: PregoButtonsSolidSize.lg,
           fullWidth: true,
-          onPressed: _close,
+          onPressed: () => _close(showBridgeUpdate: false),
         ),
       ],
     ),

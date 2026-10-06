@@ -63,6 +63,8 @@ class const _BridgeUpdateSteps() extends StatelessWidget {
           Text(loc.bridgeUpdateStepRestart, style: heading),
           const SizedBox(height: PregoSpacing.md),
           const _CommandBox(command: BridgeInstall.runCommand),
+          const SizedBox(height: PregoSpacing.md),
+          Text(loc.bridgeUpdateRestartService, style: body),
           const SizedBox(height: PregoSpacing.x3l),
           Text(loc.bridgeUpdateReinstallIntro, style: heading),
           _LabeledCommand(label: loc.bridgeUpdateMethodMacLinux, command: BridgeInstall.macLinuxCommand),

@@ -116,11 +116,15 @@ When the app says a feature needs a newer bridge, update it on the computer runn
    sesori-bridge update
    ```
 
-2. Stop the running Bridge with `Ctrl+C`, then start it again:
+2. Restart the Bridge:
 
-   ```bash
-   sesori-bridge
-   ```
+   - If it runs in a terminal, stop it with `Ctrl+C`, then run:
+
+     ```bash
+     sesori-bridge
+     ```
+
+   - If it runs under a service manager, restart the service instead (for example, `systemctl restart sesori-bridge`).
 
 If step 1 fails or `sesori-bridge update` is not found (Bridges released before 2026-06-23 do not have it), reinstall with the same command you installed with, then start the Bridge again:
 

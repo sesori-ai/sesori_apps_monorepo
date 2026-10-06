@@ -5116,8 +5116,14 @@ abstract class AppLocalizations {
   /// Ctrl+C is the literal key combination that stops the bridge in its terminal; keep it as is.
   ///
   /// In en, this message translates to:
-  /// **'2. Stop it with Ctrl+C, then start it again'**
+  /// **'2. Restart it. In its terminal, press Ctrl+C, then run:'**
   String get bridgeUpdateStepRestart;
+
+  /// No description provided for @bridgeUpdateRestartService.
+  ///
+  /// In en, this message translates to:
+  /// **'Running it as a service (launchd, systemd)? Restart the service instead.'**
+  String get bridgeUpdateRestartService;
 
   /// Introduces the installer commands. Bridges older than the update command need a reinstall instead.
   ///
