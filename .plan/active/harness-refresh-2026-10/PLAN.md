@@ -58,7 +58,7 @@
 | Antigravity | 1.2.1 → **1.3.0** (registry `f6c0f4e8`) | exact pair | self (6 + 2 members) |
 | Codex | 0.156.1 → **0.160.1** (`d27764b8`) | 0.139.0 (D4) | SHA256SUMS (6) |
 | Copilot | 1.0.88 → **1.0.92** (`a9ba11a1`) | 1.0.78 | SHA256SUMS (6) |
-| Cursor | 2026.09.23-86fc751 → **2026.10.01-e373342** | 2026.07.16 | self (4) |
+| Cursor | 2026.09.23-86fc751 → **2026.10.01-e373342** | 2026.07.16 → **2026.09.23** (D10, Step 10.a) | self (4) |
 | Claude Code | 2.1.281 → **2.1.291** (`8e60c4ca`) | 2.1.221 | PATH only |
 | Hermes | 0.21.5, already latest (`f97608f1`) | 0.20.0 | PATH only |
 | Pi | 0.87.1 → **1.0.4** (`7c10bd43`) | 0.84.1 → **0.99.0** | SHA256SUMS (6) |
@@ -297,6 +297,24 @@ records its own results.
            Review finding 1 assumed an unknown shared value breaks older
            clients; the existing unknown fallback shows it does not.
          - **Today** such a stop sends a no-op cancel and reports success.
+         - **Child input.** After the root `session/cancel`, pending input is
+           resolved for every tracked descendant
+           (`childSessionTracker.childSessionIds(sessionId:)`) as well as the
+           root, as `forgetSession` already does. Today only the root's
+           `cancelForSession` runs, so a child blocked on a permission would
+           keep its prompt open and could stall the cascade until its timeout.
+      4. **Reasoning boundary at a suppressed spawn.** The spawn-suppression
+         branch of `_toolCall` also finalizes active reasoning, as an ordinary
+         tool card does through `_afterReasoning`. Otherwise reasoning streamed
+         just before the Task stays marked live until the held-open root turn
+         ends. This shared fix also applies to Grok.
+      5. **Child transcript finalized at its terminal.** `mapChildFinished`
+         and `mapChildFinishedAndHoldRoot` emit
+         `finalizeTurn(sessionId: childSessionId)` before the tracker's finish
+         events. Child streams never run `_finishTurn`, so a child's last text
+         or reasoning would otherwise stay live and only its deltas, which are
+         not persisted, would carry it. This shared fix also applies to Grok
+         and DeepSeek.
 
       `buildClientCapabilities`, `AcpChildSessionTracker` and the replay
       collector do not change.
@@ -417,8 +435,10 @@ records its own results.
     - **Tests:**
       - **ACP:** hook dispatch, spawn-input retention, root-only count and
         survivor check from the tracker, `subAgentsHandled: true` after a
-        cascade with running children, and the child-stop refusal
-        (`acp_step5_policy_test.dart` updated).
+        cascade with running children, child input resolved on a root stop,
+        reasoning finalized before a suppressed spawn, a child whose last
+        event is a text or reasoning chunk finalized on completion, and the
+        child-stop refusal (`acp_step5_policy_test.dart` updated).
       - **Cursor mapper:** spawn, nested, resumed `.n`, model, all four states,
         unknown state, malformed frames, suppressed Task card, and `cursor/task`
         acked but not mapped.
