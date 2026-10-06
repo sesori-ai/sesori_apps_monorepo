@@ -3,8 +3,8 @@ import "package:theme_prego/module_prego.dart";
 
 import "../extensions/build_context_x.dart";
 
-/// The search field above a phone list. It reports every edit; the list owns
-/// the query and narrows what it has already loaded.
+/// The search field above a list. It reports every edit; the list owns the
+/// query and narrows what it has already loaded.
 class const ListSearchField({
   super.key,
 
@@ -12,6 +12,10 @@ class const ListSearchField({
   /// remounts (after a reconnect, say) still shows the filter in force.
   required final String query,
   required final String hintText,
+
+  /// Whether the field takes the keyboard focus when it first shows.
+  required final bool autofocus,
+  required final EdgeInsetsGeometry padding,
   required final ValueChanged<String> onChanged,
 }) extends StatefulWidget {
   @override
@@ -20,10 +24,12 @@ class const ListSearchField({
 
 class _ListSearchFieldState() extends State<ListSearchField> {
   late final _controller = TextEditingController(text: widget.query);
+  final _focusNode = FocusNode();
 
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -31,13 +37,17 @@ class _ListSearchFieldState() extends State<ListSearchField> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
+      padding: widget.padding,
       child: TextField(
         controller: _controller,
+        focusNode: _focusNode,
+        autofocus: widget.autofocus,
         autocorrect: false,
         textInputAction: TextInputAction.search,
         onChanged: widget.onChanged,
-        onTapOutside: (_) => FocusScope.of(context).unfocus(),
+        // Hands the focus to the enclosing scope, so the keys the screen
+        // around the field handles keep reaching it.
+        onTapOutside: (_) => _focusNode.unfocus(),
         decoration: InputDecoration(
           hintText: widget.hintText,
           prefixIcon: const Icon(TablerRegular.search, size: PregoIconSize.md),

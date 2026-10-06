@@ -112,9 +112,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   final _jumpNotifier = TranscriptJumpNotifier();
 
   /// The Prompts screen while it is up: the prompts as they were when it
-  /// opened, so an older page landing meanwhile cannot shift the rows under the
-  /// reader, the prompt it opened on and the point it grows from. Null once it
-  /// has closed.
+  /// opened or an older page last landed, so other transcript changes
+  /// meanwhile cannot reshape the list under the reader, the prompt it opened
+  /// on and the point it grows from. Null once it has closed.
   ({String? anchorMessageId, TranscriptPromptList list, Alignment origin})? _prompts;
 
   /// How far the Prompts screen is in: 0 closed, 1 open. It keeps its length
@@ -213,6 +213,21 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       messages: messages,
       turns: turns,
       userMessagesBefore: state.userMessagesBeforeOldest,
+    );
+  }
+
+  /// Lists the prompts afresh once an older page has landed, whether the
+  /// screen asked for it or the transcript already had it loading as the
+  /// screen opened, so the page's prompts join the screen.
+  void _relistPrompts({required SessionDetailLoaded state}) {
+    final prompts = _prompts;
+    if (prompts == null) return;
+    setState(
+      () => _prompts = (
+        anchorMessageId: prompts.anchorMessageId,
+        list: _promptListOf(state: state),
+        origin: prompts.origin,
+      ),
     );
   }
 
@@ -361,10 +376,11 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     final content = _buildContent(context: context, state: state, columnWidths: pageChrome?.columnWidths);
     final openPrompts = state is SessionDetailLoaded ? _openPromptsFromBar : null;
     final prompts = _prompts;
-    final promptsOpen = prompts != null && state is SessionDetailLoaded;
+    final promptsState = state is SessionDetailLoaded ? state : null;
+    final promptsOpen = prompts != null && promptsState != null;
     // The screen lies over the page, which stays built beneath it, unmoved and
     // out of reach, so closing it returns to the transcript as it was left.
-    return PopScope(
+    final page = PopScope(
       canPop: !promptsOpen,
       onPopInvokedWithResult: (didPop, _) => didPop ? null : _closePrompts(),
       child: Stack(
@@ -396,6 +412,11 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                         prompts: prompts.list,
                         anchorMessageId: prompts.anchorMessageId,
                         maxWidth: pageChrome?.columnWidths.transcript,
+                        onLoadEarlier: promptsState.olderMessagesCursor == null
+                            ? null
+                            : () => unawaited(context.read<SessionDetailCubit>().loadOlderMessages()),
+                        isLoadingEarlier: promptsState.isLoadingOlderMessages,
+                        autofocusSearch: pageChrome != null,
                         onPromptTap: _returnToPrompt,
                         onClose: _closePrompts,
                       ),
@@ -422,6 +443,19 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             ),
         ],
       ),
+    );
+    // Any older page landing while the screen is up joins it, also one the
+    // transcript was already loading when the screen opened.
+    return BlocListener<SessionDetailCubit, SessionDetailState>(
+      listenWhen: (previous, current) =>
+          previous is SessionDetailLoaded &&
+          previous.isLoadingOlderMessages &&
+          current is SessionDetailLoaded &&
+          !current.isLoadingOlderMessages,
+      listener: (context, state) {
+        if (state is SessionDetailLoaded) _relistPrompts(state: state);
+      },
+      child: page,
     );
   }
 

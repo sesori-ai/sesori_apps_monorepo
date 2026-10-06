@@ -1,6 +1,9 @@
+import "package:flutter/rendering.dart" show RenderParagraph;
+import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_prompts/prompt_search.dart";
 import "package:sesori_app_ui/src/features/session_prompts/session_prompts_view.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_day_header.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_spine_row.dart";
@@ -36,6 +39,20 @@ List<TranscriptPromptEntry> _manyPrompts({required int count}) => [
   for (var index = 0; index < count; index++) _opener(id: "p$index", day: index < count / 2 ? _yesterday : _today),
 ];
 
+/// Prompts p[from]..p[to - 1] from today, each saying on its second line,
+/// past the one-line cut, whether its index is even or odd.
+List<TranscriptPromptEntry> _parityPrompts({required int from, required int to}) => [
+  for (var index = from; index < to; index++)
+    TranscriptPromptOpener(
+      messageId: "p$index",
+      text: "Prompt p$index",
+      fullText: "Prompt p$index\nsits on an ${index.isEven ? "even" : "odd"} row",
+      createdAt: _today.add(Duration(minutes: index)).millisecondsSinceEpoch,
+      dayKey: _today,
+      number: null,
+    ),
+];
+
 const _headerHeight = 52.0;
 Finder _row(String id) => find.byKey(ValueKey(id));
 double _topOf(WidgetTester tester, String id) => tester.getTopLeft(_row(id)).dy;
@@ -46,6 +63,9 @@ Future<({List<String> taps, List<String> closes})> _pump(
   WidgetTester tester, {
   required List<TranscriptPromptEntry> entries,
   required String? anchor,
+  VoidCallback? onLoadEarlier,
+  bool isLoadingEarlier = false,
+  bool autofocusSearch = false,
 }) async {
   final taps = <String>[];
   final closes = <String>[];
@@ -58,6 +78,9 @@ Future<({List<String> taps, List<String> closes})> _pump(
         prompts: TranscriptPromptList(entries: entries),
         anchorMessageId: anchor,
         maxWidth: null,
+        onLoadEarlier: onLoadEarlier,
+        isLoadingEarlier: isLoadingEarlier,
+        autofocusSearch: autofocusSearch,
         onPromptTap: ({required messageId}) => taps.add(messageId),
         onClose: () => closes.add("close"),
       ),
@@ -197,5 +220,247 @@ void main() {
     expect(calls.taps, ["a1"]);
     expect(calls.closes, ["close"]);
     semantics.dispose();
+  });
+
+  group("search", () {
+    testWidgets("filters as it is typed and clears, holding the reader's row in place throughout", (tester) async {
+      // Enough rows below the reader that the filtered list still fills the
+      // screen past it; a shorter one settles against its end instead.
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 60), anchor: "p30");
+      final readerTop = _topOf(tester, "p30");
+
+      await tester.enterText(find.byType(TextField), "EVEN");
+      for (var frame = 0; frame < 4; frame++) {
+        await tester.pump(const Duration(milliseconds: 40));
+        expect(_topOf(tester, "p30"), readerTop, reason: "the reader's row never moves while rows fold away");
+      }
+      await tester.pumpAndSettle();
+      expect(_topOf(tester, "p30"), readerTop);
+      expect(_row("p31"), findsNothing);
+      expect(_row("p32"), findsOneWidget);
+      expect(_tintOf(tester, "p30"), isNot(Colors.transparent), reason: "the anchored row keeps its tint");
+
+      await tester.tap(find.byTooltip("Clear search"));
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(_topOf(tester, "p30"), readerTop);
+      await tester.pumpAndSettle();
+      expect(_topOf(tester, "p30"), readerTop);
+      expect(_row("p31"), findsOneWidget);
+    });
+
+    testWidgets("holds the first row showing below the pinned day header, not one hidden beneath it", (tester) async {
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 80), anchor: null);
+      final rowExtent = promptRowExtent(textScaler: TextScaler.noScaling);
+      // p31 ends exactly where the pinned "Today" ends, so p32 is the first row
+      // the reader sees.
+      tester
+          .state<ScrollableState>(find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)))
+          .position
+          .jumpTo(32 * rowExtent);
+      await tester.pump();
+      final readerTop = _topOf(tester, "p32");
+      expect(readerTop, _headerHeight + dayHeaderExtent);
+
+      await tester.enterText(find.byType(TextField), "even");
+      for (var frame = 0; frame < 4; frame++) {
+        await tester.pump(const Duration(milliseconds: 40));
+        expect(_topOf(tester, "p32"), readerTop, reason: "the row in view stays put as the hidden p31 folds away");
+      }
+      await tester.pumpAndSettle();
+      expect(_topOf(tester, "p32"), readerTop);
+    });
+
+    testWidgets("a search with no match, cleared, returns the reader to the row they were on", (tester) async {
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 60), anchor: "p30");
+      final readerTop = _topOf(tester, "p30");
+
+      await tester.enterText(find.byType(TextField), "nothing like it");
+      await tester.pumpAndSettle();
+      expect(find.byType(PromptSpineRow), findsNothing);
+
+      await tester.tap(find.byTooltip("Clear search"));
+      await tester.pumpAndSettle();
+      expect(_topOf(tester, "p30"), readerTop);
+    });
+
+    testWidgets("a row still folding away keeps its excerpt when the query changes again", (tester) async {
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 4), anchor: null);
+      await tester.enterText(find.byType(TextField), "o");
+      await tester.pumpAndSettle();
+      final p0Excerpt = find.descendant(
+        of: _row("p0"),
+        matching: find.text("Prompt p0 sits on an even row", findRichText: true),
+      );
+      expect(p0Excerpt, findsOneWidget);
+
+      // Typed faster than the fold: p0 is still folding away from "od".
+      await tester.enterText(find.byType(TextField), "od");
+      await tester.pump(const Duration(milliseconds: 40));
+      await tester.enterText(find.byType(TextField), "odd");
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(p0Excerpt, findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(_row("p0"), findsNothing);
+    });
+
+    testWidgets("at a large text size on a narrow phone the match stays on its line and the count fits", (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await _pump(
+        tester,
+        entries: [
+          TranscriptPromptOpener(
+            messageId: "wide",
+            text: "Prompt wide",
+            fullText: "Prompt wide\n${"W" * 30} needle",
+            createdAt: null,
+            dayKey: null,
+            number: null,
+          ),
+        ],
+        anchor: null,
+      );
+
+      await tester.enterText(find.byType(TextField), "needle");
+      await tester.pumpAndSettle();
+      final excerpt = tester.renderObject<RenderParagraph>(
+        find.descendant(of: _row("wide"), matching: find.byType(RichText)).last,
+      );
+      final needle = excerpt.text.toPlainText().indexOf("needle");
+      final boxes = excerpt.getBoxesForSelection(TextSelection(baseOffset: needle, extentOffset: needle + 6));
+      expect(boxes, isNotEmpty);
+      expect(boxes.last.right, lessThanOrEqualTo(excerpt.size.width), reason: "the whole match shows");
+
+      final count = find.text("1 match in the prompts loaded so far");
+      final countParagraph = tester.renderObject<RenderParagraph>(count);
+      final countBox = tester.getSize(find.ancestor(of: count, matching: find.byType(SizedBox)).first);
+      expect(
+        countParagraph.getMinIntrinsicHeight(countParagraph.constraints.maxWidth) + PregoSpacing.xl * 2,
+        lessThanOrEqualTo(countBox.height),
+      );
+    });
+
+    test("an excerpt never cuts an emoji in half", () {
+      // Both cut points fall on the second half of an emoji.
+      final text = "${"😀" * 20}xneedley${"😀" * 50}";
+      final match = RegExp("needle").firstMatch(text);
+      expect(match, isNotNull);
+      if (match == null) return;
+      final excerpt = promptExcerpt(text: text, match: match);
+      for (final part in [excerpt.before, excerpt.after]) {
+        expect(part.runes.where((rune) => rune >= 0xD800 && rune <= 0xDFFF), isEmpty);
+      }
+    });
+
+    testWidgets("a match past the one-line cut grows the row and highlights the match", (tester) async {
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 2), anchor: null);
+
+      await tester.enterText(find.byType(TextField), "odd");
+      await tester.pumpAndSettle();
+
+      expect(_row("p0"), findsNothing);
+      const scaler = TextScaler.noScaling;
+      expect(
+        tester.getSize(_row("p1")).height,
+        promptRowExtent(textScaler: scaler) + promptExcerptExtent(textScaler: scaler),
+      );
+      final excerpt = tester.widget<RichText>(
+        find.descendant(of: _row("p1"), matching: find.byType(RichText)).last,
+      );
+      expect(excerpt.text.toPlainText(), "Prompt p1 sits on an odd row");
+      final highlighted = <String>[];
+      excerpt.text.visitChildren((span) {
+        if (span is TextSpan && span.style?.fontWeight == FontWeight.w600) highlighted.add(span.text ?? "");
+        return true;
+      });
+      expect(highlighted, ["odd"]);
+      expect(find.text("1 match in the prompts loaded so far"), findsOneWidget);
+    });
+
+    testWidgets("day headers keep only the days that still have rows", (tester) async {
+      await _pump(
+        tester,
+        entries: [
+          _opener(id: "old", day: _yesterday),
+          _opener(id: "new", day: _today),
+        ],
+        anchor: null,
+      );
+
+      await tester.enterText(find.byType(TextField), "new");
+      await tester.pumpAndSettle();
+      expect(find.text("Yesterday"), findsNothing);
+      expect(find.text("Today"), findsOneWidget);
+
+      await tester.enterText(find.byType(TextField), "nothing like it");
+      await tester.pumpAndSettle();
+      expect(find.text("Today"), findsNothing);
+      expect(find.text("No matches in the prompts loaded so far"), findsOneWidget);
+    });
+
+    testWidgets("Load earlier prompts heads the list, calls the loader and waits while it runs", (tester) async {
+      var loads = 0;
+      final entries = _parityPrompts(from: 0, to: 3);
+      await _pump(tester, entries: entries, anchor: null, onLoadEarlier: () => loads++);
+
+      final control = find.byKey(const Key("session-prompts-load-earlier"));
+      expect(tester.getTopLeft(control).dy, lessThan(_topOf(tester, "p0")));
+      await tester.tap(control);
+      expect(loads, 1);
+
+      await _pump(tester, entries: entries, anchor: null, onLoadEarlier: () => loads++, isLoadingEarlier: true);
+      expect(tester.widget<TextButton>(control).onPressed, isNull);
+    });
+
+    testWidgets("earlier prompts join the search below the control and leave the reader's row still", (tester) async {
+      await _pump(tester, entries: _parityPrompts(from: 20, to: 60), anchor: "p40", onLoadEarlier: () {});
+      await tester.enterText(find.byType(TextField), "even");
+      await tester.pumpAndSettle();
+      final readerTop = _topOf(tester, "p40");
+
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 60), anchor: "p40", onLoadEarlier: () {});
+      expect(_topOf(tester, "p40"), readerTop);
+
+      // The load that reaches the session's start also takes the control away.
+      await _pump(tester, entries: _parityPrompts(from: 0, to: 60), anchor: "p40", onLoadEarlier: null);
+      expect(_topOf(tester, "p40"), readerTop);
+
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, 3000));
+      await tester.pumpAndSettle();
+      expect(_row("p0"), findsOneWidget);
+      expect(_row("p1"), findsNothing);
+    });
+
+    testWidgets("Escape closes the screen, from the search field too", (tester) async {
+      final phone = await _pump(tester, entries: _parityPrompts(from: 0, to: 3), anchor: null);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      expect(phone.closes, ["close"]);
+
+      await tester.pumpWidget(const SizedBox());
+      final desktop = await _pump(tester, entries: _parityPrompts(from: 0, to: 3), anchor: null, autofocusSearch: true);
+      await tester.pump();
+      expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus, isTrue);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      expect(desktop.closes, ["close"]);
+    });
+
+    testWidgets("Escape still closes after a click outside the search field takes its focus", (tester) async {
+      final calls = await _pump(tester, entries: _parityPrompts(from: 0, to: 3), anchor: null, autofocusSearch: true);
+      await tester.pump();
+      await tester.enterText(find.byType(TextField), "even");
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text("2 matches in the prompts loaded so far"));
+      await tester.pump();
+      expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus, isFalse);
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      expect(calls.closes, ["close"]);
+    });
   });
 }
