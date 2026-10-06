@@ -86,7 +86,7 @@ concrete problem can justify a documented temporary hold with a resolution path.
   on previously accepted explicit/PATH pairs in the plan. Do not manufacture
   an independent minimum or silently change this exact-pin policy.
 - **Assets:** Sesori selects all six ZIPs from the
-  [official registry](https://github.com/agentclientprotocol/registry/blob/7384f5e98d28cbbeba10035d520bdb680b19b3d8/antigravity-acp/agent.json):
+  [official registry](https://github.com/agentclientprotocol/registry/blob/f6c0f4e8357c7f28e84e3b883695c387b04ed2b9/antigravity-acp/agent.json):
   macOS arm64/x64, Linux arm64/x64 and Windows arm64/x64. Independently hash official downloads; do not portray
   locally computed checksums as Google's signed provenance. Preserve sibling
   `agy_acp_server.par` + `localharness_external` (Windows `.exe` counterparts),

@@ -306,14 +306,14 @@ Antigravity can explicitly download Google's proprietary official runtime pair d
 choosing Install, review [Google's terms](https://antigravity.google/terms) and
 [Antigravity documentation](https://antigravity.google/docs/). Sesori independently pins and verifies six
 archives: macOS x64/arm64, Linux x64/arm64, and Windows x64/arm64. macOS x64 support is **implemented** for
-package `1.2.1`, including managed installation and explicit/PATH pair selection. Every archive keeps the server
+package `1.3.0`, including managed installation and explicit/PATH pair selection. Every archive keeps the server
 and local harness as siblings, uses a conservative two-minute bound for each archive listing/extraction command,
 and must pass the isolated initialize-only
-identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install. Native
-managed-pipeline correctness previously ran on macOS arm64 for `1.1.1`; `1.2.1` has native initialize/teardown
-coverage but no completed managed-pipeline run. macOS x64 has verified archive integrity, hardened extraction,
-executable modes and binary architecture; native execution and installation on Intel Macs remain unverified.
-Linux and Windows native correctness remains unverified.
+identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install.
+Package `1.3.0` macOS arm64 hardened extraction passed, but the isolated native probe aborted with SIGABRT before a usable
+version result. Native initialization, managed installation and authenticated behavior remain unverified on every
+target. The earlier `1.2.1` initialize/teardown and macOS x64 extraction observations are historical evidence, not
+verification of the current pin.
 Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
 The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual setup, remote personal login and
 retained-history behavior. Implemented marks here do not claim completed authenticated end-to-end verification.

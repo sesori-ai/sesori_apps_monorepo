@@ -102,8 +102,8 @@ browsing, or another plugin.
 Antigravity support uses Google's proprietary official ACP runtime pair. Review
 [Google's terms](https://antigravity.google/terms) and
 [Antigravity documentation](https://antigravity.google/docs/) before using it.
-The pin is ACP registry package `1.2.1`, with exact runtime identity
-`1.2.1`. Sesori can install the official pair from
+The pin is ACP registry package `1.3.0`, with exact runtime identity
+`1.3.0`. Sesori can install the official pair from
 harness detail after showing download guidance, then update existing managed
 installations on bridge start. Linux requires Info-ZIP `unzip` with ZipInfo;
 installation checks it before downloading. See [INSTALL.md](INSTALL.md).
@@ -134,10 +134,13 @@ boundaries. Provider-local image paths are never fetched. Local session deletion
 removes Sesori's record but not Google's retained conversation/profile files.
 
 The [Antigravity operator guide](../docs/ANTIGRAVITY.md) covers complete setup,
-remote login, retained history and limits. Package `1.2.1` has native macOS arm64
-extraction, version and initialize-only/teardown coverage; its complete managed
-installation, native Linux/Windows and authenticated end-to-end behavior remain
-unverified. Do not confuse implemented capabilities with completed L5 QA.
+remote login, retained history and limits. Package `1.3.0` has independently
+verified hashes, sibling layouts and permissions for all six archives, plus
+hardened macOS arm64 extraction. The isolated native probe aborted with SIGABRT
+before a usable version result; native initialization, complete managed
+installation and authenticated end-to-end behavior remain unverified on every
+target. Earlier `1.2.1` native evidence is historical. Do not confuse implemented
+capabilities with completed L5 QA.
 
 ### Catalog reads
 
