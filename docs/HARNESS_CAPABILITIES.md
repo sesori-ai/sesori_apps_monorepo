@@ -345,6 +345,14 @@ They do not claim that a harness's native CLI could never implement an equivalen
 | Overall installation percentage or active-session count | 🚫 Not supported: only optional download percentage and idle/busy/unknown work state are reported. |
 | Replay a failed installation observed by this client within the connection | ✅ Implemented for every harness advertising installation; memory only, not cross-device history. |
 
+## External Codex session activity
+
+Codex catalog scans refresh existing sessions using the newest of rollout file
+modification time, session-index activity, and creation time. This includes
+terminal and desktop work whose session-index timestamp is stale or absent,
+without resuming threads or reading full transcripts for activity. The bridge
+retains its existing monotonic timestamp merge and local title overrides.
+
 ## Pre-start catalog import
 
 | Capability | OpenCode |

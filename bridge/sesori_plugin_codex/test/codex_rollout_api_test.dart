@@ -891,20 +891,22 @@ void main() {
     });
 
     test("listSessions joins index + rollout header and sorts by updatedAt", () async {
-      _writeRollout(
+      final olderPath = _writeRollout(
         codexHome,
         path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-aaaaaaaaaaaa.jsonl",
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
         cwd: "/repo/app",
         timestamp: "2026-04-17T10:00:00Z",
       );
-      _writeRollout(
+      final newerPath = _writeRollout(
         codexHome,
         path: "sessions/2026/04/18/rollout-2026-04-18T08-30-00-019a0000-1111-2222-3333-bbbbbbbbbbbb.jsonl",
         sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
         cwd: "/repo/app",
         timestamp: "2026-04-18T08:30:00Z",
       );
+      File(olderPath).setLastModifiedSync(DateTime.utc(2026, 4, 17, 10));
+      File(newerPath).setLastModifiedSync(DateTime.utc(2026, 4, 18, 8, 30));
       File(p.join(codexHome.path, "session_index.jsonl")).writeAsStringSync(
         [
           jsonEncode({
@@ -926,6 +928,91 @@ void main() {
       expect(records[0].threadName, equals("Newer"));
       expect(records[1].threadName, equals("Older"));
       expect(records[0].cwd, equals("/repo/app"));
+    });
+
+    for (final hasIndexEntry in [true, false]) {
+      test("catalog rescan observes external activity with ${hasIndexEntry ? 'a stale' : 'no'} index entry", () async {
+        const resumedId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
+        const otherId = "019a0000-1111-2222-3333-bbbbbbbbbbbb";
+        final resumedPath = _writeRollout(
+          codexHome,
+          path: "sessions/2026/04/17/rollout-2026-04-17T09-00-00-$resumedId.jsonl",
+          sessionId: resumedId,
+          cwd: "/repo/app",
+          timestamp: "2026-04-17T09:00:00Z",
+          // A complete header stays cached even after the native writer appends.
+          extraLines: List.filled(31, "{}"),
+        );
+        final otherPath = _writeRollout(
+          codexHome,
+          path: "sessions/2026/04/17/rollout-2026-04-17T09-30-00-$otherId.jsonl",
+          sessionId: otherId,
+          cwd: "/repo/app",
+          timestamp: "2026-04-17T09:30:00Z",
+        );
+        File(resumedPath).setLastModifiedSync(DateTime.utc(2026, 4, 17, 10));
+        File(otherPath).setLastModifiedSync(DateTime.utc(2026, 4, 17, 11));
+        final index = File(p.join(codexHome.path, "session_index.jsonl"));
+        index.writeAsStringSync(
+          [
+            if (hasIndexEntry)
+              jsonEncode({"id": resumedId, "thread_name": "Resumed", "updated_at": "2026-04-17T10:00:00Z"}),
+            jsonEncode({"id": otherId, "thread_name": "Other", "updated_at": "2026-04-17T11:00:00Z"}),
+          ].join("\n"),
+        );
+        final originalIndex = index.readAsStringSync();
+
+        expect(
+          (await catalogRepository.getSessions(projectId: "/repo/app", start: null, limit: null)).map((s) => s.id),
+          [otherId, resumedId],
+        );
+
+        File(resumedPath).writeAsStringSync(
+          '${jsonEncode({
+            "timestamp": "2026-04-17T12:00:00Z",
+            "type": "event_msg",
+            "payload": {"type": "task_started", "turn_id": "external-turn"},
+          })}\n',
+          mode: FileMode.append,
+        );
+        final activityAt = DateTime.utc(2026, 4, 17, 12);
+        File(resumedPath).setLastModifiedSync(activityAt);
+        late List<PluginSession> sessions;
+        final logs = await _captureWarningsAsync(() async {
+          sessions = await catalogRepository.getSessions(projectId: "/repo/app", start: null, limit: null);
+        }, level: LogLevel.debug);
+
+        expect(logs, contains("parsedHeaders=0,"));
+        expect(sessions.map((s) => s.id), [resumedId, otherId]);
+        expect(sessions.first.time?.updated, activityAt.millisecondsSinceEpoch);
+        expect(sessions.first.time?.created, DateTime.utc(2026, 4, 17, 9).millisecondsSinceEpoch);
+        expect(sessions.first.title, hasIndexEntry ? "Resumed" : null);
+        expect(index.readAsStringSync(), originalIndex);
+        expect(catalogRepository.findSessionById(sessionId: resumedId)?.updatedAt, activityAt);
+      });
+    }
+
+    test("catalog keeps newer index and creation timestamps when rollout mtime is older", () async {
+      const indexedId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
+      const unindexedId = "019a0000-1111-2222-3333-bbbbbbbbbbbb";
+      for (final id in [indexedId, unindexedId]) {
+        final rolloutPath = _writeRollout(
+          codexHome,
+          path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-$id.jsonl",
+          sessionId: id,
+          cwd: "/repo/app",
+        );
+        File(rolloutPath).setLastModifiedSync(DateTime.utc(2026, 4, 17, 9));
+      }
+      File(p.join(codexHome.path, "session_index.jsonl")).writeAsStringSync(
+        jsonEncode({"id": indexedId, "thread_name": "Indexed", "updated_at": "2026-04-17T11:00:00Z"}),
+      );
+
+      final records = await catalogRepository.listSessionRecords();
+
+      expect(records.map((record) => record.id), [indexedId, unindexedId]);
+      expect(records.first.updatedAt, DateTime.utc(2026, 4, 17, 11));
+      expect(records.last.updatedAt, DateTime.utc(2026, 4, 17, 10));
     });
 
     test("catalog rejects a rollout whose header id mismatches its filename", () async {

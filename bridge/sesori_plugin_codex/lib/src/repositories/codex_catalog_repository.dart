@@ -310,7 +310,11 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     cwd: metadata?.cwd,
     threadName: indexEntry?.threadName,
     createdAt: metadata?.timestamp,
-    updatedAt: _tryParseDate(indexEntry?.updatedAt) ?? metadata?.timestamp,
+    updatedAt: _readUpdatedAt(
+      rolloutPath: rolloutPath,
+      createdAt: metadata?.timestamp,
+      indexedUpdatedAt: _tryParseDate(indexEntry?.updatedAt),
+    ),
     cliVersion: metadata?.cliVersion,
     modelProvider: metadata?.modelProvider,
     model: metadata?.model,
@@ -318,6 +322,26 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     agentPath: metadata?.agentPath,
     parentId: metadata?.parentId,
   );
+
+  DateTime? _readUpdatedAt({
+    required String rolloutPath,
+    required DateTime? createdAt,
+    required DateTime? indexedUpdatedAt,
+  }) {
+    DateTime? modifiedAt;
+    try {
+      // Native turns append to the rollout without necessarily updating the
+      // session index. Read file metadata even when its header stays cached.
+      modifiedAt = _rolloutApi.lastModified(rolloutPath: rolloutPath);
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] failed to read rollout modification time for $rolloutPath", error, stackTrace);
+    }
+    var updatedAt = createdAt;
+    for (final candidate in [indexedUpdatedAt, modifiedAt].nonNulls) {
+      if (updatedAt == null || candidate.isAfter(updatedAt)) updatedAt = candidate;
+    }
+    return updatedAt;
+  }
 
   Future<Set<String>> _readProjectlessThreadIds() async {
     try {
