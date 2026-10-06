@@ -248,7 +248,7 @@ void main() {
       expect(start.toolName, "bash");
     });
 
-    test("keeps the legacy toolcall_start shape available for the compatibility fallback", () {
+    test("tolerates toolcall_start without metadata", () {
       final delta = parseDelta({
         "type": "toolcall_start",
         "contentIndex": 2,

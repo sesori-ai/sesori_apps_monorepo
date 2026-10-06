@@ -40,7 +40,7 @@ void main() {
     });
 
     test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
-      installedVersion("0.84.2");
+      installedVersion("0.99.2");
 
       expect(
         await PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
@@ -54,7 +54,7 @@ void main() {
     });
 
     test("declines with an explicit binary override", () async {
-      installedVersion("0.84.2");
+      installedVersion("0.99.2");
 
       expect(
         await PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
@@ -93,7 +93,7 @@ void main() {
     });
 
     test("ensureRuntime prefers a supported PATH binary", () async {
-      final processes = _Processes(outputs: const [_Output(stdout: "0.84.1\n", exitCode: 0)]);
+      final processes = _Processes(outputs: const [_Output(stdout: "0.99.0\n", exitCode: 0)]);
       final events = await PiPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
 
       expect((events.last as ProvisionReady).binaryPath, "pi");
@@ -101,7 +101,7 @@ void main() {
     });
 
     test("ensureRuntime blocks on an outdated PATH binary", () async {
-      final processes = _Processes(outputs: const [_Output(stdout: "0.84.0\n", exitCode: 0)]);
+      final processes = _Processes(outputs: const [_Output(stdout: "0.98.2\n", exitCode: 0)]);
       final events = await PiPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
 
       expect(events.last, isA<ProvisionFailed>());
@@ -111,7 +111,7 @@ void main() {
     test("inspectSetup reports a usable model listing as ready and preserves the environment", () async {
       final processes = _Processes(
         outputs: const [
-          _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+          _Output(stdout: "pi 0.99.2\n", exitCode: 0),
           _Output(stdout: "provider      model\nopenai-codex  gpt-5.4\n", exitCode: 0),
         ],
       );
@@ -122,7 +122,7 @@ void main() {
         stateDirectory: "/state",
       );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.84.2"));
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.99.2"));
       expect(processes.arguments, [
         const ["--version"],
         const ["--list-models"],
@@ -135,7 +135,7 @@ void main() {
         config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
         processes: _Processes(
           outputs: const [
-            _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+            _Output(stdout: "pi 0.99.2\n", exitCode: 0),
             _Output(stdout: "${PiRpcClient.noModelsDiagnosticPrefix}\n  docs/providers.md\n", exitCode: 0),
           ],
         ),
@@ -145,7 +145,7 @@ void main() {
 
       expect(
         result,
-        isA<PluginSetupAuthenticationRequired>().having((s) => s.runtimeVersion, "runtimeVersion", "0.84.2"),
+        isA<PluginSetupAuthenticationRequired>().having((s) => s.runtimeVersion, "runtimeVersion", "0.99.2"),
       );
     });
 
@@ -154,7 +154,7 @@ void main() {
         config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
         processes: _Processes(
           outputs: const [
-            _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+            _Output(stdout: "pi 0.99.2\n", exitCode: 0),
             _Output(stdout: "unreadable catalog\n", exitCode: 2),
           ],
         ),
@@ -170,7 +170,7 @@ void main() {
         config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
         processes: _Processes(
           outputs: const [
-            _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+            _Output(stdout: "pi 0.99.2\n", exitCode: 0),
             _Output(stdout: "${PiRpcClient.noModelsDiagnosticPrefix}\n", exitCode: 1),
           ],
         ),
@@ -185,7 +185,7 @@ void main() {
       final result = await PiPluginDescriptor.production().inspectSetup(
         config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
         processes: _Processes(
-          outputs: const [_Output(stdout: "pi 0.84.2\n", exitCode: 0)],
+          outputs: const [_Output(stdout: "pi 0.99.2\n", exitCode: 0)],
           spawnErrorAfter: 1,
         ),
         environment: const {},
@@ -197,7 +197,7 @@ void main() {
 
     test("an outdated PATH runtime blocks managed fallback", () async {
       const config = PluginConfig(values: {PiPluginDescriptor.binOption: null});
-      final processes = _Processes(outputs: const [_Output(stdout: "0.84.0\n", exitCode: 0)]);
+      final processes = _Processes(outputs: const [_Output(stdout: "0.98.2\n", exitCode: 0)]);
 
       final result = await PiPluginDescriptor.production().inspectSetup(
         config: config,
@@ -207,7 +207,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupRuntimeOutdated>());
-      expect(result.runtimeVersion, "0.84.0");
+      expect(result.runtimeVersion, "0.98.2");
       expect(processes.executables, ["pi"]);
     });
 
@@ -235,7 +235,7 @@ void main() {
       );
       final outdated = await descriptor.inspectSetup(
         config: config,
-        processes: _Processes(outputs: const [_Output(stdout: "0.84.0\n", exitCode: 0)]),
+        processes: _Processes(outputs: const [_Output(stdout: "0.98.2\n", exitCode: 0)]),
         environment: const {},
         stateDirectory: "/state",
       );

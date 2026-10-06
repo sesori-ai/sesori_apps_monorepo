@@ -12,11 +12,13 @@ Targets audited on **2026-09-24**, covering all eleven registered harnesses.
 OpenCode was refreshed on **2026-09-26** with the scoped evidence below.
 Claude, Copilot, Cursor, Grok and Codex targets were refreshed on **2026-10-06**
 (release metadata and managed-asset digests re-audited; native checks on these targets pending).
+Pi was refreshed on **2026-10-06** to `1.0.4`, and its approved PATH minimum rose to
+`0.99.0`; older PATH installs get the existing update action.
 Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 6,
 Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. GitHub digests and available
 checksum lists agree; Cursor/Antigravity hashes are locally computed, not publisher
 attestations. Direct-CLI targets are recommendation metadata, not forced upgrades.
-Compatible PATH binaries remain authoritative. Independent minimums are unchanged;
+Compatible PATH binaries remain authoritative. Independent minimums are unchanged except Pi's;
 Antigravity retains its exact-pair policy rather than an independent floor.
 
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
@@ -28,7 +30,7 @@ Antigravity retains its exact-pair policy rather than an independent floor.
 | Cursor | `2026.10.01-e373342` | date `2026.07.16` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. |
 | Claude Code | `2.1.291` | `2.1.221` | Current-target native stream-json/permissions/replay/interrupt and real authentication/provider behavior remain unverified. |
 | Hermes Agent | `0.21.5` (`v2026.9.24`) | `0.20.0` | Current-target real CLI ACP initialize/list, configured new/load/replay and persisted deletion remain unverified. |
-| Pi | `0.87.1` | `0.84.1` | Current-target native package/RPC, settlement/retry/compaction, queue and fresh-process reuse remain unverified. |
+| Pi | `1.0.4` | `0.99.0` | Six archive hashes match the published `SHA256SUMS` and GitHub digests. A 2026-10-06 sandboxed macOS arm64 production install (digest sentinel), `--version`, inspect-setup, RPC command listing and the production catalog probe passed with no credentials and network denied after download; `/llama` is hidden. Authenticated turns, settlement/retry/compaction, queue and fresh-process reuse on the current target remain unverified. |
 | Oh My Pi | `18.3.0` | `17.2.13` | Eight verified direct-binary mappings. Current-target native install/version/ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
 | DeepSeek | `0.1.7` (unchanged) | `0.1.5` | Latest stable owned adapter, embedding DeepSeek Harness `0.1.5-rc.2`. Six hashes rechecked; no fresh native or authenticated run. Newer upstream RCs require separate producer work, not an invented consumer release. |
 | Grok Build | `1.0.46` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |

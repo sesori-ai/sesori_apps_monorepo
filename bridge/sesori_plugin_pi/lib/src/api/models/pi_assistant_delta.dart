@@ -7,11 +7,10 @@ import "pi_tool_call_start_dto.dart";
 /// One `message_update.assistantMessageEvent` from Pi v0.84.4.
 ///
 /// Pi strips cumulative `partial` snapshots from these events before writing
-/// them to stdout, so a delta carries only its own increment. Since v0.84.3,
-/// `toolcall_start` also carries the tool id and name; the nullable fields keep
-/// the supported v0.84.1 floor working when an older binary omits them. The
-/// full tool call is guaranteed at [PiToolCallEndDelta]; `message_end` stays
-/// the final authority for the whole message.
+/// them to stdout, so a delta carries only its own increment. `toolcall_start`
+/// also carries the tool id and name. The full tool call is guaranteed at
+/// [PiToolCallEndDelta]; `message_end` stays the final authority for the whole
+/// message.
 ///
 /// Wire scalars are nullable throughout: stdout is foreign input, and a frame
 /// that omits or mistypes one field must not take down the surrounding turn.
@@ -99,8 +98,6 @@ final class const PiThinkingEndDelta({required super.contentIndex, required fina
 
 final class const PiToolCallStartDelta({
   required super.contentIndex,
-
-  /// Pi v0.84.3+ sends stable metadata here without the cumulative snapshot.
   required final String? id,
   required final String? toolName,
   required super.raw,
