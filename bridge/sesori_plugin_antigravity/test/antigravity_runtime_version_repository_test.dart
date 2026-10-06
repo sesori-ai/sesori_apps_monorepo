@@ -62,7 +62,7 @@ void main() {
       "agy_acp_server_20260818_01_RC01",
       "agy_acp_server_1.1.1",
       AntigravityRelease.agentVersion,
-      "1.3.0",
+      "1.4.0",
     ]) {
       final result = await probe(
         outcome: () async => AntigravityVersionDto(exitCode: 0, buildLabel: label),

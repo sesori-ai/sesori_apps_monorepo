@@ -122,6 +122,82 @@ void main() {
     configRepository = _ConfigRepository();
   });
 
+  test("Gemini Claude and GPT account groups remain selectable through exact native IDs", () async {
+    service.capture(
+      result: const AcpNewSessionResult(
+        sessionId: "session",
+        modes: [],
+        configOptions: [
+          {
+            "id": "model",
+            "type": "select",
+            "currentValue": "gemini-3.7-flash-high",
+            "options": [
+              {
+                "group": "Gemini",
+                "options": [
+                  {"value": "gemini-3.7-flash-high", "name": "Gemini 3.7 Flash (High)"},
+                ],
+              },
+              {
+                "group": "Claude & GPT (3P)",
+                "options": [
+                  {"value": "claude-sonnet-4-6-thinking", "name": "Claude Sonnet 4.6 (Thinking)"},
+                  {"value": "claude-opus-4-6-thinking", "name": "Claude Opus 4.6 (Thinking)"},
+                  {"value": "gpt-oss-120b-medium", "name": "GPT-OSS 120B (Medium)"},
+                ],
+              },
+            ],
+          },
+        ],
+        raw: {},
+      ),
+      sessionId: "session",
+      source: AntigravityCatalogSource.newSession,
+    );
+
+    final provider = service.getSessionOptions().providers.providers.single;
+    expect(provider.id, AntigravityIdentity.pluginId);
+    expect(provider.defaultModelID, "gemini-3.7-flash");
+    expect(
+      provider.models.map((model) => model.id),
+      unorderedEquals([
+        "gemini-3.7-flash",
+        "claude-sonnet-4-6-thinking",
+        "claude-opus-4-6-thinking",
+        "gpt-oss-120b",
+      ]),
+    );
+    final gpt = provider.models.singleWhere((model) => model.id == "gpt-oss-120b");
+    expect((gpt.name, gpt.defaultVariant), ("GPT-OSS 120B", "medium"));
+    expect(gpt.variants, ["medium"]);
+
+    for (final model in provider.models) {
+      service.validateSelection(
+        operation: "session/prompt",
+        providerId: provider.id,
+        modelId: model.id,
+        variant: null,
+        agent: null,
+      );
+      await service.applyForPrompt(
+        configRepository: configRepository,
+        sessionId: "session",
+        modelId: model.id,
+        variant: null,
+      );
+    }
+    expect(
+      configRepository.writes.where((write) => write.config == "model").map((write) => write.value),
+      unorderedEquals([
+        "gemini-3.7-flash-high",
+        "claude-sonnet-4-6-thinking",
+        "claude-opus-4-6-thinking",
+        "gpt-oss-120b-medium",
+      ]),
+    );
+  });
+
   test("paired High Medium Low models become one ordered family with normalized default", () async {
     service.capture(
       result: _variants(current: "gemini-3.7-flash-medium"),

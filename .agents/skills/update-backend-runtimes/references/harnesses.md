@@ -106,6 +106,13 @@ concrete problem can justify a documented temporary hold with a resolution path.
   only generic parent-local subagent tool calls, not child identity/lifecycle or
   scoped-stop authority. Reassess on new evidence; do not infer support from
   native delegation or generic ACP features. Closed source limits remain explicit.
+  Inspect model selection's client-identity gates too: the official 1.3.0 package
+  keeps non-Gemini models only for recognized Zed/JetBrains/Xcode identities.
+  Account entitlement alone does not prove what ACP advertises. Any explicitly
+  approved compatibility identity stays inside the Antigravity plugin and must
+  reach live, replay, login and validation initialization consistently; preserve
+  the standard Sesori identity for other ACP harnesses. Verify this gate again
+  on future releases rather than inferring it from product model documentation.
 
 ## Codex
 

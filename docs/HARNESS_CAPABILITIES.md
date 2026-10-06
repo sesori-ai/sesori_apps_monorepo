@@ -375,6 +375,16 @@ variants only when labels carry the matching suffix. Its pre-chat catalog uses
 one retained hidden no-prompt native session because the pinned runtime exposes
 models only from new/resume responses and has no deletion capability.
 
+Antigravity uses the official `1.3.0` pair and a plugin-owned Zed compatibility
+identity (`clientInfo.name: zed`, title `Sesori Bridge (Zed compatibility)`) for
+live, replay, personal-login and validation processes. Google's packaged model
+selection filters non-Gemini models in `1.2.1`; `1.3.0` retains them only for
+recognized client identities. Every account-advertised Gemini, Claude or GPT
+model is mapped under the existing Antigravity OAuth provider and dispatched
+with its exact native ID. Synthetic mixed-provider catalogs and initialize
+requests are tested; native authenticated catalog/third-party execution is
+unverified. Actual availability still depends on Google's account entitlements.
+
 ## Fast mode
 
 | Harness | Status |

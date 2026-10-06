@@ -107,6 +107,7 @@ class GrokAcpApi({
     required AcpStdioClient client,
     required Duration timeout,
   }) => AcpAgentApi(client: client).initialize(
+    clientIdentity: acpDefaultClientIdentity,
     formElicitation: false,
     capabilityMeta: null,
     authMethodId: null,

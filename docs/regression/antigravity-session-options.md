@@ -5,9 +5,15 @@
 Antigravity discovers account models before the first user chat through one retained, hidden, no-prompt native
 session. Model families expose High/Medium/Low through the existing variant picker. No database or wire-schema change
 is required. Authenticated native discovery remains unverified; automated evidence uses composed fake ACP processes.
+The official `1.3.0` runtime enables account-advertised third-party models through the explicitly approved
+Zed compatibility identity. Native authenticated Claude/GPT discovery and execution remain unverified.
 
 ## Required behavior
 
+- Antigravity live, replay, personal-login and validation connections send `clientInfo.name: zed` with title
+  `Sesori Bridge (Zed compatibility)`. This plugin-owned identity enables Google's `1.3.0` non-Gemini catalog gate;
+  other ACP harnesses retain their ordinary Sesori identity. Use the exact supported runtime pair rather than
+  assuming the older `1.2.1` runtime can advertise third-party models.
 - Cold options reads use standard ACP `session/list` to recover a discovery session whose cwd is the private
   `<GEMINI_HOME>/antigravity-acp/conversations` directory. Create one with `session/new` only when none exists.
   Send no prompt. The owner accepts native session artifacts because the pinned runtime has no delete capability.
@@ -24,6 +30,9 @@ is required. Authenticated native discovery remains unverified; automated eviden
   including after a plugin restart. Their native artifacts remain untouched and are reused, not imported as chats.
 - The Layer-2 protocol mapper decodes flat and one-level grouped model entries through generated DTOs. Preserve exact
   opaque native IDs and advertised order. Ignore unrelated config selectors without assuming their schemas.
+  Preserve every advertised vendor, including Gemini, Claude and GPT groups, under the single Antigravity OAuth
+  provider. Model selection must dispatch the corresponding exact native ID regardless of vendor. Availability
+  comes from the account catalog, not a static model list or a copied quota pool.
 - Group a model only when its native `-high`, `-medium`, or `-low` suffix agrees with its advertised
   ` (High)`, ` (Medium)`, or ` (Low)` label suffix. Expose the stripped model name/ID and strongest-first variant IDs
   while retaining the backend's default and exact native ID for dispatch. A single advertised level still uses the
@@ -58,9 +67,13 @@ is required. Authenticated native discovery remains unverified; automated eviden
 - `antigravity_session_options_service_test.dart` retains baseline flat/grouped parsing, defaults, reset, last-good
   retention, malformed catalogs, ordered configuration and failure-propagation coverage.
 - `antigravity_catalog_discovery_and_variants_test.dart` covers cold/coalesced discovery, reuse, refresh, reserved-session
-  recovery, reset fencing, failed refresh, conservative grouping, normalized defaults and exact variant dispatch.
+  recovery, reset fencing, failed refresh, conservative grouping, normalized defaults and exact variant dispatch,
+  including a mixed Gemini/Claude/GPT catalog and every model's exact configuration write.
 - `antigravity_plugin_test.dart` covers composed fake ACP discovery without prompts, reserved-session filtering,
   reconnect/residency and live/replay metadata. Shared `acp_event_mapper_test.dart` covers tracker-owned live variants;
   `acp_session_config_repository_test.dart` covers typed standard mode requests and rejection propagation.
 - Owning Antigravity and ACP analyzers and tests define the automated evidence boundary. Actual account catalogs,
   native authenticated discovery and cross-target runtime behavior are not claimed by these fake-process tests.
+  `antigravity_acp_api_test.dart` and composed live/replay tests verify the compatibility identity reaches each
+  initialize request; shared `acp_agent_api_test.dart` verifies explicit identity forwarding and the usual Sesori
+  identity, including omission of an absent title.
