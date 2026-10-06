@@ -42,6 +42,10 @@ class const TranscriptStickyPromptOverlay({
     final loc = context.loc;
     return _StickyPrompts(
       openerIds: [for (final message in messages) message.info.id],
+      cutOpenerIds: {
+        for (final message in messages)
+          if (_textOf(message: message)?.cut ?? false) message.info.id,
+      },
       compactHeight: _compactHeight(
         context: context,
         style: buildChatMessageMarkdownStyleSheet(prego: prego).p,
@@ -59,19 +63,16 @@ class const TranscriptStickyPromptOverlay({
 
   Widget _copy({required AppLocalizations loc, required MessageWithParts opener}) {
     final id = opener.info.id;
-    final markdown = UserMessageCard.markdownOf(message: opener);
+    final text = _textOf(message: opener);
     return RepaintBoundary(
       key: ValueKey((pinnedPrompt: id)),
       child: Semantics(
         container: true,
         button: true,
-        label: markdown == null
+        label: text == null
             // A prompt with no text is named by its first attachment.
             ? opener.promptText ?? loc.transcriptStickyPromptAttachment
-            : _spokenLabelOf(
-                loc: loc,
-                source: _cut(markdown: markdown, budget: _spokenCharacterBudget),
-              ),
+            : _spokenLabelOf(loc: loc, source: text.head),
         hint: loc.transcriptStickyPromptJumpHint,
         onTap: () => onTap(openerMessageId: id),
         excludeSemantics: true,
@@ -79,7 +80,7 @@ class const TranscriptStickyPromptOverlay({
         // in it can be pressed, selected or scrolled.
         child: ExcludeFocus(
           child: UserMessageBubbleContent(
-            markdown: markdown == null ? null : _endOf(markdown: markdown),
+            markdown: text?.end,
             attachments: [UserMessageCard.attachmentsOf(message: opener)],
           ),
         ),
@@ -93,6 +94,23 @@ class const TranscriptStickyPromptOverlay({
   /// view always matches its bubble: a message this long is taller than the
   /// screen, so its pin shows its end.
   static const _copyCharacterBudget = 10000;
+
+  /// Each message's copy text, cut once rather than on every build: messages
+  /// are immutable, and the transcript rebuilds while an answer streams.
+  static final _texts = Expando<_CopyText>();
+
+  /// The text a message's copy speaks and shows, or null when it has none.
+  static _CopyText? _textOf({required MessageWithParts message}) {
+    final cached = _texts[message];
+    if (cached != null) return cached;
+    final markdown = UserMessageCard.markdownOf(message: message);
+    if (markdown == null) return null;
+    return _texts[message] = (
+      head: _cut(markdown: markdown, budget: _spokenCharacterBudget),
+      end: _endOf(markdown: markdown),
+      cut: markdown.length > _copyCharacterBudget,
+    );
+  }
 
   /// The last [_copyCharacterBudget] characters or so of [markdown], from the
   /// start of a line unless that would drop most of them. A code fence the cut
@@ -183,8 +201,13 @@ class const TranscriptStickyPromptOverlay({
   }
 }
 
+/// A copy's text: the [head] a screen reader hears, the [end] it shows, and
+/// whether [end] was [cut] from a longer message.
+typedef _CopyText = ({String head, String end, bool cut});
+
 class const _StickyPrompts({
   required final List<String> openerIds,
+  required final Set<String> cutOpenerIds,
   required final double compactHeight,
   required final double horizontalInset,
   required final Color bubbleColor,
@@ -199,6 +222,7 @@ class const _StickyPrompts({
   @override
   RenderTranscriptStickyPrompts createRenderObject(BuildContext context) => RenderTranscriptStickyPrompts(
     openerIds: openerIds,
+    cutOpenerIds: cutOpenerIds,
     compactHeight: compactHeight,
     horizontalInset: horizontalInset,
     bubbleColor: bubbleColor,
@@ -211,6 +235,7 @@ class const _StickyPrompts({
   void updateRenderObject(BuildContext context, RenderTranscriptStickyPrompts renderObject) {
     renderObject
       ..openerIds = openerIds
+      ..cutOpenerIds = cutOpenerIds
       ..compactHeight = compactHeight
       ..horizontalInset = horizontalInset
       ..bubbleColor = bubbleColor
@@ -240,6 +265,9 @@ class _StickyPromptsElement(super.widget) extends MultiChildRenderObjectElement 
 /// pin hides, while a drag or a wheel that starts on it still scrolls the rows.
 class RenderTranscriptStickyPrompts({
   required List<String> openerIds,
+
+  /// The openers whose copy holds only the end of a longer message.
+  required var Set<String> cutOpenerIds,
 
   /// The height a pinned prompt compacts to.
   required var double compactHeight,

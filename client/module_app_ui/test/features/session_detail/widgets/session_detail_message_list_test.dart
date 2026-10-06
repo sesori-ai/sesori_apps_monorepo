@@ -2836,6 +2836,12 @@ void main() {
             message,
       ];
 
+      // A copy keeps only the end of the pasted code, which collapses to a
+      // short block.
+      final pastedDocument =
+          "${_multilineText(label: "Tall", lines: 60)}\n\n```\n"
+          "${_multilineText(label: "// pasted", lines: 1000)}\n```";
+
       /// Moves the rows so [openerId]'s own bubble ends at [bottom].
       Future<void> endBubbleAt(WidgetTester tester, String openerId, double bottom) async {
         final position = _position(tester);
@@ -2919,11 +2925,7 @@ void main() {
                 _message(
                   messageId: "u4",
                   role: "user",
-                  // The copy keeps only the end of the pasted code, which
-                  // collapses to a short block.
-                  text:
-                      "${_multilineText(label: "Tall", lines: 60)}\n\n```\n"
-                      "${_multilineText(label: "// pasted", lines: 1000)}\n```",
+                  text: pastedDocument,
                 )
               else
                 message,
@@ -2936,6 +2938,18 @@ void main() {
         expect(pins(tester).fullHeights["u4"], lessThan(own.height / 2));
         expect(pinOf(tester, "u4"), isNull, reason: "a pin would hide the lines still to read");
         expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf("u4")).hidden, isFalse);
+      });
+
+      testWidgets("keeps pinning a cut message's end once its row is no longer built", (tester) async {
+        await _pumpTurns(
+          tester,
+          messages: _turnsWithPrompt(id: "u4", text: pastedDocument),
+        );
+
+        await _scrollRowTo(tester, rowId: "a4-3", top: _topInset - 100);
+
+        expect(find.byKey(const ValueKey("u4")), findsNothing, reason: "the row is no longer built");
+        expect(pinOf(tester, "u4")?.view, isA<TranscriptPinEnd>());
       });
     });
 

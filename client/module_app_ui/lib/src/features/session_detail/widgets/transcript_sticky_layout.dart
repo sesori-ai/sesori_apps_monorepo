@@ -104,27 +104,23 @@ int currentTranscriptStickyIndex({required List<TranscriptStickyOpener> openers,
 /// line. That pin covers the bubble's end exactly, and the bubble keeps
 /// painting, its rest scrolling away above the line.
 ///
-/// [openers] are in transcript order; [fullHeights] holds the height of each
-/// pinnable message's copy, its whole bubble unless the bubble is a pasted
-/// document. Nothing pins until the current message can.
+/// [openers] are in transcript order; [fullHeights] holds each pinnable
+/// message's copy height, its whole bubble's but for [cutOpenerIds]: copies
+/// holding only the end of a pasted document, whose bubble can be far taller,
+/// and which so always pin their end. Nothing pins until the current message
+/// can.
 TranscriptStickyLayout layOutTranscriptStickyPrompts({
   required List<TranscriptStickyOpener> openers,
   required Map<String, double> fullHeights,
+  required Set<String> cutOpenerIds,
   required double compactHeight,
   required double pinTop,
   required double viewportBottom,
 }) {
   final current = currentTranscriptStickyIndex(openers: openers, pinTop: pinTop);
   if (current < 0 || !fullHeights.containsKey(openers[current].id)) return TranscriptStickyLayout.empty;
-  // A built bubble's own height decides: a copy of a pasted document holds
-  // only its end, which can be far shorter than the bubble.
-  bool showsEnd({required TranscriptStickyOpener opener}) {
-    final height = switch (opener.place) {
-      TranscriptStickyBuilt(:final top, :final bottom) => bottom - top,
-      TranscriptStickyAbove() || TranscriptStickyBelow() => fullHeights[opener.id] ?? 0,
-    };
-    return height > viewportBottom - pinTop;
-  }
+  bool showsEnd({required TranscriptStickyOpener opener}) =>
+      cutOpenerIds.contains(opener.id) || (fullHeights[opener.id] ?? 0) > viewportBottom - pinTop;
 
   final pinned = <TranscriptPinnedPrompt>[];
   for (final index in [current - 1, current]) {

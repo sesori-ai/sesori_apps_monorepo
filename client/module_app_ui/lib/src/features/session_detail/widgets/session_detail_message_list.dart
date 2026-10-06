@@ -572,6 +572,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final layout = layOutTranscriptStickyPrompts(
       openers: openers,
       fullHeights: pins.fullHeights,
+      cutOpenerIds: pins.cutOpenerIds,
       compactHeight: pins.compactHeight,
       pinTop: pinTop,
       viewportBottom: pins.size.height - widget.bottomInset,
