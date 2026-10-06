@@ -190,13 +190,9 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final state = context.watch<FeedbackSheetCubit>().state;
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     final reducedMotion = prefersReducedMotion(context);
     final privateStep = state is FeedbackSheetPrivateFeedback;
-    // Only the private step types, so only it rises above the keyboard. The
-    // automatic sheet can open over another screen's keyboard, which hides as
-    // the sheet takes focus; following that inset would carry the sheet down
-    // mid-entrance, so the rating steps slide in over the retreating keyboard.
-    final keyboard = privateStep ? MediaQuery.viewInsetsOf(context).bottom : 0.0;
     final content = FeedbackContentTransition(
       layoutBuilder: (current, previous) => feedbackStepLayout(current: current, previous: previous),
       child: privateStep
@@ -221,7 +217,6 @@ class _FeedbackSheetState() extends State<FeedbackSheet> with SingleTickerProvid
       child: Padding(
         padding: EdgeInsetsDirectional.only(bottom: keyboard),
         child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

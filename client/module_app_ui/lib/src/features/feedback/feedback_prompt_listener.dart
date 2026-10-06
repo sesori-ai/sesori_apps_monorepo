@@ -6,6 +6,9 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "feedback_sheet.dart";
 
+/// How long the automatic sheet waits for a raised keyboard to close.
+const _keyboardDismissDelay = Duration(milliseconds: 500);
+
 /// Opens the automatic rating sheet on a product shell's root navigator,
 /// over whichever screen is showing, whenever [FeedbackPromptCubit] asks.
 ///
@@ -37,6 +40,14 @@ Future<void> _present({
   required FeedbackSheetCubit cubit,
   required FeedbackVoiceInputScopeBuilder voiceInputScopeBuilder,
 }) async {
+  final context = navigatorKey.currentContext;
+  if (context != null && MediaQuery.viewInsetsOf(context).bottom > 0) {
+    // Closes the keyboard the screen below left raised, so the sheet opens
+    // on a settled screen instead of riding the keyboard down.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await Future<void>.delayed(_keyboardDismissDelay);
+    if (!context.mounted) return;
+  }
   final outcome = await showFeedbackSheetOnNavigator(
     navigatorKey: navigatorKey,
     cubit: cubit,
