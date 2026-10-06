@@ -2799,7 +2799,13 @@ void main() {
           repository.beginFollowUp(launchId: "launch-1");
           repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
           await Future<void>.delayed(Duration.zero);
-          expect((cubit.state as SessionDetailFailed).launchFollowUps, isEmpty);
+          final accepted = cubit.state as SessionDetailFailed;
+          expect(accepted.launchFollowUps, isEmpty);
+          expect(
+            accepted.awaitingBridgeSubmissions.map((submission) => submission.promptId),
+            ["prm_a"],
+            reason: "a send the bridge took stays shown until the load lists it",
+          );
 
           await cubit.reload();
           await _awaitCondition(() => sentTexts.isNotEmpty);
