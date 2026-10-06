@@ -32,8 +32,10 @@ their own PR number earlier in the series.
   last sliver reads "{n} matches in the prompts loaded so far".
 - "Load earlier prompts" is the first sliver. It shows while
   `olderMessagesCursor != null`, is disabled while loading, and calls
-  `loadOlderMessages`. After a load, `SessionDetailBody` refreshes the screen's
-  prompt snapshot. Other transcript changes still leave the snapshot alone.
+  `loadOlderMessages`. Whenever an older page lands while the screen is up,
+  its own or one the transcript already had loading as it opened,
+  `SessionDetailBody` refreshes the screen's prompt snapshot. Other transcript
+  changes still leave the snapshot alone.
 - `didUpdateWidget` corrects the offset by the net extent change above the
   reader's row, covering both prepended rows and the control disappearing.
 
@@ -79,8 +81,8 @@ once per case.
     pass.
 - In `client/app`:
   - `flutter test test/features/session_detail/widgets/session_detail_body_test.dart`:
-    150 pass;
-  - `flutter test test/features/session_detail`: 180 pass.
+    151 pass;
+  - `flutter test test/features/session_detail`: 181 pass.
 - The new view tests cover:
   - filtering as the query is typed and clearing, with the reader's row held
     at the same y on every frame of the fold, also when the row hidden beneath
@@ -88,14 +90,15 @@ once per case.
   - a search that matched nothing, cleared, returning the reader's row;
   - a folding row keeping its excerpt when typing goes on before it settles;
   - the grown row and its highlighted match, the match and the count fitting
-    at twice the text size on a narrow phone, and no emoji cut in half;
+    at twice the text size on a narrow phone, and no code point (surrogate pair) split;
   - day headers only for days with a match;
   - the match counts;
   - the control's place and its disabled state;
   - earlier prompts joining the filter with the reader's row still, including
     when the control disappears;
   - Escape and the desktop's focused field, also after a click outside it.
-- The body test loads earlier prompts through the cubit, and the rows stay put.
+- The body tests load earlier prompts through the cubit, with the rows staying
+  put, and list a page the transcript was already loading as the screen opened.
 - Before and after fixture renders and a phone GIF are on `pr-media` under
   `turn-navigation/prompts-search/`.
 - Not run: a real device or a live bridge.

@@ -1240,6 +1240,8 @@ void main() {
         ],
       );
       when(() => cubit.loadOlderMessages()).thenAnswer((_) async {
+        // As the cubit does: loading, then the page with loading cleared.
+        states.add(state.copyWith(isLoadingOlderMessages: true));
         when(() => cubit.state).thenReturn(withOlder);
         states.add(withOlder);
       });
@@ -1260,6 +1262,44 @@ void main() {
       await tester.drag(prompts, const Offset(0, 2000));
       await tester.pumpAndSettle();
       expect(find.text("Older 0"), findsOneWidget);
+    });
+
+    testWidgets("an older page the transcript was already loading as the screen opened joins it", (tester) async {
+      final newer = [
+        for (var turn = 0; turn < 3; turn++) ...[
+          textMessage(id: "u$turn", user: true, text: "Prompt $turn"),
+          textMessage(id: "a$turn", user: false, text: "Answer $turn"),
+        ],
+      ];
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final loading = _loadedState(
+        pendingQuestions: const [],
+        pendingPermissions: const [],
+        messages: newer,
+      ).copyWith(olderMessagesCursor: 42, isLoadingOlderMessages: true);
+      when(() => cubit.state).thenReturn(loading);
+      whenListen(cubit, states.stream, initialState: loading);
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      await openPrompts(tester);
+      expect(find.descendant(of: layer, matching: find.text("Older 0")), findsNothing);
+
+      // The session's last page lands, which also takes the control away.
+      final withOlder = _loadedState(
+        pendingQuestions: const [],
+        pendingPermissions: const [],
+        messages: [
+          textMessage(id: "older-u0", user: true, text: "Older 0"),
+          ...newer,
+        ],
+      );
+      when(() => cubit.state).thenReturn(withOlder);
+      states.add(withOlder);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key("session-prompts-load-earlier")), findsNothing);
+      expect(find.descendant(of: layer, matching: find.text("Older 0")), findsOneWidget);
     });
 
     testWidgets("a tapped prompt closes the screen with the transcript on it", (tester) async {

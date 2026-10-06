@@ -112,7 +112,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   final _jumpNotifier = TranscriptJumpNotifier();
 
   /// The Prompts screen while it is up: the prompts as they were when it
-  /// opened or last loaded earlier ones, so a page the transcript loads
+  /// opened or an older page last landed, so other transcript changes
   /// meanwhile cannot reshape the list under the reader, the prompt it opened
   /// on and the point it grows from. Null once it has closed.
   ({String? anchorMessageId, TranscriptPromptList list, Alignment origin})? _prompts;
@@ -216,14 +216,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     );
   }
 
-  /// Loads the page before the earliest listed prompt, then lists what it
-  /// added.
-  Future<void> _loadEarlierPrompts() async {
-    final cubit = context.read<SessionDetailCubit>();
-    await cubit.loadOlderMessages();
+  /// Lists the prompts afresh once an older page has landed, whether the
+  /// screen asked for it or the transcript already had it loading as the
+  /// screen opened, so the page's prompts join the screen.
+  void _relistPrompts({required SessionDetailLoaded state}) {
     final prompts = _prompts;
-    final state = cubit.state;
-    if (!mounted || prompts == null || state is! SessionDetailLoaded) return;
+    if (prompts == null) return;
     setState(
       () => _prompts = (
         anchorMessageId: prompts.anchorMessageId,
@@ -382,7 +380,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     final promptsOpen = prompts != null && promptsState != null;
     // The screen lies over the page, which stays built beneath it, unmoved and
     // out of reach, so closing it returns to the transcript as it was left.
-    return PopScope(
+    final page = PopScope(
       canPop: !promptsOpen,
       onPopInvokedWithResult: (didPop, _) => didPop ? null : _closePrompts(),
       child: Stack(
@@ -416,7 +414,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                         maxWidth: pageChrome?.columnWidths.transcript,
                         onLoadEarlier: promptsState.olderMessagesCursor == null
                             ? null
-                            : () => unawaited(_loadEarlierPrompts()),
+                            : () => unawaited(context.read<SessionDetailCubit>().loadOlderMessages()),
                         isLoadingEarlier: promptsState.isLoadingOlderMessages,
                         autofocusSearch: pageChrome != null,
                         onPromptTap: _returnToPrompt,
@@ -445,6 +443,19 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             ),
         ],
       ),
+    );
+    // Any older page landing while the screen is up joins it, also one the
+    // transcript was already loading when the screen opened.
+    return BlocListener<SessionDetailCubit, SessionDetailState>(
+      listenWhen: (previous, current) =>
+          previous is SessionDetailLoaded &&
+          previous.isLoadingOlderMessages &&
+          current is SessionDetailLoaded &&
+          !current.isLoadingOlderMessages,
+      listener: (context, state) {
+        if (state is SessionDetailLoaded) _relistPrompts(state: state);
+      },
+      child: page,
     );
   }
 
