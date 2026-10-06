@@ -143,7 +143,9 @@ reconnect or restart.
   `subagentType.custom.unspecified`; separate typed DTOs map both exact shapes
   to one closed presentation value. Background, incomplete, malformed,
   unknown, nonterminal, unmatched, and update-only facts remain generic; an
-  omitted cancelled Task remains absent. Bounded production-composition QA
+  omitted cancelled Task remains absent. Replayed native sub-agent frames are
+  ignored, so a reloaded tile stays childless even when its live tile linked a
+  child session. Bounded production-composition QA
   passed two fresh cold loads with one equivalent completed childless tile and
   stable replay-local identity, without requiring equality with the live id.
 - Messages visible live but absent from the backend's replay remain visible

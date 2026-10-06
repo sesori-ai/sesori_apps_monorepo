@@ -25,7 +25,6 @@ class _PolicyPlugin({
       );
 
   int selectionFailures = 0;
-  int activeWorkCount = 0;
   void Function()? onPromptWriting;
 
   @override
@@ -45,9 +44,6 @@ class _PolicyPlugin({
 
   @override
   Duration get rootSessionCancelSettlementTimeout => closeTimeout;
-
-  @override
-  int activeScopedStopWorkCount({required String sessionId}) => activeWorkCount;
 
   @override
   Map<String, dynamic>? outboundPromptMeta({required String sessionId, required String messageId}) {
@@ -187,9 +183,35 @@ void main() {
       knownSubAgentSessionIds: const {},
     );
 
+    Matcher accepted({required bool subAgentsHandled}) => isA<PluginAbortAccepted>()
+        .having((result) => result.workKept, "workKept", isFalse)
+        .having((result) => result.subAgentsHandled, "subAgentsHandled", subAgentsHandled);
+
     Matcher operationFailure({required Matcher cause}) => isA<PluginOperationException>()
         .having((error) => error.statusCode, "status", 502)
         .having((error) => error.cause, "cause", cause);
+
+    void spawnChild({required String parentSessionId, required String childSessionId}) {
+      plugin.eventMapper.mapChildSpawned(
+        sessionId: parentSessionId,
+        spawn: AcpChildSpawn(
+          childSessionId: childSessionId,
+          description: "Inspect",
+          agent: "explore",
+          prompt: "Inspect the code",
+          isBackground: false,
+        ),
+      );
+    }
+
+    void finishChild({required String childSessionId}) {
+      plugin.eventMapper.mapChildFinished(
+        childSessionId: childSessionId,
+        status: PluginToolStatus.cancelled,
+        output: null,
+        error: null,
+      );
+    }
 
     Future<PluginSession> setUpRootCancel({required Duration timeout}) async {
       await plugin.dispose();
@@ -343,7 +365,7 @@ void main() {
             },
           ),
         );
-        plugin.activeWorkCount = 1;
+        spawnChild(parentSessionId: session.id, childSessionId: "child-1");
         stopping = stop(session: session);
       };
       await send(session.id, "active turn");
@@ -354,6 +376,90 @@ void main() {
       expect(cancelIndex, lessThan(permissionIndex));
       respond(prompt, {"stopReason": "cancelled"});
       await expectLater(stopping, throwsA(operationFailure(cause: isA<StateError>())));
+    });
+
+    test("a stop addressed to a sub-agent is refused before any cancellation", () async {
+      final session = await setUpRootCancel(timeout: const Duration(seconds: 1));
+      await send(session.id, "delegate");
+      final prompt = await waitForFrameCount(AcpMethods.sessionPrompt, 1);
+      spawnChild(parentSessionId: session.id, childSessionId: "child-1");
+      final writesBeforeStop = fake.written.length;
+
+      for (final policy in PluginAbortSubAgentPolicy.values) {
+        expect(
+          await plugin.abortSession(
+            sessionId: "child-1",
+            subAgents: policy,
+            useAtomicStop: true,
+            knownSubAgentSessionIds: const {},
+          ),
+          const PluginAbortNotPerformed(reason: PluginAbortRefusalReason.subAgentStopUnsupported),
+        );
+      }
+      expect(fake.written, hasLength(writesBeforeStop));
+
+      finishChild(childSessionId: "child-1");
+      respond(prompt, {"stopReason": "end_turn"});
+    });
+
+    test("root stop confirms running children, then reports the cascade handled them", () async {
+      final session = await setUpRootCancel(timeout: const Duration(seconds: 1));
+      await send(session.id, "delegate");
+      final prompt = await waitForFrameCount(AcpMethods.sessionPrompt, 1);
+      spawnChild(parentSessionId: session.id, childSessionId: "child-1");
+      spawnChild(parentSessionId: "child-1", childSessionId: "grandchild-1");
+
+      for (final policy in [PluginAbortSubAgentPolicy.confirm, PluginAbortSubAgentPolicy.keep]) {
+        expect(
+          await plugin.abortSession(
+            sessionId: session.id,
+            subAgents: policy,
+            useAtomicStop: true,
+            knownSubAgentSessionIds: const {},
+          ),
+          isA<PluginAbortRejectedSubAgentsRunning>()
+              .having((result) => result.runningSubAgentCount, "count", 2)
+              .having((result) => result.mainAgentOnlySupported, "main only", isFalse),
+        );
+      }
+      expect(frames(AcpMethods.sessionCancel), isEmpty);
+
+      // A child blocked on a permission must be released by the root stop.
+      plugin.handleAgentServerRequest(
+        request: const AcpServerRequest(
+          id: 92,
+          method: AcpMethods.sessionRequestPermission,
+          params: {
+            "sessionId": "grandchild-1",
+            "toolCall": {"toolCallId": "tool-1", "title": "Run", "kind": "execute"},
+            "options": [
+              {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+            ],
+          },
+        ),
+      );
+      await pump();
+      expect(fake.written.where((frame) => frame["id"] == 92), isEmpty);
+
+      final stopping = stop(session: session);
+      await waitForFrameCount(AcpMethods.sessionCancel, 1);
+      expect(frames(AcpMethods.sessionCancel).single["params"], {"sessionId": session.id});
+      expect(fake.written.where((frame) => frame["id"] == 92), hasLength(1));
+
+      finishChild(childSessionId: "grandchild-1");
+      finishChild(childSessionId: "child-1");
+      respond(prompt, {"stopReason": "cancelled"});
+      expect(await stopping, accepted(subAgentsHandled: true));
+    });
+
+    test("root stop without running children leaves sub-agent handling unclaimed", () async {
+      final session = await setUpRootCancel(timeout: const Duration(seconds: 1));
+      await send(session.id, "active turn");
+      final prompt = await waitForFrameCount(AcpMethods.sessionPrompt, 1);
+      final stopping = stop(session: session);
+      await waitForFrameCount(AcpMethods.sessionCancel, 1);
+      respond(prompt, {"stopReason": "cancelled"});
+      expect(await stopping, accepted(subAgentsHandled: false));
     });
 
     test("close timeout fails deletion and preserves local session state", () async {

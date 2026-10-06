@@ -15,9 +15,12 @@ abstract final class CursorBinary() {
   /// The ACP auth method cursor-agent advertises for its local login state.
   static const String acpAuthMethodId = "cursor_login";
 
-  /// Non-standard `clientCapabilities._meta` hint that unlocks cursor-agent's
-  /// per-model `configOptions` picker.
-  static const Map<String, dynamic> acpCapabilityMeta = {"parameterizedModelPicker": true};
+  /// Non-standard `clientCapabilities._meta` hints: `parameterizedModelPicker`
+  /// unlocks cursor-agent's per-model `configOptions` picker, and `subagents`
+  /// turns each sub-agent into a native child session announced through
+  /// `subagent_spawned` / `subagent_state_update`. Cursor's bundled ACP SDK
+  /// strips a top-level `subagents` capability, so only `_meta` enables it.
+  static const Map<String, dynamic> acpCapabilityMeta = {"parameterizedModelPicker": true, "subagents": true};
 
   static AcpLaunchSpec launchSpec({
     String binary = defaultBinary,

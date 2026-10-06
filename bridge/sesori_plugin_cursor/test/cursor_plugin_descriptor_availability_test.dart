@@ -108,7 +108,7 @@ void main() {
     );
 
     test("pins the compatibility floor and the managed runtime build", () {
-      expect(CursorPluginDescriptor.minVersion, "2026.07.16");
+      expect(CursorPluginDescriptor.minVersion, "2026.09.23");
       // The managed runtime is the pinned build the manifest installs; the
       // floor above only gates a pre-installed CLI.
       expect(const CursorRuntimeManifest().bundledVersion.raw, "2026.10.01-e373342");
@@ -149,7 +149,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 1,
-            stdoutBytes: utf8.encode("2026.07.23-e383d2b\n"),
+            stdoutBytes: utf8.encode("2026.09.23-86fc751\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -167,7 +167,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "2026.07.23-e383d2b"));
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "2026.09.23-86fc751"));
       expect(processes.spawnedExecutables, ["cursor-agent", "cursor-agent"]);
       expect(processes.spawnedArguments, [
         const ["--version"],
@@ -180,7 +180,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 3,
-            stdoutBytes: utf8.encode("${List.filled(64 * 1024, "x").join()} 2026.07.23-e383d2b"),
+            stdoutBytes: utf8.encode("${List.filled(64 * 1024, "x").join()} 2026.09.23-86fc751"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -209,7 +209,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 10,
-            stdoutBytes: utf8.encode("2026.07.23-e383d2b\n"),
+            stdoutBytes: utf8.encode("2026.09.23-86fc751\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -233,7 +233,7 @@ void main() {
                 environment: const <String, String>{},
                 stateDirectory: stateDirectory,
               ),
-              const PluginSetupReady.versioned(runtimeVersion: "2026.07.23-e383d2b"),
+              const PluginSetupReady.versioned(runtimeVersion: "2026.09.23-86fc751"),
             );
           },
           stderr: () => CapturingStdout(lines: stderrLines),
@@ -305,12 +305,13 @@ void main() {
 
     test("an outdated PATH CLI is authoritative and never leaks version probe text", () async {
       // A discovered PATH command blocks managed fallback even when its
-      // reported version is too old.
+      // reported version is too old. The previous floor is now below the
+      // native sub-agent minimum.
       final processes = _ProbeProcessService(
         spawnOutcomes: [
           _ProbeProcess(
             pid: 12,
-            stdoutBytes: utf8.encode("2025.01.01 account-secret-output\n"),
+            stdoutBytes: utf8.encode("2026.07.16 account-secret-output\n"),
             exitCode: Future<int>.value(0),
           ),
           const ProcessException("managed-cursor-agent", ["--version"], "missing", 2),
@@ -325,7 +326,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupRuntimeOutdated>());
-      expect(result.runtimeVersion, "2025.01.01");
+      expect(result.runtimeVersion, "2026.07.16");
       expect(result.actionHint, isNot(contains("account-secret-output")));
       expect(processes.spawnedArguments, [
         const ["--version"],
@@ -409,7 +410,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 3,
-            stdoutBytes: utf8.encode("2026.07.16\n"),
+            stdoutBytes: utf8.encode("2026.09.23\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -428,7 +429,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupAuthenticationRequired>());
-      expect(result.runtimeVersion, "2026.07.16");
+      expect(result.runtimeVersion, "2026.09.23");
       expect(processes.spawnedArguments, [
         const ["--version"],
         const ["status"],
@@ -441,7 +442,7 @@ void main() {
         processSequence: [
           _ProbeProcess(
             pid: 5,
-            stdoutBytes: utf8.encode("2026.07.16\n"),
+            stdoutBytes: utf8.encode("2026.09.23\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -460,7 +461,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupUnknown>());
-      expect(result.runtimeVersion, "2026.07.16");
+      expect(result.runtimeVersion, "2026.09.23");
       expect(result.actionHint, isNot(contains("account-secret-output")));
     });
   });

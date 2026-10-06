@@ -13,6 +13,8 @@ _CursorTaskInputDto _$CursorTaskInputDtoFromJson(Map json) =>
         json['_toolName'],
         unknownValue: CursorTaskTool.unknown,
       ),
+      prompt: json['prompt'] as String?,
+      description: json['description'] as String?,
     );
 
 const _$CursorTaskToolEnumMap = {

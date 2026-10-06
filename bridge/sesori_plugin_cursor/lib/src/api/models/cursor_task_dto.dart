@@ -32,7 +32,9 @@ enum CursorTaskReplayStatus() {
   unknown,
 }
 
-/// Cursor-owned boundary model for identifying standard Task calls.
+/// Cursor-owned boundary model for a standard Task call's `rawInput`: it
+/// identifies the call as a sub-agent spawn and carries the spawn's prompt,
+/// which Cursor's `subagent_spawned` notification does not repeat.
 @Freezed(fromJson: true, toJson: false)
 sealed class CursorTaskInputDto with _$CursorTaskInputDto {
   const factory({
@@ -41,6 +43,8 @@ sealed class CursorTaskInputDto with _$CursorTaskInputDto {
       unknownEnumValue: CursorTaskTool.unknown,
     )
     required CursorTaskTool toolName,
+    required String? prompt,
+    required String? description,
   }) = _CursorTaskInputDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CursorTaskInputDtoFromJson(json);

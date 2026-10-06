@@ -11,6 +11,7 @@ import "cursor_event_mapper.dart";
 import "models/cursor_catalog_models.dart";
 import "repositories/cursor_catalog_repository.dart";
 import "repositories/cursor_generated_image_reader.dart";
+import "repositories/mappers/cursor_subagent_mapper.dart";
 import "repositories/mappers/cursor_task_mapper.dart";
 import "repositories/trackers/cursor_task_replay_tracker.dart";
 import "services/cursor_catalog_service.dart";
@@ -111,7 +112,7 @@ class CursorPlugin._({
       childSessions: childSessionTracker,
       generatedImageReader: const CursorGeneratedImageReader(),
       taskTracker: taskTracker,
-      taskMapper: taskMapper,
+      subagentMapper: const CursorSubagentMapper(),
       activeSessionResolver: () => plugin.activeTurnSessionId,
     );
     return plugin = CursorPlugin._(
@@ -138,9 +139,7 @@ class CursorPlugin._({
         id: pluginId,
         agentDisplayName: "Cursor",
         eventMapper: mapper,
-      ) {
-    registerProcessResidencyChanges(changes: _taskTracker.residencyChanges);
-  }
+      );
 
   final CursorSessionOptionsService _sessionOptionsService = cursorSessionOptionsService;
   String? _appliedModelId;
@@ -165,16 +164,6 @@ class CursorPlugin._({
 
   @override
   AcpScopedStopCapability get scopedStopCapability => AcpScopedStopCapability.rootSessionCancel;
-
-  @override
-  bool get requiresProcessResidency => _taskTracker.requiresProcessResidency;
-
-  @override
-  bool hasUnresolvedResidentWork({required String sessionId}) =>
-      _taskTracker.hasUnresolvedBackgroundWork(sessionId: sessionId);
-
-  @override
-  int activeScopedStopWorkCount({required String sessionId}) => _taskTracker.activeTaskCount(sessionId: sessionId);
 
   @override
   Map<String, dynamic>? get initializeCapabilityMeta => CursorBinary.acpCapabilityMeta;

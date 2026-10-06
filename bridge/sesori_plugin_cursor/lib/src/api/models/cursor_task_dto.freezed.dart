@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$CursorTaskInputDto {
 
-@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool get toolName;
+@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool get toolName; String? get prompt; String? get description;
 /// Create a copy of CursorTaskInputDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,20 +28,20 @@ $CursorTaskInputDtoCopyWith<CursorTaskInputDto> get copyWith => _$CursorTaskInpu
 @override
 bool operator ==(Object other) {
   final _this = this as CursorTaskInputDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorTaskInputDto&&(identical(other.toolName, _this.toolName) || other.toolName == _this.toolName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorTaskInputDto&&(identical(other.toolName, _this.toolName) || other.toolName == _this.toolName)&&(identical(other.prompt, _this.prompt) || other.prompt == _this.prompt)&&(identical(other.description, _this.description) || other.description == _this.description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as CursorTaskInputDto;
-  return Object.hash(runtimeType,_this.toolName);
+  return Object.hash(runtimeType,_this.toolName,_this.prompt,_this.description);
 }
 
 @override
 String toString() {
   final _this = this as CursorTaskInputDto;
-  return 'CursorTaskInputDto(toolName: ${_this.toolName})';
+  return 'CursorTaskInputDto(toolName: ${_this.toolName}, prompt: ${_this.prompt}, description: ${_this.description})';
 }
 
 
@@ -52,7 +52,7 @@ abstract mixin class $CursorTaskInputDtoCopyWith<$Res>  {
   factory $CursorTaskInputDtoCopyWith(CursorTaskInputDto value, $Res Function(CursorTaskInputDto) _then) = _$CursorTaskInputDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool toolName
+@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool toolName, String? prompt, String? description
 });
 
 
@@ -69,10 +69,12 @@ class _$CursorTaskInputDtoCopyWithImpl<$Res>
 
 /// Create a copy of CursorTaskInputDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? toolName = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? toolName = null,Object? prompt = freezed,Object? description = freezed,}) {
   return _then(CursorTaskInputDto(
 toolName: null == toolName ? _self.toolName : toolName // ignore: cast_nullable_to_non_nullable
-as CursorTaskTool,
+as CursorTaskTool,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -84,10 +86,12 @@ as CursorTaskTool,
 @JsonSerializable(createToJson: false)
 
 class _CursorTaskInputDto implements CursorTaskInputDto {
-  const _CursorTaskInputDto({@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) required this.toolName});
+  const _CursorTaskInputDto({@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) required this.toolName, required this.prompt, required this.description});
   factory _CursorTaskInputDto.fromJson(Map<String, dynamic> json) => _$CursorTaskInputDtoFromJson(json);
 
 @override@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) final  CursorTaskTool toolName;
+@override final  String? prompt;
+@override final  String? description;
 
 /// Create a copy of CursorTaskInputDto
 /// with the given fields replaced by the non-null parameter values.
@@ -99,18 +103,18 @@ _$CursorTaskInputDtoCopyWith<_CursorTaskInputDto> get copyWith => __$CursorTaskI
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorTaskInputDto&&(identical(other.toolName, toolName) || other.toolName == toolName));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorTaskInputDto&&(identical(other.toolName, toolName) || other.toolName == toolName)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,toolName);
+    return Object.hash(runtimeType,toolName,prompt,description);
 }
 
 @override
 String toString() {
-    return 'CursorTaskInputDto(toolName: $toolName)';
+    return 'CursorTaskInputDto(toolName: $toolName, prompt: $prompt, description: $description)';
 }
 
 
@@ -121,7 +125,7 @@ abstract mixin class _$CursorTaskInputDtoCopyWith<$Res> implements $CursorTaskIn
   factory _$CursorTaskInputDtoCopyWith(_CursorTaskInputDto value, $Res Function(_CursorTaskInputDto) _then) = __$CursorTaskInputDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool toolName
+@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool toolName, String? prompt, String? description
 });
 
 
@@ -138,10 +142,12 @@ class __$CursorTaskInputDtoCopyWithImpl<$Res>
 
 /// Create a copy of CursorTaskInputDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? toolName = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? toolName = null,Object? prompt = freezed,Object? description = freezed,}) {
   return _then(_CursorTaskInputDto(
 toolName: null == toolName ? _self.toolName : toolName // ignore: cast_nullable_to_non_nullable
-as CursorTaskTool,
+as CursorTaskTool,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
