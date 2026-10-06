@@ -101,11 +101,11 @@ evidence; none is a user decision.
 | P1 | **Order:** W2 and W1 first, then the index and search, then W3. | W2 is trivial. W1 is the largest lever (about 5×) and helps every page and every later route, including the index and load-through responses. The index is the feature. W3 saves only 15–20% more once deflate is on, and it carries the most UI risk. |
 | P2 | W2 projects in `ChatHistoryRepository`'s two page-assembly sites: `_assemblePage` and the archived page build in `getArchivedSessionMessages`. The projection is applied after `_rehydrateParts`, next to the existing `MessageAttachmentProjection`. Not in the routing handler, the mapper, the store, or `_rehydratePart`. | Those two sites assemble every page the route returns: live database, fresh, `storedOnly` and archived pages, including rows stored before this change. Their only consumer is the page route, through `ChatHistoryService`. Routing handlers do no mapping (architecture review). Semantic import matching calls `_rehydrateParts` directly, so it stays faithful. The live SSE projection keeps the title. Under W1 the duplicate there is nearly free, and SSE events are small. |
 | P3 | W1's ask is a typed `RelayRequest` field, `acceptsDeflatedResponse`, rather than a header. | It avoids a magic header string, and it is decoded at the same boundary as every other request field. v1.9.0 bridges decode `RelayRequest` without key checks (verified in the v1.9.0 `messages.g.dart`), so they ignore the field. |
-| P4 | The app asks on every request it sends through `RelayHttpClient`. The bridge deflates every routed response for an asking request. There is no size threshold and no per-route opt-in. | One switch instead of a method per route. Session lists, project lists and later routes benefit for free. Tiny responses cost a few bytes and microseconds. A threshold would be a tuning constant with no evidence behind it. |
+| P4 | The app asks on every request it sends through `RelayHttpClient` except the attachment fetch (`postWithTimeout`, whose only caller is `SessionApi.getAttachment`). The bridge deflates every routed response for an asking request. There is no size threshold. | One switch instead of a method per route. Session lists, project lists and later routes benefit for free. Tiny responses cost a few bytes and microseconds. Attachment responses carry up to 20 MiB of already-compressed image bytes in base64 (`attachments-and-images.md`); deflating them gains little and would block the bridge isolate for a large image (PR review). |
 | P5 | The compressed plaintext is one marker byte `0x00` followed by raw deflate (`ZLibCodec(raw: true)`), inside the AEAD. The outer frame and its version byte `0x01` do not change. | `0x00` is never the first byte of JSON text, and plain plaintexts always start with `{`, so the reader needs no other signal. The relay sees the same frame format. |
 | P6 | zlib stays in the Layer 0 transport code of the two packages that already depend on `dart:io`: a plaintext codec in the bridge's `foundation/`, and `RelayClient` in `module_core`. `sesori_shared` holds only the marker constant and the request field. | `sesori_shared` must not import platform libraries. Each side's codec call is about one line. |
 | P7 | SSE events and app-to-bridge requests stay uncompressed. | SSE events are small and deflate poorly one by one. Request bodies are small; attachments are already compressed formats. |
-| P8 | The prompt index has no revision counter (turn-navigation F1). The app refetches it whenever it replaces its message list or refreshes. | Q2 fetches the index once per open. A refetch on replacement covers compaction and history rewrites. A stale entry fails one tap with an inline error. |
+| P8 | The prompt index has no revision counter (turn-navigation F1). The app refetches it when it replaces its whole message list: a refresh, a reconnect resync, or a history rewrite. Paging older messages and the load-through only prepend, so they never refetch it. An open Prompts screen keeps its opening snapshot, as turn-navigation already requires; a refetched index reaches it only through that screen's existing snapshot-refresh rule. | Q2 fetches the index once per open. A refetch on replacement covers compaction and history rewrites. A stale entry fails one tap with an inline error. |
 | P9 | The load-through (Q5) is a lower bound on the existing page request, not a new route. | It reuses the cursor, the paging code and the projection. |
 
 ## Supersession Of Turn-Navigation
@@ -285,8 +285,11 @@ Step 3 covers the bridge and `sesori_shared`. Step 4 covers the app.
 
 **App (step 4):**
 
-- `RelayHttpClient._sendViaRelay` sets `acceptsDeflatedResponse: true` (P4).
-  The health request in `connection_service.dart` keeps the default.
+- `RelayHttpClient._request` and `_sendViaRelay` gain a required
+  `acceptsDeflatedResponse` and copy it into the `RelayRequest` (P4).
+  `get`, `post`, `patch` and `delete` pass `true`. `postWithTimeout`, used
+  only for the attachment fetch, passes `false`. The health request in
+  `connection_service.dart` keeps the default.
 - `RelayClient._decryptRelayMessage`:
   - after `unframe`, a plaintext whose first byte is the marker is inflated
     with `ZLibDecoder(raw: true)` from byte 1;
@@ -410,7 +413,8 @@ architecture review:
     - the spinner appears only after about 150 ms;
     - the new messages are prepended off-screen;
     - then the transcript scrolls to the prompt (Q5).
-  - Any list replacement drops the index and refetches it (P8).
+  - Replacing the whole message list drops the index and refetches it.
+    Paging and the load-through do not (P8).
   - A tap on an entry the bridge no longer has shows an inline error.
 - **Pin (step 10).** When the top of the loaded range sits inside a turn
   whose opener is not loaded, the pin uses the latest index entry older than
@@ -482,7 +486,7 @@ titles.
 
 ### Step Dependencies
 
-- Step 2 depends on step 1.
+- Step 2 depends on step 1 and on the user's answer to O1.
 - Step 3 depends on step 1. Step 4 depends on step 3.
 - Step 5 depends on steps 2–4 having merged, so that it details phases 2 and
   3 with phase 1's evidence (real compressed sizes).
@@ -582,10 +586,10 @@ Deliberately not added:
 
 | Risk | Evidence level | Accepted outcome |
 |---|---|---|
-| v1.8.3 and older apps lose the shell command label on page reads (W2). | Reasoned from the v1.8.4 release history. | Cosmetic, on apps two releases old. Pending O1. |
+| v1.8.3 and older apps lose the shell command label on page reads (W2). | Reasoned from the v1.8.4 release history. | Cosmetic, on apps two releases old. Step 2 waits for the user's O1 answer. |
 | A stale index entry after a background history rewrite that has not yet triggered a refetch (P8). | Theoretical interleaving. | One tap shows an inline error. The next list replacement refetches. |
 | CRIME/BREACH-style length inference on deflated transcript pages. | Theoretical. Needs adaptive injection, length observation and repeated user re-fetches. | Not mitigated. See [Security And Privacy Of W1](#security-and-privacy-of-w1). |
-| Bridge CPU spent deflating a very large load-through response. | Measured sizes: up to 17.4 MB for the largest session. | Measured in step 8. Isolate offload only if the bridge stalls visibly. |
+| Bridge CPU spent deflating a very large load-through response. | Measured sizes: up to 17.4 MB for the largest session. | Measured in step 8. Isolate offload only if the bridge stalls visibly. Attachment responses are never deflated (P4). |
 
 ## Cleanup Assessment
 
@@ -624,7 +628,8 @@ from `title`, so after W2 their reloaded shell rows show only the tool name.
   under W1 is small.
 - (c) Gate W2 on a new app opt-in. In effect this is (b), plus a field.
 
-Until the user answers, step 2 proceeds with (a).
+Step 2 does not open until the user answers O1. Step 3 does not depend on
+it.
 
 ## Plan Review
 

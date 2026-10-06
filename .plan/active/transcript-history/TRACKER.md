@@ -14,8 +14,8 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 - This plan supersedes turn-navigation D30, the derived-only guardrail, and
   the Later Phases F1/F2. See
   [PLAN](PLAN.md#supersession-of-turn-navigation).
-- Open: O1 (W2 on v1.8.3 and older apps). Step 2 proceeds with the suggested
-  option (a) unless the user picks another.
+- Open: O1 (W2 on v1.8.3 and older apps). Option (a) is suggested. Step 2
+  does not open until the user answers.
 
 ## Guardrails
 
@@ -58,8 +58,9 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | 14 | `transcript-history/regression-docs` | [14](#fixed-pr-titles) | ≤ 300 | 2–13 |
 | 15 | `transcript-history/retire` | [15](#fixed-pr-titles) | ≤ 250 | 14 |
 
-Rows 6–13 are provisional. Step 5 may re-split or reorder them; it updates
-this table and the titles together.
+Rows 6–13 are provisional and do not start until step 5 merges with its
+architecture review. Step 5 may re-split or reorder them; it updates this
+table and the titles together.
 
 ## Fixed PR Titles
 
