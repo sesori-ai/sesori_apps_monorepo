@@ -316,6 +316,14 @@ concrete problem can justify a documented temporary hold with a resolution path.
   user-assisted verification, without claiming it passed.
 - **Audit:** OMP's ACP projection, not Pi RPC. Trace auth, configuration, history,
   models, tools, subagent and cancellation behavior at that seam.
+- **Model restore (verified 2026-10-06 on 18.6.3):** ACP `session/load` and
+  `session/resume` fail with `Could not restore model <provider/id>` when a
+  session's saved model is no longer configured, and no ACP parameter skips
+  that restore. Because resume-based cleanup cannot delete such sessions,
+  re-run this probe for every new target. Credential-free fixture: put a
+  `models.yml` in the isolated `~/.omp/agent` with `auth: none` providers on an
+  unused loopback URL, create a session on one provider over ACP, remove that
+  provider, then resume the session under a network-denied sandbox.
 - **Forms:** The shared ACP mapper supports finite array `items.anyOf` string
   choices. Keep one question/encoder per property: checkbox selections and
   separate custom text retain their keys, order, required flags and answer slots,
