@@ -34,15 +34,7 @@ final class const TranscriptTurns({
 
   /// Where in [turns] each rendered message's turn sits.
   required final Map<String, int> turnIndexByMessageId,
-}) {
-  /// The turn [openerMessageId] opened, or null when that message opened none.
-  TranscriptPromptTurn? promptTurnFor({required String openerMessageId}) {
-    final index = turnIndexByMessageId[openerMessageId];
-    if (index == null) return null;
-    final turn = turns[index];
-    return turn is TranscriptPromptTurn && turn.opener.info.id == openerMessageId ? turn : null;
-  }
-}
+});
 
 /// Splits the rendered transcript into turns.
 ///

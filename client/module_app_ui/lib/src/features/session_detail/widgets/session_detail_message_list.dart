@@ -259,14 +259,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// The last build's rows by their place in order.
   Map<String, int> _rowIndexById = const {};
-  TranscriptTurns _turns = const TranscriptTurns(turns: [], turnIndexByMessageId: {});
 
-  /// The attached opener bubbles of prompt turns, by opener id.
+  /// The last build's rendered user messages, prompts and steers alike, in
+  /// order: the messages that can pin.
+  Map<String, MessageWithParts> _userMessagesById = const {};
+
+  /// The attached user message bubbles, by message id.
   final _promptSlots = TranscriptPromptSlots();
   final GlobalKey _stickyKey = GlobalKey();
 
-  /// The prompts the pinned prompts hold copies of: those that could pin
-  /// next, which are the built ones and the one just above them.
+  /// The user messages the pins hold copies of: those that could pin next,
+  /// which are the built ones and the one just above them.
   final ValueNotifier<List<String>> _stickyOpenerIds = ValueNotifier(const []);
 
   /// The built rows by id. Only built rows are here, so every scan stays
@@ -489,40 +492,32 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     if (widget.jumpNotifier.take() case final jump?) _jumpToMessage(messageId: jump.messageId, landed: jump.landed);
   }
 
-  /// Holds message [messageId]'s row where a pinned prompt's tap lands a
-  /// prompt: an opener on the pin line, any other message just below the
-  /// prompt pinned over it. A message that is gone
-  /// moves nothing. Like any hold, this stops following. [landed] completes
-  /// once the hold ends.
+  /// Holds message [messageId]'s row where a pinned message's tap lands it:
+  /// on the pin line. A message that is gone moves nothing. Like any hold,
+  /// this stops following. [landed] completes once the hold ends.
   void _jumpToMessage({required String messageId, required Completer<void> landed}) {
     final message = widget.messages.where((message) => message.info.id == messageId).firstOrNull;
     if (message == null) return landed.complete();
     // A message that arrived after the list froze is listed on the Prompts
     // screen too, so the list takes the live transcript in to reach it. The
     // hold below moves the reader straight to it, so the reflow goes unseen.
-    // Its turn is not built yet, so a prompt taken in this way rests just below
-    // the pin, where a follow-up would.
     if (_snapshot case final frozen? when !frozen.messages.any((message) => message.info.id == messageId)) {
       setState(() => _snapshot = _freezeLive());
     }
-    final pins = _stickyKey.currentContext?.findRenderObject();
-    final top = _turns.promptTurnFor(openerMessageId: messageId) == null && pins is RenderTranscriptStickyPrompts
-        ? _kPinnedRowTop + pins.compactHeight + transcriptStickyGap
-        : _kPinnedRowTop;
     _holdRow(
       rowId: _entryIdForMessage(info: message.info),
-      top: top,
+      top: _kPinnedRowTop,
       landed: landed,
     );
   }
 
-  /// Glides back to the prompt of turn [openerMessageId], landing it on the
-  /// pin line, where its pin grows back into it. Under reduced motion it jumps
+  /// Glides back to user message [openerMessageId], landing it on the pin
+  /// line, where its pin grows back into it. Under reduced motion it jumps
   /// there instead. Like any hold, this stops following.
   void _glideToPrompt({required String openerMessageId}) {
-    final turn = _turns.promptTurnFor(openerMessageId: openerMessageId);
-    if (turn == null) return;
-    final rowId = _entryIdForMessage(info: turn.opener.info);
+    final message = _userMessagesById[openerMessageId];
+    if (message == null) return;
+    final rowId = _entryIdForMessage(info: message.info);
     final position = _follow.scrollController.position;
     if (context.isReducedMotion || position is! ScrollPositionWithSingleContext) {
       return _holdRow(rowId: rowId, top: _kPinnedRowTop, landed: null);
@@ -561,23 +556,26 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     return pixels + restTop - (first.top - (first.index - target) * builtHeight / builtCount);
   }
 
-  /// Places the pinned prompts from where the opener bubbles are. Runs while
-  /// the transcript lays out, once the rows have and once the pins have, so
-  /// whichever lays out last places them with both current.
+  /// Places the pinned messages from where the user message bubbles are. Runs
+  /// while the transcript lays out, once the rows have and once the pins
+  /// have, so whichever lays out last places them with both current.
   void _layOutSticky() {
     final openers = _stickyOpeners();
     final pinTop = widget.topInset + _kPinGap;
-    // The prompt the pin names, else, before any has reached the pin line, the
-    // next one below.
+    // The message the pin names, else, before any has reached the pin line,
+    // the next one below.
     final current = currentTranscriptStickyIndex(openers: openers, pinTop: pinTop);
     widget.currentPromptId.value = (current < 0 ? openers.firstOrNull : openers[current])?.id;
     final pins = _stickyKey.currentContext?.findRenderObject();
-    if (pins is! RenderTranscriptStickyPrompts) return;
+    // Until the pins have their size, their own layout places them.
+    if (pins is! RenderTranscriptStickyPrompts || !pins.hasSize) return;
     final layout = layOutTranscriptStickyPrompts(
       openers: openers,
       fullHeights: pins.fullHeights,
+      cutOpenerIds: pins.cutOpenerIds,
       compactHeight: pins.compactHeight,
       pinTop: pinTop,
+      viewportBottom: pins.size.height - widget.bottomInset,
     );
     pins.stickyLayout = layout;
     _promptSlots.hideOnly(openerIds: layout.hiddenOpenerIds);
@@ -596,8 +594,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     });
   }
 
-  /// Every prompt turn's opener in order, with where its bubble is. A built
-  /// opener's row is its bubble and the bubble's vertical margin; the row is
+  /// Every rendered user message in order, with where its bubble is. A built
+  /// message's row is its bubble and the bubble's vertical margin; the row is
   /// read rather than the bubble because the rows are laid out by now, while
   /// a row's own content can still be waiting for its turn.
   List<TranscriptStickyOpener> _stickyOpeners() {
@@ -617,11 +615,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     }
 
     return [
-      for (final turn in _turns.turns)
-        if (turn case TranscriptPromptTurn(:final opener))
-          if (_entryIdForMessage(info: opener.info) case final rowId)
-            if (_rowIndexById[rowId] case final rowIndex?)
-              (id: opener.info.id, place: placeOf(rowId: rowId, rowIndex: rowIndex)),
+      for (final message in _userMessagesById.values)
+        if (_entryIdForMessage(info: message.info) case final rowId)
+          if (_rowIndexById[rowId] case final rowIndex?)
+            (id: message.info.id, place: placeOf(rowId: rowId, rowIndex: rowIndex)),
     ];
   }
 
@@ -819,7 +816,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     }
     _knownRowIds = rowIds.toSet();
     _rowIndexById = {for (final (index, rowId) in rowIds.indexed) rowId: index};
-    _turns = turns;
+    _userMessagesById = {
+      for (final message in messages)
+        if (message.info is MessageUser && message.hasRenderableUserContent) message.info.id: message,
+    };
     // Rows held still while scrolled away never animate, and a prompt shows
     // at once: only the agent's side of the transcript eases in.
     final enteringRowIds = knownRowIds == null || snap != null || context.isReducedMotion
@@ -936,7 +936,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                       valueListenable: _stickyOpenerIds,
                       builder: (context, openerIds, _) => TranscriptStickyPromptOverlay(
                         key: _stickyKey,
-                        turns: [for (final openerId in openerIds) ?turns.promptTurnFor(openerMessageId: openerId)],
+                        messages: [for (final openerId in openerIds) ?_userMessagesById[openerId]],
                         horizontalInset: widget.horizontalInset,
                         onLayout: _layOutSticky,
                         onTap: _glideToPrompt,
@@ -1132,13 +1132,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     return _revealable(createdAtMs: message.info.time?.created, child: card);
   }
 
-  /// A user message's bubble; a prompt turn's opener registers where it is,
-  /// so its pin can stand in for it.
-  Widget _userMessage({required MessageWithParts message}) {
-    final card = UserMessageCard(message: message);
-    if (_turns.promptTurnFor(openerMessageId: message.info.id) == null) return card;
-    return TranscriptPromptSlot(openerId: message.info.id, registry: _promptSlots, child: card);
-  }
+  /// A user message's bubble, registered where it is so its pin can stand in
+  /// for it.
+  Widget _userMessage({required MessageWithParts message}) => TranscriptPromptSlot(
+    openerId: message.info.id,
+    registry: _promptSlots,
+    child: UserMessageCard(message: message),
+  );
 
   QueuedMessageBubblePresentation _launchFollowUpPresentation({required LaunchFollowUp followUp}) {
     final promptId = followUp.submission.promptId;
