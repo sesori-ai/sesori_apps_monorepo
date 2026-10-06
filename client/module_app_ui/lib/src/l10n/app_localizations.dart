@@ -2419,6 +2419,12 @@ abstract class AppLocalizations {
   /// **'Sesori couldn’t safely stop this session. Restart the harness, then try again.'**
   String get sessionDetailStopNotAcceptedGenericMessage;
 
+  /// No description provided for @sessionDetailStopNotAcceptedSubAgentMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the parent session; this harness cannot stop sub-agents individually.'**
+  String get sessionDetailStopNotAcceptedSubAgentMessage;
+
   /// No description provided for @sessionDetailStopScopeTitle.
   ///
   /// In en, this message translates to:

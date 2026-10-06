@@ -100,6 +100,7 @@ Future<void> _showNotAccepted({required BuildContext context, required SessionAb
   final message = switch (refusal.reason) {
     SessionAbortRefusalReason.residentWorkCompletionUnknown =>
       context.loc.sessionDetailStopNotAcceptedBackgroundMessage,
+    SessionAbortRefusalReason.subAgentStopUnsupported => context.loc.sessionDetailStopNotAcceptedSubAgentMessage,
     SessionAbortRefusalReason.unknownEnumValue => context.loc.sessionDetailStopNotAcceptedGenericMessage,
   };
   await showPregoModal<void>(

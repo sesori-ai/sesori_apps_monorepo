@@ -1280,6 +1280,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sesori couldn’t safely stop this session. Restart the harness, then try again.';
 
   @override
+  String get sessionDetailStopNotAcceptedSubAgentMessage =>
+      'Stop the parent session; this harness cannot stop sub-agents individually.';
+
+  @override
   String get sessionDetailStopScopeTitle => 'Sub-agents are running';
 
   @override

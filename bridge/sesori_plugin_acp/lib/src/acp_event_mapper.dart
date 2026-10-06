@@ -60,7 +60,8 @@ class const AcpHaltNotice({
 ///     each `session/prompt` to advance the turn counter.
 ///
 /// Harness-specific notifications (e.g. Cursor's `cursor/*`) are routed to
-/// [mapExtension], which subclasses override.
+/// [mapExtension], and harness-specific `session/update` kinds to
+/// [mapHarnessSessionUpdate]; subclasses override both.
 class AcpEventMapper({
   required String launchDirectory,
 
@@ -206,12 +207,36 @@ class AcpEventMapper({
     _spawnToolCalls.remove(sessionId);
   }
 
-  /// sessionId -> tool-call ids the harness classified as sub-agent spawns
-  /// (see [isSubagentSpawnToolCall]). Their tool card is never rendered: the
-  /// tile comes from the harness's lifecycle notification, keyed by the child
-  /// id, so a spawn that reports no shared id still yields exactly one tile.
-  /// Bounded like [_liveTools]: cleared per turn and on [forgetSession].
-  final Map<String, Set<String>> _spawnToolCalls = {};
+  /// sessionId -> (toolCallId -> latest non-null `rawInput`) for tool calls the
+  /// harness classified as sub-agent spawns (see [isSubagentSpawnToolCall]).
+  /// Their tool card is never rendered: the tile comes from the harness's
+  /// lifecycle notification, keyed by the child id, so a spawn that reports no
+  /// shared id still yields exactly one tile. Bounded like [_liveTools]:
+  /// cleared per turn and on [forgetSession].
+  final Map<String, Map<String, Map<String, dynamic>?>> _spawnToolCalls = {};
+
+  /// The latest `rawInput` of the spawn tool call [toolCallId] in [sessionId],
+  /// for a harness whose lifecycle notification links its spawn call but does
+  /// not repeat the call's input. Null when the call is unknown or carried no
+  /// input. The harness parses this open ACP shape into its own model.
+  Map<String, dynamic>? spawnToolCallInput({required String sessionId, required String toolCallId}) =>
+      _spawnToolCalls[sessionId]?[toolCallId];
+
+  /// Records a suppressed spawn call. A frame without `rawInput` keeps the
+  /// previously retained input; streamed arguments fill in on later frames.
+  void _recordSpawnToolCall({
+    required String sessionId,
+    required String toolCallId,
+    required Map<String, dynamic> update,
+  }) {
+    final calls = _spawnToolCalls[sessionId] ??= {};
+    final rawInput = _asMap(update["rawInput"]);
+    if (rawInput != null) {
+      calls[toolCallId] = rawInput;
+    } else {
+      calls.putIfAbsent(toolCallId, () => null);
+    }
+  }
 
   /// sessionId -> (toolCallId -> last-rendered live tool state). ACP
   /// `tool_call_update` notifications are partial, so this preserves the tool's
@@ -229,7 +254,7 @@ class AcpEventMapper({
       for (final entry in _liveTools.entries)
         if (entry.value.containsKey(toolCallId)) entry.key,
       for (final entry in _spawnToolCalls.entries)
-        if (entry.value.contains(toolCallId)) entry.key,
+        if (entry.value.containsKey(toolCallId)) entry.key,
     };
     return switch (sessionIds.toList(growable: false)) {
       [final sessionId] => AcpToolCallSessionFound(sessionId: sessionId),
@@ -578,11 +603,18 @@ class AcpEventMapper({
         ];
     }
 
-    // Dropped intentionally: current_mode_update (the mode is surfaced as the
-    // session "variant", driven by the plugin, not a message event), and any
-    // future standard variants the mobile UI has no renderer for.
-    return const [];
+    return mapHarnessSessionUpdate(sessionId: sessionId, update: update);
   }
+
+  /// Hook for `session/update` kinds the base does not handle, such as a
+  /// harness's own lifecycle kinds. [update] is already normalized. The base
+  /// drops them: current_mode_update (the mode is surfaced as the session
+  /// "variant", driven by the plugin, not a message event), and any future
+  /// standard variants the mobile UI has no renderer for.
+  List<BridgeSseEvent> mapHarnessSessionUpdate({
+    required String sessionId,
+    required Map<String, dynamic> update,
+  }) => const [];
 
   List<BridgeSseEvent> _afterReasoning({
     required String sessionId,
@@ -697,13 +729,18 @@ class AcpEventMapper({
     ...result.events,
   ];
 
-  /// Feeds a harness-reported sub-agent finish to [childSessions].
+  /// Feeds a harness-reported sub-agent finish to [childSessions]. A child
+  /// stream never runs a prompt turn, so its streamed text and reasoning are
+  /// finalized here, before the tile settles.
   List<BridgeSseEvent> mapChildFinished({
     required String childSessionId,
     required PluginToolStatus status,
     required String? output,
     required String? error,
-  }) => childSessions.finish(childSessionId: childSessionId, status: status, output: output, error: error);
+  }) => [
+    ...finalizeTurn(sessionId: childSessionId),
+    ...childSessions.finish(childSessionId: childSessionId, status: status, output: output, error: error),
+  ];
 
   /// Finalizes a child while atomically replacing it with an opaque hold for a
   /// backend-driven root settlement turn that has no ACP prompt accounting.
@@ -713,13 +750,16 @@ class AcpEventMapper({
     required PluginToolStatus status,
     required String? output,
     required String? error,
-  }) => childSessions.finishAndHoldRoot(
-    childSessionId: childSessionId,
-    holdId: holdId,
-    status: status,
-    output: output,
-    error: error,
-  );
+  }) => [
+    ...finalizeTurn(sessionId: childSessionId),
+    ...childSessions.finishAndHoldRoot(
+      childSessionId: childSessionId,
+      holdId: holdId,
+      status: status,
+      output: output,
+      error: error,
+    ),
+  ];
 
   /// Hook: classify an assistant message's [text] as a backend halt notice
   /// (see [AcpHaltNotice]) — the agent ended the turn without doing the
@@ -1045,7 +1085,10 @@ class AcpEventMapper({
   }) {
     final toolCallId = update["toolCallId"] as String?;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
-    if (_spawnToolCalls[sessionId]?.contains(toolCallId) ?? false) return const [];
+    if (_spawnToolCalls[sessionId]?.containsKey(toolCallId) ?? false) {
+      _recordSpawnToolCall(sessionId: sessionId, toolCallId: toolCallId, update: update);
+      return const [];
+    }
     final prior = _liveTools[sessionId]?[toolCallId];
     final boundaryEvents = prior == null
         ? _finalizeCurrentIdlessAssistantText(sessionId: sessionId)
@@ -1059,8 +1102,12 @@ class AcpEventMapper({
       // updates are suppressed. The card it already rendered is accepted
       // residue of the reorder.
       _liveTools[sessionId]?.remove(toolCallId);
-      (_spawnToolCalls[sessionId] ??= {}).add(toolCallId);
-      return boundaryEvents;
+      return _suppressSpawnToolCall(
+        sessionId: sessionId,
+        toolCallId: toolCallId,
+        update: update,
+        boundaryEvents: boundaryEvents,
+      );
     }
     final messageId = toolMessageId(sessionId: sessionId, toolCallId: toolCallId);
     final contentMutation = _contentMapper.toolContent(update: update);
@@ -1106,6 +1153,26 @@ class AcpEventMapper({
     return events;
   }
 
+  /// Suppresses a spawn call's card while keeping the boundary an ordinary
+  /// card would draw: reasoning streamed before the spawn is finalized, or it
+  /// would stay live until the turn that may outlast the child ends.
+  List<BridgeSseEvent> _suppressSpawnToolCall({
+    required String sessionId,
+    required String toolCallId,
+    required Map<String, dynamic> update,
+    required List<BridgeSseEvent> boundaryEvents,
+  }) {
+    _recordSpawnToolCall(sessionId: sessionId, toolCallId: toolCallId, update: update);
+    return [
+      ..._finalizeActiveTextParts(
+        sessionId: sessionId,
+        partType: PluginMessagePartType.reasoning,
+        messageId: null,
+      ),
+      ...boundaryEvents,
+    ];
+  }
+
   List<BridgeSseEvent> _toolCallUpdate({
     required String sessionId,
     required Map<String, dynamic> update,
@@ -1113,14 +1180,21 @@ class AcpEventMapper({
   }) {
     final toolCallId = update["toolCallId"] as String?;
     if (toolCallId == null || toolCallId.isEmpty) return const [];
-    if (_spawnToolCalls[sessionId]?.contains(toolCallId) ?? false) return const [];
+    if (_spawnToolCalls[sessionId]?.containsKey(toolCallId) ?? false) {
+      _recordSpawnToolCall(sessionId: sessionId, toolCallId: toolCallId, update: update);
+      return const [];
+    }
     // A reordered spawn update (see the reorder note below) must not open a
     // tool card its `tool_call` would have suppressed.
     if (_liveTools[sessionId]?[toolCallId] == null && isSubagentSpawnToolCall(update: update)) {
       final boundaryEvents = _finalizeCurrentIdlessAssistantText(sessionId: sessionId);
       _closeCurrentIdlessAssistantContent(sessionId: sessionId);
-      (_spawnToolCalls[sessionId] ??= {}).add(toolCallId);
-      return boundaryEvents;
+      return _suppressSpawnToolCall(
+        sessionId: sessionId,
+        toolCallId: toolCallId,
+        update: update,
+        boundaryEvents: boundaryEvents,
+      );
     }
     final messageId = toolMessageId(sessionId: sessionId, toolCallId: toolCallId);
     // A `tool_call_update` is a PARTIAL update: an agent may send only the

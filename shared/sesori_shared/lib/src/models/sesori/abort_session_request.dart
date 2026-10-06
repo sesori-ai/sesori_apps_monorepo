@@ -59,16 +59,24 @@ enum SessionAbortRefusalReason() {
   @JsonValue("residentWorkCompletionUnknown")
   residentWorkCompletionUnknown,
 
+  /// The stop named a sub-agent session, but the harness can only stop the
+  /// parent session, which stops its sub-agents with it.
+  @JsonValue("subAgentStopUnsupported")
+  subAgentStopUnsupported,
+
   @JsonValue("unknown")
   unknownEnumValue,
 }
 
-SessionAbortRefusalReason _abortRefusalReasonFromJson(String value) => value == "residentWorkCompletionUnknown"
-    ? SessionAbortRefusalReason.residentWorkCompletionUnknown
-    : SessionAbortRefusalReason.unknownEnumValue;
+SessionAbortRefusalReason _abortRefusalReasonFromJson(String value) => switch (value) {
+  "residentWorkCompletionUnknown" => SessionAbortRefusalReason.residentWorkCompletionUnknown,
+  "subAgentStopUnsupported" => SessionAbortRefusalReason.subAgentStopUnsupported,
+  _ => SessionAbortRefusalReason.unknownEnumValue,
+};
 
 String _abortRefusalReasonToJson(SessionAbortRefusalReason value) => switch (value) {
   SessionAbortRefusalReason.residentWorkCompletionUnknown => "residentWorkCompletionUnknown",
+  SessionAbortRefusalReason.subAgentStopUnsupported => "subAgentStopUnsupported",
   SessionAbortRefusalReason.unknownEnumValue => "unknown",
 };
 

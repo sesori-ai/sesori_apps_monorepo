@@ -844,6 +844,7 @@
   "sessionDetailStopNotAcceptedTitle": "Session not stopped",
   "sessionDetailStopNotAcceptedBackgroundMessage": "Sesori couldn’t verify whether background work finished, so it didn’t stop this session. Restart the harness, then try again.",
   "sessionDetailStopNotAcceptedGenericMessage": "Sesori couldn’t safely stop this session. Restart the harness, then try again.",
+  "sessionDetailStopNotAcceptedSubAgentMessage": "Stop the parent session; this harness cannot stop sub-agents individually.",
   "sessionDetailStopScopeTitle": "Sub-agents are running",
   "sessionDetailStopScopeMessage": "{count, plural, =1{The main agent and 1 sub-agent are still working.} other{The main agent and {count} sub-agents are still working.}}",
   "@sessionDetailStopScopeMessage": {

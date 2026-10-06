@@ -68,4 +68,19 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Sesori couldn’t safely stop this session. Restart the harness, then try again."), findsOneWidget);
   });
+
+  testWidgets("sub-agent refusal asks the user to stop the parent session", (tester) async {
+    final cubit = _MockSessionDetailCubit();
+    when(
+      () => cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm),
+    ).thenAnswer((_) async => _refusal(SessionAbortRefusalReason.subAgentStopUnsupported));
+
+    await _pumpStopButton(tester, cubit);
+
+    expect(find.text("Session not stopped"), findsOneWidget);
+    expect(
+      find.text("Stop the parent session; this harness cannot stop sub-agents individually."),
+      findsOneWidget,
+    );
+  });
 }
