@@ -1,9 +1,9 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
-import "../session_launch/session_launch_composer.dart";
 import "composer_attachment.dart";
 import "composer_draft.dart";
 import "queued_session_submission.dart";
+import "unsent_composer.dart";
 
 part "new_session_submission_snapshot.freezed.dart";
 

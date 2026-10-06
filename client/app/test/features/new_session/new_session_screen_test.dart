@@ -1989,7 +1989,7 @@ void main() {
         const Stream<SessionDetailState>.empty(),
         initialState: SessionDetailState.loading(
           launchHandoff: GetIt.instance<SessionLaunchRepository>().takeHandoff(sessionId: sessionId),
-          stagedCommand: null,
+          seededComposer: null,
         ),
       );
       when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());

@@ -18,6 +18,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.d
 import "package:sesori_dart_core/src/foundation/models/composer/new_session_submission_snapshot.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/prompt_send_failure.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/unsent_composer.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/launch_follow_up.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch_composer.dart";
@@ -2403,7 +2404,7 @@ void main() {
           onInitialState: (state) => initial = state,
         );
 
-        expect(initial, SessionDetailState.loading(launchHandoff: expectedHandoff, stagedCommand: null));
+        expect(initial, SessionDetailState.loading(launchHandoff: expectedHandoff, seededComposer: null));
         expect((cubit.state as SessionDetailLoaded).launchHandoff, expectedHandoff);
         expect(repository.takeHandoff(sessionId: _sessionId), isNull, reason: "the handoff is taken once");
       });
@@ -2412,7 +2413,7 @@ void main() {
         SessionDetailState? initial;
         final cubit = await createLoadedCubit(onInitialState: (state) => initial = state);
 
-        expect(initial, const SessionDetailState.loading(launchHandoff: null, stagedCommand: null));
+        expect(initial, const SessionDetailState.loading(launchHandoff: null, seededComposer: null));
         expect((cubit.state as SessionDetailLoaded).launchHandoff, isNull);
       });
 
@@ -2728,14 +2729,14 @@ void main() {
           );
 
           final loading = cubit.state as SessionDetailLoading;
-          expect(loading.stagedCommand, _reviewCommand);
+          expect(loading.seededComposer?.stagedCommand, _reviewCommand);
           expect(cubit.composerDraft.text, "carry on");
           expect(cubit.launchAttachments, [same(image)]);
           cubit.acknowledgeLaunchAttachments();
           expect(cubit.launchAttachments, isEmpty);
 
           cubit.clearStagedCommand();
-          expect((cubit.state as SessionDetailLoading).stagedCommand, isNull);
+          expect((cubit.state as SessionDetailLoading).seededComposer?.stagedCommand, isNull);
         });
 
         test("queues and shows a send, then sends it after the load behind the launch's follow-ups", () async {
