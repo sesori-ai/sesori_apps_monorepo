@@ -86,6 +86,19 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     setState(() => _launchFollowUps = followUps);
   }
 
+  /// Mirrors the cubit parking an accepted launch follow-up: it leaves the
+  /// launch's unsent list and joins the parked sends in one emission.
+  void acceptLaunchFollowUp({required String promptId}) {
+    setState(() {
+      final accepted = _launchFollowUps.where((followUp) => followUp.submission.promptId == promptId);
+      _awaitingBridgeSubmissions = [
+        ..._awaitingBridgeSubmissions,
+        for (final followUp in accepted) followUp.submission,
+      ];
+      _launchFollowUps = [..._launchFollowUps.where((followUp) => followUp.submission.promptId != promptId)];
+    });
+  }
+
   late SessionLaunchHandoff? _launchHandoff;
 
   /// The first message's echo arrives and releases the launch bubble in the
@@ -2256,6 +2269,35 @@ void main() {
 
     expect(find.text("Command unavailable"), findsOneWidget);
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+  });
+
+  testWidgets("an accepted launch follow-up does not reattach a detached reader", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        launchFollowUps: [
+          LaunchFollowUp.sending(
+            submission: _textSubmission(promptId: "prm_follow", text: "follow"),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _detachViewport(tester);
+    final detachedPixels = _position(tester).pixels;
+
+    harnessKey.currentState?.acceptLaunchFollowUp(promptId: "prm_follow");
+    await _pumpListUpdate(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    expect(_position(tester).pixels, detachedPixels);
   });
 
   testWidgets("a new direct-to-sending submission returns a detached reader to latest", (tester) async {

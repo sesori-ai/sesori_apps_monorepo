@@ -670,6 +670,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       // A fast acceptance can move a send straight to the parked surface
       // between two builds; it is still the reader's new submission.
       for (final submission in oldWidget.awaitingBridgeSubmissions) submission.promptId,
+      // An accepted launch follow-up is parked under its promptId; it was
+      // already on screen, not a new submission.
+      for (final LaunchFollowUp(:submission) in oldWidget.launchFollowUps) submission.promptId,
     };
     return [
       ?_localSendRow(localSend: widget.localSend)?.submission,
