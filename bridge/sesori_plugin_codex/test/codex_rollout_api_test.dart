@@ -890,6 +890,28 @@ void main() {
       expect(_responseItemPayload(line: transcript.last), isA<CodexRolloutUnknownResponseItemDto>());
     });
 
+    test("lastModified returns null for a missing rollout", () {
+      expect(
+        rolloutApi.lastModified(rolloutPath: p.join(codexHome.path, "missing-rollout.jsonl")),
+        isNull,
+      );
+    });
+
+    test("lastModified preserves filesystem errors that stat reports as not found", () {
+      final path = p.join(codexHome.path, "unreadable-rollout.jsonl");
+      final error = FileSystemException(
+        "fixture modification read failure",
+        path,
+        const OSError("permission denied", 13),
+      );
+      final file = _MetadataFailingFile(error: error, unavailableStat: File(path).statSync());
+
+      IOOverrides.runZoned(
+        () => expect(() => rolloutApi.lastModified(rolloutPath: path), throwsA(same(error))),
+        createFile: (_) => file,
+      );
+    });
+
     test("listSessions joins index + rollout header and sorts by updatedAt", () async {
       final olderPath = _writeRollout(
         codexHome,
@@ -3038,6 +3060,20 @@ String _captureWarnings(
     Log.level = previousLevel;
   }
   return stderr.text;
+}
+
+final class _MetadataFailingFile({
+  required final FileSystemException error,
+  required final FileStat unavailableStat,
+}) implements File {
+  @override
+  FileStat statSync() => unavailableStat;
+
+  @override
+  DateTime lastModifiedSync() => throw error;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _HeaderCountingRolloutApi({required super.environment}) extends CodexRolloutApi {

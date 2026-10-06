@@ -151,8 +151,11 @@ class CodexRolloutApi({Map<String, String>? environment}) {
 
   /// Fresh native activity evidence without decoding the rollout transcript.
   DateTime? lastModified({required String rolloutPath}) {
-    final stat = File(rolloutPath).statSync();
-    return stat.type == FileSystemEntityType.notFound ? null : stat.modified.toUtc();
+    try {
+      return File(rolloutPath).lastModifiedSync().toUtc();
+    } on PathNotFoundException {
+      return null;
+    }
   }
 
   List<CodexRolloutLineDto> readTranscript({required String rolloutPath}) {

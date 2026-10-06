@@ -104,6 +104,7 @@ void main() {
 
       final logs = await _captureDebugLogs(() async {
         final record = (await repository.listSessionRecords()).single;
+        expect(record.createdAt, DateTime.utc(2026, 8, 1));
         expect(record.updatedAt, DateTime.utc(2026, 8, 1, 12));
       });
 
