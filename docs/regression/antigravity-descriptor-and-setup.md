@@ -92,8 +92,10 @@ preserve local diagnostics and settle as `ProvisionFailed`; explicit startup abo
   and managed fallback. `antigravity_plugin_test.dart` covers exact
   whitespace-bearing live/replay stamping and cold-reset resume before strict dispatch.
 - **L5 Full:** package `1.3.0` has independently verified hashes, sibling layouts and archived permissions for all
-  six archives. Hardened macOS arm64 extraction passed; the isolated native probe exited with SIGABRT before returning
-  a usable `--version` label, so native initialization and the complete managed pipeline remain unverified.
+  six archives. Hardened macOS arm64 extraction passed. A first isolated native probe exited with SIGABRT; a
+  2026-10-06 network-denied macOS arm64 rerun passed the production managed install (`ProvisionReady`, archive
+  served from the verified local copy), `--version` `1.3.0`, initialize (ACP 1, load/list/resume/logout, no
+  close or sub-agent capability) and SIGTERM teardown.
   Earlier `1.2.1` macOS arm64 evidence passed native version/initialize/teardown in isolated, network-denied state;
   that release's x64 archive passed hardened extraction and member/header checks. Those observations do not prove
   current-target native execution. Native Intel/Linux/Windows managed installs, real personal OAuth, cross-target
