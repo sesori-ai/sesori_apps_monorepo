@@ -70,3 +70,7 @@ Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
   directly; see the plan's review record.
 - **`architecture-implementation-review` of `origin/main...a759b1d107`:**
   approved, with no findings.
+
+## Size
+
+About 670 changed lines against `origin/main`. That is 301 lines of plan detail, about 80 lines of this file, 127 lines of production code, 140 lines of tests and 15 lines of docs. Nothing is generated.
