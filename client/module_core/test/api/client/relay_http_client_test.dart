@@ -67,6 +67,7 @@ void main() {
         final request = captured.first as RelayRequest;
         expect(request.method, equals("GET"));
         expect(request.path, contains("/session"));
+        expect(request.acceptsDeflatedResponse, isTrue);
       });
 
       test("POST sends request via relay and returns parsed response", () async {
@@ -103,9 +104,10 @@ void main() {
         final request = captured.first as RelayRequest;
         expect(request.method, equals("POST"));
         expect(request.path, contains("/session"));
+        expect(request.acceptsDeflatedResponse, isTrue);
       });
 
-      test("attachment POST uses its longer timeout", () async {
+      test("attachment POST uses its longer timeout and asks for a plain response", () async {
         const timeout = Duration(minutes: 2);
         when(
           () => mockRelayClient.sendRequest(
@@ -141,6 +143,7 @@ void main() {
         )..called(1);
         final request = verification.captured.single as RelayRequest;
         expect(request.path, "/session/attachment");
+        expect(request.acceptsDeflatedResponse, isFalse);
         expect(
           SessionAttachmentRequest.fromJson(jsonDecodeMap(request.body!)),
           const SessionAttachmentRequest(
@@ -278,6 +281,7 @@ void main() {
         final request = captured.first as RelayRequest;
         expect(request.method, equals("PATCH"));
         expect(request.path, contains("/session/1"));
+        expect(request.acceptsDeflatedResponse, isTrue);
       });
 
       test("DELETE sends request via relay and returns parsed response", () async {
@@ -313,6 +317,7 @@ void main() {
         final request = captured.first as RelayRequest;
         expect(request.method, equals("DELETE"));
         expect(request.path, contains("/session/1"));
+        expect(request.acceptsDeflatedResponse, isTrue);
       });
 
       test("relay exception is mapped to GenericError", () async {

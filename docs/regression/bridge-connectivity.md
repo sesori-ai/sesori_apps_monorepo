@@ -19,6 +19,14 @@ explicit restart, and the connection states the app presents.
 - Relay traffic is end-to-end encrypted and a joining client completes key exchange
   before it is served; one room-key encryptor is shared across that bridge
   session while every encrypted frame receives a fresh nonce.
+- The app asks for deflated responses on every routed request except the
+  attachment fetch. For an asking request the bridge deflates the response
+  plaintext inside the encryption, behind a leading `0x00` marker byte; the
+  outer frame and its version byte are unchanged. Live events, key exchange,
+  rekey and resume messages, and app-to-bridge requests are never compressed.
+  The app reads both deflated and plain responses. Compatibility: a v1.9.0
+  bridge ignores the ask and replies plain, which the app reads as before; a
+  v1.9.0 app never asks and receives plain responses byte for byte as before.
 - Frames are handled sequentially per connection, but a slow route or unresponsive
   harness must not stall key exchange, disconnect detection, or further requests.
 - Matched handler failures are mapped at one route boundary: unmatched routes
@@ -141,7 +149,7 @@ explicit restart, and the connection states the app presents.
 |---|---|
 | L1 Smoke | A started bridge reaches readiness and answers a health request; a connected client reports connected. Headless bridge plus relay integration for the client-visible state; no plugin. |
 | L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated minute-spaced startup outage recovery, cancellation, and definitive auth/protocol failure handling; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
-| L3 Release | The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
+| L3 Release | Session pages load through the relay for the new app with the new bridge (deflated), the new app with a v1.9.0 bridge (plain), and a v1.9.0 app with the new bridge (plain). The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
 | L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; the cross-platform supervised E2E suite builds and runs a real helper against fake auth/relay/control endpoints for control authentication, token pulls, registration, restart sentinel 86, fresh respawn, unregister, and process cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, account-bound persisted registration, concurrent logout/stop ordering, token-only deletion verification, tray menu/status updates, Linux host detection, ordered Quit, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
 | L5 Full | Store-distributed app against a released bridge over production relay, older app against newer bridge and the reverse for the client/bridge wire contract, and a long-lived headless VM run over repeated reconnects. Packaged or external. |
 
@@ -160,6 +168,9 @@ the bridge starts, how many clients are present, and whether restart is explicit
 
 - Readiness claimed before registration, auth send, listener setup, or read arming.
 - Plaintext session content crossing the relay, or a client served without key exchange.
+- A new app failing to load pages from a v1.9.0 bridge, a v1.9.0 app receiving
+  a deflated response, an attachment fetch or live event arriving deflated, or
+  a deflated response that the app cannot read.
 - Health keeps responding while clients cannot reach the bridge after relay
   acceptance or client reachability was independently established, or one slow
   route freezes all traffic.
@@ -222,6 +233,9 @@ the bridge starts, how many clients are present, and whether restart is explicit
 
 - Bridge orchestrator, relay, key exchange, server ownership, auth, sleep, and control code.
 - Client relay and connection-overlay capabilities and their owning tests.
+- Deflate negotiation: `relay_plaintext_codec_test.dart`,
+  `orchestrator_request_concurrency_test.dart`, `relay_request_test.dart`,
+  `relay_http_client_test.dart`, and `relay_client_handshake_replay_test.dart`.
 - Bridge orchestrator, `client_test.dart`, `key_exchange_test.dart`, sleep, and control suites.
 - `bridge/app/test/integration/supervised_e2e_test.dart` (native helper + fake auth/relay/control).
 - Historical: `.plan/completed/relay-request-concurrency/`

@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
@@ -178,6 +179,64 @@ void main() {
       ),
     );
     await responseFuture;
+  });
+
+  test("decodes deflated and plain responses", () async {
+    final roomKey = Uint8List.fromList(List<int>.generate(32, (index) => index));
+    final roomKeyStorage = _MockRoomKeyStorage();
+    when(roomKeyStorage.getRoomKey).thenAnswer((_) async => roomKey);
+    final socket = _FakeWebSocket();
+    final client = RelayClient.withChannelConnector(
+      relayHost: "relay.example.com",
+      cryptoService: RelayCryptoService(),
+      roomKeyStorage: roomKeyStorage,
+      authToken: null,
+      channelConnector: (_) => socket.channel,
+      boundedJsonEncoder: null,
+      maxPlaintextMessageBytes: RelayProtocol.maxPlaintextMessageBytes,
+    );
+    final outgoing = StreamIterator<Object?>(socket.outgoing);
+    addTearDown(() async {
+      await outgoing.cancel();
+      await client.disconnect();
+      await socket.close();
+    });
+    final resumeReady = outgoing.moveNext();
+    final connectFuture = client.connect();
+    expect(await resumeReady.timeout(const Duration(seconds: 1)), isTrue);
+    final encryptor = RelayCryptoService().createSessionEncryptor(SecretKey(roomKey));
+    socket.serverSink.add(
+      await frame(utf8.encode(jsonEncode(const RelayMessage.resumeAck().toJson())), encryptor: encryptor),
+    );
+    await connectFuture.timeout(const Duration(seconds: 1));
+
+    for (final deflated in [true, false]) {
+      final request = RelayRequest(
+        id: "request-$deflated",
+        method: "GET",
+        path: "/sessions",
+        headers: const {},
+        body: null,
+        acceptsDeflatedResponse: deflated,
+      );
+      final response = RelayResponse(
+        id: request.id,
+        status: 200,
+        headers: const {},
+        body: '{"messages":["${"repeated transcript text " * 50}"]}',
+      );
+      final json = utf8.encode(jsonEncode(response.toJson()));
+      final plaintext = deflated
+          ? [RelayProtocol.deflatedPlaintextMarker, ...ZLibEncoder(raw: true).convert(json)]
+          : json;
+
+      final requestSent = outgoing.moveNext();
+      final responseFuture = client.sendRequest(request: request, timeout: const Duration(seconds: 1));
+      expect(await requestSent.timeout(const Duration(seconds: 1)), isTrue);
+      socket.serverSink.add(await frame(plaintext, encryptor: encryptor));
+
+      expect(await responseFuture, response, reason: "deflated=$deflated");
+    }
   });
 
   test("request prepared before socket disconnect is not dispatched", () async {

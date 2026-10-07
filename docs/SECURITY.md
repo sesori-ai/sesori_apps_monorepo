@@ -6,6 +6,10 @@ Sesori is designed around the idea that your source code, prompts, and AI respon
 
 All application data between your phone and the Bridge is encrypted with **XChaCha20-Poly1305**. The relay sees only opaque binary frames for application data and cannot decrypt them. The X25519 public keys used for the initial key exchange are delivered through the relay unauthenticated, so the design treats the relay as a trusted routing and key-delivery endpoint. A compromised relay could replace both public keys and mount a man-in-the-middle attack; we do not harden against a malicious relay.
 
+### Compression
+
+Responses the app asks for, such as transcript pages and session lists, are compressed with deflate **before** they are encrypted, so the relay still sees only opaque frames in the same format. Live events, key exchange and rekey messages, app requests, and attachment downloads are never compressed. Compressing before encrypting means a frame's length can reveal a little about how compressible its content is. A CRIME/BREACH-style attack would need a secret and attacker-controlled text within 32 KB of each other in the same response, an observer of frame lengths, and many adaptive re-fetches of that same response, which the attacker cannot trigger. Only the relay and network observers see lengths, and live events already expose finer-grained lengths of live content. Credentials never travel in compressed responses. We accept this risk rather than mitigate it. The app does not cap how large a response may inflate: a frame is inflated only after it passes authentication, so only a peer that already holds the room key could send one.
+
 ## Ephemeral key exchange
 
 Each phone-to-Bridge connection uses an **X25519 Diffie-Hellman** key exchange. The derived secret protects delivery of a per-session room key, and the ephemeral keys are discarded afterward. The room key itself is persisted on the phone so reconnects can resume without renegotiating, but a `rekey_required` signal can force a fresh exchange at any time.
