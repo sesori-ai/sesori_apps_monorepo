@@ -85,8 +85,12 @@ residue is cosmetic and is not migrated.
 
 The client groups a transcript into turns from its messages alone, so a
 follow-up sent while a turn runs stays inside that turn only where the harness
-delivers it into the running turn. See
-`docs/regression/transcript-turn-navigation.md`.
+delivers it into the running turn. The bridge's prompt index
+(`POST /session/prompts`) kinds every stored prompt with the same shared rule
+(`splitPromptTurns` in `sesori_shared`) over normalized history, so every
+harness gets the index. The client applies the same rule to the range it has
+loaded, so a prompt at the start of a partial range can lack the earlier
+context the full-history index sees. See `docs/regression/transcript-turn-navigation.md`.
 
 | Harness | Follow-up sent while a turn runs | Stays in the running turn |
 |---|---|---|

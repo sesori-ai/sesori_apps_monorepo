@@ -32,6 +32,20 @@ reconnect or restart.
   wholly before or wholly after the page. Every other read keeps the
   backfilling behavior, and an older app or bridge on either side of the
   contract keeps it too.
+- The prompt index (`POST /session/prompts`) lists every rendered user prompt
+  in the session's history, oldest first, whether or not the app has loaded
+  it. Each entry carries its message id and `seq`, its kind (opener or
+  follow-up, by the shared `splitPromptTurns` rule the client also uses), its
+  number among all the session's user messages (hidden ones count but get no
+  entry, matching `userMessagesBefore`), its creation time when the harness
+  gave one, and a preview of at most 300 UTF-16 code units, null rather than
+  empty when there is nothing to show. It reads like a store-only read: from
+  the store in one snapshot, or from an archived session's audit file, outside
+  the session queue, never backfilling. An image-only prompt is listed by its
+  stored file name without reading the spill file. An unknown session, or one
+  with no rendered prompts, lists none, and an empty session id is a 400, so
+  the route never answers 404 and a 404 means a bridge that predates it. It does the same for every harness, since it reads only
+  normalized history.
 - Session detail resolves canonical catalog metadata before the history request.
   A block does not itself withhold history: a cold blocked open reads store-only
   and renders whatever the bridge holds, with the block reported in the composer's
@@ -304,7 +318,7 @@ reconnect or restart.
 | L2 Routine | Automated client: a live block preserves messages; a block or metadata failure during reload restores the transcript and replays buffered events; content restoration failure stays read-only with guidance to reopen the chat. Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Codex also trims only verified sub-agent copied prefixes while preserving root and ordinary-fork history, and replays rollback markers to remove reverted turn content and subtasks while retaining prior and subsequently appended turns, including cumulative rollbacks and fork-prefix boundaries; Claude also covers one stable live/replay identity for a CLI-authored API failure and suppression of its duplicate terminal result, plus live/replay parity for queued follow-ups, peer messages and task outcomes, and hiding harness-generated user frames under either flag spelling while keeping peer injections, tool results and task outcomes, while Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, early tool-call metadata with the missing-metadata fallback, duplicate terminal suppression, cumulative tool updates, and live/replay final parity. Automated DeepSeek coverage checks direct-parent live/replay tile identity, multiple ordered storage-safe content runs, latest metadata across pages, unbound startup errors, and live-state isolation. |
 | L3 Release | Client end to end on the release-target client platform: compare cold blocked history, a live block after history renders, and restored eligibility without route reopening. Every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool parts and image parts where declared. Grok additionally retains its exact loaded model/effort attribution across first load, cold reopen, plugin restart, and bridge restart. |
 | L4 Extended | Client end to end on macOS desktop and iOS, plus an Android variation: change availability from a second client while history is visible and while reload is in flight, page back through an older page on a blocked session whose store is behind the harness, and confirm a blocked session the bridge stored nothing for reports the block instead of an empty transcript; reconnect inside/outside replay and switch bridge identity without losing retained or buffered content. Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. Copilot and Grok additionally replace their ACP process, reload the same session, and converge standard replay with the bridge transcript without duplicate live delivery. |
-| L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
+| L5 Full | Automated and headless bridge for the prompt index (store and archive reads, hidden and image-only prompts, empty-id validation), unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
 
 ## Exploration Guidance
 
@@ -339,6 +353,11 @@ rules where supported.
   marks its own updates unread. Interaction returns before a successful content/options refresh. A failed restoration erases the retained
   transcript or tells the user that availability itself could not be checked. A
   blocked state other than authentication-required offers harness-status Recheck.
+- The prompt index misses a prompt or lists a hidden one, kinds a prompt
+  differently from the app's loaded-range turns, numbers prompts differently
+  from `userMessagesBefore`, drops an image-only prompt, answers 404 for a
+  session it does not know, starts the harness, or reads an archived session's
+  purged store instead of its audit file.
 - A store-only read reaches the harness, waits on or fails with another reader's
   backfill, fails instead of serving what the store holds, returns parts that
   belong to a different transcript than its messages, or misreports freshness in
@@ -449,7 +468,12 @@ rules where supported.
 
 Bridge chat-history service, repository, reconcile service, history listeners,
 SSE replay window, and routed request dispatch; database and audit compatibility
-tests under `bridge/app/test/bridge/services/`; client session-detail load/cubit
+tests under `bridge/app/test/bridge/services/`; the prompt index in
+`bridge/app/lib/src/repositories/mappers/prompt_index_mapper.dart` and
+`bridge/app/lib/src/routing/get_session_prompt_index_handler.dart`, with
+`chat_history_prompt_index_test.dart`, `prompt_index_mapper_test.dart`,
+`get_session_prompt_index_handler_test.dart` and
+`bridge/app/tool/benchmarks/prompt_index_benchmark.dart`; client session-detail load/cubit
 code and focused metadata, blocking, reload-race and event-buffer tests; Pi
 session process repository, storage API, and history mapper; shared ACP event mapper, turn serialization,
 and session loader plus Antigravity, Copilot, Cursor, and Grok plugins and package tests; shared
