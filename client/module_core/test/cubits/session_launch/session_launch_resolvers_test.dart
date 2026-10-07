@@ -39,6 +39,22 @@ void main() {
     expect(rows.heldSessionIds, isEmpty);
   });
 
+  test("a list first opened after the launch's session raced in holds it until the launch resolves", () {
+    final raced = testSession(
+      id: "raced",
+      createdAt: launch.startedAt.add(const Duration(seconds: 2)).millisecondsSinceEpoch,
+    );
+    final opened = resolve(
+      previous: LaunchRows.none,
+      launching: [launch],
+      sessionIds: const {},
+      sessions: [raced, existing],
+    );
+
+    expect(opened.placeholders, [launch]);
+    expect(opened.heldSessionIds, {"raced"}, reason: "opening it now would find no handoff");
+  });
+
   test("a session that arrives before the reply naming its launch is held until the launch resolves", () {
     final opened = resolve(
       previous: LaunchRows.none,

@@ -33,6 +33,10 @@ class const SessionListFilteredContent({
   required final SessionListActionDispatcher actionDispatcher,
   required final Widget archivedEmptyState,
   required final bool searchable,
+
+  /// Told whether launching rows are drawn, each time that changes, for a
+  /// page that would otherwise replace an empty list.
+  required final ValueChanged<bool>? onShowsLaunchRowsChanged,
 }) extends StatefulWidget {
   @override
   State<SessionListFilteredContent> createState() => _SessionListFilteredContentState();
@@ -50,11 +54,15 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
   void initState() {
     super.initState();
     _launchRows = _resolveLaunchRows();
+    if (_launchRows.placeholders.isNotEmpty) {
+      // Not during the build that mounts this list.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onShowsLaunchRowsChanged?.call(_launchRows.placeholders.isNotEmpty);
+      });
+    }
     final sessions = context.read<SessionListCubit>();
-    _sessionStates = sessions.stream.listen((_) => setState(() => _launchRows = _resolveLaunchRows()));
-    _launchStates = context.read<SessionLaunchCubit>().stream.listen(
-      (_) => setState(() => _launchRows = _resolveLaunchRows()),
-    );
+    _sessionStates = sessions.stream.listen((_) => _updateLaunchRows());
+    _launchStates = context.read<SessionLaunchCubit>().stream.listen((_) => _updateLaunchRows());
     // The bridge publishes no session event on archive, so a committed archive
     // refreshes the list for the Archived view to show the session at once.
     _archiveOutcomes = context.read<PendingSessionArchiveCubit>().outcomes.listen((outcome) {
@@ -71,6 +79,13 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
     unawaited(_sessionStates.cancel());
     unawaited(_launchStates.cancel());
     super.dispose();
+  }
+
+  void _updateLaunchRows() {
+    final showedRows = _launchRows.placeholders.isNotEmpty;
+    setState(() => _launchRows = _resolveLaunchRows());
+    final showsRows = _launchRows.placeholders.isNotEmpty;
+    if (showsRows != showedRows) widget.onShowsLaunchRowsChanged?.call(showsRows);
   }
 
   /// Run on every list and launch update rather than in build, so each

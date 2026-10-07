@@ -163,6 +163,7 @@ class const SessionListPanel({
           actionDispatcher: actionDispatcher,
           archivedEmptyState: archivedEmptyState,
           searchable: true,
+          onShowsLaunchRowsChanged: null,
         ),
       ],
     );

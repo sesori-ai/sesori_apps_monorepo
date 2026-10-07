@@ -83,6 +83,7 @@ void main() {
                             ),
                             archivedEmptyState: const SizedBox.shrink(),
                             searchable: true,
+                            onShowsLaunchRowsChanged: null,
                           ),
                         ],
                       ),

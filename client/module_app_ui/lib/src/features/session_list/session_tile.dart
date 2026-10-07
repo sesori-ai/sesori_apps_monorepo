@@ -536,7 +536,9 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
                         width: _statusSlotSize,
                         height: pointer ? _pointerTitleLineHeight : _titleLineHeight,
                         // "Creating…" already says what the sparkle means.
-                        child: const Center(child: ExcludeSemantics(child: PregoAiLoader(size: _statusSlotSize))),
+                        child: const Center(
+                          child: ExcludeSemantics(child: PregoAiLoader(size: _statusSlotSize)),
+                        ),
                       ),
                       Expanded(
                         child: Text(

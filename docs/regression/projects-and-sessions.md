@@ -340,8 +340,9 @@ state.
   and the launch never shows two rows: while its project has a launch still
   waiting, a session that arrives after the list first loaded stays out of it,
   so it can never be opened before its launch resolves, even when Archived was
-  shown meanwhile. Sessions in the list's first load always show, under the
-  launching row. Launches whose sessions land together each take their own
+  shown meanwhile. Sessions in the list's first load show under the launching
+  row, except one created after the launch started, which is held the same
+  way, so a list opened mid-launch never shows the launch twice. Launches whose sessions land together each take their own
   row's place. If a session does not land in its row's place, it moves where
   it belongs on the next change to the list's sessions as an ordinary change;
   activity and progress updates do not count. A failed launch's row leaves the list.

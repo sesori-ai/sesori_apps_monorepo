@@ -261,6 +261,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i414.SessionInteractionCalculator>(
       () => const _i414.SessionInteractionCalculator(),
     );
+    gh.lazySingleton<_i818.SessionLaunchRepository>(
+      () => _i818.SessionLaunchRepository(
+        storage: gh<_i384.SessionLaunchStorage>(),
+        authSession: gh<_i442.AuthSession>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i176.VoiceApi>(
       () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
     );
@@ -396,11 +403,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i649.AnalyticsReleaseCutoffApi>(
       () => _i649.AnalyticsReleaseCutoffApi(
         source: gh<_i345.AnalyticsReleaseCutoffSource>(),
-      ),
-    );
-    gh.lazySingleton<_i818.SessionLaunchRepository>(
-      () => _i818.SessionLaunchRepository(
-        storage: gh<_i384.SessionLaunchStorage>(),
       ),
     );
     gh.lazySingleton<_i205.BridgeRepository>(

@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
+import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/storage/session_launch_storage.dart";
@@ -22,7 +23,25 @@ import "../foundation/models/session_launch/session_launch_outcome.dart";
 /// first message is held, delivery while a follow-up is queued, sending or
 /// failed — and removed the moment it owes nothing.
 @lazySingleton
-class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
+class SessionLaunchRepository({
+  required final SessionLaunchStorage _storage,
+  required final AuthSession _authSession,
+}) {
+  late final StreamSubscription<AuthState> _authStates;
+
+  this {
+    // Launches belong to the account that started them: signing out drops
+    // them, so no launching row or failure alert reaches the login screen or
+    // the next account, and a reply that lands later finds nothing to settle.
+    _authStates = _authSession.authStateStream.listen((state) {
+      if (state is! AuthUnauthenticated) return;
+      for (final launch in [..._storage.readAll()]) {
+        _storage.clear(launchId: launch.launchId);
+      }
+      _publishLaunches();
+    });
+  }
+
   final StreamController<SessionLaunchOutcome> _outcomes = StreamController<SessionLaunchOutcome>.broadcast();
 
   /// Every launch a transition produced, including one it then removed, so a
@@ -384,4 +403,7 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
   }
 
   void _publishLaunches() => _launches.add(List.unmodifiable(_storage.readAll()));
+
+  @disposeMethod
+  Future<void> dispose() => _authStates.cancel();
 }

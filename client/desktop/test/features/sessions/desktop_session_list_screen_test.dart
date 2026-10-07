@@ -267,6 +267,17 @@ void main() {
     expect(composersFor, isEmpty);
     expect(find.byType(PromptInput), findsNothing);
     expect(find.byType(PendingSessionLaunchTile), findsOneWidget);
+
+    // The reply names the session and the launch clears before the list has it.
+    launches.promote(
+      launchId: "launch-1",
+      session: testSession(id: "created", title: "Fix the bug"),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(launches.launches.value, isEmpty);
+    expect(composersFor, isEmpty, reason: "no blank composer flashes in the gap");
+    expect(find.byType(PendingSessionLaunchTile), findsOneWidget);
   });
 
   testWidgets("a session started from an empty project opens", (tester) async {

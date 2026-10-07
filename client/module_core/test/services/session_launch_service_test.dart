@@ -27,7 +27,10 @@ void main() {
   setUp(() {
     sessionRepository = MockSessionRepository();
     storage = SessionLaunchStorage();
-    launchRepository = SessionLaunchRepository(storage: storage);
+    launchRepository = SessionLaunchRepository(
+      storage: storage,
+      authSession: FakeAuthSession(initialState: const AuthState.initial()),
+    );
     feedbackPromptService = FakeFeedbackPromptService();
     productAnalyticsService = stubbedProductAnalyticsService();
     selectionTracker = NewSessionSelectionTracker();

@@ -86,6 +86,10 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
   /// session it starts still opens.
   bool _creating = false;
 
+  /// The list still draws a launching row, including one whose session the
+  /// create reply named but the list has not received yet.
+  bool _listShowsLaunchRows = false;
+
   Future<void> _refresh() async {
     setState(() => _refreshing = true);
     try {
@@ -104,11 +108,15 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
     final loaded = state is SessionListLoaded ? state : null;
     final showArchived = loaded != null && loaded.filter != SessionListFilter.active;
     final refreshing = _refreshing || (loaded != null && loaded.isRefreshing);
-    // A launch from elsewhere already leads the list as its launching row.
+    // A launch from elsewhere already leads the list as its launching row, and
+    // keeps it until its session lands there.
     final launching = context.select(
       (SessionLaunchCubit launches) => launches.state.launching.any((launch) => launch.projectId == cubit.projectId),
     );
-    final showComposer = loaded != null && !showArchived && ((loaded.sessions.isEmpty && !launching) || _creating);
+    final showComposer =
+        loaded != null &&
+        !showArchived &&
+        ((loaded.sessions.isEmpty && !launching && !_listShowsLaunchRows) || _creating);
     return Scaffold(
       body: Column(
         children: [
@@ -256,6 +264,8 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                                 archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
                                 // The desktop searches from its command palette.
                                 searchable: false,
+                                onShowsLaunchRowsChanged: (showsRows) =>
+                                    setState(() => _listShowsLaunchRows = showsRows),
                               ),
                             ],
                           ),

@@ -289,7 +289,10 @@ class MockProductAnalyticsService() extends Mock implements ProductAnalyticsServ
 
 ComposerDraftRepository inMemoryComposerDraftRepository() => ComposerDraftRepository(storage: ComposerDraftStorage());
 
-SessionLaunchRepository inMemorySessionLaunchRepository() => SessionLaunchRepository(storage: SessionLaunchStorage());
+SessionLaunchRepository inMemorySessionLaunchRepository() => SessionLaunchRepository(
+  storage: SessionLaunchStorage(),
+  authSession: FakeAuthSession(initialState: const AuthState.initial()),
+);
 
 /// A launch service over [launchRepository] whose own sends go to an unstubbed
 /// mock, for tests that drive launches through the repository.

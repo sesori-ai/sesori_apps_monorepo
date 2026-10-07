@@ -1,3 +1,5 @@
+import "dart:math";
+
 import "package:collection/collection.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -38,7 +40,8 @@ final class const LaunchRows({
   required final Map<String, String> rowKeys,
 
   /// The sessions the surface showed on its last update; null before its
-  /// first, so a surface opened mid-launch shows every session it finds.
+  /// first, so a surface opened mid-launch shows every session created
+  /// before its project's launch started.
   required final Set<String>? shownSessionIds,
 
   /// Every session the surface had on its last update, in list order; null
@@ -123,14 +126,22 @@ LaunchRows resolveHeldLaunchSessions({
     }
   }
 
+  // The first snapshot has nothing shown before it, so there a session counts
+  // as new when it was created since its project's oldest waiting launch
+  // started. The two times come from different clocks, so a skew between the
+  // device and the bridge can shift that cut by the skew.
+  final waitingSince = <String, int>{};
+  for (final launch in launching) {
+    final started = launch.startedAt.millisecondsSinceEpoch;
+    waitingSince.update(launch.projectId, (since) => min(since, started), ifAbsent: () => started);
+  }
   final shown = previous.shownSessionIds;
-  if (shown != null) {
-    final waitingProjects = {for (final launch in launching) launch.projectId};
-    final settled = {...sessionIds.values, ...rowKeys.keys};
-    for (final session in sessions) {
-      if (shown.contains(session.id) || settled.contains(session.id)) continue;
-      if (waitingProjects.contains(session.projectID)) held.add(session.id);
-    }
+  final settled = {...sessionIds.values, ...rowKeys.keys};
+  for (final session in sessions) {
+    final since = waitingSince[session.projectID];
+    if (since == null || settled.contains(session.id)) continue;
+    final isNew = shown == null ? (session.time?.created ?? since - 1) >= since : !shown.contains(session.id);
+    if (isNew) held.add(session.id);
   }
 
   return LaunchRows(
