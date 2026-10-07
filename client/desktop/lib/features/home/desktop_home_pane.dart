@@ -277,6 +277,7 @@ class const _DesktopHomeSections({
   Widget build(BuildContext context) {
     final hidden = context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds);
     return ProjectLaunchRowsBuilder(
+      initialRows: const {},
       slots: ({required entries}) => runningActivitySlots(
         projection: _projection(
           entries: entries,

@@ -25,6 +25,11 @@ Map<String, List<Session>> runningActivitySlots({required SessionActivityProject
 /// build, so each update is seen once and a launch's session is never missed.
 class const ProjectLaunchRowsBuilder({
   super.key,
+
+  /// The rows to continue from. A surface opened from another that already
+  /// draws these launches passes that one's rows, so it keeps the launching
+  /// rows that one still holds after their launches have left the cubit.
+  required final Map<String, LaunchRows> initialRows,
   required final ProjectLaunchSlots slots,
   required final Widget Function({required BuildContext context, required Map<String, LaunchRows> launchRows}) builder,
 }) extends StatefulWidget {
@@ -35,7 +40,7 @@ class const ProjectLaunchRowsBuilder({
 class _ProjectLaunchRowsBuilderState() extends State<ProjectLaunchRowsBuilder> {
   late final StreamSubscription<Map<String, RecentSessionsEntry>> _entries;
   late final StreamSubscription<SessionLaunchState> _launches;
-  Map<String, LaunchRows> _rows = const {};
+  late Map<String, LaunchRows> _rows = widget.initialRows;
 
   @override
   void initState() {

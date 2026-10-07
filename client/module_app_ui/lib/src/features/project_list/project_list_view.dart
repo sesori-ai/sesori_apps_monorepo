@@ -375,6 +375,7 @@ class _ProjectListViewState() extends State<ProjectListView> {
         // Keyed so the lists inside keep their state as the search field
         // above comes and goes.
         key: const ValueKey("project-list-rows"),
+        initialRows: const {},
         slots: ({required entries}) => runningActivitySlots(
           projection: _projection(projects: projects, entries: entries),
         ),

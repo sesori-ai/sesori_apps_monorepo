@@ -803,6 +803,41 @@ void main() {
       expect(find.descendant(of: popout, matching: find.text("Fix the bug")), findsOneWidget);
       await updates.close();
     });
+
+    testWidgets("opened once the launch has left the cubit, the popout still shows its row", (tester) async {
+      final updates = StreamController<Map<String, RecentSessionsEntry>>();
+      when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout(collapsed: true));
+      whenListen(recent, updates.stream, initialState: entries(sessions: [old], running: false));
+      await tester.pumpWidget(shell(onOpen: (_) {}));
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // The reply names the session, which reaches its project before it runs.
+      launch();
+      await settle(tester);
+      launches.promote(launchId: "launch-1", session: created);
+      updates.add(entries(sessions: [created, old], running: false));
+      await settle(tester);
+      expect(launches.launches.value, isEmpty);
+
+      final button = find.byKey(const Key("desktop-sidebar-rail-activity"));
+      expect(find.descendant(of: button, matching: find.text("1")), findsOneWidget);
+      await tester.tap(button);
+      await settle(tester);
+      final popout = find.byKey(const Key("desktop-sidebar-activity-popout"));
+      expect(
+        find.descendant(of: popout, matching: find.byKey(const ValueKey("sidebar-activity-launch-launch-1"))),
+        findsOneWidget,
+      );
+
+      updates.add(entries(sessions: [created, old], running: true));
+      await settle(tester);
+      expect(popout, findsOneWidget);
+      expect(
+        find.descendant(of: popout, matching: find.byKey(const ValueKey("sidebar-activity-session-project-1-created"))),
+        findsOneWidget,
+      );
+      await updates.close();
+    });
   });
 
   testWidgets("recent inventory failure stays project-local and retries explicitly", (tester) async {

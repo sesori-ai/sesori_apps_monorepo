@@ -405,6 +405,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
 
   @override
   Widget build(BuildContext context) => ProjectLaunchRowsBuilder(
+    initialRows: const {},
     slots: ({required entries}) => _activitySlots(
       context: context,
       projects: widget.projects,
@@ -414,6 +415,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
     builder: ({required context, required launchRows}) {
       final activityLaunches = launchRows;
       return ProjectLaunchRowsBuilder(
+        initialRows: const {},
         slots: _projectSlots,
         builder: ({required context, required launchRows}) => _buildInventory(
           context: context,
@@ -511,6 +513,9 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                   ],
                   child: _SidebarActivityPopoutList(
                     close: close,
+                    // A launch whose session has not reached Activity yet may
+                    // have left the cubit; only these rows still hold it.
+                    initialRows: activityLaunches,
                     projects: widget.projects,
                     stickySessionId: _stickyActivitySessionId,
                     selectedProjectId: widget.selectedProjectId,
@@ -644,6 +649,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
 /// The Activity rows as the rail pops them out, live while the popout is open.
 class const _SidebarActivityPopoutList({
   required final VoidCallback close,
+  required final Map<String, LaunchRows> initialRows,
   required final List<ProjectSummary> projects,
   required final String? stickySessionId,
   required final String? selectedProjectId,
@@ -653,6 +659,7 @@ class const _SidebarActivityPopoutList({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ProjectLaunchRowsBuilder(
+    initialRows: initialRows,
     slots: ({required entries}) => _activitySlots(
       context: context,
       projects: projects,
