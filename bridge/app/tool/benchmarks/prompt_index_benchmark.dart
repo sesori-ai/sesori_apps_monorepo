@@ -32,7 +32,7 @@ Future<void> main() async {
     ];
     await repository.replaceSessionMessages(
       sessionId: sessionId,
-      storageScope: AttachmentStorageScope(pluginId: "benchmark", backendSessionId: sessionId),
+      storageScope: const AttachmentStorageScope(pluginId: "benchmark", backendSessionId: sessionId),
       messages: messages,
       lastImportedAt: null,
       watermark: 1,
