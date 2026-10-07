@@ -16,8 +16,8 @@ Antigravity moved to `1.3.0` and OpenCode to `2.0.24` the same day.
 Pi was refreshed on **2026-10-06** to `1.0.4`, and its approved PATH minimum rose to
 `0.99.0`. Cursor's PATH minimum rose to `2026.09.23` on 2026-10-06 with native sub-agent
 child sessions. Older PATH installs of either get the existing update action.
-Hermes was already on its latest release. OMP stays on `18.3.0` and DeepSeek on adapter
-`0.1.7`; the rows below record why.
+Hermes was already on its latest release. OMP stays on `18.3.0`; the rows below record why.
+DeepSeek moved to adapter `0.2.0` on 2026-10-07.
 Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 6,
 Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. GitHub digests and available
 checksum lists agree; Cursor/Antigravity hashes are locally computed, not publisher
@@ -111,7 +111,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its
   descriptor honors an explicit `--deepseek-bin` path before a compatible PATH
   release (`>=0.1.5`) and then a managed release at or above that minimum,
-  preferring the pinned `0.1.7` target. An outdated explicit
+  preferring the pinned `0.2.0` target. An outdated explicit
   binary is rejected; an old or malformed PATH candidate falls through to managed
   selection. It performs bounded parseable-version and
   side-effect-free `check --state-dir` probes, advertises install only on a
@@ -125,21 +125,25 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   0.1.4 verified that the bridge and native runtime survived atomic cancellation
   of an independently resumed child and its grandchild after #1379, and accepted
   a successful follow-up turn. That evidence does not requalify current managed
-  target 0.1.7 or cover setup selection, crash reconnect, idle suspension/reap,
+  target 0.2.0 or cover setup selection, crash reconnect, idle suspension/reap,
   bridge restart, desktop, or another platform.
 - Standard ACP owns DeepSeek lifecycle, prompts, config options, and permissions;
   `deepseek/*` adds catalog, detached history, rename, questions, bounded statuses,
   and correlated sub-agent lifecycle on that same connection. Normal `DSH_HOME` remains the source
-  of settings, credentials, providers, and skills but its session root is never
-  scanned. Adapter 0.1.7 initializes and loads only the application-owned
+  of credentials (`.credentials.yaml` or the environment) and skills, but its session
+  root is never scanned. Since adapter 0.2.0 (DeepSeek Harness 0.2.0-rc.2), provider
+  settings live in `$DSH_HOME/profiles/sesori/cordis.patch.yml`; `settings.yaml` is
+  ignored with no automatic import, and a custom provider `baseURL` must speak the
+  Anthropic Messages API. The adapter initializes and loads only the application-owned
   `$DSH_HOME/profiles/sesori` profile at startup, so explicitly installed bundle and
   patch plugins run after restart, including after `dsh --profile sesori` rewrites the
   profile root; a pinned-graph fallback after that rewrite is a failure. The adapter
   resolves one immutable entry snapshot,
   then reapplies its pinned storage, telemetry, hot-reload, sandbox, approval,
-  agent/sub-agent, and transport constraints. An unavailable, invalid, or failing
-  profile falls back once to the pinned in-memory graph without changing active ACP
-  sessions. Profile plugins are trusted local in-process code with access to prompts,
+  agent/sub-agent, and transport constraints. A failing optional profile plugin is reported
+  on stderr and skipped while the rest of the profile runs; an unavailable or invalid
+  profile, or a failing required row, falls back once to the pinned in-memory graph
+  without changing active ACP sessions. Profile plugins are trusted local in-process code with access to prompts,
   files, credentials, Node APIs, and the network; this local trust grant does not
   extend to a future cloud or otherwise managed-trust runtime. Session, attachment,
   query, and spill mutations stay below plugin state, and session-local
