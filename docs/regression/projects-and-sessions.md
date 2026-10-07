@@ -38,10 +38,15 @@ state.
   36 px.
   A row of small buttons above the breadcrumb jumps to Home and
   Root on every host; on a Windows host it lists Home and each mounted drive
-  (`C:\`, `D:\`) instead of Root, so another drive is one tap away. The button
-  for the place being browsed is disabled. A drive that does not answer the
-  bridge's probe within two seconds is left out, and a Windows bridge that
-  predates drive listing shows Home and Root. It remains available while a navigated directory loads or
+  (`C:\`, `D:\`) instead of Root, so another drive is one tap away. On a macOS
+  host it adds a button per writable, Finder-visible volume in `/Volumes`
+  (installer disk images and Recovery are left out), and on a Linux host one
+  per writable mount in `/media`, `/run/media`, or `/mnt` (mounted ISOs and
+  WSL's own `/mnt/wsl*` mounts are left out; a WSL host's `/mnt/c` is kept),
+  each labelled with its folder name. The button for the place being browsed
+  is disabled. A drive that does not answer the bridge's probe within two
+  seconds is left out, an unreadable mount table lists no drives, and a bridge
+  that predates drive listing shows Home and Root. It remains available while a navigated directory loads or
   reports an access failure. A folder without subfolders reads "No folders
   here", with a line saying files are not listed, and the add button names the
   browsed folder ("Add my-app"). Hiding delists
