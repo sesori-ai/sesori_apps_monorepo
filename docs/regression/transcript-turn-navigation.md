@@ -144,9 +144,10 @@ stored or sent to the bridge.
   only a list too short to fill the screen settles against its ends. Clearing
   the search unfolds everything the same way, also after a search that matched
   nothing, which brings the rows back around the row that was being read. The
-  list then ends with "{n}
-  matches in the prompts loaded so far" ("No matches…" when none), and earlier
-  prompts loaded during a search join the filter. The desktop focuses the field
+  list then ends with "{n} matches" over every prompt once the prompt index has
+  arrived, and without one with "{n} matches in the prompts loaded so far"
+  ("No matches…" when none, in both). Earlier prompts loaded during a search
+  join the filter. The desktop focuses the field
   on opening; the phone waits for a tap. Escape closes the screen, also while
   typing and after a click outside the field, and the search is not kept.
 - A tap on a row closes the screen, once the transcript has landed beneath it,
