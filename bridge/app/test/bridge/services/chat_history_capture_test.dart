@@ -4,6 +4,8 @@ import "dart:io";
 import "dart:typed_data";
 
 import "package:acp_plugin/acp_plugin.dart";
+import "package:claude_plugin/claude_plugin.dart"
+    show ClaudeCompactMetadata, ClaudeContentMapper, ClaudeEventDispatcher, ClaudeStreamMessage, ClaudeToolTracker;
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/listeners/chat_history_listener.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_message_mapper.dart";
@@ -428,6 +430,89 @@ void main() {
       expect(
         (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
         const ["replay"],
+      );
+    });
+
+    test("a replay re-keys a live Claude compaction row to its transcript id, leaving one row", () async {
+      const summaryAt = "2026-10-07T12:24:44.708Z";
+      const summary = [
+        {"type": "text", "text": "Continue the auth work."},
+      ];
+      const metadata = {"trigger": "manual", "pre_tokens": 24835, "post_tokens": 6505};
+      const content = ClaudeContentMapper();
+      final historyCompaction = content.compactionMessage(
+        sessionId: "ses_a",
+        messageId: "summary-record",
+        time: PluginMessageTime(created: DateTime.parse(summaryAt).millisecondsSinceEpoch, completed: null),
+        content: summary,
+        metadata: ClaudeCompactMetadata.fromTranscript(
+          json: const {"trigger": "manual", "preTokens": 24835, "postTokens": 6505},
+        ),
+      );
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(id: "history-prompt", text: "Keep going", createdAt: 100, promptId: null),
+          MessageWithParts(
+            info: historyCompaction.info.toSharedMessage(sessionId: "ses_a"),
+            parts: [for (final part in historyCompaction.parts) part.toShared(sessionId: "ses_a")],
+          ),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessageWithParts(
+        history: history,
+        message: _messageWithText(id: "live-prompt", text: "Keep going", createdAt: 100, promptId: "prompt-1"),
+      );
+      final dispatcher = ClaudeEventDispatcher(
+        content: content,
+        tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => null,
+      );
+      final frames = <Map<String, Object?>>[
+        {"type": "system", "subtype": "status", "session_id": "ses_a", "uuid": "start", "status": "compacting"},
+        {
+          "type": "system",
+          "subtype": "status",
+          "session_id": "ses_a",
+          "uuid": "end",
+          "status": null,
+          "compact_result": "success",
+        },
+        {
+          "type": "system",
+          "subtype": "compact_boundary",
+          "session_id": "ses_a",
+          "uuid": "boundary",
+          "compact_metadata": metadata,
+        },
+        {
+          "type": "user",
+          "session_id": "ses_a",
+          "uuid": "summary-record",
+          "timestamp": summaryAt,
+          "isSynthetic": true,
+          "message": {"role": "user", "content": summary},
+        },
+      ];
+      for (final frame in frames) {
+        await _captureAcpEvents(
+          history: history,
+          sessionId: "ses_a",
+          events: dispatcher.map(message: ClaudeStreamMessage.parse(frame), now: DateTime.utc(2026, 10, 7, 12, 24)),
+        );
+      }
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["live-prompt", "start"],
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      final stored = await _storedMessages(history: history, sessionId: "ses_a");
+      expect(stored.map((message) => message.info.id), const ["history-prompt", "summary-record"]);
+      expect(
+        stored.last.parts.single,
+        isA<MessagePartCompaction>().having((part) => part.state, "state", isA<CompactionStateCompleted>()),
       );
     });
 

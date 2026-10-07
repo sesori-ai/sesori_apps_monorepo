@@ -348,6 +348,18 @@ defaults and queued client sends coherent.
   Native Claude Code 2.1.281 was verified with an isolated socket sender and
   loopback model fixture: idle wake-up, peer-origin stdout and persisted history.
   This is not authenticated-provider or full app-to-relay verification.
+- A Claude compaction, manual (`/compact`) or automatic, shows one live
+  compaction row from its first `compacting` status. Repeated `compacting`
+  statuses change nothing. A `compact_result: success` settles the row in
+  place at once; the summary frame then fills in the summary, the freed tokens
+  (`pre − post` when both are reported) and the trigger, under the same row,
+  stamped with the summary's time. A `compact_result: failed` settles it as a
+  failure note carrying `compact_error`, and the CLI's synthetic echo of that
+  error renders nothing. An older CLI that sends no status frames keeps the
+  settled row from the boundary and summary. History rebuilds the settled row
+  with its details from the boundary and `isCompactSummary` records; a later
+  re-import re-keys a live row to the summary record's id at the same place,
+  leaving one row. Verified live on Claude Code 2.1.291.
 - A Claude `<task-notification>` user turn (native `origin.kind:
   task-notification`, or a whole envelope on CLIs without origin) never
   renders as a user bubble, live or after transcript replay. When its tool-use
@@ -730,6 +742,9 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 
 ## Failure Signals
 
+- A Claude compaction shows two rows, a row that stays running after its
+  turn, a failure with no note or with the error repeated as a reply, or
+  details missing after a reload.
 - A known-unusable chat exposes or accepts composer, attachment, command,
   selection, stop, remote-cancel or pending-response mutations; refusal emits
   accepted-send analytics; an open dialog answers instead of closing; or a local
@@ -888,6 +903,8 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 
 ## Known Limitations
 
+- A failed Claude compaction writes no transcript record, so its failure note
+  is gone after a history re-import.
 - Flutter's selection and clipboard APIs expose selected content as plain text
   only, so chat copy preserves document structure but not Markdown styling or
   metadata such as bold, italics, and hyperlink destinations

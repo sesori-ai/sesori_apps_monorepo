@@ -621,21 +621,29 @@ can initiate login, and managed installation does **not** authenticate a harness
 
 ## Context compaction row
 
-The transcript marks a finished context compaction with a "Context compacted"
-row, which opens the carried-forward summary when the harness exposes it.
+The transcript marks a context compaction with a row. Where the harness
+reports a start, the row appears live with a timer and settles in place as
+"Context compacted" or as a one-line failure note. A settled row shows the
+freed tokens and what triggered it when the harness reports them, and opens the
+carried-forward summary when the harness exposes it.
 
-| Harness | Compaction row | Summary |
-|---|---|---|
-| Claude | ✅ | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.281). |
-| OpenCode v1 | ✅ | ✅ The text of the `summary: true` assistant message. |
-| OpenCode v2 | ✅ | ✅ The completed native compaction message's `summary`; a running snapshot is not a completed marker. |
-| Pi | ✅ | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |
-| Codex | ✅ | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
-| DeepSeek | ⬜ | ⬜ The runtime reports a live `compaction_completed` status without message identity or a replayable history record, so Sesori maps it only to a session-compacted event; a live-only row would vanish on reload. |
-| Antigravity, Copilot, Cursor, Hermes, OMP, Grok | ⬜ | ⬜ The ACP session updates Sesori consumes (message, thought and user chunks, tool calls, plan, commands, session info) have no compaction variant, so a compaction, such as Cursor's `/summarize` behind Sesori's `compact` command, arrives as ordinary agent text. A row needs a harness extension signal; none was probed live. |
+| Harness | Live row | Failure note | Details (freed tokens, trigger) | Summary |
+|---|---|---|---|---|
+| Claude | ✅ From the first `system/status` `compacting` frame, settled by the closing status's `compact_result` (verified on 2.1.291). | ✅ Live only: the closing status's `compact_error`. A failure writes no transcript record, so the note is gone after a history re-import (verified on 2.1.291). | ✅ `compact_boundary` `compact_metadata` live and the boundary record's `compactMetadata` in history: freed tokens are `pre − post` when both are reported. | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.291). |
+| OpenCode v1 | ⬜ | ⬜ | ⬜ | ✅ The text of the `summary: true` assistant message. |
+| OpenCode v2 | ⬜ | ⬜ | ⬜ | ✅ The completed native compaction message's `summary`; a running snapshot is not a completed marker. |
+| Pi | ⬜ | ⬜ | ⬜ | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |
+| Codex | ⬜ | ⬜ | ⬜ | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
+| DeepSeek | ⬜ | ⬜ | ⬜ | ⬜ The runtime reports a live `compaction_completed` status without message identity or a replayable history record, so Sesori maps it only to a session-compacted event; a live-only row would vanish on reload. |
+| Antigravity, Copilot, Cursor, Hermes, OMP, Grok | ⬜ | ⬜ | ⬜ | ⬜ The ACP session updates Sesori consumes (message, thought and user chunks, tool calls, plan, commands, session info) have no compaction variant, so a compaction, such as Cursor's `/summarize` behind Sesori's `compact` command, arrives as ordinary agent text. A row needs a harness extension signal; none was probed live. |
 
 A row without a summary is inert. Older clients ignore the summary field and
 show no row.
+
+Claude's transcript keeps no id the live start also sees, so a live row is
+keyed by the first `compacting` frame and history keys it by the summary
+record. A later history re-import replaces the live row with the history row
+at the same place, once.
 
 ## Command limitations
 

@@ -586,7 +586,7 @@ void main() {
       expect(unmatchedResult, isEmpty);
     });
 
-    test("maps the synthetic summary after a compact boundary to one compaction row", () {
+    test("maps the synthetic summary after a compact boundary with no start to one compaction row", () {
       const summary = "This session is being continued from a previous conversation.";
       final boundary = _map(mapper, {
         "type": "system",
@@ -622,12 +622,131 @@ void main() {
         isA<PluginMessagePartCompaction>().having(
           (part) => part.compactionState,
           "compactionState",
-          const PluginCompactionState.completed(summary: summary, freedTokens: null, trigger: null),
+          // One token count alone frees nothing.
+          const PluginCompactionState.completed(
+            summary: summary,
+            freedTokens: null,
+            trigger: PluginCompactionTrigger.manual,
+          ),
         ),
       );
       // Only the frame right after the boundary is the summary; a later
       // harness-generated frame is dropped instead of becoming a user bubble.
       expect(laterHarnessGenerated, isEmpty);
+    });
+
+    test("keeps one compaction row from its start through the summary", () {
+      final startedAt = DateTime.utc(2026, 10, 7, 12, 24, 30);
+      final start = _map(
+        mapper,
+        _status(uuid: "start", status: "compacting"),
+        now: startedAt,
+      );
+      final repeat = _map(mapper, _status(uuid: "repeat", status: "compacting"));
+      final success = _map(mapper, _status(uuid: "end", status: null, result: "success"));
+      final boundary = _map(mapper, {
+        "type": "system",
+        "subtype": "compact_boundary",
+        "session_id": "session-1",
+        "uuid": "boundary",
+        "compact_metadata": {"trigger": "manual", "pre_tokens": 24835, "post_tokens": 6505},
+      });
+      final summary = _map(mapper, {
+        ..._user(
+          uuid: "summary-frame",
+          timestamp: "2026-10-07T12:24:44.708Z",
+          content: [
+            {"type": "text", "text": "Continue the auth work."},
+          ],
+        ),
+        "isSynthetic": true,
+      });
+
+      expect((start.first as BridgeSseMessageUpdated).info.id, "start");
+      expect((start.first as BridgeSseMessageUpdated).info.time?.created, startedAt.millisecondsSinceEpoch);
+      expect(_compactionState(start, partId: "start-compaction"), const PluginCompactionState.running(summary: null));
+      expect(repeat, isEmpty);
+      expect(
+        _compactionState(success, partId: "start-compaction"),
+        const PluginCompactionState.completed(summary: null, freedTokens: null, trigger: null),
+      );
+      expect(boundary, isEmpty);
+      expect((summary.first as BridgeSseMessageUpdated).info.id, "start");
+      expect(
+        (summary.first as BridgeSseMessageUpdated).info.time?.created,
+        DateTime.utc(2026, 10, 7, 12, 24, 44, 708).millisecondsSinceEpoch,
+      );
+      expect(
+        _compactionState(summary, partId: "start-compaction"),
+        const PluginCompactionState.completed(
+          summary: "Continue the auth work.",
+          freedTokens: 18330,
+          trigger: PluginCompactionTrigger.manual,
+        ),
+      );
+    });
+
+    test("settles a failed compaction as failed and renders nothing else for it", () {
+      _map(mapper, _status(uuid: "start", status: "compacting"));
+      final failure = _map(
+        mapper,
+        _status(uuid: "end", status: null, result: "failed", error: "Not enough messages to compact."),
+      );
+      final echo = _map(
+        mapper,
+        _assistant(
+          id: "echo",
+          model: "<synthetic>",
+          content: [
+            {"type": "text", "text": "Not enough messages to compact."},
+          ],
+        ),
+      );
+      final boundary = _map(mapper, {
+        "type": "system",
+        "subtype": "compact_boundary",
+        "session_id": "session-1",
+        "uuid": "boundary",
+      });
+      final summary = _map(mapper, {
+        ..._user(
+          uuid: "summary-frame",
+          content: [
+            {"type": "text", "text": "Continue."},
+          ],
+        ),
+        "isSynthetic": true,
+      });
+
+      expect(
+        _compactionState(failure, partId: "start-compaction"),
+        const PluginCompactionState.failed(error: "Not enough messages to compact."),
+      );
+      expect(echo, isEmpty);
+      expect(boundary, isEmpty);
+      expect(summary, isEmpty);
+    });
+
+    test("a new turn drops a compaction left running", () {
+      _map(mapper, _status(uuid: "start", status: "compacting"));
+      mapper.beginTurn(sessionId: "session-1", directory: "/project", model: null, variant: null);
+      _map(mapper, {
+        "type": "system",
+        "subtype": "compact_boundary",
+        "session_id": "session-1",
+        "uuid": "boundary",
+      });
+      final summary = _map(mapper, {
+        ..._user(
+          uuid: "summary-frame",
+          content: [
+            {"type": "text", "text": "Continue."},
+          ],
+        ),
+        "isSynthetic": true,
+      });
+
+      expect((summary.first as BridgeSseMessageUpdated).info.id, "summary-frame");
     });
 
     test("strips the bridge worktree envelope from a replayed user frame", () {
@@ -872,8 +991,25 @@ void main() {
   });
 }
 
-List<BridgeSseEvent> _map(ClaudeEventDispatcher mapper, Map<String, Object?> frame) =>
-    mapper.map(message: ClaudeStreamMessage.parse(frame));
+List<BridgeSseEvent> _map(ClaudeEventDispatcher mapper, Map<String, Object?> frame, {DateTime? now}) =>
+    mapper.map(message: ClaudeStreamMessage.parse(frame), now: now);
+
+Map<String, Object?> _status({required String uuid, required String? status, String? result, String? error}) => {
+  "type": "system",
+  "subtype": "status",
+  "session_id": "session-1",
+  "uuid": uuid,
+  "status": status,
+  "compact_result": ?result,
+  "compact_error": ?error,
+};
+
+PluginCompactionState _compactionState(List<BridgeSseEvent> events, {required String partId}) => [
+  for (final event in events)
+    if (event case BridgeSseMessagePartUpdated(part: PluginMessagePartCompaction(:final id, :final compactionState))
+        when id == partId)
+      compactionState,
+].single;
 
 Map<String, Object?> _stream(String eventType, {required Map<String, Object?> event}) => {
   "type": "stream_event",

@@ -1,3 +1,4 @@
+import "../../models/claude_compact_metadata.dart";
 import "../../models/claude_effort_level.dart";
 import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_tool_use_result.dart";
@@ -189,6 +190,23 @@ final class const ClaudeTranscriptContextRecord({
   required super.sessionId,
   required super.raw,
 }) extends ClaudeTranscriptAttributedRecord;
+
+/// A `system` record with `subtype: "compact_boundary"`: the CLI compacted the
+/// context. The next `isCompactSummary` user record carries the summary.
+final class const ClaudeTranscriptCompactBoundaryRecord({
+  /// Null when the record carries no `compactMetadata` object.
+  required final ClaudeCompactMetadata? metadata,
+  required super.cwd,
+  required super.timestamp,
+  required super.isSidechain,
+  required super.agentId,
+  required super.gitBranch,
+  required super.version,
+  required super.sessionId,
+  required super.raw,
+}) extends ClaudeTranscriptAttributedRecord {
+  static const String subtype = "compact_boundary";
+}
 
 /// An `ai-title` record — the session title, written by the CLI itself.
 final class const ClaudeTranscriptTitleRecord({
