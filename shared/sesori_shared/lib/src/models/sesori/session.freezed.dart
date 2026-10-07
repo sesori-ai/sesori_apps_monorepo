@@ -1563,4 +1563,157 @@ as bool,
 
 }
 
+
+/// @nodoc
+mixin _$SessionMessagesThroughRequest {
+
+ String get sessionId; int get throughSeq; int get before; MessageAttachmentDelivery get attachmentDelivery; bool get storedOnly;
+/// Create a copy of SessionMessagesThroughRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionMessagesThroughRequestCopyWith<SessionMessagesThroughRequest> get copyWith => _$SessionMessagesThroughRequestCopyWithImpl<SessionMessagesThroughRequest>(this as SessionMessagesThroughRequest, _$identity);
+
+  /// Serializes this SessionMessagesThroughRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as SessionMessagesThroughRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionMessagesThroughRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.throughSeq, _this.throughSeq) || other.throughSeq == _this.throughSeq)&&(identical(other.before, _this.before) || other.before == _this.before)&&(identical(other.attachmentDelivery, _this.attachmentDelivery) || other.attachmentDelivery == _this.attachmentDelivery)&&(identical(other.storedOnly, _this.storedOnly) || other.storedOnly == _this.storedOnly));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as SessionMessagesThroughRequest;
+  return Object.hash(runtimeType,_this.sessionId,_this.throughSeq,_this.before,_this.attachmentDelivery,_this.storedOnly);
+}
+
+@override
+String toString() {
+  final _this = this as SessionMessagesThroughRequest;
+  return 'SessionMessagesThroughRequest(sessionId: ${_this.sessionId}, throughSeq: ${_this.throughSeq}, before: ${_this.before}, attachmentDelivery: ${_this.attachmentDelivery}, storedOnly: ${_this.storedOnly})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SessionMessagesThroughRequestCopyWith<$Res>  {
+  factory $SessionMessagesThroughRequestCopyWith(SessionMessagesThroughRequest value, $Res Function(SessionMessagesThroughRequest) _then) = _$SessionMessagesThroughRequestCopyWithImpl;
+@useResult
+$Res call({
+ String sessionId, int throughSeq, int before, MessageAttachmentDelivery attachmentDelivery, bool storedOnly
+});
+
+
+
+
+}
+/// @nodoc
+class _$SessionMessagesThroughRequestCopyWithImpl<$Res>
+    implements $SessionMessagesThroughRequestCopyWith<$Res> {
+  _$SessionMessagesThroughRequestCopyWithImpl(this._self, this._then);
+
+  final SessionMessagesThroughRequest _self;
+  final $Res Function(SessionMessagesThroughRequest) _then;
+
+/// Create a copy of SessionMessagesThroughRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? throughSeq = null,Object? before = null,Object? attachmentDelivery = null,Object? storedOnly = null,}) {
+  return _then(SessionMessagesThroughRequest(
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,throughSeq: null == throughSeq ? _self.throughSeq : throughSeq // ignore: cast_nullable_to_non_nullable
+as int,before: null == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
+as int,attachmentDelivery: null == attachmentDelivery ? _self.attachmentDelivery : attachmentDelivery // ignore: cast_nullable_to_non_nullable
+as MessageAttachmentDelivery,storedOnly: null == storedOnly ? _self.storedOnly : storedOnly // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _SessionMessagesThroughRequest implements SessionMessagesThroughRequest {
+  const _SessionMessagesThroughRequest({required this.sessionId, required this.throughSeq, required this.before, required this.attachmentDelivery, required this.storedOnly});
+  factory _SessionMessagesThroughRequest.fromJson(Map<String, dynamic> json) => _$SessionMessagesThroughRequestFromJson(json);
+
+@override final  String sessionId;
+@override final  int throughSeq;
+@override final  int before;
+@override final  MessageAttachmentDelivery attachmentDelivery;
+@override final  bool storedOnly;
+
+/// Create a copy of SessionMessagesThroughRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SessionMessagesThroughRequestCopyWith<_SessionMessagesThroughRequest> get copyWith => __$SessionMessagesThroughRequestCopyWithImpl<_SessionMessagesThroughRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionMessagesThroughRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionMessagesThroughRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.throughSeq, throughSeq) || other.throughSeq == throughSeq)&&(identical(other.before, before) || other.before == before)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery)&&(identical(other.storedOnly, storedOnly) || other.storedOnly == storedOnly));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,throughSeq,before,attachmentDelivery,storedOnly);
+}
+
+@override
+String toString() {
+    return 'SessionMessagesThroughRequest(sessionId: $sessionId, throughSeq: $throughSeq, before: $before, attachmentDelivery: $attachmentDelivery, storedOnly: $storedOnly)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SessionMessagesThroughRequestCopyWith<$Res> implements $SessionMessagesThroughRequestCopyWith<$Res> {
+  factory _$SessionMessagesThroughRequestCopyWith(_SessionMessagesThroughRequest value, $Res Function(_SessionMessagesThroughRequest) _then) = __$SessionMessagesThroughRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String sessionId, int throughSeq, int before, MessageAttachmentDelivery attachmentDelivery, bool storedOnly
+});
+
+
+
+
+}
+/// @nodoc
+class __$SessionMessagesThroughRequestCopyWithImpl<$Res>
+    implements _$SessionMessagesThroughRequestCopyWith<$Res> {
+  __$SessionMessagesThroughRequestCopyWithImpl(this._self, this._then);
+
+  final _SessionMessagesThroughRequest _self;
+  final $Res Function(_SessionMessagesThroughRequest) _then;
+
+/// Create a copy of SessionMessagesThroughRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? throughSeq = null,Object? before = null,Object? attachmentDelivery = null,Object? storedOnly = null,}) {
+  return _then(_SessionMessagesThroughRequest(
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,throughSeq: null == throughSeq ? _self.throughSeq : throughSeq // ignore: cast_nullable_to_non_nullable
+as int,before: null == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
+as int,attachmentDelivery: null == attachmentDelivery ? _self.attachmentDelivery : attachmentDelivery // ignore: cast_nullable_to_non_nullable
+as MessageAttachmentDelivery,storedOnly: null == storedOnly ? _self.storedOnly : storedOnly // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
+}
+
 // dart format on

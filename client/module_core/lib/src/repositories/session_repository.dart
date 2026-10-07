@@ -10,6 +10,7 @@ import "models/session_abort_not_accepted_exception.dart";
 import "models/session_abort_rejected_exception.dart";
 import "models/session_cleanup_rejection.dart";
 import "models/session_diff_summary_result.dart";
+import "models/session_messages_through_result.dart";
 import "models/session_options_repository_result.dart";
 
 @lazySingleton
@@ -121,6 +122,36 @@ class SessionRepository({
     required bool storedOnly,
   }) {
     return _api.getMessages(sessionId: sessionId, limit: limit, before: before, storedOnly: storedOnly);
+  }
+
+  Future<SessionMessagesThroughResult> getMessagesThrough({
+    required String sessionId,
+    required int throughSeq,
+    required int before,
+    required bool storedOnly,
+  }) async {
+    final response = await _api.getMessagesThrough(
+      sessionId: sessionId,
+      throughSeq: throughSeq,
+      before: before,
+      storedOnly: storedOnly,
+    );
+    return switch (response) {
+      SuccessResponse(:final data) => SessionMessagesThroughAvailable(
+        messages: data.messages,
+        olderMessagesCursor: data.nextCursor,
+        userMessagesBefore: data.userMessagesBefore,
+      ),
+      // COMPATIBILITY 2026-10-07 (v1.9.1): a bridge without the
+      // /session/messages/through route answers with the router's
+      // route-not-found 404. A 404 from the route itself (a plugin that lost
+      // the transcript) stays a failure. Remove once no supported bridge
+      // predates the route.
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404, :final rawErrorString))
+          when rawErrorString?.startsWith("no handler found for ") ?? false =>
+        const SessionMessagesThroughUnsupported(),
+      ErrorResponse(:final error) => SessionMessagesThroughFailure(error: error),
+    };
   }
 
   Future<ApiResponse<PendingQuestionResponse>> getPendingQuestions({required String sessionId}) {

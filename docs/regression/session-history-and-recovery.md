@@ -46,6 +46,22 @@ reconnect or restart.
   with no rendered prompts, lists none, and an empty session id is a 400, so
   the route never answers 404 and a 404 means a bridge that predates it. It does the same for every harness, since it reads only
   normalized history.
+- The load-through (`POST /session/messages/through`) returns, in one
+  response, every message from a chosen prompt's `seq` (`throughSeq`) up to
+  the app's oldest loaded cursor (`before`), through the same read path as a
+  page: freshness, backfill, `storedOnly`, the archived audit file and the
+  attachment projection behave exactly as they do for a page. Its cursor is
+  `throughSeq` while an older message exists and null at the start of
+  history, and its `userMessagesBefore` counts the users before `throughSeq`.
+  `throughSeq >= before` and an empty session id are 400s. The app maps only
+  the router's route-not-found 404 (a bridge that predates the route) to an
+  unsupported result; a 404 from the route itself, such as a plugin that lost
+  the transcript, stays a failure. A load asked for while a refresh is in
+  flight is not sent. The app prepends the range like an
+  older page, and its cursor and count only ever move toward older history,
+  so a page that lands after a farther load-through cannot restore a newer
+  pair. A load that lands after a refresh is discarded. It does the same for
+  every harness, since it reads only normalized history.
 - Session detail resolves canonical catalog metadata before the history request.
   A block does not itself withhold history: a cold blocked open reads store-only
   and renders whatever the bridge holds, with the block reported in the composer's
@@ -318,7 +334,7 @@ reconnect or restart.
 | L2 Routine | Automated client: a live block preserves messages; a block or metadata failure during reload restores the transcript and replays buffered events; content restoration failure stays read-only with guidance to reopen the chat. Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Codex also trims only verified sub-agent copied prefixes while preserving root and ordinary-fork history, and replays rollback markers to remove reverted turn content and subtasks while retaining prior and subsequently appended turns, including cumulative rollbacks and fork-prefix boundaries; Claude also covers one stable live/replay identity for a CLI-authored API failure and suppression of its duplicate terminal result, plus live/replay parity for queued follow-ups, peer messages and task outcomes, and hiding harness-generated user frames under either flag spelling while keeping peer injections, tool results and task outcomes, while Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, early tool-call metadata with the missing-metadata fallback, duplicate terminal suppression, cumulative tool updates, and live/replay final parity. Automated DeepSeek coverage checks direct-parent live/replay tile identity, multiple ordered storage-safe content runs, latest metadata across pages, unbound startup errors, and live-state isolation. |
 | L3 Release | Client end to end on the release-target client platform: compare cold blocked history, a live block after history renders, and restored eligibility without route reopening. Every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool parts and image parts where declared. Grok additionally retains its exact loaded model/effort attribution across first load, cold reopen, plugin restart, and bridge restart. |
 | L4 Extended | Client end to end on macOS desktop and iOS, plus an Android variation: change availability from a second client while history is visible and while reload is in flight, page back through an older page on a blocked session whose store is behind the harness, and confirm a blocked session the bridge stored nothing for reports the block instead of an empty transcript; reconnect inside/outside replay and switch bridge identity without losing retained or buffered content. Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. Copilot and Grok additionally replace their ACP process, reload the same session, and converge standard replay with the bridge transcript without duplicate live delivery. |
-| L5 Full | Automated and headless bridge for the prompt index (store and archive reads, hidden and image-only prompts, empty-id validation), unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
+| L5 Full | Automated and headless bridge for the prompt index (store and archive reads, hidden and image-only prompts, empty-id validation), the load-through (store, store-only and archive reads of one range, the cursor ending at the first message, range and empty-id validation) with the app's 404-as-unsupported mapping and its older-only cursor and count, unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
 
 ## Exploration Guidance
 
@@ -358,6 +374,13 @@ rules where supported.
   from `userMessagesBefore`, drops an image-only prompt, answers 404 for a
   session it does not know, starts the harness, or reads an archived session's
   purged store instead of its audit file.
+- The load-through misses or duplicates a message at either end of its
+  range, reports a cursor or count that differs from paging back to the
+  same prompt, reads differently from a page on the store, store-only or
+  archive path, treats an older bridge's route-not-found 404 as a retryable
+  failure or the route's own 404 as an older bridge, splices a range read
+  from a cursor that a refresh was replacing, or lets a late older page move
+  the app's cursor back toward newer history.
 - A store-only read reaches the harness, waits on or fails with another reader's
   backfill, fails instead of serving what the store holds, returns parts that
   belong to a different transcript than its messages, or misreports freshness in
@@ -473,7 +496,13 @@ tests under `bridge/app/test/bridge/services/`; the prompt index in
 `bridge/app/lib/src/routing/get_session_prompt_index_handler.dart`, with
 `chat_history_prompt_index_test.dart`, `prompt_index_mapper_test.dart`,
 `get_session_prompt_index_handler_test.dart` and
-`bridge/app/tool/benchmarks/prompt_index_benchmark.dart`; client session-detail load/cubit
+`bridge/app/tool/benchmarks/prompt_index_benchmark.dart`; the load-through in
+`bridge/app/lib/src/routing/get_session_messages_through_handler.dart` and the
+`HistoryWindow` read of `ChatHistoryRepository`, with
+`chat_history_pagination_test.dart`, `get_session_messages_through_handler_test.dart`
+and `bridge/app/tool/benchmarks/load_through_benchmark.dart`, and in the app
+`SessionRepository.getMessagesThrough` and `SessionDetailCubit.loadMessagesThrough`
+with `session_repository_test.dart` and `session_detail_paging_test.dart`; client session-detail load/cubit
 code and focused metadata, blocking, reload-race and event-buffer tests; Pi
 session process repository, storage API, and history mapper; shared ACP event mapper, turn serialization,
 and session loader plus Antigravity, Copilot, Cursor, and Grok plugins and package tests; shared

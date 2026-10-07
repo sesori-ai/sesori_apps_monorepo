@@ -10,6 +10,7 @@ import "../api/models/archived_session_file_dto.dart";
 import "../auth/bridge_id_provider.dart";
 import "../repositories/attachment_thumbnail_builder.dart";
 import "../repositories/chat_history_repository.dart";
+import "../repositories/models/history_window.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 
@@ -68,11 +69,8 @@ class ChatHistoryService({
   final Map<String, Future<SessionPromptDefaults?>> _inFlightBackfills = {};
   final ParallelLock _thumbnailGenerationLock = ParallelLock(maxParallelOperations: 1);
 
-  /// One page of the session's messages, served from the store whenever it is
-  /// known to be current and falling back to the backend otherwise.
-  ///
-  /// A null [limit] returns the whole transcript, which is what an app that
-  /// predates pagination asks for.
+  /// The [window] of the session's messages, served from the store whenever
+  /// it is known to be current and falling back to the backend otherwise.
   ///
   /// The store is preferred only when a backfill has completed *and* no
   /// backend activity has been observed past the captured watermark, so a
@@ -84,8 +82,7 @@ class ChatHistoryService({
   /// start — ask for that instead of a page they may never receive.
   Future<SessionMessagesPage> getSessionMessages({
     required String sessionId,
-    int? limit,
-    int? before,
+    required HistoryWindow window,
     required MessageAttachmentDelivery attachmentDelivery,
     required bool storedOnly,
   }) async {
@@ -93,8 +90,7 @@ class ChatHistoryService({
     if (storedOnly) {
       return await _storedOnlyPage(
         sessionId: sessionId,
-        limit: limit,
-        before: before,
+        window: window,
         attachmentProjection: attachmentProjection,
       );
     }
@@ -118,8 +114,7 @@ class ChatHistoryService({
           final archived = await _chatHistoryRepository.getArchivedSessionMessages(
             sessionId: sessionId,
             storageScope: storageScope,
-            limit: limit,
-            before: before,
+            window: window,
             attachmentProjection: attachmentProjection,
           );
           if (archived != null) return archived;
@@ -132,8 +127,7 @@ class ChatHistoryService({
         return await _chatHistoryRepository.getSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
-          limit: limit,
-          before: before,
+          window: window,
           attachmentProjection: attachmentProjection,
         );
       },
@@ -156,8 +150,7 @@ class ChatHistoryService({
         read: () => _chatHistoryRepository.getSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
-          limit: limit,
-          before: before,
+          window: window,
           attachmentProjection: attachmentProjection,
         ),
       );
@@ -176,8 +169,7 @@ class ChatHistoryService({
       read: () => _chatHistoryRepository.getSessionMessages(
         sessionId: sessionId,
         storageScope: storageScope,
-        limit: limit,
-        before: before,
+        window: window,
         attachmentProjection: attachmentProjection,
       ),
     );
@@ -200,8 +192,7 @@ class ChatHistoryService({
   /// does not justify reintroducing that wait. The next ordinary read sweeps.
   Future<SessionMessagesPage> _storedOnlyPage({
     required String sessionId,
-    required int? limit,
-    required int? before,
+    required HistoryWindow window,
     required MessageAttachmentProjection attachmentProjection,
   }) => _readStoredHistory(
     sessionId: sessionId,
@@ -217,8 +208,7 @@ class ChatHistoryService({
       final archived = await _chatHistoryRepository.getArchivedSessionMessages(
         sessionId: sessionId,
         storageScope: storageScope,
-        limit: limit,
-        before: before,
+        window: window,
         attachmentProjection: attachmentProjection,
       );
       // An audit file is the whole transcript of a session the harness can no
@@ -233,8 +223,7 @@ class ChatHistoryService({
       final read = await _chatHistoryRepository.getSessionMessagesWithSyncState(
         sessionId: sessionId,
         storageScope: storageScope,
-        limit: limit,
-        before: before,
+        window: window,
         attachmentProjection: attachmentProjection,
       );
       final state = read.syncState;
@@ -888,8 +877,7 @@ class ChatHistoryService({
   /// file.
   Future<ChatHistoryPage?> getArchivedSessionMessages({
     required String sessionId,
-    int? limit,
-    int? before,
+    required HistoryWindow window,
     required MessageAttachmentDelivery attachmentDelivery,
   }) async {
     final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
@@ -898,8 +886,7 @@ class ChatHistoryService({
     return await _chatHistoryRepository.getArchivedSessionMessages(
       sessionId: sessionId,
       storageScope: _storageScopeFor(session: session),
-      limit: limit,
-      before: before,
+      window: window,
       attachmentProjection: attachmentProjection,
     );
   }

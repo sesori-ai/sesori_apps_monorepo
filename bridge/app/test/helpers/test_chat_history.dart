@@ -8,6 +8,7 @@ import "package:sesori_bridge/src/api/database/history/chat_history_database.dar
 import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
 import "package:sesori_bridge/src/repositories/attachment_thumbnail_builder.dart";
 import "package:sesori_bridge/src/repositories/chat_history_repository.dart";
+import "package:sesori_bridge/src/repositories/models/history_window.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/services/chat_history_service.dart";
@@ -80,14 +81,14 @@ class TestChatHistoryRepository({
   Future<ChatHistoryPage> getSessionMessages({
     required String sessionId,
     required AttachmentStorageScope storageScope,
+    HistoryWindow? window,
     int? limit,
     int? before,
     MessageAttachmentProjection attachmentProjection = const InlineMessageAttachmentProjection(),
   }) => super.getSessionMessages(
     sessionId: sessionId,
     storageScope: storageScope,
-    limit: limit,
-    before: before,
+    window: window ?? _windowOf(limit: limit, before: before),
     attachmentProjection: attachmentProjection,
   );
 }
@@ -101,14 +102,14 @@ class TestChatHistoryService({
   @override
   Future<SessionMessagesPage> getSessionMessages({
     required String sessionId,
+    HistoryWindow? window,
     int? limit,
     int? before,
     MessageAttachmentDelivery attachmentDelivery = MessageAttachmentDelivery.inline,
     bool storedOnly = false,
   }) => super.getSessionMessages(
     sessionId: sessionId,
-    limit: limit,
-    before: before,
+    window: window ?? _windowOf(limit: limit, before: before),
     attachmentDelivery: attachmentDelivery,
     storedOnly: storedOnly,
   );
@@ -116,16 +117,23 @@ class TestChatHistoryService({
   @override
   Future<ChatHistoryPage?> getArchivedSessionMessages({
     required String sessionId,
+    HistoryWindow? window,
     int? limit,
     int? before,
     MessageAttachmentDelivery attachmentDelivery = MessageAttachmentDelivery.inline,
   }) => super.getArchivedSessionMessages(
     sessionId: sessionId,
-    limit: limit,
-    before: before,
+    window: window ?? _windowOf(limit: limit, before: before),
     attachmentDelivery: attachmentDelivery,
   );
 }
+
+/// The window a test's `limit` and `before` shorthand describes: a page when
+/// it has a limit, else the whole transcript.
+HistoryWindow _windowOf({required int? limit, required int? before}) => switch (limit) {
+  null => const HistoryWindowAll(),
+  final limit => HistoryWindowNewest(limit: limit, before: before),
+};
 
 class const _TestBridgeIdProvider(@override final String? bridgeId) implements BridgeIdProvider;
 

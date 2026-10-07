@@ -30,6 +30,7 @@ import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/models/plugin_management_result.dart";
 import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
+import "../../repositories/models/session_messages_through_result.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
@@ -52,6 +53,7 @@ import "../../services/session_viewing_service.dart";
 import "../../services/sse_event_tracker.dart";
 import "../../services/transcript_snapshot_calculator.dart";
 import "deferred_part_event_buffer.dart";
+import "load_through_outcome.dart";
 import "local_send_phase.dart";
 import "prompt_send_queue.dart";
 import "seeded_composer.dart";
@@ -689,6 +691,79 @@ class SessionDetailCubit(
       return;
     }
 
+    _prependOlderPage(
+      latest: latest,
+      page: page,
+      deferredPartEventSequence: deferredPartEventSequence,
+      isLoadingOlderMessages: false,
+    );
+  }
+
+  /// Loads every message from [seq] down to the loaded range in one request,
+  /// so the prompt [messageId] at [seq] can be shown.
+  ///
+  /// Runs beside [loadOlderMessages] rather than waiting for it: both only
+  /// prepend, and the farther of the two keeps the cursor.
+  Future<LoadThroughOutcome> loadMessagesThrough({required String messageId, required int seq}) async {
+    final current = state;
+    // As in [loadOlderMessages]: a refresh has already bumped the generation
+    // but not yet replaced the transcript, so this cursor is about to go stale.
+    if (current is! SessionDetailLoaded || current.isRefreshing) return const LoadThroughSuperseded();
+    if (current.messages.any((message) => message.info.id == messageId)) return const LoadThroughLoaded();
+    final cursor = current.olderMessagesCursor;
+    // Everything from the cursor on is loaded, so a target there is gone.
+    if (cursor == null || seq >= cursor) return const LoadThroughTargetMissing();
+
+    final generation = _transcriptGeneration;
+    final deferredPartEventSequence = _deferredPartEvents.latestSequence;
+    final result = await _loadService.loadMessagesThrough(
+      sessionId: _sessionId,
+      throughSeq: seq,
+      before: cursor,
+      storedOnly: !_interaction.canInteract,
+    );
+    if (isClosed) return const LoadThroughSuperseded();
+    final latest = state;
+    // As in [loadOlderMessages]: a range read against a replaced transcript
+    // would splice unrelated history onto it.
+    if (latest is! SessionDetailLoaded || _transcriptGeneration != generation) return const LoadThroughSuperseded();
+
+    switch (result) {
+      case SessionMessagesThroughUnsupported():
+        return const LoadThroughUnsupported();
+      case SessionMessagesThroughFailure():
+        return const LoadThroughFailed();
+      case SessionMessagesThroughAvailable(:final messages, :final olderMessagesCursor, :final userMessagesBefore):
+        _prependOlderPage(
+          latest: latest,
+          page: (
+            messages: messages,
+            olderMessagesCursor: olderMessagesCursor,
+            userMessagesBefore: userMessagesBefore,
+          ),
+          deferredPartEventSequence: deferredPartEventSequence,
+          isLoadingOlderMessages: latest.isLoadingOlderMessages,
+        );
+        // The merged transcript decides, since a live update may have
+        // delivered the target while the range was in flight.
+        final merged = state;
+        return merged is SessionDetailLoaded && merged.messages.any((message) => message.info.id == messageId)
+            ? const LoadThroughLoaded()
+            : const LoadThroughTargetMissing();
+    }
+  }
+
+  /// Prepends [page] to [latest]'s messages.
+  ///
+  /// The cursor and the user count move as one pair, and only toward older
+  /// history: a page that lands after a farther one keeps the farther pair,
+  /// whose cursor is lower (null, the start of history, is lowest).
+  void _prependOlderPage({
+    required SessionDetailLoaded latest,
+    required SessionMessagePage page,
+    required int deferredPartEventSequence,
+    required bool isLoadingOlderMessages,
+  }) {
     // Merge by id rather than concatenating. Live events can append a message
     // while the page is in flight, and an older page must never duplicate or
     // reorder what is already shown.
@@ -701,12 +776,17 @@ class SessionDetailCubit(
       messageIds: page.messages.map((message) => message.info.id),
       sequence: deferredPartEventSequence,
     );
+    final pageIsFarther = switch ((page.olderMessagesCursor, latest.olderMessagesCursor)) {
+      (null, _) => true,
+      (_, null) => false,
+      (final int pageCursor, final int loadedCursor) => pageCursor < loadedCursor,
+    };
     emit(
       latest.copyWith(
         messages: [...older, ...latest.messages],
-        olderMessagesCursor: page.olderMessagesCursor,
-        userMessagesBeforeOldest: page.userMessagesBefore,
-        isLoadingOlderMessages: false,
+        olderMessagesCursor: pageIsFarther ? page.olderMessagesCursor : latest.olderMessagesCursor,
+        userMessagesBeforeOldest: pageIsFarther ? page.userMessagesBefore : latest.userMessagesBeforeOldest,
+        isLoadingOlderMessages: isLoadingOlderMessages,
       ),
     );
     _drainDeferredPartsForLoadedMessages();
