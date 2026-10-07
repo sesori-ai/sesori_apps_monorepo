@@ -183,8 +183,11 @@ sub-agent parts, plus the signal that a tool changed files.
   taller or shorter, the tapped header stays still as when opening, and a
   command scrolled sideways keeps its offset. A failed fetch shows “Could not
   load the output.” with Retry in the same row, so the panel does not change
-  height unless large text needs more room; Retry, or closing and reopening,
-  fetches again with a fresh 150 ms spinner delay. A fetched output survives a silent
+  height unless large text needs more room, and then eases to it; Retry, or
+  closing and reopening, fetches again with a fresh 150 ms spinner delay. The
+  header is held still only while the reader is not scrolling: an output that
+  lands during a drag or fling never stops it. A tool that finished live
+  keeps its output, so a later page that summarizes it still shows it. A fetched output survives a silent
   refresh and reopens at once; a full reload fetches it again on the next
   expand. A full part always wins over it.
 - Subtasks retain a prompt bounded to 500 runes, bounded title/outcome/error
@@ -505,10 +508,12 @@ guarantee.
 - `client/module_app_ui/test/features/session_detail/widgets/tool_part_widget_test.dart`
   ("a summary part") fetches on opening, holds the spinner back for 150 ms
   (also on a retry), eases to a taller or shorter output with the header and
-  title still, keeps the command's sideways scroll, grows the failure for
-  large text, retries from the panel and opens a fetched output at once. `client/module_core/test/cubits/session_detail/session_detail_paging_test.dart`
+  title still, keeps the command's sideways scroll, grows and eases the
+  failure for large text, lets a fling run on while the output lands, retries
+  from the panel and opens a fetched output at once. `client/module_core/test/cubits/session_detail/session_detail_paging_test.dart`
   ("summary tool output") fetches once while a fetch is in flight, retries
-  after a failure and keeps the output across a silent refresh.
+  after a failure, keeps the output across a silent refresh and keeps a tool's
+  output once it finished live.
 - `client/module_app_ui/test/features/session_detail/widgets/transcript_step_row_test.dart`
   measures every step kind's icon, label inset, height and label weight at
   phone and desktop density.

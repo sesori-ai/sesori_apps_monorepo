@@ -14,15 +14,15 @@ import "transcript_motion.dart";
 /// away; the disclosure scrolls by the same amount as it grows, so the tapped
 /// header stays still while there is room below it.
 ///
-/// When [panelComplete] changes while open, the panel eases from its old
-/// height to its new one, with the header held still the same way. The panel
-/// keeps its state.
+/// A new [panelContentKey] while open eases the panel from its old height to
+/// its new one, with the header held still the same way. The panel keeps its
+/// state. Other changes to the panel's height take effect at once.
 class const TranscriptDisclosure({
   super.key,
   required final Key toggleKey,
   required final Widget Function({required bool expanded}) headerBuilder,
   required final Widget panel,
-  required final bool panelComplete,
+  required final Key panelContentKey,
 }) extends StatefulWidget {
   @override
   State<TranscriptDisclosure> createState() => _TranscriptDisclosureState();
@@ -43,9 +43,9 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
 
   final _panelKey = GlobalKey();
 
-  /// The heights an open panel eases between after [TranscriptDisclosure.panelComplete]
-  /// changed. For the first frame, while the new content lays out, both are
-  /// the old height.
+  /// The heights an open panel eases between after a new
+  /// [TranscriptDisclosure.panelContentKey]. For the first frame, while the
+  /// new content lays out, both are the old height.
   ({double from, double to})? _resizing;
 
   /// How much of the panel's height the transcript has already made room for.
@@ -63,7 +63,7 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
   @override
   void didUpdateWidget(TranscriptDisclosure oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.panelComplete == oldWidget.panelComplete || _disclosure.isDismissed) return;
+    if (widget.panelContentKey == oldWidget.panelContentKey || _disclosure.isDismissed) return;
     final from = _panelHeight();
     if (from == null) return;
     _resizing = (from: from, to: from);
@@ -155,8 +155,10 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
     }
     final position = scrollable.position;
     // A transcript shorter than its viewport cannot scroll; the row grows into
-    // the empty space above it instead of bouncing against the range.
-    if (position.maxScrollExtent <= position.minScrollExtent) return;
+    // the empty space above it instead of bouncing against the range. A drag
+    // or fling already moves the content, and a jump would stop it under the
+    // reader's finger.
+    if (position.maxScrollExtent <= position.minScrollExtent || position.isScrollingNotifier.value) return;
     final double shift;
     if (growth > 0) {
       final rowBottom = row.localToGlobal(Offset(0, row.size.height)).dy;

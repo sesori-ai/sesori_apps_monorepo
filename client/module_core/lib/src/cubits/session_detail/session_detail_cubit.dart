@@ -795,6 +795,28 @@ class SessionDetailCubit(
     emit(latest.copyWith(toolOutputs: {...latest.toolOutputs, key: fetch}));
   }
 
+  /// Keeps the output of a finished tool that arrived live, so a later page
+  /// that summarizes the same part shows it without a fetch (P14).
+  static Map<ToolOutputKey, ToolOutputFetch> _withFinishedToolOutput({
+    required Map<ToolOutputKey, ToolOutputFetch> toolOutputs,
+    required MessagePart part,
+  }) {
+    if (part
+        case MessagePartTool(
+          :final messageID,
+          :final id,
+          state: ToolStateFull(
+            status: ToolStatus.completed || ToolStatus.error || ToolStatus.cancelled,
+            :final output,
+            :final error,
+          ),
+        )
+        when output != null || error != null) {
+      return {...toolOutputs, (messageId: messageID, partId: id): ToolOutputLoaded(output: output, error: error)};
+    }
+    return toolOutputs;
+  }
+
   /// Prepends [page] to [latest]'s messages.
   ///
   /// The cursor and the user count move as one pair, and only toward older
@@ -2038,6 +2060,7 @@ class SessionDetailCubit(
       current.copyWith(
         messages: messages,
         streamingText: _streamingBuffer.snapshot(),
+        toolOutputs: _withFinishedToolOutput(toolOutputs: current.toolOutputs, part: part),
       ),
     );
     // The part may be what makes a delivered user prompt renderable.

@@ -612,6 +612,50 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets("a failure taller than the loading row eases to it", (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.pumpWidget(transcript(toolOutputs: const {key: ToolOutputLoading()}, part: summary));
+      await tester.tap(find.byKey(_toggle));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final loading = _shellHeight(tester);
+
+      states.add(_loaded(toolOutputs: const {key: ToolOutputFailed()}));
+      await tester.pump();
+      await tester.pump();
+      expect(_shellHeight(tester), loading, reason: "the failure lays out at the old height first");
+      await tester.pump(const Duration(milliseconds: 100));
+      final easing = _shellHeight(tester);
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(easing, greaterThan(loading));
+      expect(_shellHeight(tester), greaterThan(easing));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("an output arriving during a fling lets the fling run on", (tester) async {
+      await tester.pumpWidget(transcript(toolOutputs: const {key: ToolOutputLoading()}, part: summary));
+      await tester.tap(find.byKey(_toggle));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+
+      await tester.fling(find.byType(ListView), const Offset(0, 150), 1500);
+      await tester.pump(const Duration(milliseconds: 16));
+      states.add(_loaded(toolOutputs: {key: const ToolOutputLoaded(output: "line 1\nline 2\nline 3", error: null)}));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      final during = position.pixels;
+      expect(position.isScrollingNotifier.value, isTrue, reason: "the output does not stop the fling");
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(position.pixels, isNot(during));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets("an output shorter than the loading row eases down to it", (tester) async {
       const tool = MessagePartTool(
         id: "tool-1",

@@ -48,8 +48,8 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
   }
 
   /// A full part carries its own output. A summary's output is fetched when
-  /// its panel opens, and once it arrives the disclosure eases from the
-  /// loading panel's height to the output's.
+  /// its panel opens, and the disclosure eases between the loading, failed
+  /// and output heights.
   Widget _disclosure({required BuildContext context}) {
     final output = switch (part.state) {
       ToolStateFull(:final output, :final error) => ToolOutputLoaded(output: output, error: error),
@@ -65,7 +65,13 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
     return TranscriptDisclosure(
       toggleKey: const ValueKey("shellTool.toggle"),
       headerBuilder: ({required expanded}) => _ToolHeader(part: part),
-      panelComplete: output is ToolOutputLoaded,
+      // Each change between loading, failing and the output eases the panel
+      // to its new height.
+      panelContentKey: ValueKey(switch (output) {
+        ToolOutputLoading() => _PanelContent.loading,
+        ToolOutputFailed() => _PanelContent.failed,
+        ToolOutputLoaded() => _PanelContent.output,
+      }),
       panel: _ToolPanel(
         part: part,
         output: output,
@@ -153,6 +159,13 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
       color: prego.colors.borderPrimary,
     ),
   };
+}
+
+/// What an open tool panel shows below its title and command.
+enum _PanelContent() {
+  loading,
+  failed,
+  output,
 }
 
 /// The tool's details: a shell's command, then the output and error, in one

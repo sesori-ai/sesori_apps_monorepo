@@ -40,6 +40,7 @@ void main() {
   late MockSessionDetailLoadService loadService;
   late MockConnectionService connectionService;
   late MockSessionRepository sessionRepository;
+  late StreamController<SesoriSessionEvent> sessionEvents;
   late SessionDetailCubit cubit;
 
   /// A loaded cubit showing the newest page, with older history available.
@@ -52,7 +53,7 @@ void main() {
     loadService = MockSessionDetailLoadService();
     connectionService = MockConnectionService();
     sessionRepository = MockSessionRepository();
-    final sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
+    sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
     final globalEvents = StreamController<SseEvent>.broadcast();
     final connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
     addTearDown(sessionEvents.close);
@@ -531,6 +532,56 @@ void main() {
         ),
       ).called(1);
       expect(outputs()[key], const ToolOutputLoaded(output: "clean", error: null));
+    });
+
+    test("a tool that finished live keeps its output for a later summary", () async {
+      const running = MessagePart.tool(
+        id: "p1",
+        sessionID: _sessionId,
+        messageID: "m5",
+        tool: "bash",
+        state: ToolState(
+          status: ToolStatus.running,
+          title: null,
+          output: "partial",
+          error: null,
+          shellCommand: "make",
+          attachments: [],
+        ),
+      );
+      sessionEvents.add(const SesoriMessagePartUpdated(part: running));
+      await pumpEventQueue();
+      expect(outputs()[key], isNull, reason: "a running tool's output is not final");
+
+      sessionEvents.add(
+        const SesoriMessagePartUpdated(
+          part: MessagePart.tool(
+            id: "p1",
+            sessionID: _sessionId,
+            messageID: "m5",
+            tool: "bash",
+            state: ToolState(
+              status: ToolStatus.completed,
+              title: null,
+              output: "done",
+              error: null,
+              shellCommand: "make",
+              attachments: [],
+            ),
+          ),
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(outputs()[key], const ToolOutputLoaded(output: "done", error: null));
+      unawaited(cubit.fetchToolOutput(messageId: "m5", partId: "p1"));
+      verifyNever(
+        () => loadService.loadToolOutput(
+          sessionId: any(named: "sessionId"),
+          messageId: any(named: "messageId"),
+          partId: any(named: "partId"),
+        ),
+      );
     });
   });
 }
