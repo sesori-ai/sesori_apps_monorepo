@@ -82,11 +82,13 @@ client's update steps shown wherever a feature needs a newer bridge.
 - The bridge reports its kind in `/global/health` as `bridgeKind`: `desktop` when
   Sesori Desktop supervises it (`--control-url`), otherwise `cli`. A missing or
   unrecognised value means `cli`. The app reads it on every fresh connect and on the
-  first resumed connect after a cold launch. When the connected bridge is `desktop`, the same
+  first resumed connect after a cold launch, and keeps the last reported kind through
+  reconnecting, lost and bridge-offline states. When that kind is `desktop`, the same
   entry points open "Update Sesori Desktop" instead, matching Desktop's manual update:
   download the latest from a copyable `sesori.com/desktop`, Quit Sesori Desktop
-  (closing the window doesn't quit it), install the new version and reopen it, with
-  no terminal commands. A client with no connected bridge shows the CLI steps.
+  (closing the window may not quit it), install the new version and reopen it, with
+  no terminal commands. The CLI steps show for a `cli` bridge, and before any bridge
+  has reported health or after an explicit disconnect or sign-out.
 - A standalone restart spawns a successor carrying the predecessor PID and waits before
   enforcing single-live-bridge ownership. On Windows, the predecessor waits for a marked
   one-shot launcher to start the real successor with inherited stdio, inherit the native

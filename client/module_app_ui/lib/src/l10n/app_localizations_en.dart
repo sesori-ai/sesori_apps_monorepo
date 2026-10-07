@@ -2939,7 +2939,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bridgeUpdateDesktopStepDownload => '1. Download the latest version:';
 
   @override
-  String get bridgeUpdateDesktopStepQuit => '2. Quit Sesori Desktop (closing the window doesn\'t quit it).';
+  String get bridgeUpdateDesktopStepQuit => '2. Quit Sesori Desktop (closing the window may not quit it).';
 
   @override
   String get bridgeUpdateDesktopStepInstall => '3. Install the new version, then open Sesori Desktop again.';

@@ -5188,7 +5188,7 @@ abstract class AppLocalizations {
   /// No description provided for @bridgeUpdateDesktopStepQuit.
   ///
   /// In en, this message translates to:
-  /// **'2. Quit Sesori Desktop (closing the window doesn\'t quit it).'**
+  /// **'2. Quit Sesori Desktop (closing the window may not quit it).'**
   String get bridgeUpdateDesktopStepQuit;
 
   /// Platform-neutral: macOS replaces the app, Windows runs an installer, Linux uses the package manager.
