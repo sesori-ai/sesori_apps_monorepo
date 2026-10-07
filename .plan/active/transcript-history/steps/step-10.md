@@ -20,6 +20,10 @@ Branch `transcript-history/unloaded-pin`. `client/module_core`,
 - **Detached snapshot:** older history now joins the frozen transcript
   whenever the oldest message changes, not only when an older page request
   ends, so a load-through while reading history renders too.
+- **Sticky places:** a row counts as built for the Above/Below split only
+  once it has been laid out. Before, the prompt that just loaded read as
+  Below for its first frame, which dropped its pin for a frame or two
+  mid-crossfade.
 - **Overlay:** `TranscriptStickyPromptOverlay` is stateful. It pins the
   preview in the normal bubble (O2). The pin fades in when the entry first
   appears. When the prompt loads, its pin crossfades from the preview to the

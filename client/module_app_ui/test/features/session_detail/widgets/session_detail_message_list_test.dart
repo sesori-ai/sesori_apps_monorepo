@@ -3472,7 +3472,11 @@ void main() {
         load.complete(const LoadThroughLoaded());
         await tester.pump();
         expect(pins(tester).hasLeavingCopy, isTrue, reason: "the preview crossfades into the loaded prompt");
-        expect(pinOf(tester, "u0"), isNotNull);
+        // Pinned every frame of the crossfade, never blinking out as its row builds.
+        while (pins(tester).fade.value < 1) {
+          expect(pinOf(tester, "u0"), isNotNull, reason: "at ${pins(tester).fade.value}");
+          await tester.pump(const Duration(milliseconds: 16));
+        }
 
         await tester.pumpAndSettle();
         expect(previewOf("u0"), findsNothing);

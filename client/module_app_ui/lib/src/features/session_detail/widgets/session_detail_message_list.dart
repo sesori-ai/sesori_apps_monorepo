@@ -664,10 +664,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// read rather than the bubble because the rows are laid out by now, while
   /// a row's own content can still be waiting for its turn.
   List<TranscriptStickyOpener> _stickyOpeners() {
+    // Only rows laid out at least once: a row just built above the others,
+    // such as a prompt that loaded, is still above them, not below.
     int? firstBuiltRow;
-    for (final rowId in _rowContexts.keys) {
+    for (final MapEntry(key: rowId, value: rowContext) in _rowContexts.entries) {
       final index = _rowIndexById[rowId];
-      if (index != null && (firstBuiltRow == null || index < firstBuiltRow)) firstBuiltRow = index;
+      final laidOut = switch (rowContext.findRenderObject()) {
+        RenderBox(:final hasSize) => hasSize,
+        _ => false,
+      };
+      if (index != null && laidOut && (firstBuiltRow == null || index < firstBuiltRow)) firstBuiltRow = index;
     }
     TranscriptStickyPlace placeOf({required String rowId, required int rowIndex}) {
       if (_spanOf(rowId: rowId) case final span?) {

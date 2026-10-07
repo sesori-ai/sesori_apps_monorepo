@@ -645,9 +645,12 @@ class RenderTranscriptStickyPrompts({
       ),
       null => null,
     };
+    final fromBubble = switch (from) {
+      (:final child, progress: _, :final pin) => _bubbleOf(pin: pin, child: child),
+      null => entering,
+    };
     final shown = switch (from) {
-      (:final child, :final progress, :final pin) =>
-        Rect.lerp(_bubbleOf(pin: pin, child: child), entering, progress) ?? entering,
+      (child: _, :final progress, pin: _) => Rect.lerp(fromBubble, entering, progress) ?? entering,
       null => entering,
     };
     final shape = RRect.fromRectAndRadius(shown, const Radius.circular(UserMessageBubble.radius));
@@ -662,6 +665,8 @@ class RenderTranscriptStickyPrompts({
       offset,
       shown,
       shape,
+      // Each copy stays where its own bubble holds it, so only the surface
+      // moves while the words crossfade.
       (context, offset) {
         if (from == null) {
           return _paintContent(context: context, offset: offset, pin: pin, child: child, bubble: shown);
@@ -670,13 +675,14 @@ class RenderTranscriptStickyPrompts({
           offset,
           ((1 - from.progress) * 255).round(),
           (context, offset) =>
-              _paintContent(context: context, offset: offset, pin: from.pin, child: from.child, bubble: shown),
+              _paintContent(context: context, offset: offset, pin: from.pin, child: from.child, bubble: fromBubble),
           oldLayer: _leavingLayer.layer,
         );
         _enteringLayer.layer = context.pushOpacity(
           offset,
           (from.progress * 255).round(),
-          (context, offset) => _paintContent(context: context, offset: offset, pin: pin, child: child, bubble: shown),
+          (context, offset) =>
+              _paintContent(context: context, offset: offset, pin: pin, child: child, bubble: entering),
           oldLayer: _enteringLayer.layer,
         );
       },
