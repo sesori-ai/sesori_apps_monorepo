@@ -80,6 +80,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     failureReporter: failureReporter,
     restartService: effectiveRestartService,
     filesystemAccessOk: true,
+    bridgeKind: BridgeKind.cli,
     statusNotifier: null,
     startupRetryService: BridgeStartupRetryService(),
     reconnectBackoff: ReconnectBackoffPolicy.standard,

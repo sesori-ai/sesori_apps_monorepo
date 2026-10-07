@@ -32,4 +32,8 @@ class const BridgeInstall._() {
   /// Command that moves an installed bridge to the newest release. Bridges
   /// released before 2026-06-23 lack it; the installers above replace those.
   static const String updateCommand = "sesori-bridge update";
+
+  /// Page offering the latest Sesori Desktop, which bundles and updates its
+  /// own bridge. Shown without a scheme so it reads as typed into a browser.
+  static const String desktopDownloadPage = "sesori.com/desktop";
 }

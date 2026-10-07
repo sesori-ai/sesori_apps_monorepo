@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$HealthResponse {
 
- bool get healthy; String get version; bool get filesystemAccessDegraded;
+ bool get healthy; String get version; bool get filesystemAccessDegraded;@JsonKey(unknownEnumValue: BridgeKind.cli) BridgeKind get bridgeKind;
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +30,20 @@ $HealthResponseCopyWith<HealthResponse> get copyWith => _$HealthResponseCopyWith
 @override
 bool operator ==(Object other) {
   final _this = this as HealthResponse;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is HealthResponse&&(identical(other.healthy, _this.healthy) || other.healthy == _this.healthy)&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.filesystemAccessDegraded, _this.filesystemAccessDegraded) || other.filesystemAccessDegraded == _this.filesystemAccessDegraded));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is HealthResponse&&(identical(other.healthy, _this.healthy) || other.healthy == _this.healthy)&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.filesystemAccessDegraded, _this.filesystemAccessDegraded) || other.filesystemAccessDegraded == _this.filesystemAccessDegraded)&&(identical(other.bridgeKind, _this.bridgeKind) || other.bridgeKind == _this.bridgeKind));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as HealthResponse;
-  return Object.hash(runtimeType,_this.healthy,_this.version,_this.filesystemAccessDegraded);
+  return Object.hash(runtimeType,_this.healthy,_this.version,_this.filesystemAccessDegraded,_this.bridgeKind);
 }
 
 @override
 String toString() {
   final _this = this as HealthResponse;
-  return 'HealthResponse(healthy: ${_this.healthy}, version: ${_this.version}, filesystemAccessDegraded: ${_this.filesystemAccessDegraded})';
+  return 'HealthResponse(healthy: ${_this.healthy}, version: ${_this.version}, filesystemAccessDegraded: ${_this.filesystemAccessDegraded}, bridgeKind: ${_this.bridgeKind})';
 }
 
 
@@ -54,7 +54,7 @@ abstract mixin class $HealthResponseCopyWith<$Res>  {
   factory $HealthResponseCopyWith(HealthResponse value, $Res Function(HealthResponse) _then) = _$HealthResponseCopyWithImpl;
 @useResult
 $Res call({
- bool healthy, String version, bool filesystemAccessDegraded
+ bool healthy, String version, bool filesystemAccessDegraded,@JsonKey(unknownEnumValue: BridgeKind.cli) BridgeKind bridgeKind
 });
 
 
@@ -71,12 +71,13 @@ class _$HealthResponseCopyWithImpl<$Res>
 
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? healthy = null,Object? version = null,Object? filesystemAccessDegraded = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? healthy = null,Object? version = null,Object? filesystemAccessDegraded = null,Object? bridgeKind = null,}) {
   return _then(HealthResponse(
 healthy: null == healthy ? _self.healthy : healthy // ignore: cast_nullable_to_non_nullable
 as bool,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
 as String,filesystemAccessDegraded: null == filesystemAccessDegraded ? _self.filesystemAccessDegraded : filesystemAccessDegraded // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,bridgeKind: null == bridgeKind ? _self.bridgeKind : bridgeKind // ignore: cast_nullable_to_non_nullable
+as BridgeKind,
   ));
 }
 
@@ -88,12 +89,13 @@ as bool,
 @JsonSerializable()
 
 class _HealthResponse implements HealthResponse {
-  const _HealthResponse({required this.healthy, required this.version, required this.filesystemAccessDegraded});
+  const _HealthResponse({required this.healthy, required this.version, required this.filesystemAccessDegraded, @JsonKey(unknownEnumValue: BridgeKind.cli) this.bridgeKind = BridgeKind.cli});
   factory _HealthResponse.fromJson(Map<String, dynamic> json) => _$HealthResponseFromJson(json);
 
 @override final  bool healthy;
 @override final  String version;
 @override final  bool filesystemAccessDegraded;
+@override@JsonKey(unknownEnumValue: BridgeKind.cli) final  BridgeKind bridgeKind;
 
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -108,18 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _HealthResponse&&(identical(other.healthy, healthy) || other.healthy == healthy)&&(identical(other.version, version) || other.version == version)&&(identical(other.filesystemAccessDegraded, filesystemAccessDegraded) || other.filesystemAccessDegraded == filesystemAccessDegraded));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _HealthResponse&&(identical(other.healthy, healthy) || other.healthy == healthy)&&(identical(other.version, version) || other.version == version)&&(identical(other.filesystemAccessDegraded, filesystemAccessDegraded) || other.filesystemAccessDegraded == filesystemAccessDegraded)&&(identical(other.bridgeKind, bridgeKind) || other.bridgeKind == bridgeKind));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,healthy,version,filesystemAccessDegraded);
+    return Object.hash(runtimeType,healthy,version,filesystemAccessDegraded,bridgeKind);
 }
 
 @override
 String toString() {
-    return 'HealthResponse(healthy: $healthy, version: $version, filesystemAccessDegraded: $filesystemAccessDegraded)';
+    return 'HealthResponse(healthy: $healthy, version: $version, filesystemAccessDegraded: $filesystemAccessDegraded, bridgeKind: $bridgeKind)';
 }
 
 
@@ -130,7 +132,7 @@ abstract mixin class _$HealthResponseCopyWith<$Res> implements $HealthResponseCo
   factory _$HealthResponseCopyWith(_HealthResponse value, $Res Function(_HealthResponse) _then) = __$HealthResponseCopyWithImpl;
 @override @useResult
 $Res call({
- bool healthy, String version, bool filesystemAccessDegraded
+ bool healthy, String version, bool filesystemAccessDegraded,@JsonKey(unknownEnumValue: BridgeKind.cli) BridgeKind bridgeKind
 });
 
 
@@ -147,12 +149,13 @@ class __$HealthResponseCopyWithImpl<$Res>
 
 /// Create a copy of HealthResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? healthy = null,Object? version = null,Object? filesystemAccessDegraded = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? healthy = null,Object? version = null,Object? filesystemAccessDegraded = null,Object? bridgeKind = null,}) {
   return _then(_HealthResponse(
 healthy: null == healthy ? _self.healthy : healthy // ignore: cast_nullable_to_non_nullable
 as bool,version: null == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
 as String,filesystemAccessDegraded: null == filesystemAccessDegraded ? _self.filesystemAccessDegraded : filesystemAccessDegraded // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,bridgeKind: null == bridgeKind ? _self.bridgeKind : bridgeKind // ignore: cast_nullable_to_non_nullable
+as BridgeKind,
   ));
 }
 

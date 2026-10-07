@@ -298,6 +298,11 @@ services, subscriptions or terminal-action variants. OS package trust and publis
 verification remain mandatory; the download link does not verify an installer.
 Native signed N→N+1 manual replacement and preservation are still release gates.
 
+The phone's "Update Sesori Desktop" sheet mirrors this manual flow (download, Quit,
+install, reopen) through the `bridgeUpdateDesktop*` strings in
+`client/module_app_ui/lib/src/l10n/app_en.arb`, added in #1869. If Sesori Desktop
+gains an in-app updater or the update section changes its flow, update that sheet to match.
+
 ### 4. Shared publication cycle and platform isolation
 
 D8 replaces the separate desktop publication cycle. `release-all-platforms.yml`

@@ -400,6 +400,11 @@ class const _SesoriAppShell() extends StatelessWidget {
                 navigatorKey: appRootNavigatorKey,
                 child: MultiBlocProvider(
                   providers: [
+                    // App-wide so every "how to update" action opens the steps
+                    // for the kind of bridge that is connected.
+                    BlocProvider(
+                      create: (_) => BridgeKindCubit(connectionService: getIt<ConnectionService>()),
+                    ),
                     BlocProvider(
                       create: (_) => FeedbackPromptCubit(feedbackPromptService: getIt<FeedbackPromptService>()),
                     ),

@@ -231,6 +231,7 @@ class Orchestrator({
   required final FailureReporter _failureReporter,
   required final BridgeRestartService _restartService,
   required final bool _filesystemAccessOk,
+  required final BridgeKind _bridgeKind,
   // Supervised mode only: owns the status-class pushes to the desktop GUI.
   // Standalone has no control channel, so this is null there.
   required final ControlStatusNotifier? _statusNotifier,
@@ -455,6 +456,7 @@ class Orchestrator({
     final healthRepository = HealthRepository(
       bridgeVersion: appVersion,
       filesystemAccessOk: _filesystemAccessOk,
+      bridgeKind: _bridgeKind,
     );
     final providerRepository = ProviderRepository(
       runtime: _pluginRuntime,
