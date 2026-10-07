@@ -316,7 +316,9 @@ variant, and worktree mode, and creating the session with its first input.
   behind the follow-ups and sends when it lands. A failed first load keeps it
   and the follow-ups in view for Retry, and a first load that finds the harness
   blocked keeps them under its notice with their Cancel and Remove actions;
-  both keep them in place, bottom-anchored, through Retry or Recheck.
+  both keep them exactly where the launch view drew them (bottom-anchored,
+  clear of the device inset, within the transcript column) through Retry or
+  Recheck.
   The same composer carries into the loaded session.
 - Mobile and desktop compose the same new-session view while retaining
   shell-owned routing, DI, connection-banner policy, and platform capabilities.

@@ -15,7 +15,6 @@ import "../session_detail_presentation_scope.dart";
 import "agent_model_buttons.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
-import "queued_message_bubble.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
@@ -771,6 +770,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           awaitingBridgeSubmissions: awaitingBridgeSubmissions,
           launchFollowUps: launchFollowUps,
           queuedMessages: queuedMessages,
+          columnWidths: columnWidths,
           harnessName: null,
         ),
       final SessionDetailLoaded loaded =>
@@ -840,6 +840,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           awaitingBridgeSubmissions: awaitingBridgeSubmissions,
           launchFollowUps: launchFollowUps,
           queuedMessages: queuedMessages,
+          columnWidths: columnWidths,
           harnessName: PregoBrandLogo.displayNameFor(session.pluginId),
         ),
       SessionDetailFailed(
@@ -854,6 +855,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           awaitingBridgeSubmissions: awaitingBridgeSubmissions,
           launchFollowUps: launchFollowUps,
           queuedMessages: queuedMessages,
+          columnWidths: columnWidths,
           harnessName: null,
         ),
     };
@@ -865,9 +867,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     required List<QueuedSessionSubmission> queuedMessages,
   }) => awaitingBridgeSubmissions.isNotEmpty || launchFollowUps.isNotEmpty || queuedMessages.isNotEmpty;
 
-  /// A first load that failed or found the harness blocked, with [status]
-  /// above the messages still owed: the same bubbles and actions the loading
-  /// screen gave them, scrolling when they outgrow their half of the screen.
+  /// A first load that failed, found the harness blocked, or is loading again,
+  /// with [status] above the messages still owed. They keep the launch view's
+  /// geometry (bottom-anchored, clear of the device inset, within the
+  /// transcript column), so they hold still as the state changes.
   Widget _withOwedMessages({
     required BuildContext context,
     required Widget status,
@@ -875,6 +878,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     required List<LaunchFollowUp> launchFollowUps,
     required List<QueuedSessionSubmission> queuedMessages,
     required String? harnessName,
+    required SessionDetailColumnWidths? columnWidths,
   }) {
     if (!_owesMessages(
       awaitingBridgeSubmissions: awaitingBridgeSubmissions,
@@ -884,49 +888,23 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       return status;
     }
     final cubit = context.read<SessionDetailCubit>();
-    QueuedMessageBubble bubble({
-      required QueuedSessionSubmission submission,
-      required QueuedMessageBubblePresentation presentation,
-    }) => QueuedMessageBubble(
-      key: ValueKey(submission.promptId),
-      displayText: submission.displayText,
-      isCommand: submission.isCommand,
-      attachmentCount: submission.attachments.length,
-      localAttachments: submission.attachments,
-      presentation: presentation,
-    );
-    // Bottom-anchored like the loading screen's bubbles, so a short list stays
-    // where it was instead of rising to the middle.
     return Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Expanded(child: status),
         Flexible(
-          child: SingleChildScrollView(
-            reverse: true,
-            child: Column(
-              children: [
-                for (final submission in awaitingBridgeSubmissions)
-                  bubble(submission: submission, presentation: const QueuedMessageBubblePresentation.pendingReadOnly()),
-                for (final followUp in launchFollowUps)
-                  bubble(
-                    submission: followUp.submission,
-                    presentation: launchFollowUpPresentation(
-                      followUp: followUp,
-                      harnessName: harnessName,
-                      onRetry: cubit.retryLaunchFollowUp,
-                      onRemove: cubit.removeLaunchFollowUp,
-                    ),
-                  ),
-                for (final (index, submission) in queuedMessages.indexed)
-                  bubble(
-                    submission: submission,
-                    presentation: QueuedMessageBubblePresentation.pending(
-                      onCancel: () => cubit.cancelQueuedMessage(index),
-                    ),
-                  ),
-              ],
-            ),
+          child: SessionLaunchSubmissionView(
+            submission: null,
+            harnessName: harnessName,
+            sendingSince: null,
+            transcriptWidth: columnWidths?.transcript,
+            awaitingBridgeSubmissions: awaitingBridgeSubmissions,
+            launchFollowUps: launchFollowUps,
+            queuedMessages: queuedMessages,
+            onRetryLaunchFollowUp: cubit.retryLaunchFollowUp,
+            onRemoveLaunchFollowUp: cubit.removeLaunchFollowUp,
+            onCancelQueuedMessage: cubit.cancelQueuedMessage,
+            bottomInset: null,
           ),
         ),
       ],

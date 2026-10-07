@@ -20,7 +20,18 @@ they land in two PRs: this one (finding 2) and 10/13 (the composer findings).
 - `module_core` session-detail tests, including a new bridge-queue test: a
   harness-blocked first load keeps the queued send and the launch's follow-up,
   and Cancel still works.
-- `app` session-detail body tests, including a new test: the owed messages
-  appear under the blocked notice, and Cancel and Remove reach the cubit.
+- `app` session-detail body tests, including a new test: the owed messages keep
+  their rects from the launch view through the blocked notice and the Recheck
+  load (with a bottom device inset), and Cancel and Remove reach the cubit.
+
+## Review follow-up
+
+Codex found the blocked rows laid out differently from the launch view: not
+bottom-anchored, no bottom inset, no transcript width, and hidden during the
+Recheck load. One fix covers all of it: the failed, blocked and reloading
+states render the owed rows through `SessionLaunchSubmissionView` itself, with
+no first message, under the status. A settlement arriving while blocked was
+declined: it needs another surface to settle the prompt, and the stale
+read-only row clears on the next load.
 - `dart analyze --fatal-infos` is clean on `module_core`, `module_app_ui` and
   `app`.
