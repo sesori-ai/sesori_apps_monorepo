@@ -367,9 +367,11 @@ class _PromptInputState() extends State<PromptInput> {
 
   /// Tells [PromptInput.onBusyChanged] when the composer starts or settles
   /// work whose result lands in it later. A pick or paste that settles after
-  /// this composer is gone stays silent, as its owner may be gone too.
+  /// this composer is gone stays silent, as its owner may be gone too. A send
+  /// reports only once it has cleared the sent draft, so an outcome released
+  /// by that clear (a composed word committed by Send) cannot be wiped by it.
   void _reportBusy() {
-    if (!mounted) return;
+    if (!mounted || _isSubmitting) return;
     final composing = _controller.value.composing;
     final busy = _voiceBusy || _pendingInserts > 0 || (composing.isValid && !composing.isCollapsed);
     if (busy == _reportedBusy) return;
@@ -545,6 +547,7 @@ class _PromptInputState() extends State<PromptInput> {
       }
     } finally {
       _isSubmitting = false;
+      _reportBusy();
     }
   }
 

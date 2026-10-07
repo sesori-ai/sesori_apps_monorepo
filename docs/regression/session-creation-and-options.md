@@ -290,8 +290,8 @@ variant, and worktree mode, and creating the session with its first input.
   second Send never creates a second session: it queues a follow-up below the
   first bubble, removable until it sends, carrying the options committed at the
   first Send. The pills stay visible but read-only while sending: they keep
-  their size and look, open nothing, and take no taps, hover cursor or
-  assistive actions; text, images and commands stay live. Creation waits up to
+  their size and look, open nothing, and take no taps, hover cursor, keyboard
+  focus or assistive actions; text, images and commands stay live. Creation waits up to
   180 s for the bridge before reporting an uncertain failure. Back leaves
   creation running under an app-lifetime owner, so a success after leaving still
   records its outcome and clears the options chosen for it exactly as an

@@ -44,6 +44,7 @@ void main() {
     final clipboard = _NoOpImageClipboard();
     final busy = <bool>[];
     final selections = <({int base, int extent})>[];
+    final busyWhenCleared = <List<bool>>[];
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -68,7 +69,7 @@ void main() {
               onSend: ({required draft, required command, required attachments}) {},
               onVoiceTranscriptionCompleted: null,
               onDraftChanged: (_) {},
-              onDraftCleared: () {},
+              onDraftCleared: () => busyWhenCleared.add([...busy]),
               onAbort: () {},
               surfaceStyleController: surfaceStyle,
               composerHeader: null,
@@ -119,17 +120,31 @@ void main() {
     );
     expect(busy, [true, false, true, false]);
 
+    // Send ends a composed word, but reports it settled only after the sent
+    // draft is cleared, so an outcome that report releases is not wiped.
+    field.controller?.value = const TextEditingValue(
+      text: "carry onward and",
+      selection: TextSelection.collapsed(offset: 16),
+      composing: TextRange(start: 13, end: 16),
+    );
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+    expect(busyWhenCleared, [
+      [true, false, true, false, true],
+    ]);
+    expect(busy, [true, false, true, false, true, false]);
+
     // A pick that settles after the composer is gone reports nothing.
     picker.pick = Completer();
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip("Attach image"));
     await tester.pump();
-    expect(busy, [true, false, true, false, true]);
+    expect(busy, [true, false, true, false, true, false, true]);
     await tester.pumpWidget(const SizedBox());
     picker.pick.complete(null);
     await tester.pump();
-    expect(busy, [true, false, true, false, true]);
+    expect(busy, [true, false, true, false, true, false, true]);
     expect(tester.takeException(), isNull);
   });
 

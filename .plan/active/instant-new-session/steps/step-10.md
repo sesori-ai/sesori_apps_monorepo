@@ -14,7 +14,7 @@ The fixes measured about 1,100 lines together with 9/13, so they were split.
 
 1. `AgentModelButtons.readOnly` wraps each control in `IgnorePointer`. The pills
    keep their size, caret and look, so nothing shifts at Send, and take no
-   taps, hover cursor or assistive actions. The session screen's launch
+   taps, hover cursor, keyboard focus or assistive actions. The session screen's launch
    composer is read-only too, until the session loads (D9).
 2. `UnsentComposer.selection` carries the caret or selection as base and
    extent, so a backward selection keeps its active end. `PromptInput`

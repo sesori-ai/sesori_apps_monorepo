@@ -101,8 +101,12 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     final hasAgentSelection = widget.agents.length > 1 && selectedAgent != null;
     final compact = widget.compact;
     // Locking leaves each pill's geometry untouched, so nothing shifts as the
-    // options turn read-only, and blocks its taps, hover cursor and actions.
-    Widget lock(Widget control) => IgnorePointer(ignoring: widget.readOnly, child: control);
+    // options turn read-only, and blocks its taps, hover cursor, keyboard focus
+    // and actions.
+    Widget lock(Widget control) => ExcludeFocus(
+      excluding: widget.readOnly,
+      child: IgnorePointer(ignoring: widget.readOnly, child: control),
+    );
     Widget slot(Widget menu) => _pickerSlot(compact: compact, child: lock(menu));
     final selectors = [
       if (hasAgentSelection)

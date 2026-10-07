@@ -1,3 +1,4 @@
+import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -337,6 +338,10 @@ void main() {
       await tester.pumpWidget(_buildApp(agents: _agents, onAgentSelected: (_) {}, readOnly: true, compact: true));
       expect(tester.getRect(pill), liveRect);
       await tester.tap(find.text("aristotle-impl-review"), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      // Keyboard users cannot reach it either.
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
 
       expect(_menuItem("plan"), findsNothing);
