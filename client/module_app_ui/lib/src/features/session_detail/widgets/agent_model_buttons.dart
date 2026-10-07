@@ -96,10 +96,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     // One agent is no choice: the entry appears only when there is another.
     final hasAgentSelection = widget.agents.length > 1 && selectedAgent != null;
     final compact = widget.compact;
-    Widget slot(Widget menu) => _pickerSlot(
-      compact: compact,
-      child: _pillHalo(child: menu),
-    );
+    Widget slot(Widget menu) => _pickerSlot(compact: compact, child: menu);
     final selectors = [
       if (hasAgentSelection)
         slot(
@@ -132,19 +129,20 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
           ),
         ),
       if (widget.fastModeControl != FastModeControl.hidden)
-        _pillHalo(
-          child: _FastModeButton(
-            surfaceStyle: widget.surfaceStyle,
-            control: widget.fastModeControl,
-            decide: widget.decideFastModeToggle,
-            onFastModeChanged: widget.onFastModeChanged,
-          ),
+        _FastModeButton(
+          surfaceStyle: widget.surfaceStyle,
+          control: widget.fastModeControl,
+          decide: widget.decideFastModeToggle,
+          onFastModeChanged: widget.onFastModeChanged,
         ),
-      for (final chip in widget.trailing) _pillHalo(child: chip),
+      ...widget.trailing,
     ];
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-      child: Row(spacing: 8, children: selectors),
+      child: _pillRowHalo(
+        reachesLayerBottom: false,
+        child: Row(spacing: 8, children: selectors),
+      ),
     );
   }
 }
@@ -168,20 +166,14 @@ class const ReadOnlyAgentModelPills({
     final agent = this.agent;
     final model = this.model;
     final variant = model?.variant;
-    // The bottom-most row: each halo runs on to the bottom edge, so nothing
-    // shows below the pills.
     Widget pill({required IconData icon, required String label}) => _pickerSlot(
       compact: compact,
-      child: PregoPageHalo(
-        radius: PregoRadius.full,
-        reachesLayerBottom: true,
-        child: _pickerButton(
-          hugLabel: compact,
-          leadingIcon: icon,
-          label: label,
-          surfaceStyle: PregoComposerSurfaceStyle.subtle,
-          onPressed: null,
-        ),
+      child: _pickerButton(
+        hugLabel: compact,
+        leadingIcon: icon,
+        label: label,
+        surfaceStyle: PregoComposerSurfaceStyle.subtle,
+        onPressed: null,
       ),
     );
     final pills = [
@@ -197,14 +189,24 @@ class const ReadOnlyAgentModelPills({
     if (pills.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: EdgeInsetsDirectional.fromSTEB(16, 6, 16, MediaQuery.paddingOf(context).bottom + 8),
-      child: Row(spacing: 8, children: pills),
+      // The bottom-most row: its halo runs on to the bottom edge, so nothing
+      // shows below the pills.
+      child: _pillRowHalo(
+        reachesLayerBottom: true,
+        child: Row(spacing: 8, children: pills),
+      ),
     );
   }
 }
 
-/// A pill's [PregoPageHalo], so the content passing under the strip fades around it.
-Widget _pillHalo({required Widget child}) =>
-    PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: child);
+/// One [PregoPageHalo] across the whole pill strip, as wide as the composer,
+/// so the pills and composer read as one quiet surface and no transcript words
+/// show through the gaps between pills.
+Widget _pillRowHalo({required bool reachesLayerBottom, required Widget child}) => PregoPageHalo(
+  radius: PregoRadius.full,
+  reachesLayerBottom: reachesLayerBottom,
+  child: child,
+);
 
 /// A pill's share of the strip: a pointer (compact) pill hugs its label up to a
 /// cap, while touch pills split the width equally.
