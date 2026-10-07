@@ -74,13 +74,7 @@ Dart 3.13.4 JIT on an Apple-silicon Mac.
 - **Bridge verdict:** about 0.7 s of read, encode and deflate on the bridge
   isolate for the worst case, which only delays other relay traffic for that
   moment. No UI runs there, so the bridge isolate escape hatch is not added.
-- **App verdict:** about 0.27 s of decode on the UI isolate on a fast Mac,
-  and plausibly 2–3× longer on a phone, would drop frames for the worst-case
-  session. Nothing in this step calls the load-through from a screen yet, so
-  no user can hit the stall here. The `Isolate.run` escape hatch for this
-  route's decode is warranted before the Prompts screen's tap uses it; the
-  decision is raised with the step 8 report rather than widened into this
-  PR.
+- **App verdict (step 9):** the load-through response decodes via `Isolate.run` (measured 264–268 ms on the UI thread on a Mac for the worst-case session).
 
 ## Evidence
 
