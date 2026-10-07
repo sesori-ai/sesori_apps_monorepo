@@ -112,6 +112,12 @@ Dart 3.13.4 JIT on an Apple-silicon Mac.
   - The pagination file drops the test that compared the snapshot read's
     page with the plain read's, since `getSessionMessages` now is the
     snapshot read, and turns its count twin into a store-only count check.
+- **Architecture review:** `architecture-implementation-review`, pass 1
+  rejected one finding: the cubit mapped the wire `MessageWithPartsResponse`.
+  Fixed in `6184df8f48`, where `SessionMessagesThroughAvailable` carries
+  domain fields mapped by the repository; that commit touches only
+  `client/module_core`, whose analyze and tests passed again. Pass 2
+  approved with no findings.
 - **Size:** about 1,370 changed lines, of which 177 are generated Freezed and
   JSON code. That is over the plan's 600-line target. About 300 lines are
   measurement tooling (the load-through benchmark and the move of the
