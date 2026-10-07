@@ -721,15 +721,19 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         // it; the inline title is used instead, as on the new-session screen.
         SliverFillRemaining(
           hasScrollBody: switch (state) {
-            SessionDetailLoading(:final launchHandoff) => launchHandoff != null,
+            SessionDetailLoading(launchHandoff: _?) => true,
             SessionDetailLoaded() || SessionDetailHarnessUnavailable() => true,
-            // Queued messages sit below the error, which then fills the rest.
-            SessionDetailFailed(:final awaitingBridgeSubmissions, :final launchFollowUps, :final queuedMessages) =>
-              _owesMessages(
-                awaitingBridgeSubmissions: awaitingBridgeSubmissions,
-                launchFollowUps: launchFollowUps,
-                queuedMessages: queuedMessages,
-              ),
+            // Queued messages sit below the status, which then fills the rest.
+            SessionDetailLoading(:final awaitingBridgeSubmissions, :final launchFollowUps, :final queuedMessages) ||
+            SessionDetailFailed(
+              :final awaitingBridgeSubmissions,
+              :final launchFollowUps,
+              :final queuedMessages,
+            ) => _owesMessages(
+              awaitingBridgeSubmissions: awaitingBridgeSubmissions,
+              launchFollowUps: launchFollowUps,
+              queuedMessages: queuedMessages,
+            ),
           },
           child: content,
         ),
@@ -752,14 +756,23 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         handoff: handoff,
         columnWidths: columnWidths,
       ),
-      SessionDetailLoading() => PregoLaunchStatus(
-        semanticsLabel: loc.sessionDetailLoadingSemantics,
-        messages: [
-          loc.newSessionLoadingMessage1,
-          loc.newSessionLoadingMessage2,
-          loc.newSessionLoadingMessage3,
-        ],
-      ),
+      // A reload from a failed or blocked first load keeps what is still owed.
+      SessionDetailLoading(:final awaitingBridgeSubmissions, :final launchFollowUps, :final queuedMessages) =>
+        _withOwedMessages(
+          context: context,
+          status: PregoLaunchStatus(
+            semanticsLabel: loc.sessionDetailLoadingSemantics,
+            messages: [
+              loc.newSessionLoadingMessage1,
+              loc.newSessionLoadingMessage2,
+              loc.newSessionLoadingMessage3,
+            ],
+          ),
+          awaitingBridgeSubmissions: awaitingBridgeSubmissions,
+          launchFollowUps: launchFollowUps,
+          queuedMessages: queuedMessages,
+          harnessName: null,
+        ),
       final SessionDetailLoaded loaded =>
         widget.readOnly || loaded.isArchived
             ? SessionDetailLoadedView.readOnly(
@@ -882,7 +895,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       localAttachments: submission.attachments,
       presentation: presentation,
     );
+    // Bottom-anchored like the loading screen's bubbles, so a short list stays
+    // where it was instead of rising to the middle.
     return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Expanded(child: status),
         Flexible(
