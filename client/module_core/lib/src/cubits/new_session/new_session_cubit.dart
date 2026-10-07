@@ -77,6 +77,11 @@ class NewSessionCubit({
   StreamSubscription<List<LaunchFollowUp>>? _followUpsSubscription;
   List<ComposerAttachment> _composerAttachments = const [];
   bool _composerFocused = false;
+  bool _voiceBusy = false;
+
+  /// A creation that landed while the composer was recording or
+  /// transcribing, applied once the voice input settles.
+  SessionLaunchSucceeded? _successAwaitingVoice;
   late bool _wasConnected;
   int _loadGeneration = 0;
   int _projectLoadGeneration = 0;
@@ -1056,6 +1061,12 @@ class NewSessionCubit({
     if (current is! NewSessionComposing) return;
     final phase = current.phase;
     if (phase is! NewSessionPhaseSending || phase.launchId != outcome.launchId) return;
+    // Leaving now would end the recording; its words land in the draft the
+    // session screen takes over once it settles.
+    if (outcome is SessionLaunchSucceeded && _voiceBusy) {
+      _successAwaitingVoice = outcome;
+      return;
+    }
     unawaited(_followUpsSubscription?.cancel());
     _followUpsSubscription = null;
     switch (outcome) {
@@ -1157,6 +1168,16 @@ class NewSessionCubit({
   }
 
   ComposerDraft get composerDraft => _composerDraft;
+
+  /// Whether the composer is recording or transcribing. A creation that lands
+  /// meanwhile waits for it to settle.
+  void setVoiceBusy({required bool busy}) {
+    _voiceBusy = busy;
+    final held = _successAwaitingVoice;
+    if (busy || held == null) return;
+    _successAwaitingVoice = null;
+    _onLaunchOutcome(held);
+  }
 
   void saveComposerDraft({required ComposerDraft draft}) {
     _composerDraft = draft;

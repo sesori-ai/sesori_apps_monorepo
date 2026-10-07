@@ -2491,6 +2491,27 @@ void main() {
           expect(draftRepository.readForNewSession(projectId: "project-1").text, isEmpty);
         });
 
+        test("a creation landing while voice runs waits for it, then hands over the transcribed draft", () async {
+          final cubit = buildCubit(launchRepository: launchRepository);
+          addTearDown(cubit.close);
+          await waitForComposer(cubit);
+
+          final pending = send(cubit);
+          cubit.setVoiceBusy(busy: true);
+          response.complete(ApiResponse.success(testSession(id: "s-1")));
+          await pending;
+          await Future<void>.delayed(Duration.zero);
+          expect(cubit.state, composingWith<NewSessionPhaseSending>(), reason: "the recording keeps the screen");
+          expect(cubit.canSubmitFollowUp, isTrue);
+
+          cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "spoken words"));
+          cubit.setVoiceBusy(busy: false);
+
+          expect(cubit.state, isA<NewSessionCreated>());
+          final composer = launchRepository.takeHandoff(sessionId: "s-1")?.composer;
+          expect(composer?.unsent?.draft.text, "spoken words");
+        });
+
         test("a failed create restores the first message, the follow-ups and what is unsent as one draft", () async {
           final cubit = buildCubit(launchRepository: launchRepository);
           addTearDown(cubit.close);
