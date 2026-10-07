@@ -206,6 +206,23 @@ class OmpPlugin._({
     ];
   }
 
+  /// From 18.6.3, OMP refuses to reopen a stored session whose saved model can
+  /// no longer be used (renamed id, removed credentials, removed local model)
+  /// and fails `session/load`/`session/resume` with an internal error whose
+  /// details read `Could not restore model <provider/id>`. Upstream fails
+  /// closed on purpose, so explain it rather than show the internal error.
+  @override
+  String? unrestorableSessionMessage({required AcpRpcException error}) {
+    const prefix = "Could not restore model ";
+    if (error case AcpRpcException(code: -32603, data: {"details": final String details})
+        when details.startsWith(prefix)) {
+      final model = details.substring(prefix.length).trim();
+      return "This session's model ($model) is no longer available in ${OmpPluginIdentity.displayName}, "
+          "so the session can't be reopened.";
+    }
+    return null;
+  }
+
   @override
   Future<void> dispose() async {
     try {

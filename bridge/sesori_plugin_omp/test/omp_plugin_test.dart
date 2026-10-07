@@ -682,5 +682,45 @@ void main() {
       expect(toast.message, isNot(contains("/Users/private")));
       expect(toast.message, isNot(contains("private prompt")));
     });
+
+    for (final (method, capabilities) in [
+      (AcpMethods.sessionLoad, const <String, dynamic>{"loadSession": true}),
+      (
+        AcpMethods.sessionResume,
+        const <String, dynamic>{
+          "loadSession": false,
+          "sessionCapabilities": {"resume": <String, dynamic>{}},
+        },
+      ),
+    ]) {
+      test("explains an unrestorable session model when $method fails", () async {
+        await connect(capabilities: capabilities);
+        plugin.primeSessionDirectory(sessionId: "stored", directory: "/repo");
+        await send("stored", "continue");
+        final reopen = await waitForFrame(method);
+        fake.emit({
+          "jsonrpc": "2.0",
+          "id": reopen["id"],
+          "error": {
+            "code": -32603,
+            "message": "Internal error",
+            "data": {"details": "Could not restore model anthropic/claude-old"},
+          },
+        });
+        for (var i = 0; i < 200 && events.whereType<BridgeSseSessionError>().isEmpty; i++) {
+          await Future<void>.delayed(const Duration(milliseconds: 5));
+        }
+
+        expect(frames(AcpMethods.sessionPrompt), isEmpty);
+        final messages = events.whereType<BridgeSseMessageUpdated>().map((event) => event.info).toList();
+        expect(messages.whereType<PluginMessageUser>(), hasLength(1));
+        expect(
+          messages.whereType<PluginMessageError>().single.errorMessage,
+          "This session's model (anthropic/claude-old) is no longer available in Oh My Pi, "
+          "so the session can't be reopened.",
+        );
+        expect(events.whereType<BridgeSseSessionError>().single.sessionID, "stored");
+      });
+    }
   });
 }
