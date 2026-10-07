@@ -21,6 +21,7 @@ void main() {
 
   setUp(() {
     cubit = _MockSessionListCubit();
+    when(() => cubit.projectId).thenReturn("project-1");
   });
 
   Future<void> pumpScaffold(
@@ -42,7 +43,7 @@ void main() {
                 cleanupService: SessionCleanupService(repository: MockSessionRepository()),
               ),
             ),
-            BlocProvider(create: (_) => idleSessionLaunchCubit()),
+            RepositoryProvider(create: (_) => idleSessionLaunchService()),
           ],
           child: MaterialApp(
             theme: ThemeData(extensions: [PregoDesignSystem.light]),

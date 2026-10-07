@@ -62,10 +62,8 @@ void main() {
                           cleanupService: SessionCleanupService(repository: MockSessionRepository()),
                         ),
                       ),
-                      BlocProvider(
-                        create: (_) => SessionLaunchCubit(
-                          launchService: inMemorySessionLaunchService(launchRepository: launches),
-                        ),
+                      RepositoryProvider(
+                        create: (_) => inMemorySessionLaunchService(launchRepository: launches),
                       ),
                     ],
                     child: Scaffold(

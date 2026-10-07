@@ -68,9 +68,11 @@ final class const LaunchRows({
 /// without moving anything only when the rows below the ones still waiting
 /// all have their sessions, at the list's head, in the rows' order. Those
 /// settle together; any other launch's session is held, so one launch never
-/// shows two rows. If the sessions update after the one that brought a
-/// session in still does not place it, it goes where it belongs as an
-/// ordinary change. While a project has a launch still waiting, a session
+/// shows two rows. A newer launch whose session is in place but for older
+/// launches below it still waiting keeps its row until those settle or fail,
+/// then takes its place. If the sessions update after the one that brought
+/// any other session in still does not place it, it goes where it belongs as
+/// an ordinary change. While a project has a launch still waiting, a session
 /// the surface has not shown before is held too: it may be that launch's
 /// session, arriving before the reply that names it (D12).
 ///
@@ -81,6 +83,32 @@ final class const LaunchRows({
 /// shown outside the slot where it needs no further update to settle (it waits
 /// on the user), gives way at once.
 LaunchRows resolveHeldLaunchSessions({
+  required LaunchRows previous,
+  required List<LaunchingSession> launching,
+  required Map<String, String> sessionIds,
+  required List<Session> sessions,
+  required List<Session> slot,
+  required Set<String> placedSessionIds,
+}) {
+  LaunchRows pass(LaunchRows previous) => _resolveHeldLaunchSessionsOnce(
+    previous: previous,
+    launching: launching,
+    sessionIds: sessionIds,
+    sessions: sessions,
+    slot: slot,
+    placedSessionIds: placedSessionIds,
+  );
+  // A row that goes as an ordinary change can leave the rows above it in
+  // place, so pass again until no more rows settle. A pass without a sessions
+  // change only settles rows, so this ends within one pass per row.
+  var rows = pass(previous);
+  for (var next = pass(rows); next.placeholders.length < rows.placeholders.length; next = pass(rows)) {
+    rows = next;
+  }
+  return rows;
+}
+
+LaunchRows _resolveHeldLaunchSessionsOnce({
   required LaunchRows previous,
   required List<LaunchingSession> launching,
   required Map<String, String> sessionIds,
@@ -111,8 +139,20 @@ LaunchRows resolveHeldLaunchSessions({
   }
   rows.sort((a, b) => _newestFirst(a: a, b: b));
 
-  final kept =
-      rows.length - _inPlaceCount(rows: rows, resolved: resolved, slot: [for (final session in slot) session.id]);
+  final slotIds = [for (final session in slot) session.id];
+  final kept = rows.length - _inPlaceCount(rows: rows, resolved: resolved, slot: slotIds);
+  // The rows that would take their places were the rows whose sessions have
+  // not reached the slot yet gone: still waiting (bounded by the create
+  // timeout), or named with the session still on its way. They wait those out.
+  final inSlot = slotIds.toSet();
+  final slotRows = [
+    for (final row in rows)
+      if (resolved[row.launchId] case final launch? when inSlot.contains(launch.sessionId)) row,
+  ];
+  final inPlaceOnceSettled = {
+    for (final row in slotRows.skip(slotRows.length - _inPlaceCount(rows: slotRows, resolved: resolved, slot: slotIds)))
+      row.launchId,
+  };
   final placeholders = <LaunchingSession>[];
   final named = <String, ({String sessionId, bool arrived})>{};
   final held = <String>{};
@@ -123,7 +163,8 @@ LaunchRows resolveHeldLaunchSessions({
     } else if (index >= kept) {
       rowKeys[launch.sessionId] = row.launchId;
     } else if (!placedSessionIds.contains(launch.sessionId) &&
-        !(present.contains(launch.sessionId) && launch.arrived && sessionsChanged)) {
+        (inPlaceOnceSettled.contains(row.launchId) ||
+            !(present.contains(launch.sessionId) && launch.arrived && sessionsChanged))) {
       placeholders.add(row);
       named[row.launchId] = (
         sessionId: launch.sessionId,

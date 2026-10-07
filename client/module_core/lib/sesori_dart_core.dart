@@ -124,6 +124,7 @@ export "src/cubits/session_launch/project_launch_rows_cubit.dart";
 export "src/cubits/session_launch/session_launch_cubit.dart";
 export "src/cubits/session_launch/session_launch_resolvers.dart";
 export "src/cubits/session_launch/session_launch_state.dart";
+export "src/cubits/session_launch/session_list_launch_rows_cubit.dart";
 export "src/cubits/session_list/session_list_cubit.dart";
 export "src/cubits/session_list/session_list_mode.dart";
 export "src/cubits/session_list/session_list_resolvers.dart";

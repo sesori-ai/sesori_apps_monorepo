@@ -208,6 +208,67 @@ void main() {
     expect(landed.rowKeys, {"created": "launch-1"});
   });
 
+  test("a newer launch that lands first keeps its row until the older one settles, then takes its place", () {
+    final newer = LaunchingSession(
+      launchId: "launch-2",
+      projectId: "project-1",
+      pluginId: "claude",
+      startedAt: DateTime.utc(2026, 10, 7, 12, 1),
+      title: "Add tests",
+    );
+    final createdNewer = testSession(id: "created-2");
+    final elsewhere = testSession(id: "elsewhere").copyWith(projectID: "project-2");
+    final opened = resolve(previous: LaunchRows.none, launching: const [], sessionIds: const {}, sessions: [existing]);
+    final landedFirst = resolve(
+      previous: resolve(previous: opened, launching: [newer, launch], sessionIds: const {}, sessions: [existing]),
+      launching: [launch],
+      sessionIds: const {"launch-2": "created-2"},
+      sessions: [createdNewer, existing],
+    );
+    expect(landedFirst.placeholders, [newer, launch]);
+    expect(landedFirst.heldSessionIds, {"created-2"});
+
+    final sessionsUpdate = resolve(
+      previous: landedFirst,
+      launching: [launch],
+      sessionIds: const {"launch-2": "created-2"},
+      sessions: [createdNewer, existing, elsewhere],
+    );
+    expect(sessionsUpdate.placeholders, [newer, launch], reason: "it is in place but for the older row below it");
+
+    // The older launch's reply names its session before the list has it.
+    final olderNamed = resolve(
+      previous: resolve(
+        previous: sessionsUpdate,
+        launching: const [],
+        sessionIds: const {"launch-1": "created", "launch-2": "created-2"},
+        sessions: [createdNewer, existing, elsewhere],
+      ),
+      launching: const [],
+      sessionIds: const {"launch-1": "created", "launch-2": "created-2"},
+      sessions: [createdNewer, existing],
+    );
+    expect(olderNamed.placeholders, [newer, launch], reason: "the older session is still on its way");
+
+    final bothLanded = resolve(
+      previous: olderNamed,
+      launching: const [],
+      sessionIds: const {"launch-1": "created", "launch-2": "created-2"},
+      sessions: [createdNewer, created, existing, elsewhere],
+    );
+    expect(bothLanded.placeholders, isEmpty);
+    expect(bothLanded.rowKeys, {"created-2": "launch-2", "created": "launch-1"});
+
+    final olderFailed = resolve(
+      previous: sessionsUpdate,
+      launching: const [],
+      sessionIds: const {"launch-2": "created-2"},
+      sessions: [createdNewer, existing, elsewhere],
+    );
+    expect(olderFailed.placeholders, isEmpty);
+    expect(olderFailed.rowKeys, {"created-2": "launch-2"});
+  });
+
   test("a launch that failed drops its row", () {
     final failed = resolve(
       previous: resolve(
@@ -293,6 +354,40 @@ void main() {
 
       expect(released["project-1"]?.placeholders, isEmpty, reason: "no Creating… is left behind");
       expect(released["project-1"]?.heldSessionIds, isEmpty);
+    });
+
+    test("a newer launch in place takes its row as soon as the older one goes as an ordinary change", () {
+      final newer = LaunchingSession(
+        launchId: "launch-2",
+        projectId: "project-1",
+        pluginId: "claude",
+        startedAt: DateTime.utc(2026, 10, 7, 12, 1),
+        title: "Add tests",
+      );
+      final createdNewer = testSession(id: "created-2");
+      const named = SessionLaunchState(launching: [], sessionIds: {"launch-1": "created", "launch-2": "created-2"});
+      final bothNamed = resolveActivity(
+        previous: resolveActivity(
+          previous: const {},
+          launches: SessionLaunchState(launching: [newer, launch], sessionIds: const {}),
+          entry: loaded([existing]),
+          running: const [],
+        ),
+        launches: named,
+        entry: loaded([createdNewer, created, existing]),
+        running: [createdNewer],
+      );
+      expect(bothNamed["project-1"]?.placeholders, [newer, launch]);
+
+      // The older session never runs, so it goes where it belongs.
+      final settled = resolveActivity(
+        previous: bothNamed,
+        launches: named,
+        entry: loaded([testSession(id: "other"), createdNewer, created, existing]),
+        running: [createdNewer],
+      );
+      expect(settled["project-1"]?.placeholders, isEmpty, reason: "no update is left to settle the newer row");
+      expect(settled["project-1"]?.rowKeys, {"created-2": "launch-2"});
     });
 
     test("keeps a project's row and its session while the project reloads", () {

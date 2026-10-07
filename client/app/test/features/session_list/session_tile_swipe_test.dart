@@ -32,6 +32,7 @@ void main() {
     markedUnread.clear();
     cubit = _MockSessionListCubit();
     when(() => cubit.retainActionScope()).thenReturn(() {});
+    when(() => cubit.projectId).thenReturn("project-1");
   });
 
   /// Renders the real panel. [SessionListContent] wires the swipe actions to
@@ -83,7 +84,7 @@ void main() {
                 cleanupService: SessionCleanupService(repository: MockSessionRepository()),
               ),
             ),
-            BlocProvider(create: (_) => idleSessionLaunchCubit()),
+            RepositoryProvider(create: (_) => idleSessionLaunchService()),
           ],
           child: MaterialApp.router(
             routerConfig: router,

@@ -229,7 +229,9 @@ state.
 - A session being created leads its project's running rows in the phone's Activity and the desktop home's Running
   section as a launching row: the AI sparkle, its title and "Creating… · `<harness>` · `<project>`" with no time. A
   tap explains that it is still being created and opens nothing; on the phone a search hides it. Its session takes its place
-  once it runs; until then it stays out of the desktop home's Recent. Activity's rows and headings grow and shrink
+  once it runs, or gives way at once to its waiting row when it first waits on the user; until then it stays out of
+  the desktop home's Recent. A newer launch whose session runs while an older one below it is still being created
+  keeps its row until the older one lands or fails, then takes its own row's place. Activity's rows and headings grow and shrink
   in as they enter and leave, so the rows below move continuously (instantly under reduced motion), and a failed
   launch's row leaves.
 - However a phone session is reached, from Activity or from its project's list, Android back (edge gesture or
@@ -358,8 +360,9 @@ state.
   moment later. A launch that resolves while the list is loading or shows
   Archived keeps its row until its session arrives, so an empty project's
   page shows that row rather than its composer. Launches whose sessions land together each take their own
-  row's place. If a session does not land in its row's place, it moves where
-  it belongs on the next change to the list's sessions as an ordinary change;
+  row's place, and a newer launch whose session lands while an older launch below it is still being created
+  keeps its row until the older one lands or fails, then takes its own row's place. If a session does not
+  land in its row's place, it moves where it belongs on the next change to the list's sessions as an ordinary change;
   activity and progress updates do not count. A failed launch's row leaves the list.
 - On the phone, a search field tops Projects and each session list once they
   have anything to search. It narrows the loaded titles without a request,
