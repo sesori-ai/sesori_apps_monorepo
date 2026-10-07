@@ -791,8 +791,11 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.1.7 over dsh 0.1.5-rc.2 is the managed target;
-adapter 0.1.5 remains the minimum accepted runtime. ACP uses native subtree stop for the named scope
+⁹ DeepSeek's published adapter 0.2.0 over dsh 0.2.0-rc.2 is the managed target;
+adapter 0.1.5 remains the minimum accepted runtime. From dsh 0.2.0 a sub-agent
+may delegate only one level by default (previously three), with at most eight
+active; users raise `subagent.config.maxDepth` in their DeepSeek profile. Provider
+settings live in the profile instead of `settings.yaml`. ACP uses native subtree stop for the named scope
 and every independently resident descendant root, while ordered input cancel,
 exact-child authority, lifecycle, tiles, and child catalogs remain native-backed.
 Released clients retain their own child fanout. Phone QA on unchanged published
