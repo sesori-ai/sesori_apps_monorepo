@@ -419,6 +419,9 @@ answer, and on a trackpad while text streams.
 
 ## Sources
 
+- The turn rule shared with the bridge:
+  `shared/sesori_shared/lib/src/transcript/prompt_turns.dart` and
+  `shared/sesori_shared/test/transcript/prompt_turns_test.dart`
 - `client/module_core/lib/src/cubits/session_detail/transcript_turns.dart` and
   `client/module_core/test/cubits/session_detail/transcript_turns_test.dart`
 - `session_detail_message_list.dart`,
