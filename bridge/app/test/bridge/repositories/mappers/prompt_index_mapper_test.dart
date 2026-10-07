@@ -40,12 +40,13 @@ SequencedMessage _runningTool({required int seq}) => (
   ),
 );
 
-String? _preview({required String text}) => promptIndexOf(messages: [_user(seq: 1, text: text)]).single.preview;
+String? _preview({required String text}) =>
+    const PromptIndexMapper().indexOf(messages: [_user(seq: 1, text: text)]).single.preview;
 
 void main() {
-  group("promptIndexOf", () {
+  group("PromptIndexMapper.indexOf", () {
     test("lists a prompt in the leading segment as an opener", () {
-      final entries = promptIndexOf(
+      final entries = const PromptIndexMapper().indexOf(
         messages: [
           _runningTool(seq: 1),
           _user(seq: 2, text: "Go on"),

@@ -1,7 +1,6 @@
 import "dart:convert";
 import "dart:io";
 
-import "package:drift/native.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_bridge/src/api/archived_session_storage.dart";
 import "package:sesori_bridge/src/api/attachment_spill_storage.dart";
@@ -10,7 +9,8 @@ import "package:sesori_bridge/src/repositories/chat_history_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 /// Times the prompt index over a synthetic session the size of the largest
-/// measured one: 9,790 messages and 836 prompts, in a file-backed database.
+/// measured one: 9,790 messages and 836 prompts, in a database opened as the
+/// bridge opens it.
 /// The plan's budget is about 300 ms.
 /// Run from bridge/app: dart run tool/benchmarks/prompt_index_benchmark.dart
 Future<void> main() async {
@@ -18,7 +18,8 @@ Future<void> main() async {
   const promptCount = 836;
   const sessionId = "ses_benchmark";
   final directory = Directory.systemTemp.createTempSync("sesori_prompt_index_benchmark");
-  final database = ChatHistoryDatabase(NativeDatabase(File(path.join(directory.path, "history.db"))));
+  // The production opener: a background isolate in WAL mode.
+  final database = ChatHistoryDatabase.create(dataDirectory: directory.path);
   try {
     final repository = ChatHistoryRepository(
       chatHistoryDao: database.chatHistoryDao,

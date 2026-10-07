@@ -80,6 +80,7 @@ class ChatHistoryRepository({
 }) {
   static const _archiveSchemaVersion = 1;
   static const _semanticMatchBridgeId = "history-semantic-match";
+  static const _promptIndexMapper = PromptIndexMapper();
 
   Future<Uint8List?> readStoredAttachment({
     required AttachmentStorageScope storageScope,
@@ -863,7 +864,7 @@ class ChatHistoryRepository({
     for (final row in rows.parts) {
       partJsonByMessage.putIfAbsent(row.messageId, () => []).add(row.partJson);
     }
-    return promptIndexOf(
+    return _promptIndexMapper.indexOf(
       messages: [
         for (final row in rows.messages)
           (
@@ -885,7 +886,7 @@ class ChatHistoryRepository({
   Future<List<SessionPromptIndexEntry>?> getArchivedPromptIndex({required String sessionId}) async {
     final ordered = await _readArchivedMessages(sessionId: sessionId);
     if (ordered == null) return null;
-    return promptIndexOf(
+    return _promptIndexMapper.indexOf(
       messages: [
         for (final entry in ordered)
           (
