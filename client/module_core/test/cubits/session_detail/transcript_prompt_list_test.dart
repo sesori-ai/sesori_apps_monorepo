@@ -372,4 +372,42 @@ void main() {
       expect(_sources(list: list), ["u1@10", "u2"]);
     });
   });
+
+  group("TranscriptPromptListBuilder.pinAbove", () {
+    final index = [
+      _indexed(id: "u1", seq: 10, number: 1),
+      _indexed(id: "u2", seq: 20, number: 2),
+      _indexed(id: "u3", seq: 21, number: 3, opener: "u2"),
+      _indexed(id: "u4", seq: 40, number: 4),
+    ];
+
+    String? pinOf({required List<MessageWithParts> messages, required bool hasOlderMessages}) =>
+        const TranscriptPromptListBuilder()
+            .pinAbove(
+              turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: hasOlderMessages),
+              index: index,
+            )
+            ?.messageId;
+
+    test("pins the last prompt before the loaded range while it starts inside that prompt's turn", () {
+      expect(pinOf(messages: [_working(id: "a3"), _answer(id: "a4"), _user(id: "u4")], hasOlderMessages: true), "u3");
+      // A loaded range without a prompt is all inside the latest one's turn.
+      expect(pinOf(messages: [_answer(id: "a4")], hasOlderMessages: true), "u4");
+    });
+
+    test("pins nothing when the loaded range starts with a prompt or at the start of the history", () {
+      expect(pinOf(messages: [_user(id: "u4"), _answer(id: "a4")], hasOlderMessages: true), isNull);
+      expect(pinOf(messages: [_answer(id: "a0"), _user(id: "u1")], hasOlderMessages: false), isNull);
+    });
+
+    test("pins nothing without an index", () {
+      final messages = [_answer(id: "a3"), _user(id: "u4")];
+      final pin = const TranscriptPromptListBuilder().pinAbove(
+        turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: true),
+        index: null,
+      );
+
+      expect(pin, isNull);
+    });
+  });
 }

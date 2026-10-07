@@ -56,7 +56,7 @@ stored or sent to the bridge.
   image stays named rather than fetched. So pinning a message neither contacts
   the host it names nor pages history the reader never asked for. Automation is
   never pinned, and nothing is pinned over the messages before the first user
-  message. A tap on
+  message, except below. A tap on
   the bubble glides back to that message, whose bubble grows back to full height
   as it lands at the top edge, which stops following like any jump; with
   reduced motion it jumps there instead. A tap on the band beside the bubble
@@ -69,6 +69,19 @@ stored or sent to the bridge.
   attachment's name when the prompt has no text, with the hint "Jump to this
   prompt", also when the prompt's own row is far above and not built, and find no
   action on the band around it.
+- When the loaded messages start inside a turn whose prompt is not loaded, and
+  the bridge sent the prompt index, that prompt pins above them in the same
+  bubble, showing the index's preview: the start of its text, up to 300
+  characters, cut at the compact height. The pin fades in as the index
+  arrives, and it stays while a refresh fetches the index again. A tap loads
+  the transcript through that prompt, showing a spinner beside the pin only
+  after about 150 ms, then glides back to it as for a loaded prompt. A failure
+  shows a popup naming why ("Couldn't open this prompt", no longer in the
+  session, the transcript refreshed, or "Update the bridge" for an older
+  bridge) and keeps the pin. Once the prompt loads, by the tap or by scrolling
+  back, its pin crossfades from the preview to its own copy, the bubble easing
+  between the two sizes, so a long prompt that pins its end changes visibly
+  but never snaps. Without an index nothing pins there.
 - The phone bar and the desktop toolbar carry a "Prompts" button, before the
   menu, on a loaded session. It covers the session page with the Prompts
   screen: a "Search prompts" field with a "Close prompts" button, then one row
@@ -227,6 +240,11 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
   its Markdown; an image-only prompt is spoken as the row names it, with and
   without alt text; a list, a table and a struck word are spoken as the row lays
   them out; the band carries no semantics action beside the bubble's.
+- The unloaded prompt's pin: its preview over a range that starts mid-turn; its
+  fade-in as the index arrives, kept through a refetch; a tap loading through
+  it with the spinner only after the delay, the crossfade into the loaded copy
+  and the glide back; a failed load's popup with the pin kept; the pin's entry
+  chosen from the rendered range (`TranscriptPromptListBuilder.pinAbove`).
 - A tap on the pinned bubble glides to its prompt, never turning back, and lands
   with the pin grown to full height; with reduced motion it jumps instead; its
   semantics button does the same, also when that prompt is not built; a tap
@@ -380,6 +398,11 @@ answer, and on a trackpad while text streams.
   out of the transcript's order, a follow-up above or away from its opener, or
   a prompt the transcript has not loaded while the bridge sent no index; shows
   day headers out of order or "No date" below them.
+- With an index, a range that starts mid-turn pins nothing or a prompt other
+  than the one that opened that turn; its pin pops in, blinks out during a
+  refresh, or snaps from the preview to the loaded prompt instead of
+  crossfading; a tap on it moves the transcript after a failure, shows its
+  spinner at once on a fast load, or loads without gliding back.
 - With an index, a prompt of the session is missing or listed twice; a tap on
   an unloaded row lands elsewhere, shows its spinner at once on a fast load,
   moves the transcript after a failure or after the screen closed, or a

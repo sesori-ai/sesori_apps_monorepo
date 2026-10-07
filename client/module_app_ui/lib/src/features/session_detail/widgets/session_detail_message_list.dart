@@ -86,6 +86,14 @@ class const SessionDetailMessageList({
   /// Requests the page of messages before the ones shown, or null when the
   /// start of the transcript is already loaded.
   required final Future<void> Function()? onLoadOlderMessages,
+
+  /// The bridge's prompt index, or null until it arrives or when the bridge
+  /// has none: it names the unloaded prompt to pin above the loaded messages.
+  required final List<SessionPromptIndexEntry>? promptIndex,
+
+  /// Loads every message from an unloaded prompt down to the loaded ones, for
+  /// a tap on its pin.
+  required final Future<LoadThroughOutcome> Function({required String messageId, required int seq}) onLoadThrough,
   required final ValueChanged<int>? onCancelQueuedMessage,
   required final bool isLoadingOlderMessages,
 
@@ -210,6 +218,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// bubble on the pin line, so the pin hands over to it unseen.
   static const double _kPinnedRowTop = _kPinGap - PregoSpacing.xs;
 
+  /// How long a tapped unloaded prompt's load runs before its spinner shows,
+  /// so a quick load never flashes one.
+  static const _kPinLoadSpinnerDelay = Duration(milliseconds: 150);
+
   late final ScrollFollowTracker _follow;
 
   /// Shared 0..1 progress for the horizontal timestamp-reveal "peek".
@@ -285,6 +297,18 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   bool _pinchStartedFollowing = false;
   bool _pinchDetachSuppressed = false;
 
+  /// The last prompt index the list was given, kept while a refresh fetches
+  /// it again so the unloaded prompt's pin stays put meanwhile.
+  List<SessionPromptIndexEntry>? _promptIndex;
+
+  /// The last build's unloaded prompt pinned above the rendered messages.
+  SessionPromptIndexEntry? _unloadedPin;
+
+  /// The unloaded prompt a tap on its pin is loading, until that load ends.
+  String? _pinLoadId;
+  bool _showsPinLoadSpinner = false;
+  Timer? _pinLoadSpinner;
+
   @override
   void initState() {
     super.initState();
@@ -304,6 +328,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     widget.jumpNotifier.removeListener(_onJumpRequested);
     _revealController.dispose();
     _stickyOpenerIds.dispose();
+    _pinLoadSpinner?.cancel();
     super.dispose();
   }
 
@@ -318,7 +343,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // keeps the oldest message, so a failing bridge is not asked again until
     // the list scrolls, its layout changes or a refresh ends.
     final refreshEnded = oldWidget.isRefreshing && !widget.isRefreshing;
-    if (refreshEnded || widget.messages.firstOrNull?.info.id != oldWidget.messages.firstOrNull?.info.id) {
+    final oldestChanged = widget.messages.firstOrNull?.info.id != oldWidget.messages.firstOrNull?.info.id;
+    if (refreshEnded || oldestChanged) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         // A discarded page can still be on its way; check once it settles.
@@ -329,15 +355,15 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         }
       });
     }
-    final olderPageRequestCompleted = oldWidget.isLoadingOlderMessages && !widget.isLoadingOlderMessages;
     // While detached the snapshot keeps the list structure from shifting
     // under the reader; `_onFollowChanged` restores live inputs on reattach.
     //
-    // Older pages are the exception: the reader is detached precisely
-    // because they scrolled back for them, and they are prepended *above*
-    // the viewport, so rendering them cannot shift what is being read.
-    // Freezing them would leave the page loaded but invisible until the
-    // user returned to the newest message.
+    // Older history is the exception, whether an older page or a load up to
+    // a tapped prompt brought it: the reader is detached precisely because
+    // they scrolled back for it, and it is prepended *above* the viewport,
+    // so rendering it cannot shift what is being read. Freezing it would
+    // leave it loaded but invisible until the user returned to the newest
+    // message.
     if (_follow.following) return;
     final frozen = _snapshot;
     final transientSubmissionsChanged = !_transientSubmissionsMatch(oldWidget: oldWidget);
@@ -349,8 +375,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         });
       }
     }
-    if (!olderPageRequestCompleted) return;
-    if (frozen == null) return;
+    if (!oldestChanged || frozen == null) return;
     final prepended = _prependedOlderMessages(frozen: frozen);
     if (prepended.isEmpty) return;
 
@@ -533,6 +558,45 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     );
   }
 
+  void _onPinTap({required String openerMessageId}) {
+    if (_unloadedPin case final pin? when pin.messageId == openerMessageId) {
+      // Another tap while it loads waits for that load.
+      if (_pinLoadId == null) unawaited(_openUnloadedPin(pin: pin));
+      return;
+    }
+    _glideToPrompt(openerMessageId: openerMessageId);
+  }
+
+  /// Loads the transcript up to the unloaded prompt [pin] names, then glides
+  /// back to it, as a tap on a loaded prompt's pin does. A slow load shows a
+  /// spinner by the pin; one that fails says why.
+  Future<void> _openUnloadedPin({required SessionPromptIndexEntry pin}) async {
+    setState(() => _pinLoadId = pin.messageId);
+    _pinLoadSpinner = Timer(_kPinLoadSpinnerDelay, () => setState(() => _showsPinLoadSpinner = true));
+    final outcome = await widget.onLoadThrough(messageId: pin.messageId, seq: pin.seq);
+    if (!mounted) return;
+    _pinLoadSpinner?.cancel();
+    setState(() {
+      _pinLoadId = null;
+      _showsPinLoadSpinner = false;
+    });
+    final loc = context.loc;
+    final error = switch (outcome) {
+      LoadThroughLoaded() => null,
+      LoadThroughTargetMissing() => loc.transcriptPromptsGone,
+      LoadThroughUnsupported() => loc.transcriptPromptsBridgeTooOld,
+      LoadThroughFailed() => loc.transcriptPromptsOpenFailed,
+      LoadThroughSuperseded() => loc.transcriptPromptsRefreshed,
+    };
+    if (error != null) {
+      return PregoPopupAlertPresenter.of(context)
+          .show(title: error, variant: PregoPopupAlertsNotificationsVariant.error);
+    }
+    // The loaded prompt is a row once the list has built it.
+    await WidgetsBinding.instance.endOfFrame;
+    if (mounted) _glideToPrompt(openerMessageId: pin.messageId);
+  }
+
   /// The offset that rests row [rowId] where a glide lands it. An unbuilt row
   /// is estimated from the built rows above it, at their mean height. Null
   /// once the row is gone, or below the built rows, where no pin leads.
@@ -616,6 +680,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     }
 
     return [
+      // Above every rendered row, as the turn it opened runs into them.
+      if (_unloadedPin case final pin?) (id: pin.messageId, place: const TranscriptStickyAbove()),
       for (final message in _userMessagesById.values)
         if (_entryIdForMessage(info: message.info) case final rowId)
           if (_rowIndexById[rowId] case final rowIndex?)
@@ -773,6 +839,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       messages: messages,
       hasOlderMessages: widget.onLoadOlderMessages != null,
     );
+    final promptIndex = _promptIndex = widget.promptIndex ?? _promptIndex;
+    final unloadedPin = _unloadedPin = const TranscriptPromptListBuilder().pinAbove(turns: turns, index: promptIndex);
     final activity = const TranscriptActivityBuilder().build(
       transcript: transcript,
       turns: turns,
@@ -940,13 +1008,31 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                       builder: (context, openerIds, _) => TranscriptStickyPromptOverlay(
                         key: _stickyKey,
                         messages: [for (final openerId in openerIds) ?_userMessagesById[openerId]],
+                        unloaded: unloadedPin,
                         horizontalInset: widget.horizontalInset,
                         onLayout: _layOutSticky,
-                        onTap: _glideToPrompt,
+                        onTap: _onPinTap,
                       ),
                     ),
                   ),
                 ),
+                // Beside the pin, clear of the bubble, which keeps to the right.
+                if (_pinLoadId != null)
+                  Positioned(
+                    left: widget.horizontalInset + UserMessageBubble.margin.left,
+                    top: widget.topInset + _kPinGap + UserMessageBubble.padding,
+                    child: IgnorePointer(
+                      child: AnimatedOpacity(
+                        opacity: _showsPinLoadSpinner ? 1 : 0,
+                        duration: transcriptMotionDuration,
+                        child: Semantics(
+                          liveRegion: _showsPinLoadSpinner,
+                          label: _showsPinLoadSpinner ? loc.transcriptPromptsLoading : null,
+                          child: const SizedBox.square(dimension: 16, child: PregoActivityIndicator(color: null)),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
