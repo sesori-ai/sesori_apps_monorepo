@@ -1,7 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "models/open_code_error.dart";
 import "models/openapi/assistant_message.g.dart";
+import "open_code_error_mapper.dart";
 
 /// Maps an OpenCode [AssistantMessage] to a plugin [PluginMessage],
 /// normalizing OpenCode's backend-specific error shape.

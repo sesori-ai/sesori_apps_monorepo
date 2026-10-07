@@ -7,7 +7,6 @@ import "package:sesori_shared/sesori_shared.dart"
         maxTranscriptImageCandidates,
         maxTranscriptImageCollectionBytes;
 
-import "models/open_code_error.dart";
 import "models/openapi/agent_part.g.dart";
 import "models/openapi/assistant_message.g.dart";
 import "models/openapi/compaction_part.g.dart";
@@ -27,6 +26,7 @@ import "models/openapi/tool_state_completed.g.dart";
 import "models/openapi/tool_state_error.g.dart";
 import "models/openapi/tool_state_pending.g.dart";
 import "models/openapi/tool_state_running.g.dart";
+import "open_code_error_mapper.dart";
 
 class const MessagePartMapper() {
   static const String _compactionCommandText = "/compact";
