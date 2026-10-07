@@ -318,6 +318,7 @@ class AdaptiveSessionRouterTestHarness() {
               PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
         ),
         BlocProvider(create: (_) => idleSessionLaunchCubit()),
+        RepositoryProvider(create: (_) => idleSessionLaunchService()),
       ],
       child: MaterialApp.router(
         routerConfig: router,

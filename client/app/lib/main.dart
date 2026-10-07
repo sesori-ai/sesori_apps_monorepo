@@ -431,6 +431,8 @@ class const _SesoriAppShell() extends StatelessWidget {
                         // Above the router too: a launching row and the alert
                         // for a failed launch outlive the composer that started it.
                         BlocProvider(create: (_) => SessionLaunchCubit(launchService: getIt<SessionLaunchService>())),
+                        // For each list's own launching rows.
+                        RepositoryProvider<SessionLaunchService>.value(value: getIt<SessionLaunchService>()),
                       ],
                       child: PendingArchiveAlerts(
                         navigatorKey: appRootNavigatorKey,

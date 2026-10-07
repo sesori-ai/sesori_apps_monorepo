@@ -303,10 +303,13 @@ SessionLaunchService inMemorySessionLaunchService({required SessionLaunchReposit
       authSession: FakeAuthSession(initialState: const AuthState.initial()),
     );
 
+/// A launch service with no launches, for widget tests that render a list
+/// with launching rows.
+SessionLaunchService idleSessionLaunchService() =>
+    inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository());
+
 /// A launch cubit with no launches, for widget tests that render a session list.
-SessionLaunchCubit idleSessionLaunchCubit() => SessionLaunchCubit(
-  launchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
-);
+SessionLaunchCubit idleSessionLaunchCubit() => SessionLaunchCubit(launchService: idleSessionLaunchService());
 
 class MockBridgeRepository() extends Mock implements BridgeRepository;
 

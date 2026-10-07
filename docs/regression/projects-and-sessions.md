@@ -226,6 +226,12 @@ state.
   the session's updated time whenever one exists. A row opens its session directly, and pulling to refresh also
   retries each project's session read. Finished unseen sessions stay in their project lists, and the group and
   its Projects heading are left out when nothing is in motion.
+- A session being created leads its project's running rows in the phone's Activity and the desktop home's Running
+  section as a launching row: the AI sparkle, its title and "Creating… · `<harness>` · `<project>`" with no time. A
+  tap explains that it is still being created and opens nothing; on the phone a search hides it. Its session takes its place
+  once it runs; until then it stays out of the desktop home's Recent. Activity's rows and headings grow and shrink
+  in as they enter and leave, so the rows below move continuously (instantly under reduced motion), and a failed
+  launch's row leaves.
 - However a phone session is reached, from Activity or from its project's list, Android back (edge gesture or
   button) first closes the topmost sheet over it, one sheet at a time, and only then leaves the session. The same
   holds for sheets over harness settings and archived sessions.

@@ -43,6 +43,8 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
           BlocProvider(create: (_) => PendingSessionArchiveCubit(cleanupService: getIt())),
           // Outlives the composer that started a launch, for its row and its failure alert.
           BlocProvider(create: (_) => SessionLaunchCubit(launchService: getIt())),
+          // For each list's own launching rows.
+          RepositoryProvider<SessionLaunchService>.value(value: getIt<SessionLaunchService>()),
           BlocProvider(
             create: (context) => DesktopSidebarRefreshCubit(
               service: getIt<DesktopSidebarRefreshService>(

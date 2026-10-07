@@ -93,6 +93,16 @@ The main pane hosts one full-width routed page.
   changes or the user sets it aside by marking it unread. The keyed header remains structurally stable at zero
   height when Activity is empty, and keyed Prego reconciliation honors reduced motion as rows enter, leave or
   reorder.
+- A session being created shows as a launching row at the head of its project's Activity rows and of its project's
+  rows: the AI sparkle, the first line of its first message (or "Untitled session") and, in Activity, "Creating… ·
+  `<harness>` · `<project>`", with no time. It counts in "Activity · N" and the rail button, so a launch alone still
+  shows the header, the rail button and its popout, which stays open while the launch runs; a popout opened after the
+  create reply still shows the row while its session has not reached Activity. Clicking it explains that the
+  session is still being created and opens nothing; it is never selected, never the sticky Activity row and has no
+  menu. When its session reaches the head of the rows the launching row leads, the session row swaps in without
+  moving anything (it keeps the launching row's key); a session
+  that reaches its project before it runs stays out of the project's other rows and Recent, and the launching row
+  keeps its Activity place until the session runs or the next sessions update places it as an ordinary change.
 - Expanded projects show every running session (the same running rule as the project's running count) and the first
   two other active visible sessions, plus the open session when present outside them, all in the shared list's order.
   While the project has more, "Show N more" (12 pt tertiary) reveals up to ten more in place; it is absent when nothing
