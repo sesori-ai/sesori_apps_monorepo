@@ -48,6 +48,10 @@ class const AgentModelButtons({
   /// instead of sharing the strip's width equally (touch shells).
   required final bool compact,
 
+  /// Shows the committed selections exactly as the live pills draw them,
+  /// without opening any picker or toggling fast mode.
+  required final bool readOnly,
+
   /// Status chips after the selectors, such as the session's YOLO chip. Keep
   /// them compact on touch, where the pickers share the remaining width.
   required final List<Widget> trailing,
@@ -96,7 +100,14 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     // One agent is no choice: the entry appears only when there is another.
     final hasAgentSelection = widget.agents.length > 1 && selectedAgent != null;
     final compact = widget.compact;
-    Widget slot(Widget menu) => _pickerSlot(compact: compact, child: menu);
+    // Locking leaves each pill's geometry untouched, so nothing shifts as the
+    // options turn read-only, and blocks its taps, hover cursor, keyboard focus
+    // and actions.
+    Widget lock(Widget control) => ExcludeFocus(
+      excluding: widget.readOnly,
+      child: IgnorePointer(ignoring: widget.readOnly, child: control),
+    );
+    Widget slot(Widget menu) => _pickerSlot(compact: compact, child: lock(menu));
     final selectors = [
       if (hasAgentSelection)
         slot(
@@ -129,11 +140,13 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
           ),
         ),
       if (widget.fastModeControl != FastModeControl.hidden)
-        _FastModeButton(
-          surfaceStyle: widget.surfaceStyle,
-          control: widget.fastModeControl,
-          decide: widget.decideFastModeToggle,
-          onFastModeChanged: widget.onFastModeChanged,
+        lock(
+          _FastModeButton(
+            surfaceStyle: widget.surfaceStyle,
+            control: widget.fastModeControl,
+            decide: widget.decideFastModeToggle,
+            onFastModeChanged: widget.onFastModeChanged,
+          ),
         ),
       ...widget.trailing,
     ];

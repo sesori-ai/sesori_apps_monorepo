@@ -26,9 +26,128 @@ class _NoOpImageClipboard() implements ImageClipboard {
   Future<void> writeImage({required Uint8List bytes}) async {}
 }
 
+class _PendingComposerImagePicker() implements ComposerImagePicker {
+  Completer<ComposerPickedImage?> pick = Completer();
+
+  @override
+  Future<ComposerPickedImage?> pickImage() => pick.future;
+}
+
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 void main() {
+  testWidgets("starts at the handed-over caret and reports busy while an insert or a word is pending", (tester) async {
+    final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
+    addTearDown(surfaceStyle.dispose);
+    final picker = _PendingComposerImagePicker();
+    final dispatcher = ComposerAttachmentDispatcher(imagePicker: picker);
+    final clipboard = _NoOpImageClipboard();
+    final busy = <bool>[];
+    final selections = <({int base, int extent})>[];
+    final busyWhenCleared = <List<bool>>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ComposerPresentationScope(
+          voiceSupport: ComposerVoiceSupport.unsupported,
+          inputMode: ChatInputMode.textFirst,
+          isKeyboardVisible: false,
+          sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+          presentation: ComposerPresentation.touch,
+          attachmentDispatcher: () => dispatcher,
+          imageClipboard: () => clipboard,
+          child: Scaffold(
+            body: PromptInput(
+              initialSelection: (base: 5, extent: 2),
+              onBusyChanged: busy.add,
+              onSelectionChanged: selections.add,
+              isBusy: false,
+              hasMessages: false,
+              canSend: true,
+              onSend: ({required draft, required command, required attachments}) {},
+              onVoiceTranscriptionCompleted: null,
+              onDraftChanged: (_) {},
+              onDraftCleared: () => busyWhenCleared.add([...busy]),
+              onAbort: () {},
+              surfaceStyleController: surfaceStyle,
+              composerHeader: null,
+              composerTrailing: null,
+              availableCommands: const [],
+              stagedCommand: null,
+              onCommandSelected: (_) {},
+              onCommandCleared: () {},
+              attachmentsSupported: true,
+              draftIdentity: "handoff-session",
+              restorationKey: null,
+              initialDraft: ComposerDraft.typed(text: "carry on"),
+              initialAttachments: const [],
+              onAttachmentsChanged: null,
+              autofocus: false,
+              onInitialAttachmentsConsumed: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final field = tester.widget<TextField>(find.byType(TextField));
+    // A backward selection keeps its active end.
+    expect(field.controller?.selection, const TextSelection(baseOffset: 5, extentOffset: 2));
+
+    field.controller?.selection = const TextSelection(baseOffset: 4, extentOffset: 1);
+    expect(selections, [(base: 4, extent: 1)]);
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip("Attach image"));
+    await tester.pump();
+    expect(busy, [true]);
+    picker.pick.complete(null);
+    await tester.pumpAndSettle();
+    expect(busy, [true, false]);
+
+    field.controller?.value = const TextEditingValue(
+      text: "carry onw",
+      selection: TextSelection.collapsed(offset: 9),
+      composing: TextRange(start: 6, end: 9),
+    );
+    expect(busy, [true, false, true]);
+    field.controller?.value = const TextEditingValue(
+      text: "carry onward",
+      selection: TextSelection.collapsed(offset: 12),
+    );
+    expect(busy, [true, false, true, false]);
+
+    // Send ends a composed word, but reports it settled only after the sent
+    // draft is cleared, so an outcome that report releases is not wiped.
+    field.controller?.value = const TextEditingValue(
+      text: "carry onward and",
+      selection: TextSelection.collapsed(offset: 16),
+      composing: TextRange(start: 13, end: 16),
+    );
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+    expect(busyWhenCleared, [
+      [true, false, true, false, true],
+    ]);
+    expect(busy, [true, false, true, false, true, false]);
+
+    // A pick that settles after the composer is gone reports nothing.
+    picker.pick = Completer();
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip("Attach image"));
+    await tester.pump();
+    expect(busy, [true, false, true, false, true, false, true]);
+    await tester.pumpWidget(const SizedBox());
+    picker.pick.complete(null);
+    await tester.pump();
+    expect(busy, [true, false, true, false, true, false, true]);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("staged previews scroll, remove the selected image, and send original remaining bytes", (tester) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
@@ -63,6 +182,9 @@ void main() {
               child: SizedBox(
                 width: 320,
                 child: PromptInput(
+                  initialSelection: null,
+                  onBusyChanged: null,
+                  onSelectionChanged: null,
                   isBusy: false,
                   hasMessages: false,
                   canSend: true,
@@ -159,6 +281,9 @@ void main() {
               child: SizedBox(
                 width: 320,
                 child: PromptInput(
+                  initialSelection: null,
+                  onBusyChanged: null,
+                  onSelectionChanged: null,
                   isBusy: false,
                   hasMessages: false,
                   canSend: true,
@@ -328,6 +453,9 @@ void main() {
           imageClipboard: () => imageClipboard,
           child: Scaffold(
             body: PromptInput(
+              initialSelection: null,
+              onBusyChanged: null,
+              onSelectionChanged: null,
               isBusy: false,
               hasMessages: false,
               canSend: true,
@@ -407,6 +535,9 @@ void main() {
                       builder: (context, style, _) => Text(style.name),
                     ),
                     PromptInput(
+                      initialSelection: null,
+                      onBusyChanged: null,
+                      onSelectionChanged: null,
                       isBusy: false,
                       hasMessages: false,
                       canSend: true,
@@ -484,6 +615,9 @@ Future<void> _pumpCommandComposer({
       imageClipboard: () => imageClipboard,
       child: Scaffold(
         body: PromptInput(
+          initialSelection: null,
+          onBusyChanged: null,
+          onSelectionChanged: null,
           isBusy: false,
           hasMessages: false,
           canSend: true,

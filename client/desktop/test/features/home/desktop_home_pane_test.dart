@@ -193,7 +193,7 @@ void main() {
       whenListen(cubit, states, initialState: _composing);
       when(() => cubit.needsHarnessDiscovery).thenReturn(false);
       when(() => cubit.hasNoHarnesses).thenReturn(false);
-      when(() => cubit.canCreateSession).thenReturn(true);
+      when(() => cubit.canSubmit).thenReturn(true);
       when(() => cubit.canRefreshOptions).thenReturn(false);
       when(() => cubit.composerPresentation).thenReturn(const NewSessionComposerReady());
       when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));

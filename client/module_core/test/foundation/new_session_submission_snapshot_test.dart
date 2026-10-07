@@ -52,6 +52,7 @@ void main() {
           followUps: [text(attachments: const [])],
           unsent: UnsentComposer(
             draft: ComposerDraft.typed(text: " half typed "),
+            selection: null,
             command: const CommandInfo(
               name: "fix",
               template: null,

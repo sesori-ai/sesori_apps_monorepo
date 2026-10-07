@@ -160,12 +160,26 @@ class const PromptInput({
   /// failure are coalesced before this composer can unmount.
   required final Key? restorationKey,
   required final ComposerDraft initialDraft,
+
+  /// Where the caret or selection starts in [initialDraft]; null puts the
+  /// caret at its end.
+  required final ({int base, int extent})? initialSelection,
   required final List<ComposerAttachment> initialAttachments,
   required final VoidCallback onInitialAttachmentsConsumed,
 
   /// Told the staged images whenever they change, for an owner that hands them
   /// on; null when nobody needs them outside this composer.
   required final ValueChanged<List<ComposerAttachment>>? onAttachmentsChanged,
+
+  /// Told where the caret or selection moves, for an owner that hands the
+  /// composer on; null when nobody needs it outside this composer.
+  required final ValueChanged<({int base, int extent})>? onSelectionChanged,
+
+  /// Told when work starts or settles whose result lands in this composer
+  /// later — a voice recording or transcription, an image pick or paste, or a
+  /// word the keyboard is still composing — so an owner about to replace the
+  /// composer can wait for it; null when nobody replaces it.
+  required final ValueChanged<bool>? onBusyChanged,
 
   /// Takes keyboard focus on the first frame, for a composer that continues
   /// one which had it.
@@ -191,6 +205,11 @@ class _PromptInputState() extends State<PromptInput> {
   late TextEditingValue _previousEditingValue;
   bool _isApplyingDraft = false;
   bool _isSubmitting = false;
+
+  /// What [PromptInput.onBusyChanged] last heard, and the work behind it.
+  bool _reportedBusy = false;
+  bool _voiceBusy = false;
+  int _pendingInserts = 0;
   _VoiceGesturePresentation _voiceInteraction = const _VoiceIdle();
   VoiceInputState _renderedVoiceState = const VoiceInputState.idle();
   StreamSubscription<VoiceInputState>? _voiceStateSub;
@@ -252,6 +271,10 @@ class _PromptInputState() extends State<PromptInput> {
       controller: _controller,
     );
     _applyDraft(draft: widget.initialDraft, notify: false);
+    if (widget.initialSelection case (:final base, :final extent)) {
+      _controller.selection = TextSelection(baseOffset: base, extentOffset: extent);
+      _previousEditingValue = _controller.value;
+    }
     _restoreInitialAttachments();
     _hasText = _controller.text.trim().isNotEmpty;
     _controller.addListener(_handleTextChanged);
@@ -330,11 +353,30 @@ class _PromptInputState() extends State<PromptInput> {
         widget.onDraftChanged(nextDraft);
       }
     }
+    final selection = currentValue.selection;
+    if (selection.isValid && selection != _previousEditingValue.selection) {
+      widget.onSelectionChanged?.call((base: selection.baseOffset, extent: selection.extentOffset));
+    }
     _previousEditingValue = currentValue;
     final hasText = currentValue.text.trim().isNotEmpty;
     if (hasText != _hasText && mounted) {
       _updateComposerState(update: () => _hasText = hasText);
     }
+    _reportBusy();
+  }
+
+  /// Tells [PromptInput.onBusyChanged] when the composer starts or settles
+  /// work whose result lands in it later. A pick or paste that settles after
+  /// this composer is gone stays silent, as its owner may be gone too. A send
+  /// reports only once it has cleared the sent draft, so an outcome released
+  /// by that clear (a composed word committed by Send) cannot be wiped by it.
+  void _reportBusy() {
+    if (!mounted || _isSubmitting) return;
+    final composing = _controller.value.composing;
+    final busy = _voiceBusy || _pendingInserts > 0 || (composing.isValid && !composing.isCollapsed);
+    if (busy == _reportedBusy) return;
+    _reportedBusy = busy;
+    widget.onBusyChanged?.call(busy);
   }
 
   void _handleFocusChanged() {
@@ -505,6 +547,7 @@ class _PromptInputState() extends State<PromptInput> {
       }
     } finally {
       _isSubmitting = false;
+      _reportBusy();
     }
   }
 
@@ -840,6 +883,11 @@ class _PromptInputState() extends State<PromptInput> {
 
   void _handleVoiceStateChanged(VoiceInputState state) {
     if (!mounted) return;
+    // Busy until the voice input is idle again: a failed transcription keeps
+    // its recording until Retry or Discard, and a completed one until its
+    // words are in the draft.
+    _voiceBusy = state is! VoiceInputIdle;
+    _reportBusy();
 
     switch (state) {
       case VoiceInputIdle():
@@ -1801,6 +1849,7 @@ class _PromptInputState() extends State<PromptInput> {
     // the new session's composer. It can equally settle after the harness
     // stopped supporting attachments, which the strip must not outlive.
     final draftIdentity = widget.draftIdentity;
+    _startInsert();
     try {
       final attachment = await _attachmentDispatcher.pickImage();
       if (!mounted ||
@@ -1820,7 +1869,20 @@ class _PromptInputState() extends State<PromptInput> {
       loge("Failed to attach an image", error);
       if (!mounted || draftIdentity != widget.draftIdentity) return;
       _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
+    } finally {
+      _settleInsert();
     }
+  }
+
+  /// An image pick or a paste, whose result lands after an await.
+  void _startInsert() {
+    _pendingInserts++;
+    _reportBusy();
+  }
+
+  void _settleInsert() {
+    _pendingInserts--;
+    _reportBusy();
   }
 
   /// Reads an image before allowing Flutter's normal text paste to run. An
@@ -1871,6 +1933,9 @@ class _PromptInputState() extends State<PromptInput> {
     required FutureOr<void> Function() onTextPaste,
     required VoidCallback? onImagePasted,
   }) async {
+    // The text fallback reads the clipboard too, so the paste is busy until
+    // whichever lands has landed.
+    _startInsert();
     try {
       switch (await _handlePasteImage()) {
         case _PasteImageResult.noImage:
@@ -1889,6 +1954,8 @@ class _PromptInputState() extends State<PromptInput> {
       }
     } catch (error, stackTrace) {
       loge("Failed to handle composer paste", error, stackTrace);
+    } finally {
+      _settleInsert();
     }
   }
 
