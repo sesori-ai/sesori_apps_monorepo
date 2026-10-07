@@ -174,14 +174,17 @@ LaunchRows resolveHeldLaunchSessions({
 /// Keeps a surface's launching rows and the sessions their launches name
 /// while it shows no active list (loading, failed or another filter), so a
 /// launch that resolves meanwhile still has its row and its session when the
-/// list returns. What the surface last showed stays as it was.
+/// list returns. What the surface last showed stays as it was. A launch that
+/// left without naming a session failed, and its row goes.
 LaunchRows latchLaunchSessions({
   required LaunchRows previous,
   required List<LaunchingSession> launching,
   required Map<String, String> sessionIds,
 }) {
   final rows = {
-    for (final row in [...previous.placeholders, ...launching]) row.launchId: row,
+    for (final row in previous.placeholders)
+      if (previous.named.containsKey(row.launchId) || sessionIds.containsKey(row.launchId)) row.launchId: row,
+    for (final row in launching) row.launchId: row,
   };
   return LaunchRows(
     placeholders: rows.values.toList()..sort((a, b) => _newestFirst(a: a, b: b)),

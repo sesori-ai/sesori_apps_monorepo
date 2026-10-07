@@ -311,5 +311,23 @@ void main() {
       expect(reloading["project-1"]?.placeholders, [launch]);
       expect(reloading["project-1"]?.named, {"launch-1": (sessionId: "created", arrived: false)});
     });
+
+    test("drops a failed launch's row while the project's read is unavailable", () {
+      final waiting = resolveActivity(
+        previous: const {},
+        launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
+        entry: const RecentSessionsFailed(reason: RemoteFailureReason.networkDown),
+        running: const [],
+      );
+      expect(waiting["project-1"]?.placeholders, [launch]);
+
+      final failed = resolveActivity(
+        previous: waiting,
+        launches: const SessionLaunchState(launching: [], sessionIds: {}),
+        entry: const RecentSessionsFailed(reason: RemoteFailureReason.networkDown),
+        running: const [],
+      );
+      expect(failed["project-1"]?.placeholders, isEmpty, reason: "no Creating… outlives the failure alert");
+    });
   });
 }
