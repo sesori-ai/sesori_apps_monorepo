@@ -19,7 +19,9 @@ Branch `transcript-history/unloaded-pin`. `client/module_core`,
   once the list has built it.
 - **Detached snapshot:** older history now joins the frozen transcript
   whenever the oldest message changes, not only when an older page request
-  ends, so a load-through while reading history renders too.
+  ends, so a load-through while reading history renders too. The snapshot
+  also holds the prompt index as it stood, so a prompt sent while the reader
+  is detached never pins above the frozen messages.
 - **Sticky places:** a row counts as built for the Above/Below split only
   once it has been laid out. Before, the prompt that just loaded read as
   Below for its first frame, which dropped its pin for a frame or two

@@ -71,9 +71,12 @@ stored or sent to the bridge.
   action on the band around it.
 - When the loaded messages start inside a turn whose prompt is not loaded, and
   the bridge sent the prompt index, that prompt pins above them in the same
-  bubble, showing the index's preview: the start of its text, up to 300
-  characters, cut at the compact height. The pin fades in as the index
-  arrives, and it stays while a refresh fetches the index again. A tap loads
+  bubble, showing the index's preview: the start of its text, else its first
+  attachment's name, up to 300 characters (UTF-16 code units), cut at the
+  compact height. While the reader is detached, the pin comes from the index
+  as it stood when the messages froze, never from a prompt sent since. The pin
+  fades in as the index arrives, and it stays while a refresh fetches the
+  index again. A tap loads
   the transcript through that prompt, showing a spinner beside the pin only
   after about 150 ms, then glides back to it as for a loaded prompt. A failure
   shows a popup naming why ("Couldn't open this prompt", no longer in the

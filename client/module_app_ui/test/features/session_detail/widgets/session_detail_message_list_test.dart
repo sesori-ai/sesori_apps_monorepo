@@ -3484,6 +3484,35 @@ void main() {
         expect(ownBubble(tester, "u0").top, moreOrLessEquals(pinTop, epsilon: 0.5));
       });
 
+      testWidgets("while reading history pins from the index as it stood, not a prompt sent since", (tester) async {
+        await tester.pumpWidget(
+          _SessionDetailMessageListHarness(
+            initialMessages: [
+              _message(
+                messageId: "a0-0",
+                role: "assistant",
+                text: List.generate(60, (index) => "Answer 0.0, paragraph $index").join("\n\n"),
+              ),
+            ],
+            initialStreamingText: const {},
+            topInset: _topInset,
+            onLoadOlderMessages: () async {},
+            initialPromptIndex: promptIndex.take(1).toList(),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await _detachViewport(tester);
+        expect(pinOf(tester, "u0"), isNotNull);
+
+        tester
+            .state<_SessionDetailMessageListHarnessState>(find.byType(_SessionDetailMessageListHarness))
+            .setPromptIndex(promptIndex.take(2).toList());
+        await tester.pumpAndSettle();
+
+        expect(pinOf(tester, "u0"), isNotNull);
+        expect(pinOf(tester, "u1"), isNull);
+      });
+
       testWidgets("a load that fails says why and keeps the pin", (tester) async {
         await pumpPartial(
           tester,

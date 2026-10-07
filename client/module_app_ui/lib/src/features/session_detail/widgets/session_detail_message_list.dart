@@ -147,6 +147,10 @@ typedef _DetachedSnapshot = ({
   String? retryErrorMessage,
   bool isBusy,
   bool mainAgentRunning,
+
+  /// The prompt index as it stood, so the pin above the frozen messages never
+  /// names a prompt sent after them.
+  List<SessionPromptIndexEntry>? promptIndex,
 });
 
 enum _TransientStage() {
@@ -394,6 +398,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         retryErrorMessage: frozen.retryErrorMessage,
         isBusy: frozen.isBusy,
         mainAgentRunning: frozen.mainAgentRunning,
+        promptIndex: frozen.promptIndex,
       );
     });
     // The prepended rows render against the frozen `streamingText` and
@@ -437,6 +442,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     retryErrorMessage: widget.retryErrorMessage,
     isBusy: widget.isBusy,
     mainAgentRunning: widget.mainAgentRunning,
+    promptIndex: widget.promptIndex ?? _promptIndex,
   );
 
   void _onRowMount({required String rowId, required BuildContext context}) => _rowContexts[rowId] = context;
@@ -845,7 +851,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       messages: messages,
       hasOlderMessages: widget.onLoadOlderMessages != null,
     );
-    final promptIndex = _promptIndex = widget.promptIndex ?? _promptIndex;
+    _promptIndex = widget.promptIndex ?? _promptIndex;
+    // An index that arrives while detached still pins above the frozen messages.
+    final promptIndex = snap?.promptIndex ?? _promptIndex;
     final unloadedPin = _unloadedPin = const TranscriptPromptListBuilder().pinAbove(turns: turns, index: promptIndex);
     final activity = const TranscriptActivityBuilder().build(
       transcript: transcript,
