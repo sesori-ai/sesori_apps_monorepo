@@ -77,7 +77,7 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | 13 | `transcript-history/slim-tools-app` | [13](#fixed-pr-titles) | ≤ 700 | 12 |
 | 14 | `transcript-history/regression-docs` | [14](#fixed-pr-titles) | ≤ 300 | 2–13 |
 | 14b | `transcript-history/remove-load-through-unsupported` | [14b](#fixed-pr-titles) | ≤ 150 | 14 |
-| 15 | `transcript-history/retire` | [15](#fixed-pr-titles) | ≤ 250 | 14 |
+| 15 | `transcript-history/retire` | [15](#fixed-pr-titles) | ≤ 250 | 14, 14b |
 
 Rows 6–13 are detailed in [PLAN](PLAN.md#phases-2-and-3-architecture) and
 start once step 5 merges. Step 9 may split its far tap into its own PR if it

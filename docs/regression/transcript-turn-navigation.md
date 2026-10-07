@@ -294,7 +294,7 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
   merge of indexed, unloaded and unindexed loaded prompts; the full count and
   no "Load earlier prompts" with an index.
 - A tap on an unloaded row: the spinner only after the delay, the move once
-  loaded, a second tap replacing the first, and the older-bridge notice.
+  loaded, and a second tap replacing the first.
 - The load-through and bridge search responses decoding off the calling
   isolate.
 - Numbers and times: prompt numbers from the bridge's count kept through three

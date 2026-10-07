@@ -674,7 +674,7 @@ summary parts.
 - The pending target and its timer are UI-local state in the screen.
 
 **Docs:** `docs/regression/transcript-turn-navigation.md` covers the full
-list, the far tap and the older-bridge fallback.
+list and the far tap.
 
 ### Pin Above Unloaded Turns (Step 10)
 
@@ -856,6 +856,7 @@ added plus deleted lines against the merge base, including generated code.
 | 12 | W3 `ToolState` union, opt-in, summary mapper, tool-output route | ≤ 900, including generated | 🚧 wire opt-in, compatibility |
 | 13 | W3 app opt-in, output map, expand loading | ≤ 700 | ⚙️ motion and state merge |
 | 14 | Reconcile regression docs | ≤ 300 | 🌱 |
+| 14b | Remove the load-through's unreachable `Unsupported` variants, the "Update the bridge" notice, their tests and docs | ≤ 150 | 🌱 deletion only |
 | 15 | Run the L3 matrix and retire | ≤ 250 | 🌱 |
 
 Steps 3 and 4 are split on purpose. Each is a transport and security change
@@ -876,7 +877,8 @@ far tap splits out as its own PR.
 - Steps 10 and 11 depend on step 9.
 - Step 12 depends on step 8, because both change the page path and the
   through request gains W3's field. Step 13 depends on step 12.
-- Step 14 depends on steps 2–13. Step 15 depends on step 14.
+- Step 14 depends on steps 2–13. Step 14b depends on step 14. Step 15
+  depends on steps 14 and 14b.
 
 ## Verification
 
