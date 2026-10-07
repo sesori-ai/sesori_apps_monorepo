@@ -10,6 +10,7 @@ import "../api/database/history/chat_history_dao.dart";
 import "../api/database/history/chat_history_database.dart";
 import "../api/models/archived_session_file_dto.dart";
 import "mappers/duplicated_shell_title_mapper.dart";
+import "mappers/prompt_index_mapper.dart";
 import "models/stored_session.dart";
 
 final class _HistoryReplayComparisonError({required final Object innerError}) implements Exception {
@@ -761,15 +762,10 @@ class ChatHistoryRepository({
     await _archivedSessionStorage.write(sessionId: session.id, contents: jsonEncode(file.toJson()));
   }
 
-  /// The archived transcript for [sessionId], or null when no audit file
-  /// exists. Attachments are rehydrated from the shared backend-session scope.
-  Future<ChatHistoryPage?> getArchivedSessionMessages({
-    required String sessionId,
-    required AttachmentStorageScope storageScope,
-    int? limit,
-    int? before,
-    required MessageAttachmentProjection attachmentProjection,
-  }) async {
+  /// The audit file's messages in `seq` order, or null when there is no
+  /// readable audit file. Quarantines an unreadable file and refuses a schema
+  /// version this bridge does not implement.
+  Future<List<ArchivedMessageDto>?> _readArchivedMessages({required String sessionId}) async {
     final contents = await _archivedSessionStorage.read(sessionId: sessionId);
     if (contents == null) return null;
 
@@ -810,10 +806,23 @@ class ChatHistoryRepository({
         "so its audit file may be missing the most recent messages",
       );
     }
+    return file.messages.toList(growable: false)..sort((left, right) => left.seq.compareTo(right.seq));
+  }
+
+  /// The archived transcript for [sessionId], or null when no audit file
+  /// exists. Attachments are rehydrated from the shared backend-session scope.
+  Future<ChatHistoryPage?> getArchivedSessionMessages({
+    required String sessionId,
+    required AttachmentStorageScope storageScope,
+    int? limit,
+    int? before,
+    required MessageAttachmentProjection attachmentProjection,
+  }) async {
+    final ordered = await _readArchivedMessages(sessionId: sessionId);
+    if (ordered == null) return null;
 
     // Archived reads are rare audit views, so the page is sliced in memory
     // rather than earning an index.
-    final ordered = file.messages.toList(growable: false)..sort((left, right) => left.seq.compareTo(right.seq));
     final eligible = before == null
         ? ordered
         : [
@@ -843,6 +852,63 @@ class ChatHistoryRepository({
       },
     );
   }
+
+  /// Every prompt in the session's stored transcript, oldest first.
+  ///
+  /// The rows come from one database snapshot. Attachments decode as metadata
+  /// and never touch spill files: the index needs only their names.
+  Future<List<SessionPromptIndexEntry>> getPromptIndex({required String sessionId}) async {
+    final rows = await _chatHistoryDao.getPageRowsWithSyncState(sessionId: sessionId, limit: null, before: null);
+    final partJsonByMessage = <String, List<String>>{};
+    for (final row in rows.parts) {
+      partJsonByMessage.putIfAbsent(row.messageId, () => []).add(row.partJson);
+    }
+    return promptIndexOf(
+      messages: [
+        for (final row in rows.messages)
+          (
+            seq: row.seq,
+            message: MessageWithParts(
+              info: Message.fromJson(jsonDecodeMap(row.infoJson)),
+              parts: [
+                for (final partJson in partJsonByMessage[row.messageId] ?? const <String>[])
+                  _indexPart(json: jsonDecodeMap(partJson)),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Every prompt in the session's audit file, oldest first, or null when no
+  /// audit file exists. Attachments decode as in [getPromptIndex].
+  Future<List<SessionPromptIndexEntry>?> getArchivedPromptIndex({required String sessionId}) async {
+    final ordered = await _readArchivedMessages(sessionId: sessionId);
+    if (ordered == null) return null;
+    return promptIndexOf(
+      messages: [
+        for (final entry in ordered)
+          (
+            seq: entry.seq,
+            message: MessageWithParts(
+              info: entry.info,
+              parts: [for (final part in entry.parts) _indexPart(json: part)],
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// A stored part for the prompt index. A `stored_file` attachment, which the
+  /// shared union would read as unknown, becomes its metadata, as a page shows
+  /// it when its spill file is gone, so an image-only prompt stays listed.
+  MessagePart _indexPart({required Map<String, dynamic> json}) => MessagePart.fromJson(switch (json["attachment"]) {
+    final Map<String, dynamic> attachment when attachment["source"] == "stored_file" => {
+      ...json,
+      "attachment": _metadataAttachment(attachment: attachment),
+    },
+    _ => json,
+  });
 
   Future<bool> hasArchive({required String sessionId}) => _archivedSessionStorage.exists(sessionId: sessionId);
 

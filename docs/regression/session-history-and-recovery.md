@@ -32,6 +32,20 @@ reconnect or restart.
   wholly before or wholly after the page. Every other read keeps the
   backfilling behavior, and an older app or bridge on either side of the
   contract keeps it too.
+- The prompt index (`POST /session/prompts`) lists every rendered user prompt
+  in the session's history, oldest first, whether or not the app has loaded
+  it. Each entry carries its message id and `seq`, its kind (opener or
+  follow-up, by the shared `splitPromptTurns` rule the client also uses), its
+  number among all the session's user messages (hidden ones count but get no
+  entry, matching `userMessagesBefore`), its creation time when the harness
+  gave one, and a preview of at most 300 UTF-16 code units, null rather than
+  empty when there is nothing to show. It reads like a store-only read: from
+  the store in one snapshot, or from an archived session's audit file, outside
+  the session queue, never backfilling. An image-only prompt is listed by its
+  stored file name without reading the spill file. An unknown or empty session
+  lists no prompts, so the route never answers 404 and a 404 means a bridge
+  that predates it. It does the same for every harness, since it reads only
+  normalized history.
 - Session detail resolves canonical catalog metadata before the history request.
   A block does not itself withhold history: a cold blocked open reads store-only
   and renders whatever the bridge holds, with the block reported in the composer's
@@ -339,6 +353,11 @@ rules where supported.
   marks its own updates unread. Interaction returns before a successful content/options refresh. A failed restoration erases the retained
   transcript or tells the user that availability itself could not be checked. A
   blocked state other than authentication-required offers harness-status Recheck.
+- The prompt index misses a prompt or lists a hidden one, kinds a prompt
+  differently from the app's loaded-range turns, numbers prompts differently
+  from `userMessagesBefore`, drops an image-only prompt, answers 404 for a
+  session it does not know, starts the harness, or reads an archived session's
+  purged store instead of its audit file.
 - A store-only read reaches the harness, waits on or fails with another reader's
   backfill, fails instead of serving what the store holds, returns parts that
   belong to a different transcript than its messages, or misreports freshness in
@@ -449,7 +468,12 @@ rules where supported.
 
 Bridge chat-history service, repository, reconcile service, history listeners,
 SSE replay window, and routed request dispatch; database and audit compatibility
-tests under `bridge/app/test/bridge/services/`; client session-detail load/cubit
+tests under `bridge/app/test/bridge/services/`; the prompt index in
+`bridge/app/lib/src/repositories/mappers/prompt_index_mapper.dart` and
+`bridge/app/lib/src/routing/get_session_prompt_index_handler.dart`, with
+`chat_history_prompt_index_test.dart`, `prompt_index_mapper_test.dart`,
+`get_session_prompt_index_handler_test.dart` and
+`bridge/app/tool/benchmarks/prompt_index_benchmark.dart`; client session-detail load/cubit
 code and focused metadata, blocking, reload-race and event-buffer tests; Pi
 session process repository, storage API, and history mapper; shared ACP event mapper, turn serialization,
 and session loader plus Antigravity, Copilot, Cursor, and Grok plugins and package tests; shared
