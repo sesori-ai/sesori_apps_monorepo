@@ -88,6 +88,7 @@ export "src/models/sesori/session_options_error_response.dart";
 export "src/models/sesori/session_options_response.dart";
 export "src/models/sesori/session_prompt_index.dart";
 export "src/models/sesori/session_status.dart";
+export "src/models/sesori/session_tool_output.dart";
 export "src/models/sesori/session_variant.dart";
 export "src/models/sesori/set_base_branch_request.dart";
 export "src/models/sesori/set_session_auto_continuation_request.dart";

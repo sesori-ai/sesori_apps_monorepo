@@ -175,6 +175,11 @@ sealed class SessionMessagesRequest with _$SessionMessagesRequest {
     /// slow right after a start.
     // COMPATIBILITY 2026-09-09 (v1.8.4): Apps that predate the store-only read omit storedOnly and expect the harness-backed backfill. Make this required once those apps are unsupported.
     @Default(false) bool storedOnly,
+
+    /// Whether finished tools arrive with their output and error, or as
+    /// summaries whose detail the app fetches when a row expands.
+    // COMPATIBILITY 2026-10-07 (v1.9.1): v1.9.0 apps omit it and expect full tool parts. Drop the default once no supported app predates the field.
+    @Default(ToolOutputDelivery.inline) ToolOutputDelivery toolOutputDelivery,
   }) = _SessionMessagesRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionMessagesRequestFromJson(json);
@@ -194,6 +199,7 @@ sealed class SessionMessagesThroughRequest with _$SessionMessagesThroughRequest 
     required int before,
     required MessageAttachmentDelivery attachmentDelivery,
     required bool storedOnly,
+    required ToolOutputDelivery toolOutputDelivery,
   }) = _SessionMessagesThroughRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionMessagesThroughRequestFromJson(json);

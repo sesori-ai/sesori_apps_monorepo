@@ -367,7 +367,7 @@ Map<String, dynamic> _$MessageAttachmentUnknownToJson(
   MessageAttachmentUnknown instance,
 ) => <String, dynamic>{'source': instance.$type};
 
-_ToolState _$ToolStateFromJson(Map json) => _ToolState(
+ToolStateFull _$ToolStateFullFromJson(Map json) => ToolStateFull(
   status: $enumDecode(
     _$ToolStatusEnumMap,
     json['status'],
@@ -380,9 +380,10 @@ _ToolState _$ToolStateFromJson(Map json) => _ToolState(
   attachments: json['attachments'] == null
       ? const <MessageAttachment>[]
       : _messageAttachmentsFromJson(json['attachments']),
+  $type: json['form'] as String?,
 );
 
-Map<String, dynamic> _$ToolStateToJson(_ToolState instance) =>
+Map<String, dynamic> _$ToolStateFullToJson(ToolStateFull instance) =>
     <String, dynamic>{
       'status': _$ToolStatusEnumMap[instance.status]!,
       'title': ?instance.title,
@@ -390,6 +391,7 @@ Map<String, dynamic> _$ToolStateToJson(_ToolState instance) =>
       'output': ?instance.output,
       'error': ?instance.error,
       'attachments': instance.attachments.map((e) => e.toJson()).toList(),
+      'form': instance.$type,
     };
 
 const _$ToolStatusEnumMap = {
@@ -400,3 +402,24 @@ const _$ToolStatusEnumMap = {
   ToolStatus.cancelled: 'cancelled',
   ToolStatus.unknown: 'unknown',
 };
+
+ToolStateSummary _$ToolStateSummaryFromJson(Map json) => ToolStateSummary(
+  status: $enumDecode(
+    _$ToolStatusEnumMap,
+    json['status'],
+    unknownValue: ToolStatus.unknown,
+  ),
+  title: json['title'] as String?,
+  shellCommand: json['shellCommand'] as String?,
+  attachments: _messageAttachmentsFromJson(json['attachments']),
+  $type: json['form'] as String?,
+);
+
+Map<String, dynamic> _$ToolStateSummaryToJson(ToolStateSummary instance) =>
+    <String, dynamic>{
+      'status': _$ToolStatusEnumMap[instance.status]!,
+      'title': ?instance.title,
+      'shellCommand': ?instance.shellCommand,
+      'attachments': instance.attachments.map((e) => e.toJson()).toList(),
+      'form': instance.$type,
+    };

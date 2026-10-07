@@ -26,6 +26,7 @@ Future<void> main() async {
           storageScope: syntheticStorageScope,
           window: window,
           attachmentProjection: const StoredReferenceMessageAttachmentProjection(bridgeId: "benchmark"),
+          toolOutputDelivery: ToolOutputDelivery.inline,
         );
         response = MessageWithPartsResponse(
           messages: page.messages,

@@ -73,10 +73,10 @@ extension PluginMessageAttachmentMapping on PluginMessageAttachment {
 
 /// Maps [PluginToolState] to the shared [ToolState].
 extension PluginToolStateMapping on PluginToolState {
-  ToolState toShared({required bool retainSummary}) {
+  ToolStateFull toShared({required bool retainSummary}) {
     final boundedShellCommand = _boundedToolText(text: shellCommand);
     final isShellCommand = boundedShellCommand != null;
-    return ToolState(
+    return ToolStateFull(
       status: status.toShared(),
       // The command is the released title alias for older clients on live
       // events; transcript pages drop it (withoutDuplicatedShellTitles).

@@ -36,6 +36,7 @@ class GetSessionMessagesHandler({required final ChatHistoryService _chatHistoryS
         final limit => HistoryWindowNewest(limit: limit, before: body.before),
       },
       attachmentDelivery: body.attachmentDelivery,
+      toolOutputDelivery: body.toolOutputDelivery,
       storedOnly: body.storedOnly,
     );
     return MessageWithPartsResponse(
