@@ -134,6 +134,9 @@ class DeepSeekEventMapper({
   @override
   bool shouldBufferDuringPromptWrite({required AcpNotification notification}) =>
       notification.method == DeepSeekAcpApi.subagentMethod ||
+      // A compaction at the start of a prompt must not reach the client before
+      // the accepted user message.
+      notification.method == DeepSeekAcpApi.sessionStatusMethod ||
       super.shouldBufferDuringPromptWrite(notification: notification);
 
   @override

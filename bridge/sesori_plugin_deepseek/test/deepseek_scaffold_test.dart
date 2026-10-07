@@ -103,6 +103,18 @@ void main() {
       expect(completed.last, isA<BridgeSseSessionCompacted>());
     });
 
+    test("compaction statuses opt into accepted-prompt write ordering", () {
+      expect(
+        mapper.shouldBufferDuringPromptWrite(
+          notification: const AcpNotification(
+            method: DeepSeekAcpApi.sessionStatusMethod,
+            params: {"sessionId": "session-1", "kind": "compaction_started"},
+          ),
+        ),
+        isTrue,
+      );
+    });
+
     test("a completion without a start reports only the session event", () {
       expect(status("compaction_completed"), [isA<BridgeSseSessionCompacted>()]);
     });
