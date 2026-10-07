@@ -105,5 +105,6 @@ SessionDetailLoaded _state({
     fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
+    cannotContinueMessage: null,
   );
 }

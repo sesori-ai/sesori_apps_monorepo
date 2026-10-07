@@ -41,6 +41,7 @@ void main() {
       fastMode: false,
       stagedCommand: null,
       isRefreshing: false,
+      cannotContinueMessage: null,
     );
     const loaded = state as SessionDetailLoaded;
     expect(loaded.isRefreshing, isFalse);

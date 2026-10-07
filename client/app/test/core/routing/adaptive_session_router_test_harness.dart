@@ -424,5 +424,6 @@ SessionDetailSnapshot _buildDetailSnapshot({
     promptDefaults: null,
     isRootSession: true,
     isArchived: false,
+    cannotContinueMessage: null,
   );
 }

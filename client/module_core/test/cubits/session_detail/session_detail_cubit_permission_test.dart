@@ -526,6 +526,7 @@ void main() {
             nextCursor: null,
             userMessagesBefore: null,
             replayedPromptDefaults: null,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -852,6 +853,7 @@ void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
           nextCursor: null,
           userMessagesBefore: null,
           replayedPromptDefaults: null,
+          cannotContinueMessage: null,
         ),
       ),
     ),

@@ -76,6 +76,7 @@ SessionDetailLoadResult _loadedResult() {
       promptDefaults: null,
       isRootSession: true,
       isArchived: false,
+      cannotContinueMessage: null,
     ),
   );
 }
@@ -103,6 +104,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       promptDefaults: null,
       isRootSession: true,
       isArchived: false,
+      cannotContinueMessage: null,
     ),
   );
 }
@@ -137,6 +139,7 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
       promptDefaults: null,
       isRootSession: true,
       isArchived: false,
+      cannotContinueMessage: null,
     ),
   );
 }

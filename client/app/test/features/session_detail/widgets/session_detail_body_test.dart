@@ -186,6 +186,7 @@ SessionDetailLoaded _loadedState({
       SessionVariant(id: "xhigh"),
       SessionVariant(id: "low"),
     ],
+    cannotContinueMessage: null,
   );
 }
 
@@ -1137,6 +1138,7 @@ void main() {
         SessionVariant(id: "xhigh"),
         SessionVariant(id: "low"),
       ],
+      cannotContinueMessage: null,
     );
 
     final controller = StreamController<SessionDetailState>.broadcast();
@@ -2139,6 +2141,32 @@ void main() {
         }, variant: _pinchPlatforms);
       });
     });
+  });
+
+  testWidgets("shows the can't-continue banner only while the session carries a message", (tester) async {
+    final restricted = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+    ).copyWith(cannotContinueMessage: "Oh My Pi can no longer restore its model.");
+    final controller = StreamController<SessionDetailState>.broadcast();
+    addTearDown(controller.close);
+    when(() => cubit.state).thenReturn(restricted);
+    when(() => cubit.stream).thenAnswer((_) => controller.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SessionDetailCannotContinueNotice), findsOneWidget);
+    expect(find.text("Can't continue this session"), findsOneWidget);
+    expect(find.text("Oh My Pi can no longer restore its model."), findsOneWidget);
+    expect(find.byType(PromptInput), findsOneWidget, reason: "the composer stays available");
+
+    final cleared = restricted.copyWith(cannotContinueMessage: null);
+    when(() => cubit.state).thenReturn(cleared);
+    controller.add(cleared);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SessionDetailCannotContinueNotice), findsNothing);
   });
 
   testWidgets("offers no Changes entry for archived sessions", (tester) async {

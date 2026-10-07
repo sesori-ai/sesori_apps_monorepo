@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginSessionUnrestorableException;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -282,6 +283,52 @@ void main() {
     });
   });
 
+  group("sessions the backend cannot restore", () {
+    const unrestorable = PluginSessionUnrestorableException(
+      "session/load history replay",
+      message: "This session can't be continued.",
+    );
+
+    test("serve the stored rows, flagged, with the plugin's message and without writing", () async {
+      final repository = _FakeSessionRepository(transcript: const [], error: unrestorable);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "live"),
+      );
+
+      final page = await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(page.messages.map((message) => message.info.id), const ["live"]);
+      expect(page.awaitingHarnessSync, isTrue);
+      expect(page.cannotContinueMessage, "This session can't be continued.");
+      expect(
+        (await history.repository.getSyncState(sessionId: "ses_a"))?.syncedAt,
+        isNull,
+        reason: "the store stays stale so a later open retries the backfill",
+      );
+
+      repository
+        ..error = null
+        ..transcript = [_messageWithParts(id: "m1")];
+      final recovered = await history.service.getSessionMessages(sessionId: "ses_a");
+      expect(recovered.messages.map((message) => message.info.id), contains("m1"));
+      expect(recovered.cannotContinueMessage, isNull);
+      expect(repository.fetchCount, 2);
+    });
+
+    test("a session with no stored rows serves an empty page with the message", () async {
+      final repository = _FakeSessionRepository(transcript: const [], error: unrestorable);
+      final history = createTestChatHistory(sessionRepository: repository);
+
+      final page = await history.service.getSessionMessages(sessionId: "ses_a");
+
+      expect(page.messages, isEmpty);
+      expect(page.awaitingHarnessSync, isTrue);
+      expect(page.cannotContinueMessage, "This session can't be continued.");
+    });
+  });
+
   group("store-only reads", () {
     test("a never-backfilled session serves its captured rows instead of fetching", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
@@ -377,7 +424,7 @@ MessageWithParts _messageWithParts({required String id}) => MessageWithParts(
   parts: [_part(id: "$id-p1", messageId: id)],
 );
 
-class _FakeSessionRepository({required var List<MessageWithParts> transcript, final Object? error})
+class _FakeSessionRepository({required var List<MessageWithParts> transcript, var Object? error})
     implements SessionRepository {
   int fetchCount = 0;
   SessionPromptDefaults? replayedPromptDefaults;

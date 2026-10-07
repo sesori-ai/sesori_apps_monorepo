@@ -24,8 +24,9 @@ sealed class MessageWithPartsResponse with _$MessageWithPartsResponse {
 
     /// Whether the store this page came from is behind the harness, so the
     /// transcript may be missing its newest messages. Only a `storedOnly`
-    /// request can see this true: every other read backfills from the harness
-    /// before serving.
+    /// request, or a read whose backfill the harness refused because it cannot
+    /// restore the session (see [cannotContinueMessage]), can see this true:
+    /// every other read backfills from the harness before serving.
     // COMPATIBILITY 2026-09-09 (v1.8.4): Bridges that predate the store-only read omit awaitingHarnessSync; false is honest for them, because they always backfill before serving. Make this required once those bridges are unsupported.
     @Default(false) bool awaitingHarnessSync,
 
@@ -33,6 +34,10 @@ sealed class MessageWithPartsResponse with _$MessageWithPartsResponse {
     /// message in [messages], so the client can number prompts absolutely.
     // COMPATIBILITY 2026-09-26 (v1.9.1): older bridges omit this count, so the client shows no prompt numbers. Retire when every supported bridge sends it.
     required int? userMessagesBefore,
+
+    /// The harness's user-presentable explanation of why the session can no
+    /// longer be continued, shown as-is. Null means nothing restricts it.
+    required String? cannotContinueMessage,
   }) = _MessageWithPartsResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$MessageWithPartsResponseFromJson(json);

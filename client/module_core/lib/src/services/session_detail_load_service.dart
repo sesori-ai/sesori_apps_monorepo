@@ -248,6 +248,7 @@ class SessionDetailLoadService({
           olderMessagesCursor: messagesPage.nextCursor,
           userMessagesBefore: messagesPage.userMessagesBefore,
           awaitingHarnessSync: messagesPage.awaitingHarnessSync,
+          cannotContinueMessage: messagesPage.cannotContinueMessage,
           pendingQuestions: pendingQuestions,
           pendingPermissions: pendingPermissions,
           bridgeQueuedPrompts: bridgeQueuedPrompts,
@@ -434,9 +435,14 @@ class const SessionDetailSnapshot({
   required final int? userMessagesBefore,
 
   /// Whether the bridge answered from a store it knows is behind the harness,
-  /// so [messages] may be missing the newest ones. Only a store-only read can
-  /// see this true.
+  /// so [messages] may be missing the newest ones. Only a store-only read, or
+  /// a read the harness could not backfill because it cannot restore the
+  /// session (see [cannotContinueMessage]), can see this true.
   required final bool awaitingHarnessSync,
+
+  /// The harness's explanation of why the session can no longer be
+  /// continued, or null when nothing restricts it.
+  required final String? cannotContinueMessage,
   required final List<PendingQuestion> pendingQuestions,
   required final List<QueuedSessionPrompt> bridgeQueuedPrompts,
   required final List<PendingPermission> pendingPermissions,
