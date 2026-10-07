@@ -352,8 +352,25 @@ enum ToolStatus() {
   unknown,
 }
 
-@Freezed(fromJson: true, toJson: true)
+/// How a page request wants finished tools' output and error delivered.
+@JsonEnum()
+enum ToolOutputDelivery() {
+  /// Every tool part carries its output and error.
+  inline,
+
+  /// Finished tool parts that have output or error arrive as
+  /// [ToolStateSummary]; the app fetches the detail through
+  /// `POST /session/tool-output` when a row expands.
+  onExpand,
+}
+
+/// A tool part's state, in full or as a summary without its output and error.
+///
+/// JSON without a `form` key, from stored rows and from bridges that predate
+/// summaries, decodes as [ToolStateFull].
+@Freezed(unionKey: "form", fallbackUnion: "default", fromJson: true, toJson: true)
 sealed class ToolState with _$ToolState {
+  @FreezedUnionValue("full")
   const factory({
     @JsonKey(unknownEnumValue: ToolStatus.unknown) required ToolStatus status,
     required String? title,
@@ -364,7 +381,17 @@ sealed class ToolState with _$ToolState {
     // which means the tool returned none. Remove @Default and require
     // attachments after the minimum supported bridge sends it.
     @JsonKey(fromJson: _messageAttachmentsFromJson) @Default(<MessageAttachment>[]) List<MessageAttachment> attachments,
-  }) = _ToolState;
+  }) = ToolStateFull;
+
+  /// A finished tool whose output or error the bridge withheld; the app
+  /// fetches them through `POST /session/tool-output`.
+  @FreezedUnionValue("summary")
+  const factory summary({
+    @JsonKey(unknownEnumValue: ToolStatus.unknown) required ToolStatus status,
+    required String? title,
+    required String? shellCommand,
+    @JsonKey(fromJson: _messageAttachmentsFromJson) required List<MessageAttachment> attachments,
+  }) = ToolStateSummary;
 
   factory fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);
 }

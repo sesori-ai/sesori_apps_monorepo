@@ -20,6 +20,7 @@ void main() {
           before: before,
           attachmentDelivery: MessageAttachmentDelivery.storedReference,
           storedOnly: true,
+          toolOutputDelivery: ToolOutputDelivery.inline,
         );
 
     test("handles POST /session/messages/through only", () {

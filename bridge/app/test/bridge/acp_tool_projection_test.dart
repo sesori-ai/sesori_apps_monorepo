@@ -40,7 +40,7 @@ Map<String, dynamic> _command({required String harness, required String command}
   },
 };
 
-ToolState _parity({required AcpEventMapper mapper, required List<Map<String, dynamic>> updates}) {
+ToolStateFull _parity({required AcpEventMapper mapper, required List<Map<String, dynamic>> updates}) {
   final replay = AcpReplayCollector(
     sessionId: "s",
     agentId: mapper.pluginId,
@@ -78,7 +78,7 @@ ToolState _parity({required AcpEventMapper mapper, required List<Map<String, dyn
             as MessagePartTool;
     expect(recorded.state, live.state);
   }
-  return live!.state;
+  return live!.state as ToolStateFull;
 }
 
 void main() {
