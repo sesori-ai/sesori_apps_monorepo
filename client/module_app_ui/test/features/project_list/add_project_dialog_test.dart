@@ -649,6 +649,44 @@ void main() {
       verify(() => mockCubit.fetchFilesystemSuggestions(prefix: windowsHome)).called(1);
     });
 
+    testWidgets("a POSIX bridge's drives sit after Root under their names", (tester) async {
+      const volume = "/Volumes/Work SSD";
+      when(() => mockCubit.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer((invocation) async {
+        final prefix = invocation.namedArguments[const Symbol("prefix")] as String?;
+        return FilesystemSuggestionsSuccess(
+          suggestions: prefix == null
+              ? const FilesystemSuggestions(data: [], path: _homePath, driveRoots: [volume])
+              : FilesystemSuggestions(data: const [], path: prefix),
+        );
+      });
+
+      await tester.pumpWidget(
+        _buildApp(
+          cubit: mockCubit,
+          child: Scaffold(
+            body: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () => _showAddProjectDialog(context, mockCubit),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(_placeButton("Home"), findsOneWidget);
+      expect(_placeButton("Root"), findsOneWidget);
+      expect(_placeButton("Work SSD"), findsOneWidget);
+
+      await tester.tap(_placeButton("Work SSD"));
+      await tester.pumpAndSettle();
+
+      verify(() => mockCubit.fetchFilesystemSuggestions(prefix: volume)).called(1);
+      expect(_button(tester, _placeButton("Work SSD")).onPressed, isNull);
+    });
+
     testWidgets("a POSIX host lists Home and Root, disabling the one being browsed", (tester) async {
       _stubSuggestionsPerPrefix(
         mockCubit,

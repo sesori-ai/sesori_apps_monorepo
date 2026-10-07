@@ -23,6 +23,7 @@ import "../../helpers/fakes/fake_bridge_plugin.dart";
 import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
+import "../../helpers/test_drive_roots_api.dart";
 
 void main() {
   group("SessionLifecycleService cleanup", () {
@@ -46,6 +47,7 @@ void main() {
         filesystemRepository: FilesystemRepository(
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
+          driveRootsApi: windowsDriveRootsApi,
         ),
         sessionOperationDispatcher: operationDispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),
@@ -325,6 +327,7 @@ void main() {
         filesystemRepository: FilesystemRepository(
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
+          driveRootsApi: windowsDriveRootsApi,
         ),
         sessionOperationDispatcher: operationDispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: repository),
