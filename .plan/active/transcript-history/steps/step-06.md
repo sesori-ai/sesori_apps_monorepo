@@ -27,17 +27,25 @@ or database change, and no behavior change.
 
 ## Evidence
 
-- Measured with Dart 3.13.4 from Flutter 3.47.5-stable.
-- Parity: `client/module_core/test/cubits/session_detail/transcript_turns_test.dart`
-  and `transcript_prompt_list_test.dart` pass unchanged, together with
-  `transcript_activity_test.dart` and `session_detail_resolvers_test.dart`
-  (38 tests).
-- `shared/sesori_shared/test/transcript/prompt_turns_test.dart` (7 tests)
-  covers the fold without the client: no messages, a prompt after an answer,
-  follow-ups while waiting and mid-step, a failed step, the leading segment,
-  hidden user messages, and the prompt extension.
-- `client/module_app_ui/test/features/session_prompts/session_prompts_view_test.dart`
-  passes (22 tests).
-- `dart analyze --fatal-infos` is clean in `shared/sesori_shared`,
-  `client/module_core` and `client/module_app_ui`.
+- Measured on code commit `48d11f7aae3ff334ca3d3fd325a5db30912c7899` (tree
+  `dc437d0de7eb969b682db0399ff8298c5f81d174`) with Dart 3.13.4 from Flutter
+  3.47.5-stable, after `flutter pub get` in `client/`. The evidence commits
+  change no code. Every check passed:
+  - in `shared/sesori_shared/`: `dart test test/transcript` (7 tests) and
+    `dart analyze --fatal-infos`;
+  - in `client/module_core/`: `dart test
+    test/cubits/session_detail/transcript_turns_test.dart
+    test/cubits/session_detail/transcript_prompt_list_test.dart
+    test/cubits/session_detail/transcript_activity_test.dart
+    test/cubits/session_detail/session_detail_resolvers_test.dart`
+    (38 tests) and `dart analyze --fatal-infos`;
+  - in `client/module_app_ui/`: `flutter test
+    test/features/session_prompts/session_prompts_view_test.dart` (22 tests)
+    and `dart analyze --fatal-infos`.
+- Parity: `transcript_turns_test.dart` and `transcript_prompt_list_test.dart`
+  pass unchanged.
+- `shared/sesori_shared/test/transcript/prompt_turns_test.dart` covers the
+  fold without the client: no messages, a prompt after an answer, follow-ups
+  while waiting and mid-step, a failed step, the leading segment, hidden user
+  messages, and the prompt extension.
 - `architecture-implementation-review`, pass 1: approved with no findings.
