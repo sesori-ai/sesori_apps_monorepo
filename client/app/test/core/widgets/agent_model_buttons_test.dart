@@ -344,7 +344,9 @@ void main() {
 
     testWidgets("selects the agent the tap landed on", (tester) async {
       final selected = <String>[];
-      await tester.pumpWidget(_buildApp(agents: _agents, onAgentSelected: selected.add, readOnly: false, compact: false));
+      await tester.pumpWidget(
+        _buildApp(agents: _agents, onAgentSelected: selected.add, readOnly: false, compact: false),
+      );
 
       await tester.tap(find.text("aristotle-impl-review"));
       await tester.pumpAndSettle();
