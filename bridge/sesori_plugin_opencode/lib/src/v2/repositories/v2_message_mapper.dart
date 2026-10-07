@@ -171,30 +171,49 @@ class const V2MessageMapper() {
           completed: message.time.created,
         );
         parts = [
-          PluginMessagePart.compaction(
-            id: partId(messageId: message.id, ordinal: 0),
-            sessionID: sessionId,
-            messageID: message.id,
-            compactionState: .completed(summary: message.summary, freedTokens: null, trigger: null),
+          _compaction(
+            sessionId: sessionId,
+            messageId: message.id,
+            // `tokens` is the summary call's own usage, not the context before
+            // and after, so no freed count is derivable.
+            state: .completed(
+              summary: message.summary,
+              freedTokens: null,
+              trigger: switch (message.reason) {
+                SessionMessageCompactionCompletedReason.auto => PluginCompactionTrigger.auto,
+                SessionMessageCompactionCompletedReason.manual => PluginCompactionTrigger.manual,
+                SessionMessageCompactionCompletedReason.unknown => null,
+              },
+            ),
           ),
         ];
       case SessionMessageCompactionRunning():
+        // The timer counts from `time.created`, stamped by the start event.
         info = _systemMessage(sessionId: sessionId, id: message.id, created: message.time.created, completed: null);
-        // A partial summary is not a completed compaction marker.
-        parts = const [];
+        // OpenCode keeps the stored summary empty while it streams, so the
+        // words arrive only as compaction deltas.
+        parts = [
+          _compaction(
+            sessionId: sessionId,
+            messageId: message.id,
+            state: .running(summary: message.summary.isEmpty ? null : message.summary),
+          ),
+        ];
       case SessionMessageCompactionFailed():
-        info = PluginMessage.error(
+        // Completed at creation, so a named compaction still settles its prompt.
+        info = _systemMessage(
+          sessionId: sessionId,
           id: message.id,
-          sessionID: sessionId,
-          agent: null,
-          modelID: null,
-          providerID: null,
-          variant: null,
-          errorName: message.error.type,
-          errorMessage: message.error.message,
-          time: PluginMessageTime(created: message.time.created.toInt(), completed: message.time.created.toInt()),
+          created: message.time.created,
+          completed: message.time.created,
         );
-        parts = const [];
+        parts = [
+          _compaction(
+            sessionId: sessionId,
+            messageId: message.id,
+            state: .failed(error: message.error.message),
+          ),
+        ];
       case SessionMessageShell():
         info = _systemMessage(
           sessionId: sessionId,
@@ -308,6 +327,18 @@ class const V2MessageMapper() {
   }
 
   static bool _isShellTool({required String name}) => name == "bash" || name == "shell";
+
+  /// One part per compaction message, so the row keeps its ID as it settles.
+  PluginMessagePart _compaction({
+    required String sessionId,
+    required String messageId,
+    required PluginCompactionState state,
+  }) => PluginMessagePart.compaction(
+    id: partId(messageId: messageId, ordinal: 0),
+    sessionID: sessionId,
+    messageID: messageId,
+    compactionState: state,
+  );
 
   PluginMessage _systemMessage({
     required String sessionId,

@@ -192,23 +192,51 @@ void main() {
     expect(synthetic.parts.single.text, "Fixture display summary");
   });
 
-  test("does not mark in-progress or failed compaction as completed", () {
-    Map<String, dynamic> compact({required String status}) => <String, dynamic>{
-      "type": "compaction",
-      "id": "compaction",
-      "time": <String, int>{"created": 1},
-      "status": status,
-      "reason": "manual",
-      "summary": "Fixture summary",
-      "recent": "Fixture recent context",
-      if (status == "failed") "error": <String, dynamic>{"type": "fixture", "message": "Compaction failed"},
-    };
-    expect(mapped(json: compact(status: "running")).parts, isEmpty);
-    expect(mapped(json: compact(status: "failed")).info, isA<PluginMessageError>());
-    expect(
-      (mapped(json: compact(status: "completed")).parts.single as PluginMessagePartCompaction).compactionState,
-      const PluginCompactionState.completed(summary: "Fixture summary", freedTokens: null, trigger: null),
+  test("maps each compaction status onto one quiet row that keeps its ID", () {
+    PluginMessageWithParts compact({required String status, required String reason, required String summary}) => mapped(
+      json: <String, dynamic>{
+        "type": "compaction",
+        "id": "compaction",
+        "time": <String, int>{"created": 7},
+        "status": status,
+        "reason": reason,
+        "summary": summary,
+        "recent": "Fixture recent context",
+        if (status == "failed") "error": <String, dynamic>{"type": "fixture", "message": "Fixture failure"},
+      },
     );
+    PluginCompactionState state(PluginMessageWithParts message) =>
+        (message.parts.single as PluginMessagePartCompaction).compactionState;
+
+    for (final status in ["running", "completed", "failed"]) {
+      final message = compact(status: status, reason: "manual", summary: "Fixture");
+      expect(message.parts.single.id, "compaction:0");
+      expect((message.info as PluginMessageAssistant).sender, PluginMessageSender.system);
+      expect(message.info.time?.created, 7);
+      expect(message.info.time?.completed, status == "running" ? isNull : 7);
+    }
+    expect(
+      state(compact(status: "running", reason: "auto", summary: "")),
+      const PluginCompactionState.running(summary: null),
+    );
+    expect(
+      state(compact(status: "running", reason: "auto", summary: "Fixture")),
+      const PluginCompactionState.running(summary: "Fixture"),
+    );
+    expect(
+      state(compact(status: "failed", reason: "auto", summary: "Fixture")),
+      const PluginCompactionState.failed(error: "Fixture failure"),
+    );
+    for (final (reason, trigger) in [
+      ("auto", PluginCompactionTrigger.auto),
+      ("manual", PluginCompactionTrigger.manual),
+      ("future", null),
+    ]) {
+      expect(
+        state(compact(status: "completed", reason: reason, summary: "Fixture")),
+        PluginCompactionState.completed(summary: "Fixture", freedTokens: null, trigger: trigger),
+      );
+    }
   });
 
   test("maps shell outcomes and never treats an unknown exit as success", () {

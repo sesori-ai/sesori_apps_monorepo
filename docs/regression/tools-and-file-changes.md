@@ -67,7 +67,8 @@ sub-agent parts, plus the signal that a tool changed files.
 - The client never classifies a raw tool name or parses tool input.
 - A finished context compaction renders as one quiet "Context compacted" row in
   the step style; like visible text it ends a group. While it runs, Pi and Codex
-  show a running `compact` tool that the finished row replaces in place. When the
+  show a running `compact` tool that the finished row replaces in place, and
+  OpenCode v2 shows the live row below once its running snapshot loads. When the
   harness exposes the carried-forward summary, tapping the row opens a
   reading-width modal at once. A long summary shows a spinner that the Markdown
   replaces once the modal's entry transition ends (at once under reduced
@@ -95,7 +96,15 @@ sub-agent parts, plus the signal that a tool changed files.
   the harness reports, and a manual trigger is never named. A failure stays in
   the transcript as a quiet "Compaction failed" note in secondary text, with
   its error ellipsized on the one line and read whole by screen readers; it
-  is inert and has no retry.
+  is inert and has no retry. On OpenCode v2 the words stream from the native
+  compaction deltas once the bridge has loaded the running snapshot, at the
+  start or, after a bridge reconnect mid-compaction, at the next delta. After
+  a reload or reconnect mid-compaction they resume with the next words,
+  because OpenCode stores no partial summary. When that snapshot cannot load,
+  the deltas are dropped and the row appears when the compaction settles. If
+  the bridge's OpenCode stream is down when the compaction ends, the row stays
+  running until the next transcript read settles it, like any live part
+  stranded by that outage.
 - A running tool or sub-agent is a live row: the turning outline sparkle leads
   it and a primary-text band sweeps across its dimmed label, visible in both
   themes. Reduced motion keeps the sparkle and label still while screen readers
@@ -456,7 +465,10 @@ guarantee.
   shipped build counts.
 - An older client decodes the compaction part but ignores its state, summary
   included, and renders nothing, so Pi and Codex compactions lose their
-  finished `compact` tool card there.
+  finished `compact` tool card there. While an OpenCode summary streams, an
+  older client buffers the words for a part it never shows, so it shows neither
+  “Working…” nor a row until the compaction ends and the turn goes on
+  (accepted; no old-client code).
 - An older client does not tolerate an unknown message-part `type` from a newer
   bridge: history decoding fails and the corresponding SSE event is dropped as
   malformed. Unknown tool status remains forward-compatible.
@@ -534,7 +546,7 @@ guarantee.
   and `session_detail_event_buffer_test.dart` streams a running compaction's
   summary across a silent refresh like text and reasoning.
 - Owning Claude content/history/tracker, Pi history/dispatcher, OpenCode part
-  mapper, Codex rollout/tracker/history, ACP replay/content, Grok adapter,
+  mapper and v2 compaction mapping, delta and service tests, Codex rollout/tracker/history, ACP replay/content, Grok adapter,
   Antigravity normalizer and DeepSeek replay/time tests guard backend semantics.
 - `bridge/app/tool/benchmarks/tool_projection_payload_size.dart` reproducibly
   reports synthetic serialized UTF-8 bytes before/after projection. It states
