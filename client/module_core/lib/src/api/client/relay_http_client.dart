@@ -84,8 +84,8 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
 
   /// A POST whose response is large enough that decoding it on the UI isolate
   /// would stall frames, so it decodes on a short-lived isolate instead.
-  Future<ApiResponse<T>> postDecodedInBackground<T>(
-    String path, {
+  Future<ApiResponse<T>> postDecodedInBackground<T>({
+    required String path,
     // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
     required T Function(Map<String, dynamic> json) fromJson,
     // ignore: no_slop_linter/prefer_specific_type, any JSON-serializable request body, as for post

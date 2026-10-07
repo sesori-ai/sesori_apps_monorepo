@@ -410,7 +410,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     required bool storedOnly,
   }) {
     return _client.postDecodedInBackground(
-      "/session/messages/through",
+      path: "/session/messages/through",
       fromJson: MessageWithPartsResponse.fromJson,
       body: SessionMessagesThroughRequest(
         sessionId: sessionId,

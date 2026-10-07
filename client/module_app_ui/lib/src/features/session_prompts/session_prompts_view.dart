@@ -129,8 +129,11 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
   /// The last build's extents, for the list's arithmetic between builds.
   _Extents? _extents;
 
-  /// The pending far tap; a later tap replaces it, and closing the screen
-  /// drops it with the screen.
+  /// Counts taps on rows; a far tap's load lands only while its tap is still
+  /// the latest, and closing the screen drops it with the screen.
+  int _taps = 0;
+
+  /// The unloaded prompt the latest tap is loading, while it loads.
   _FarTap? _farTap;
   Timer? _farTapSpinner;
 
@@ -149,6 +152,7 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
   void _tapPrompt({required TranscriptPromptEntry entry}) {
     switch (entry.source) {
       case TranscriptPromptLoaded():
+        _taps++;
         _farTapSpinner?.cancel();
         setState(() {
           _farTap = null;
@@ -164,16 +168,19 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
   /// Loads up to the unloaded prompt [messageId] with the screen still up,
   /// then moves to it unless another tap took over meanwhile.
   Future<void> _loadThrough({required String messageId, required int seq}) async {
+    final tap = ++_taps;
     _farTapSpinner?.cancel();
     setState(() {
       _farTap = (messageId: messageId, showsSpinner: false);
       _farTapError = null;
     });
-    _farTapSpinner = Timer(_kFarTapSpinnerDelay, () {
-      if (_farTap?.messageId == messageId) setState(() => _farTap = (messageId: messageId, showsSpinner: true));
-    });
+    // Every later tap, the load landing and dispose cancel it first.
+    _farTapSpinner = Timer(
+      _kFarTapSpinnerDelay,
+      () => setState(() => _farTap = (messageId: messageId, showsSpinner: true)),
+    );
     final outcome = await widget.onLoadThrough(messageId: messageId, seq: seq);
-    if (!mounted || _farTap?.messageId != messageId) return;
+    if (!mounted || tap != _taps) return;
     _farTapSpinner?.cancel();
     final loc = context.loc;
     setState(() {

@@ -125,12 +125,12 @@ void main() {
         ).thenAnswer((_) async => RelayResponse(id: "req", status: 200, headers: const {}, body: bodies.removeAt(0)));
 
         final decoded = await client.postDecodedInBackground<String>(
-          "/session/messages/through",
+          path: "/session/messages/through",
           fromJson: _countedValue,
           body: {"key": "value"},
         );
         final malformed = await client.postDecodedInBackground<String>(
-          "/session/messages/through",
+          path: "/session/messages/through",
           fromJson: _countedValue,
           body: {"key": "value"},
         );

@@ -591,6 +591,38 @@ void main() {
       expect(find.text("Update the bridge to open earlier prompts"), findsOneWidget);
     });
 
+    testWidgets("tapping a, b, then a again ignores the first load of a", (tester) async {
+      final loads = <String, List<Completer<LoadThroughOutcome>>>{"a": [], "b": []};
+      final calls = await _pump(
+        tester,
+        entries: [
+          unloaded(id: "a", seq: 1),
+          unloaded(id: "b", seq: 2),
+        ],
+        anchor: null,
+        isIndexed: true,
+        onLoadThrough: ({required messageId, required seq}) {
+          final load = Completer<LoadThroughOutcome>();
+          loads[messageId]?.add(load);
+          return load.future;
+        },
+      );
+
+      await tester.tap(_row("a"));
+      await tester.pump();
+      await tester.tap(_row("b"));
+      await tester.pump();
+      await tester.tap(_row("a"));
+      await tester.pump();
+      loads["a"]?.first.complete(const LoadThroughLoaded());
+      await tester.pump();
+      expect(calls.taps, isEmpty, reason: "the first load of a belongs to a replaced tap");
+
+      loads["a"]?.last.complete(const LoadThroughLoaded());
+      await tester.pump();
+      expect(calls.taps, ["a"]);
+    });
+
     testWidgets("another tap on the prompt already loading sends no second load", (tester) async {
       final load = Completer<LoadThroughOutcome>();
       var loads = 0;
