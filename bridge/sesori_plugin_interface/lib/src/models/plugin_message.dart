@@ -145,15 +145,16 @@ sealed class const PluginMessagePart._() with _$PluginMessagePart {
     @JsonKey(includeToJson: true) required String retryError,
   }) = PluginMessagePartRetry;
 
-  /// The harness compacted its context here.
+  /// The harness compacts its context here: running, completed or failed.
   @FreezedUnionValue("compaction")
   const factory compaction({
     required String id,
     required String sessionID,
     required String messageID,
 
-    /// The continuation summary, or null when the harness does not expose one.
-    @JsonKey(includeToJson: true) required String? summary,
+    /// How far the compaction got. Named apart from the tool-only [state]
+    /// convenience accessor, as [PluginMessagePartSubtask.taskState] is.
+    @JsonKey(includeToJson: true) required PluginCompactionState compactionState,
   }) = PluginMessagePartCompaction;
 
   @FreezedUnionValue("unknown")
@@ -323,6 +324,37 @@ sealed class PluginToolState with _$PluginToolState {
     required String? error,
     required List<PluginMessageAttachment> attachments,
   }) = _PluginToolState;
+}
+
+/// What started a context compaction. Plugins map their own vocabulary to
+/// these values and report null when the harness does not say.
+@JsonEnum()
+enum PluginCompactionTrigger() {
+  manual,
+  auto,
+}
+
+/// How far one context compaction got.
+@Freezed(unionKey: "status")
+sealed class PluginCompactionState with _$PluginCompactionState {
+  /// Compacting now. [summary] is the text written so far, when the harness
+  /// streams it.
+  @FreezedUnionValue("running")
+  const factory running({required String? summary}) = PluginCompactionStateRunning;
+
+  /// Compacted. [summary] is the continuation summary and [freedTokens] the
+  /// context released, each null when the harness does not report it.
+  @FreezedUnionValue("completed")
+  const factory completed({
+    required String? summary,
+    required int? freedTokens,
+    required PluginCompactionTrigger? trigger,
+  }) = PluginCompactionStateCompleted;
+
+  /// The compaction ended without compacting, with the harness's error when
+  /// it reports one.
+  @FreezedUnionValue("failed")
+  const factory failed({required String? error}) = PluginCompactionStateFailed;
 }
 
 /// Identifies who authored a plugin's non-user message envelope.

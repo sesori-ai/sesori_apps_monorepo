@@ -387,7 +387,9 @@ const factory compaction({
 
 - The plugin interface mirrors this as `PluginCompactionState` and
   `PluginCompactionTrigger`. `PluginMessagePart.compaction` takes
-  `required PluginCompactionState state`. Plugins update in lockstep: every
+  `required PluginCompactionState compactionState`, named apart from the
+  tool-only `PluginMessagePart.state` accessor as `taskState` is (a field
+  named `state` would be an invalid override). Plugins update in lockstep: every
   existing emitter (Claude live and history, OpenCode v1 live and REST,
   OpenCode v2, Codex live and rollout, Pi live and history) emits
   `completed(summary: <today's summary>, freedTokens: null, trigger: null)`.

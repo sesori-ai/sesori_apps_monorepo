@@ -235,7 +235,10 @@ reconnect or restart.
   the turn-start race is corrected by its next live capture. An open subtask
   part is swept the same way but to `cancelled` with no error text; because a
   root stays busy while any of its sub-agents runs, a live background
-  sub-agent is never swept, only one whose bridge died.
+  sub-agent is never swept, only one whose bridge died. A compaction part still
+  running is swept the same way to a failed compaction with the error "The
+  turn ended before compaction finished.", also when it is the page's only
+  unfinished part; completed and failed compactions are left alone.
 - Codex parent history joins a `spawn_agent` only to the exact nested
   `item_completed/SubAgentActivity` id and replaces that generic card with one
   child-linked subtask tile. Child replay first trims any copied parent prefix,
@@ -399,6 +402,8 @@ rules where supported.
   queued peer message or task outcome disappears, changes identity or moves to
   another turn after reload or re-import, or a finished background task tile
   shows cancelled after reload.
+- A stored compaction stays running after its turn went idle or after a read
+  of an idle session, or the sweep rewrites a completed or failed compaction.
 - Antigravity scans private SQLite/brain/token content, writes Google history, recovers metadata more than once per live
   connection, lets fallback attribution replace bridge/live data, retries an arbitrary resume failure through load, or
   normalizes live and replay differently.

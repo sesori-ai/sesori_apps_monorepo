@@ -73,6 +73,12 @@ sub-agent parts, plus the signal that a tool changed files.
   replaces once the modal's entry transition ends (at once under reduced
   motion); a short one shows at once. Without a summary the row is inert. See
   `docs/HARNESS_CAPABILITIES.md` for which harnesses mark compaction.
+- The compaction part carries its state: running (with any summary written so
+  far), completed (with the summary, freed tokens and an `auto` or `manual`
+  trigger when the harness reports them) or failed (with the error). A part
+  from a released bridge carries no state and reads as completed with no
+  details; a state status this client does not know reads the same way, and an
+  unknown trigger reads as absent, so the transcript still decodes.
 - A running tool or sub-agent is a live row: the turning outline sparkle leads
   it and a primary-text band sweeps across its dimmed label, visible in both
   themes. Reduced motion keeps the sparkle and label still while screen readers
@@ -389,9 +395,9 @@ guarantee.
   child sessions remain unsupported in Sesori.
 - Attachment presentation is being reworked toward referenced images; only the
   shipped build counts.
-- An older client decodes the compaction part but ignores its summary and
-  renders nothing, so Pi and Codex compactions lose their finished `compact`
-  tool card there.
+- An older client decodes the compaction part but ignores its state, summary
+  included, and renders nothing, so Pi and Codex compactions lose their
+  finished `compact` tool card there.
 - An older client does not tolerate an unknown message-part `type` from a newer
   bridge: history decoding fails and the corresponding SSE event is dropped as
   malformed. Unknown tool status remains forward-compatible.
@@ -435,6 +441,9 @@ guarantee.
 - `client/module_app_ui/test/features/session_detail/widgets/transcript_step_row_test.dart`
   measures every step kind's icon, label inset, height and label weight at
   phone and desktop density.
+- `shared/sesori_shared/test/models/compaction_state_test.dart` decodes a
+  state-less compaction part, an unknown status and an unknown trigger, and
+  round-trips every state.
 - `client/module_app_ui/test/features/session_detail/widgets/compaction_part_widget_test.dart`
   opens a long compaction summary behind a spinner at both densities and shows
   it at once under reduced motion or when it is short.

@@ -213,21 +213,55 @@ sealed class const MessagePart._() with _$MessagePart {
     @Default("") String retryError,
   }) = MessagePartRetry;
 
-  /// The harness compacted its context here.
+  /// The harness compacts its context here: running, completed or failed.
   @FreezedUnionValue("compaction")
   const factory compaction({
     required String id,
     required String sessionID,
     required String messageID,
-
-    /// The continuation summary the harness carried forward, when it exposes
-    /// one. Null when the harness keeps it private.
-    // COMPATIBILITY 2026-09-25 (v1.9.1): Released bridges omit the summary, which reads as null.
-    // Keep the field nullable; null stays the honest value for harnesses without a readable summary.
-    required String? summary,
+    // COMPATIBILITY 2026-10-07 (v1.9.1): Released bridges send compaction parts only for finished
+    // compactions and without a state. Remove @Default and require state when the minimum supported
+    // bridge always sends it.
+    @Default(CompactionState.completed(summary: null, freedTokens: null, trigger: null)) CompactionState state,
   }) = MessagePartCompaction;
 
   factory fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
+}
+
+/// What started a context compaction. Only reported where the harness says.
+@JsonEnum()
+enum CompactionTrigger() {
+  manual,
+  auto,
+}
+
+/// How far one context compaction got.
+///
+/// A status added by a newer bridge reads as [CompactionState.completed] with
+/// no details, so the transcript still decodes.
+@Freezed(unionKey: "status", fallbackUnion: "completed", fromJson: true, toJson: true)
+sealed class CompactionState with _$CompactionState {
+  /// Compacting now. [summary] is the text written so far, when the harness
+  /// streams it.
+  @FreezedUnionValue("running")
+  const factory running({required String? summary}) = CompactionStateRunning;
+
+  /// Compacted. [summary] is the continuation summary the harness carried
+  /// forward, and [freedTokens] the context it released, each null when the
+  /// harness does not report it.
+  @FreezedUnionValue("completed")
+  const factory completed({
+    required String? summary,
+    required int? freedTokens,
+    @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) required CompactionTrigger? trigger,
+  }) = CompactionStateCompleted;
+
+  /// The compaction ended without compacting. [error] is the harness's or the
+  /// bridge's explanation, when there is one.
+  @FreezedUnionValue("failed")
+  const factory failed({required String? error}) = CompactionStateFailed;
+
+  factory fromJson(Map<String, dynamic> json) => _$CompactionStateFromJson(json);
 }
 
 /// A client-safe attachment source normalized by the owning backend plugin.

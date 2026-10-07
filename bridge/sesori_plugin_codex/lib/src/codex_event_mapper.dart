@@ -577,7 +577,7 @@ class CodexEventMapper({
               id: "$itemId-tool",
               sessionID: threadId,
               messageID: itemId,
-              summary: null,
+              compactionState: const .completed(summary: null, freedTokens: null, trigger: null),
             ),
           ),
           BridgeSseSessionCompacted(sessionID: threadId),

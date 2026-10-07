@@ -262,22 +262,47 @@ void main() {
       expect(result, isNull);
     });
 
-    test("passes compaction message part updates with their summary", () async {
-      final result = mapEvent(
-        const BridgeSseMessagePartUpdated(
-          part: PluginMessagePart.compaction(id: "p1", sessionID: "s1", messageID: "m1", summary: "## Goal"),
-        ),
-      );
-
-      expect(
-        result,
-        equals(
-          const SesoriMessagePartUpdated(
-            part: MessagePart.compaction(id: "p1", sessionID: "s1", messageID: "m1", summary: "## Goal"),
+    const compactionStates = <(PluginCompactionState, CompactionState)>[
+      (.running(summary: "## Go"), .running(summary: "## Go")),
+      (.running(summary: null), .running(summary: null)),
+      (
+        .completed(summary: "## Goal", freedTokens: 142000, trigger: PluginCompactionTrigger.auto),
+        .completed(summary: "## Goal", freedTokens: 142000, trigger: CompactionTrigger.auto),
+      ),
+      (
+        .completed(summary: null, freedTokens: null, trigger: PluginCompactionTrigger.manual),
+        .completed(summary: null, freedTokens: null, trigger: CompactionTrigger.manual),
+      ),
+      (
+        .completed(summary: null, freedTokens: null, trigger: null),
+        .completed(summary: null, freedTokens: null, trigger: null),
+      ),
+      (.failed(error: "Not enough messages."), .failed(error: "Not enough messages.")),
+      (.failed(error: null), .failed(error: null)),
+    ];
+    for (final (pluginState, sharedState) in compactionStates) {
+      test("passes a compaction part update with its state: $pluginState", () async {
+        final result = mapEvent(
+          BridgeSseMessagePartUpdated(
+            part: PluginMessagePart.compaction(
+              id: "p1",
+              sessionID: "s1",
+              messageID: "m1",
+              compactionState: pluginState,
+            ),
           ),
-        ),
-      );
-    });
+        );
+
+        expect(
+          result,
+          equals(
+            SesoriMessagePartUpdated(
+              part: MessagePart.compaction(id: "p1", sessionID: "s1", messageID: "m1", state: sharedState),
+            ),
+          ),
+        );
+      });
+    }
 
     test("passes agent message part updates", () async {
       final result = mapEvent(

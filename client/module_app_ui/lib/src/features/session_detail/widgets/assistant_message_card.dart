@@ -88,8 +88,7 @@ class const AssistantMessageCard({
     MessagePartStepStart() ||
     MessagePartStepFinish() ||
     MessagePartSnapshot() ||
-    MessagePartPatch() ||
-    MessagePartCompaction() => false,
+    MessagePartPatch() => false,
   };
 
   Widget _buildPart({required BuildContext context, required MessagePart part}) {
@@ -110,7 +109,11 @@ class const AssistantMessageCard({
         attempt: attempt,
         retryError: retryError,
       ),
-      MessagePartCompaction(:final summary) => CompactionPartWidget(key: ValueKey(part.id), summary: summary),
+      MessagePartCompaction(:final state) => switch (state) {
+        CompactionStateCompleted(:final summary) => CompactionPartWidget(key: ValueKey(part.id), summary: summary),
+        // No plugin reports a compaction in progress or failed yet.
+        CompactionStateRunning() || CompactionStateFailed() => const SizedBox.shrink(),
+      },
       // Steps render in their group; the builder never puts them here.
       MessagePartReasoning() ||
       MessagePartTool() ||

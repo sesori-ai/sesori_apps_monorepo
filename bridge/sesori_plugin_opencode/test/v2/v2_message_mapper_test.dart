@@ -206,8 +206,8 @@ void main() {
     expect(mapped(json: compact(status: "running")).parts, isEmpty);
     expect(mapped(json: compact(status: "failed")).info, isA<PluginMessageError>());
     expect(
-      (mapped(json: compact(status: "completed")).parts.single as PluginMessagePartCompaction).summary,
-      "Fixture summary",
+      (mapped(json: compact(status: "completed")).parts.single as PluginMessagePartCompaction).compactionState,
+      const PluginCompactionState.completed(summary: "Fixture summary", freedTokens: null, trigger: null),
     );
   });
 

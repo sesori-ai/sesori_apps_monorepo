@@ -834,7 +834,11 @@ void main() {
     expect(completedPart.id, runningPart.id);
     expect(
       completedPart,
-      isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", "Continue the auth work."),
+      isA<PluginMessagePartCompaction>().having(
+        (part) => part.compactionState,
+        "compactionState",
+        const PluginCompactionState.completed(summary: "Continue the auth work.", freedTokens: null, trigger: null),
+      ),
     );
     expect(settled.whereType<BridgeSseSessionIdle>(), hasLength(1));
   });
@@ -879,7 +883,11 @@ void main() {
     );
     expect(
       compacted.whereType<BridgeSseMessagePartUpdated>().single.part,
-      isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", isNull),
+      isA<PluginMessagePartCompaction>().having(
+        (part) => part.compactionState,
+        "compactionState",
+        const PluginCompactionState.completed(summary: null, freedTokens: null, trigger: null),
+      ),
     );
   });
 

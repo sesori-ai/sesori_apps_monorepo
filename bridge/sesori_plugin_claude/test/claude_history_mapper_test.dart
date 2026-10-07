@@ -229,7 +229,11 @@ IMPORTANT: Do NOT create new worktrees.
       expect(messages.single.info.id, "summary-record");
       expect(
         messages.single.parts.single,
-        isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", "Continue the auth work."),
+        isA<PluginMessagePartCompaction>().having(
+          (part) => part.compactionState,
+          "compactionState",
+          const PluginCompactionState.completed(summary: "Continue the auth work.", freedTokens: null, trigger: null),
+        ),
       );
     });
 
