@@ -1406,6 +1406,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailCommandRan => 'Ran';
 
   @override
+  String get sessionDetailToolOutputLoading => 'Loading output';
+
+  @override
+  String get sessionDetailToolOutputFailed => 'Could not load the output.';
+
+  @override
+  String get sessionDetailToolOutputRetry => 'Retry';
+
+  @override
   String get sessionDetailFollowOutput => 'Follow';
 
   @override

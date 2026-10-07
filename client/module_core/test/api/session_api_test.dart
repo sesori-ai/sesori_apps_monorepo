@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_attachm
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 import "../helpers/test_helpers.dart";
 
 void main() {
@@ -526,8 +527,12 @@ void main() {
         ),
       );
 
-      await api.getMessages(sessionId: "session-1", limit: 50, before: 100,
-storedOnly: false,);
+      await api.getMessages(
+        sessionId: "session-1",
+        limit: 50,
+        before: 100,
+        storedOnly: false,
+      );
 
       final verification = verify(
         () => client.post<MessageWithPartsResponse>(
@@ -538,6 +543,32 @@ storedOnly: false,);
       )..called(1);
       final request = verification.captured.single as SessionMessagesRequest;
       expect(request.toJson()["attachmentDelivery"], "storedReference");
+      expect(request.toJson()["toolOutputDelivery"], "onExpand");
+    });
+
+    test("getToolOutput posts the stored part's identity", () async {
+      when(
+        () => client.post<SessionToolOutputResponse>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(const SessionToolOutputResponse(output: "clean", error: null)));
+
+      final response = await api.getToolOutput(sessionId: "session-1", messageId: "message-1", partId: "part-1");
+
+      expect(response, isA<SuccessResponse<SessionToolOutputResponse>>());
+      final verification = verify(
+        () => client.post<SessionToolOutputResponse>(
+          "/session/tool-output",
+          fromJson: any(named: "fromJson"),
+          body: captureAny(named: "body"),
+        ),
+      )..called(1);
+      expect(
+        (verification.captured.single as SessionToolOutputRequest).toJson(),
+        {"sessionId": "session-1", "messageId": "message-1", "partId": "part-1"},
+      );
     });
 
     test("abort trusts recognized not-performed kind with a future reason", () async {

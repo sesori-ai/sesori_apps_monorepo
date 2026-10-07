@@ -33,6 +33,7 @@ import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_messages_through_result.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/models/session_prompt_index_result.dart";
+import "../../repositories/models/tool_output_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/bridge_settings_service.dart";
@@ -63,6 +64,7 @@ import "session_detail_notice.dart";
 import "session_detail_resolvers.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
+import "tool_output_fetch.dart";
 
 enum _SessionRefreshTrigger(final String logValue) {
   commandExecuted("command_executed"),
@@ -772,6 +774,25 @@ class SessionDetailCubit(
     if (latest is SessionDetailLoaded && result is SessionPromptIndexAvailable) {
       emit(latest.copyWith(promptIndex: result.entries));
     }
+  }
+
+  /// Fetches the output of an expanded summary tool part, unless it is
+  /// already loaded or on its way. A failed fetch tries again.
+  Future<void> fetchToolOutput({required String messageId, required String partId}) async {
+    final key = (messageId: messageId, partId: partId);
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    if (current.toolOutputs[key] case ToolOutputLoading() || ToolOutputLoaded()) return;
+    emit(current.copyWith(toolOutputs: {...current.toolOutputs, key: const ToolOutputLoading()}));
+    final result = await _loadService.loadToolOutput(sessionId: _sessionId, messageId: messageId, partId: partId);
+    if (isClosed) return;
+    final latest = state;
+    if (latest is! SessionDetailLoaded) return;
+    final fetch = switch (result) {
+      ToolOutputAvailable(:final output, :final error) => ToolOutputLoaded(output: output, error: error),
+      ToolOutputFailure() => const ToolOutputFailed(),
+    };
+    emit(latest.copyWith(toolOutputs: {...latest.toolOutputs, key: fetch}));
   }
 
   /// Prepends [page] to [latest]'s messages.

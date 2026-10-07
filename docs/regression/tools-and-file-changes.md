@@ -141,7 +141,7 @@ sub-agent parts, plus the signal that a tool changed files.
   transcript the tapped header stays still while the panel opens and closes
   below it; only when no room is left above the composer (the newest row)
   does the row grow upward. A later resize of an open panel never scrolls
-  the transcript. Screen safe-area insets do not displace its scrollbars.
+  the transcript, except the eased resize when a fetched output arrives. Screen safe-area insets do not displace its scrollbars.
   Reduced motion opens and closes it at once.
   Tool attachments remain visible when details are collapsed.
   A tool with output or an error but no shell command opens the same panel,
@@ -173,6 +173,18 @@ sub-agent parts, plus the signal that a tool changed files.
   backfill; it answers 404 when the part is missing or is not a tool. Tool
   state JSON without a `form` key (stored rows, v1.9.0 bridges) decodes as
   full.
+- The app asks for `onExpand` on every page read and load-through, so a
+  finished tool's row opens its panel at once and fetches the output then. A
+  v1.9.0 bridge ignores the field and sends full parts, which render as
+  before. Until the output arrives the panel shows its title and any command
+  over a fixed-height row; a spinner fades in there only after 150 ms, so a
+  quick fetch never flashes one, and Copy is hidden. When the output arrives
+  the panel eases over 200 ms from that height to its own, and the tapped
+  header stays still as when opening. A failed fetch shows “Could not load the
+  output.” with Retry in the same row, so the panel does not change height;
+  closing and reopening retries too. A fetched output survives a silent
+  refresh and reopens at once; a full reload fetches it again on the next
+  expand. A full part always wins over it.
 - Subtasks retain a prompt bounded to 500 runes, bounded title/outcome/error
   summaries, status, attachments and child-session IDs; ordinary non-shell tool
   stripping never applies to them. The description stays complete because
@@ -319,6 +331,10 @@ guarantee.
 - A v1.9.0 app, or a request without `toolOutputDelivery`, receives a summary
   tool part; a summary reaches a live event; or `POST /session/tool-output`
   answers a part that a page summarized with 404.
+- Expanding a summarized tool flashes a spinner on a quick fetch, jumps the
+  header or the content around it when the output arrives, leaves an empty or
+  endless loading panel after a failure, offers Copy without the output, or
+  fetches the same output twice at once.
 - Shell details grow without bound, pad a short transcript to full height, lose
   long command/output text, copy a truncated preview, let a sideways swipe on
   the panel reveal message timestamps, close during updates, or hide tool
@@ -484,6 +500,12 @@ guarantee.
   covers the route's 404 and 400, and
   `shared/sesori_shared/test/models/tool_state_test.dart` decodes keyless tool
   state as full and a request without the field as inline.
+- `client/module_app_ui/test/features/session_detail/widgets/tool_part_widget_test.dart`
+  ("a summary part") fetches on opening, holds the spinner back for 150 ms,
+  eases to the output with the header still, retries from the panel and opens
+  a fetched output at once. `client/module_core/test/cubits/session_detail/session_detail_paging_test.dart`
+  ("summary tool output") fetches once while a fetch is in flight, retries
+  after a failure and keeps the output across a silent refresh.
 - `client/module_app_ui/test/features/session_detail/widgets/transcript_step_row_test.dart`
   measures every step kind's icon, label inset, height and label weight at
   phone and desktop density.

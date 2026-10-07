@@ -203,8 +203,8 @@ rune-bounded at live/history wire projection. Live events keep the released
 title alias for older clients; transcript pages omit a shell tool's title when
 it equals its `shellCommand`. A page request that asks for `onExpand` tool
 output gets each finished tool that has output or error as a summary, and the
-bridge serves that detail through `POST /session/tool-output`; the app still
-asks for inline output until it fetches on expand. The bridge applies
+bridge serves that detail through `POST /session/tool-output`, which the app
+fetches when the tool's row is expanded. The bridge applies
 this after the plugin boundary, so it covers every harness below that retains
 output; it adds no gap beyond the command sources listed here.
 

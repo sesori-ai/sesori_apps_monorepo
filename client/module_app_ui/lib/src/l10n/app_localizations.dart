@@ -2605,6 +2605,24 @@ abstract class AppLocalizations {
   /// **'Ran'**
   String get sessionDetailCommandRan;
 
+  /// No description provided for @sessionDetailToolOutputLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading output'**
+  String get sessionDetailToolOutputLoading;
+
+  /// No description provided for @sessionDetailToolOutputFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the output.'**
+  String get sessionDetailToolOutputFailed;
+
+  /// No description provided for @sessionDetailToolOutputRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get sessionDetailToolOutputRetry;
+
   /// No description provided for @sessionDetailFollowOutput.
   ///
   /// In en, this message translates to:

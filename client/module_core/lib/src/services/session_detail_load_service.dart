@@ -9,6 +9,7 @@ import "../logging/logging.dart";
 import "../repositories/models/session_messages_through_result.dart";
 import "../repositories/models/session_options_repository_result.dart";
 import "../repositories/models/session_prompt_index_result.dart";
+import "../repositories/models/tool_output_result.dart";
 import "../repositories/plugin_repository.dart";
 import "../repositories/session_repository.dart";
 
@@ -132,6 +133,18 @@ class SessionDetailLoadService({
     final result = await _repository.getPromptIndex(sessionId: sessionId);
     if (result case SessionPromptIndexFailure(:final error)) {
       logw("Failed to load the prompt index", error);
+    }
+    return result;
+  }
+
+  Future<ToolOutputResult> loadToolOutput({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) async {
+    final result = await _repository.getToolOutput(sessionId: sessionId, messageId: messageId, partId: partId);
+    if (result case ToolOutputFailure(:final error)) {
+      logw("Failed to load tool output for part $partId of message $messageId", error);
     }
     return result;
   }

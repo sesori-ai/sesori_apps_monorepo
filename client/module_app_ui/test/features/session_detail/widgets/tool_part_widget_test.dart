@@ -1,7 +1,14 @@
+import "dart:async";
+
+import "package:bloc_test/bloc_test.dart";
 import "package:flutter/services.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -482,4 +489,161 @@ void main() {
       }
     });
   }
+
+  group("a summary part", () {
+    const key = (messageId: "message-1", partId: "tool-1");
+    const summary = MessagePartTool(
+      id: "tool-1",
+      sessionID: "session-1",
+      messageID: "message-1",
+      tool: "Any normalized tool name",
+      state: ToolState.summary(status: ToolStatus.completed, title: null, shellCommand: "make check", attachments: []),
+    );
+    late _Cubit cubit;
+    late StreamController<SessionDetailState> states;
+
+    setUp(() {
+      cubit = _Cubit();
+      states = StreamController<SessionDetailState>();
+      when(() => cubit.fetchToolOutput(messageId: "message-1", partId: "tool-1")).thenAnswer((_) async {});
+    });
+    tearDown(() => states.close());
+
+    Widget transcript({required Map<ToolOutputKey, ToolOutputFetch> toolOutputs}) {
+      whenListen(cubit, states.stream, initialState: _loaded(toolOutputs: toolOutputs));
+      return MaterialApp(
+        theme: buildPregoThemeData(brightness: Brightness.light),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: BlocProvider<SessionDetailCubit>.value(
+          value: cubit,
+          child: Scaffold(
+            body: SizedBox(
+              height: 500,
+              child: ListView(
+                reverse: true,
+                children: const [
+                  SizedBox(height: 350),
+                  ToolPartWidget(part: summary),
+                  SizedBox(height: 500),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    double spinnerOpacity(WidgetTester tester) => tester
+        .widget<AnimatedOpacity>(
+          find.ancestor(of: find.byKey(const ValueKey("toolOutput.spinner")), matching: find.byType(AnimatedOpacity)),
+        )
+        .opacity;
+
+    testWidgets("fetches its output on opening and eases to it with the header still", (tester) async {
+      await tester.pumpWidget(transcript(toolOutputs: const {}));
+      final header = tester.getRect(find.byKey(_toggle));
+
+      await tester.tap(find.byKey(_toggle));
+      await tester.pump();
+      verify(() => cubit.fetchToolOutput(messageId: "message-1", partId: "tool-1")).called(1);
+      states.add(_loaded(toolOutputs: const {key: ToolOutputLoading()}));
+      await tester.pump(const Duration(milliseconds: 100));
+      // A quick fetch never flashes a spinner.
+      expect(spinnerOpacity(tester), 0);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(spinnerOpacity(tester), 1);
+      await tester.pump(const Duration(milliseconds: 300));
+      // A transcript without its output is not offered for copying.
+      expect(find.byTooltip("Copy").hitTestable(), findsNothing);
+      final loading = _shellHeight(tester);
+      final title = tester.getRect(find.text("Shell"));
+
+      states.add(_loaded(toolOutputs: {key: const ToolOutputLoaded(output: "line 1\nline 2\nline 3", error: null)}));
+      await tester.pump();
+      await tester.pump();
+      expect(_shellHeight(tester), loading, reason: "the output lays out at the old height first");
+      await tester.pump(const Duration(milliseconds: 100));
+      final easing = _shellHeight(tester);
+      expect(tester.getRect(find.byKey(_toggle)), header);
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(easing, greaterThan(loading));
+      expect(_shellHeight(tester), greaterThan(easing));
+      expect(tester.getRect(find.byKey(_toggle)), header);
+      expect(find.text("\$ make check\n\nline 1\nline 2\nline 3"), findsOneWidget);
+      expect(find.byTooltip("Copy").hitTestable(), findsOneWidget);
+      expect(tester.getRect(find.text("Shell")), title, reason: "the panel's title does not move");
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("a failed fetch offers a retry inside the panel", (tester) async {
+      await tester.pumpWidget(transcript(toolOutputs: const {key: ToolOutputFailed()}));
+
+      await tester.tap(find.byKey(_toggle));
+      // The panel's animation starts on the first frame after the tap.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text("Could not load the output."), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey("toolOutput.retry")));
+
+      // Once on opening, which also retries, and once for the tap.
+      verify(() => cubit.fetchToolOutput(messageId: "message-1", partId: "tool-1")).called(2);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("an output fetched earlier opens at once", (tester) async {
+      await tester.pumpWidget(
+        transcript(toolOutputs: {key: const ToolOutputLoaded(output: "done", error: null)}),
+      );
+
+      await tester.tap(find.byKey(_toggle));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text("\$ make check\n\ndone"), findsOneWidget);
+      verifyNever(
+        () => cubit.fetchToolOutput(
+          messageId: any(named: "messageId"),
+          partId: any(named: "partId"),
+        ),
+      );
+    });
+  });
 }
+
+class _Cubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
+
+SessionDetailState _loaded({required Map<ToolOutputKey, ToolOutputFetch> toolOutputs}) => SessionDetailState.loaded(
+  interaction: const SessionInteractionState.available(displayName: "Claude Code", refreshError: null),
+  messages: const [],
+  launchHandoff: null,
+  olderMessagesCursor: null,
+  userMessagesBeforeOldest: null,
+  promptIndex: null,
+  toolOutputs: toolOutputs,
+  streamingText: const {},
+  sessionStatus: const SessionStatus.idle(),
+  pendingQuestions: const [],
+  pendingPermissions: const [],
+  sessionTitle: null,
+  session: testConstSession,
+  pluginId: "claude",
+  supportsPromptAttachments: false,
+  assistantAgentModel: null,
+  children: const [],
+  childStatuses: const {},
+  isRootSession: true,
+  isArchived: false,
+  queuedMessages: const [],
+  bridgePromptAttachments: const {},
+  localSend: const LocalSendPhase.idle(),
+  availableAgents: const [],
+  availableProviders: const [],
+  availableCommands: const [],
+  selectedAgent: "coder",
+  selectedAgentModel: null,
+  promptDefaults: null,
+  fastMode: false,
+  stagedCommand: null,
+  isRefreshing: false,
+);

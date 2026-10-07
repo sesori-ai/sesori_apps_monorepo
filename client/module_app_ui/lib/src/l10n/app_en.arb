@@ -909,6 +909,9 @@
   "sessionDetailToolCancelled": "Cancelled",
   "sessionDetailShell": "Shell",
   "sessionDetailCommandRan": "Ran",
+  "sessionDetailToolOutputLoading": "Loading output",
+  "sessionDetailToolOutputFailed": "Could not load the output.",
+  "sessionDetailToolOutputRetry": "Retry",
   "sessionDetailFollowOutput": "Follow",
   "transcriptSummarySteps": "{count, plural, =1{1 step} other{{count} steps}}",
   "@transcriptSummarySteps": {
