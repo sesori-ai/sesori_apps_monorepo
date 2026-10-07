@@ -2109,9 +2109,11 @@ compatibility paths were found: no step changes persistence or the wire.
 | 6/10 | `⚙️ [instant-new-session] Show launch follow-ups on the session screen [step 6/10]` | Step 4 design, part 4.b1, none of it needing the live composer: the session screen's unsent follow-up rows with Retry and Remove through the launch service, the restoration budget check, and a composing failure appending the launch's follow-ups into the restored draft (**D1**), tests. No user-visible change until 8/11 adds follow-ups. | 500–700 |
 | 7/11 | `🚧 [instant-new-session] Queue follow-ups and hand the unsent composer to the session screen [step 7/11]` | Step 4 design, part 4.b2, its state half: gate split, `queueFollowUp`, shared `generatePromptId`, the unsent-composer handoff and its **D1** append, the session screen's cubit sending before the first load (**D13**) with its queue published into the loading state and kept by a failed load, tests. No user-visible change until 8/11. | 900–1,000 |
 | 8/11 | `🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 8/11]` | Step 4 design, part 4.b2, its view half: composer mounted in both sending branches with the desktop move and chrome hiding, the composer seeded before the first load (**D13**) and the loading branch's follow-up bubbles, the bubble-rect test, tests, the regression-document edits for 6/10 and this step. | 1,100–1,200 |
-| 9/11 | `⚙️ [instant-new-session] Show a launching row in the session lists [step 9/11]` | Step 5 design: row and association streams, `SessionLaunchCubit`, shell providers and the failure alert listener, `PendingSessionLaunchTile` with its tap, the three `SessionTile` hosts, the row-key latch, the hold-until-in-its-slot rule and the **D12** hold-back, the visible-rows empty state, tests, its regression-document edits. | 700–900 |
-| 10/11 | `⚙️ [instant-new-session] Show a launching row in the sidebar and Activity [step 10/11]` | Step 6 design: two sidebar rows, pending `ActivityTile` variant, rail popout provider, the Activity emptiness gates, the phone and desktop home hosts with their 240 ms insertion transition and the projection-based hold, tests, its regression-document edits. | 600–800 |
-| 11/11 | `🌿 [instant-new-session] Run new-session coverage and retire the plan [step 11/11]` | Run the matrix below, record it in `TRACKER.md`, confirm the merged regression documents match what shipped, and move the plan to `.plan/completed/`. | docs only |
+| 9/13 | `⚙️ [instant-new-session] Keep owed messages when the first load finds the harness blocked [step 9/13]` | The first #1873 review finding: a harness-blocked first load keeps the owed messages and their actions, tests, its regression-document edits. | 350–450 |
+| 10/13 | `⚙️ [instant-new-session] Close the step 8 composer review gaps [step 10/13]` | The rest of the #1873 review findings: read-only options while sending, the caret carried at handoff, one composer-busy signal, one `submit` intent, tests, its regression-document edits. | 650–750 |
+| 11/13 | `⚙️ [instant-new-session] Show a launching row in the session lists [step 11/13]` | Step 5 design: row and association streams, `SessionLaunchCubit`, shell providers and the failure alert listener, `PendingSessionLaunchTile` with its tap, the three `SessionTile` hosts, the row-key latch, the hold-until-in-its-slot rule and the **D12** hold-back, the visible-rows empty state, tests, its regression-document edits. | 700–900 |
+| 12/13 | `⚙️ [instant-new-session] Show a launching row in the sidebar and Activity [step 12/13]` | Step 6 design: two sidebar rows, pending `ActivityTile` variant, rail popout provider, the Activity emptiness gates, the phone and desktop home hosts with their 240 ms insertion transition and the projection-based hold, tests, its regression-document edits. | 600–800 |
+| 13/13 | `🌿 [instant-new-session] Run new-session coverage and retire the plan [step 13/13]` | Run the matrix below, record it in `TRACKER.md`, confirm the merged regression documents match what shipped, and move the plan to `.plan/completed/`. | docs only |
 
 Step 3 ran past about 1,200 lines and was delivered as the pre-approved 3.a and
 3.b split below. Step 4 is split the same way into 4.a (delivery, with no entry
@@ -2123,8 +2125,9 @@ do not need the live composer (the session screen's follow-up rows, the
 restoration budget check and the follow-ups' **D1** append) land first as 6/10.
 The rest, implemented in full on one branch, measured about 2,100 changed lines
 and was cut once more between its state and its views: 7/11 lands the cubits' follow-up queue and composer handoff with no
-entry point, and 8/11 the views that use them. The series therefore has eleven
-PRs. The design sections keep their original numbers: "Step 4 design" ships as
+entry point, and 8/11 the views that use them. 8/11 merged with review findings unanswered;
+closing them measured about 1,100 lines, so 9/13 and 10/13 were inserted. The
+series therefore has thirteen PRs. The design sections keep their original numbers: "Step 4 design" ships as
 PRs 5/10, 6/10, 7/11 and 8/11, and so on. Merged PRs keep the titles they merged
 with.
 

@@ -15,30 +15,74 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SessionDetailState {
 
-
+/// Messages sent before this session existed that its launch still owes,
+/// so a failed load keeps their Retry and Remove actions in view.
+ List<LaunchFollowUp> get launchFollowUps;/// What this screen still owes, as in [SessionDetailFailed], so a session
+/// just created keeps its unsent messages and their actions in view.
+ List<QueuedSessionSubmission> get awaitingBridgeSubmissions;/// Prompts sent before the first load that are still waiting for it, so
+/// a failed load never hides them. Retry sends them once it loads.
+ List<QueuedSessionSubmission> get queuedMessages;
+/// Create a copy of SessionDetailState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionDetailStateCopyWith<SessionDetailState> get copyWith => _$SessionDetailStateCopyWithImpl<SessionDetailState>(this as SessionDetailState, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailState);
+  final _this = this as SessionDetailState;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailState&&const DeepCollectionEquality().equals(other.launchFollowUps, _this.launchFollowUps)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _this.awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.queuedMessages, _this.queuedMessages));
 }
 
 
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode {
+  final _this = this as SessionDetailState;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.launchFollowUps),const DeepCollectionEquality().hash(_this.awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_this.queuedMessages));
+}
 
 @override
 String toString() {
-    return 'SessionDetailState()';
+  final _this = this as SessionDetailState;
+  return 'SessionDetailState(launchFollowUps: ${_this.launchFollowUps}, awaitingBridgeSubmissions: ${_this.awaitingBridgeSubmissions}, queuedMessages: ${_this.queuedMessages})';
 }
 
 
 }
 
 /// @nodoc
-class $SessionDetailStateCopyWith<$Res>  {
-$SessionDetailStateCopyWith(SessionDetailState _, $Res Function(SessionDetailState) __);
+abstract mixin class $SessionDetailStateCopyWith<$Res>  {
+  factory $SessionDetailStateCopyWith(SessionDetailState value, $Res Function(SessionDetailState) _then) = _$SessionDetailStateCopyWithImpl;
+@useResult
+$Res call({
+ List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<QueuedSessionSubmission> queuedMessages
+});
+
+
+
+
+}
+/// @nodoc
+class _$SessionDetailStateCopyWithImpl<$Res>
+    implements $SessionDetailStateCopyWith<$Res> {
+  _$SessionDetailStateCopyWithImpl(this._self, this._then);
+
+  final SessionDetailState _self;
+  final $Res Function(SessionDetailState) _then;
+
+/// Create a copy of SessionDetailState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? launchFollowUps = null,Object? awaitingBridgeSubmissions = null,Object? queuedMessages = null,}) {
+  return _then(_self.copyWith(
+launchFollowUps: null == launchFollowUps ? _self.launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
+as List<LaunchFollowUp>,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self.awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable
+as List<QueuedSessionSubmission>,queuedMessages: null == queuedMessages ? _self.queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
+as List<QueuedSessionSubmission>,
+  ));
+}
+
 }
 
 
@@ -58,21 +102,21 @@ class SessionDetailLoading implements SessionDetailState {
 /// Null for every ordinary open.
  final  SeededComposer? seededComposer;
  final  List<LaunchFollowUp> _launchFollowUps;
-@JsonKey() List<LaunchFollowUp> get launchFollowUps {
+@override@JsonKey() List<LaunchFollowUp> get launchFollowUps {
   if (_launchFollowUps is EqualUnmodifiableListView) return _launchFollowUps;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_launchFollowUps);
 }
 
  final  List<QueuedSessionSubmission> _awaitingBridgeSubmissions;
-@JsonKey() List<QueuedSessionSubmission> get awaitingBridgeSubmissions {
+@override@JsonKey() List<QueuedSessionSubmission> get awaitingBridgeSubmissions {
   if (_awaitingBridgeSubmissions is EqualUnmodifiableListView) return _awaitingBridgeSubmissions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_awaitingBridgeSubmissions);
 }
 
  final  List<QueuedSessionSubmission> _queuedMessages;
-@JsonKey() List<QueuedSessionSubmission> get queuedMessages {
+@override@JsonKey() List<QueuedSessionSubmission> get queuedMessages {
   if (_queuedMessages is EqualUnmodifiableListView) return _queuedMessages;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_queuedMessages);
@@ -81,7 +125,7 @@ class SessionDetailLoading implements SessionDetailState {
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
+@override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
 $SessionDetailLoadingCopyWith<SessionDetailLoading> get copyWith => _$SessionDetailLoadingCopyWithImpl<SessionDetailLoading>(this, _$identity);
 
@@ -109,7 +153,7 @@ String toString() {
 /// @nodoc
 abstract mixin class $SessionDetailLoadingCopyWith<$Res> implements $SessionDetailStateCopyWith<$Res> {
   factory $SessionDetailLoadingCopyWith(SessionDetailLoading value, $Res Function(SessionDetailLoading) _then) = _$SessionDetailLoadingCopyWithImpl;
-@useResult
+@override @useResult
 $Res call({
  SessionLaunchHandoff? launchHandoff, SeededComposer? seededComposer, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<QueuedSessionSubmission> queuedMessages
 });
@@ -128,7 +172,7 @@ class _$SessionDetailLoadingCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? launchHandoff = freezed,Object? seededComposer = freezed,Object? launchFollowUps = null,Object? awaitingBridgeSubmissions = null,Object? queuedMessages = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? launchHandoff = freezed,Object? seededComposer = freezed,Object? launchFollowUps = null,Object? awaitingBridgeSubmissions = null,Object? queuedMessages = null,}) {
   return _then(SessionDetailLoading(
 launchHandoff: freezed == launchHandoff ? _self.launchHandoff : launchHandoff // ignore: cast_nullable_to_non_nullable
 as SessionLaunchHandoff?,seededComposer: freezed == seededComposer ? _self.seededComposer : seededComposer // ignore: cast_nullable_to_non_nullable
@@ -226,7 +270,7 @@ class SessionDetailLoaded implements SessionDetailState {
  final  bool? isRootSession;
  final  bool isArchived;
  final  List<QueuedSessionSubmission> _queuedMessages;
- List<QueuedSessionSubmission> get queuedMessages {
+@override List<QueuedSessionSubmission> get queuedMessages {
   if (_queuedMessages is EqualUnmodifiableListView) return _queuedMessages;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_queuedMessages);
@@ -248,14 +292,14 @@ class SessionDetailLoaded implements SessionDetailState {
 }
 
  final  List<QueuedSessionSubmission> _awaitingBridgeSubmissions;
-@JsonKey() List<QueuedSessionSubmission> get awaitingBridgeSubmissions {
+@override@JsonKey() List<QueuedSessionSubmission> get awaitingBridgeSubmissions {
   if (_awaitingBridgeSubmissions is EqualUnmodifiableListView) return _awaitingBridgeSubmissions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_awaitingBridgeSubmissions);
 }
 
  final  List<LaunchFollowUp> _launchFollowUps;
-@JsonKey() List<LaunchFollowUp> get launchFollowUps {
+@override@JsonKey() List<LaunchFollowUp> get launchFollowUps {
   if (_launchFollowUps is EqualUnmodifiableListView) return _launchFollowUps;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_launchFollowUps);
@@ -315,7 +359,7 @@ class SessionDetailLoaded implements SessionDetailState {
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
+@override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
 $SessionDetailLoadedCopyWith<SessionDetailLoaded> get copyWith => _$SessionDetailLoadedCopyWithImpl<SessionDetailLoaded>(this, _$identity);
 
@@ -343,7 +387,7 @@ String toString() {
 /// @nodoc
 abstract mixin class $SessionDetailLoadedCopyWith<$Res> implements $SessionDetailStateCopyWith<$Res> {
   factory $SessionDetailLoadedCopyWith(SessionDetailLoaded value, $Res Function(SessionDetailLoaded) _then) = _$SessionDetailLoadedCopyWithImpl;
-@useResult
+@override @useResult
 $Res call({
  SessionInteractionState interaction, List<MessageWithParts> messages, int? olderMessagesCursor, int? userMessagesBeforeOldest, bool isLoadingOlderMessages, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, Session session, bool isUpdatingAutoContinuation, String? pluginId, bool? supportsPromptAttachments, AgentModel? assistantAgentModel, List<Session> children, Map<String, SessionStatus> childStatuses, bool? isRootSession, bool isArchived, List<QueuedSessionSubmission> queuedMessages, LocalSendPhase localSend, List<QueuedSessionPrompt> bridgeQueuedPrompts, Map<String, List<ComposerAttachment>> bridgePromptAttachments, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String selectedAgent, AgentModel? selectedAgentModel, SessionPromptDefaults? promptDefaults, bool fastMode, CommandInfo? stagedCommand, bool isRefreshing, List<SessionVariant> availableVariants, YoloSettingsResponse bridgeYolo, bool mainAgentRunning, bool isUpdatingApproval, SessionLaunchHandoff? launchHandoff
 });
@@ -362,7 +406,7 @@ class _$SessionDetailLoadedCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? interaction = null,Object? messages = null,Object? olderMessagesCursor = freezed,Object? userMessagesBeforeOldest = freezed,Object? isLoadingOlderMessages = null,Object? streamingText = null,Object? sessionStatus = null,Object? pendingQuestions = null,Object? pendingPermissions = null,Object? sessionTitle = freezed,Object? session = null,Object? isUpdatingAutoContinuation = null,Object? pluginId = freezed,Object? supportsPromptAttachments = freezed,Object? assistantAgentModel = freezed,Object? children = null,Object? childStatuses = null,Object? isRootSession = freezed,Object? isArchived = null,Object? queuedMessages = null,Object? localSend = null,Object? bridgeQueuedPrompts = null,Object? bridgePromptAttachments = null,Object? awaitingBridgeSubmissions = null,Object? launchFollowUps = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = null,Object? selectedAgentModel = freezed,Object? promptDefaults = freezed,Object? fastMode = null,Object? stagedCommand = freezed,Object? isRefreshing = null,Object? availableVariants = null,Object? bridgeYolo = null,Object? mainAgentRunning = null,Object? isUpdatingApproval = null,Object? launchHandoff = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? interaction = null,Object? messages = null,Object? olderMessagesCursor = freezed,Object? userMessagesBeforeOldest = freezed,Object? isLoadingOlderMessages = null,Object? streamingText = null,Object? sessionStatus = null,Object? pendingQuestions = null,Object? pendingPermissions = null,Object? sessionTitle = freezed,Object? session = null,Object? isUpdatingAutoContinuation = null,Object? pluginId = freezed,Object? supportsPromptAttachments = freezed,Object? assistantAgentModel = freezed,Object? children = null,Object? childStatuses = null,Object? isRootSession = freezed,Object? isArchived = null,Object? queuedMessages = null,Object? localSend = null,Object? bridgeQueuedPrompts = null,Object? bridgePromptAttachments = null,Object? awaitingBridgeSubmissions = null,Object? launchFollowUps = null,Object? availableAgents = null,Object? availableProviders = null,Object? availableCommands = null,Object? selectedAgent = null,Object? selectedAgentModel = freezed,Object? promptDefaults = freezed,Object? fastMode = null,Object? stagedCommand = freezed,Object? isRefreshing = null,Object? availableVariants = null,Object? bridgeYolo = null,Object? mainAgentRunning = null,Object? isUpdatingApproval = null,Object? launchHandoff = freezed,}) {
   return _then(SessionDetailLoaded(
 interaction: null == interaction ? _self.interaction : interaction // ignore: cast_nullable_to_non_nullable
 as SessionInteractionState,messages: null == messages ? _self._messages : messages // ignore: cast_nullable_to_non_nullable
@@ -501,16 +545,41 @@ $SessionLaunchHandoffCopyWith<$Res>? get launchHandoff {
 
 
 class SessionDetailHarnessUnavailable implements SessionDetailState {
-  const SessionDetailHarnessUnavailable({required this.session, required this.interaction, this.isUpdatingAutoContinuation = false});
+  const SessionDetailHarnessUnavailable({required this.session, required this.interaction, this.isUpdatingAutoContinuation = false,  List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> queuedMessages = const []}): _awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_queuedMessages = queuedMessages;
   
 
  final  Session session;
  final  SessionInteractionState interaction;
 @JsonKey() final  bool isUpdatingAutoContinuation;
+/// What this screen still owes, as in [SessionDetailFailed], so a session
+/// just created keeps its unsent messages and their actions in view.
+ final  List<QueuedSessionSubmission> _awaitingBridgeSubmissions;
+/// What this screen still owes, as in [SessionDetailFailed], so a session
+/// just created keeps its unsent messages and their actions in view.
+@override@JsonKey() List<QueuedSessionSubmission> get awaitingBridgeSubmissions {
+  if (_awaitingBridgeSubmissions is EqualUnmodifiableListView) return _awaitingBridgeSubmissions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_awaitingBridgeSubmissions);
+}
+
+ final  List<LaunchFollowUp> _launchFollowUps;
+@override@JsonKey() List<LaunchFollowUp> get launchFollowUps {
+  if (_launchFollowUps is EqualUnmodifiableListView) return _launchFollowUps;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_launchFollowUps);
+}
+
+ final  List<QueuedSessionSubmission> _queuedMessages;
+@override@JsonKey() List<QueuedSessionSubmission> get queuedMessages {
+  if (_queuedMessages is EqualUnmodifiableListView) return _queuedMessages;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_queuedMessages);
+}
+
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
+@override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
 $SessionDetailHarnessUnavailableCopyWith<SessionDetailHarnessUnavailable> get copyWith => _$SessionDetailHarnessUnavailableCopyWithImpl<SessionDetailHarnessUnavailable>(this, _$identity);
 
@@ -518,18 +587,18 @@ $SessionDetailHarnessUnavailableCopyWith<SessionDetailHarnessUnavailable> get co
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailHarnessUnavailable&&(identical(other.session, session) || other.session == session)&&(identical(other.interaction, interaction) || other.interaction == interaction)&&(identical(other.isUpdatingAutoContinuation, isUpdatingAutoContinuation) || other.isUpdatingAutoContinuation == isUpdatingAutoContinuation));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionDetailHarnessUnavailable&&(identical(other.session, session) || other.session == session)&&(identical(other.interaction, interaction) || other.interaction == interaction)&&(identical(other.isUpdatingAutoContinuation, isUpdatingAutoContinuation) || other.isUpdatingAutoContinuation == isUpdatingAutoContinuation)&&const DeepCollectionEquality().equals(other.awaitingBridgeSubmissions, _awaitingBridgeSubmissions)&&const DeepCollectionEquality().equals(other.launchFollowUps, _launchFollowUps)&&const DeepCollectionEquality().equals(other.queuedMessages, _queuedMessages));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,session,interaction,isUpdatingAutoContinuation);
+    return Object.hash(runtimeType,session,interaction,isUpdatingAutoContinuation,const DeepCollectionEquality().hash(_awaitingBridgeSubmissions),const DeepCollectionEquality().hash(_launchFollowUps),const DeepCollectionEquality().hash(_queuedMessages));
 }
 
 @override
 String toString() {
-    return 'SessionDetailState.harnessUnavailable(session: $session, interaction: $interaction, isUpdatingAutoContinuation: $isUpdatingAutoContinuation)';
+    return 'SessionDetailState.harnessUnavailable(session: $session, interaction: $interaction, isUpdatingAutoContinuation: $isUpdatingAutoContinuation, awaitingBridgeSubmissions: $awaitingBridgeSubmissions, launchFollowUps: $launchFollowUps, queuedMessages: $queuedMessages)';
 }
 
 
@@ -538,9 +607,9 @@ String toString() {
 /// @nodoc
 abstract mixin class $SessionDetailHarnessUnavailableCopyWith<$Res> implements $SessionDetailStateCopyWith<$Res> {
   factory $SessionDetailHarnessUnavailableCopyWith(SessionDetailHarnessUnavailable value, $Res Function(SessionDetailHarnessUnavailable) _then) = _$SessionDetailHarnessUnavailableCopyWithImpl;
-@useResult
+@override @useResult
 $Res call({
- Session session, SessionInteractionState interaction, bool isUpdatingAutoContinuation
+ Session session, SessionInteractionState interaction, bool isUpdatingAutoContinuation, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> queuedMessages
 });
 
 
@@ -557,12 +626,15 @@ class _$SessionDetailHarnessUnavailableCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? session = null,Object? interaction = null,Object? isUpdatingAutoContinuation = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? session = null,Object? interaction = null,Object? isUpdatingAutoContinuation = null,Object? awaitingBridgeSubmissions = null,Object? launchFollowUps = null,Object? queuedMessages = null,}) {
   return _then(SessionDetailHarnessUnavailable(
 session: null == session ? _self.session : session // ignore: cast_nullable_to_non_nullable
 as Session,interaction: null == interaction ? _self.interaction : interaction // ignore: cast_nullable_to_non_nullable
 as SessionInteractionState,isUpdatingAutoContinuation: null == isUpdatingAutoContinuation ? _self.isUpdatingAutoContinuation : isUpdatingAutoContinuation // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self._awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable
+as List<QueuedSessionSubmission>,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
+as List<LaunchFollowUp>,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
+as List<QueuedSessionSubmission>,
   ));
 }
 
@@ -591,7 +663,7 @@ class SessionDetailFailed implements SessionDetailState {
  final  List<QueuedSessionSubmission> _awaitingBridgeSubmissions;
 /// Sends the bridge took that it has not listed yet, shown read-only so
 /// a failed load does not hide a message that went out.
-@JsonKey() List<QueuedSessionSubmission> get awaitingBridgeSubmissions {
+@override@JsonKey() List<QueuedSessionSubmission> get awaitingBridgeSubmissions {
   if (_awaitingBridgeSubmissions is EqualUnmodifiableListView) return _awaitingBridgeSubmissions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_awaitingBridgeSubmissions);
@@ -602,7 +674,7 @@ class SessionDetailFailed implements SessionDetailState {
  final  List<LaunchFollowUp> _launchFollowUps;
 /// Messages sent before this session existed that its launch still owes,
 /// so a failed load keeps their Retry and Remove actions in view.
-@JsonKey() List<LaunchFollowUp> get launchFollowUps {
+@override@JsonKey() List<LaunchFollowUp> get launchFollowUps {
   if (_launchFollowUps is EqualUnmodifiableListView) return _launchFollowUps;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_launchFollowUps);
@@ -613,7 +685,7 @@ class SessionDetailFailed implements SessionDetailState {
  final  List<QueuedSessionSubmission> _queuedMessages;
 /// Prompts sent before the first load that are still waiting for it, so
 /// a failed load never hides them. Retry sends them once it loads.
-@JsonKey() List<QueuedSessionSubmission> get queuedMessages {
+@override@JsonKey() List<QueuedSessionSubmission> get queuedMessages {
   if (_queuedMessages is EqualUnmodifiableListView) return _queuedMessages;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_queuedMessages);
@@ -622,7 +694,7 @@ class SessionDetailFailed implements SessionDetailState {
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
+@override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
 $SessionDetailFailedCopyWith<SessionDetailFailed> get copyWith => _$SessionDetailFailedCopyWithImpl<SessionDetailFailed>(this, _$identity);
 
@@ -650,7 +722,7 @@ String toString() {
 /// @nodoc
 abstract mixin class $SessionDetailFailedCopyWith<$Res> implements $SessionDetailStateCopyWith<$Res> {
   factory $SessionDetailFailedCopyWith(SessionDetailFailed value, $Res Function(SessionDetailFailed) _then) = _$SessionDetailFailedCopyWithImpl;
-@useResult
+@override @useResult
 $Res call({
  RemoteFailureReason reason, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> queuedMessages
 });
@@ -669,7 +741,7 @@ class _$SessionDetailFailedCopyWithImpl<$Res>
 
 /// Create a copy of SessionDetailState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? awaitingBridgeSubmissions = null,Object? launchFollowUps = null,Object? queuedMessages = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? awaitingBridgeSubmissions = null,Object? launchFollowUps = null,Object? queuedMessages = null,}) {
   return _then(SessionDetailFailed(
 reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
 as RemoteFailureReason,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self._awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable

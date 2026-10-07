@@ -788,36 +788,56 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                 onPinchIn: _openPromptsFromPinch,
                 initialBottomControlsHeight: _composerHeight,
               ),
-      SessionDetailHarnessUnavailable(:final interaction, :final session) => Center(
-        child: PregoTopBarInsetBuilder(
-          builder: (context, topInset, child) => Padding(
-            padding: EdgeInsetsDirectional.only(top: topInset),
-            child: SingleChildScrollView(child: child),
+      SessionDetailHarnessUnavailable(
+        :final interaction,
+        :final session,
+        :final awaitingBridgeSubmissions,
+        :final launchFollowUps,
+        :final queuedMessages,
+      ) =>
+        _withOwedMessages(
+          context: context,
+          status: Center(
+            child: PregoTopBarInsetBuilder(
+              builder: (context, topInset, child) => Padding(
+                padding: EdgeInsetsDirectional.only(top: topInset),
+                child: SingleChildScrollView(child: child),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!widget.readOnly && session.time?.archived == null)
+                    SessionAutoContinuationNotice(
+                      view: session.autoContinuation,
+                      updating: state.autoContinuationUpdatePending,
+                      canInteract: interaction.canInteract,
+                      onEnabledChanged: (enabled) =>
+                          unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
+                    ),
+                  _buildHarnessNotice(interaction: interaction, historyUnavailable: true),
+                ],
+              ),
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!widget.readOnly && session.time?.archived == null)
-                SessionAutoContinuationNotice(
-                  view: session.autoContinuation,
-                  updating: state.autoContinuationUpdatePending,
-                  canInteract: interaction.canInteract,
-                  onEnabledChanged: (enabled) =>
-                      unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
-                ),
-              _buildHarnessNotice(interaction: interaction, historyUnavailable: true),
-            ],
-          ),
+          awaitingBridgeSubmissions: awaitingBridgeSubmissions,
+          launchFollowUps: launchFollowUps,
+          queuedMessages: queuedMessages,
+          harnessName: PregoBrandLogo.displayNameFor(session.pluginId),
         ),
-      ),
-      final SessionDetailFailed failed when _owesMessages(failed) => _buildFailedWithQueue(
-        context: context,
-        failed: failed,
-      ),
-      SessionDetailFailed(:final reason) => SessionDetailErrorView(
-        reason: reason,
-        onRetry: () => context.read<SessionDetailCubit>().reload(),
-      ),
+      SessionDetailFailed(
+        :final reason,
+        :final awaitingBridgeSubmissions,
+        :final launchFollowUps,
+        :final queuedMessages,
+      ) =>
+        _withOwedMessages(
+          context: context,
+          status: SessionDetailErrorView(reason: reason, onRetry: () => context.read<SessionDetailCubit>().reload()),
+          awaitingBridgeSubmissions: awaitingBridgeSubmissions,
+          launchFollowUps: launchFollowUps,
+          queuedMessages: queuedMessages,
+          harnessName: null,
+        ),
     };
   }
 
@@ -826,10 +846,18 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       failed.launchFollowUps.isNotEmpty ||
       failed.queuedMessages.isNotEmpty;
 
-  /// A failed first load with messages still owed: the error above them, and
-  /// below it the same bubbles and actions the loading screen gave them,
-  /// scrolling when they outgrow their half of the screen.
-  Widget _buildFailedWithQueue({required BuildContext context, required SessionDetailFailed failed}) {
+  /// A first load that failed or found the harness blocked, with [status]
+  /// above the messages still owed: the same bubbles and actions the loading
+  /// screen gave them, scrolling when they outgrow their half of the screen.
+  Widget _withOwedMessages({
+    required BuildContext context,
+    required Widget status,
+    required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    required List<LaunchFollowUp> launchFollowUps,
+    required List<QueuedSessionSubmission> queuedMessages,
+    required String? harnessName,
+  }) {
+    if (awaitingBridgeSubmissions.isEmpty && launchFollowUps.isEmpty && queuedMessages.isEmpty) return status;
     final cubit = context.read<SessionDetailCubit>();
     QueuedMessageBubble bubble({
       required QueuedSessionSubmission submission,
@@ -844,27 +872,25 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     );
     return Column(
       children: [
-        Expanded(
-          child: SessionDetailErrorView(reason: failed.reason, onRetry: cubit.reload),
-        ),
+        Expanded(child: status),
         Flexible(
           child: SingleChildScrollView(
             reverse: true,
             child: Column(
               children: [
-                for (final submission in failed.awaitingBridgeSubmissions)
+                for (final submission in awaitingBridgeSubmissions)
                   bubble(submission: submission, presentation: const QueuedMessageBubblePresentation.pendingReadOnly()),
-                for (final followUp in failed.launchFollowUps)
+                for (final followUp in launchFollowUps)
                   bubble(
                     submission: followUp.submission,
                     presentation: launchFollowUpPresentation(
                       followUp: followUp,
-                      harnessName: null,
+                      harnessName: harnessName,
                       onRetry: cubit.retryLaunchFollowUp,
                       onRemove: cubit.removeLaunchFollowUp,
                     ),
                   ),
-                for (final (index, submission) in failed.queuedMessages.indexed)
+                for (final (index, submission) in queuedMessages.indexed)
                   bubble(
                     submission: submission,
                     presentation: QueuedMessageBubblePresentation.pending(

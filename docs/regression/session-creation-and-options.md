@@ -310,8 +310,9 @@ variant, and worktree mode, and creating the session with its first input.
   there from its first frame, in the new-session composer's place, with the
   committed options, any unsent text, command and images, and the keyboard up
   when the composer had focus; a message sent before the first load queues
-  behind the follow-ups and sends when it lands, and a failed first load keeps it
-  in view for Retry. The same composer carries into the loaded session.
+  behind the follow-ups and sends when it lands. A failed first load keeps it
+  and the follow-ups in view for Retry, and a first load that finds the harness
+  blocked keeps them under its notice with their Cancel and Remove actions. The same composer carries into the loaded session.
 - Mobile and desktop compose the same new-session view while retaining
   shell-owned routing, DI, connection-banner policy, and platform capabilities.
   Mobile keeps voice capture and keyboard visibility. Desktop is explicitly
@@ -499,7 +500,8 @@ startup-extension file failure, retry once the filesystem is usable.
   instead of moving it on a pointer surface, or lets a picker change the
   options of a launch in flight. A follow-up creates a second session, sends
   out of press order or ahead of the first message, vanishes at the route
-  replacement or the first load, or is lost when the first load fails. The
+  replacement or the first load, or is lost when the first load fails or finds
+  the harness blocked. The
   session screen opens without a composer, with default options instead of the
   committed ones, without the unsent text or images, or moves the composer when
   the transcript loads.
