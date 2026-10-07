@@ -12,6 +12,7 @@ RelayRequest _$RelayRequestFromJson(Map json) => RelayRequest(
   path: json['path'] as String,
   headers: Map<String, String>.from(json['headers'] as Map),
   body: json['body'] as String?,
+  acceptsDeflatedResponse: json['acceptsDeflatedResponse'] as bool? ?? false,
   $type: json['type'] as String?,
 );
 
@@ -22,6 +23,7 @@ Map<String, dynamic> _$RelayRequestToJson(RelayRequest instance) =>
       'path': instance.path,
       'headers': instance.headers,
       'body': ?instance.body,
+      'acceptsDeflatedResponse': instance.acceptsDeflatedResponse,
       'type': instance.$type,
     };
 
