@@ -83,9 +83,10 @@ client's update steps shown wherever a feature needs a newer bridge.
   Sesori Desktop supervises it (`--control-url`), otherwise `cli`. A missing or
   unrecognised value means `cli`. The app reads it on every fresh connect and on the
   first resumed connect after a cold launch. When the connected bridge is `desktop`, the same
-  entry points open "Update Sesori Desktop" instead: install the app's available
-  update, or download the latest from a copyable `sesori.com/desktop`, with no
-  terminal commands. A client with no connected bridge shows the CLI steps.
+  entry points open "Update Sesori Desktop" instead, matching Desktop's manual update:
+  download the latest from a copyable `sesori.com/desktop`, Quit Sesori Desktop
+  (closing the window doesn't quit it), install the new version and reopen it, with
+  no terminal commands. A client with no connected bridge shows the CLI steps.
 - A standalone restart spawns a successor carrying the predecessor PID and waits before
   enforcing single-live-bridge ownership. On Windows, the predecessor waits for a marked
   one-shot launcher to start the real successor with inherited stdio, inherit the native

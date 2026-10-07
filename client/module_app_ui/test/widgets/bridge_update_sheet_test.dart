@@ -139,8 +139,9 @@ void main() {
     expect(find.text("Update Sesori Desktop"), findsOneWidget);
     expect(find.text("Update Sesori Bridge"), findsNothing);
     expect(find.text("This bridge runs inside Sesori Desktop. On that computer:"), findsOneWidget);
-    expect(find.text("1. Open Sesori Desktop and install the available update."), findsOneWidget);
-    expect(find.text("2. If no update shows up, download the latest version:"), findsOneWidget);
+    expect(find.text("1. Download the latest version:"), findsOneWidget);
+    expect(find.text("2. Quit Sesori Desktop (closing the window doesn't quit it)."), findsOneWidget);
+    expect(find.text("3. Install the new version, then open Sesori Desktop again."), findsOneWidget);
     expect(find.text(BridgeInstall.updateCommand), findsNothing);
     expect(find.text(BridgeInstall.macLinuxCommand), findsNothing);
     expect(find.byTooltip("Copy command"), findsNothing);

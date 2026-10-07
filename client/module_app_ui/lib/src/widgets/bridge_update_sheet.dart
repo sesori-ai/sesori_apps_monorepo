@@ -90,7 +90,7 @@ class const _BridgeUpdateSteps() extends StatelessWidget {
 }
 
 /// Sesori Desktop updates the bridge it bundles, so there is no command to
-/// run: install the app's update, or fetch the latest app when none shows up.
+/// run: install a newer Sesori Desktop, which is a manual download today.
 class const _DesktopUpdateSteps() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -108,11 +108,13 @@ class const _DesktopUpdateSteps() extends StatelessWidget {
             style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
           ),
           const SizedBox(height: PregoSpacing.xl),
-          Text(loc.bridgeUpdateDesktopStepUpdate, style: heading),
-          const SizedBox(height: PregoSpacing.xl),
           Text(loc.bridgeUpdateDesktopStepDownload, style: heading),
           const SizedBox(height: PregoSpacing.md),
           _CommandBox(command: BridgeInstall.desktopDownloadPage, copyTooltip: loc.bridgeUpdateCopyLink),
+          const SizedBox(height: PregoSpacing.xl),
+          Text(loc.bridgeUpdateDesktopStepQuit, style: heading),
+          const SizedBox(height: PregoSpacing.xl),
+          Text(loc.bridgeUpdateDesktopStepInstall, style: heading),
         ],
       ),
     );
