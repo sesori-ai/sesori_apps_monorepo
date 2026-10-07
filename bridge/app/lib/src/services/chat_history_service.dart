@@ -144,7 +144,7 @@ class ChatHistoryService({
       // the dead turn's open tool parts — no idle event ever fired and no
       // backfill will run. The page is already in memory, so detecting them is
       // free; only a page that actually contains one pays for a status read.
-      if (!_containsOpenToolPart(page: decided)) {
+      if (!_containsUnfinishedPart(page: decided)) {
         return _messagesPage(page: decided, replayedPromptDefaults: replayedPromptDefaults);
       }
       if (!await _sweepUnlessTurnRunning(sessionId: sessionId)) {
@@ -567,10 +567,7 @@ class ChatHistoryService({
       sessionId: sessionId,
       read: () async {
         try {
-          final refs = await _chatHistoryRepository.finalizeOpenToolParts(
-            sessionId: sessionId,
-            updatedAt: observedAt,
-          );
+          final refs = await _endUnfinishedStoredParts(sessionId: sessionId, updatedAt: observedAt);
           if (refs.isEmpty) return const <CapturedPartShapes>[];
           final storageScope = await _requireStorageScope(sessionId: sessionId);
           final shapes = <CapturedPartShapes>[];
@@ -608,21 +605,38 @@ class ChatHistoryService({
     );
   }
 
-  /// Whether any served part is a tool or subtask still reported as
-  /// `pending`/`running`.
-  bool _containsOpenToolPart({required ChatHistoryPage page}) {
-    for (final message in page.messages) {
-      for (final part in message.parts) {
-        final status = switch (part) {
-          MessagePartTool(:final state) => state.status,
-          MessagePartSubtask(:final taskState) => taskState?.status,
-          _ => null,
-        };
-        if (status == ToolStatus.pending || status == ToolStatus.running) return true;
-      }
-    }
-    return false;
+  /// Whether any served part is still unfinished.
+  bool _containsUnfinishedPart({required ChatHistoryPage page}) =>
+      page.messages.any((message) => message.parts.any((part) => _endUnfinishedPart(part: part) != null));
+
+  /// Rewrites the session's stored unfinished parts to how they end when
+  /// their turn has ended, and returns the rewritten rows.
+  Future<List<StoredPartRef>> _endUnfinishedStoredParts({required String sessionId, required int updatedAt}) {
+    return _chatHistoryRepository.rewriteStoredParts(
+      sessionId: sessionId,
+      statuses: _unfinishedStatuses,
+      updatedAt: updatedAt,
+      rewrite: _endUnfinishedPart,
+    );
   }
+
+  static const _unfinishedStatuses = {ToolStatus.pending, ToolStatus.running};
+
+  /// How [part] ends when its turn ended before it finished, or null when it
+  /// is already finished or has no lifecycle.
+  ///
+  /// A tool left `pending`/`running` after its turn ended can never receive a
+  /// result — the backend reports tool completion only within the turn that
+  /// ran it — so it ends as an error. A subtask's sub-agent died with its
+  /// turn, which is a cancellation, not a tool error.
+  MessagePart? _endUnfinishedPart({required MessagePart part}) => switch (part) {
+    MessagePartTool(:final state) && final tool when _unfinishedStatuses.contains(state.status) => tool.copyWith(
+      state: state.copyWith(status: ToolStatus.error, error: "The turn ended before this tool reported a result."),
+    ),
+    MessagePartSubtask(:final taskState?) && final subtask when _unfinishedStatuses.contains(taskState.status) =>
+      subtask.copyWith(taskState: taskState.copyWith(status: ToolStatus.cancelled)),
+    _ => null,
+  };
 
   /// Finalizes the session's open tool parts unless a turn is running now, and
   /// reports whether anything was rewritten.
@@ -642,10 +656,7 @@ class ChatHistoryService({
       sessionId: sessionId,
       read: () async {
         try {
-          final refs = await _chatHistoryRepository.finalizeOpenToolParts(
-            sessionId: sessionId,
-            updatedAt: observedAt,
-          );
+          final refs = await _endUnfinishedStoredParts(sessionId: sessionId, updatedAt: observedAt);
           return refs.isNotEmpty;
         } on Object catch (error, stackTrace) {
           Log.w(

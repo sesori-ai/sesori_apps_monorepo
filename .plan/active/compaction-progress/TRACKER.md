@@ -10,9 +10,19 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 - C1–C7 are the user's final decisions of 2026-10-06. Do not reopen them.
 - P1–P12 are planning decisions from code evidence. See
   [PLAN](PLAN.md#decisions).
-- Q1–Q3 are open. The plan proceeds with the suggested picks until the
-  user answers. Q2 gates step 2's merge, Q1 step 3's, and Q3 step 5's.
-- This plan approves the phase-1 architecture only. The step-5 PR details
+- Q1–Q6 are the user's final answers of 2026-10-07. Do not reopen them. See
+  [PLAN](PLAN.md#answered-questions).
+  - Q1: only "auto" is labelled.
+  - Q2: an unfinished compaction becomes the quiet "Compaction failed" note.
+  - Q3: v1.9.0 apps on Pi and Codex lose the running `compact` card.
+  - Q4: the sweep-rule refactor ships as its own PR, step 2.
+  - Q5: old apps show nothing while an OpenCode summary streams, with no
+    extra code.
+  - Q6: failure notes the harness's history lacks survive one re-import,
+    then disappear.
+- The series was renumbered on 2026-10-07 to insert step 2. Step 1 merged
+  under its old title.
+- This plan approves the phase-1 architecture only. The step-6 PR details
   phase 2 and runs `architecture-plan-review` on it before code.
 
 ## Guardrails
@@ -27,7 +37,7 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 - Streamed words use the existing part-delta pipeline. No new event or
   buffer.
 - Stranded running compactions are finalized only by the existing idle and
-  read sweep.
+  read sweep, whose rule lives in `ChatHistoryService` from step 2.
 - The row settles in place, keyed by part id. Never remove and re-add it,
   except for the documented Claude fallback in P10.
 
@@ -36,23 +46,26 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | Step | Branch | Title | Target (changed lines) | Needs |
 |---|---|---|---|---|
 | 1 | `compaction-progress/plan` | [1](#fixed-pr-titles) | ≤ 800 | — |
-| 2 | `compaction-progress/contract` | [2](#fixed-pr-titles) | ≤ 1,100 (about 550 generated) | 1, Q2 |
-| 3 | `compaction-progress/app` | [3](#fixed-pr-titles) | ≤ 800 | 2, Q1 |
-| 4 | `compaction-progress/claude` | [4](#fixed-pr-titles) | ≤ 700 | 3 |
-| 5 | `compaction-progress/opencode` | [5](#fixed-pr-titles) | ≤ 800 | 3, Q3 |
-| 6 | `compaction-progress/pi-codex-deepseek` | [6](#fixed-pr-titles) | ≤ 900 | 3, step 5's plan detail |
-| 7 | `compaction-progress/docs` | [7](#fixed-pr-titles) | ≤ 300 | 2–6 |
-| 8 | `compaction-progress/retire` | [8](#fixed-pr-titles) | ≤ 250 | 7 |
+| 2 | `compaction-progress/sweep-rule` | [2](#fixed-pr-titles) | ≤ 400 | 1 |
+| 3 | `compaction-progress/contract` | [3](#fixed-pr-titles) | ≤ 1,100 (about 550 generated) | 2 |
+| 4 | `compaction-progress/app` | [4](#fixed-pr-titles) | ≤ 800 | 3 |
+| 5 | `compaction-progress/claude` | [5](#fixed-pr-titles) | ≤ 700 | 4 |
+| 6 | `compaction-progress/opencode` | [6](#fixed-pr-titles) | ≤ 800 | 4 |
+| 7 | `compaction-progress/pi-codex-deepseek` | [7](#fixed-pr-titles) | ≤ 900 | 4, step 6's plan detail |
+| 8 | `compaction-progress/docs` | [8](#fixed-pr-titles) | ≤ 300 | 2–7 |
+| 9 | `compaction-progress/retire` | [9](#fixed-pr-titles) | ≤ 250 | 8 |
 
-Steps 2 and 3 include generated Freezed, JSON and localization output.
+Steps 3 and 4 include generated Freezed, JSON and localization output.
 
 ## Fixed PR Titles
 
-1. `🌱 [compaction-progress] Plan compaction progress [step 1/8]`
-2. `🚧 [compaction-progress] Carry compaction progress on the compaction part [step 2/8]`
-3. `⚙️ [compaction-progress] Show running and failed compaction in the transcript [step 3/8]`
-4. `🚧 [compaction-progress] Show Claude compaction live, with its outcome [step 4/8]`
-5. `⚙️ [compaction-progress] Stream OpenCode compaction into the live row [step 5/8]`
-6. `⚙️ [compaction-progress] Move Pi, Codex and DeepSeek onto the live compaction row [step 6/8]`
-7. `🌱 [compaction-progress] Reconcile the docs with shipped compaction progress [step 7/8]`
-8. `🌱 [compaction-progress] Record the matrix and retire the plan [step 8/8]`
+1. `🌱 [compaction-progress] Plan compaction progress [step 1/8]` (merged
+   before the renumbering)
+2. `⚙️ [compaction-progress] Move the stranded-step rule into the history service [step 2/9]`
+3. `🚧 [compaction-progress] Carry compaction progress on the compaction part [step 3/9]`
+4. `⚙️ [compaction-progress] Show running and failed compaction in the transcript [step 4/9]`
+5. `🚧 [compaction-progress] Show Claude compaction live, with its outcome [step 5/9]`
+6. `⚙️ [compaction-progress] Stream OpenCode compaction into the live row [step 6/9]`
+7. `⚙️ [compaction-progress] Move Pi, Codex and DeepSeek onto the live compaction row [step 7/9]`
+8. `🌱 [compaction-progress] Reconcile the docs with shipped compaction progress [step 8/9]`
+9. `🌱 [compaction-progress] Record the matrix and retire the plan [step 9/9]`

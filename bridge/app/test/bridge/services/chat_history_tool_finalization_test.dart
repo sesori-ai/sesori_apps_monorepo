@@ -1,3 +1,7 @@
+import "dart:convert";
+import "dart:typed_data";
+
+import "package:sesori_bridge/src/repositories/chat_history_repository.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -90,6 +94,48 @@ void main() {
       final stored = await _storedParts(history: history, sessionId: "ses_a");
       expect(_stateOf(stored["t1"]!).shellCommand, "git status");
       expect(_stateOf(stored["t1"]!).output, "partial");
+    });
+
+    test("keeps the stored attachments of a finalized part", () async {
+      final history = createTestChatHistory();
+      final imageBytes = Uint8List.fromList([1, 2, 3, 4]);
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: MessagePart.tool(
+          id: "t1",
+          sessionID: "ses_a",
+          messageID: "m1",
+          tool: "Read",
+          state: ToolState(
+            status: ToolStatus.running,
+            title: null,
+            shellCommand: null,
+            output: null,
+            error: null,
+            attachments: [
+              MessageAttachment.inlineImage(mime: "image/png", base64: base64Encode(imageBytes), filename: "a.png"),
+            ],
+          ),
+        ),
+      );
+
+      await history.service.finalizeOpenToolParts(sessionId: "ses_a");
+
+      final page = await history.repository.getSessionMessages(
+        sessionId: "ses_a",
+        storageScope: testAttachmentStorageScope(sessionId: "ses_a"),
+        attachmentProjection: const StoredReferenceMessageAttachmentProjection(bridgeId: "br_test1234"),
+      );
+      final state = _stateOf(page.messages.single.parts.single);
+      expect(state.status, ToolStatus.error);
+      expect(
+        state.attachments.single,
+        isA<MessageAttachmentStoredImage>().having((image) => image.byteLength, "byteLength", imageBytes.length),
+      );
     });
 
     test("returns both delivery shapes for each finalized part", () async {

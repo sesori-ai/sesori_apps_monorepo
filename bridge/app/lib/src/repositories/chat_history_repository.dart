@@ -371,59 +371,68 @@ class ChatHistoryRepository({
     return null;
   }
 
-  /// Rewrites every stored tool part still in a non-terminal state to a
-  /// terminal error, and returns the identity of each rewritten row.
+  /// Replaces each stored part that [rewrite] returns a replacement for, in
+  /// place, and returns the identity of each rewritten row.
   ///
-  /// A tool part left `pending`/`running` after its turn ended can never
-  /// receive a result — the backend reports tool completion only within the
-  /// turn that ran it — so keeping the stored snapshot open would render an
-  /// eternal spinner on every later read.
-  Future<List<StoredPartRef>> finalizeOpenToolParts({
+  /// Only rows whose JSON holds a `status` of one of [statuses] are decoded
+  /// and offered to [rewrite], so a sweep does not decode a whole transcript.
+  /// Spilled attachments do not survive a decode, so a replacement keeps the
+  /// row's stored attachments: a rewrite may change a part's state, never its
+  /// attachments.
+  Future<List<StoredPartRef>> rewriteStoredParts({
     required String sessionId,
+    required Set<ToolStatus> statuses,
     required int updatedAt,
+    required MessagePart? Function({required MessagePart part}) rewrite,
   }) async {
+    // Every ToolStatus wire value equals its enum name.
+    final statusMarkers = [for (final status in statuses) '"status":"${status.name}"'];
     final rows = await _chatHistoryDao.getParts(sessionId: sessionId);
-    final finalized = <StoredPartRef>[];
+    final rewritten = <StoredPartRef>[];
     for (final row in rows) {
-      // Cheap prefilter so an idle sweep does not decode a whole transcript;
-      // the decoded check below remains the only authority.
-      if (!row.partJson.contains('"status":"pending"') && !row.partJson.contains('"status":"running"')) {
-        continue;
-      }
-      final Map<String, dynamic> json;
+      if (!statusMarkers.any(row.partJson.contains)) continue;
+      final Map<String, dynamic> storedJson;
+      final MessagePart part;
       try {
-        json = jsonDecodeMap(row.partJson);
+        storedJson = jsonDecodeMap(row.partJson);
+        part = MessagePart.fromJson(storedJson);
       } on Object catch (error, stackTrace) {
         Log.w(
-          "Skipping an undecodable stored part ${row.partId} of session $sessionId during tool finalization",
+          "Skipping an undecodable stored part ${row.partId} of session $sessionId during a rewrite",
           error,
           stackTrace,
         );
         continue;
       }
-      // A subtask's lifecycle lives in `taskState`; its sub-agent died with the
-      // process, which is a cancellation, not a tool error.
-      final Object? rawState = switch (json["type"]) {
-        "tool" => json["state"],
-        "subtask" => json["taskState"],
-        _ => null,
-      };
-      if (rawState is! Map<String, dynamic>) continue;
-      final status = rawState["status"];
-      if (status != "pending" && status != "running") continue;
-
-      if (json["type"] == "subtask") {
-        rawState["status"] = "cancelled";
-      } else {
-        rawState["status"] = "error";
-        rawState["error"] = "The turn ended before this tool reported a result.";
-      }
+      final replacement = rewrite(part: part);
+      if (replacement == null) continue;
       await _chatHistoryDao.upsertPart(
-        row: row.copyWith(partJson: jsonEncode(json), updatedAt: updatedAt),
+        row: row.copyWith(
+          partJson: jsonEncode(_withStoredAttachments(json: replacement.toJson(), storedJson: storedJson)),
+          updatedAt: updatedAt,
+        ),
       );
-      finalized.add((messageId: row.messageId, partId: row.partId));
+      rewritten.add((messageId: row.messageId, partId: row.partId));
     }
-    return finalized;
+    return rewritten;
+  }
+
+  /// [json] with the attachments of [storedJson], at the places
+  /// [_encodePart] spills them.
+  Map<String, dynamic> _withStoredAttachments({
+    required Map<String, dynamic> json,
+    required Map<String, dynamic> storedJson,
+  }) {
+    if (storedJson.containsKey("attachment")) json["attachment"] = storedJson["attachment"];
+    if ((storedJson["state"], json["state"])
+        case (
+          final Map<String, dynamic> storedState,
+          final Map<String, dynamic> state,
+        )
+        when storedState.containsKey("attachments")) {
+      state["attachments"] = storedState["attachments"];
+    }
+    return json;
   }
 
   Future<void> deleteMessage({required String sessionId, required String messageId}) {
