@@ -101,6 +101,7 @@ CodexManagedApi _defaultBuildApi({
       imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
       userContentMapper: userContentMapper,
+      clock: host.clock,
       config: configReader.readDefaults(),
     ),
     rolloutTailer: CodexRolloutTailer(

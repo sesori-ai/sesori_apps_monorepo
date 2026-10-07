@@ -40,6 +40,7 @@ class CodexEventMapper({
   required final CodexImageBearingItemParser _imageBearingItemParser,
   required final CodexRolloutToolMapper _rolloutToolMapper,
   required final CodexUserContentMapper _userContentMapper,
+  required final ServerClock _clock,
 
   /// Global model/provider fallback from `~/.codex/config.toml`. Live
   /// `item`/`turn` notifications do not carry the model, so streaming
@@ -759,7 +760,7 @@ class CodexEventMapper({
     final created =
         _milliseconds(params["startedAtMs"]) ??
         previous?.created ??
-        (stampMissingStart ? completedAt ?? DateTime.now().millisecondsSinceEpoch : null);
+        (stampMissingStart ? completedAt ?? _clock.now().millisecondsSinceEpoch : null);
     if (created == null) return previous;
     final time = PluginMessageTime(created: created, completed: completedAt ?? previous?.completed);
     _itemTimes[key] = time;

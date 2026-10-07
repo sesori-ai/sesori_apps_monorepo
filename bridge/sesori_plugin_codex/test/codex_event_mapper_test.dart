@@ -37,6 +37,7 @@ void main() {
       imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
       userContentMapper: userContentMapper,
+      clock: const ServerClock(),
     );
     final rolloutLifecycle = _ToolLifecycleHarness(
       eventMapper: mapper,
@@ -230,6 +231,7 @@ void main() {
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
+        clock: const ServerClock(),
       )..setThreadDirectory("t-9", "/repo/app/packages/ui");
 
       final events = scopedMapper.map(
@@ -251,6 +253,7 @@ void main() {
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
+        clock: const ServerClock(),
       );
       mapThreadStarted(
         activityMapper,
@@ -299,6 +302,7 @@ void main() {
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
+        clock: const ServerClock(),
       );
       mapThreadStarted(
         activityMapper,
@@ -887,6 +891,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
+        clock: const ServerClock(),
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       // thread/started carries the provider; the mapper remembers it per thread.
@@ -926,6 +931,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
+        clock: const ServerClock(),
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       mapThreadStarted(

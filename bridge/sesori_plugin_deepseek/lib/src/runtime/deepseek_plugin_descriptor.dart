@@ -284,7 +284,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
       messageTimeParser: messageTimeParser,
       subagentMapper: subagentMapper,
       delegationTracker: delegationTracker,
-      compactionTracker: DeepSeekCompactionTracker(clock: const ServerClock()),
+      compactionTracker: DeepSeekCompactionTracker(clock: host.clock),
     );
     const catalogMapper = DeepSeekCatalogMapper();
     const catalogRepository = DeepSeekCatalogRepository(api: api, mapper: catalogMapper);
