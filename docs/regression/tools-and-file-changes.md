@@ -67,8 +67,8 @@ sub-agent parts, plus the signal that a tool changed files.
 - The client never classifies a raw tool name or parses tool input.
 - A finished context compaction renders as one quiet "Context compacted" row in
   the step style; like visible text it ends a group. While it runs, Pi, Codex
-  and DeepSeek show the live row below from the start, and OpenCode v2 once its
-  running snapshot loads. When the
+  and DeepSeek show the live row below from the start, OpenCode v1 from its
+  summary's first text, and OpenCode v2 once its running snapshot loads. When the
   harness exposes the carried-forward summary, tapping the row opens a
   reading-width modal at once. A long summary shows a spinner that the Markdown
   replaces once the modal's entry transition ends (at once under reduced
@@ -101,10 +101,20 @@ sub-agent parts, plus the signal that a tool changed files.
   start or, after a bridge reconnect mid-compaction, at the next delta. After
   a reload or reconnect mid-compaction they resume with the next words,
   because OpenCode stores no partial summary. When that snapshot cannot load,
-  the deltas are dropped and the row appears when the compaction settles. If
-  the bridge's OpenCode stream is down when the compaction ends, the row stays
-  running until the next transcript read settles it, like any live part
-  stranded by that outage. On Pi, Codex and DeepSeek the time counts from the
+  the deltas are dropped and the row appears when the compaction settles. On
+  OpenCode v1 the row starts with the summary's first text, its words stream
+  from that text's own deltas, and it settles when the summary message
+  finishes, as a failure when the message carries an error; OpenCode sends the
+  final text before that update. A summary message that errors before writing
+  any text stays an ordinary error message. A v1 compaction that starts while
+  the bridge's OpenCode stream is down shows its summary as plain text on the
+  live stream; a later read that reloads the transcript from OpenCode maps it
+  to the compaction row in its stored state, a row still running there
+  settling through the idle sweep below. On either version, if that stream is
+  down when the compaction ends, the row stays running, like any live part
+  stranded by the outage, until a later ordinary transcript read once the
+  session is idle; stored-only reads and reads while the session is busy or
+  retrying leave it running. On Pi, Codex and DeepSeek the time counts from the
   bridge's stamp of the start when the harness sends none, and a Pi attempt
   that Pi retries keeps its first stamp. A Pi compaction that fails or is
   aborted becomes the failure note at the row's place, under its own id so the
@@ -555,7 +565,8 @@ guarantee.
   and `session_detail_event_buffer_test.dart` streams a running compaction's
   summary across a silent refresh like text and reasoning.
 - Owning Claude content/history/tracker, Pi history/dispatcher, OpenCode part
-  mapper and v2 compaction mapping, delta and service tests, Codex
+  mapper, v1 summary mapping (REST, SSE mapper and plugin stream) and v2
+  compaction mapping, delta and service tests, Codex
   rollout/tracker/history/event-mapper, ACP replay/content, Grok adapter,
   Antigravity normalizer and DeepSeek replay/time/compaction tests guard
   backend semantics.

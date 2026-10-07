@@ -588,7 +588,7 @@ void main() {
 
     testWidgets("a second tap replaces the first, and a load that cannot land says why", (tester) async {
       final first = Completer<LoadThroughOutcome>();
-      final loads = {"a": first.future, "b": Future<LoadThroughOutcome>.value(const LoadThroughUnsupported())};
+      final loads = {"a": first.future, "b": Future<LoadThroughOutcome>.value(const LoadThroughFailed())};
       final calls = await _pump(
         tester,
         entries: [
@@ -608,7 +608,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(calls.taps, isEmpty, reason: "the first tap's target was replaced");
-      expect(find.text("Update the bridge to open earlier prompts"), findsOneWidget);
+      expect(find.text("Couldn't open this prompt. Check your connection and try again."), findsOneWidget);
     });
 
     testWidgets("tapping a, b, then a again ignores the first load of a", (tester) async {

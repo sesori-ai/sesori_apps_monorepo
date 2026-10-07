@@ -1018,10 +1018,6 @@
   "@transcriptPromptsGone": {
     "description": "Notice over the Prompts screen when a tapped earlier prompt was not found in the loaded transcript, for example because the session's history was rewritten."
   },
-  "transcriptPromptsBridgeTooOld": "Update the bridge to open earlier prompts",
-  "@transcriptPromptsBridgeTooOld": {
-    "description": "Notice over the Prompts screen when a tapped earlier prompt cannot be opened because the connected bridge is too old to load it."
-  },
   "transcriptPromptsRefreshed": "The session just refreshed. Tap the prompt again.",
   "@transcriptPromptsRefreshed": {
     "description": "Notice over the Prompts screen when the session refreshed while a tapped earlier prompt was loading, so the load was dropped."

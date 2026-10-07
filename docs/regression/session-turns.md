@@ -584,7 +584,12 @@ defaults and queued client sends coherent.
   message is visible. OpenCode v1 also correlates slash commands; v2 custom
   commands have the native limitation recorded below. V2 compaction settles
   only from a completed or failed native snapshot, never its running row or
-  enqueue acknowledgement. Native commands take precedence over the fallback.
+  enqueue acknowledgement. A v1 manual compaction's prompt settles from its
+  marker echo, not from the summary message's running row; a v1 summary message
+  that errors after writing text settles as a failed compaction note instead of
+  a turn error, because OpenCode sends that text before the message's final
+  error update, while one that errors without text keeps its error message.
+  Native commands take precedence over the fallback.
   Compaction renders only the user-entered command arguments; bridge-authored
   guidance remains backend-only. A message authored in the backend's own UI
   carries no prompt id and renders as an ordinary transcript message. A harness

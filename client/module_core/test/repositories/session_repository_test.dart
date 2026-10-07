@@ -654,19 +654,6 @@ void main() {
       );
     });
 
-    test("reads a 404 as a bridge that predates the route", () async {
-      final result = await throughFor(
-        response: ApiResponse.error(
-          ApiError.nonSuccessCode(
-            errorCode: 404,
-            rawErrorString: "no handler found for POST /session/messages/through",
-          ),
-        ),
-      );
-
-      expect(result, isA<SessionMessagesThroughUnsupported>());
-    });
-
     test("keeps the route's own 404 a failure", () async {
       // A plugin that lost the transcript answers 404 through the route.
       final error = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "session not found");

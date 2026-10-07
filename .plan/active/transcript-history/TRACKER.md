@@ -49,8 +49,9 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 - The index, search and tool-output routes read the store or the audit file
   alone, outside the session queue, and never backfill (P10). The index and
   search handlers never answer 404, so a 404 from the index route means an
-  older bridge. The app searches only a bridge that sent the index, so any
-  search error, a 404 included, is an ordinary failure with Retry.
+  older bridge. The app searches and far-taps only on a bridge that sent the
+  index, so any search or load-through error, a 404 included, is an ordinary
+  failure (search offers Retry).
 - A slim tool part is its own `ToolState` variant, never nullable fields plus
   a flag. Keyless `ToolState` JSON decodes as full.
 - Choosing index entries for the list, the pin and search matches is
@@ -75,7 +76,8 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | 12 | `transcript-history/slim-tools-bridge` | [12](#fixed-pr-titles) | ≤ 900 | 8 |
 | 13 | `transcript-history/slim-tools-app` | [13](#fixed-pr-titles) | ≤ 700 | 12 |
 | 14 | `transcript-history/regression-docs` | [14](#fixed-pr-titles) | ≤ 300 | 2–13 |
-| 15 | `transcript-history/retire` | [15](#fixed-pr-titles) | ≤ 250 | 14 |
+| 14b | `transcript-history/remove-load-through-unsupported` | [14b](#fixed-pr-titles) | ≤ 150 | 14 |
+| 15 | `transcript-history/retire` | [15](#fixed-pr-titles) | ≤ 250 | 14, 14b |
 
 Rows 6–13 are detailed in [PLAN](PLAN.md#phases-2-and-3-architecture) and
 start once step 5 merges. Step 9 may split its far tap into its own PR if it
@@ -98,4 +100,5 @@ outgrows its target; that split renumbers this table and the titles together.
 12. `🚧 [transcript-history] Serve slim tool parts and a tool detail route [step 12/15]`
 13. `⚙️ [transcript-history] Fetch tool output when a row expands [step 13/15]`
 14. `🌱 [transcript-history] Reconcile the regression docs [step 14/15]`
+14b. `🌱 [transcript-history] Remove the unreachable far-tap older-bridge path [step 14b/15]`
 15. `🌱 [transcript-history] Run the L3 matrix and retire the plan [step 15/15]`

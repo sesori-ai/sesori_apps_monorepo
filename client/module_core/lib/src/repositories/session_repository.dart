@@ -145,12 +145,6 @@ class SessionRepository({
         olderMessagesCursor: data.nextCursor,
         userMessagesBefore: data.userMessagesBefore,
       ),
-      // COMPATIBILITY 2026-10-07 (v1.9.1): a bridge without the
-      // /session/messages/through route answers with the router's
-      // route-not-found 404. A 404 from the route itself (a plugin that lost
-      // the transcript) stays a failure. Remove once no supported bridge
-      // predates the route.
-      ErrorResponse(:final error) when _isMissingRoute(error: error) => const SessionMessagesThroughUnsupported(),
       ErrorResponse(:final error) => SessionMessagesThroughFailure(error: error),
     };
   }

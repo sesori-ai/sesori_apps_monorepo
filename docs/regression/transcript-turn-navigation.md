@@ -80,8 +80,7 @@ stored or sent to the bridge.
   the transcript through that prompt, showing a spinner beside the pin only
   after about 150 ms, then glides back to it as for a loaded prompt. A failure
   shows a popup naming why ("Couldn't open this prompt", no longer in the
-  session, the transcript refreshed, or "Update the bridge" for an older
-  bridge) and keeps the pin. Once the prompt loads, by the tap or by scrolling
+  session, or the transcript refreshed) and keeps the pin. Once the prompt loads, by the tap or by scrolling
   back, its pin crossfades from the preview to its own copy, the bubble easing
   between the two sizes, so a long prompt that pins its end changes visibly
   but never snaps. Without an index nothing pins there.
@@ -112,9 +111,8 @@ stored or sent to the bridge.
   load. While the spinner shows, screen readers hear the row as "Loading". A
   failed load shows a notice at the bottom of the list, which taps pass
   through, and moves nothing: "Couldn't open this prompt…" for an error, "The
-  session just refreshed…" when a refresh dropped the load, "This prompt is no
-  longer in the session" when the loaded range lacks it, and "Update the bridge
-  to open earlier prompts" for a bridge without the route.
+  session just refreshed…" when a refresh dropped the load, and "This prompt
+  is no longer in the session" when the loaded range lacks it.
   Closing the screen cancels the jump, not the load.
 - A prompt's number is its place among all of the session's user messages,
   loaded or not, counted by the bridge from its own history: the first prompt
@@ -296,7 +294,7 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
   merge of indexed, unloaded and unindexed loaded prompts; the full count and
   no "Load earlier prompts" with an index.
 - A tap on an unloaded row: the spinner only after the delay, the move once
-  loaded, a second tap replacing the first, and the older-bridge notice.
+  loaded, and a second tap replacing the first.
 - The load-through and bridge search responses decoding off the calling
   isolate.
 - Numbers and times: prompt numbers from the bridge's count kept through three
@@ -503,11 +501,8 @@ answer, and on a trackpad while text streams.
   lists and searches only what the transcript has loaded, an unloaded prompt
   is never listed, and "Load earlier prompts" pages back one transcript page at
   a time. An older bridge sends no user message count, so its rows carry no
-  numbers. The "Update the bridge" notice, shown only by a bridge that sends the
-  index without the load-through route, has no link to update instructions. On
-  Grok, Antigravity,
-  Copilot, Cursor, Hermes and OMP a prompt read back from the harness's own
-  history carries no time.
+  numbers. On Grok, Antigravity, Copilot, Cursor, Hermes and OMP a prompt read
+  back from the harness's own history carries no time.
 
 ## Sources
 

@@ -2731,12 +2731,6 @@ abstract class AppLocalizations {
   /// **'This prompt is no longer in the session'**
   String get transcriptPromptsGone;
 
-  /// Notice over the Prompts screen when a tapped earlier prompt cannot be opened because the connected bridge is too old to load it.
-  ///
-  /// In en, this message translates to:
-  /// **'Update the bridge to open earlier prompts'**
-  String get transcriptPromptsBridgeTooOld;
-
   /// Notice over the Prompts screen when the session refreshed while a tapped earlier prompt was loading, so the load was dropped.
   ///
   /// In en, this message translates to:

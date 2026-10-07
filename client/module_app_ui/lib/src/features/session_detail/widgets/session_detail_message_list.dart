@@ -590,7 +590,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final error = switch (outcome) {
       LoadThroughLoaded() => null,
       LoadThroughTargetMissing() => loc.transcriptPromptsGone,
-      LoadThroughUnsupported() => loc.transcriptPromptsBridgeTooOld,
       LoadThroughFailed() => loc.transcriptPromptsOpenFailed,
       LoadThroughSuperseded() => loc.transcriptPromptsRefreshed,
     };
