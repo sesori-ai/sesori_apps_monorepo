@@ -4099,6 +4099,12 @@ abstract class AppLocalizations {
   /// **'This session is archived and read-only.'**
   String get sessionDetailArchivedNotice;
 
+  /// No description provided for @sessionDetailCannotContinueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t continue this session'**
+  String get sessionDetailCannotContinueTitle;
+
   /// No description provided for @sessionDetailHarnessFallbackName.
   ///
   /// In en, this message translates to:

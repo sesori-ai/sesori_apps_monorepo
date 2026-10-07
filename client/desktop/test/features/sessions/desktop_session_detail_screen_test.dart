@@ -147,6 +147,7 @@ SessionDetailLoaded _loadedState({required Session session}) {
     fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
+    cannotContinueMessage: null,
   );
 }
 

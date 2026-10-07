@@ -501,6 +501,7 @@ void main() {
                       userMessagesBefore: null,
                       replayedPromptDefaults: null,
                       awaitingHarnessSync: true,
+                      cannotContinueMessage: null,
                     ),
                   ),
           );
@@ -984,6 +985,7 @@ void main() {
             userMessagesBefore: null,
             replayedPromptDefaults: null,
             awaitingHarnessSync: true,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -1929,6 +1931,7 @@ void main() {
             nextCursor: null,
             userMessagesBefore: null,
             replayedPromptDefaults: null,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -2078,6 +2081,7 @@ void main() {
               nextCursor: null,
               userMessagesBefore: null,
               replayedPromptDefaults: null,
+              cannotContinueMessage: null,
             ),
           ),
         );
@@ -2342,6 +2346,7 @@ void main() {
                 nextCursor: null,
                 userMessagesBefore: null,
                 replayedPromptDefaults: null,
+                cannotContinueMessage: null,
               ),
             ),
           );
@@ -2354,6 +2359,7 @@ void main() {
               nextCursor: null,
               userMessagesBefore: null,
               replayedPromptDefaults: null,
+              cannotContinueMessage: null,
             ),
           ),
         );
@@ -2903,6 +2909,7 @@ void main() {
                 nextCursor: null,
                 userMessagesBefore: null,
                 replayedPromptDefaults: null,
+                cannotContinueMessage: null,
               ),
             ),
           );
@@ -2915,6 +2922,7 @@ void main() {
               nextCursor: null,
               userMessagesBefore: null,
               replayedPromptDefaults: null,
+              cannotContinueMessage: null,
             ),
           ),
         );
@@ -3628,6 +3636,7 @@ void _stubAllDefaults(
           nextCursor: null,
           userMessagesBefore: null,
           replayedPromptDefaults: null,
+          cannotContinueMessage: null,
         ),
       ),
     ),

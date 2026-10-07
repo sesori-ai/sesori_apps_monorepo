@@ -160,6 +160,7 @@ void main() {
             nextCursor: null,
             userMessagesBefore: null,
             replayedPromptDefaults: refreshed,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -468,6 +469,7 @@ void main() {
             userMessagesBefore: 7,
             replayedPromptDefaults: null,
             awaitingHarnessSync: true,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -508,6 +510,7 @@ void main() {
             nextCursor: 20,
             userMessagesBefore: 9,
             replayedPromptDefaults: null,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -554,6 +557,7 @@ void _stubRepositorySnapshot({
         nextCursor: null,
         userMessagesBefore: null,
         replayedPromptDefaults: null,
+        cannotContinueMessage: null,
       ),
     ),
   );

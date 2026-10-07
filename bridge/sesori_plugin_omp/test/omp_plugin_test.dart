@@ -468,6 +468,40 @@ void main() {
       expect(parts.whereType<PluginMessagePartText>().last.text, "Finished");
     });
 
+    const unrestorableMessage =
+        "Oh My Pi can no longer restore this session's model (anthropic/claude-old).";
+    const unrestorableError = {
+      "code": -32603,
+      "message": "Internal error",
+      "data": {"details": "Could not restore model anthropic/claude-old"},
+    };
+
+    test("reports a history replay whose model OMP cannot restore as unrestorable", () async {
+      plugin.primeSessionDirectory(sessionId: "stored", directory: "/repo");
+      final loading = plugin.getSessionMessages("stored");
+      final initialize = await waitForFrame(AcpMethods.initialize);
+      respond(initialize, {
+        "protocolVersion": 1,
+        "agentCapabilities": {"loadSession": true},
+        "authMethods": [
+          {"id": "agent", "name": "Agent"},
+        ],
+      });
+      final authenticate = await waitForFrame(AcpMethods.authenticate);
+      respond(authenticate, const {});
+      final load = await waitForFrame(AcpMethods.sessionLoad);
+      fake.emit({"jsonrpc": "2.0", "id": load["id"], "error": unrestorableError});
+
+      await expectLater(
+        loading,
+        throwsA(
+          isA<PluginSessionUnrestorableException>()
+              .having((error) => error.message, "message", unrestorableMessage)
+              .having((error) => error.cause, "cause", isA<AcpRpcException>()),
+        ),
+      );
+    });
+
     test("replays stored OMP history through session load", () async {
       plugin.primeSessionDirectory(sessionId: "stored", directory: "/repo");
       final loading = plugin.getSessionMessages("stored");
@@ -701,11 +735,7 @@ void main() {
         fake.emit({
           "jsonrpc": "2.0",
           "id": reopen["id"],
-          "error": {
-            "code": -32603,
-            "message": "Internal error",
-            "data": {"details": "Could not restore model anthropic/claude-old"},
-          },
+          "error": unrestorableError,
         });
         for (var i = 0; i < 200 && events.whereType<BridgeSseSessionError>().isEmpty; i++) {
           await Future<void>.delayed(const Duration(milliseconds: 5));
@@ -716,8 +746,7 @@ void main() {
         expect(messages.whereType<PluginMessageUser>(), hasLength(1));
         expect(
           messages.whereType<PluginMessageError>().single.errorMessage,
-          "This session's model (anthropic/claude-old) is no longer available in Oh My Pi, "
-          "so the session can't be reopened.",
+          unrestorableMessage,
         );
         expect(events.whereType<BridgeSseSessionError>().single.sessionID, "stored");
       });

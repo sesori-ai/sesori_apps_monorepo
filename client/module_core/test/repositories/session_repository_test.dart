@@ -75,6 +75,7 @@ void main() {
           nextCursor: null,
           userMessagesBefore: null,
           replayedPromptDefaults: null,
+          cannotContinueMessage: null,
         ),
       ),
     );
@@ -638,6 +639,7 @@ void main() {
         nextCursor: 2,
         replayedPromptDefaults: null,
         userMessagesBefore: 1,
+        cannotContinueMessage: null,
       );
 
       final result = await throughFor(response: ApiResponse.success(response));

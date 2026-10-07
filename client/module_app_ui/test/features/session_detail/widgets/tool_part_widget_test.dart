@@ -634,6 +634,7 @@ SessionDetailState _loaded({required Map<ToolOutputKey, ToolOutputFetch> toolOut
   childStatuses: const {},
   isRootSession: true,
   isArchived: false,
+  cannotContinueMessage: null,
   queuedMessages: const [],
   bridgePromptAttachments: const {},
   localSend: const LocalSendPhase.idle(),

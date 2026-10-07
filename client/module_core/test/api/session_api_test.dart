@@ -523,6 +523,7 @@ void main() {
             nextCursor: null,
             userMessagesBefore: null,
             replayedPromptDefaults: null,
+            cannotContinueMessage: null,
           ),
         ),
       );

@@ -70,6 +70,7 @@ SessionDetailState _loadedState({
     fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
+    cannotContinueMessage: null,
   );
 }
 

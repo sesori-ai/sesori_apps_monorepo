@@ -217,8 +217,7 @@ class OmpPlugin._({
     if (error case AcpRpcException(code: -32603, data: {"details": final String details})
         when details.startsWith(prefix)) {
       final model = details.substring(prefix.length).trim();
-      return "This session's model ($model) is no longer available in ${OmpPluginIdentity.displayName}, "
-          "so the session can't be reopened.";
+      return "${OmpPluginIdentity.displayName} can no longer restore this session's model ($model).";
     }
     return null;
   }

@@ -2275,6 +2275,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailArchivedNotice => 'This session is archived and read-only.';
 
   @override
+  String get sessionDetailCannotContinueTitle => 'Can\'t continue this session';
+
+  @override
   String get sessionDetailHarnessFallbackName => 'This harness';
 
   @override

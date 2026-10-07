@@ -2362,6 +2362,21 @@ abstract class AcpPlugin({
       rethrow;
     } on Object catch (error, stackTrace) {
       flushDeferredCommandRefresh();
+      if (error is AcpRpcException) {
+        final unrestorableMessage = unrestorableSessionMessage(error: error);
+        if (unrestorableMessage != null) {
+          // The agent refuses to reopen this session as stored; the typed
+          // failure lets the bridge serve the history it already holds.
+          Error.throwWithStackTrace(
+            PluginSessionUnrestorableException(
+              "session/load history replay",
+              message: unrestorableMessage,
+              cause: error,
+            ),
+            stackTrace,
+          );
+        }
+      }
       // A broken replay (connect/init/auth/load failure) must stay
       // distinguishable from a genuinely empty thread: surface it as a typed
       // failure (the bridge router maps it to a 502 and the phone renders a

@@ -579,4 +579,5 @@ SessionDetailSnapshot _snapshot({
   promptDefaults: null,
   isRootSession: true,
   isArchived: false,
+  cannotContinueMessage: null,
 );

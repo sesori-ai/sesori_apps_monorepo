@@ -104,6 +104,33 @@ class const SessionDetailArchivedNotice({super.key}) extends StatelessWidget {
   }
 }
 
+/// Explains why the harness can no longer continue this session while its
+/// stored history stays readable. [message] is the harness's own explanation,
+/// shown as-is.
+class const SessionDetailCannotContinueNotice({super.key, required final String message}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
+      child: GlassContainer(
+        useOwnLayer: true,
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsets.zero,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 20),
+        settings: LiquidGlassSettings(glassColor: prego.colors.bgSecondary.withValues(alpha: 0.6)),
+        child: GlassListTile(
+          leading: Icon(TablerRegular.alert_triangle, size: PregoIconSize.md, color: prego.colors.textWarningPrimary),
+          title: Text(context.loc.sessionDetailCannotContinueTitle),
+          titleStyle: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
+          subtitle: Text(message, maxLines: 3, overflow: TextOverflow.ellipsis),
+          subtitleStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+        ),
+      ),
+    );
+  }
+}
+
 class const SessionDetailErrorView({
   super.key,
   required final RemoteFailureReason reason,
