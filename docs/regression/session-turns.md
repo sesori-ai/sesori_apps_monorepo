@@ -312,10 +312,11 @@ defaults and queued client sends coherent.
   of the shorter history/control RPC deadline. The prompt remains visibly
   queued alongside the live compaction row while compaction
   runs, including in snapshots loaded by later viewers, which get the same
-  start stamp. Pi and Codex compaction rows keep one part id from start to
-  finish, so the row settles in place to completed when the compaction
-  succeeds. A Pi compaction that fails or is aborted becomes a failure note,
-  without a session error; aborting or losing the Pi process moves the
+  start stamp. On success, Pi and Codex compaction rows keep one part id from
+  start to finish, so the row settles in place to completed. A Pi compaction
+  that fails or is aborted is re-keyed off its reserved id and becomes a
+  failure note, without a session error (a failure whose start was missed
+  reports the session error instead); aborting or losing the Pi process moves the
   running row off its reserved id for the bridge's idle sweep to end. DeepSeek
   shows the same live row from its compaction statuses. An accepted prompt remains bridge-queued
   through startup and selection until Pi echoes its correlated user message,

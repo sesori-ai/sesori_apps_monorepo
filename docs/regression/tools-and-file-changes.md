@@ -555,8 +555,10 @@ guarantee.
   and `session_detail_event_buffer_test.dart` streams a running compaction's
   summary across a silent refresh like text and reasoning.
 - Owning Claude content/history/tracker, Pi history/dispatcher, OpenCode part
-  mapper and v2 compaction mapping, delta and service tests, Codex rollout/tracker/history/event-mapper, ACP replay/content,
-  Grok adapter, Antigravity normalizer and DeepSeek replay/time/compaction tests guard backend semantics.
+  mapper and v2 compaction mapping, delta and service tests, Codex
+  rollout/tracker/history/event-mapper, ACP replay/content, Grok adapter,
+  Antigravity normalizer and DeepSeek replay/time/compaction tests guard
+  backend semantics.
 - `bridge/app/tool/benchmarks/tool_projection_payload_size.dart` reproducibly
   reports synthetic serialized UTF-8 bytes before/after projection. It states
   source/starting-HEAD baselines, separates typical already-bounded text from

@@ -960,6 +960,15 @@ void main() {
     });
   }
 
+  test("a failure with no recorded start reports the session error", () {
+    final failed = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_end", {"errorMessage": "provider detail", "aborted": false, "willRetry": false}),
+    );
+
+    expect(failed, [isA<BridgeSseSessionError>()]);
+  });
+
   test("clearing a live compaction moves the running row off the reserved id for the idle sweep", () {
     final compacting = dispatcher.map(
       sessionId: sessionId,

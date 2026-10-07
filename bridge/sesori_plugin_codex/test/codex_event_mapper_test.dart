@@ -842,6 +842,19 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect((completed[0] as BridgeSseMessageUpdated).info.time?.created, stamp);
     });
 
+    test("a contextCompaction completion with no known start keeps completedAtMs", () {
+      final completed = compactionItem(method: "item/completed", times: {"completedAtMs": 1779293104000});
+
+      expect(
+        (completed[0] as BridgeSseMessageUpdated).info.time,
+        const PluginMessageTime(created: 1779293104000, completed: 1779293104000),
+      );
+      expect(
+        completed[1],
+        compactionPart(const PluginCompactionState.completed(summary: null, freedTokens: null, trigger: null)),
+      );
+    });
+
     test("item agentMessage → assistant message + text part", () {
       final events = mapper.map(
         const CodexServerNotification(

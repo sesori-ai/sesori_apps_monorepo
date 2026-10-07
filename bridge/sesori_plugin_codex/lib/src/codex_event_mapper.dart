@@ -238,6 +238,9 @@ class CodexEventMapper({
           threadId: threadId,
           itemId: itemId,
           completed: method == "item/completed",
+          // The running compaction row's timer counts from the message's
+          // creation time, so a compaction without `startedAtMs` is stamped.
+          stampMissingStart: item["type"] == "contextCompaction",
         );
         final events = _itemToEvents(
           item: item,
@@ -553,19 +556,11 @@ class CodexEventMapper({
           attachments: const [],
         );
       case "contextCompaction":
-        // The running row's timer counts from the message's creation time, so
-        // a start without `startedAtMs` is stamped now and kept for the settle.
-        final compactionTime =
-            time ??
-            (_itemTimes[(threadId: threadId, itemId: itemId)] = PluginMessageTime(
-              created: DateTime.now().millisecondsSinceEpoch,
-              completed: null,
-            ));
         // Codex reports no failure, tokens, trigger or live summary: a missing
         // completion is left to the bridge's idle sweep.
         return [
           BridgeSseMessageUpdated(
-            info: _assistantMessage(itemId: itemId, threadId: threadId, time: compactionTime),
+            info: _assistantMessage(itemId: itemId, threadId: threadId, time: time),
           ),
           // One part id from start to finish, so the row settles in place.
           BridgeSseMessagePartUpdated(
@@ -755,16 +750,18 @@ class CodexEventMapper({
     required String threadId,
     required String? itemId,
     required bool completed,
+    required bool stampMissingStart,
   }) {
     if (itemId == null || itemId.isEmpty) return null;
     final key = (threadId: threadId, itemId: itemId);
     final previous = _itemTimes[key];
-    final created = _milliseconds(params["startedAtMs"]) ?? previous?.created;
+    final completedAt = completed ? _milliseconds(params["completedAtMs"]) : null;
+    final created =
+        _milliseconds(params["startedAtMs"]) ??
+        previous?.created ??
+        (stampMissingStart ? completedAt ?? DateTime.now().millisecondsSinceEpoch : null);
     if (created == null) return previous;
-    final time = PluginMessageTime(
-      created: created,
-      completed: completed ? _milliseconds(params["completedAtMs"]) ?? previous?.completed : previous?.completed,
-    );
+    final time = PluginMessageTime(created: created, completed: completedAt ?? previous?.completed);
     _itemTimes[key] = time;
     return time;
   }

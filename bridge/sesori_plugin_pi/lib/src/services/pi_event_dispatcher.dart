@@ -692,7 +692,7 @@ final class PiEventDispatcher({
     }
     if (aborted || errorMessage != null) {
       if (willRetry) return const [];
-      return _abandonCompaction(
+      final failureNote = _abandonCompaction(
         sessionId: sessionId,
         map: (messageId, startedAtMs) => _historyMapper.mapFailedCompaction(
           sessionId: sessionId,
@@ -701,6 +701,9 @@ final class PiEventDispatcher({
           error: errorMessage,
         ),
       );
+      // With no live row to carry the note (its start was missed), the
+      // session error keeps the failure visible.
+      return failureNote.isEmpty ? [BridgeSseSessionError(sessionID: sessionId)] : failureNote;
     }
     final state = _session(sessionId);
     final messageId = state.identities.commitCompaction();
