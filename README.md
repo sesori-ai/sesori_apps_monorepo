@@ -205,8 +205,10 @@ Every integration ships enabled by default — pick your assistant when you star
 - **Install:** the Bridge can install the pinned Sesori DeepSeek ACP adapter, or
   it uses a compatible `sesori-deepseek-acp` from your PATH. Point
   `--deepseek-bin <path>` at a specific adapter to make it authoritative.
-- **Profile and state:** your normal `DSH_HOME` settings, provider credentials,
-  and skills remain local and available to DeepSeek Harness. Sesori-owned
+- **Profile and state:** your normal `DSH_HOME` provider credentials and skills
+  remain local and available to DeepSeek Harness. Provider settings belong in
+  `$DSH_HOME/profiles/sesori/cordis.patch.yml`; adapter 0.2.0 ignores
+  `settings.yaml`, and a custom provider URL must speak the Anthropic Messages API. Sesori-owned
   session mutations are isolated under the Bridge's DeepSeek plugin state.
 - **Security:** telemetry is forced off. The default sandbox is workspace-write
   and approval behavior is ask; only open projects whose code you trust.

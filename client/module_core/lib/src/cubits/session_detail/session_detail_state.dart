@@ -145,6 +145,12 @@ sealed class SessionDetailState with _$SessionDetailState {
     required Session session,
     required SessionInteractionState interaction,
     @Default(false) bool isUpdatingAutoContinuation,
+
+    /// What this screen still owes, as in [SessionDetailFailed], so a session
+    /// just created keeps its unsent messages and their actions in view.
+    @Default([]) List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    @Default([]) List<LaunchFollowUp> launchFollowUps,
+    @Default([]) List<QueuedSessionSubmission> queuedMessages,
   }) = SessionDetailHarnessUnavailable;
 
   const factory failed({

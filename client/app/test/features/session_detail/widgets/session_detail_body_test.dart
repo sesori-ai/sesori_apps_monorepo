@@ -2092,6 +2092,98 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("owed messages hold still from the launch through a blocked first load and its Recheck", (
+    tester,
+  ) async {
+    tester.view.padding = const FakeViewPadding(bottom: 102);
+    addTearDown(tester.view.resetPadding);
+    QueuedSessionSubmission submission({required String promptId, required String text}) =>
+        QueuedSessionSubmission.text(
+          promptId: promptId,
+          text: text,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+          agent: null,
+          agentModel: null,
+          fastMode: false,
+        );
+    final launchFollowUps = [
+      LaunchFollowUp.queued(
+        submission: submission(promptId: "prm_launch", text: "Sent while creating"),
+      ),
+    ];
+    final queuedMessages = [submission(promptId: "prm_early", text: "Sent before the load")];
+    final states = StreamController<SessionDetailState>();
+    addTearDown(states.close);
+    whenListen(
+      cubit,
+      states.stream,
+      initialState: SessionDetailState.loading(
+        launchHandoff: SessionLaunchHandoff(
+          submission: NewSessionSubmissionSnapshot.text(
+            draft: ComposerDraft.typed(text: "Launch prompt"),
+            attachments: const [],
+          ),
+          pluginId: "claude",
+          startedAt: DateTime.now(),
+          followUpIds: const {"prm_launch"},
+          acceptedFollowUps: const [],
+          composer: null,
+        ),
+        seededComposer: null,
+        launchFollowUps: launchFollowUps,
+        queuedMessages: queuedMessages,
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    Finder bubbleOf(String text) => find.ancestor(of: find.text(text), matching: find.byType(QueuedMessageBubble));
+    final followUp = bubbleOf("Sent while creating");
+    final last = bubbleOf("Sent before the load");
+    final followUpRect = tester.getRect(followUp);
+    final lastRect = tester.getRect(last);
+
+    // The first load finds the harness blocked: the notice sits above the
+    // owed messages, which neither move nor lose their actions.
+    states.add(
+      SessionDetailState.harnessUnavailable(
+        session: testSession(),
+        interaction: authRequired,
+        launchFollowUps: launchFollowUps,
+        queuedMessages: queuedMessages,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
+    expect(tester.getRect(followUp), followUpRect);
+    expect(tester.getRect(last), lastRect);
+    final cancels = find.widgetWithText(TextButton, "Cancel");
+    expect(cancels, findsNWidgets(2));
+    await tester.tap(cancels.first);
+    verify(() => cubit.removeLaunchFollowUp(promptId: "prm_launch")).called(1);
+    await tester.tap(cancels.last);
+    verify(() => cubit.cancelQueuedMessage(0)).called(1);
+
+    // Recheck reloads without hiding or moving what is still owed.
+    states.add(
+      SessionDetailState.loading(
+        launchHandoff: null,
+        seededComposer: null,
+        launchFollowUps: launchFollowUps,
+        queuedMessages: queuedMessages,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
+    expect(tester.getRect(followUp), followUpRect);
+    expect(tester.getRect(last), lastRect);
+    expect(tester.takeException(), isNull);
+  });
+
   for (final hasHistory in [false, true]) {
     testWidgets("blocked harness cannot enable continuation but can disable it (history: $hasHistory)", (
       tester,

@@ -37,6 +37,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
+import "../../services/session_interaction_calculator_test.dart" show managementFixture;
 
 const _sessionId = "session-1";
 
@@ -172,6 +173,8 @@ void main() {
       // Holds the first load until completed; the cubit is returned before it.
       Completer<void>? loadGate,
       bool firstLoadFails = false,
+      // Blocks the session's harness, with nothing stored for the session.
+      bool harnessBlocked = false,
     }) async {
       final mockLoadService = MockSessionDetailLoadService();
       when(
@@ -207,6 +210,48 @@ void main() {
           ),
         );
       });
+      when(
+        () => mockLoadService.loadWithoutHarness(
+          session: any(named: "session"),
+          projectId: any(named: "projectId"),
+        ),
+      ).thenAnswer((_) async {
+        await loadGate?.future;
+        return const SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
+            projectId: "project-1",
+            pluginId: "plugin-1",
+            supportsPromptAttachments: false,
+            messages: <MessageWithParts>[],
+            olderMessagesCursor: null,
+            userMessagesBefore: null,
+            awaitingHarnessSync: true,
+            pendingQuestions: <PendingQuestion>[],
+            pendingPermissions: <PendingPermission>[],
+            bridgeQueuedPrompts: <QueuedSessionPrompt>[],
+            childSessions: <Session>[],
+            statuses: <String, SessionStatus>{},
+            agents: <AgentInfo>[],
+            providerData: null,
+            commands: <CommandInfo>[],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+            isArchived: false,
+          ),
+        );
+      });
+      final pluginManagementService = stubbedPluginManagementService();
+      if (harnessBlocked) {
+        final blocked = managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        );
+        final snapshots = Stream.value(blocked).shareValueSeeded(blocked);
+        when(() => pluginManagementService.snapshots).thenAnswer((_) => snapshots);
+      }
       when(
         () => mockLoadService.reload(
           session: any(named: "session"),
@@ -246,7 +291,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockConnectionService,
         claimProjectView: true,
-        pluginManagementService: stubbedPluginManagementService(),
+        pluginManagementService: pluginManagementService,
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: mockLoadService,
         sessionAbortService: SessionAbortService(repository: mockSessionRepository),
@@ -2810,6 +2855,30 @@ void main() {
           await cubit.reload();
           await _awaitCondition(() => sentTexts.isNotEmpty);
           expect(sentTexts, ["early"]);
+        });
+
+        test("a first load that finds the harness blocked keeps what is owed in view", () async {
+          final gate = Completer<void>();
+          final repository = launchedRepository(
+            followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+            composer: composer(unsent: null),
+          );
+          final cubit = await createLoadedCubit(
+            sessionLaunchRepository: repository,
+            loadGate: gate,
+            harnessBlocked: true,
+          );
+
+          await send(cubit, text: "early");
+          gate.complete();
+          final blocked = await cubit.stream.firstWhere(
+            (state) => state is SessionDetailHarnessUnavailable,
+          ) as SessionDetailHarnessUnavailable;
+          expect(blocked.queuedMessages.map((submission) => submission.text), ["early"]);
+          expect(blocked.launchFollowUps.map((followUp) => followUp.submission.promptId), ["prm_a"]);
+
+          cubit.cancelQueuedMessage(0);
+          expect((cubit.state as SessionDetailHarnessUnavailable).queuedMessages, isEmpty);
         });
       });
     });

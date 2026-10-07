@@ -395,13 +395,7 @@ class SessionDetailCubit(
         if (next.canInteract) {
           unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.queuedEvent));
         } else {
-          emit(
-            SessionDetailState.harnessUnavailable(
-              isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
-              session: session,
-              interaction: next,
-            ),
-          );
+          emit(_harnessUnavailable(session: session, interaction: next));
         }
       case SessionDetailLoading() || SessionDetailFailed():
         break;
@@ -540,13 +534,7 @@ class SessionDetailCubit(
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
               }
-              emit(
-                SessionDetailState.harnessUnavailable(
-                  isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
-                  session: session,
-                  interaction: _interaction,
-                ),
-              );
+              emit(_harnessUnavailable(session: session, interaction: _interaction));
               _drainPendingEvents();
               return _SessionRefreshResult.applied;
             }
@@ -633,13 +621,7 @@ class SessionDetailCubit(
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
               }
-              emit(
-                SessionDetailState.harnessUnavailable(
-                  isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
-                  session: session,
-                  interaction: _interaction,
-                ),
-              );
+              emit(_harnessUnavailable(session: session, interaction: _interaction));
               _drainPendingEvents();
               return _SessionRefreshResult.applied;
             }
@@ -2221,10 +2203,29 @@ class SessionDetailCubit(
             queuedMessages: _promptQueue.items,
           ),
         );
-      case SessionDetailHarnessUnavailable():
-        break;
+      case final SessionDetailHarnessUnavailable current:
+        emit(
+          current.copyWith(
+            awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
+            launchFollowUps: _unsentLaunchFollowUps,
+            queuedMessages: _promptQueue.items,
+          ),
+        );
     }
   }
+
+  /// The blocked shell with what this screen still owes to send.
+  SessionDetailState _harnessUnavailable({
+    required Session session,
+    required SessionInteractionState interaction,
+  }) => SessionDetailState.harnessUnavailable(
+    isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
+    session: session,
+    interaction: interaction,
+    awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
+    launchFollowUps: _unsentLaunchFollowUps,
+    queuedMessages: _promptQueue.items,
+  );
 
   /// [loading] showing what this screen holds to send.
   SessionDetailLoading _withQueue({required SessionDetailLoading loading}) => loading.copyWith(
