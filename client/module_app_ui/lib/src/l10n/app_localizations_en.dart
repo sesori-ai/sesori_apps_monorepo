@@ -1537,6 +1537,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get transcriptPromptsSearchingEarlier => 'Searching earlier prompts…';
+
+  @override
+  String get transcriptPromptsSearchEarlierFailed => 'Couldn\'t search earlier prompts';
+
+  @override
+  String get transcriptPromptsSearchRetry => 'Retry';
+
+  @override
   String get transcriptPromptsNoDate => 'No date';
 
   @override

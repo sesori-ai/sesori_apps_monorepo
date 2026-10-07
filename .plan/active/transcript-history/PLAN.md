@@ -620,10 +620,12 @@ the app's decode, added only if the measurement shows a visible stall.
   whose retiring condition is that no supported bridge predates the route;
 - `SessionPromptIndexFailure`, including a 404 the route itself returns.
 
-The same rule covers every route this phase adds: the repository maps the
-router's `no handler found for` 404 from the index, load-through or search
-route to that route's own `Unsupported` variant, with the marker; any other
-404 stays a failure. The cubits never see a status code.
+The same rule covers the load-through route: the repository maps the
+router's `no handler found for` 404 to its own `Unsupported` variant, with
+the marker; any other 404 stays a failure. Search has no `Unsupported`: the
+app asks only a bridge that served the index, and no public release has the
+index without search, so a 404 there is an ordinary failure. The cubits
+never see a status code.
 
 **Decode:** the load-through response decodes via `Isolate.run` (measured
 264–268 ms on the UI thread on a Mac for the worst-case session).
@@ -733,11 +735,13 @@ layout.
 
 **App:**
 
-- `SessionRepository.searchPrompts` returns `Available(matches)`,
-  `Unsupported` (a bridge between steps 7 and 11) or `Failure`.
-- `Unsupported` keeps loaded-range search with today's "in the prompts
-  loaded so far" wording and no Retry, and the cubit stops asking the bridge
-  for the rest of that screen. `Failure` follows O3.
+- `SessionRepository.searchPrompts` returns `Available(matches)` or
+  `Failure`; `Failure` follows O3.
+- The cubit asks the bridge only once the prompt index has arrived. A bridge
+  without the index (every public release through v1.9.0) never reaches the
+  route and keeps loaded-range search with today's "in the prompts loaded so
+  far" wording (Q6). The index and search ship together, so an indexed bridge
+  without search exists only in internal builds and gets no fallback.
 - A `module_core` `PromptSearchCubit` owns the query, the loaded-range
   matches and the bridge matches. It debounces the bridge query by 250 ms,
   and the latest query wins.
@@ -997,7 +1001,7 @@ Deliberately not added:
 | Bridge CPU spent deflating a very large load-through response. | Measured sizes: up to 17.4 MB for the largest session. | Measured in step 8. Isolate offload only if the bridge stalls visibly. Attachment responses are never deflated (P4). |
 | The app decodes a whole-session load-through on the UI isolate. | Same 17.4 MB worst case; decode runs on the calling isolate today. | Step 9 decodes it via `Isolate.run`. |
 | The index takes too long for the largest session. | About 20 ms for the review page's query; the fold over every part is new. | Measured in step 7 against a 300 ms budget. A narrower projection only if it misses. |
-| A bridge released between steps 7 and 8 (or 7 and 11) has the index but not the load-through (or search) route. | Release timing. | Typed `Unsupported`: a far tap says the bridge needs an update; search stays loaded-only without Retry. |
+| A bridge released between steps 7 and 8 has the index but not the load-through route. | Release timing. | Typed `Unsupported`: a far tap says the bridge needs an update. Search needs no such case: no public release has the index without it. |
 | A long prompt's unloaded pin shows its start, but once loaded it pins its end. | Layout rule of the sticky overlay. | The pin crossfades when the opener loads. |
 | The loaded-range fold and the index disagree on a prompt's kind. | Known limitation at the loaded edge. | The index wins (P15). |
 

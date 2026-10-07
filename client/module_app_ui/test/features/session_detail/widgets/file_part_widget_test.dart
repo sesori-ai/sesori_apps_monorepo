@@ -84,6 +84,7 @@ Widget _presentationScope({required Widget child, required bool canShareImages})
     imageSaver: dependencies.get<ImageSaver>,
     imageClipboard: dependencies.get<ImageClipboard>,
     imageSharer: dependencies.get<ImageSharer>,
+    sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
     canShareImages: canShareImages,
     openExternalLink: ({required url, required mode}) => dependencies<UrlLauncher>().launch(url, mode: mode),
     openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},

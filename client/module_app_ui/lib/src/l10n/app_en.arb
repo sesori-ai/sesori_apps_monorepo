@@ -1035,6 +1035,18 @@
     "description": "Last row of the Prompts screen while searching once it lists every prompt of the session: how many prompts match.",
     "placeholders": {"count": {"type": "int"}}
   },
+  "transcriptPromptsSearchingEarlier": "Searching earlier prompts…",
+  "@transcriptPromptsSearchingEarlier": {
+    "description": "Last row of the Prompts screen while the bridge searches the whole text of every prompt and has not answered yet."
+  },
+  "transcriptPromptsSearchEarlierFailed": "Couldn't search earlier prompts",
+  "@transcriptPromptsSearchEarlierFailed": {
+    "description": "Last row of the Prompts screen when the bridge's search of every prompt failed; the matches already shown stay."
+  },
+  "transcriptPromptsSearchRetry": "Retry",
+  "@transcriptPromptsSearchRetry": {
+    "description": "Button under the failed search row of the Prompts screen that asks the bridge to search every prompt again."
+  },
   "transcriptPromptsNoDate": "No date",
   "@transcriptPromptsNoDate": {
     "description": "Day header of the Prompts screen over prompts whose send time is unknown."

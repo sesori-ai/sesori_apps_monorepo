@@ -39,6 +39,8 @@ class MockImageSharer() extends Mock implements ImageSharer;
 
 class MockMessageImageRepository() extends Mock implements MessageImageRepository;
 
+class MockSessionRepository() extends Mock implements SessionRepository;
+
 /// A valid 1x1 transparent PNG so `Image.memory` thumbnails decode in tests.
 final Uint8List _tinyPng = Uint8List.fromList(const [
   0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, //
@@ -86,6 +88,7 @@ Widget _buildApp({
             imageSaver: MockImageSaver.new,
             imageClipboard: () => imageClipboard,
             imageSharer: MockImageSharer.new,
+            sessionRepository: MockSessionRepository.new,
             canShareImages: true,
             openExternalLink: ({required url, required mode}) async => false,
             openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},

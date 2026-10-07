@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/repositories/models/session_diff_summary_re
 import "package:sesori_dart_core/src/repositories/models/session_messages_through_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_prompt_search_result.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -713,6 +714,37 @@ void main() {
 
       expect(unsupported, isA<SessionPromptIndexUnsupported>());
       expect(failed, isA<SessionPromptIndexFailure>());
+    });
+  });
+
+  group("searchPrompts", () {
+    Future<SessionPromptSearchResult> searchFor({required ApiResponse<SessionPromptSearchResponse> response}) {
+      final api = MockSessionApi();
+      when(() => api.searchPrompts(sessionId: "s1", query: "deploy")).thenAnswer((_) async => response);
+      return SessionRepository(api: api).searchPrompts(sessionId: "s1", query: "deploy");
+    }
+
+    test("passes the matches through", () async {
+      const matches = [
+        SessionPromptSearchMatch(
+          messageId: "m1",
+          excerpt: SessionPromptExcerpt(before: "", match: "deploy", after: " it"),
+        ),
+      ];
+
+      final result = await searchFor(
+        response: ApiResponse.success(const SessionPromptSearchResponse(matches: matches)),
+      );
+
+      expect(result, isA<SessionPromptSearchAvailable>().having((value) => value.matches, "matches", matches));
+    });
+
+    test("passes an error through as a failure", () async {
+      final error = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "session not found");
+
+      final result = await searchFor(response: ApiResponse.error(error));
+
+      expect(result, isA<SessionPromptSearchFailure>().having((value) => value.error, "error", error));
     });
   });
 }

@@ -13,6 +13,7 @@ import "models/session_diff_summary_result.dart";
 import "models/session_messages_through_result.dart";
 import "models/session_options_repository_result.dart";
 import "models/session_prompt_index_result.dart";
+import "models/session_prompt_search_result.dart";
 import "models/tool_output_result.dart";
 
 @lazySingleton
@@ -164,6 +165,14 @@ class SessionRepository({
       // bridge predates the route.
       ErrorResponse(:final error) when _isMissingRoute(error: error) => const SessionPromptIndexUnsupported(),
       ErrorResponse(:final error) => SessionPromptIndexFailure(error: error),
+    };
+  }
+
+  Future<SessionPromptSearchResult> searchPrompts({required String sessionId, required String query}) async {
+    final response = await _api.searchPrompts(sessionId: sessionId, query: query);
+    return switch (response) {
+      SuccessResponse(:final data) => SessionPromptSearchAvailable(matches: data.matches),
+      ErrorResponse(:final error) => SessionPromptSearchFailure(error: error),
     };
   }
 

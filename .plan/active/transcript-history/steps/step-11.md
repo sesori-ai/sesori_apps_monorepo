@@ -50,8 +50,9 @@ Branch `transcript-history/prompt-search`. `sesori_shared`, the bridge,
   route's behavior, L5 coverage, failure signal and sources. The search reads
   only normalized history, so no harness gap is added to
   `docs/HARNESS_CAPABILITIES.md`.
-- **Compatibility:** a released app never calls the route; a bridge without
-  it answers the router's 404, which 11b maps to `Unsupported`.
+- **Compatibility:** a released app never calls the route. 11b asks only a
+  bridge that served the prompt index, and no public release has the index
+  without search, so 11b needs no `Unsupported` case.
 
 ## Benchmark
 
@@ -104,3 +105,65 @@ magnitude below it, so the 250 ms debounce dominates what the user waits for.
   approved with no findings.
 - **Size:** about 800 changed lines, of which about 385 are generated Freezed
   and JSON code.
+
+## 11b Scope Delivered
+
+Branch `transcript-history/prompt-search-app`. `module_core`,
+`module_app_ui`, both shells and docs. No wire, store or database change.
+
+- **Repository:** `SessionApi.searchPrompts` and
+  `SessionRepository.searchPrompts` return the sealed
+  `SessionPromptSearchResult`: `Available(matches)` or `Failure(error)`.
+  The first review wave removed an `Unsupported` case: the index and search
+  shipped after v1.9.0, the last public release, so a bridge with the index
+  but no search route exists only in internal builds.
+- **Cubit:** `PromptSearchCubit` in `module_core/.../cubits/session_prompts/`
+  owns the query, the local match over each listed prompt's `searchText`, and
+  the bridge's matches. States: `PromptSearchIdle(query)` and
+  `PromptSearchActive(query, matches, earlier)`, with `EarlierPromptSearch`
+  `listedOnly`, `pending`, `slow`, `done`, `failed`. It asks the bridge only
+  when the list `isIndexed` (old public bridges have no index, so they keep
+  the loaded-only search), 250 ms after typing pauses; `slow` after 150 ms;
+  the latest search wins; `retry` asks again from `failed`. An index arriving mid-search starts the
+  bridge's search. Matches keep the list's order; a local match's excerpt
+  wins over the bridge's.
+- **Scope and shells:** `SessionDetailPresentationScope.sessionRepository`;
+  the phone's `SessionDetailScreen` and the desktop's
+  `DesktopSessionDetailScreen` supply `getIt.get<SessionRepository>`.
+- **View:** `SessionPromptsView` provides the cubit and renders its state.
+  A change in which prompts match runs the existing fold with the reader's
+  row held; a status-only change just rebuilds. A relist adopts the cubit's
+  matches for the new list in the same build. The list's end shows the count,
+  "Searching earlier prompts…" while slow, or "Couldn't search earlier
+  prompts" with Retry. Retry's room and the tallest status's are kept for
+  the whole bridge search (the second review wave added the status), and
+  outgoing text fades without sizing the end, so the end never jumps. The
+  response decodes off the UI isolate, as the load-through's does.
+- **Docs:** `docs/regression/transcript-turn-navigation.md` covers the
+  bridge's search, the statuses, Retry and the older bridges.
+
+## 11b Evidence
+
+- Dart 3.13.4 from Flutter 3.47.5-stable, on commit `86b82f2081`.
+- **`client/module_core/`:** `dart test test/cubits/session_prompts
+  test/repositories/session_repository_test.dart` (37 tests after the
+  first review wave: debounce, slow, latest wins, failure then Retry,
+  unindexed never asks, index arriving mid-search, an error as a failure);
+  `dart analyze --fatal-infos`.
+- **`client/module_app_ui/`:** `flutter test test/features/session_prompts
+  test/features/session_detail` (446 tests, including the bridge's matches
+  joining in order and a failed search with Retry); `dart analyze
+  --fatal-infos`.
+- **`client/app/`:** `flutter test test/features/session_detail
+  test/features/new_session` (264 tests); `dart analyze --fatal-infos lib
+  test/features`.
+- **`client/desktop/`:** `flutter test
+  test/features/sessions/desktop_session_detail_screen_test.dart` (13 tests);
+  `dart analyze --fatal-infos lib test/features`.
+- **Renders:** fixture widget renders on `pr-media` under
+  `transcript-history/prompt-search/`. No device recording: the
+  agent-device and peekaboo servers were disconnected.
+- **Architecture review:** `architecture-implementation-review`, pass 1,
+  approved with no findings.
+- **Size:** about 950 changed lines, of which 27 are generated localization
+  code.

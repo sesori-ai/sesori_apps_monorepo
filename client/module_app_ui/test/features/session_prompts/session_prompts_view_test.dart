@@ -4,12 +4,30 @@ import "package:flutter/rendering.dart" show RenderParagraph;
 import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_prompts/session_prompts_view.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_day_header.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_spine_row.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
+
+class _MockSessionRepository() extends Mock implements SessionRepository;
+
+/// A bridge whose search of every prompt finds nothing beyond what is listed.
+SessionRepository _searchFindingNothing() {
+  final repository = _MockSessionRepository();
+  when(
+    () => repository.searchPrompts(
+      sessionId: any(named: "sessionId"),
+      query: any(named: "query"),
+    ),
+  ).thenAnswer((_) async => const SessionPromptSearchAvailable(matches: []));
+  return repository;
+}
+
+Never _unused() => throw UnimplementedError("not under test");
 
 final _now = DateTime.now();
 final _today = DateTime(_now.year, _now.month, _now.day);
@@ -69,7 +87,9 @@ Future<({List<String> taps, List<String> closes})> _pump(
   bool autofocusSearch = false,
   bool isIndexed = false,
   Future<LoadThroughOutcome> Function({required String messageId, required int seq})? onLoadThrough,
+  SessionRepository? repository,
 }) async {
+  final sessionRepository = repository ?? _searchFindingNothing();
   final taps = <String>[];
   final closes = <String>[];
   await tester.pumpWidget(
@@ -77,16 +97,29 @@ Future<({List<String> taps, List<String> closes})> _pump(
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: SessionPromptsView(
-        prompts: TranscriptPromptList(entries: entries, isIndexed: isIndexed),
-        anchorMessageId: anchor,
-        maxWidth: null,
-        onLoadEarlier: onLoadEarlier,
-        isLoadEarlierBusy: isLoadEarlierBusy,
-        autofocusSearch: autofocusSearch,
-        onPromptTap: ({required messageId}) => taps.add(messageId),
-        onLoadThrough: onLoadThrough ?? ({required messageId, required seq}) async => const LoadThroughLoaded(),
-        onClose: () => closes.add("close"),
+      home: SessionDetailPresentationScope(
+        messageImageRepository: _unused,
+        imageSaver: _unused,
+        imageClipboard: _unused,
+        imageSharer: _unused,
+        sessionRepository: () => sessionRepository,
+        canShareImages: false,
+        openExternalLink: ({required url, required mode}) => _unused(),
+        openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
+        openHarnessSettings: () {},
+        openBridgeSettings: () {},
+        child: SessionPromptsView(
+          sessionId: "s1",
+          prompts: TranscriptPromptList(entries: entries, isIndexed: isIndexed),
+          anchorMessageId: anchor,
+          maxWidth: null,
+          onLoadEarlier: onLoadEarlier,
+          isLoadEarlierBusy: isLoadEarlierBusy,
+          autofocusSearch: autofocusSearch,
+          onPromptTap: ({required messageId}) => taps.add(messageId),
+          onLoadThrough: onLoadThrough ?? ({required messageId, required seq}) async => const LoadThroughLoaded(),
+          onClose: () => closes.add("close"),
+        ),
       ),
     ),
   );
@@ -683,6 +716,142 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text("1 match"), findsOneWidget);
+    });
+
+    testWidgets("the bridge's matches join in order, saying it searches only once it is slow", (tester) async {
+      final answer = Completer<SessionPromptSearchResult>();
+      final repository = _MockSessionRepository();
+      when(() => repository.searchPrompts(sessionId: "s1", query: "deploy")).thenAnswer((_) => answer.future);
+      await _pump(
+        tester,
+        entries: [
+          for (var seq = 1; seq <= 3; seq++) unloaded(id: "old$seq", seq: seq),
+          const TranscriptPromptOpener(
+            messageId: "new",
+            text: "Deploy it",
+            source: TranscriptPromptLoaded(fullText: "Deploy it"),
+            createdAt: null,
+            dayKey: null,
+            number: null,
+          ),
+        ],
+        anchor: null,
+        isIndexed: true,
+        repository: repository,
+      );
+
+      await tester.enterText(find.byType(TextField), "deploy");
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      // The loaded prompt matches at once; the bridge is asked after typing pauses.
+      expect(find.text("1 match"), findsOneWidget);
+      expect(_row("old2"), findsNothing);
+      verifyNever(() => repository.searchPrompts(sessionId: "s1", query: "deploy"));
+      await tester.pump(const Duration(milliseconds: 50));
+      verify(() => repository.searchPrompts(sessionId: "s1", query: "deploy")).called(1);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text("Searching earlier prompts…"), findsNothing, reason: "a quick answer never says so");
+      await tester.pump(const Duration(milliseconds: 60));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text("Searching earlier prompts…"), findsOneWidget);
+
+      answer.complete(
+        const SessionPromptSearchAvailable(
+          matches: [
+            SessionPromptSearchMatch(
+              messageId: "old2",
+              excerpt: SessionPromptExcerpt(before: "then ", match: "deploy", after: " again"),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(_topOf(tester, "old2"), lessThan(_topOf(tester, "new")));
+      expect(find.text("2 matches"), findsOneWidget);
+      expect(find.textContaining("then deploy again", findRichText: true), findsOneWidget);
+    });
+
+    testWidgets("at a large text size the list's end holds still as the bridge's status changes", (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final answer = Completer<SessionPromptSearchResult>();
+      final repository = _MockSessionRepository();
+      when(() => repository.searchPrompts(sessionId: "s1", query: "Prompt")).thenAnswer((_) => answer.future);
+      await _pump(
+        tester,
+        entries: [for (var index = 0; index < 20; index++) _opener(id: "p$index", day: null)],
+        anchor: null,
+        isIndexed: true,
+        repository: repository,
+      );
+      await tester.enterText(find.byType(TextField), "Prompt");
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump(const Duration(milliseconds: 150));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -10000));
+      await tester.pumpAndSettle();
+      // The status wraps at this size, while the count it gives way to does not.
+      expect(find.text("Searching earlier prompts…"), findsOneWidget);
+      final lastTop = _topOf(tester, "p19");
+
+      answer.complete(const SessionPromptSearchAvailable(matches: []));
+      await tester.pumpAndSettle();
+
+      expect(find.text("20 matches"), findsOneWidget);
+      expect(_topOf(tester, "p19"), lastTop);
+    });
+
+    testWidgets("a failed bridge search keeps the loaded matches and Retry asks again", (tester) async {
+      final repository = _MockSessionRepository();
+      var answers = <SessionPromptSearchResult>[
+        SessionPromptSearchFailure(error: ApiError.generic()),
+        const SessionPromptSearchAvailable(
+          matches: [
+            SessionPromptSearchMatch(
+              messageId: "old",
+              excerpt: SessionPromptExcerpt(before: "", match: "Prompt", after: " old"),
+            ),
+          ],
+        ),
+      ];
+      when(() => repository.searchPrompts(sessionId: "s1", query: "Prompt")).thenAnswer((_) async {
+        final [answer, ...rest] = answers;
+        answers = rest;
+        return answer;
+      });
+      await _pump(
+        tester,
+        entries: [
+          const TranscriptPromptOpener(
+            messageId: "old",
+            text: null,
+            source: TranscriptPromptUnloaded(seq: 1, preview: null),
+            createdAt: null,
+            dayKey: null,
+            number: null,
+          ),
+          _opener(id: "new", day: null),
+        ],
+        anchor: null,
+        isIndexed: true,
+        repository: repository,
+      );
+
+      await tester.enterText(find.byType(TextField), "Prompt");
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pumpAndSettle();
+      expect(find.text("Couldn't search earlier prompts"), findsOneWidget);
+      expect(_row("new"), findsOneWidget, reason: "the loaded match stays");
+      expect(_row("old"), findsNothing);
+
+      await tester.tap(find.byKey(const Key("session-prompts-search-retry")));
+      await tester.pumpAndSettle();
+      expect(find.text("2 matches"), findsOneWidget);
+      expect(_row("old"), findsOneWidget);
+      verify(() => repository.searchPrompts(sessionId: "s1", query: "Prompt")).called(2);
     });
   });
 }

@@ -66,6 +66,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
         imageSaver: _MockImageSaver.new,
         imageClipboard: _MockImageClipboard.new,
         imageSharer: _MockImageSharer.new,
+        sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
         canShareImages: true,
         openExternalLink: ({required url, required mode}) async => false,
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
