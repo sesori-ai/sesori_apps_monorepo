@@ -724,7 +724,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             SessionDetailLoading(:final launchHandoff) => launchHandoff != null,
             SessionDetailLoaded() || SessionDetailHarnessUnavailable() => true,
             // Queued messages sit below the error, which then fills the rest.
-            final SessionDetailFailed failed => _owesMessages(failed),
+            SessionDetailFailed(:final awaitingBridgeSubmissions, :final launchFollowUps, :final queuedMessages) =>
+              _owesMessages(
+                awaitingBridgeSubmissions: awaitingBridgeSubmissions,
+                launchFollowUps: launchFollowUps,
+                queuedMessages: queuedMessages,
+              ),
           },
           child: content,
         ),
@@ -841,10 +846,11 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     };
   }
 
-  static bool _owesMessages(SessionDetailFailed failed) =>
-      failed.awaitingBridgeSubmissions.isNotEmpty ||
-      failed.launchFollowUps.isNotEmpty ||
-      failed.queuedMessages.isNotEmpty;
+  static bool _owesMessages({
+    required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    required List<LaunchFollowUp> launchFollowUps,
+    required List<QueuedSessionSubmission> queuedMessages,
+  }) => awaitingBridgeSubmissions.isNotEmpty || launchFollowUps.isNotEmpty || queuedMessages.isNotEmpty;
 
   /// A first load that failed or found the harness blocked, with [status]
   /// above the messages still owed: the same bubbles and actions the loading
@@ -857,7 +863,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     required List<QueuedSessionSubmission> queuedMessages,
     required String? harnessName,
   }) {
-    if (awaitingBridgeSubmissions.isEmpty && launchFollowUps.isEmpty && queuedMessages.isEmpty) return status;
+    if (!_owesMessages(
+      awaitingBridgeSubmissions: awaitingBridgeSubmissions,
+      launchFollowUps: launchFollowUps,
+      queuedMessages: queuedMessages,
+    )) {
+      return status;
+    }
     final cubit = context.read<SessionDetailCubit>();
     QueuedMessageBubble bubble({
       required QueuedSessionSubmission submission,
