@@ -2,10 +2,15 @@
 
 ## Status
 
-- Planned 2026-10-06. Step 1 (this plan) is the plan PR.
-- Phase 1 (steps 2–4) is detailed and ready to implement.
-- Phases 2 and 3 (steps 6–13) are rough. Step 5 details them and sends the
-  revised plan through `architecture-plan-review` before step 6 starts.
+- Planned 2026-10-06 (step 1, #1859).
+- Phase 1 is delivered: W2 (#1878), the bridge half of W1 (#1876) and the app
+  half (#1879). On dev-account data, deflated pages are about 4.5× smaller at the
+  median (2.6× to 7.3×), and the largest first page went from 26.9 KB to 9.6 KB
+  (`steps/step-04.md`).
+- Step 5 (2026-10-07) details phases 2 and 3 below and records their
+  `architecture-plan-review` in [Plan Review](#plan-review). The user
+  answered its two product questions, O2 and O3, the same day; see
+  [User Decisions](#user-decisions-final).
 - Live status lives on GitHub:
   `gh pr list --state all --search "[transcript-history]"`. Evidence for a
   finished step lives in `steps/step-NN.md`, written only by that step's PR.
@@ -76,8 +81,8 @@ Long sessions must stay cheap to open and easy to navigate.
 
 ## User Decisions (Final)
 
-These are the user's decisions of 2026-10-06, made on the review page. Do not
-reopen them.
+These are the user's decisions of 2026-10-06, made on the review page, and
+of 2026-10-07, where dated. Do not reopen them.
 
 | ID | Decision |
 |---|---|
@@ -90,6 +95,9 @@ reopen them.
 | Q4 | Index entries carry a 300-character preview. Search is a bridge query over the full text of every prompt. This reverses turn-navigation D30's "no bridge search route". |
 | Q5 | Tapping a far, unloaded prompt loads everything between it and the loaded range in one request. A spinner appears only after about 150 ms. The new messages are prepended off-screen, so nothing visible moves. |
 | Q6 | Against a v1.9.0 bridge, keep today's Prompts screen and wording: only loaded prompts are listed, and no pin appears over partial turns. |
+| O2 | 2026-10-07: a pin over an unloaded prompt shows the index preview in the normal pinned bubble, cut at the compact pin height like any long prompt. A tap loads through and jumps. It looks like every other pin, so the swap to the real bubble when the opener loads is invisible. |
+| O3 | 2026-10-07: while the bridge searches, loaded-range matches show at once. After about 150 ms without a bridge answer, the count row reads "Searching earlier prompts…", then "{count} matches". On failure it reads "Couldn't search earlier prompts" with Retry, and the loaded matches stay. |
+| 2026-10-07 | The prompts UI stays a separate Prompts screen, not an in-place fold. The bridge stamps prompt times (turn-navigation D38, landed), and the list keeps the transcript's order. |
 
 ## Planning Decisions
 
@@ -105,8 +113,14 @@ evidence; none is a user decision.
 | P5 | The compressed plaintext is one marker byte `0x00` followed by raw deflate (`ZLibCodec(raw: true)`), inside the AEAD. The outer frame and its version byte `0x01` do not change. | `0x00` is never the first byte of JSON text, and plain plaintexts always start with `{`, so the reader needs no other signal. The relay sees the same frame format. |
 | P6 | zlib stays in the Layer 0 transport code of the two packages that already depend on `dart:io`: a plaintext codec in the bridge's `foundation/`, and `RelayClient` in `module_core`. `sesori_shared` holds only the marker constant and the request field. | `sesori_shared` must not import platform libraries. Each side's codec call is about one line. |
 | P7 | SSE events and app-to-bridge requests stay uncompressed. | SSE events are small and deflate poorly one by one. Request bodies are small; attachments are already compressed formats. |
-| P8 | The prompt index has no revision counter (turn-navigation F1). The app refetches it when it replaces its whole message list: a refresh, a reconnect resync, or a history rewrite. Paging older messages and the load-through only prepend, so they never refetch it. An open Prompts screen keeps its opening snapshot, as turn-navigation already requires; a refetched index reaches it only through that screen's existing snapshot-refresh rule. | Q2 fetches the index once per open. A refetch on replacement covers compaction and history rewrites. A stale entry fails one tap with an inline error. |
-| P9 | The load-through (Q5) is a lower bound on the existing page request, not a new route. | It reuses the cursor, the paging code and the projection. |
+| P8 | The prompt index has no revision counter (turn-navigation F1). The app refetches it when it replaces its whole message list, which is every place `SessionDetailCubit` bumps `_transcriptGeneration`: the snapshot build and the refresh (reconnect resyncs and history rewrites arrive as refreshes). Paging older messages and the load-through only prepend, so they never refetch it. An open Prompts screen keeps its opening snapshot, as turn-navigation already requires. It relists only through that screen's snapshot-refresh rule, which step 9 widens from "an older page landed" to "an older page or a load-through landed, or the index arrived". | Q2 fetches the index once per open. A refetch on replacement covers compaction and history rewrites. A stale entry fails one tap with an inline error. |
+| P9 | **Revised by step 5.** The load-through (Q5) is its own route, `POST /session/messages/through`, with its own request type. It shares the page path in the service, the repository and the DAO through a sealed history window. | As a lower bound on `SessionMessagesRequest`, the bound would be valid only with `limit: null` and a non-null `before`, so two of the four field combinations would be invalid. A bridge that ignored the field would read `limit: null` as "the whole transcript", because `ChatHistoryDao.getMessages` ignores `before` when `limit` is null (verified). A separate route fails closed with a 404 instead. |
+| P10 | The index, search and tool-output routes answer from the store alone. They run outside the session queue, read one database snapshot, never backfill, and read the audit file for an archived session. This mirrors `ChatHistoryService._storedOnlyPage`. One private helper in `ChatHistoryService` decides the source (no stored session, the audit file, or the store) for `_storedOnlyPage` and the three new routes. | The app calls them only after a page read, which has already backfilled when it could. A store that lags self-heals at the next list replacement (P8). Queueing would make them wait on a backfill they do not need. |
+| P11 | The index and search decode stored attachments as metadata. They never touch spill files. | A stored row keeps an image as the bridge-internal `stored_file` source, which the shared `MessageAttachment` union decodes to `MessageAttachmentUnknown`. That would make an image-only prompt non-renderable and drop it from the index. Page reads avoid this through `_rehydrateAttachment`, which stats the spill file for every attachment. The index needs only the filename, which `_metadataAttachment` already keeps. |
+| P12 | Search returns message ids and excerpts only. It scans user rows without the turn fold. | The app searches the bridge only when it holds an index, which already carries every kind, number and time. A user prompt's text alone decides a match. |
+| P13 | A slim tool part is a second `ToolState` variant, not a flag. The page request opts in through an enum that mirrors `MessageAttachmentDelivery`. See [W3](#w3-slim-tool-parts-steps-12-and-13). | It satisfies the step 1 review's exclusivity constraint. It also keeps every existing `ToolState(` call site and the `MessagePart.tool` default valid. |
+| P14 | Fetched tool output lives in a cubit map keyed by message id and part id, the stored part's identity (`history_parts`). The map survives list replacement. A full part for the same key always wins over it. | A refresh brings summary parts back. If the fetched output were merged into the messages, every refresh (each app resume) would collapse expanded rows back to loading, and they would jump when the output returned. |
+| P15 | When an index is present, it decides every listed prompt's kind, number and time. Loaded prompts that the index lacks (sent after it was fetched) follow it, classified by the shared rule over the loaded range. | The index folds the whole history. The loaded-range fold can misread the first loaded user message (`docs/regression/transcript-turn-navigation.md`, Known Limitations). |
 
 ## Supersession Of Turn-Navigation
 
@@ -198,6 +212,94 @@ edited. This plan records what it supersedes:
 - The pinned prompt is "the latest user message above the top edge" (D42),
   built from rendered user messages in `session_detail_message_list.dart`
   (`_stickyOpeners`).
+
+### Facts Phases 2 And 3 Build On (Checked 2026-10-07)
+
+**Bridge history read path:**
+
+- `ChatHistoryService.getSessionMessages`
+  (`bridge/app/lib/src/services/chat_history_service.dart`) makes three
+  checks inside the per-session queue (`_enqueueRead`):
+  - an archived session with an audit file is served from that file;
+  - a fresh store is served from the store;
+  - otherwise the session is backfilled from the harness, then read.
+- `_storedOnlyPage` makes the same archive check outside the queue. It reads
+  rows and sync state in one snapshot (`ChatHistoryDao.getPageRowsWithSyncState`).
+- `ChatHistoryRepository` (`bridge/app/lib/src/repositories/chat_history_repository.dart`)
+  assembles pages in two places:
+  - `_assemblePage` decodes `infoJson`, rehydrates parts, and applies W2;
+  - `getArchivedSessionMessages` checks the audit file's `schemaVersion`,
+    quarantines an unreadable file, and slices the pages in memory.
+- `ChatHistoryDao` (`bridge/app/lib/src/api/database/history/chat_history_dao.dart`):
+  - `getMessages` returns the whole session when `limit` is null, ignoring
+    `before`;
+  - `countUserMessagesBefore` is raw SQL over
+    `json_extract(info_json, '$.role') = 'user'`. `history_messages` has no
+    role column.
+- Stored part JSON keeps inline images as `{"source": "stored_file", …}`.
+  That source is not a shared `MessageAttachment` union value, so a direct
+  decode yields `MessageAttachmentUnknown`. Pages turn it back into a shared
+  attachment in `_rehydrateAttachment`, which stats the spill file.
+- Routes are registered in `bridge/app/lib/src/orchestrator.dart` next to
+  `GetSessionMessagesHandler`. An unknown route gets a bare 404 from
+  `RequestRouter._notFound`, in v1.9.0 too.
+
+**App:**
+
+- Unsupported routes in `SessionRepository`
+  (`client/module_core/lib/src/repositories/session_repository.dart`):
+  `getSessionDiffSummary` maps a bare 404 to `SessionDiffSummaryUnsupported`.
+  It needs a typed error body only because that route's own handler also
+  answers 404.
+- `SessionDetailCubit.loadOlderMessages`:
+  - drops a page whose `_transcriptGeneration` changed;
+  - merges messages by id, then sets `olderMessagesCursor` and
+    `userMessagesBeforeOldest` from the page.
+  - The generation increments in two places: the snapshot build and the
+    refresh.
+- `SessionDetailLoadService` pages 50 messages
+  (`initialPageSize`, `olderPageSize`).
+- `RelayClient._decryptRelayMessage` and `RelayHttpApiClient` decrypt,
+  inflate and JSON-decode on the calling isolate. No response decode uses
+  `Isolate.run` or `compute`.
+- The Prompts screen:
+  - `_promptListOf` in `session_detail_body.dart` builds the list from
+    `state.messages`, so the turn and prompt-list builders run in
+    `module_app_ui` today;
+  - a tap calls `_returnToPrompt`, which jumps the transcript beneath the
+    open screen, then closes the screen;
+  - the screen relists only when `isLoadingOlderMessages` goes from true to
+    false.
+- The analytics event `transcript_prompts_opened`, with its entry
+  parameter, already reports Prompts screen use.
+
+**Tool parts:**
+
+- The shared `ToolState` (`shared/sesori_shared/lib/src/models/sesori/message_part.dart`)
+  is one Freezed class: `status`, `title`, `shellCommand`, `output`, `error`
+  and `attachments`.
+- `PluginToolState.toShared` keeps output and error only for shell tools or
+  with `retainSummary` (the subtask `taskState`). Each is bounded to
+  `maxToolOutputLength` (500) characters.
+- Only `ToolPartWidget`
+  (`client/module_app_ui/lib/src/features/session_detail/widgets/tool_part_widget.dart`)
+  reads output or error in the app. It also decides whether the disclosure
+  shows (`hasDetails`). No app code reads a subtask `taskState`'s output.
+- The panel is capped at 144 px (`shellTool.viewport`).
+  `TranscriptDisclosure` scrolls the reversed list with the panel's opening
+  animation, so the tapped header stays still.
+- Semantic import fingerprints decode stored parts, then re-encode them
+  (`_semanticMessageFingerprints` calls `_rehydrateParts`, then `toJson`). A
+  new JSON key on `ToolState` therefore fingerprints the same on stored and
+  imported parts.
+- The shared `build.yaml` sets `include_if_null: false` and has no
+  `disallow_unrecognized_keys`. Neither did v1.9.0's, so v1.9.0 apps ignore
+  unknown keys.
+
+**Harness behavior:** `docs/HARNESS_CAPABILITIES.md` "Transcript turn
+boundaries" records which harnesses keep a follow-up inside the running turn.
+The rule reads normalized history only, so moving it to the bridge adds no
+harness gap.
 
 ## Phase 1 Architecture
 
@@ -346,115 +448,380 @@ Step 3 covers the bridge and `sesori_shared`. Step 4 covers the app.
   deliberately not added.
 - **Logs:** no new content is logged. The verbose byte counts already exist.
 
-## Later Phases (Rough)
+## Phases 2 And 3 Architecture
 
-Step 5 turns these bullets into detailed steps. They are direction, not a
-contract.
+Detailed by step 5. Names marked "for example" are proposals; the step's PR
+may rename them, but not change their shape or owner.
 
-Architecture constraints step 5 must write in. They came from the step 1
-architecture review:
+The step 1 architecture review set five constraints. This is where each one
+is written in:
 
-- **Bridge routes (steps 7, 11 and 12).**
-  - Each route goes handler → `ChatHistoryService` →
-    `ChatHistoryRepository` → `ChatHistoryDao`.
-  - Preview and excerpt cuts, entry mapping, and the slim-part projection
-    live in the repository, not the handler (same placement as W2).
-  - Step 5 states how the archived audit-file path serves the index and
-    search. The narrower-database-projection fallback does not apply there.
-- **Older bridges (step 9).** An older bridge's 404 becomes a typed
-  "unsupported" result in the app's `SessionRepository`, following the
-  existing pattern in `client/module_core/lib/src/repositories/session_repository.dart`.
-  The cubit never branches on a status code.
-- **Pin (step 10).** Choosing the index entry is business logic in
-  `module_core`, in the cubit state or the turn model. `module_app_ui` only
-  turns it into a `TranscriptStickyAbove` place. `_stickyOpeners` stays
-  layout-only.
-- **Search merge (step 11).** Merging loaded-range and bridge matches
-  belongs in `module_core`, not in `session_prompts_view.dart`.
-- **W3 wire shape (step 12).** A slim tool part must not pair nullable output
-  and error with a separate "has detail" flag, because that allows
-  contradictory states. Step 5 defines a sealed or otherwise exclusive shape
-  in which each variant carries only its valid fields.
+| Constraint | Where it lands |
+|---|---|
+| Bridge routes go handler → `ChatHistoryService` → `ChatHistoryRepository` → `ChatHistoryDao`. Cuts, entry mapping and the slim-part projection live in the repository or `repositories/mappers/`. The archived path is stated. | Steps [7](#prompt-index-route-step-7), [8](#load-through-route-step-8), [11](#search-every-prompt-step-11) and [12](#w3-slim-tool-parts-steps-12-and-13). Each names its archived path. Only the index has a narrower-projection escape hatch, and it does not apply to audit files. |
+| An older bridge's 404 becomes a typed "unsupported" result in `SessionRepository`. The cubit never branches on a status code. | [Step 9](#the-index-in-the-app-step-9): `SessionPromptIndexUnsupported`. |
+| Choosing the pin's index entry is business logic in `module_core`. `module_app_ui` only turns it into a `TranscriptStickyAbove` place, and `_stickyOpeners` stays layout-only. | [Step 10](#pin-above-unloaded-turns-step-10). |
+| Merging loaded-range and bridge search matches belongs in `module_core`. | [Step 11](#search-every-prompt-step-11): `PromptSearchCubit`. |
+| A slim tool part never pairs nullable output and error with a "has detail" flag. | [Step 12](#w3-slim-tool-parts-steps-12-and-13): `ToolState` gains a second variant. |
 
-### Phase 2: Prompt Index And Search (Steps 6–11)
+### Shared Follow-Up Rule (Step 6)
 
-- **Shared rule (step 6).**
-  - Move rule A into `sesori_shared` as a pure fold over `MessageWithParts`,
-    together with the two message extensions it needs
-    (`hasRenderableUserContent`, `promptText`).
-  - The fold returns each user message's kind: opener, follow-up, or none.
-  - `TranscriptTurnBuilder` delegates to it with no change in behavior. The
-    existing turn tests are the parity proof.
-- **Index route (step 7).**
-  - A new route, for example `POST /session/prompts`, returns entries in
-    chronological order. Each entry is an opener, or a follow-up carrying
-    its opener's message id, with:
-    - `messageId` and `seq`;
-    - `number`;
-    - `createdAt`;
-    - a preview of at most 300 characters, plus whether the text continues.
-  - It covers archived sessions.
-  - Performance budget: the largest session within a few hundred
-    milliseconds on the bridge. A narrower database projection is the escape
-    hatch, added only if measurement demands it.
-- **Load-through (step 8).**
-  - `SessionMessagesRequest` gains an inclusive lower bound, for example
-    `throughSeq`, where null means a normal page.
-  - The bridge returns every message from that bound up to `before`.
-  - The app's cubit prepends the result like an older page.
-  - The worst case (the whole 17 MB session at once) is measured under W1.
-    Running the deflate in an isolate is the escape hatch.
-- **App index (step 9).**
-  - After the first page, when `olderMessagesCursor != null`, fetch the index
-    once (Q2). A 404 from an older bridge falls back to today's screen (Q6).
-  - The Prompts screen lists every prompt. "Load earlier prompts" disappears
-    when the index is present.
-  - Tapping an unloaded prompt runs the load-through:
-    - the spinner appears only after about 150 ms;
-    - the new messages are prepended off-screen;
-    - then the transcript scrolls to the prompt (Q5).
-  - Replacing the whole message list drops the index and refetches it.
-    Paging and the load-through do not (P8).
-  - A tap on an entry the bridge no longer has shows an inline error.
-- **Pin (step 10).** When the top of the loaded range sits inside a turn
-  whose opener is not loaded, the pin uses the latest index entry older than
-  the loaded range, as a synthetic `TranscriptStickyAbove`.
-- **Search (step 11).**
-  - A route, for example `POST /session/prompts/search`, does a full-text
-    case-insensitive match over every prompt. It returns entries with an
-    excerpt window.
-  - `promptSearchPattern` and `promptExcerpt` move to `sesori_shared`, so
-    both sides match and cut excerpts the same way.
-  - Loaded-range matches still show instantly; bridge matches merge in by
-    `seq`.
-- **Analytics.** Considered; probably none. Prompt navigation is a
-  convenience, not an activation or adoption question. Step 5 records the
-  final answer.
-- **Harness capabilities.** The index uses each harness's existing follow-up
-  behavior. No new harness gap is expected. Step 5 confirms this against
-  `docs/HARNESS_CAPABILITIES.md` "Transcript turn boundaries".
+- A new `shared/sesori_shared/lib/src/transcript/prompt_turns.dart`, exported
+  from the package, takes two things verbatim from `module_core`:
+  - the `SessionMessagePresentation` extension (`hasRenderableUserContent`
+    and `promptText`) from `session_detail_resolvers.dart`. Its consumers in
+    `module_core` and `module_app_ui` already import `sesori_shared`, so only
+    the declaration moves. `firstNonBlankLine` stays in the client, because
+    only display code uses it;
+  - rule A from `transcript_turns.dart`: `_opensTurn`, `_outputEndOf`,
+    `_partEnd` and `_OutputEnd`.
+- One public fold replaces the segment loop at the top of
+  `TranscriptTurnBuilder.build`. For example,
+  `splitPromptTurns({required List<MessageWithParts> messages})` returns a
+  sealed `PromptTurnSegment` list:
+  - `LeadingPromptSegment(messages)`: messages before the first opener;
+  - `PromptSegment(opener, messages)`.
+- `TranscriptTurnBuilder` keeps its signature. It maps a leading segment to
+  `TranscriptPartialTurn` or `TranscriptPreamble` by `hasOlderMessages`, as
+  it does today. The private helpers are deleted from the client, not
+  wrapped.
+- **Proof:** the existing `transcript_turns_test.dart` and
+  `transcript_prompt_list_test.dart` pass unchanged. A few shared tests cover
+  the fold directly, because the bridge will call it without the client.
 
-### Phase 3: Slim Tool Parts (Steps 12–13)
+### Prompt Index Route (Step 7)
 
-- **Bridge (step 12).**
-  - `SessionMessagesRequest` gains an honest `@Default` opt-in for summary
-    tool parts. v1.9.0 apps omit it and keep full parts.
-  - When opted in, shell tools are sent without output and error, in a
-    shape that still tells the app whether detail exists, so the disclosure
-    still shows. The shape follows the constraints above.
-  - A new route returns one tool part's output and error.
-  - SSE live parts stay full.
-- **App (step 13).**
-  - Opt in on page reads.
-  - On expand:
-    - the row opens at once to a fixed-height loading body;
-    - the spinner appears after about 150 ms;
-    - the body then animates to its fetched height;
-    - a failure shows inline with a retry.
-  - The fetched detail is merged into the cubit's message so it survives
-    rebuilds.
-- `docs/HARNESS_CAPABILITIES.md` and `tools-and-file-changes.md` gain the
-  "fetched on expand" behavior.
+**Wire** (`sesori_shared`):
+
+- `POST /session/prompts` takes the existing `SessionIdRequest`.
+- It returns `SessionPromptIndexResponse(entries)`, oldest first.
+- `SessionPromptIndexEntry` is a sealed Freezed union keyed by `kind`:
+  - `opener(messageId, seq, number, int? createdAt, String? preview)`;
+  - `followUp(messageId, seq, number, int? createdAt, String? preview,
+    openerMessageId)`.
+  - A prompt in the leading segment is an opener, as
+    `TranscriptPromptListBuilder` lists it today.
+- `number` counts every user message from the start of the session,
+  including hidden ones, exactly as `countUserMessagesBefore` and the client
+  numbering do (D29). Hidden user messages get no entry.
+- `createdAt` is the message's `time.created`. It is null when the harness
+  gave none; the ACP family now has one (D38, `localUserMessageTime` in
+  `bridge/sesori_plugin_acp/lib/src/acp_event_mapper.dart`).
+- `preview` is `promptText` with leading whitespace trimmed, cut to at most
+  300 UTF-16 code units without splitting a surrogate pair. It is null when
+  `promptText` is null (an attachment whose name is unknown) or holds only
+  whitespace, never an empty string, matching `firstNonBlankLine` on the
+  loaded list. There is
+  no "text continues" flag: the app shows previews as one line, and search
+  goes to the bridge.
+- The handler never answers 404. An unknown or empty session returns an
+  empty list, so a 404 always means an older bridge (step 9).
+
+**Bridge path:**
+
+- `GetSessionPromptIndexHandler` → `ChatHistoryService.getPromptIndex` →
+  `ChatHistoryRepository` → `ChatHistoryDao`, under P10.
+- The service makes `_storedOnlyPage`'s archive check. An archived session
+  with an audit file reads that file; any other session reads the store.
+- Store path: the existing `ChatHistoryDao.getPageRowsWithSyncState` with
+  `limit: null` already returns every message row and its parts in one
+  transaction; no new DAO read. The repository decodes `infoJson`, decodes parts with the metadata attachment
+  projection (P11), folds with `splitPromptTurns`, numbers the user
+  messages, and maps entries in a pure mapper, for example
+  `repositories/mappers/prompt_index_mapper.dart`.
+- Archive path: the repository reads and validates the audit file through
+  the same steps as `getArchivedSessionMessages`. Those steps move into one
+  private helper that both callers use, so the schema check and the
+  quarantine stay in one place. The fold and the mapper are shared with the
+  store path.
+- **Budget:** about 300 ms on the bridge for a synthetic session the size of
+  the largest measured one (9,790 messages, 836 prompts), measured with
+  `bridge/app/tool/benchmarks/`. The escape hatch, only if the measurement
+  misses the budget, is a DAO projection that reads `infoJson` plus only the
+  part fields rule A needs. It does not apply to the archive path, which
+  already holds the whole file in memory.
+
+**Docs:** `docs/HARNESS_CAPABILITIES.md` "Transcript turn boundaries" says
+the client and the bridge apply the same shared rule.
+`docs/regression/session-history-and-recovery.md` gains the index,
+including archived sessions.
+
+### Load-Through Route (Step 8)
+
+**Wire:**
+
+- `POST /session/messages/through` takes
+  `SessionMessagesThroughRequest(sessionId, throughSeq, before,
+  attachmentDelivery, storedOnly)`. Every field is required, because no
+  older app sends it.
+- It returns the existing `MessageWithPartsResponse` with every message
+  where `throughSeq <= seq < before`, oldest first.
+  - `nextCursor` is `throughSeq` when an older message exists, otherwise
+    null. An exists query answers that, because the page is not cut by a
+    limit.
+  - `userMessagesBefore` is the count before `throughSeq`.
+- 400 when `throughSeq >= before`.
+
+**Bridge path:**
+
+- A sealed `HistoryWindow` in `bridge/app/lib/src/repositories/models/`
+  replaces the `limit` and `before` pair in `ChatHistoryService` and
+  `ChatHistoryRepository`. It never reaches the DAO, which imports nothing
+  from `repositories/` and keeps plain parameters:
+  - `HistoryWindowAll()`: a request without `limit`, the whole session;
+  - `HistoryWindowNewest(int limit, int? before)`: today's page;
+  - `HistoryWindowThrough(throughSeq, before)`.
+- Today the store ignores `before` when `limit` is null, but the archive
+  slice applies it. No caller sends that pair (the app always sends a
+  limit), so `HistoryWindowAll` drops `before` on both paths.
+- The repository switches on the window. Newest and all call the existing
+  `getPageRowsWithSyncState`. Through calls a new DAO read with plain
+  parameters that returns, in one snapshot, the rows where
+  `throughSeq <= seq < before`, their parts, whether an older message
+  exists, and the user count before `throughSeq`.
+- The page route builds `HistoryWindowAll` or `HistoryWindowNewest`; the new
+  handler builds `HistoryWindowThrough`. Freshness, backfill, `storedOnly`,
+  the archive slice, W2 and the attachment projection stay on the one shared
+  path.
+
+**App path:**
+
+- `SessionApi.getMessagesThrough` → `SessionRepository` →
+  `SessionDetailLoadService.loadMessagesThrough` →
+  `SessionDetailCubit.loadMessagesThrough`.
+- It takes the tapped entry's `messageId` and `seq`, and returns a sealed
+  result: `Loaded`, `TargetMissing` (the load landed without that message),
+  `Failed`, or `Superseded` (the generation changed while it ran).
+- It shares the prepend with `loadOlderMessages`. The cursor and
+  `userMessagesBeforeOldest` move together as one pair from one response,
+  and only toward older history: the prepend keeps whichever pair has the
+  lower boundary (null, the start of history, is lowest). An older page that
+  lands after a farther load-through therefore cannot restore its newer
+  cursor or count.
+- A 404 here comes from a bridge released between steps 7 and 8, which has
+  the index but not this route. The repository maps it to a typed
+  unsupported result ([step 9](#the-index-in-the-app-step-9)), and the cubit
+  returns `Unsupported`. The screen then says the bridge must be updated to
+  open earlier prompts (a new string), instead of offering a retry that
+  cannot succeed.
+
+**Measure:** step 8 records, for the whole largest session in one response,
+the bridge's deflate time and the app's decode time on the UI isolate. The
+escape hatches are an isolate for the bridge's deflate and `Isolate.run` for
+the app's decode, added only if the measurement shows a visible stall.
+
+### The Index In The App (Step 9)
+
+**Repository:** `SessionRepository.getPromptIndex` returns a sealed result:
+
+- `SessionPromptIndexAvailable(entries)`;
+- `SessionPromptIndexUnsupported`: any 404, with a dated COMPATIBILITY
+  marker whose retiring condition is that no supported bridge predates the
+  route;
+- `SessionPromptIndexFailure`.
+
+The same rule covers every route this phase adds: the repository maps a 404
+from the index, load-through or search route to that route's own
+`Unsupported` variant, with the marker. The cubits never see a status code.
+The tool-output route needs none, because only a bridge that has it sends
+summary parts.
+
+**Cubit and state:**
+
+- `SessionDetailLoaded` gains `promptIndex`, a nullable entry list.
+- The cubit fetches the index after each `_transcriptGeneration` bump when
+  `olderMessagesCursor != null` (Q2, P8). It applies the result only if the
+  generation still matches. `Unsupported` and `Failure` leave the index
+  null; a failure is logged.
+- `_promptListOf` (`session_detail_body.dart`) passes the index and the
+  cursor through. The merge happens in `module_core`, inside
+  `TranscriptPromptListBuilder`.
+
+**Prompt list:**
+
+- `TranscriptPromptListBuilder.build` gains `index` and
+  `olderMessagesCursor`.
+- Each entry gets a sealed source:
+  - `TranscriptPromptLoaded(fullText)`;
+  - `TranscriptPromptUnloaded(seq, preview)`.
+- With an index, it decides every listed prompt's kind, number and time
+  (P15). Loaded prompts the index lacks follow it, classified by the loaded
+  range.
+- Without an index the list is built exactly as today (Q6).
+
+**Prompts screen:**
+
+- With an index, "Load earlier prompts" goes and the count reads
+  "{count} prompts" (a new string). Without one, today's strings stay.
+- The screen relists when an older page lands, when a load-through lands, or
+  when the index arrives (P8).
+- **Far tap:**
+  - the screen stays open while the load runs;
+  - the tapped row shows a spinner after about 150 ms;
+  - when the load lands, `_returnToPrompt` jumps and closes the screen as it
+    does today;
+  - `TargetMissing` or `Failed` shows an inline error on the screen, and
+    `Unsupported` shows the bridge-update message;
+  - a second tap replaces the target;
+  - closing the screen cancels the jump, not the load.
+- The pending target and its timer are UI-local state in the screen.
+
+**Docs:** `docs/regression/transcript-turn-navigation.md` covers the full
+list, the far tap and the older-bridge fallback.
+
+### Pin Above Unloaded Turns (Step 10)
+
+- A method next to `TranscriptPromptListBuilder.build`, in
+  `client/module_core/lib/src/cubits/session_detail/transcript_prompt_list.dart`,
+  returns the pin entry: the last index entry whose `seq` is below
+  `olderMessagesCursor`, when the loaded range starts inside its turn.
+- `session_detail_message_list.dart` prepends that entry as one more opener
+  in the `TranscriptStickyAbove` place, ahead of `_stickyOpeners`'s output.
+  `_stickyOpeners` stays layout-only.
+- A tap on that pin runs the far-tap flow from step 9.
+- The pin shows the entry's preview in the normal pinned bubble, cut at the
+  compact pin height ([O2](#user-decisions-final)).
+- A loaded pin shows its prompt's end instead when the prompt is longer than
+  the overlay's 10,000-character copy budget or taller than the rows below
+  the pin line (`TranscriptStickyPromptOverlay._endOf`,
+  `layOutTranscriptStickyPrompts`). The index cannot know the second case,
+  so for those prompts the pin's content changes when the opener loads. The
+  pin crossfades between the two, so the change is explained, not a snap.
+  Prompts that pin their start, most of them, swap invisibly.
+
+### Search Every Prompt (Step 11)
+
+**Shared:** `promptSearchPattern` and `promptExcerpt` move from
+`client/module_app_ui/lib/src/features/session_prompts/prompt_search.dart`
+to `sesori_shared`, so both sides match and cut alike.
+`promptExcerptExtent` stays in `prompt_spine_row.dart`, because it is
+layout.
+
+**Wire:**
+
+- `POST /session/prompts/search` takes
+  `SessionPromptSearchRequest(sessionId, query)`.
+- It returns `SessionPromptSearchResponse(matches)`, where each
+  `SessionPromptSearchMatch(messageId, excerpt)` carries a
+  `SessionPromptExcerpt(before, match, after)`.
+- Empty session, empty query, or no matches: an empty list. Never 404 from
+  the handler.
+
+**Bridge path:**
+
+- Handler → `ChatHistoryService.searchPrompts` (P10) → repository → a new
+  DAO read of user rows only, using the existing
+  `json_extract(info_json, '$.role') = 'user'` filter.
+- The repository decodes with the metadata projection and matches
+  `promptText` with the shared pattern. A pure mapper cuts the excerpt with
+  the shared helper. There is no fold (P12).
+- The archive path filters the audit file's user messages in memory.
+
+**App:**
+
+- `SessionRepository.searchPrompts` returns `Available(matches)`,
+  `Unsupported` (a bridge between steps 7 and 11) or `Failure`.
+- `Unsupported` keeps loaded-range search with today's "in the prompts
+  loaded so far" wording and no Retry, and the cubit stops asking the bridge
+  for the rest of that screen. `Failure` follows O3.
+- A `module_core` `PromptSearchCubit` owns the query, the loaded-range
+  matches and the bridge matches. It debounces the bridge query by 250 ms,
+  and the latest query wins.
+- `SessionPromptsView` creates it with `BlocProvider(create:)`, from the
+  session id and a `SessionRepository` that `SessionDetailPresentationScope`
+  gains as a new capability. Both shells (`client/app`'s
+  `session_detail_screen.dart` and `client/desktop`'s
+  `desktop_session_detail_screen.dart`) pass it in. The query moves out of
+  `_SessionPromptsViewState`.
+- The view hands the cubit its built prompt list, index entries included,
+  through a named method on every relist. The cubit never reads
+  `SessionDetailCubit`.
+- The merge lives in that cubit: the bridge decides which prompts match, and
+  the index and the loaded range supply their rows.
+- Loaded-range matches show at once. Bridge matches join in chronological
+  order, animating in with size and fade, and rows already on screen keep
+  their place.
+- The count row follows [O3](#user-decisions-final): "Searching earlier
+  prompts…" after about 150 ms without a bridge answer, then
+  "{count} matches"; on failure, "Couldn't search earlier prompts" with
+  Retry, keeping the loaded matches. Both are new strings.
+
+### Analytics And Harnesses
+
+- **Analytics:** no new event. `transcript_prompts_opened` already answers
+  whether people use the Prompts screen. The index, the far tap and search
+  are improvements to that screen, not separate adoption questions.
+- **Harnesses:** no new gap. The rule reads normalized history, and every
+  harness's follow-up behavior is already recorded in "Transcript turn
+  boundaries". W3 applies to every harness's tool parts on page reads.
+
+### W3: Slim Tool Parts (Steps 12 And 13)
+
+**Wire (step 12):**
+
+- `ToolState` becomes a Freezed union keyed by, for example, `form`:
+  - the default constructor stays the full part, so every existing
+    `ToolState(` call site and the `MessagePart.tool` default still compile;
+  - `ToolState.summary(status, title, shellCommand, attachments)` has no
+    output and no error.
+  - `fallbackUnion` decodes keyless JSON (stored rows, v1.9.0 bridges) as
+    full.
+  - Output and error leave the base type, so their readers switch on the
+    variant. The only app reader is `ToolPartWidget` (`hasDetails` and
+    `_ToolPanel`); on the bridge, the mappers build `ToolState` but read
+    output and error only from the plugin type. Full parts gain a few bytes for the key; v1.9.0 apps ignore it,
+    because the shared `build.yaml` has no `disallow_unrecognized_keys`.
+- `SessionMessagesRequest` gains
+  `@Default(ToolOutputDelivery.inline) ToolOutputDelivery toolOutputDelivery`,
+  an enum of `inline` and `onExpand`. It carries the marker
+  `// COMPATIBILITY 2026-10-07 (v1.9.1): v1.9.0 apps omit it and expect full
+  tool parts; drop the default once no supported app predates the field.`
+  `SessionMessagesThroughRequest` gets the field as required if no public
+  release contains step 8 when step 12 lands. Otherwise it gets the same
+  `@Default` and marker, because a released app would send the request
+  without it.
+- `POST /session/tool-output` takes
+  `SessionToolOutputRequest(sessionId, messageId, partId)` and returns
+  `SessionToolOutputResponse(String? output, String? error)`. It answers 404
+  when the part is missing or is not a tool.
+
+**Bridge (step 12):**
+
+- A pure mapper in `repositories/mappers/`, for example
+  `withSummarizedToolOutput()`, applies at the same two page-assembly sites
+  as W2, after it, only when the request asks for `onExpand`.
+- It summarizes only completed, error or cancelled tools that have output or
+  error. Running tools and subtask summaries stay full.
+- The tool-output route goes `GetSessionToolOutputHandler` →
+  `ChatHistoryService.getToolOutput` (P10) → `ChatHistoryRepository` →
+  a new `ChatHistoryDao.getPart` by the table's primary key (`sessionId`,
+  `messageId`, `partId`), or a lookup in the audit file for an archived
+  session.
+- SSE live parts stay full.
+
+**App (step 13):**
+
+- Page reads and load-throughs ask for `onExpand`.
+- `SessionApi.getToolOutput` → `SessionRepository.getToolOutput`, which
+  returns a sealed `ToolOutputResult`: `Available(output, error)` or
+  `Failure`.
+- `SessionDetailCubit` holds a map from a typed `(messageId, partId)` key,
+  the stored part's identity, to a sealed `ToolOutputFetch`: `Loading`, `Loaded(output, error)` or `Failed` (P14).
+  `fetchToolOutput(messageId, partId)` fills it.
+- `ToolPartWidget` shows the disclosure for every summary part, because the
+  bridge summarizes only parts that have output or error. No flag is needed.
+- On expand:
+  - the panel opens at once to a fixed-height loading body;
+  - the spinner appears after about 150 ms;
+  - the panel then resizes to its fetched height. `TranscriptDisclosure`
+    compensates the reversed list only while its own animation runs today,
+    so step 13 extends that compensation to a resize of an open panel, and
+    the header stays still;
+  - a failure shows inline with Retry.
+
+**Docs:** `docs/HARNESS_CAPABILITIES.md` and
+`docs/regression/tools-and-file-changes.md` describe output fetched on
+expand.
 
 ## Steps
 
@@ -467,22 +834,23 @@ added plus deleted lines against the merge base, including generated code.
 | 2 | W2 repository page projection, tests, docs | ≤ 250 | 🌿 one pure projection at two sites |
 | 3 | W1 shared field and marker, bridge codec and deflate, tests | ≤ 450, including generated Freezed and JSON | 🚧 encrypted transport, compatibility |
 | 4 | W1 app ask and inflate, tests, security and connectivity docs | ≤ 400 | 🚧 encrypted transport, every response path |
-| 5 | Detail phases 2 and 3, then architecture review | ≤ 700 | 🌱 docs only |
-| 6 | Move the follow-up rule into `sesori_shared` | ≤ 600 | ⚙️ cross-package move with parity |
-| 7 | Bridge prompt index route | ≤ 900, including generated | 🚧 new wire contract, archived path |
-| 8 | Load-through bound, bridge and cubit | ≤ 600 | 🚧 paging and wire change |
-| 9 | Index fetch, full Prompts list, far-tap flow | ≤ 1,000 | 🚧 scroll stability and lifecycle |
+| 5 | Detail phases 2 and 3, then architecture review | ≤ 700; landed at about 730, the review record, user answers and review fixes being the overage | 🌱 docs only |
+| 6 | Move the follow-up rule and the prompt extension into `sesori_shared` | ≤ 600 | ⚙️ cross-package move with parity |
+| 7 | `POST /session/prompts`: wire union, store and archive paths, benchmark | ≤ 900, including generated | 🚧 new wire contract, archived path |
+| 8 | `POST /session/messages/through`, `HistoryWindow`, app load-through | ≤ 600, plus generated | 🚧 paging and wire change |
+| 9 | Index fetch, full Prompts list, far-tap flow | ≤ 1,300 | 🚧 scroll stability and lifecycle |
 | 10 | Pin over unloaded turns | ≤ 500 | ⚙️ |
-| 11 | Bridge search route and app merge | ≤ 800 | ⚙️ |
-| 12 | W3 bridge summary parts and detail route | ≤ 700 | 🚧 wire opt-in, compatibility |
-| 13 | W3 app opt-in and expand loading | ≤ 700 | ⚙️ motion and state merge |
+| 11 | Bridge search route, shared search helpers, `PromptSearchCubit` | ≤ 800 | ⚙️ |
+| 12 | W3 `ToolState` union, opt-in, summary mapper, tool-output route | ≤ 900, including generated | 🚧 wire opt-in, compatibility |
+| 13 | W3 app opt-in, output map, expand loading | ≤ 700 | ⚙️ motion and state merge |
 | 14 | Reconcile regression docs | ≤ 300 | 🌱 |
 | 15 | Run the L3 matrix and retire | ≤ 250 | 🌱 |
 
 Steps 3 and 4 are split on purpose. Each is a transport and security change
 reviewed on its own, and step 3 is valid alone because no app asks yet. Step 5
-may split steps 6–13 into substeps; when it does, it updates the totals and
-titles.
+kept 15 steps. Step 9 is the largest because the list merge, the screen and
+the far tap must land together to be valid; if it grows past its target, the
+far tap splits out as its own PR.
 
 ### Step Dependencies
 
@@ -490,7 +858,12 @@ titles.
 - Step 3 depends on step 1. Step 4 depends on step 3.
 - Step 5 depends on steps 2–4 having merged, so that it details phases 2 and
   3 with phase 1's evidence (real compressed sizes).
-- Steps 6–13 follow the order step 5 records.
+- Step 6 depends on step 5. Step 7 depends on step 6.
+- Step 8 depends on step 5. It can run in parallel with steps 6 and 7.
+- Step 9 depends on steps 7 and 8.
+- Steps 10 and 11 depend on step 9.
+- Step 12 depends on step 8, because both change the page path and the
+  through request gains W3's field. Step 13 depends on step 12.
 - Step 14 depends on steps 2–13. Step 15 depends on step 14.
 
 ## Verification
@@ -506,6 +879,15 @@ titles.
 - **Steps 3–4:** byte-exact inflate tests on both sides, plus one relay
   integration check per compatibility pairing. Step 4 records the compressed
   page sizes it observes in `steps/step-04.md`.
+- **Step 6:** the existing turn and prompt-list tests pass unchanged.
+- **Step 7:** repository tests for the store and archive paths, including an
+  image-only prompt (P11) and a hidden user message; the benchmark result in
+  `steps/step-07.md`.
+- **Step 8:** DAO and repository tests for the window bounds and the
+  cursor; the measured deflate and decode times in `steps/step-08.md`.
+- **Steps 9–11 and 13:** cubit and builder tests, plus a recording.
+- **Step 12:** mapper tests for every status, and a JSON test that keyless
+  `ToolState` JSON decodes as full.
 - **Steps 5 and 14:** docs only. No Dart suites.
 
 ## Regression Coverage
@@ -569,9 +951,13 @@ results per request and adds no table or column.
 | Phase | State | Why |
 |---|---|---|
 | 1 | None. One boolean travels with a request through the orchestrator's existing call chain. | — |
-| 2 | One nullable prompt index in the session detail state, dropped on list replacement. | Q1/Q2 need it. |
-| 2 | One pending far-tap target, so the spinner can appear after 150 ms. | Q5 needs it. |
-| 3 | Fetched tool details merged into the cubit's messages, plus one loading flag per expanding row. | W3 needs them. |
+| 2 | One nullable prompt index in the session detail state, replaced on list replacement (P8). | Q1/Q2 need it. |
+| 2 | One pending far-tap target and its spinner timer, local to the Prompts screen. | Q5 needs it. |
+| 2 | `PromptSearchCubit`: the query, the two match sets and the debounce timer. | Q4 needs it. |
+| 3 | One map from `(messageId, partId)` to `ToolOutputFetch` in the cubit (P14). | W3 needs it. |
+
+**Persistent change:** the `ToolState` union key adds a few bytes to tool
+parts stored after step 12. Older rows decode through `fallbackUnion`.
 
 Deliberately not added:
 
@@ -580,7 +966,12 @@ Deliberately not added:
   compression opt-in;
 - compression of SSE events or of requests;
 - a search index (the query scans prompt rows);
-- client caching of the index across session opens.
+- client caching of the index across session opens;
+- a role column on `history_messages`;
+- a fallback for an unknown entry kind (every kind ships in one release);
+- a "preview truncated" flag;
+- cancelling a load-through;
+- summarizing running tools or subtask summaries.
 
 ## Proportionality And Accepted Risk
 
@@ -590,6 +981,11 @@ Deliberately not added:
 | A stale index entry after a background history rewrite that has not yet triggered a refetch (P8). | Theoretical interleaving. | One tap shows an inline error. The next list replacement refetches. |
 | CRIME/BREACH-style length inference on deflated transcript pages. | Theoretical. Needs adaptive injection, length observation and repeated user re-fetches. | Not mitigated. See [Security And Privacy Of W1](#security-and-privacy-of-w1). |
 | Bridge CPU spent deflating a very large load-through response. | Measured sizes: up to 17.4 MB for the largest session. | Measured in step 8. Isolate offload only if the bridge stalls visibly. Attachment responses are never deflated (P4). |
+| The app decodes a whole-session load-through on the UI isolate. | Same 17.4 MB worst case; decode runs on the calling isolate today. | Measured in step 8. `Isolate.run` only if a frame stall is visible. |
+| The index takes too long for the largest session. | About 20 ms for the review page's query; the fold over every part is new. | Measured in step 7 against a 300 ms budget. A narrower projection only if it misses. |
+| A bridge released between steps 7 and 8 (or 7 and 11) has the index but not the load-through (or search) route. | Release timing. | Typed `Unsupported`: a far tap says the bridge needs an update; search stays loaded-only without Retry. |
+| A long prompt's unloaded pin shows its start, but once loaded it pins its end. | Layout rule of the sticky overlay. | The pin crossfades when the opener loads. |
+| The loaded-range fold and the index disagree on a prompt's kind. | Known limitation at the loaded edge. | The index wins (P15). |
 
 ## Cleanup Assessment
 
@@ -597,8 +993,10 @@ Deliberately not added:
 |---|---|
 | 2 | Removes the title from shell tools on page reads. The mapper's alias stays, because live SSE still feeds v1.8.3 and older apps. Its comment is updated to say only live events keep it. |
 | 9 | Removes "Load earlier prompts" from the Prompts screen when the index is present. It stays for v1.9.0 bridges (Q6). |
-| 11 | Moves the client-only `prompt_search.dart` helpers to `sesori_shared`, leaving no duplicate. |
-| 6 | Moves rule A out of `transcript_turns.dart`. The private helpers are deleted, not kept as wrappers. |
+| 6 | Moves rule A out of `transcript_turns.dart` and the prompt extension out of `session_detail_resolvers.dart`. The client copies are deleted, not kept as wrappers. |
+| 7 | The archive read and validation in `getArchivedSessionMessages` becomes one private helper shared with the index, not a copy. |
+| 8 | `limit` and `before` stop travelling as a loose pair through the service and repository; `HistoryWindow` replaces them. |
+| 11 | Moves `promptSearchPattern` and `promptExcerpt` to `sesori_shared`, leaving no duplicate. |
 | 12 | The full-part page path stays only for v1.9.0 apps, behind the opt-in's `@Default` with a `COMPATIBILITY` comment. Its retiring condition: every supported app opts in. |
 
 No other obsolete code was found.
@@ -612,9 +1010,9 @@ No other obsolete code was found.
   section.
 - User-visible steps (9, 10, 11 and 13) attach recordings made with fixture
   data only.
-- Steps 3, 7, 8 and 12 change wire contracts. Each needs a JSON test proving
-  that the older peer's shape still decodes.
-- Architecture-bearing steps (3, 4, 7, 8, 9 and 12) get
+- Steps 3, 7, 8, 11 and 12 change wire contracts. Each needs a JSON test
+  proving that the older peer's shape still decodes.
+- Architecture-bearing steps (3, 4, 6, 7, 8, 9, 11, 12 and 13) get
   `architecture-implementation-review` through a sub-agent, within AGENTS.md's
   limits.
 
@@ -640,7 +1038,7 @@ both applied without re-review as AGENTS.md allows:
    section).
 
 Five direction findings for phases 2 and 3 were recorded as constraints
-step 5 must write in. See [Later Phases](#later-phases-rough).
+step 5 must write in. See [Phases 2 And 3 Architecture](#phases-2-and-3-architecture).
 
 No violations were found in:
 
@@ -653,3 +1051,29 @@ No violations were found in:
 
 This corrected version was not re-reviewed. Step 5 sends the detailed
 phases 2 and 3 through review again.
+
+**`architecture-plan-review` of phases 2 and 3, 2026-10-07 (step 5):
+rejected, then corrected.** Three blocking and five non-blocking findings,
+all applied without re-review as AGENTS.md allows:
+
+1. `HistoryWindow` would have reached the DAO, a lower layer, and its newest
+   variant kept the ambiguous `limit: null` pair. It now stops at the
+   repository, has three exclusive variants, and the through window gets its
+   own plain DAO read.
+2. `PromptSearchCubit` had no creation site or inputs. The Prompts view now
+   creates it from a new `SessionDetailPresentationScope` capability, and
+   the view pushes its built list into it.
+3. A required W3 field on the step 8 request would break a released app. It
+   is required only if no public release contains step 8 by then.
+4. One service helper decides the history source for every store-only
+   route.
+5. The index reuses `getPageRowsWithSyncState` instead of a new DAO read.
+6. The pin chooser lives next to `TranscriptPromptListBuilder`.
+7. `loadMessagesThrough` reports `TargetMissing`, so the screen decides
+   nothing about history.
+8. The tool-output layers, the variant switch for output readers, and the
+   2026-10-07 user decisions are now named in this plan.
+
+No violations were found in P11, P12, P14, the step 6 and step 11 moves,
+the step 7 store and archive paths, the "unsupported" mapping, the
+`ToolState` union, the plugin boundary, or headless operation.
