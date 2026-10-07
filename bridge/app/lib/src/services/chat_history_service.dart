@@ -289,6 +289,22 @@ class ChatHistoryService({
     readStore: (_) => _chatHistoryRepository.getPromptIndex(sessionId: sessionId),
   );
 
+  /// The prompts in the session's history whose whole text holds [query],
+  /// ignoring case, oldest first, each with the words around its first match.
+  ///
+  /// Read like [getPromptIndex]. A blank query, like an unknown or empty
+  /// session, matches nothing.
+  Future<List<SessionPromptSearchMatch>> searchPrompts({required String sessionId, required String query}) async {
+    final pattern = promptSearchPattern(query: query);
+    if (pattern == null) return const [];
+    return await _readStoredHistory(
+      sessionId: sessionId,
+      noStoredSession: const <SessionPromptSearchMatch>[],
+      readArchive: (_) => _chatHistoryRepository.searchArchivedPrompts(sessionId: sessionId, pattern: pattern),
+      readStore: (_) => _chatHistoryRepository.searchPrompts(sessionId: sessionId, pattern: pattern),
+    );
+  }
+
   /// The output and error a summary tool part withheld, read like
   /// [getPromptIndex]: from the store or the audit file alone, outside the
   /// session queue and without a backfill. The app asks only for a part a page

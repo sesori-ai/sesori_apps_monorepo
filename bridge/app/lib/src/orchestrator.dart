@@ -147,6 +147,7 @@ import "routing/request_router.dart";
 import "routing/restart_bridge_handler.dart";
 import "routing/routed_request.dart";
 import "routing/routed_request_dispatcher.dart";
+import "routing/search_session_prompts_handler.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/set_session_approval_override_handler.dart";
@@ -704,6 +705,7 @@ class Orchestrator({
         GetSessionMessagesHandler(chatHistoryService: chatHistoryService),
         GetSessionMessagesThroughHandler(chatHistoryService: chatHistoryService),
         GetSessionPromptIndexHandler(chatHistoryService: chatHistoryService),
+        SearchSessionPromptsHandler(chatHistoryService: chatHistoryService),
         GetSessionToolOutputHandler(chatHistoryService: chatHistoryService),
         GetSessionsHandler(
           sessionViews: sessionViews,

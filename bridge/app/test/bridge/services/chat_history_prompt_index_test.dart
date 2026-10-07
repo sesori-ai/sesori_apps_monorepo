@@ -102,6 +102,32 @@ void _deleteSpillFiles({required TestChatHistory history}) => Directory(
   history.spillStorage.scopeDirectoryPath(scope: testAttachmentStorageScope(sessionId: _sessionId)),
 ).deleteSync(recursive: true);
 
+/// Exports the session to its audit file and purges its store rows.
+Future<void> _archive({required TestChatHistory history}) async {
+  await history.repository.exportSession(
+    session: const StoredSession(
+      id: _sessionId,
+      backendSessionId: _sessionId,
+      pluginId: "opencode",
+      projectId: "project-1",
+      parentSessionId: null,
+      directory: "/tmp/project-1",
+      worktreePath: null,
+      branchName: null,
+      isDedicated: false,
+      archivedAt: 300,
+      baseBranch: null,
+      baseCommit: null,
+    ),
+    title: null,
+    createdAt: 1,
+    updatedAt: 2,
+    archivedAt: 300,
+    completeness: ArchivedSessionCompleteness.complete,
+  );
+  await history.service.purgeSessionHistory(sessionId: _sessionId);
+}
+
 /// The entries without their seqs, which only need to be ascending.
 List<Object> _shape({required List<SessionPromptIndexEntry> entries}) => [
   for (final entry in entries)
@@ -148,39 +174,63 @@ void main() {
     final history = createTestChatHistory(storedSessionArchivedAt: 300);
     await _captureTranscript(history: history);
     final stored = await history.service.getPromptIndex(sessionId: _sessionId);
-    await history.repository.exportSession(
-      session: const StoredSession(
-        id: _sessionId,
-        backendSessionId: _sessionId,
-        pluginId: "opencode",
-        projectId: "project-1",
-        parentSessionId: null,
-        directory: "/tmp/project-1",
-        worktreePath: null,
-        branchName: null,
-        isDedicated: false,
-        archivedAt: 300,
-        baseBranch: null,
-        baseCommit: null,
-      ),
-      title: null,
-      createdAt: 1,
-      updatedAt: 2,
-      archivedAt: 300,
-      completeness: ArchivedSessionCompleteness.complete,
-    );
-    await history.service.purgeSessionHistory(sessionId: _sessionId);
+    final storedMatches = await history.service.searchPrompts(sessionId: _sessionId, query: "the");
+    await _archive(history: history);
     _deleteSpillFiles(history: history);
 
     final archived = await history.service.getPromptIndex(sessionId: _sessionId);
 
     expect(_shape(entries: archived), _expected);
     expect(archived, stored, reason: "the audit file keeps the store's seqs");
+    expect(await history.service.searchPrompts(sessionId: _sessionId, query: "the"), storedMatches);
+    expect(storedMatches, hasLength(2));
   });
 
-  test("a session with no stored history lists no prompts", () async {
+  test("archived search skips an assistant part it cannot decode", () async {
+    final history = createTestChatHistory(storedSessionArchivedAt: 300);
+    await _captureTranscript(history: history);
+    await _archive(history: history);
+    final contents = await history.archivedStorage.read(sessionId: _sessionId);
+    if (contents == null) fail("the session has no audit file");
+    final raw = jsonDecodeMap(contents);
+    for (final Object? message in raw["messages"] as List<dynamic>) {
+      if (message case {"info": {"id": "a1"}, "parts": final List<dynamic> parts}) {
+        parts.add({"type": "tool", "id": "a1-broken"});
+      }
+    }
+    await history.archivedStorage.write(sessionId: _sessionId, contents: jsonEncode(raw));
+
+    final matches = await history.service.searchPrompts(sessionId: _sessionId, query: "the");
+
+    expect([for (final match in matches) match.messageId], ["u1", "u2"]);
+  });
+
+  test("search finds a query in every prompt's text or attachment name, and nowhere else", () async {
+    final history = createTestChatHistory();
+    await _captureTranscript(history: history);
+    _deleteSpillFiles(history: history);
+    Future<List<SessionPromptSearchMatch>> search(String query) =>
+        history.service.searchPrompts(sessionId: _sessionId, query: query);
+
+    expect(await search("THE"), const [
+      SessionPromptSearchMatch(
+        messageId: "u1",
+        excerpt: SessionPromptExcerpt(before: "Fix ", match: "the", after: " build"),
+      ),
+      SessionPromptSearchMatch(
+        messageId: "u2",
+        excerpt: SessionPromptExcerpt(before: "and ", match: "the", after: " tests"),
+      ),
+    ]);
+    expect([for (final match in await search("shot")) match.messageId], ["u3"]);
+    expect(await search("Done"), isEmpty, reason: "answers are not prompts");
+    expect(await search("  "), isEmpty);
+  });
+
+  test("a session with no stored history lists and matches no prompts", () async {
     final history = createTestChatHistory();
 
     expect(await history.service.getPromptIndex(sessionId: "unknown"), isEmpty);
+    expect(await history.service.searchPrompts(sessionId: "unknown", query: "the"), isEmpty);
   });
 }

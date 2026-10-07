@@ -5,7 +5,6 @@ import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
-import "package:sesori_app_ui/src/features/session_prompts/prompt_search.dart";
 import "package:sesori_app_ui/src/features/session_prompts/session_prompts_view.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_day_header.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_spine_row.dart";
@@ -348,18 +347,6 @@ void main() {
         countParagraph.getMinIntrinsicHeight(countParagraph.constraints.maxWidth) + PregoSpacing.xl * 2,
         lessThanOrEqualTo(countBox.height),
       );
-    });
-
-    test("an excerpt never cuts an emoji in half", () {
-      // Both cut points fall on the second half of an emoji.
-      final text = "${"😀" * 20}xneedley${"😀" * 50}";
-      final match = RegExp("needle").firstMatch(text);
-      expect(match, isNotNull);
-      if (match == null) return;
-      final excerpt = promptExcerpt(text: text, match: match);
-      for (final part in [excerpt.before, excerpt.after]) {
-        expect(part.runes.where((rune) => rune >= 0xD800 && rune <= 0xDFFF), isEmpty);
-      }
     });
 
     testWidgets("a match past the one-line cut grows the row and highlights the match", (tester) async {
