@@ -195,8 +195,9 @@ reconnect snapshots keep the displayed state authoritative.
 Ordinary tools retain name, bounded title, status and attachments; only
 adapter-verified shell commands retain command/output/error. Subtask outcome/error
 summaries are separate and remain available. All retained tool text is
-rune-bounded at live/history wire projection; the released title alias remains
-available to older clients.
+rune-bounded at live/history wire projection. Live events keep the released
+title alias for older clients; transcript pages omit a shell tool's title when
+it equals its `shellCommand`.
 
 | Harness | Status and established command source |
 |---|---|

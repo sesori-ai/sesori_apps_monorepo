@@ -9,6 +9,7 @@ import "../api/attachment_spill_storage.dart";
 import "../api/database/history/chat_history_dao.dart";
 import "../api/database/history/chat_history_database.dart";
 import "../api/models/archived_session_file_dto.dart";
+import "mappers/duplicated_shell_title_mapper.dart";
 import "models/stored_session.dart";
 
 final class _HistoryReplayComparisonError({required final Object innerError}) implements Exception {
@@ -212,7 +213,7 @@ class ChatHistoryRepository({
             partJsons: partJsonByMessage[row.messageId] ?? const [],
             attachmentProjection: attachmentProjection,
           ),
-        ),
+        ).withoutDuplicatedShellTitles(),
     ];
     // A full page implies there may be more; a short one proves there is not,
     // which avoids an extra count query on every read. An empty page is never
@@ -821,7 +822,7 @@ class ChatHistoryRepository({
               partJsons: [for (final part in entry.parts) jsonEncode(part)],
               attachmentProjection: attachmentProjection,
             ),
-          ),
+          ).withoutDuplicatedShellTitles(),
       ],
       nextCursor: limit != null && page.isNotEmpty && page.length == limit && eligible.length > limit
           ? page.first.seq
