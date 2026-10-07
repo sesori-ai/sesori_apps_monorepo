@@ -641,7 +641,13 @@ void main() {
 
       final result = await throughFor(response: ApiResponse.success(response));
 
-      expect(result, isA<SessionMessagesThroughAvailable>().having((value) => value.response, "response", response));
+      expect(
+        result,
+        isA<SessionMessagesThroughAvailable>()
+            .having((value) => value.messages, "messages", response.messages)
+            .having((value) => value.olderMessagesCursor, "olderMessagesCursor", 2)
+            .having((value) => value.userMessagesBefore, "userMessagesBefore", 1),
+      );
     });
 
     test("reads a 404 as a bridge that predates the route", () async {

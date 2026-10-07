@@ -137,7 +137,11 @@ class SessionRepository({
       storedOnly: storedOnly,
     );
     return switch (response) {
-      SuccessResponse(:final data) => SessionMessagesThroughAvailable(response: data),
+      SuccessResponse(:final data) => SessionMessagesThroughAvailable(
+        messages: data.messages,
+        olderMessagesCursor: data.nextCursor,
+        userMessagesBefore: data.userMessagesBefore,
+      ),
       // COMPATIBILITY 2026-10-07 (v1.9.1): a bridge without the
       // /session/messages/through route answers with the router's 404, and
       // the route itself never answers 404. Remove once no supported bridge

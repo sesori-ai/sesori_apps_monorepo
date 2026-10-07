@@ -277,16 +277,13 @@ void main() {
 
     SessionMessagesThroughResult range({required int? nextCursor, required int userMessagesBefore}) =>
         SessionMessagesThroughAvailable(
-          response: MessageWithPartsResponse(
-            messages: [
-              _message(id: "m2"),
-              _message(id: "m3"),
-              _message(id: "m4"),
-            ],
-            nextCursor: nextCursor,
-            replayedPromptDefaults: null,
-            userMessagesBefore: userMessagesBefore,
-          ),
+          messages: [
+            _message(id: "m2"),
+            _message(id: "m3"),
+            _message(id: "m4"),
+          ],
+          olderMessagesCursor: nextCursor,
+          userMessagesBefore: userMessagesBefore,
         );
 
     test("prepends the whole range and takes its cursor and count", () async {

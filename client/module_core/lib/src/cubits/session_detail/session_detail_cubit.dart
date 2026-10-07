@@ -731,18 +731,18 @@ class SessionDetailCubit(
         return const LoadThroughUnsupported();
       case SessionMessagesThroughFailure():
         return const LoadThroughFailed();
-      case SessionMessagesThroughAvailable(:final response):
+      case SessionMessagesThroughAvailable(:final messages, :final olderMessagesCursor, :final userMessagesBefore):
         _prependOlderPage(
           latest: latest,
           page: (
-            messages: response.messages,
-            olderMessagesCursor: response.nextCursor,
-            userMessagesBefore: response.userMessagesBefore,
+            messages: messages,
+            olderMessagesCursor: olderMessagesCursor,
+            userMessagesBefore: userMessagesBefore,
           ),
           deferredPartEventSequence: deferredPartEventSequence,
           isLoadingOlderMessages: latest.isLoadingOlderMessages,
         );
-        return response.messages.any((message) => message.info.id == messageId)
+        return messages.any((message) => message.info.id == messageId)
             ? const LoadThroughLoaded()
             : const LoadThroughTargetMissing();
     }
