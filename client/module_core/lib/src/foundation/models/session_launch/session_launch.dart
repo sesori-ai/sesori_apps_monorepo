@@ -17,6 +17,12 @@ part "session_launch.freezed.dart";
 /// in the order they were pressed, and [followUpIds], every promptId the
 /// launch ever minted for one. [followUps] shrinks as they are delivered and
 /// handed over; [followUpIds] never does.
+///
+/// The two pending variants also carry what the launching row and a failure
+/// after leaving show once the first message is released: `title`, the first
+/// line of that message (null for an attachment-only start), and
+/// `projectName`, the project as the composer named it (null when it had no
+/// name).
 @Freezed()
 sealed class SessionLaunch with _$SessionLaunch {
   /// The bridge has not answered yet and the composing route still holds the
@@ -28,6 +34,8 @@ sealed class SessionLaunch with _$SessionLaunch {
     required DateTime startedAt,
     required Set<String> followUpIds,
     required List<LaunchFollowUp> followUps,
+    required String? title,
+    required String? projectName,
     required NewSessionSubmissionSnapshot submission,
   }) = PendingSessionLaunch;
 
@@ -41,6 +49,8 @@ sealed class SessionLaunch with _$SessionLaunch {
     required DateTime startedAt,
     required Set<String> followUpIds,
     required List<LaunchFollowUp> followUps,
+    required String? title,
+    required String? projectName,
   }) = ReleasedPendingSessionLaunch;
 
   /// The bridge answered with [session]; the first message waits for the

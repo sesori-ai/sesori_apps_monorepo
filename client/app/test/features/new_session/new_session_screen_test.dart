@@ -487,6 +487,7 @@ void main() {
         feedbackPromptService: GetIt.instance<FeedbackPromptService>(),
         productAnalyticsService: productAnalyticsService,
         selectionTracker: GetIt.instance<NewSessionSelectionTracker>(),
+        authSession: FakeAuthSession(initialState: const AuthState.initial()),
       ),
     );
   });

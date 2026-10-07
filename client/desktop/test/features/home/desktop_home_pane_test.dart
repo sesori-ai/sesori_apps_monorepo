@@ -238,7 +238,7 @@ void main() {
             ],
             child: DesktopHomeStart(
               projects: projects,
-              createNewSessionCubit: ({required projectId}) {
+              createNewSessionCubit: ({required projectId, required projectName}) {
                 createdFor.add(projectId);
                 return newSessionCubit(states: states);
               },

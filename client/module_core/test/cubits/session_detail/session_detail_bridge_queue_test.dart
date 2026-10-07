@@ -2369,6 +2369,7 @@ void main() {
           projectId: "project-1",
           pluginId: "claude",
           startedAt: DateTime.utc(2026, 9, 27),
+          projectName: null,
           submission: NewSessionSubmissionSnapshot.text(
             draft: ComposerDraft.typed(text: "Hello"),
             attachments: const [],
@@ -2700,6 +2701,40 @@ void main() {
         cubit.removeLaunchFollowUp(promptId: "prm_a");
         await Future<void>.delayed(Duration.zero);
         expect(shown().map((followUp) => followUp.submission.promptId), ["prm_b"]);
+      });
+
+      test("a screen opened before the create reply still gets the launch's follow-ups", () async {
+        // Reaching the session's row means its composer was left, which drops
+        // the first message's handoff; the follow-ups stay owed.
+        final repository = SessionLaunchRepository(storage: SessionLaunchStorage())
+          ..start(
+            launchId: "launch-1",
+            projectId: "project-1",
+            pluginId: "claude",
+            startedAt: startedAt,
+            projectName: null,
+            submission: submission,
+          )
+          ..addFollowUp(
+            launchId: "launch-1",
+            submission: followUp(promptId: "prm_a"),
+          )
+          ..releaseHandoff(launchId: "launch-1");
+        final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
+        SessionDetailLoaded loaded() => cubit.state as SessionDetailLoaded;
+        expect(loaded().launchFollowUps, isEmpty, reason: "nothing names this session yet");
+
+        repository.promote(
+          launchId: "launch-1",
+          session: testSession(id: _sessionId),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(loaded().launchFollowUps.map((followUp) => followUp.submission.promptId), ["prm_a"]);
+
+        expect(repository.beginFollowUp(launchId: "launch-1")?.submission.promptId, "prm_a");
+        repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+        await Future<void>.delayed(Duration.zero);
+        expect(loaded().awaitingBridgeSubmissions.map((submission) => submission.promptId), ["prm_a"]);
       });
 
       test("a prompt sent here does not release the launch bubble when the bridge queues it", () async {

@@ -42,6 +42,7 @@ void main() {
   late List<String> opened;
   late Stream<NewSessionState> newSessionStates;
   late int newSessionTaps;
+  late SessionLaunchRepository launches;
 
   setUp(() {
     cubit = _MockSessionListCubit();
@@ -56,9 +57,10 @@ void main() {
     opened = [];
     newSessionStates = const Stream<NewSessionState>.empty();
     newSessionTaps = 0;
+    launches = inMemorySessionLaunchRepository();
   });
 
-  NewSessionCubit newSessionCubit({required String projectId}) {
+  NewSessionCubit newSessionCubit({required String projectId, required String? projectName}) {
     composersFor.add(projectId);
     final composer = _MockNewSessionCubit();
     whenListen(composer, newSessionStates, initialState: _composing);
@@ -69,6 +71,49 @@ void main() {
     when(() => composer.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => composer.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     return composer;
+  }
+
+  Future<void> pumpView({required WidgetTester tester}) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: PregoInteractionScope(
+          mode: PregoInteractionMode.pointer,
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider<SessionListCubit>.value(value: cubit),
+              BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
+              BlocProvider(
+                create: (_) => archives = PendingSessionArchiveCubit(
+                  cleanupService: SessionCleanupService(repository: MockSessionRepository()),
+                ),
+              ),
+              BlocProvider(
+                create: (_) =>
+                    SessionLaunchCubit(launchService: inMemorySessionLaunchService(launchRepository: launches)),
+              ),
+              BlocProvider<ChatInputModeCubit>.value(value: inputMode),
+            ],
+            child: DesktopSessionListView(
+              projectName: "sesori",
+              onSessionTap: ({required session}) => opened.add(session.id),
+              onNewSession: () => newSessionTaps++,
+              createNewSessionCubit: newSessionCubit,
+              onOpenHarnessSettings: () {},
+              actionDispatcher: const SessionListActionDispatcher(
+                deleteConfirmation: SessionDeleteConfirmation.sheet,
+                onSessionArchived: null,
+                onSessionDeleted: null,
+                onSessionMarkedUnread: null,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
   }
 
   Future<void> pumpPage({
@@ -95,42 +140,7 @@ void main() {
         repoSlug: null,
       ),
     );
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(extensions: [PregoDesignSystem.light]),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: PregoInteractionScope(
-          mode: PregoInteractionMode.pointer,
-          child: MultiBlocProvider(
-            providers: [
-              BlocProvider<SessionListCubit>.value(value: cubit),
-              BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
-              BlocProvider(
-                create: (_) => archives = PendingSessionArchiveCubit(
-                  cleanupService: SessionCleanupService(repository: MockSessionRepository()),
-                ),
-              ),
-              BlocProvider<ChatInputModeCubit>.value(value: inputMode),
-            ],
-            child: DesktopSessionListView(
-              projectName: "sesori",
-              onSessionTap: ({required session}) => opened.add(session.id),
-              onNewSession: () => newSessionTaps++,
-              createNewSessionCubit: newSessionCubit,
-              onOpenHarnessSettings: () {},
-              actionDispatcher: const SessionListActionDispatcher(
-                deleteConfirmation: SessionDeleteConfirmation.sheet,
-                onSessionArchived: null,
-                onSessionDeleted: null,
-                onSessionMarkedUnread: null,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
+    await pumpView(tester: tester);
   }
 
   testWidgets("the toolbar names the project and starts a new session in it", (tester) async {
@@ -241,8 +251,89 @@ void main() {
     expect(find.byType(PromptInput), findsNothing);
   });
 
+  testWidgets("an empty project with a pending launch shows the launching row, not the composer", (tester) async {
+    // Launched from Home, or the page was left and reopened while it creates.
+    launches.start(
+      launchId: "launch-1",
+      projectId: "project-1",
+      pluginId: "claude",
+      startedAt: DateTime.now(),
+      projectName: "sesori",
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Fix the bug"),
+        attachments: const [],
+      ),
+    );
+    launches.releaseHandoff(launchId: "launch-1");
+    await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: const []);
+    await tester.pump();
+
+    expect(composersFor, isEmpty);
+    expect(find.byType(PromptInput), findsNothing);
+    expect(find.byType(PendingSessionLaunchTile), findsOneWidget);
+
+    // The reply names the session and the launch clears before the list has it.
+    launches.promote(
+      launchId: "launch-1",
+      session: testSession(id: "created", title: "Fix the bug"),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(launches.launches.value, isEmpty);
+    expect(composersFor, isEmpty, reason: "no blank composer flashes in the gap");
+    expect(find.byType(PendingSessionLaunchTile), findsOneWidget);
+  });
+
+  testWidgets("a launch that resolves while the list loads keeps its row when the list loads empty", (tester) async {
+    final states = StreamController<SessionListState>();
+    addTearDown(states.close);
+    whenListen(cubit, states.stream, initialState: const SessionListState.loading());
+    launches.start(
+      launchId: "launch-1",
+      projectId: "project-1",
+      pluginId: "claude",
+      startedAt: DateTime.now(),
+      projectName: "sesori",
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Fix the bug"),
+        attachments: const [],
+      ),
+    );
+    launches.releaseHandoff(launchId: "launch-1");
+    await pumpView(tester: tester);
+
+    // The reply names the session and the launch clears while the list loads.
+    launches.promote(
+      launchId: "launch-1",
+      session: testSession(id: "created", title: "Fix the bug"),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(launches.launches.value, isEmpty);
+
+    // The load was read before the session existed.
+    states.add(
+      const SessionListState.loaded(
+        sessions: [],
+        filter: SessionListFilter.active,
+        activeSessionIds: {},
+        baseBranch: null,
+        repoSlug: null,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(composersFor, isEmpty, reason: "no blank composer invites a second launch");
+    expect(find.byType(PendingSessionLaunchTile), findsOneWidget);
+  });
+
   testWidgets("a session started from an empty project opens", (tester) async {
-    newSessionStates = Stream.value(NewSessionState.created(session: testSession(id: "created"), launchId: "launch-1"));
+    newSessionStates = Stream.value(
+      NewSessionState.created(
+        session: testSession(id: "created"),
+        launchId: "launch-1",
+      ),
+    );
     await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: const []);
     await tester.pump();
 

@@ -105,6 +105,7 @@ class const SessionListScaffold({
           actionDispatcher: actionDispatcher,
           archivedEmptyState: archivedEmptyState,
           searchable: true,
+          onShowsLaunchRowsChanged: null,
         ),
         if (onNewSession != null && state is SessionListLoaded && state.sessions.isNotEmpty)
           // Clear the floating new-task button and the home indicator.

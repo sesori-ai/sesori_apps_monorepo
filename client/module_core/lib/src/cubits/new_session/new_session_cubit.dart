@@ -46,6 +46,10 @@ class NewSessionCubit({
   required final ProductAnalyticsService _productAnalyticsService,
   required final SessionLaunchService _sessionLaunchService,
   required final String _projectId,
+
+  /// The project as the composer names it, for an alert about a creation
+  /// that fails after the user left; null when the composer has no name.
+  required final String? _projectName,
 }) extends Cubit<NewSessionState> {
   this
     : super(
@@ -980,6 +984,7 @@ class NewSessionCubit({
       projectId: _projectId,
       pluginId: pluginId,
       startedAt: startedAt,
+      projectName: _projectName,
       submission: submission,
       agent: options?.selectedAgent,
       model: selectedAgentModel == null

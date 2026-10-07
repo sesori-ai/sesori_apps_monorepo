@@ -35,9 +35,15 @@ void main() {
     await tester.pumpWidget(
       BlocProvider<ConnectionOverlayCubit>(
         create: (_) => StubConnectionOverlayCubit(initialState: overlay),
-        child: BlocProvider(
-          create: (_) =>
-              PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (_) => PendingSessionArchiveCubit(
+                cleanupService: SessionCleanupService(repository: MockSessionRepository()),
+              ),
+            ),
+            BlocProvider(create: (_) => idleSessionLaunchCubit()),
+          ],
           child: MaterialApp(
             theme: ThemeData(extensions: [PregoDesignSystem.light]),
             localizationsDelegates: AppLocalizations.localizationsDelegates,

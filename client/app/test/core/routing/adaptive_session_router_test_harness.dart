@@ -293,6 +293,7 @@ class AdaptiveSessionRouterTestHarness() {
         feedbackPromptService: getIt<FeedbackPromptService>(),
         productAnalyticsService: productAnalyticsService,
         selectionTracker: getIt<NewSessionSelectionTracker>(),
+        authSession: authSession,
       ),
     );
     getIt.registerSingleton<AuthSession>(authSession);
@@ -316,6 +317,7 @@ class AdaptiveSessionRouterTestHarness() {
           create: (_) =>
               PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
         ),
+        BlocProvider(create: (_) => idleSessionLaunchCubit()),
       ],
       child: MaterialApp.router(
         routerConfig: router,

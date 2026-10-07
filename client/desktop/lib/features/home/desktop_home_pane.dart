@@ -32,7 +32,8 @@ class const DesktopHomePane({
     if (state case ProjectListLoaded(:final projects) when projects.isNotEmpty) {
       return DesktopHomeStart(
         projects: projects,
-        createNewSessionCubit: ({required projectId}) => createNewSessionCubit(locator: getIt, projectId: projectId),
+        createNewSessionCubit: ({required projectId, required projectName}) =>
+          createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
         onOpenSession: onOpenSession,
         onOpenHarnessSettings: onOpenHarnessSettings,
       );
@@ -207,7 +208,8 @@ class const _DesktopHomeEmptyView({required final VoidCallback onAddProject}) ex
 class const DesktopHomeStart({
   super.key,
   required final List<ProjectSummary> projects,
-  required final NewSessionCubit Function({required String projectId}) createNewSessionCubit,
+  required final NewSessionCubit Function({required String projectId, required String? projectName})
+  createNewSessionCubit,
   required final SidebarSessionOpenedCallback onOpenSession,
   required final VoidCallback onOpenHarnessSettings,
 }) extends StatefulWidget {
@@ -231,7 +233,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
     // session page does when its route changes project.
     return BlocProvider(
       key: ValueKey("desktop-home-new-session-${picked.id}"),
-      create: (_) => widget.createNewSessionCubit(projectId: picked.id),
+      create: (_) => widget.createNewSessionCubit(projectId: picked.id, projectName: displayName),
       child: NewSessionView(
         projectId: picked.id,
         projectName: displayName,

@@ -330,7 +330,31 @@ state.
 - Above the active session list, on the phone and the split pane alike, chips
   read All, Running and Unread with exact counts from the loaded list and narrow
   it locally without a request. A filter that leaves nothing says so. The chips
-  hide in the archived list and while the project has no sessions.
+  hide in the archived list and while the project has neither sessions nor a
+  launching row.
+- A session being created leads Today in its project's active list, on the
+  phone and desktop alike, as a launching row of the same height as a session
+  row: the first line of its first message (or "Untitled session"), the AI
+  sparkle in the status slot and "Creating… · `<harness>`" with no time.
+  Tapping it explains that the session is still being created and opens
+  nothing; it has no menu or swipe actions. It is left out of the chip counts,
+  hidden under Running and Unread, while searching and in Archived, and a
+  project whose only row is a launch shows that row rather than the empty
+  state (on desktop, rather than the empty project's composer), including
+  when the launch came from Home or the page is reopened while it creates. When the session exists the row cross-fades in place into the real
+  session row (instantly under reduced motion) without moving the rows below,
+  and the launch never shows two rows: while its project has a launch still
+  waiting, a session that arrives after the list first loaded stays out of it,
+  so it can never be opened before its launch resolves, even when Archived was
+  shown meanwhile. A list first loaded mid-launch holds its project's newest
+  sessions, one for each launch still waiting, until those launches resolve,
+  so it never shows a launch twice; an older session held this way returns a
+  moment later. A launch that resolves while the list is loading or shows
+  Archived keeps its row until its session arrives, so an empty project's
+  page shows that row rather than its composer. Launches whose sessions land together each take their own
+  row's place. If a session does not land in its row's place, it moves where
+  it belongs on the next change to the list's sessions as an ordinary change;
+  activity and progress updates do not count. A failed launch's row leaves the list.
 - On the phone, a search field tops Projects and each session list once they
   have anything to search. It narrows the loaded titles without a request,
   ignoring case and needing every typed word: project names and Activity's
@@ -609,6 +633,10 @@ started one. Restore harness eligibility afterwards.
 - Running rows leave the top of Today or open a Running section, awaiting-only
   rows are promoted with them, rows use archive time instead of updated time,
   or render an epoch date when a timestamp is missing.
+- A launching row jumps or collapses when its session arrives, the rows below
+  it move during the swap, one launch shows both a launching row and its
+  session row, the new session can be opened before its launch resolves, the
+  row is counted by the chips, survives a failure, or opens anything on tap.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its

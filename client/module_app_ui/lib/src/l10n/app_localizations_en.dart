@@ -1935,6 +1935,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListRunning => 'Running';
 
   @override
+  String get sessionListCreating => 'Creating…';
+
+  @override
+  String get sessionListLaunchingAlert => 'This session is still being created. You can open it once it\'s ready.';
+
+  @override
   String sessionListResumes(String time) {
     return 'Resumes $time';
   }
@@ -2399,6 +2405,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionLaunchingInBackground => 'Your new session will appear in the list once it\'s launched';
+
+  @override
+  String newSessionFailedAfterLeaving(int count, String projects) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Couldn\'t create $count new sessions in $projects',
+      one: 'Couldn\'t create your new session in $projects',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String newSessionFailedAfterLeavingUnnamed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Couldn\'t create $count new sessions',
+      one: 'Couldn\'t create your new session',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get commandSourceCommand => 'Command';
