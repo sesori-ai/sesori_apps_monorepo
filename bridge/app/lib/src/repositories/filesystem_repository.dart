@@ -110,18 +110,24 @@ class FilesystemRepository({
     return resolveUserHomeDirectory(environment: _filesystemApi.environment) ?? _filesystemApi.currentDirectoryPath();
   }
 
-  /// The mounted drive roots of a Windows host, such as `C:\`, in letter
-  /// order; empty on any other host.
+  /// The drives the folder browser lists beside Home: a Windows host's mounted
+  /// drive roots, such as `C:\`, in letter order, or the writable disks and
+  /// partitions mounted in a macOS or Linux host's usual mount folders, in
+  /// path order. Empty on any other host or when the mount table is
+  /// unreadable.
   ///
-  /// Every letter is probed at once, and a probe that fails or has not
+  /// Every candidate is probed at once, and a probe that fails or has not
   /// answered within [_driveProbeTimeout] counts as unmounted, so an
   /// inaccessible or disconnected network drive cannot hold up or fail the
   /// listing it rides on.
   Future<List<String>> listDriveRoots() async {
-    if (!_filesystemApi.isWindows) return const [];
-    final candidates = [
-      for (var letter = "A".codeUnitAt(0); letter <= "Z".codeUnitAt(0); letter++) "${String.fromCharCode(letter)}:\\",
-    ];
+    final List<String> candidates;
+    try {
+      candidates = await _driveRootCandidates();
+    } on Exception catch (error, stackTrace) {
+      Log.w("FilesystemRepository: omitting mounted drives after a failed mount-table read", error, stackTrace);
+      return const [];
+    }
     final mounted = await Future.wait([for (final root in candidates) _probeDrive(root: root)]);
     return [
       for (final (index, root) in candidates.indexed)
@@ -138,9 +144,67 @@ class FilesystemRepository({
     }
   }
 
+  Future<List<String>> _driveRootCandidates() async {
+    if (_filesystemApi.isWindows) {
+      return [
+        for (var letter = "A".codeUnitAt(0); letter <= "Z".codeUnitAt(0); letter++) "${String.fromCharCode(letter)}:\\",
+      ];
+    }
+    if (_filesystemApi.isMacOS) return _macosVolumes(mountTable: await _filesystemApi.readMacosMountTable());
+    if (_filesystemApi.isLinux) return _linuxVolumes(mountTable: await _filesystemApi.readLinuxMountTable());
+    return const [];
+  }
+
+  /// The volumes in `/Volumes` that Finder shows and a project can be written
+  /// to. Read-only leaves out mounted installer disk images; `nobrowse` leaves
+  /// out system volumes such as Recovery. The boot disk's `/Volumes` entry is a
+  /// link to `/`, not a mount, so it never appears.
+  static List<String> _macosVolumes({required String mountTable}) {
+    final volumes = [
+      for (final line in LineSplitter.split(mountTable))
+        if (_macosMountLine.firstMatch(line)?.groups([1, 2]) case [final String path, final String options])
+          if (!options.split(", ").any(const {"read-only", "nobrowse"}.contains)) path,
+    ];
+    return volumes..sort();
+  }
+
+  /// `<device> on <path> (<type>, <option>, ...)`.
+  static final _macosMountLine = RegExp(r"^.+? on (/Volumes/.+) \(([^()]*)\)$");
+
+  /// The writable disks and partitions mounted in the usual Linux mount
+  /// folders, including a WSL host's Windows drives under `/mnt`. Read-only
+  /// leaves out mounted ISO images; tmpfs and anything nested inside another
+  /// mount there leave out WSL's own `/mnt/wsl` and `/mnt/wslg` plumbing.
+  static List<String> _linuxVolumes({required String mountTable}) {
+    final mounts = [
+      for (final line in LineSplitter.split(mountTable))
+        if (line.split(" ") case [_, final path, final type, final options, ...])
+          (path: _unescapeLinuxMountPath(path: path), type: type, options: options.split(",")),
+    ].where((mount) => _linuxMountFolders.any(mount.path.startsWith)).toList();
+    final volumes = [
+      for (final mount in mounts)
+        if (mount.type != "tmpfs" &&
+            !mount.options.contains("ro") &&
+            !mounts.any((other) => mount.path.startsWith("${other.path}/")))
+          mount.path,
+    ];
+    return volumes..sort();
+  }
+
+  static const _linuxMountFolders = ["/media/", "/run/media/", "/mnt/"];
+
+  /// `/proc/mounts` writes a space, tab, newline, or backslash in a path as a
+  /// three-digit octal escape such as `\040`.
+  static String _unescapeLinuxMountPath({required String path}) {
+    return path.replaceAllMapped(
+      RegExp(r"\\[0-7]{3}"),
+      (match) => String.fromCharCode(int.parse(path.substring(match.start + 1, match.end), radix: 8)),
+    );
+  }
+
   /// The folder browser's listing: the children of [prefix], or, for the
   /// browser's opening request without a prefix, the children of
-  /// [defaultBrowsePath] together with the host's drive roots. Only the
+  /// [defaultBrowsePath] together with the host's drives. Only the
   /// opening request carries the drives: they do not change while it browses.
   ///
   /// Throws like [listSuggestions].

@@ -97,7 +97,7 @@ void main() {
       expect(repo.defaultBrowsePath, r"C:\Users\dev");
     });
 
-    test("listDriveRoots is empty off Windows", () async {
+    test("listDriveRoots is empty on a host other than Windows, macOS, or Linux", () async {
       final repo = FilesystemRepository(
         filesystemApi: _DriveFilesystemApi(isWindows: false, probes: {r"C:\": Future.value(true)}),
         permissionValidator: const FilesystemPermissionValidator(),
@@ -124,7 +124,7 @@ void main() {
           isWindows: true,
           probes: {
             r"C:\": Future.value(true),
-            r"E:\": Future.error(const FileSystemException("Access is denied", r"E:\")),
+            r"E:\": Future<bool>(() => throw const FileSystemException("Access is denied", r"E:\")),
             r"F:\": Future.value(true),
           },
         ),
@@ -151,6 +151,78 @@ void main() {
         async.elapse(const Duration(seconds: 2));
         expect(roots, [r"C:\"]);
       });
+    });
+
+    test("listDriveRoots lists writable Finder-visible macOS volumes", () async {
+      const mountTable = """
+/dev/disk3s1s1 on / (apfs, sealed, local, read-only, journaled)
+/dev/disk3s3 on /Volumes/Recovery (apfs, local, journaled, nobrowse)
+/dev/disk5s1 on /Volumes/Work SSD (apfs, local, nodev, nosuid, journaled, noowners)
+/dev/disk6s2 on /Volumes/Some App (hfs, local, nodev, nosuid, read-only, noowners, quarantine, mounted by dev)
+//dev@nas/share on /Volumes/share (smbfs, nodev, nosuid, mounted by dev)
+/dev/disk4s1 on /Volumes/Archive (apfs, local, nodev, nosuid, journaled, noowners)
+""";
+      final repo = FilesystemRepository(
+        filesystemApi: _DriveFilesystemApi(
+          isWindows: false,
+          isMacOS: true,
+          mountTable: () async => mountTable,
+          probes: {
+            "/Volumes/Work SSD": Future.value(true),
+            "/Volumes/share": Future.value(true),
+            "/Volumes/Archive": Future.value(true),
+            "/Volumes/Recovery": Future.value(true),
+            "/Volumes/Some App": Future.value(true),
+          },
+        ),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+
+      expect(await repo.listDriveRoots(), ["/Volumes/Archive", "/Volumes/Work SSD", "/Volumes/share"]);
+    });
+
+    test("listDriveRoots lists writable Linux mounts, leaving out WSL plumbing", () async {
+      const mountTable = r"""
+/dev/sda2 / ext4 rw,relatime 0 0
+/dev/sdb1 /media/dev/Data\040Disk ext4 rw,nosuid,nodev 0 0
+/dev/sr0 /media/dev/Ubuntu iso9660 ro,nosuid,nodev 0 0
+/dev/sdc1 /run/media/dev/USB vfat rw,nosuid,nodev 0 0
+none /mnt/wslg tmpfs rw,relatime 0 0
+none /mnt/wslg/doc overlay rw,relatime 0 0
+C:\134 /mnt/c 9p rw,noatime 0 0
+""";
+      final repo = FilesystemRepository(
+        filesystemApi: _DriveFilesystemApi(
+          isWindows: false,
+          isLinux: true,
+          mountTable: () async => mountTable,
+          probes: {
+            "/media/dev/Data Disk": Future.value(true),
+            "/media/dev/Ubuntu": Future.value(true),
+            "/run/media/dev/USB": Future.value(true),
+            "/mnt/wslg": Future.value(true),
+            "/mnt/wslg/doc": Future.value(true),
+            "/mnt/c": Future.value(true),
+          },
+        ),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+
+      expect(await repo.listDriveRoots(), ["/media/dev/Data Disk", "/mnt/c", "/run/media/dev/USB"]);
+    });
+
+    test("listDriveRoots is empty when the mount table cannot be read", () async {
+      final repo = FilesystemRepository(
+        filesystemApi: _DriveFilesystemApi(
+          isWindows: false,
+          isMacOS: true,
+          mountTable: () => Future.error(const ProcessException("/sbin/mount", [], "failed", 1)),
+          probes: const {},
+        ),
+        permissionValidator: const FilesystemPermissionValidator(),
+      );
+
+      expect(await repo.listDriveRoots(), isEmpty);
     });
 
     for (final existingContent in ["build/", "# .worktrees/", "!.worktrees/"]) {
@@ -288,6 +360,18 @@ class _PermissionDeniedFilesystemApi() implements FilesystemApi {
   bool get isWindows => false;
 
   @override
+  bool get isMacOS => false;
+
+  @override
+  bool get isLinux => false;
+
+  @override
+  Future<String> readMacosMountTable() => throw UnimplementedError();
+
+  @override
+  Future<String> readLinuxMountTable() => throw UnimplementedError();
+
+  @override
   Future<bool> directoryExistsAsync(String path) async => true;
 
   @override
@@ -344,10 +428,21 @@ class _EnvironmentFilesystemApi({
 class _DriveFilesystemApi({
   @override required final bool isWindows,
   required final Map<String, Future<bool>> _probes,
+  @override final bool isMacOS = false,
+  @override final bool isLinux = false,
+  final Future<String> Function() _mountTable = _noMountTable,
 }) implements FilesystemApi {
   @override
   Future<bool> directoryExistsAsync(String path) => _probes[path] ?? Future.value(false);
 
   @override
+  Future<String> readMacosMountTable() => _mountTable();
+
+  @override
+  Future<String> readLinuxMountTable() => _mountTable();
+
+  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+Future<String> _noMountTable() => throw UnimplementedError();
