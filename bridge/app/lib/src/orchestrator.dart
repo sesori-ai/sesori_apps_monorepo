@@ -1,6 +1,6 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io" show FileSystemEntity, FileSystemEntityType;
+import "dart:io" show FileSystemEntity, FileSystemEntityType, Platform;
 import "dart:math";
 import "dart:typed_data";
 
@@ -20,6 +20,7 @@ import "api/database/daos/session_continuation_dao.dart";
 import "api/database/daos/session_options_cache_dao.dart";
 import "api/database/database.dart";
 import "api/database/history/chat_history_database.dart";
+import "api/drive_roots_api.dart";
 import "api/filesystem_api.dart";
 import "api/gh_cli_api.dart";
 import "api/git_cli_api.dart";
@@ -318,6 +319,10 @@ class Orchestrator({
     final filesystemRepository = FilesystemRepository(
       filesystemApi: const FilesystemApi(),
       permissionValidator: const FilesystemPermissionValidator(),
+      driveRootsApi: DriveRootsApi.forPlatform(
+        platform: PlatformOs.fromOperatingSystem(operatingSystem: Platform.operatingSystem),
+        processRunner: _processRunner,
+      ),
     );
     final worktreeRepository = WorktreeRepository(
       projectsDao: _database.projectsDao,

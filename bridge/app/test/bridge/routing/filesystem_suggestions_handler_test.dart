@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/routing/filesystem_suggestions_handler.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../../helpers/test_drive_roots_api.dart";
 import "routing_test_helpers.dart";
 
 void main() {
@@ -19,6 +20,7 @@ void main() {
         filesystemRepository: FilesystemRepository(
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
+          driveRootsApi: windowsDriveRootsApi,
         ),
       );
       tempDir = Directory.systemTemp.createTempSync("sesori_test_");
@@ -89,6 +91,7 @@ void main() {
         filesystemRepository: FilesystemRepository(
           filesystemApi: _WindowsFilesystemApi(home: tempDir.path),
           permissionValidator: const FilesystemPermissionValidator(),
+          driveRootsApi: windowsDriveRootsApi,
         ),
       );
 
@@ -205,12 +208,9 @@ void main() {
   });
 }
 
-/// The real filesystem, reporting a Windows host with drives C and D and
-/// [home] as the user's home folder.
+/// The real filesystem, reporting drives C and D and [home] as the user's home
+/// folder.
 class _WindowsFilesystemApi({required final String home}) extends FilesystemApi {
-  @override
-  bool get isWindows => true;
-
   @override
   Map<String, String> get environment => {"HOME": home, "USERPROFILE": home};
 

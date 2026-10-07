@@ -21,6 +21,7 @@ import "../../helpers/fakes/deletion_worktree_service_fake.dart";
 import "../../helpers/session_continuation_test_support.dart";
 import "../../helpers/test_chat_history.dart";
 import "../../helpers/test_database.dart";
+import "../../helpers/test_drive_roots_api.dart";
 import "routing_test_helpers.dart";
 
 void main() {
@@ -62,6 +63,7 @@ void main() {
         filesystemRepository: FilesystemRepository(
           filesystemApi: const FilesystemApi(),
           permissionValidator: const FilesystemPermissionValidator(),
+          driveRootsApi: windowsDriveRootsApi,
         ),
         sessionOperationDispatcher: sessionOperationDispatcher,
         archivedSessionValidator: ArchivedSessionValidator(sessionRepository: sessionRepository),

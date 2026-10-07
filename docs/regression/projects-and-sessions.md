@@ -41,7 +41,8 @@ state.
   (`C:\`, `D:\`) instead of Root, so another drive is one tap away. On a macOS
   host it adds a button per writable, Finder-visible volume in `/Volumes`
   (installer disk images and Recovery are left out), and on a Linux host one
-  per writable mount in `/media`, `/run/media`, or `/mnt` (mounted ISOs and
+  per writable mount in `/media`, `/run/media`, or `/mnt` that is not nested
+  in another mount there (mounted ISOs and
   WSL's own `/mnt/wsl*` mounts are left out; a WSL host's `/mnt/c` is kept),
   each labelled with its folder name. The button for the place being browsed
   is disabled. A drive that does not answer the bridge's probe within two

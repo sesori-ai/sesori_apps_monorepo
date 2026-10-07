@@ -51,31 +51,6 @@ class const FilesystemApi() {
     return Directory(path).exists();
   }
 
-  /// Whether the bridge runs on Windows.
-  bool get isWindows => Platform.isWindows;
-
-  /// Whether the bridge runs on macOS.
-  bool get isMacOS => Platform.isMacOS;
-
-  /// Whether the bridge runs on Linux.
-  bool get isLinux => Platform.isLinux;
-
-  /// The output of macOS `mount`, one `<device> on <path> (<type>, <options>)`
-  /// line per mounted filesystem.
-  Future<String> readMacosMountTable() async {
-    final result = await Process.run("/sbin/mount", const []);
-    if (result.exitCode != 0) {
-      throw ProcessException("/sbin/mount", const [], "${result.stderr}", result.exitCode);
-    }
-    return "${result.stdout}";
-  }
-
-  /// Linux's `/proc/mounts`, one `<device> <path> <type> <options> 0 0` line
-  /// per mounted filesystem.
-  Future<String> readLinuxMountTable() {
-    return File("/proc/mounts").readAsString();
-  }
-
   /// Raw process environment for repository-level fallback policy.
   Map<String, String> get environment => Platform.environment;
 
