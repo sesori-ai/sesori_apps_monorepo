@@ -9,8 +9,15 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 
 - W1–W3 and Q1–Q6 are the user's final decisions of 2026-10-06. Do not reopen
   them.
-- P1–P9 are planning decisions from code evidence. See
-  [PLAN](PLAN.md#planning-decisions).
+- P1–P15 are planning decisions from code evidence. Step 5 revised P8 (the
+  index refetches at every list replacement) and P9 (the load-through is its
+  own route) and added P10–P15. See [PLAN](PLAN.md#planning-decisions).
+- The user decided on 2026-10-07 that the prompts UI is a separate Prompts
+  screen, that the bridge stamps prompt times, and that the list keeps the
+  transcript's order.
+- O2 (what a pin over an unloaded prompt shows) and O3 (the search count row)
+  are open. Steps 10 and 11 wait on them. See
+  [PLAN](PLAN.md#open-questions).
 - This plan supersedes turn-navigation D30, the derived-only guardrail, and
   the Later Phases F1/F2. See
   [PLAN](PLAN.md#supersession-of-turn-navigation).
@@ -38,6 +45,13 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
   - the far-tap spinner appears only after about 150 ms;
   - tool rows expand through a loading body and a size animation.
 - Prompt numbers come from the bridge or not at all.
+- The index, search and tool-output routes read the store or the audit file
+  alone, outside the session queue, and never backfill (P10). The index and
+  search handlers never answer 404, so a 404 there means an older bridge.
+- A slim tool part is its own `ToolState` variant, never nullable fields plus
+  a flag. Keyless `ToolState` JSON decodes as full.
+- Choosing index entries for the list, the pin and search matches is
+  `module_core` business logic. `module_app_ui` only lays them out.
 
 ## Steps
 
@@ -51,17 +65,17 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | 6 | `transcript-history/shared-turn-rule` | [6](#fixed-pr-titles) | ≤ 600 | 5 |
 | 7 | `transcript-history/prompt-index` | [7](#fixed-pr-titles) | ≤ 900 | 6 |
 | 8 | `transcript-history/load-through` | [8](#fixed-pr-titles) | ≤ 600 | 5 |
-| 9 | `transcript-history/prompts-list` | [9](#fixed-pr-titles) | ≤ 1,000 | 7, 8 |
-| 10 | `transcript-history/unloaded-pin` | [10](#fixed-pr-titles) | ≤ 500 | 9 |
-| 11 | `transcript-history/prompt-search` | [11](#fixed-pr-titles) | ≤ 800 | 9 |
-| 12 | `transcript-history/slim-tools-bridge` | [12](#fixed-pr-titles) | ≤ 700 | 5 |
+| 9 | `transcript-history/prompts-list` | [9](#fixed-pr-titles) | ≤ 1,300 | 7, 8 |
+| 10 | `transcript-history/unloaded-pin` | [10](#fixed-pr-titles) | ≤ 500 | 9, O2 |
+| 11 | `transcript-history/prompt-search` | [11](#fixed-pr-titles) | ≤ 800 | 9, O3 |
+| 12 | `transcript-history/slim-tools-bridge` | [12](#fixed-pr-titles) | ≤ 900 | 8 |
 | 13 | `transcript-history/slim-tools-app` | [13](#fixed-pr-titles) | ≤ 700 | 12 |
 | 14 | `transcript-history/regression-docs` | [14](#fixed-pr-titles) | ≤ 300 | 2–13 |
 | 15 | `transcript-history/retire` | [15](#fixed-pr-titles) | ≤ 250 | 14 |
 
-Rows 6–13 are provisional and do not start until step 5 merges with its
-architecture review. Step 5 may re-split or reorder them; it updates this
-table and the titles together.
+Rows 6–13 are detailed in [PLAN](PLAN.md#phases-2-and-3-architecture) and
+start once step 5 merges. Step 9 may split its far tap into its own PR if it
+outgrows its target; that split renumbers this table and the titles together.
 
 ## Fixed PR Titles
 
