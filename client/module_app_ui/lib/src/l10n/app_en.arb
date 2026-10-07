@@ -1019,6 +1019,19 @@
   "@transcriptPromptsBridgeTooOld": {
     "description": "Notice over the Prompts screen when a tapped earlier prompt cannot be opened because the connected bridge is too old to load it."
   },
+  "transcriptPromptsRefreshed": "The session just refreshed. Tap the prompt again.",
+  "@transcriptPromptsRefreshed": {
+    "description": "Notice over the Prompts screen when the session refreshed while a tapped earlier prompt was loading, so the load was dropped."
+  },
+  "transcriptPromptsLoading": "Loading",
+  "@transcriptPromptsLoading": {
+    "description": "What screen readers say about a Prompts row while the transcript loads up to its earlier prompt."
+  },
+  "transcriptPromptsAllMatches": "{count, plural, =0{No matches} =1{1 match} other{{count} matches}}",
+  "@transcriptPromptsAllMatches": {
+    "description": "Last row of the Prompts screen while searching once it lists every prompt of the session: how many prompts match.",
+    "placeholders": {"count": {"type": "int"}}
+  },
   "transcriptPromptsNoDate": "No date",
   "@transcriptPromptsNoDate": {
     "description": "Day header of the Prompts screen over prompts whose send time is unknown."

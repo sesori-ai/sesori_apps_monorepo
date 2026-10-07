@@ -2719,6 +2719,24 @@ abstract class AppLocalizations {
   /// **'Update the bridge to open earlier prompts'**
   String get transcriptPromptsBridgeTooOld;
 
+  /// Notice over the Prompts screen when the session refreshed while a tapped earlier prompt was loading, so the load was dropped.
+  ///
+  /// In en, this message translates to:
+  /// **'The session just refreshed. Tap the prompt again.'**
+  String get transcriptPromptsRefreshed;
+
+  /// What screen readers say about a Prompts row while the transcript loads up to its earlier prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading'**
+  String get transcriptPromptsLoading;
+
+  /// Last row of the Prompts screen while searching once it lists every prompt of the session: how many prompts match.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No matches} =1{1 match} other{{count} matches}}'**
+  String transcriptPromptsAllMatches(int count);
+
   /// Day header of the Prompts screen over prompts whose send time is unknown.
   ///
   /// In en, this message translates to:

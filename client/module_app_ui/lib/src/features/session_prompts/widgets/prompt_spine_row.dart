@@ -81,6 +81,9 @@ class const PromptSpineRow({
       container: true,
       button: true,
       label: label,
+      // Announced as the spinner shows, so a long load does not seem ignored.
+      value: loading ? loc.transcriptPromptsLoading : null,
+      liveRegion: loading,
       hint: loc.transcriptStickyPromptJumpHint,
       onTap: onTap,
       excludeSemantics: true,

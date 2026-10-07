@@ -590,5 +590,80 @@ void main() {
       expect(calls.taps, isEmpty, reason: "the first tap's target was replaced");
       expect(find.text("Update the bridge to open earlier prompts"), findsOneWidget);
     });
+
+    testWidgets("another tap on the prompt already loading sends no second load", (tester) async {
+      final load = Completer<LoadThroughOutcome>();
+      var loads = 0;
+      final calls = await _pump(
+        tester,
+        entries: [unloaded(id: "old", seq: 7)],
+        anchor: null,
+        isIndexed: true,
+        onLoadThrough: ({required messageId, required seq}) {
+          loads++;
+          return load.future;
+        },
+      );
+
+      await tester.tap(_row("old"));
+      await tester.pump();
+      await tester.tap(_row("old"));
+      await tester.pump();
+      load.complete(const LoadThroughLoaded());
+      await tester.pump();
+
+      expect(loads, 1);
+      expect(calls.taps, ["old"]);
+    });
+
+    testWidgets("a row tells screen readers it is loading, and a load a refresh dropped asks for another tap", (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      final load = Completer<LoadThroughOutcome>();
+      await _pump(
+        tester,
+        entries: [unloaded(id: "old", seq: 7)],
+        anchor: null,
+        isIndexed: true,
+        onLoadThrough: ({required messageId, required seq}) => load.future,
+      );
+
+      await tester.tap(_row("old"));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(
+        tester.getSemantics(find.byType(PromptSpineRow)),
+        matchesSemantics(
+          value: "Loading",
+          isLiveRegion: true,
+          isButton: true,
+          hasTapAction: true,
+          label: "Prompt old",
+          hint: "Jump to this prompt",
+        ),
+      );
+
+      load.complete(const LoadThroughSuperseded());
+      await tester.pumpAndSettle();
+      expect(find.text("The session just refreshed. Tap the prompt again."), findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets("searching a list of every prompt counts matches without a loaded range", (tester) async {
+      await _pump(
+        tester,
+        entries: [
+          unloaded(id: "old", seq: 1),
+          _opener(id: "new", day: null),
+        ],
+        anchor: null,
+        isIndexed: true,
+      );
+
+      await tester.enterText(find.byType(TextField), "old");
+      await tester.pumpAndSettle();
+
+      expect(find.text("1 match"), findsOneWidget);
+    });
   });
 }

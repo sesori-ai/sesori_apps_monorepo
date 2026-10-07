@@ -147,22 +147,24 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
   }
 
   void _tapPrompt({required TranscriptPromptEntry entry}) {
-    _farTapSpinner?.cancel();
     switch (entry.source) {
       case TranscriptPromptLoaded():
+        _farTapSpinner?.cancel();
         setState(() {
           _farTap = null;
           _farTapError = null;
         });
         widget.onPromptTap(messageId: entry.messageId);
       case TranscriptPromptUnloaded(:final seq):
-        unawaited(_loadThrough(messageId: entry.messageId, seq: seq));
+        // Another tap on the prompt already loading waits for that load.
+        if (_farTap?.messageId != entry.messageId) unawaited(_loadThrough(messageId: entry.messageId, seq: seq));
     }
   }
 
   /// Loads up to the unloaded prompt [messageId] with the screen still up,
   /// then moves to it unless another tap took over meanwhile.
   Future<void> _loadThrough({required String messageId, required int seq}) async {
+    _farTapSpinner?.cancel();
     setState(() {
       _farTap = (messageId: messageId, showsSpinner: false);
       _farTapError = null;
@@ -180,8 +182,9 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
         LoadThroughLoaded() => null,
         LoadThroughTargetMissing() => loc.transcriptPromptsGone,
         LoadThroughUnsupported() => loc.transcriptPromptsBridgeTooOld,
+        LoadThroughFailed() => loc.transcriptPromptsOpenFailed,
         // A refresh replaced the transcript meanwhile; a second tap reads the new one.
-        LoadThroughFailed() || LoadThroughSuperseded() => loc.transcriptPromptsOpenFailed,
+        LoadThroughSuperseded() => loc.transcriptPromptsRefreshed,
       };
     });
     if (outcome is LoadThroughLoaded) widget.onPromptTap(messageId: messageId);
@@ -532,6 +535,8 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
         ? list.isIndexed
               ? loc.transcriptPromptsCount(list.promptCount)
               : loc.transcriptPromptsLoaded(list.promptCount)
+        : list.isIndexed
+        ? loc.transcriptPromptsAllMatches(matchCount)
         : loc.transcriptPromptsMatches(matchCount);
     final loadEarlierLabelStyle = Theme.of(context).textTheme.labelLarge;
     // Measured, as large text or a narrow screen can wrap the labels. Bold Text

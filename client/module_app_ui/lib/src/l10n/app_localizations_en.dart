@@ -1510,6 +1510,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptPromptsBridgeTooOld => 'Update the bridge to open earlier prompts';
 
   @override
+  String get transcriptPromptsRefreshed => 'The session just refreshed. Tap the prompt again.';
+
+  @override
+  String get transcriptPromptsLoading => 'Loading';
+
+  @override
+  String transcriptPromptsAllMatches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count matches',
+      one: '1 match',
+      zero: 'No matches',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get transcriptPromptsNoDate => 'No date';
 
   @override

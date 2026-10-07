@@ -84,18 +84,21 @@ stored or sent to the bridge.
 - While the session has earlier messages, the app also asks the bridge for the
   session's prompt index, after each load and refresh. Once it arrives the list
   holds every prompt of the session, unloaded ones included with their number,
-  time and first line, ends with "{n} prompts" and has no "Load earlier
-  prompts". A refresh drops the index until it is fetched again: a screen
+  time and first line, ends with "{n} prompts" ("{n} matches" while searching)
+  and has no "Load earlier prompts". A refresh drops the index until it is fetched again: a screen
   opened meanwhile lists the loaded prompts, and an open screen keeps its rows
   until the new index joins them. Without one — an older bridge or a failed request — the list
   stays the loaded prompts only, as below.
 - A tap on an unloaded row loads the transcript from that prompt to the loaded
   part. After 150 ms its row shows a spinner; once the messages land the screen
   closes onto the prompt exactly as for a loaded row. A tap on another row
-  meanwhile replaces the target. A failed load shows a notice at the bottom of
-  the list and moves nothing: "Couldn't open this prompt…" for an error, "This
-  prompt is no longer in the session" when the loaded range lacks it, and
-  "Update the bridge to open earlier prompts" for a bridge without the route.
+  meanwhile replaces the target; another tap on the same row sends no second
+  load. While the spinner shows, screen readers hear the row as "Loading". A
+  failed load shows a notice at the bottom of the list, which taps pass
+  through, and moves nothing: "Couldn't open this prompt…" for an error, "The
+  session just refreshed…" when a refresh dropped the load, "This prompt is no
+  longer in the session" when the loaded range lacks it, and "Update the bridge
+  to open earlier prompts" for a bridge without the route.
   Closing the screen cancels the jump, not the load.
 - A prompt's number is its place among all of the session's user messages,
   loaded or not, counted by the bridge from its own history: the first prompt
