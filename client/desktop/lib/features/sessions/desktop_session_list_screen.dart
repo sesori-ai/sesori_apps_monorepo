@@ -52,7 +52,8 @@ class const DesktopSessionListScreen({
       onSessionTap: onSessionTap,
       actionDispatcher: actionDispatcher,
       onNewSession: onNewSession,
-      createNewSessionCubit: ({required projectId}) => createNewSessionCubit(locator: getIt, projectId: projectId),
+      createNewSessionCubit: ({required projectId, required projectName}) =>
+          createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
       onOpenHarnessSettings: onOpenHarnessSettings,
     );
   }
@@ -65,7 +66,8 @@ class const DesktopSessionListView({
   required final SessionOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
   required final VoidCallback onNewSession,
-  required final NewSessionCubit Function({required String projectId}) createNewSessionCubit,
+  required final NewSessionCubit Function({required String projectId, required String? projectName})
+  createNewSessionCubit,
   required final VoidCallback onOpenHarnessSettings,
 }) extends StatefulWidget {
   static const double maxContentWidth = 760;
@@ -185,7 +187,7 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
           Expanded(
             child: showComposer
                 ? BlocProvider(
-                    create: (_) => widget.createNewSessionCubit(projectId: cubit.projectId),
+                    create: (_) => widget.createNewSessionCubit(projectId: cubit.projectId, projectName: projectName),
                     child: BlocListener<NewSessionCubit, NewSessionState>(
                       listener: (context, state) => setState(() => _creating = state.phase is NewSessionPhaseSending),
                       child: NewSessionView(

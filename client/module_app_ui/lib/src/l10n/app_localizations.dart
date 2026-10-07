@@ -3505,6 +3505,18 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get sessionListRunning;
 
+  /// Leads the meta line of a launching row, before the harness name: the bridge is still creating this new session.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating…'**
+  String get sessionListCreating;
+
+  /// Alert shown when the user taps a launching row, a new session the bridge has not created yet.
+  ///
+  /// In en, this message translates to:
+  /// **'This session is still being created. You can open it once it\'s ready.'**
+  String get sessionListLaunchingAlert;
+
   /// Shown on a session row, in place of its last-activity time, while the bridge has scheduled an automatic continuation after a quota reset. The time is local, with the date only when it is not today.
   ///
   /// In en, this message translates to:
@@ -4320,6 +4332,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your new session will appear in the list once it\'s launched'**
   String get newSessionLaunchingInBackground;
+
+  /// Alert title when creating a new session fails after the user left its composer; its launching row is gone from the lists.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t create your new session in {project}'**
+  String newSessionFailedAfterLeaving(String project);
 
   /// No description provided for @commandSourceCommand.
   ///

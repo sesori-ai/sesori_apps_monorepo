@@ -169,6 +169,7 @@ void main() {
         selectionTracker: selectionTracker,
       ),
       projectId: "project-1",
+      projectName: null,
     );
 
     Future<void> waitForComposer(NewSessionCubit cubit) async {
@@ -568,6 +569,7 @@ void main() {
             selectionTracker: selectionTracker,
           ),
           projectId: "project-1",
+          projectName: null,
         );
       },
       act: (cubit) async {

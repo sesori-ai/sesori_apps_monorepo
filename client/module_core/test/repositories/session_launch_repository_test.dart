@@ -30,6 +30,7 @@ void main() {
     projectId: "project-1",
     pluginId: "claude",
     startedAt: startedAt,
+    projectName: "Sesori",
     submission: submission,
   );
 
@@ -146,6 +147,7 @@ void main() {
       const SessionLaunchOutcome.failedAfterLeaving(
         launchId: "launch-1",
         projectId: "project-1",
+        projectName: "Sesori",
         reason: RemoteFailureReason.serverRejected,
       ),
     ]);

@@ -154,6 +154,7 @@ void main() {
         selectionTracker: selectionTracker,
       ),
       projectId: "project-1",
+      projectName: null,
     );
 
     void establishSelectionScope({required String bridgeId}) {

@@ -24,6 +24,7 @@ sealed class SessionLaunchOutcome with _$SessionLaunchOutcome {
   const factory failedAfterLeaving({
     required String launchId,
     required String projectId,
+    required String? projectName,
     required RemoteFailureReason reason,
   }) = SessionLaunchFailedAfterLeaving;
 }

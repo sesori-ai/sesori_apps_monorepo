@@ -29,8 +29,16 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
   /// watcher sees the last follow-ups an entry held before it went.
   final StreamController<SessionLaunch> _changes = StreamController<SessionLaunch>.broadcast();
 
+  final BehaviorSubject<List<SessionLaunch>> _launches = BehaviorSubject.seeded(const []);
+
   /// How each launch's creation ended, published once per launch.
   Stream<SessionLaunchOutcome> get outcomes => _outcomes.stream;
+
+  /// Every launch held, now and after every transition. The snapshot that
+  /// [promote] produces still holds the launch with its session, whatever
+  /// removes it next, so a list drawing its launching row can tell which
+  /// session took that row's place.
+  ValueStream<List<SessionLaunch>> get launches => _launches.stream;
 
   /// The follow-ups of the launch that created [sessionId], now and after
   /// every change; empty when there is none. Watch only after [takeHandoff]:
@@ -57,6 +65,7 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
     required String projectId,
     required String pluginId,
     required DateTime startedAt,
+    required String? projectName,
     required NewSessionSubmissionSnapshot submission,
   }) {
     _put(
@@ -67,6 +76,11 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
         startedAt: startedAt,
         followUpIds: const {},
         followUps: const [],
+        title: switch (submission.displayText?.trim()) {
+          final String text when text.isNotEmpty => text.split("\n").first.trim(),
+          _ => null,
+        },
+        projectName: projectName,
         submission: submission,
       ),
     );
@@ -247,15 +261,17 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
         reason: reason,
         followUps: [for (final followUp in followUps) followUp.submission],
       ),
-      ReleasedPendingSessionLaunch(:final projectId) => SessionLaunchOutcome.failedAfterLeaving(
+      ReleasedPendingSessionLaunch(:final projectId, :final projectName) => SessionLaunchOutcome.failedAfterLeaving(
         launchId: launchId,
         projectId: projectId,
+        projectName: projectName,
         reason: reason,
       ),
       CreatedSessionLaunch() || ReconcilingSessionLaunch() || null => null,
     };
     if (outcome == null) return;
     _storage.clear(launchId: launchId);
+    _publishLaunches();
     _outcomes.add(outcome);
   }
 
@@ -302,6 +318,8 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
         :final startedAt,
         :final followUpIds,
         :final followUps,
+        :final title,
+        :final projectName,
       ):
         _put(
           launch: SessionLaunch.pendingReleased(
@@ -311,6 +329,8 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
             startedAt: startedAt,
             followUpIds: followUpIds,
             followUps: followUps,
+            title: title,
+            projectName: projectName,
           ),
         );
       case final CreatedSessionLaunch launch:
@@ -357,6 +377,9 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
     } else {
       _storage.clear(launchId: launch.launchId);
     }
+    _publishLaunches();
     _changes.add(launch);
   }
+
+  void _publishLaunches() => _launches.add(List.unmodifiable(_storage.readAll()));
 }

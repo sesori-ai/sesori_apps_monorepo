@@ -240,11 +240,12 @@ as List<QueuedSessionSubmission>,
 
 
 class SessionLaunchFailedAfterLeaving implements SessionLaunchOutcome {
-  const SessionLaunchFailedAfterLeaving({required this.launchId, required this.projectId, required this.reason});
+  const SessionLaunchFailedAfterLeaving({required this.launchId, required this.projectId, required this.projectName, required this.reason});
   
 
 @override final  String launchId;
  final  String projectId;
+ final  String? projectName;
  final  RemoteFailureReason reason;
 
 /// Create a copy of SessionLaunchOutcome
@@ -257,18 +258,18 @@ $SessionLaunchFailedAfterLeavingCopyWith<SessionLaunchFailedAfterLeaving> get co
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionLaunchFailedAfterLeaving&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionLaunchFailedAfterLeaving&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.projectName, projectName) || other.projectName == projectName)&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,launchId,projectId,reason);
+    return Object.hash(runtimeType,launchId,projectId,projectName,reason);
 }
 
 @override
 String toString() {
-    return 'SessionLaunchOutcome.failedAfterLeaving(launchId: $launchId, projectId: $projectId, reason: $reason)';
+    return 'SessionLaunchOutcome.failedAfterLeaving(launchId: $launchId, projectId: $projectId, projectName: $projectName, reason: $reason)';
 }
 
 
@@ -279,7 +280,7 @@ abstract mixin class $SessionLaunchFailedAfterLeavingCopyWith<$Res> implements $
   factory $SessionLaunchFailedAfterLeavingCopyWith(SessionLaunchFailedAfterLeaving value, $Res Function(SessionLaunchFailedAfterLeaving) _then) = _$SessionLaunchFailedAfterLeavingCopyWithImpl;
 @override @useResult
 $Res call({
- String launchId, String projectId, RemoteFailureReason reason
+ String launchId, String projectId, String? projectName, RemoteFailureReason reason
 });
 
 
@@ -296,11 +297,12 @@ class _$SessionLaunchFailedAfterLeavingCopyWithImpl<$Res>
 
 /// Create a copy of SessionLaunchOutcome
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? launchId = null,Object? projectId = null,Object? reason = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? launchId = null,Object? projectId = null,Object? projectName = freezed,Object? reason = null,}) {
   return _then(SessionLaunchFailedAfterLeaving(
 launchId: null == launchId ? _self.launchId : launchId // ignore: cast_nullable_to_non_nullable
 as String,projectId: null == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
-as String,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as String,projectName: freezed == projectName ? _self.projectName : projectName // ignore: cast_nullable_to_non_nullable
+as String?,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
 as RemoteFailureReason,
   ));
 }

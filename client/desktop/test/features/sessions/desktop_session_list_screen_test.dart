@@ -58,7 +58,7 @@ void main() {
     newSessionTaps = 0;
   });
 
-  NewSessionCubit newSessionCubit({required String projectId}) {
+  NewSessionCubit newSessionCubit({required String projectId, required String? projectName}) {
     composersFor.add(projectId);
     final composer = _MockNewSessionCubit();
     whenListen(composer, newSessionStates, initialState: _composing);
@@ -111,6 +111,7 @@ void main() {
                   cleanupService: SessionCleanupService(repository: MockSessionRepository()),
                 ),
               ),
+              BlocProvider(create: (_) => idleSessionLaunchCubit()),
               BlocProvider<ChatInputModeCubit>.value(value: inputMode),
             ],
             child: DesktopSessionListView(
@@ -242,7 +243,12 @@ void main() {
   });
 
   testWidgets("a session started from an empty project opens", (tester) async {
-    newSessionStates = Stream.value(NewSessionState.created(session: testSession(id: "created"), launchId: "launch-1"));
+    newSessionStates = Stream.value(
+      NewSessionState.created(
+        session: testSession(id: "created"),
+        launchId: "launch-1",
+      ),
+    );
     await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: const []);
     await tester.pump();
 

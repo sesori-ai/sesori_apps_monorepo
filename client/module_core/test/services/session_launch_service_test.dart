@@ -63,6 +63,7 @@ void main() {
     projectId: "project-1",
     pluginId: "plugin-1",
     startedAt: DateTime.utc(2026, 9, 27),
+    projectName: null,
     submission: submission,
     agent: null,
     model: null,

@@ -1,4 +1,5 @@
 import "package:material_ui/material_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
@@ -491,6 +492,82 @@ class const SessionTile({
     );
     // The status slot already speaks the waiting state.
     return awaitingInput ? ExcludeSemantics(child: text) : text;
+  }
+}
+
+/// A new session the bridge is still creating, in [SessionTile]'s geometry so
+/// the real row takes its place without moving anything: the first line of
+/// the first message, the running sparkle, and "Creating…" before the harness
+/// on the meta line, with no time.
+///
+/// A tap answers with the row's press feedback and an alert that the session
+/// cannot be opened yet. There is no menu and no swipe: both act on a session.
+class const PendingSessionLaunchTile({super.key, required final LaunchingSession launch}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final loc = context.loc;
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    final titleSize = pointer ? prego.textTheme.textSm : prego.textTheme.textMd;
+    return DecoratedBox(
+      // The hairline [PregoSwipeActions] draws under a real row.
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: prego.colors.borderTertiary, width: 0)),
+      ),
+      child: MergeSemantics(
+        child: Semantics(
+          button: true,
+          child: InkWell(
+            onTap: () => PregoPopupAlertPresenter.of(context).show(title: loc.sessionListLaunchingAlert),
+            hoverColor: pointer ? prego.colors.bgSecondaryHover : null,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: PregoSpacing.xl,
+                vertical: pointer ? PregoSpacing.xs : PregoSpacing.lg,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: pointer ? 0 : PregoSpacing.xxs,
+                children: [
+                  Row(
+                    spacing: PregoSpacing.xs,
+                    children: [
+                      SizedBox(
+                        width: _statusSlotSize,
+                        height: pointer ? _pointerTitleLineHeight : _titleLineHeight,
+                        // "Creating…" already says what the sparkle means.
+                        child: const Center(child: ExcludeSemantics(child: PregoAiLoader(size: _statusSlotSize))),
+                      ),
+                      Expanded(
+                        child: Text(
+                          launch.title ?? loc.sessionListUntitled,
+                          style: titleSize.regular.copyWith(color: prego.colors.textPrimary),
+                          maxLines: 1,
+                          softWrap: false,
+                          overflow: TextOverflow.fade,
+                        ),
+                      ),
+                    ],
+                  ),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: pointer ? 0 : _metaLineHeight),
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(start: _statusSlotSize + PregoSpacing.xs),
+                      child: Text(
+                        "${loc.sessionListCreating}$_separator${PregoBrandLogo.displayNameFor(launch.pluginId)}",
+                        style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

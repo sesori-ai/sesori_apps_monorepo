@@ -35,9 +35,14 @@ class MockSessionListCubit() extends MockCubit<SessionListState> implements Sess
 Widget _buildScreenApp({required Widget child}) {
   return BlocProvider<ConnectionOverlayCubit>(
     create: (_) => StubConnectionOverlayCubit(),
-    child: BlocProvider(
-      create: (_) =>
-          PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
+    child: MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) =>
+              PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
+        ),
+        BlocProvider(create: (_) => idleSessionLaunchCubit()),
+      ],
       child: MaterialApp(
         theme: ThemeData(
           colorScheme: PregoColors.light.toFlutterColorScheme(),

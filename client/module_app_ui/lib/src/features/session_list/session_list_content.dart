@@ -59,9 +59,12 @@ final class const _SessionHeadingRow({
 
 final class const _SessionRow({required final Session session}) extends _SessionListRow;
 
+final class const _LaunchRow({required final LaunchingSession launch}) extends _SessionListRow;
+
 final class const _SessionHeadingKey(super.value) extends ValueKey<(String, int)>;
 
 List<_SessionListRow> _sessionListRows({
+  required List<LaunchingSession> launches,
   required List<Session> sessions,
   required SessionListLoaded loaded,
   required DateTime now,
@@ -70,6 +73,14 @@ List<_SessionListRow> _sessionListRows({
   final rows = <_SessionListRow>[];
   final occurrences = <String, int>{};
   String? previousHeading;
+  // A launch is the newest running thing, so it leads Today, where its
+  // session will run.
+  if (launches.isNotEmpty) {
+    previousHeading = sessionDateLabel(date: now, now: now, loc: loc);
+    occurrences[previousHeading] = 0;
+    rows.add(_SessionHeadingRow(heading: previousHeading, occurrence: 0));
+    rows.addAll([for (final launch in launches) _LaunchRow(launch: launch)]);
+  }
   for (final session in sessions) {
     final heading = _sessionListHeading(
       session: session,
@@ -114,8 +125,14 @@ class const SessionListContent({
   required final String query,
 
   /// Sessions being archived elsewhere, hidden while they still read as
-  /// unarchived. Empty where archive is confirmed in a sheet.
+  /// unarchived, and sessions held back while launches settle. Empty where
+  /// archive is confirmed in a sheet.
   required final Set<String> hiddenSessionIds,
+
+  /// The launching rows to lead Today with, and the row keys their sessions
+  /// took over. Hidden while a quick filter narrows the list or a query is
+  /// typed.
+  required final LaunchRows launchRows,
   required final SessionOpenedCallback? onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
   required final Widget archivedEmptyState,
@@ -142,9 +159,12 @@ class const SessionListContent({
                 },
               )
               .toList();
+    final launches = quickFilter == SessionListQuickFilter.all && query.trim().isEmpty
+        ? launchRows.placeholders
+        : const <LaunchingSession>[];
     final rows = state is! SessionListLoaded
         ? const <_SessionListRow>[]
-        : _sessionListRows(sessions: sessions, loaded: state, now: now, loc: loc);
+        : _sessionListRows(launches: launches, sessions: sessions, loaded: state, now: now, loc: loc);
 
     return switch (state) {
       SessionListLoading() => SliverToBoxAdapter(
@@ -158,7 +178,8 @@ class const SessionListContent({
             items: rows,
             itemKey: (row) => switch (row) {
               _SessionHeadingRow(:final heading, :final occurrence) => _SessionHeadingKey((heading, occurrence)),
-              _SessionRow(:final session) => ValueKey(session.id),
+              _SessionRow(:final session) => ValueKey(launchRows.rowKeys[session.id] ?? session.id),
+              _LaunchRow(:final launch) => ValueKey(launch.launchId),
             },
             itemBuilder: (_, index, row) {
               switch (row) {
@@ -174,9 +195,18 @@ class const SessionListContent({
                       ),
                     ),
                   );
+                case _LaunchRow(:final launch):
+                  return _settling(
+                    context: context,
+                    launching: true,
+                    child: Padding(
+                      padding: EdgeInsetsDirectional.only(bottom: index == rows.length - 1 ? 8 : 0),
+                      child: PendingSessionLaunchTile(launch: launch),
+                    ),
+                  );
                 case _SessionRow(:final session):
                   final activityInfo = loaded.activeSessionIds[session.id];
-                  return Padding(
+                  final row = Padding(
                     // Keep the list's bottom breathing room attached to its last
                     // row so that space collapses with the final item.
                     padding: EdgeInsetsDirectional.only(bottom: index == rows.length - 1 ? 8 : 0),
@@ -206,10 +236,13 @@ class const SessionListContent({
                       ),
                     ),
                   );
+                  return launchRows.rowKeys.containsKey(session.id)
+                      ? _settling(context: context, launching: false, child: row)
+                      : row;
               }
             },
           ),
-          if (loaded.sessions.isEmpty)
+          if (loaded.sessions.isEmpty && launches.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: (loaded.filter != SessionListFilter.active)
@@ -229,4 +262,15 @@ class const SessionListContent({
       ),
     };
   }
+
+  /// A launching row and the session row that takes its place share one
+  /// list item, so the change cross-fades in place rather than collapsing one
+  /// row and opening another.
+  static Widget _settling({required BuildContext context, required bool launching, required Widget child}) =>
+      AnimatedSwitcher(
+        duration: prefersReducedMotion(context) ? Duration.zero : _settleDuration,
+        child: KeyedSubtree(key: ValueKey(launching), child: child),
+      );
 }
+
+const Duration _settleDuration = Duration(milliseconds: 200);

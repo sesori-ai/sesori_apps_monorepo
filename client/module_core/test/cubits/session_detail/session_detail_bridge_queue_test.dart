@@ -2369,6 +2369,7 @@ void main() {
           projectId: "project-1",
           pluginId: "claude",
           startedAt: DateTime.utc(2026, 9, 27),
+          projectName: null,
           submission: NewSessionSubmissionSnapshot.text(
             draft: ComposerDraft.typed(text: "Hello"),
             attachments: const [],
