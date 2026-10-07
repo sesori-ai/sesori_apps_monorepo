@@ -177,13 +177,31 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
   List<BridgeSseEvent> mapMessageSnapshot({required PluginMessageWithParts message}) => [
     BridgeSseMessageUpdated(info: message.info),
     for (final part in message.parts) BridgeSseMessagePartUpdated(part: part),
-    if (message.parts.any((part) => part is PluginMessagePartCompaction))
+    if (message.parts.any(
+      (part) => part is PluginMessagePartCompaction && part.compactionState is PluginCompactionStateCompleted,
+    ))
       BridgeSseSessionCompacted(sessionID: message.info.sessionID),
     // A named compaction finishes without a user-message echo. Do not settle it
     // on a running snapshot or on the HTTP acceptance response.
     if (message.info is! PluginMessageUser && message.info.time?.completed != null)
       if (V2MessageMapper.promptIdForMessage(messageId: message.info.id) case final promptId?)
         BridgeSsePromptSettled(sessionID: message.info.sessionID, promptID: promptId),
+  ];
+
+  /// Streams summary words into [running], the session's live compaction row.
+  /// A delta with no known running row has nowhere to go.
+  List<BridgeSseEvent> mapCompactionDelta({
+    required V2SessionCompactionDelta event,
+    required PluginMessagePartCompaction? running,
+  }) => [
+    if (running != null)
+      BridgeSseMessagePartDelta(
+        sessionID: event.sessionID,
+        messageID: running.messageID,
+        partID: running.id,
+        field: "text",
+        delta: event.text,
+      ),
   ];
 
   List<BridgeSseEvent> mapNotice({required V2EventEnvelope envelope, required V2AgentNames agentNames}) {

@@ -8,6 +8,7 @@ import "../models/v2_agent_names.dart";
 import "../models/v2_event.g.dart";
 import "../models/v2_message_filter.dart";
 import "../repositories/opencode_v2_activity_tracker.dart";
+import "../repositories/opencode_v2_compaction_tracker.dart";
 import "../repositories/opencode_v2_repository.dart";
 import "../repositories/v2_model_mapper.dart";
 import "../sse/v2_event_mapper.dart";
@@ -17,6 +18,7 @@ import "../sse/v2_event_mapper.dart";
 class OpenCodeV2Service({
   required final OpenCodeV2Repository _repository,
   required final OpenCodeV2ActivityTracker _tracker,
+  required final OpenCodeV2CompactionTracker _compactions,
   required final V2EventMapper _mapper,
   required final V2ModelMapper _modelMapper,
   required final V2FormAnswerMapper _formAnswerMapper,
@@ -45,7 +47,11 @@ class OpenCodeV2Service({
     );
   }
 
-  void reset() => _tracker.reset();
+  void reset() {
+    _tracker.reset();
+    _compactions.reset();
+  }
+
   void invalidateBaseline() => _tracker.invalidateBaseline();
 
   Future<bool> healthCheck() => _repository.healthCheck();
@@ -398,6 +404,12 @@ class OpenCodeV2Service({
         agentNames: const V2AgentNames(namesById: {}),
       );
     }
+    if (event is V2SessionCompactionDelta) {
+      return _mapper.mapCompactionDelta(
+        event: event,
+        running: _compactions.running(sessionId: event.sessionID),
+      );
+    }
     if (directory == null) return const [];
     switch (event) {
       case V2SessionStepStarted():
@@ -445,7 +457,9 @@ class OpenCodeV2Service({
           filter: V2MessageFilter.compaction,
           directory: directory,
         );
-        return message == null ? const [] : _mapper.mapMessageSnapshot(message: message);
+        if (message == null) return const [];
+        _compactions.observe(message: message);
+        return _mapper.mapMessageSnapshot(message: message);
       case V2SessionInboxDelivered():
         final message = await _repository.getMessage(
           sessionId: event.sessionID,

@@ -645,7 +645,7 @@ row, which opens the carried-forward summary when the harness exposes it.
 |---|---|---|
 | Claude | ✅ | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.281). |
 | OpenCode v1 | ✅ | ✅ The text of the `summary: true` assistant message. |
-| OpenCode v2 | ✅ | ✅ The completed native compaction message's `summary`; a running snapshot is not a completed marker. |
+| OpenCode v2 | ✅ Live from `session.compaction.started`, with the newest summary words streamed from its deltas, settling in place as completed or as a failure note with OpenCode's error. The trigger is shown; the freed count is not reported, because the reported tokens are the summary call's usage. | ✅ The completed native compaction message's `summary`. |
 | Pi | ✅ | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |
 | Codex | ✅ | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
 | DeepSeek | ⬜ | ⬜ The runtime reports a live `compaction_completed` status without message identity or a replayable history record, so Sesori maps it only to a session-compacted event; a live-only row would vanish on reload. |

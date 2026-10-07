@@ -316,10 +316,31 @@ void main() {
           if (status == "failed") "error": const <String, String>{"type": "fixture", "message": "Failed"},
         }),
       )!;
-      final settled = mapper.mapMessageSnapshot(message: message).whereType<BridgeSsePromptSettled>();
+      final events = mapper.mapMessageSnapshot(message: message);
+      final settled = events.whereType<BridgeSsePromptSettled>();
       expect(settled, status == "running" ? isEmpty : hasLength(1));
       if (settled.isNotEmpty) expect(settled.single.promptID, "compact-fixture");
+      // Only a finished compaction reports the session compacted.
+      expect(events.whereType<BridgeSseSessionCompacted>(), status == "completed" ? hasLength(1) : isEmpty);
     }
+  });
+
+  test("compaction words stream into the running row and nowhere else", () {
+    const running = PluginMessagePartCompaction(
+      id: "msg_compaction:0",
+      sessionID: "s",
+      messageID: "msg_compaction",
+      compactionState: PluginCompactionState.running(summary: null),
+    );
+    final event =
+        frame(type: "session.compaction.delta", data: {"sessionID": "s", "text": " words"}).data
+            as V2SessionCompactionDelta;
+    final delta = mapper.mapCompactionDelta(event: event, running: running).single as BridgeSseMessagePartDelta;
+    expect(
+      (delta.sessionID, delta.messageID, delta.partID, delta.field, delta.delta),
+      ("s", "msg_compaction", "msg_compaction:0", "text", " words"),
+    );
+    expect(mapper.mapCompactionDelta(event: event, running: null), isEmpty);
   });
 
   test("pending inputs reuse catalog mapping and retain root display attribution", () {
