@@ -9,8 +9,10 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/session_detail/load_through_outcome.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/tool_output_fetch.dart";
 import "package:sesori_dart_core/src/repositories/models/session_messages_through_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
+import "package:sesori_dart_core/src/repositories/models/tool_output_result.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_approval_service.dart";
 import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
@@ -38,6 +40,7 @@ void main() {
   late MockSessionDetailLoadService loadService;
   late MockConnectionService connectionService;
   late MockSessionRepository sessionRepository;
+  late StreamController<SesoriSessionEvent> sessionEvents;
   late SessionDetailCubit cubit;
 
   /// A loaded cubit showing the newest page, with older history available.
@@ -50,7 +53,7 @@ void main() {
     loadService = MockSessionDetailLoadService();
     connectionService = MockConnectionService();
     sessionRepository = MockSessionRepository();
-    final sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
+    sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
     final globalEvents = StreamController<SseEvent>.broadcast();
     final connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
     addTearDown(sessionEvents.close);
@@ -466,6 +469,118 @@ void main() {
         (cubit.state as SessionDetailLoaded).promptIndex,
         second,
         reason: "the first index describes the transcript the refresh replaced",
+      );
+    });
+  });
+
+  group("summary tool output", () {
+    const key = (messageId: "m5", partId: "p1");
+    Map<ToolOutputKey, ToolOutputFetch> outputs() => (cubit.state as SessionDetailLoaded).toolOutputs;
+    void stubFetch(Future<ToolOutputResult> Function(Invocation) result) => when(
+      () => loadService.loadToolOutput(sessionId: _sessionId, messageId: "m5", partId: "p1"),
+    ).thenAnswer(result);
+
+    setUp(() async {
+      await openSession(
+        messages: [_message(id: "m5")],
+        olderMessagesCursor: null,
+        userMessagesBefore: 0,
+        promptIndex: () async => const SessionPromptIndexUnsupported(),
+      );
+    });
+
+    test("loads once, however often the row asks while it is on its way", () async {
+      final pending = Completer<ToolOutputResult>();
+      stubFetch((_) => pending.future);
+
+      unawaited(cubit.fetchToolOutput(messageId: "m5", partId: "p1"));
+      unawaited(cubit.fetchToolOutput(messageId: "m5", partId: "p1"));
+      expect(outputs()[key], const ToolOutputLoading());
+      pending.complete(const ToolOutputAvailable(output: "clean", error: null));
+      await pumpEventQueue();
+
+      expect(outputs()[key], const ToolOutputLoaded(output: "clean", error: null));
+      verify(() => loadService.loadToolOutput(sessionId: _sessionId, messageId: "m5", partId: "p1")).called(1);
+    });
+
+    test("a failed fetch is marked, and the next ask tries again", () async {
+      stubFetch(
+        (_) async => ToolOutputFailure(error: ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)),
+      );
+      await cubit.fetchToolOutput(messageId: "m5", partId: "p1");
+      expect(outputs()[key], const ToolOutputFailed());
+
+      stubFetch((_) async => const ToolOutputAvailable(output: null, error: "exit 1"));
+      await cubit.fetchToolOutput(messageId: "m5", partId: "p1");
+      expect(outputs()[key], const ToolOutputLoaded(output: null, error: "exit 1"));
+    });
+
+    test("fetched output outlives a refresh, which brings the summaries back", () async {
+      stubFetch((_) async => const ToolOutputAvailable(output: "clean", error: null));
+      await cubit.fetchToolOutput(messageId: "m5", partId: "p1");
+      when(
+        () => loadService.loadMetadata(sessionId: _sessionId),
+      ).thenAnswer((_) async => const SessionDetailMetadataLoadResult.found(session: testConstSession));
+
+      connectionService.emitDataMayBeStale();
+      await pumpEventQueue();
+
+      verify(
+        () => loadService.reload(
+          session: any(named: "session"),
+          projectId: any(named: "projectId"),
+        ),
+      ).called(1);
+      expect(outputs()[key], const ToolOutputLoaded(output: "clean", error: null));
+    });
+
+    test("a tool that finished live keeps its output for a later summary", () async {
+      const running = MessagePart.tool(
+        id: "p1",
+        sessionID: _sessionId,
+        messageID: "m5",
+        tool: "bash",
+        state: ToolState(
+          status: ToolStatus.running,
+          title: null,
+          output: "partial",
+          error: null,
+          shellCommand: "make",
+          attachments: [],
+        ),
+      );
+      sessionEvents.add(const SesoriMessagePartUpdated(part: running));
+      await pumpEventQueue();
+      expect(outputs()[key], isNull, reason: "a running tool's output is not final");
+
+      sessionEvents.add(
+        const SesoriMessagePartUpdated(
+          part: MessagePart.tool(
+            id: "p1",
+            sessionID: _sessionId,
+            messageID: "m5",
+            tool: "bash",
+            state: ToolState(
+              status: ToolStatus.completed,
+              title: null,
+              output: "done",
+              error: null,
+              shellCommand: "make",
+              attachments: [],
+            ),
+          ),
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(outputs()[key], const ToolOutputLoaded(output: "done", error: null));
+      unawaited(cubit.fetchToolOutput(messageId: "m5", partId: "p1"));
+      verifyNever(
+        () => loadService.loadToolOutput(
+          sessionId: any(named: "sessionId"),
+          messageId: any(named: "messageId"),
+          partId: any(named: "partId"),
+        ),
       );
     });
   });

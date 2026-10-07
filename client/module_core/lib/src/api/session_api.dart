@@ -395,7 +395,22 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         before: before,
         attachmentDelivery: MessageAttachmentDelivery.storedReference,
         storedOnly: storedOnly,
+        // A bridge that predates the field ignores it and sends full parts.
+        toolOutputDelivery: ToolOutputDelivery.onExpand,
       ),
+    );
+  }
+
+  /// The output and error of a tool part a page sent as a summary.
+  Future<ApiResponse<SessionToolOutputResponse>> getToolOutput({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) {
+    return _client.post(
+      "/session/tool-output",
+      fromJson: SessionToolOutputResponse.fromJson,
+      body: SessionToolOutputRequest(sessionId: sessionId, messageId: messageId, partId: partId),
     );
   }
 
@@ -418,8 +433,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         before: before,
         attachmentDelivery: MessageAttachmentDelivery.storedReference,
         storedOnly: storedOnly,
-        // Full tool parts until the transcript can fetch a summary's output.
-        toolOutputDelivery: ToolOutputDelivery.inline,
+        toolOutputDelivery: ToolOutputDelivery.onExpand,
       ),
     );
   }

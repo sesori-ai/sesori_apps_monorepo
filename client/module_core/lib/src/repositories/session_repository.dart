@@ -14,6 +14,7 @@ import "models/session_messages_through_result.dart";
 import "models/session_options_repository_result.dart";
 import "models/session_prompt_index_result.dart";
 import "models/session_prompt_search_result.dart";
+import "models/tool_output_result.dart";
 
 @lazySingleton
 class SessionRepository({
@@ -177,6 +178,18 @@ class SessionRepository({
       // no supported bridge predates the route.
       ErrorResponse(:final error) when _isMissingRoute(error: error) => const SessionPromptSearchUnsupported(),
       ErrorResponse(:final error) => SessionPromptSearchFailure(error: error),
+    };
+  }
+
+  Future<ToolOutputResult> getToolOutput({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) async {
+    final response = await _api.getToolOutput(sessionId: sessionId, messageId: messageId, partId: partId);
+    return switch (response) {
+      SuccessResponse(:final data) => ToolOutputAvailable(output: data.output, error: data.error),
+      ErrorResponse(:final error) => ToolOutputFailure(error: error),
     };
   }
 

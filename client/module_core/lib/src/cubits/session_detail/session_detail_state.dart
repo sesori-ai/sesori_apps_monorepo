@@ -13,6 +13,7 @@ import "../../services/session_approval_calculator.dart";
 import "../../services/session_selection_calculator.dart";
 import "local_send_phase.dart";
 import "seeded_composer.dart";
+import "tool_output_fetch.dart";
 
 part "session_detail_state.freezed.dart";
 
@@ -60,6 +61,11 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// the bridge predates it or its fetch failed, and when the transcript
     /// already loaded the whole history.
     required List<SessionPromptIndexEntry>? promptIndex,
+
+    /// The fetched output of summary tool parts the user expanded. It
+    /// outlives a refresh, which brings the summaries back, so an expanded
+    /// row keeps its output. A full part for the same key wins over it.
+    @Default({}) Map<ToolOutputKey, ToolOutputFetch> toolOutputs,
 
     required Map<String, String> streamingText,
     required SessionStatus sessionStatus,
