@@ -1718,6 +1718,26 @@ void main() {
 
           expect((cubit.state as SessionDetailLoaded).streamingText, isEmpty);
         });
+
+        if (kind == _StreamedPartKind.runningCompaction) {
+          test("a snapshot settling the compaction retires its buffer", () async {
+            final (:cubit, :refresh) = await startStreaming(delta: "before-");
+            await completeRefresh(
+              cubit: cubit,
+              refresh: refresh,
+              parts: const [
+                MessagePart.compaction(
+                  id: _streamedPartId,
+                  sessionID: _sessionId,
+                  messageID: _streamedMessageId,
+                  state: CompactionState.failed(error: null),
+                ),
+              ],
+            );
+
+            expect((cubit.state as SessionDetailLoaded).streamingText, isEmpty);
+          });
+        }
       }
     });
 
