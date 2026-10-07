@@ -66,6 +66,7 @@ export "src/consumers/analytics/session_activity_analytics_listener.dart";
 export "src/cubits/appearance/appearance_cubit.dart";
 export "src/cubits/bridge_identity/bridge_identity_cubit.dart";
 export "src/cubits/bridge_identity/bridge_identity_state.dart";
+export "src/cubits/bridge_kind/bridge_kind_cubit.dart";
 export "src/cubits/bridge_settings/bridge_settings_cubit.dart";
 export "src/cubits/bridge_settings/bridge_settings_state.dart";
 export "src/cubits/chat_input_mode/chat_input_mode_cubit.dart";

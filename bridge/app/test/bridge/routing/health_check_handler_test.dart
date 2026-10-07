@@ -1,5 +1,6 @@
 import "package:sesori_bridge/src/repositories/health_repository.dart";
 import "package:sesori_bridge/src/routing/health_check_handler.dart";
+import "package:sesori_shared/sesori_shared.dart" show BridgeKind;
 import "package:test/test.dart";
 
 import "routing_test_helpers.dart";
@@ -8,11 +9,12 @@ void main() {
   group("HealthCheckHandler", () {
     late FakeBridgePlugin plugin;
 
-    HealthCheckHandler buildHandler({bool filesystemAccessOk = true}) {
+    HealthCheckHandler buildHandler({bool filesystemAccessOk = true, BridgeKind bridgeKind = BridgeKind.cli}) {
       return HealthCheckHandler(
         healthRepository: HealthRepository(
           bridgeVersion: "9.9.9",
           filesystemAccessOk: filesystemAccessOk,
+          bridgeKind: bridgeKind,
         ),
       );
     }
@@ -42,6 +44,14 @@ void main() {
       expect(response.healthy, isTrue);
       expect(response.version, equals("9.9.9"));
       expect(response.filesystemAccessDegraded, isFalse);
+      expect(response.bridgeKind, BridgeKind.cli);
+    });
+
+    test("reports a desktop bridge when Sesori Desktop supervises it", () async {
+      final response = await buildHandler(bridgeKind: BridgeKind.desktop).handle(
+        makeRequest("GET", "/global/health"),
+      );
+      expect(response.bridgeKind, BridgeKind.desktop);
     });
 
     test("reports filesystemAccessDegraded when access is not ok", () async {

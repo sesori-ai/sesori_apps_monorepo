@@ -10,6 +10,13 @@ _HealthResponse _$HealthResponseFromJson(Map json) => _HealthResponse(
   healthy: json['healthy'] as bool,
   version: json['version'] as String,
   filesystemAccessDegraded: json['filesystemAccessDegraded'] as bool,
+  bridgeKind:
+      $enumDecodeNullable(
+        _$BridgeKindEnumMap,
+        json['bridgeKind'],
+        unknownValue: BridgeKind.cli,
+      ) ??
+      BridgeKind.cli,
 );
 
 Map<String, dynamic> _$HealthResponseToJson(_HealthResponse instance) =>
@@ -17,4 +24,10 @@ Map<String, dynamic> _$HealthResponseToJson(_HealthResponse instance) =>
       'healthy': instance.healthy,
       'version': instance.version,
       'filesystemAccessDegraded': instance.filesystemAccessDegraded,
+      'bridgeKind': _$BridgeKindEnumMap[instance.bridgeKind]!,
     };
+
+const _$BridgeKindEnumMap = {
+  BridgeKind.cli: 'cli',
+  BridgeKind.desktop: 'desktop',
+};

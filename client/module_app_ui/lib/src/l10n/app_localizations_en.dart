@@ -2932,4 +2932,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bridgeUpdateCopyCommand => 'Copy command';
+
+  @override
+  String get bridgeUpdateDesktopTitle => 'Update Sesori Desktop';
+
+  @override
+  String get bridgeUpdateDesktopIntro => 'This bridge runs inside Sesori Desktop. On that computer:';
+
+  @override
+  String get bridgeUpdateDesktopStepDownload => '1. Download the latest version:';
+
+  @override
+  String get bridgeUpdateDesktopStepQuit => '2. Quit Sesori Desktop (closing the window may not quit it).';
+
+  @override
+  String get bridgeUpdateDesktopStepInstall => '3. Install the new version, then open Sesori Desktop again.';
+
+  @override
+  String get bridgeUpdateCopyLink => 'Copy link';
 }

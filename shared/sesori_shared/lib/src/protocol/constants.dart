@@ -12,6 +12,15 @@ abstract final class RelayProtocol() {
   static const int versionByte = 0x01;
   static const int jsonStartByte = 0x7B;
 
+  /// First byte of a decrypted plaintext that holds a deflated message.
+  ///
+  /// The layout is this marker followed by a raw deflate stream (no zlib
+  /// header) of the UTF-8 JSON message. A plain plaintext always starts with
+  /// [jsonStartByte], so the reader needs no other signal. Only a response to
+  /// a `RelayRequest` whose `acceptsDeflatedResponse` is true uses it; the
+  /// outer frame and [versionByte] are unchanged.
+  static const int deflatedPlaintextMarker = 0x00;
+
   /// Relay WebSocket messages are capped at 64 MiB by the relay server.
   static const int maxMessageBytes = 64 * 1024 * 1024;
 

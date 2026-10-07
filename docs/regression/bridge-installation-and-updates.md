@@ -79,6 +79,16 @@ client's update steps shown wherever a feature needs a newer bridge.
   Harness Settings), the three bridge settings rows, the Harnesses screen, a harness
   login refused as unsupported, the list and harness-card scan rows, the new-folder
   alert, and the session menu's auto-continuation entry.
+- The bridge reports its kind in `/global/health` as `bridgeKind`: `desktop` when
+  Sesori Desktop supervises it (`--control-url`), otherwise `cli`. A missing or
+  unrecognised value means `cli`. The app reads it on every fresh connect and on the
+  first resumed connect after a cold launch, and keeps the last reported kind through
+  reconnecting, lost and bridge-offline states. When that kind is `desktop`, the same
+  entry points open "Update Sesori Desktop" instead, matching Desktop's manual update:
+  download the latest from a copyable `sesori.com/desktop`, Quit Sesori Desktop
+  (closing the window may not quit it), install the new version and reopen it, with
+  no terminal commands. The CLI steps show for a `cli` bridge, and before any bridge
+  has reported health or after an explicit disconnect or sign-out.
 - A standalone restart spawns a successor carrying the predecessor PID and waits before
   enforcing single-live-bridge ownership. On Windows, the predecessor waits for a marked
   one-shot launcher to start the real successor with inherited stdio, inherit the native
@@ -93,7 +103,7 @@ client's update steps shown wherever a feature needs a newer bridge.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. Distribution work is expensive and is not a per-run heartbeat. |
-| L2 Routine | Update-skip policy and startup reconciliation on a non-managed run: a build-tree or opted-out bridge neither rewrites itself nor fails startup, and reconciliation is silent with no pending attempt. Headless bridge; no plugin. Automated shared UI: the update sheet lists every command with a copy button and copies the update command, and the session old-bridge notice, auto-continuation menu and settings rows open it. |
+| L2 Routine | Update-skip policy and startup reconciliation on a non-managed run: a build-tree or opted-out bridge neither rewrites itself nor fails startup, and reconciliation is silent with no pending attempt. Headless bridge; no plugin. Automated shared UI: the update sheet lists every command with a copy button and copies the update command, a desktop-kind bridge gets the Sesori Desktop steps with a copyable download link and no commands, and the session old-bridge notice, auto-continuation menu and settings rows open it. |
 | L3 Release | Release gates, artifacts, managed startup and automatic macOS signing. Packaged/external. |
 | L4 Extended | Interrupted or failed apply reconciled at a later start, including lock-contended and deletion-failed residue retained observably for another retry; rollback; refused checksum mismatch; unavailable release service staying quiet; track switch; periodic cycle applying in place and reporting pending activation; and an alternate bridge host. Packaged or external for the install; headless bridge for policy. |
 | L5 Full | Both installers and the npm bootstrap on every supported platform and architecture, the npm fallback to the tagged release asset, an end-to-end upgrade from a prior release on both tracks, the update command including force, and the documented uninstall contract. Packaged or external. |
@@ -197,7 +207,11 @@ macOS signing are material failures.
 - `bridge/app/lib/src/updater/` policy, track, lock, repositories, services;
   `bridge/app/bin/bridge.dart` (`update`, `config track`)
 - Client update steps: `client/module_app_ui/lib/src/widgets/bridge_update_sheet.dart`,
-  `client/module_app_ui/lib/src/utils/bridge_install.dart`, and
+  `client/module_app_ui/lib/src/utils/bridge_install.dart`,
+  `client/module_core/lib/src/cubits/bridge_kind/bridge_kind_cubit.dart`, and
   `client/module_app_ui/test/widgets/bridge_update_sheet_test.dart`
+- Bridge kind: `shared/sesori_shared/lib/src/models/sesori/health_response.dart`,
+  `bridge/app/lib/src/runtime/bridge_cli_options.dart`,
+  `bridge/app/lib/src/repositories/health_repository.dart`, and their focused tests
 - Tests: `bridge/app/test/updater/`, notably policy and release-contract suites;
   `bridge/app/test/tool/installers_test.dart`

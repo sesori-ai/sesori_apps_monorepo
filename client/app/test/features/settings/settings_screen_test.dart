@@ -91,6 +91,7 @@ Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputM
         BlocProvider<ChatInputModeCubit>.value(value: chatInputMode)
       else
         BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+      BlocProvider(create: (_) => testBridgeKindCubit(kind: null)),
     ],
     child: MaterialApp.router(
       routerConfig: router,

@@ -347,6 +347,7 @@ class _ReauthHarness._({
       failureReporter: FakeFailureReporter(),
       restartService: buildTestRestartService(),
       filesystemAccessOk: true,
+      bridgeKind: BridgeKind.cli,
       statusNotifier: null,
       startupRetryService: BridgeStartupRetryService(),
       reconnectBackoff: backoffPolicy,

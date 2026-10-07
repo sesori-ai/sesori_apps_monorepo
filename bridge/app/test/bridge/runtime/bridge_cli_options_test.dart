@@ -3,6 +3,7 @@ import "dart:io";
 import "package:args/args.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_bridge/src/runtime/bridge_cli_options.dart";
+import "package:sesori_shared/sesori_shared.dart" show BridgeKind;
 import "package:test/test.dart";
 
 void main() {
@@ -127,6 +128,7 @@ void main() {
 
       expect(options.controlUrl, isNull);
       expect(options.isSupervised, isFalse);
+      expect(options.bridgeKind, BridgeKind.cli);
     });
 
     test("is supervised when --control-url is provided", () {
@@ -134,6 +136,8 @@ void main() {
 
       expect(options.controlUrl, equals("ws://127.0.0.1:54321/control"));
       expect(options.isSupervised, isTrue);
+      // Only Sesori Desktop supervises a bridge.
+      expect(options.bridgeKind, BridgeKind.desktop);
     });
 
     test("treats a blank --control-url as standalone", () {

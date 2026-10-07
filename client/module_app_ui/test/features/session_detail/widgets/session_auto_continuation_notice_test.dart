@@ -193,8 +193,11 @@ void main() {
     when(() => cubit.setAutoContinuation(enabled: any(named: "enabled"))).thenAnswer((_) async {});
     late PregoMenuItem entry;
     Future<void> pumpMenu(SessionAutoContinuationView? continuation) => tester.pumpWidget(
-      BlocProvider<SessionDetailCubit>.value(
-        value: cubit,
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<SessionDetailCubit>.value(value: cubit),
+          BlocProvider(create: (_) => testBridgeKindCubit(kind: null)),
+        ],
         child: MaterialApp(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,

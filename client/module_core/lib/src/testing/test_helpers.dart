@@ -17,6 +17,7 @@ import "../capabilities/relay/room_key_storage.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/server_connection_config.dart";
 import "../capabilities/voice/voice_api.dart";
+import "../cubits/bridge_kind/bridge_kind_cubit.dart";
 import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
@@ -728,6 +729,18 @@ Session testSession({
 
 HealthResponse testHealthResponse() {
   return const HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
+}
+
+/// A [BridgeKindCubit] whose bridge last reported [kind], or no bridge when
+/// [kind] is null.
+BridgeKindCubit testBridgeKindCubit({required BridgeKind? kind}) {
+  final health = switch (kind) {
+    null => null,
+    final kind => HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false, bridgeKind: kind),
+  };
+  final connectionService = MockConnectionService();
+  when(() => connectionService.lastHealth).thenAnswer((_) => BehaviorSubject<HealthResponse?>.seeded(health));
+  return BridgeKindCubit(connectionService: connectionService);
 }
 
 BridgeSummary testBridgeSummary({

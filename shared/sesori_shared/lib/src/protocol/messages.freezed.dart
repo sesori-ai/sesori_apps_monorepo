@@ -125,7 +125,7 @@ $RelayMessageCopyWith(RelayMessage _, $Res Function(RelayMessage) __);
 @JsonSerializable()
 
 class RelayRequest implements RelayMessage {
-  const RelayRequest({required this.id, required this.method, required this.path, required  Map<String, String> headers, required this.body,  String? $type}): _headers = headers,$type = $type ?? 'request';
+  const RelayRequest({required this.id, required this.method, required this.path, required  Map<String, String> headers, required this.body, this.acceptsDeflatedResponse = false,  String? $type}): _headers = headers,$type = $type ?? 'request';
   factory RelayRequest.fromJson(Map<String, dynamic> json) => _$RelayRequestFromJson(json);
 
  final  String id;
@@ -139,6 +139,7 @@ class RelayRequest implements RelayMessage {
 }
 
  final  String? body;
+@JsonKey() final  bool acceptsDeflatedResponse;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -157,18 +158,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.method, method) || other.method == method)&&(identical(other.path, path) || other.path == path)&&const DeepCollectionEquality().equals(other.headers, _headers)&&(identical(other.body, body) || other.body == body));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayRequest&&(identical(other.id, id) || other.id == id)&&(identical(other.method, method) || other.method == method)&&(identical(other.path, path) || other.path == path)&&const DeepCollectionEquality().equals(other.headers, _headers)&&(identical(other.body, body) || other.body == body)&&(identical(other.acceptsDeflatedResponse, acceptsDeflatedResponse) || other.acceptsDeflatedResponse == acceptsDeflatedResponse));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,method,path,const DeepCollectionEquality().hash(_headers),body);
+    return Object.hash(runtimeType,id,method,path,const DeepCollectionEquality().hash(_headers),body,acceptsDeflatedResponse);
 }
 
 @override
 String toString() {
-    return 'RelayMessage.request(id: $id, method: $method, path: $path, headers: $headers, body: $body)';
+    return 'RelayMessage.request(id: $id, method: $method, path: $path, headers: $headers, body: $body, acceptsDeflatedResponse: $acceptsDeflatedResponse)';
 }
 
 
@@ -179,7 +180,7 @@ abstract mixin class $RelayRequestCopyWith<$Res> implements $RelayMessageCopyWit
   factory $RelayRequestCopyWith(RelayRequest value, $Res Function(RelayRequest) _then) = _$RelayRequestCopyWithImpl;
 @useResult
 $Res call({
- String id, String method, String path, Map<String, String> headers, String? body
+ String id, String method, String path, Map<String, String> headers, String? body, bool acceptsDeflatedResponse
 });
 
 
@@ -196,14 +197,15 @@ class _$RelayRequestCopyWithImpl<$Res>
 
 /// Create a copy of RelayMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? method = null,Object? path = null,Object? headers = null,Object? body = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? method = null,Object? path = null,Object? headers = null,Object? body = freezed,Object? acceptsDeflatedResponse = null,}) {
   return _then(RelayRequest(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,method: null == method ? _self.method : method // ignore: cast_nullable_to_non_nullable
 as String,path: null == path ? _self.path : path // ignore: cast_nullable_to_non_nullable
 as String,headers: null == headers ? _self._headers : headers // ignore: cast_nullable_to_non_nullable
 as Map<String, String>,body: freezed == body ? _self.body : body // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,acceptsDeflatedResponse: null == acceptsDeflatedResponse ? _self.acceptsDeflatedResponse : acceptsDeflatedResponse // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

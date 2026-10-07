@@ -5172,6 +5172,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy command'**
   String get bridgeUpdateCopyCommand;
+
+  /// Title of the update sheet when the connected bridge runs inside the Sesori Desktop app, which is updated by installing a newer Sesori Desktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Sesori Desktop'**
+  String get bridgeUpdateDesktopTitle;
+
+  /// No description provided for @bridgeUpdateDesktopIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'This bridge runs inside Sesori Desktop. On that computer:'**
+  String get bridgeUpdateDesktopIntro;
+
+  /// No description provided for @bridgeUpdateDesktopStepDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Download the latest version:'**
+  String get bridgeUpdateDesktopStepDownload;
+
+  /// No description provided for @bridgeUpdateDesktopStepQuit.
+  ///
+  /// In en, this message translates to:
+  /// **'2. Quit Sesori Desktop (closing the window may not quit it).'**
+  String get bridgeUpdateDesktopStepQuit;
+
+  /// Platform-neutral: macOS replaces the app, Windows runs an installer, Linux uses the package manager.
+  ///
+  /// In en, this message translates to:
+  /// **'3. Install the new version, then open Sesori Desktop again.'**
+  String get bridgeUpdateDesktopStepInstall;
+
+  /// No description provided for @bridgeUpdateCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get bridgeUpdateCopyLink;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

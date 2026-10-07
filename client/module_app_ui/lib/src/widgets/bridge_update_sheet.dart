@@ -1,22 +1,32 @@
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart" show BridgeKind;
 import "package:theme_prego/module_prego.dart";
 
 import "../extensions/build_context_x.dart";
 import "../utils/bridge_install.dart";
 import "../utils/copy_text_to_clipboard.dart";
 
-/// Opens the "Update Sesori Bridge" steps over the current screen.
+/// Opens the steps that update the connected bridge over the current screen.
 ///
 /// Every notice that the connected bridge is too old for a feature offers this
 /// one sheet, because the fix happens on the computer running the bridge, not
-/// in the app. The reinstall commands stay visible: bridges released before
-/// the update command cannot follow step 1.
+/// in the app. A bridge Sesori Desktop bundles is updated by that app, so it
+/// gets the desktop steps; any other bridge, or one not connected yet, gets the
+/// command-line steps. Their reinstall commands stay visible: bridges released
+/// before the update command cannot follow step 1.
 Future<void> showBridgeUpdateSheet({required BuildContext context}) {
+  final loc = context.loc;
+  final (title, steps) = switch (context.read<BridgeKindCubit>().state) {
+    BridgeKind.desktop => (loc.bridgeUpdateDesktopTitle, const _DesktopUpdateSteps()),
+    BridgeKind.cli || null => (loc.bridgeUpdateTitle, const _BridgeUpdateSteps()),
+  };
   return showPregoModal<void>(
     context: context,
-    title: context.loc.bridgeUpdateTitle,
+    title: title,
     width: PregoModalWidth.request,
-    builder: (_) => const _BridgeUpdateSteps(),
+    builder: (_) => steps,
   );
 }
 
@@ -58,11 +68,11 @@ class const _BridgeUpdateSteps() extends StatelessWidget {
           const SizedBox(height: PregoSpacing.xl),
           Text(loc.bridgeUpdateStepUpdate, style: heading),
           const SizedBox(height: PregoSpacing.md),
-          const _CommandBox(command: BridgeInstall.updateCommand),
+          _CommandBox(command: BridgeInstall.updateCommand, copyTooltip: loc.bridgeUpdateCopyCommand),
           const SizedBox(height: PregoSpacing.xl),
           Text(loc.bridgeUpdateStepRestart, style: heading),
           const SizedBox(height: PregoSpacing.md),
-          const _CommandBox(command: BridgeInstall.runCommand),
+          _CommandBox(command: BridgeInstall.runCommand, copyTooltip: loc.bridgeUpdateCopyCommand),
           const SizedBox(height: PregoSpacing.md),
           Text(loc.bridgeUpdateRestartService, style: body),
           const SizedBox(height: PregoSpacing.x3l),
@@ -73,6 +83,38 @@ class const _BridgeUpdateSteps() extends StatelessWidget {
           _LabeledCommand(label: loc.bridgeUpdateMethodBun, command: BridgeInstall.bunCommand),
           const SizedBox(height: PregoSpacing.lg),
           Text(loc.bridgeUpdateReinstallRestart, style: body),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sesori Desktop updates the bridge it bundles, so there is no command to
+/// run: install a newer Sesori Desktop, which is a manual download today.
+class const _DesktopUpdateSteps() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final prego = context.prego;
+    final heading = prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary);
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            loc.bridgeUpdateDesktopIntro,
+            style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+          ),
+          const SizedBox(height: PregoSpacing.xl),
+          Text(loc.bridgeUpdateDesktopStepDownload, style: heading),
+          const SizedBox(height: PregoSpacing.md),
+          _CommandBox(command: BridgeInstall.desktopDownloadPage, copyTooltip: loc.bridgeUpdateCopyLink),
+          const SizedBox(height: PregoSpacing.xl),
+          Text(loc.bridgeUpdateDesktopStepQuit, style: heading),
+          const SizedBox(height: PregoSpacing.xl),
+          Text(loc.bridgeUpdateDesktopStepInstall, style: heading),
         ],
       ),
     );
@@ -90,16 +132,16 @@ class const _LabeledCommand({required final String label, required final String 
         spacing: PregoSpacing.sm,
         children: [
           Text(label, style: prego.textTheme.textXs.medium.copyWith(color: prego.colors.textTertiary)),
-          _CommandBox(command: command),
+          _CommandBox(command: command, copyTooltip: context.loc.bridgeUpdateCopyCommand),
         ],
       ),
     );
   }
 }
 
-/// One command in monospace with a copy button. A long command wraps rather
-/// than scrolls, so the whole of it is always readable.
-class const _CommandBox({required final String command}) extends StatelessWidget {
+/// One command (or link) in monospace with a copy button. A long command wraps
+/// rather than scrolls, so the whole of it is always readable.
+class const _CommandBox({required final String command, required final String copyTooltip}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -124,8 +166,8 @@ class const _CommandBox({required final String command}) extends StatelessWidget
             ),
             PregoCopyIconButton(
               key: ValueKey("bridge_update_copy_$command"),
-              tooltip: context.loc.bridgeUpdateCopyCommand,
-              onCopy: () => copyTextToClipboard(text: command, operation: "bridge update command"),
+              tooltip: copyTooltip,
+              onCopy: () => copyTextToClipboard(text: command, operation: "bridge update step text"),
             ),
           ],
         ),
