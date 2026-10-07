@@ -1184,14 +1184,15 @@ as String,
 @JsonSerializable(createFactory: false)
 
 class PluginMessagePartCompaction extends PluginMessagePart {
-  const PluginMessagePartCompaction({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.summary,  String? $type}): $type = $type ?? 'compaction',super._();
+  const PluginMessagePartCompaction({required this.id, required this.sessionID, required this.messageID, @JsonKey(includeToJson: true) required this.compactionState,  String? $type}): $type = $type ?? 'compaction',super._();
   
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
-/// The continuation summary, or null when the harness does not expose one.
-@JsonKey(includeToJson: true) final  String? summary;
+/// How far the compaction got. Named apart from the tool-only [state]
+/// convenience accessor, as [PluginMessagePartSubtask.taskState] is.
+@JsonKey(includeToJson: true) final  PluginCompactionState compactionState;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1210,18 +1211,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.summary, summary) || other.summary == summary));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.compactionState, compactionState) || other.compactionState == compactionState));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,sessionID,messageID,summary);
+    return Object.hash(runtimeType,id,sessionID,messageID,compactionState);
 }
 
 @override
 String toString() {
-    return 'PluginMessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID, summary: $summary)';
+    return 'PluginMessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID, compactionState: $compactionState)';
 }
 
 
@@ -1232,11 +1233,11 @@ abstract mixin class $PluginMessagePartCompactionCopyWith<$Res> implements $Plug
   factory $PluginMessagePartCompactionCopyWith(PluginMessagePartCompaction value, $Res Function(PluginMessagePartCompaction) _then) = _$PluginMessagePartCompactionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID,@JsonKey(includeToJson: true) String? summary
+ String id, String sessionID, String messageID,@JsonKey(includeToJson: true) PluginCompactionState compactionState
 });
 
 
-
+$PluginCompactionStateCopyWith<$Res> get compactionState;
 
 }
 /// @nodoc
@@ -1249,17 +1250,26 @@ class _$PluginMessagePartCompactionCopyWithImpl<$Res>
 
 /// Create a copy of PluginMessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? summary = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? compactionState = null,}) {
   return _then(PluginMessagePartCompaction(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
-as String,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
-as String?,
+as String,compactionState: null == compactionState ? _self.compactionState : compactionState // ignore: cast_nullable_to_non_nullable
+as PluginCompactionState,
   ));
 }
 
-
+/// Create a copy of PluginMessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$PluginCompactionStateCopyWith<$Res> get compactionState {
+  
+  return $PluginCompactionStateCopyWith<$Res>(_self.compactionState, (value) {
+    return _then(_self.copyWith(compactionState: value));
+  });
+}
 }
 
 /// @nodoc
@@ -1784,6 +1794,268 @@ as String?,output: freezed == output ? _self.output : output // ignore: cast_nul
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,attachments: null == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable
 as List<PluginMessageAttachment>,
+  ));
+}
+
+
+}
+
+/// @nodoc
+mixin _$PluginCompactionState {
+
+
+
+  /// Serializes this PluginCompactionState to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginCompactionState);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'PluginCompactionState()';
+}
+
+
+}
+
+/// @nodoc
+class $PluginCompactionStateCopyWith<$Res>  {
+$PluginCompactionStateCopyWith(PluginCompactionState _, $Res Function(PluginCompactionState) __);
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginCompactionStateRunning implements PluginCompactionState {
+  const PluginCompactionStateRunning({required this.summary,  String? $type}): $type = $type ?? 'running';
+  
+
+ final  String? summary;
+
+@JsonKey(name: 'status')
+final String $type;
+
+
+/// Create a copy of PluginCompactionState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginCompactionStateRunningCopyWith<PluginCompactionStateRunning> get copyWith => _$PluginCompactionStateRunningCopyWithImpl<PluginCompactionStateRunning>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginCompactionStateRunningToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginCompactionStateRunning&&(identical(other.summary, summary) || other.summary == summary));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,summary);
+}
+
+@override
+String toString() {
+    return 'PluginCompactionState.running(summary: $summary)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginCompactionStateRunningCopyWith<$Res> implements $PluginCompactionStateCopyWith<$Res> {
+  factory $PluginCompactionStateRunningCopyWith(PluginCompactionStateRunning value, $Res Function(PluginCompactionStateRunning) _then) = _$PluginCompactionStateRunningCopyWithImpl;
+@useResult
+$Res call({
+ String? summary
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginCompactionStateRunningCopyWithImpl<$Res>
+    implements $PluginCompactionStateRunningCopyWith<$Res> {
+  _$PluginCompactionStateRunningCopyWithImpl(this._self, this._then);
+
+  final PluginCompactionStateRunning _self;
+  final $Res Function(PluginCompactionStateRunning) _then;
+
+/// Create a copy of PluginCompactionState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? summary = freezed,}) {
+  return _then(PluginCompactionStateRunning(
+summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginCompactionStateCompleted implements PluginCompactionState {
+  const PluginCompactionStateCompleted({required this.summary, required this.freedTokens, required this.trigger,  String? $type}): $type = $type ?? 'completed';
+  
+
+ final  String? summary;
+ final  int? freedTokens;
+ final  PluginCompactionTrigger? trigger;
+
+@JsonKey(name: 'status')
+final String $type;
+
+
+/// Create a copy of PluginCompactionState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginCompactionStateCompletedCopyWith<PluginCompactionStateCompleted> get copyWith => _$PluginCompactionStateCompletedCopyWithImpl<PluginCompactionStateCompleted>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginCompactionStateCompletedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginCompactionStateCompleted&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.freedTokens, freedTokens) || other.freedTokens == freedTokens)&&(identical(other.trigger, trigger) || other.trigger == trigger));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,summary,freedTokens,trigger);
+}
+
+@override
+String toString() {
+    return 'PluginCompactionState.completed(summary: $summary, freedTokens: $freedTokens, trigger: $trigger)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginCompactionStateCompletedCopyWith<$Res> implements $PluginCompactionStateCopyWith<$Res> {
+  factory $PluginCompactionStateCompletedCopyWith(PluginCompactionStateCompleted value, $Res Function(PluginCompactionStateCompleted) _then) = _$PluginCompactionStateCompletedCopyWithImpl;
+@useResult
+$Res call({
+ String? summary, int? freedTokens, PluginCompactionTrigger? trigger
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginCompactionStateCompletedCopyWithImpl<$Res>
+    implements $PluginCompactionStateCompletedCopyWith<$Res> {
+  _$PluginCompactionStateCompletedCopyWithImpl(this._self, this._then);
+
+  final PluginCompactionStateCompleted _self;
+  final $Res Function(PluginCompactionStateCompleted) _then;
+
+/// Create a copy of PluginCompactionState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? summary = freezed,Object? freedTokens = freezed,Object? trigger = freezed,}) {
+  return _then(PluginCompactionStateCompleted(
+summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
+as String?,freedTokens: freezed == freedTokens ? _self.freedTokens : freedTokens // ignore: cast_nullable_to_non_nullable
+as int?,trigger: freezed == trigger ? _self.trigger : trigger // ignore: cast_nullable_to_non_nullable
+as PluginCompactionTrigger?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class PluginCompactionStateFailed implements PluginCompactionState {
+  const PluginCompactionStateFailed({required this.error,  String? $type}): $type = $type ?? 'failed';
+  
+
+ final  String? error;
+
+@JsonKey(name: 'status')
+final String $type;
+
+
+/// Create a copy of PluginCompactionState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$PluginCompactionStateFailedCopyWith<PluginCompactionStateFailed> get copyWith => _$PluginCompactionStateFailedCopyWithImpl<PluginCompactionStateFailed>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginCompactionStateFailedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginCompactionStateFailed&&(identical(other.error, error) || other.error == error));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
+
+@override
+String toString() {
+    return 'PluginCompactionState.failed(error: $error)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $PluginCompactionStateFailedCopyWith<$Res> implements $PluginCompactionStateCopyWith<$Res> {
+  factory $PluginCompactionStateFailedCopyWith(PluginCompactionStateFailed value, $Res Function(PluginCompactionStateFailed) _then) = _$PluginCompactionStateFailedCopyWithImpl;
+@useResult
+$Res call({
+ String? error
+});
+
+
+
+
+}
+/// @nodoc
+class _$PluginCompactionStateFailedCopyWithImpl<$Res>
+    implements $PluginCompactionStateFailedCopyWith<$Res> {
+  _$PluginCompactionStateFailedCopyWithImpl(this._self, this._then);
+
+  final PluginCompactionStateFailed _self;
+  final $Res Function(PluginCompactionStateFailed) _then;
+
+/// Create a copy of PluginCompactionState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? error = freezed,}) {
+  return _then(PluginCompactionStateFailed(
+error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

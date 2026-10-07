@@ -1888,11 +1888,19 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       // Remote compaction keeps its summary encrypted, so there is none to show.
       expect(
         messages.first.parts.single,
-        isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", isNull),
+        isA<PluginMessagePartCompaction>().having(
+          (part) => part.compactionState,
+          "compactionState",
+          const PluginCompactionState.completed(summary: null, freedTokens: null, trigger: null),
+        ),
       );
       expect(
         messages.last.parts.single,
-        isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", "Continue the auth work."),
+        isA<PluginMessagePartCompaction>().having(
+          (part) => part.compactionState,
+          "compactionState",
+          const PluginCompactionState.completed(summary: "Continue the auth work.", freedTokens: null, trigger: null),
+        ),
       );
     });
 

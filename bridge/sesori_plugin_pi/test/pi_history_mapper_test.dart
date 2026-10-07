@@ -283,7 +283,10 @@ void main() {
       expect(messages.last.info.time, isNull);
       final compact = messages.last.parts.single as PluginMessagePartCompaction;
       expect(compact.id, "${messages.last.info.id}-tool");
-      expect(compact.summary, "Continue the auth work.");
+      expect(
+        compact.compactionState,
+        const PluginCompactionState.completed(summary: "Continue the auth work.", freedTokens: null, trigger: null),
+      );
       expect(messages.toString(), isNot(contains(privateSummary)));
     });
 

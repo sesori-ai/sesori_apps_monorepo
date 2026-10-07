@@ -580,7 +580,7 @@ class CodexMessageRepository({
                   id: "$messageId-tool",
                   sessionID: sessionId,
                   messageID: messageId,
-                  summary: summary,
+                  compactionState: .completed(summary: summary, freedTokens: null, trigger: null),
                 ),
               ],
             ),
