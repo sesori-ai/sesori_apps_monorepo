@@ -721,10 +721,19 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         // it; the inline title is used instead, as on the new-session screen.
         SliverFillRemaining(
           hasScrollBody: switch (state) {
-            SessionDetailLoading(:final launchHandoff) => launchHandoff != null,
+            SessionDetailLoading(launchHandoff: _?) => true,
             SessionDetailLoaded() || SessionDetailHarnessUnavailable() => true,
-            // Queued messages sit below the error, which then fills the rest.
-            final SessionDetailFailed failed => _owesMessages(failed),
+            // Queued messages sit below the status, which then fills the rest.
+            SessionDetailLoading(:final awaitingBridgeSubmissions, :final launchFollowUps, :final queuedMessages) ||
+            SessionDetailFailed(
+              :final awaitingBridgeSubmissions,
+              :final launchFollowUps,
+              :final queuedMessages,
+            ) => _owesMessages(
+              awaitingBridgeSubmissions: awaitingBridgeSubmissions,
+              launchFollowUps: launchFollowUps,
+              queuedMessages: queuedMessages,
+            ),
           },
           child: content,
         ),
@@ -747,14 +756,23 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         handoff: handoff,
         columnWidths: columnWidths,
       ),
-      SessionDetailLoading() => PregoLaunchStatus(
-        semanticsLabel: loc.sessionDetailLoadingSemantics,
-        messages: [
-          loc.newSessionLoadingMessage1,
-          loc.newSessionLoadingMessage2,
-          loc.newSessionLoadingMessage3,
-        ],
-      ),
+      // A reload from a failed or blocked first load keeps what is still owed.
+      SessionDetailLoading(:final awaitingBridgeSubmissions, :final launchFollowUps, :final queuedMessages) =>
+        _withOwedMessages(
+          context: context,
+          status: PregoLaunchStatus(
+            semanticsLabel: loc.sessionDetailLoadingSemantics,
+            messages: [
+              loc.newSessionLoadingMessage1,
+              loc.newSessionLoadingMessage2,
+              loc.newSessionLoadingMessage3,
+            ],
+          ),
+          awaitingBridgeSubmissions: awaitingBridgeSubmissions,
+          launchFollowUps: launchFollowUps,
+          queuedMessages: queuedMessages,
+          harnessName: null,
+        ),
       final SessionDetailLoaded loaded =>
         widget.readOnly || loaded.isArchived
             ? SessionDetailLoadedView.readOnly(
@@ -841,10 +859,11 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     };
   }
 
-  static bool _owesMessages(SessionDetailFailed failed) =>
-      failed.awaitingBridgeSubmissions.isNotEmpty ||
-      failed.launchFollowUps.isNotEmpty ||
-      failed.queuedMessages.isNotEmpty;
+  static bool _owesMessages({
+    required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    required List<LaunchFollowUp> launchFollowUps,
+    required List<QueuedSessionSubmission> queuedMessages,
+  }) => awaitingBridgeSubmissions.isNotEmpty || launchFollowUps.isNotEmpty || queuedMessages.isNotEmpty;
 
   /// A first load that failed or found the harness blocked, with [status]
   /// above the messages still owed: the same bubbles and actions the loading
@@ -857,7 +876,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     required List<QueuedSessionSubmission> queuedMessages,
     required String? harnessName,
   }) {
-    if (awaitingBridgeSubmissions.isEmpty && launchFollowUps.isEmpty && queuedMessages.isEmpty) return status;
+    if (!_owesMessages(
+      awaitingBridgeSubmissions: awaitingBridgeSubmissions,
+      launchFollowUps: launchFollowUps,
+      queuedMessages: queuedMessages,
+    )) {
+      return status;
+    }
     final cubit = context.read<SessionDetailCubit>();
     QueuedMessageBubble bubble({
       required QueuedSessionSubmission submission,
@@ -870,7 +895,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       localAttachments: submission.attachments,
       presentation: presentation,
     );
+    // Bottom-anchored like the loading screen's bubbles, so a short list stays
+    // where it was instead of rising to the middle.
     return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Expanded(child: status),
         Flexible(

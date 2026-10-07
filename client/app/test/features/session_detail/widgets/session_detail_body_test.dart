@@ -2106,30 +2106,54 @@ void main() {
           agentModel: null,
           fastMode: false,
         );
-    final state = SessionDetailState.harnessUnavailable(
-      session: testSession(),
-      interaction: authRequired,
-      launchFollowUps: [
-        LaunchFollowUp.queued(
-          submission: submission(promptId: "prm_launch", text: "Sent while creating"),
-        ),
-      ],
-      queuedMessages: [submission(promptId: "prm_early", text: "Sent before the load")],
+    final launchFollowUps = [
+      LaunchFollowUp.queued(
+        submission: submission(promptId: "prm_launch", text: "Sent while creating"),
+      ),
+    ];
+    final queuedMessages = [submission(promptId: "prm_early", text: "Sent before the load")];
+    final states = StreamController<SessionDetailState>();
+    addTearDown(states.close);
+    whenListen(
+      cubit,
+      states.stream,
+      initialState: SessionDetailState.harnessUnavailable(
+        session: testSession(),
+        interaction: authRequired,
+        launchFollowUps: launchFollowUps,
+        queuedMessages: queuedMessages,
+      ),
     );
-    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
     expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
     expect(find.text("Sent while creating"), findsOneWidget);
-    expect(find.text("Sent before the load"), findsOneWidget);
+    final last = find.ancestor(of: find.text("Sent before the load"), matching: find.byType(QueuedMessageBubble));
+    final lastRect = tester.getRect(last);
+    // Bottom-anchored, as on the loading screen, not halfway up the page.
+    expect(lastRect.bottom, greaterThan(tester.view.physicalSize.height / tester.view.devicePixelRatio - 120));
     final cancels = find.widgetWithText(TextButton, "Cancel");
     expect(cancels, findsNWidgets(2));
     await tester.tap(cancels.first);
     verify(() => cubit.removeLaunchFollowUp(promptId: "prm_launch")).called(1);
     await tester.tap(cancels.last);
     verify(() => cubit.cancelQueuedMessage(0)).called(1);
+
+    // Recheck reloads without hiding or moving what is still owed.
+    states.add(
+      SessionDetailState.loading(
+        launchHandoff: null,
+        seededComposer: null,
+        launchFollowUps: launchFollowUps,
+        queuedMessages: queuedMessages,
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
+    expect(find.text("Sent while creating"), findsOneWidget);
+    expect(tester.getRect(last), lastRect);
     expect(tester.takeException(), isNull);
   });
 
