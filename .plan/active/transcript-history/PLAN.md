@@ -8,8 +8,9 @@
   average, and the largest first page went from 26.9 KB to 9.6 KB
   (`steps/step-04.md`).
 - Step 5 (2026-10-07) details phases 2 and 3 below and records their
-  `architecture-plan-review` in [Plan Review](#plan-review). Steps 10 and 11
-  each wait on one open question; see [Open Questions](#open-questions).
+  `architecture-plan-review` in [Plan Review](#plan-review). The user
+  answered its two product questions, O2 and O3, the same day; see
+  [User Decisions](#user-decisions-final).
 - Live status lives on GitHub:
   `gh pr list --state all --search "[transcript-history]"`. Evidence for a
   finished step lives in `steps/step-NN.md`, written only by that step's PR.
@@ -80,8 +81,8 @@ Long sessions must stay cheap to open and easy to navigate.
 
 ## User Decisions (Final)
 
-These are the user's decisions of 2026-10-06, made on the review page. Do not
-reopen them.
+These are the user's decisions of 2026-10-06, made on the review page, and
+of 2026-10-07, where dated. Do not reopen them.
 
 | ID | Decision |
 |---|---|
@@ -94,6 +95,8 @@ reopen them.
 | Q4 | Index entries carry a 300-character preview. Search is a bridge query over the full text of every prompt. This reverses turn-navigation D30's "no bridge search route". |
 | Q5 | Tapping a far, unloaded prompt loads everything between it and the loaded range in one request. A spinner appears only after about 150 ms. The new messages are prepended off-screen, so nothing visible moves. |
 | Q6 | Against a v1.9.0 bridge, keep today's Prompts screen and wording: only loaded prompts are listed, and no pin appears over partial turns. |
+| O2 | 2026-10-07: a pin over an unloaded prompt shows the index preview in the normal pinned bubble, cut at the compact pin height like any long prompt. A tap loads through and jumps. It looks like every other pin, so the swap to the real bubble when the opener loads is invisible. |
+| O3 | 2026-10-07: while the bridge searches, loaded-range matches show at once. After about 150 ms without a bridge answer, the count row reads "Searching earlier prompts…", then "{count} matches". On failure it reads "Couldn't search earlier prompts" with Retry, and the loaded matches stay. |
 | 2026-10-07 | The prompts UI stays a separate Prompts screen, not an in-place fold. The bridge stamps prompt times (turn-navigation D38, landed), and the list keeps the transcript's order. |
 
 ## Planning Decisions
@@ -662,8 +665,8 @@ list, the far tap and the older-bridge fallback.
   in the `TranscriptStickyAbove` place, ahead of `_stickyOpeners`'s output.
   `_stickyOpeners` stays layout-only.
 - A tap on that pin runs the far-tap flow from step 9.
-- What the pin shows is open question [O2](#open-questions). Step 10 waits
-  on it.
+- The pin shows the entry's preview in the normal pinned bubble, cut at the
+  compact pin height ([O2](#user-decisions-final)).
 
 ### Search Every Prompt (Step 11)
 
@@ -714,8 +717,10 @@ layout.
 - Loaded-range matches show at once. Bridge matches join in chronological
   order, animating in with size and fade, and rows already on screen keep
   their place.
-- What the count row says while the bridge searches, and after a failure, is
-  open question [O3](#open-questions). Step 11 waits on it.
+- The count row follows [O3](#user-decisions-final): "Searching earlier
+  prompts…" after about 150 ms without a bridge answer, then
+  "{count} matches"; on failure, "Couldn't search earlier prompts" with
+  Retry, keeping the loaded matches. Both are new strings.
 
 ### Analytics And Harnesses
 
@@ -810,8 +815,8 @@ added plus deleted lines against the merge base, including generated code.
 | 7 | `POST /session/prompts`: wire union, store and archive paths, benchmark | ≤ 900, including generated | 🚧 new wire contract, archived path |
 | 8 | `POST /session/messages/through`, `HistoryWindow`, app load-through | ≤ 600, plus generated | 🚧 paging and wire change |
 | 9 | Index fetch, full Prompts list, far-tap flow | ≤ 1,300 | 🚧 scroll stability and lifecycle |
-| 10 | Pin over unloaded turns (waits on O2) | ≤ 500 | ⚙️ |
-| 11 | Bridge search route, shared search helpers, `PromptSearchCubit` (waits on O3) | ≤ 800 | ⚙️ |
+| 10 | Pin over unloaded turns | ≤ 500 | ⚙️ |
+| 11 | Bridge search route, shared search helpers, `PromptSearchCubit` | ≤ 800 | ⚙️ |
 | 12 | W3 `ToolState` union, opt-in, summary mapper, tool-output route | ≤ 900, including generated | 🚧 wire opt-in, compatibility |
 | 13 | W3 app opt-in, output map, expand loading | ≤ 700 | ⚙️ motion and state merge |
 | 14 | Reconcile regression docs | ≤ 300 | 🌱 |
@@ -832,7 +837,7 @@ far tap splits out as its own PR.
 - Step 6 depends on step 5. Step 7 depends on step 6.
 - Step 8 depends on step 5. It can run in parallel with steps 6 and 7.
 - Step 9 depends on steps 7 and 8.
-- Step 10 depends on step 9 and on O2. Step 11 depends on step 9 and on O3.
+- Steps 10 and 11 depend on step 9.
 - Step 12 depends on step 8, because both change the page path and the
   through request gains W3's field. Step 13 depends on step 12.
 - Step 14 depends on steps 2–13. Step 15 depends on step 14.
@@ -985,34 +990,6 @@ No other obsolete code was found.
 - Architecture-bearing steps (3, 4, 6, 7, 8, 9, 11, 12 and 13) get
   `architecture-implementation-review` through a sub-agent, within AGENTS.md's
   limits.
-
-## Open Questions
-
-**O2 — What a pin over an unloaded prompt shows (blocks step 10).** The
-loaded range starts inside a turn whose opener is not loaded. The app has
-only the index entry: a 300-character preview, with no attachments and no
-bubble to measure.
-
-- **A (suggested):** the preview in the normal pinned bubble, cut at the
-  compact pin height like any long prompt. A tap loads through and jumps.
-  It looks like every other pin, so the swap to the real bubble when the
-  opener loads is invisible.
-- **B:** a compact one-line pin holding the preview's first line. Visibly
-  different from a loaded pin, and it changes height when the real opener
-  loads.
-- **C:** a chip with the prompt number and first line. Smallest, but a third
-  pin style.
-
-**O3 — The search count row while the bridge searches, and after a failure
-(blocks step 11).**
-
-- **A (suggested):** loaded-range matches show at once. After about 150 ms
-  without a bridge answer, the count row reads "Searching earlier prompts…";
-  then it reads "{count} matches". On failure it reads "Couldn't search
-  earlier prompts" with Retry, and the loaded matches stay.
-- **B:** show no count until the bridge answers. Loaded matches still show at
-  once. A failure shows only the loaded matches with today's "in the prompts
-  loaded so far" wording.
 
 ## Answered Questions
 

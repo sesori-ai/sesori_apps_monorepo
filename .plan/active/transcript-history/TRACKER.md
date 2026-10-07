@@ -15,9 +15,10 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 - The user decided on 2026-10-07 that the prompts UI is a separate Prompts
   screen, that the bridge stamps prompt times, and that the list keeps the
   transcript's order.
-- O2 (what a pin over an unloaded prompt shows) and O3 (the search count row)
-  are open. Steps 10 and 11 wait on them. See
-  [PLAN](PLAN.md#open-questions).
+- O2 and O3 answered by the user on 2026-10-07, both option A: a pin over an
+  unloaded prompt shows the preview in the normal pinned bubble, and bridge
+  search shows "Searching earlier prompts…" after about 150 ms, then the
+  count, with Retry on failure. See [PLAN](PLAN.md#user-decisions-final).
 - This plan supersedes turn-navigation D30, the derived-only guardrail, and
   the Later Phases F1/F2. See
   [PLAN](PLAN.md#supersession-of-turn-navigation).
@@ -66,8 +67,8 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | 7 | `transcript-history/prompt-index` | [7](#fixed-pr-titles) | ≤ 900 | 6 |
 | 8 | `transcript-history/load-through` | [8](#fixed-pr-titles) | ≤ 600 | 5 |
 | 9 | `transcript-history/prompts-list` | [9](#fixed-pr-titles) | ≤ 1,300 | 7, 8 |
-| 10 | `transcript-history/unloaded-pin` | [10](#fixed-pr-titles) | ≤ 500 | 9, O2 |
-| 11 | `transcript-history/prompt-search` | [11](#fixed-pr-titles) | ≤ 800 | 9, O3 |
+| 10 | `transcript-history/unloaded-pin` | [10](#fixed-pr-titles) | ≤ 500 | 9 |
+| 11 | `transcript-history/prompt-search` | [11](#fixed-pr-titles) | ≤ 800 | 9 |
 | 12 | `transcript-history/slim-tools-bridge` | [12](#fixed-pr-titles) | ≤ 900 | 8 |
 | 13 | `transcript-history/slim-tools-app` | [13](#fixed-pr-titles) | ≤ 700 | 12 |
 | 14 | `transcript-history/regression-docs` | [14](#fixed-pr-titles) | ≤ 300 | 2–13 |
