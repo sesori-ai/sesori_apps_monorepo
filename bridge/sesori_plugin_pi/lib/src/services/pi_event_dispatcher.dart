@@ -54,7 +54,7 @@ final class PiEventDispatcher({
   /// the failure note.
   List<BridgeSseEvent> clearCompaction({required String sessionId}) => _abandonCompaction(
     sessionId: sessionId,
-    map: (messageId, startedAtMs) =>
+    map: ({required messageId, required startedAtMs}) =>
         _historyMapper.mapRunningCompaction(sessionId: sessionId, messageId: messageId, startedAtMs: startedAtMs),
   );
 
@@ -694,7 +694,7 @@ final class PiEventDispatcher({
       if (willRetry) return const [];
       final failureNote = _abandonCompaction(
         sessionId: sessionId,
-        map: (messageId, startedAtMs) => _historyMapper.mapFailedCompaction(
+        map: ({required messageId, required startedAtMs}) => _historyMapper.mapFailedCompaction(
           sessionId: sessionId,
           messageId: messageId,
           startedAtMs: startedAtMs,
@@ -728,13 +728,16 @@ final class PiEventDispatcher({
   /// bridge appends that row, so it lands where the running row was.
   List<BridgeSseEvent> _abandonCompaction({
     required String sessionId,
-    required PluginMessageWithParts Function(String messageId, int startedAtMs) map,
+    required PluginMessageWithParts Function({required String messageId, required int startedAtMs}) map,
   }) {
     final state = _sessions[sessionId];
     final compaction = state?.compaction;
     if (state == null || compaction == null) return const [];
     state.compaction = null;
-    final mapped = map(state.identities.abandonCompaction(stamp: compaction.startedAtMs), compaction.startedAtMs);
+    final mapped = map(
+      messageId: state.identities.abandonCompaction(stamp: compaction.startedAtMs),
+      startedAtMs: compaction.startedAtMs,
+    );
     return [
       BridgeSseMessageRemoved(sessionID: sessionId, messageID: compaction.messageId),
       BridgeSseMessageUpdated(info: mapped.info),
