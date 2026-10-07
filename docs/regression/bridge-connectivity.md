@@ -20,9 +20,10 @@ explicit restart, and the connection states the app presents.
   before it is served; one room-key encryptor is shared across that bridge
   session while every encrypted frame receives a fresh nonce.
 - The app asks for deflated responses on every routed request except the
-  attachment fetch. For an asking request the bridge deflates the response
-  plaintext inside the encryption, behind a leading `0x00` marker byte; the
-  outer frame and its version byte are unchanged. Live events, key exchange,
+  connection health check and the attachment fetch. For an asking request the
+  bridge deflates the response plaintext inside the encryption, behind a
+  leading `0x00` marker byte; the outer frame and its version byte are
+  unchanged. Shutdown rejections stay plain. Live events, key exchange,
   rekey and resume messages, and app-to-bridge requests are never compressed.
   The app reads both deflated and plain responses. Compatibility: a v1.9.0
   bridge ignores the ask and replies plain, which the app reads as before; a

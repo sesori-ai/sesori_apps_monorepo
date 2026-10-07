@@ -31,7 +31,9 @@ wire field and the bridge side landed in step 3 (#1876).
 - `client/module_core/test/capabilities/relay/relay_client_handshake_replay_test.dart`:
   through a fake socket and real encryption, a deflated and a plain
   `RelayResponse` frame each decode to the exact response.
-- Tests and analysis on code commit `3663f1b09c` with Dart 3.13.4 from
+- Tests and analysis on code commit
+  `3663f1b09ce08d7744ab71e0558e8ecdd97cfd48` (tree
+  `02dad17cbd6ce12ca69b264a98b62b481a8de2d2`) with Dart 3.13.4 from
   Flutter 3.47.5-stable; this evidence commit changes no code. In
   `client/module_core/`: `dart test test/capabilities/relay test/api/client`
   (48 tests) and `dart analyze --fatal-infos` passed.

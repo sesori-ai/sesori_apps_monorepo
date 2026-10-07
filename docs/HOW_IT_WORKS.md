@@ -41,7 +41,7 @@ The mobile app opens its own WebSocket to the same relay, authenticates the same
 
 ### Phone ↔ Bridge (end-to-end, through the relay)
 
-When a phone connects, it performs an **X25519 Diffie-Hellman key exchange** with the Bridge. Both sides derive a shared secret via HKDF-SHA256, and the Bridge sends a random **room key** encrypted with that secret. From that point on, every message — HTTP requests, responses, and SSE events — is encrypted with **XChaCha20-Poly1305** using the room key. The relay never has access to the key material. Responses to the phone's requests are compressed with deflate before they are encrypted, except attachment downloads; SSE events and requests are sent uncompressed.
+When a phone connects, it performs an **X25519 Diffie-Hellman key exchange** with the Bridge. Both sides derive a shared secret via HKDF-SHA256, and the Bridge sends a random **room key** encrypted with that secret. From that point on, every message — HTTP requests, responses, and SSE events — is encrypted with **XChaCha20-Poly1305** using the room key. The relay never has access to the key material. A Bridge that supports it compresses responses to the phone's requests with deflate before encrypting them, except the connection health check, attachment downloads, and shutdown rejections; SSE events and requests are sent uncompressed.
 
 ## Message types
 
