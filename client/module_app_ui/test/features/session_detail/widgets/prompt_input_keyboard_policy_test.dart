@@ -115,6 +115,9 @@ Future<void> _pumpComposer({
         imageClipboard: () => imageClipboard,
         child: Scaffold(
           body: PromptInput(
+            initialSelection: null,
+            onBusyChanged: null,
+            onSelectionChanged: null,
             isBusy: false,
             hasMessages: true,
             canSend: true,

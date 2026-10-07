@@ -2765,6 +2765,7 @@ void main() {
               composer: composer(
                 unsent: UnsentComposer(
                   draft: ComposerDraft.typed(text: "carry on"),
+                  selection: null,
                   command: _reviewCommand,
                   attachments: [image],
                 ),

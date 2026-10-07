@@ -76,6 +76,7 @@ Widget _buildApp({
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             AgentModelButtons(
+              readOnly: false,
               surfaceStyle: PregoComposerSurfaceStyle.subtle,
               agents: const [],
               selectedAgent: null,
