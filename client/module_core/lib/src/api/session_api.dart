@@ -401,14 +401,16 @@ class SessionApi({required final RelayHttpApiClient _client}) {
 
   /// Every message from [throughSeq] up to, but not including, [before], in
   /// one response. A bridge that predates the route answers 404.
+  ///
+  /// The response can carry a whole session, so it decodes off the UI isolate.
   Future<ApiResponse<MessageWithPartsResponse>> getMessagesThrough({
     required String sessionId,
     required int throughSeq,
     required int before,
     required bool storedOnly,
   }) {
-    return _client.post(
-      "/session/messages/through",
+    return _client.postDecodedInBackground(
+      path: "/session/messages/through",
       fromJson: MessageWithPartsResponse.fromJson,
       body: SessionMessagesThroughRequest(
         sessionId: sessionId,
@@ -417,6 +419,16 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         attachmentDelivery: MessageAttachmentDelivery.storedReference,
         storedOnly: storedOnly,
       ),
+    );
+  }
+
+  /// Every prompt in the session's history, oldest first. A bridge that
+  /// predates the route answers 404.
+  Future<ApiResponse<SessionPromptIndexResponse>> getPromptIndex({required String sessionId}) {
+    return _client.post(
+      "/session/prompts",
+      fromJson: SessionPromptIndexResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
     );
   }
 

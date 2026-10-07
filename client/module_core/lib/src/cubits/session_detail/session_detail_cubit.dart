@@ -32,6 +32,7 @@ import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_messages_through_result.dart";
 import "../../repositories/models/session_options_repository_result.dart";
+import "../../repositories/models/session_prompt_index_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/bridge_settings_service.dart";
@@ -556,6 +557,7 @@ class SessionDetailCubit(
                 interaction: becameAvailable ? interactionAtLoad : _interaction,
               ),
             );
+            unawaited(_fetchPromptIndex());
             if (becameAvailable) {
               _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
             } else if (_interaction.canInteract) {
@@ -750,6 +752,25 @@ class SessionDetailCubit(
         return merged is SessionDetailLoaded && merged.messages.any((message) => message.info.id == messageId)
             ? const LoadThroughLoaded()
             : const LoadThroughTargetMissing();
+    }
+  }
+
+  /// Fetches the prompt index for the transcript just emitted, when it lacks
+  /// older history the Prompts screen should still list.
+  ///
+  /// The index is applied only to the transcript it was asked for; a
+  /// replacement meanwhile asks again itself.
+  Future<void> _fetchPromptIndex() async {
+    final current = state;
+    if (current is! SessionDetailLoaded || current.olderMessagesCursor == null) return;
+    final generation = _transcriptGeneration;
+    final result = await _loadService.loadPromptIndex(sessionId: _sessionId);
+    if (isClosed || _transcriptGeneration != generation) return;
+    final latest = state;
+    // Unsupported and failed fetches leave the list built from what is
+    // loaded; the load service logs a failure.
+    if (latest is SessionDetailLoaded && result is SessionPromptIndexAvailable) {
+      emit(latest.copyWith(promptIndex: result.entries));
     }
   }
 
@@ -1116,6 +1137,8 @@ class SessionDetailCubit(
               olderMessagesCursor: snapshot.olderMessagesCursor,
               userMessagesBeforeOldest: snapshot.userMessagesBefore,
               isLoadingOlderMessages: false,
+              // Refetched below for the replaced transcript.
+              promptIndex: null,
               streamingText: _streamingBuffer.snapshot(),
               sessionStatus: refreshedSessionStatus,
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
@@ -1147,6 +1170,7 @@ class SessionDetailCubit(
             ),
           );
           if (!optionsSuperseded) _refreshStaleOptions(snapshot: snapshot);
+          unawaited(_fetchPromptIndex());
           _tryDrainQueue();
           // The refreshed transcript has rendered, so it is safe to re-declare
           // the view (which marks the session seen on the bridge).
@@ -3250,6 +3274,7 @@ class SessionDetailCubit(
       messages: snapshot.messages,
       olderMessagesCursor: snapshot.olderMessagesCursor,
       userMessagesBeforeOldest: snapshot.userMessagesBefore,
+      promptIndex: null,
       streamingText: const {},
       sessionStatus: initialSessionStatus,
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),

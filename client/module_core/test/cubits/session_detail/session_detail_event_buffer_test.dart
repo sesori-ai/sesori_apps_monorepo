@@ -16,6 +16,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.d
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_approval_service.dart";
 import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
@@ -1444,6 +1445,9 @@ void main() {
             projectId: any(named: "projectId"),
           ),
         ).thenAnswer((_) => refresh.future);
+        when(
+          () => mockLoadService.loadPromptIndex(sessionId: _sessionId),
+        ).thenAnswer((_) async => const SessionPromptIndexUnsupported());
         final cubit = createCubit(loadService: mockLoadService);
         await _awaitLoaded(cubit);
         mockConnectionService.emitDataMayBeStale();

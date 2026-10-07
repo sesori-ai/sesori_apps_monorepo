@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter/rendering.dart" show RenderParagraph;
 import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:flutter_test/flutter_test.dart";
@@ -17,7 +19,7 @@ final _yesterday = DateTime(_today.year, _today.month, _today.day - 1);
 TranscriptPromptEntry _opener({required String id, required DateTime? day}) => TranscriptPromptOpener(
   messageId: id,
   text: "Prompt $id",
-  fullText: "Prompt $id",
+  source: TranscriptPromptLoaded(fullText: "Prompt $id"),
   createdAt: day?.add(const Duration(hours: 9)).millisecondsSinceEpoch,
   dayKey: day,
   number: null,
@@ -27,7 +29,7 @@ TranscriptPromptEntry _followUp({required String id, required String openerId, r
     TranscriptPromptFollowUp(
       messageId: id,
       text: "Prompt $id",
-      fullText: "Prompt $id",
+      source: TranscriptPromptLoaded(fullText: "Prompt $id"),
       createdAt: day?.add(const Duration(hours: 10)).millisecondsSinceEpoch,
       dayKey: day,
       number: null,
@@ -46,7 +48,7 @@ List<TranscriptPromptEntry> _parityPrompts({required int from, required int to})
     TranscriptPromptOpener(
       messageId: "p$index",
       text: "Prompt p$index",
-      fullText: "Prompt p$index\nsits on an ${index.isEven ? "even" : "odd"} row",
+      source: TranscriptPromptLoaded(fullText: "Prompt p$index\nsits on an ${index.isEven ? "even" : "odd"} row"),
       createdAt: _today.add(Duration(minutes: index)).millisecondsSinceEpoch,
       dayKey: _today,
       number: null,
@@ -66,6 +68,8 @@ Future<({List<String> taps, List<String> closes})> _pump(
   VoidCallback? onLoadEarlier,
   bool isLoadEarlierBusy = false,
   bool autofocusSearch = false,
+  bool isIndexed = false,
+  Future<LoadThroughOutcome> Function({required String messageId, required int seq})? onLoadThrough,
 }) async {
   final taps = <String>[];
   final closes = <String>[];
@@ -75,13 +79,14 @@ Future<({List<String> taps, List<String> closes})> _pump(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SessionPromptsView(
-        prompts: TranscriptPromptList(entries: entries),
+        prompts: TranscriptPromptList(entries: entries, isIndexed: isIndexed),
         anchorMessageId: anchor,
         maxWidth: null,
         onLoadEarlier: onLoadEarlier,
         isLoadEarlierBusy: isLoadEarlierBusy,
         autofocusSearch: autofocusSearch,
         onPromptTap: ({required messageId}) => taps.add(messageId),
+        onLoadThrough: onLoadThrough ?? ({required messageId, required seq}) async => const LoadThroughLoaded(),
         onClose: () => closes.add("close"),
       ),
     ),
@@ -317,7 +322,7 @@ void main() {
           TranscriptPromptOpener(
             messageId: "wide",
             text: "Prompt wide",
-            fullText: "Prompt wide\n${"W" * 30} needle",
+            source: TranscriptPromptLoaded(fullText: "Prompt wide\n${"W" * 30} needle"),
             createdAt: null,
             dayKey: null,
             number: null,
@@ -506,6 +511,191 @@ void main() {
       expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus, isFalse);
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       expect(calls.closes, ["close"]);
+    });
+  });
+
+  group("prompts the transcript has not loaded", () {
+    TranscriptPromptEntry unloaded({required String id, required int seq}) => TranscriptPromptOpener(
+      messageId: id,
+      text: "Prompt $id",
+      source: TranscriptPromptUnloaded(seq: seq, preview: "Prompt $id"),
+      createdAt: null,
+      dayKey: null,
+      number: null,
+    );
+
+    testWidgets("a list of every prompt counts them all", (tester) async {
+      await _pump(
+        tester,
+        entries: [
+          unloaded(id: "old", seq: 1),
+          _opener(id: "new", day: null),
+        ],
+        anchor: null,
+        isIndexed: true,
+      );
+
+      expect(find.text("2 prompts"), findsOneWidget);
+    });
+
+    testWidgets("a tap keeps the screen up, shows a spinner only after a moment, then moves there", (tester) async {
+      final load = Completer<LoadThroughOutcome>();
+      final asked = <(String, int)>[];
+      final calls = await _pump(
+        tester,
+        entries: [unloaded(id: "old", seq: 7)],
+        anchor: null,
+        isIndexed: true,
+        onLoadThrough: ({required messageId, required seq}) {
+          asked.add((messageId, seq));
+          return load.future;
+        },
+      );
+
+      await tester.tap(_row("old"));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(asked, [("old", 7)]);
+      expect(find.byType(PregoActivityIndicator), findsNothing, reason: "a quick load shows no spinner");
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(PregoActivityIndicator), findsOneWidget);
+      expect(calls.taps, isEmpty);
+
+      load.complete(const LoadThroughLoaded());
+      await tester.pump();
+      expect(calls.taps, ["old"]);
+      expect(find.byType(PregoActivityIndicator), findsNothing);
+    });
+
+    testWidgets("a second tap replaces the first, and a load that cannot land says why", (tester) async {
+      final first = Completer<LoadThroughOutcome>();
+      final loads = {"a": first.future, "b": Future<LoadThroughOutcome>.value(const LoadThroughUnsupported())};
+      final calls = await _pump(
+        tester,
+        entries: [
+          unloaded(id: "a", seq: 1),
+          unloaded(id: "b", seq: 2),
+        ],
+        anchor: null,
+        isIndexed: true,
+        onLoadThrough: ({required messageId, required seq}) => loads[messageId] ?? first.future,
+      );
+
+      await tester.tap(_row("a"));
+      await tester.pump();
+      await tester.tap(_row("b"));
+      await tester.pump();
+      first.complete(const LoadThroughLoaded());
+      await tester.pumpAndSettle();
+
+      expect(calls.taps, isEmpty, reason: "the first tap's target was replaced");
+      expect(find.text("Update the bridge to open earlier prompts"), findsOneWidget);
+    });
+
+    testWidgets("tapping a, b, then a again ignores the first load of a", (tester) async {
+      final loads = <String, List<Completer<LoadThroughOutcome>>>{"a": [], "b": []};
+      final calls = await _pump(
+        tester,
+        entries: [
+          unloaded(id: "a", seq: 1),
+          unloaded(id: "b", seq: 2),
+        ],
+        anchor: null,
+        isIndexed: true,
+        onLoadThrough: ({required messageId, required seq}) {
+          final load = Completer<LoadThroughOutcome>();
+          loads[messageId]?.add(load);
+          return load.future;
+        },
+      );
+
+      await tester.tap(_row("a"));
+      await tester.pump();
+      await tester.tap(_row("b"));
+      await tester.pump();
+      await tester.tap(_row("a"));
+      await tester.pump();
+      loads["a"]?.first.complete(const LoadThroughLoaded());
+      await tester.pump();
+      expect(calls.taps, isEmpty, reason: "the first load of a belongs to a replaced tap");
+
+      loads["a"]?.last.complete(const LoadThroughLoaded());
+      await tester.pump();
+      expect(calls.taps, ["a"]);
+    });
+
+    testWidgets("another tap on the prompt already loading sends no second load", (tester) async {
+      final load = Completer<LoadThroughOutcome>();
+      var loads = 0;
+      final calls = await _pump(
+        tester,
+        entries: [unloaded(id: "old", seq: 7)],
+        anchor: null,
+        isIndexed: true,
+        onLoadThrough: ({required messageId, required seq}) {
+          loads++;
+          return load.future;
+        },
+      );
+
+      await tester.tap(_row("old"));
+      await tester.pump();
+      await tester.tap(_row("old"));
+      await tester.pump();
+      load.complete(const LoadThroughLoaded());
+      await tester.pump();
+
+      expect(loads, 1);
+      expect(calls.taps, ["old"]);
+    });
+
+    testWidgets("a row tells screen readers it is loading, and a load a refresh dropped asks for another tap", (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      final load = Completer<LoadThroughOutcome>();
+      await _pump(
+        tester,
+        entries: [unloaded(id: "old", seq: 7)],
+        anchor: null,
+        isIndexed: true,
+        onLoadThrough: ({required messageId, required seq}) => load.future,
+      );
+
+      await tester.tap(_row("old"));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(
+        tester.getSemantics(find.byType(PromptSpineRow)),
+        matchesSemantics(
+          value: "Loading",
+          isLiveRegion: true,
+          isButton: true,
+          hasTapAction: true,
+          label: "Prompt old",
+          hint: "Jump to this prompt",
+        ),
+      );
+
+      load.complete(const LoadThroughSuperseded());
+      await tester.pumpAndSettle();
+      expect(find.text("The session just refreshed. Tap the prompt again."), findsOneWidget);
+      semantics.dispose();
+    });
+
+    testWidgets("searching a list of every prompt counts matches without a loaded range", (tester) async {
+      await _pump(
+        tester,
+        entries: [
+          unloaded(id: "old", seq: 1),
+          _opener(id: "new", day: null),
+        ],
+        anchor: null,
+        isIndexed: true,
+      );
+
+      await tester.enterText(find.byType(TextField), "old");
+      await tester.pumpAndSettle();
+
+      expect(find.text("1 match"), findsOneWidget);
     });
   });
 }

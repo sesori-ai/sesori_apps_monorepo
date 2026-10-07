@@ -1002,6 +1002,36 @@
     "description": "Last row of the Prompts screen: how many prompts the list holds. Older prompts may not have loaded yet.",
     "placeholders": {"count": {"type": "int"}}
   },
+  "transcriptPromptsCount": "{count, plural, =1{1 prompt} other{{count} prompts}}",
+  "@transcriptPromptsCount": {
+    "description": "Last row of the Prompts screen when it lists every prompt in the session, loaded or not: how many there are.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "transcriptPromptsOpenFailed": "Couldn't open this prompt. Check your connection and try again.",
+  "@transcriptPromptsOpenFailed": {
+    "description": "Notice over the Prompts screen when loading the transcript up to a tapped earlier prompt failed."
+  },
+  "transcriptPromptsGone": "This prompt is no longer in the session",
+  "@transcriptPromptsGone": {
+    "description": "Notice over the Prompts screen when a tapped earlier prompt was not found in the loaded transcript, for example because the session's history was rewritten."
+  },
+  "transcriptPromptsBridgeTooOld": "Update the bridge to open earlier prompts",
+  "@transcriptPromptsBridgeTooOld": {
+    "description": "Notice over the Prompts screen when a tapped earlier prompt cannot be opened because the connected bridge is too old to load it."
+  },
+  "transcriptPromptsRefreshed": "The session just refreshed. Tap the prompt again.",
+  "@transcriptPromptsRefreshed": {
+    "description": "Notice over the Prompts screen when the session refreshed while a tapped earlier prompt was loading, so the load was dropped."
+  },
+  "transcriptPromptsLoading": "Loading",
+  "@transcriptPromptsLoading": {
+    "description": "What screen readers say about a Prompts row while the transcript loads up to its earlier prompt."
+  },
+  "transcriptPromptsAllMatches": "{count, plural, =0{No matches} =1{1 match} other{{count} matches}}",
+  "@transcriptPromptsAllMatches": {
+    "description": "Last row of the Prompts screen while searching once it lists every prompt of the session: how many prompts match.",
+    "placeholders": {"count": {"type": "int"}}
+  },
   "transcriptPromptsNoDate": "No date",
   "@transcriptPromptsNoDate": {
     "description": "Day header of the Prompts screen over prompts whose send time is unknown."

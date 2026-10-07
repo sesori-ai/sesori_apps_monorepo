@@ -8,6 +8,7 @@ import "../foundation/models/session_options/session_options_request_mode.dart";
 import "../logging/logging.dart";
 import "../repositories/models/session_messages_through_result.dart";
 import "../repositories/models/session_options_repository_result.dart";
+import "../repositories/models/session_prompt_index_result.dart";
 import "../repositories/plugin_repository.dart";
 import "../repositories/session_repository.dart";
 
@@ -123,6 +124,14 @@ class SessionDetailLoadService({
     );
     if (result case SessionMessagesThroughFailure(:final error)) {
       logw("Failed to load messages through a prompt", error);
+    }
+    return result;
+  }
+
+  Future<SessionPromptIndexResult> loadPromptIndex({required String sessionId}) async {
+    final result = await _repository.getPromptIndex(sessionId: sessionId);
+    if (result case SessionPromptIndexFailure(:final error)) {
+      logw("Failed to load the prompt index", error);
     }
     return result;
   }
