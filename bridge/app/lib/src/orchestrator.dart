@@ -322,7 +322,6 @@ class Orchestrator({
       driveRootsApi: DriveRootsApi.forPlatform(
         platform: PlatformOs.fromOperatingSystem(operatingSystem: Platform.operatingSystem),
         processRunner: _processRunner,
-        filesystemApi: const FilesystemApi(),
       ),
     );
     final worktreeRepository = WorktreeRepository(

@@ -164,7 +164,6 @@ void main() {
         driveRootsApi: DriveRootsApi.forPlatform(
           platform: PlatformOs.macos,
           processRunner: processRunner,
-          filesystemApi: const FilesystemApi(),
         ),
       );
 
@@ -179,7 +178,6 @@ void main() {
         driveRootsApi: DriveRootsApi.forPlatform(
           platform: PlatformOs.macos,
           processRunner: RecordingProcessRunner(exitCode: 1, stderr: "mount: failed"),
-          filesystemApi: const FilesystemApi(),
         ),
       );
 

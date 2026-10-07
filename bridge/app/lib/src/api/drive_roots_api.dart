@@ -4,7 +4,6 @@ import "dart:io";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PlatformOs;
 
 import "../foundation/process_runner.dart";
-import "filesystem_api.dart";
 
 /// The folders a host offers as drives in the folder browser, before they are
 /// probed: Windows drive letters, or the volumes and mounts in a macOS or
@@ -16,11 +15,10 @@ sealed class DriveRootsApi {
   factory forPlatform({
     required PlatformOs platform,
     required ProcessRunner processRunner,
-    required FilesystemApi filesystemApi,
   }) => switch (platform) {
     PlatformOs.windows => _WindowsDriveRootsApi(),
     PlatformOs.macos => _MacosDriveRootsApi(processRunner: processRunner),
-    PlatformOs.linux => _LinuxDriveRootsApi(filesystemApi: filesystemApi),
+    PlatformOs.linux => _LinuxDriveRootsApi(processRunner: processRunner),
   };
 }
 
@@ -34,21 +32,37 @@ final class _WindowsDriveRootsApi() implements DriveRootsApi {
 final class _MacosDriveRootsApi({required final ProcessRunner _processRunner}) implements DriveRootsApi {
   @override
   Future<List<String>> listCandidates() async {
-    final result = await _processRunner.run("/sbin/mount", const []);
-    if (result.exitCode != 0) {
-      throw ProcessException("/sbin/mount", const [], "${result.stderr}", result.exitCode);
-    }
-    return _parseMacosVolumes(mountTable: "${result.stdout}");
+    return _parseMacosVolumes(
+      mountTable: await _readMountTable(processRunner: _processRunner, command: "/sbin/mount", arguments: const []),
+    );
   }
 }
 
-final class _LinuxDriveRootsApi({required final FilesystemApi _filesystemApi}) implements DriveRootsApi {
+final class _LinuxDriveRootsApi({required final ProcessRunner _processRunner}) implements DriveRootsApi {
   @override
   Future<List<String>> listCandidates() async {
-    final mountTable = _filesystemApi.readFileIfExists("/proc/mounts");
-    if (mountTable == null) throw const FileSystemException("No mount table", "/proc/mounts");
-    return _parseLinuxVolumes(mountTable: mountTable);
+    // Read through the runner like macOS, so one injected seam supplies both
+    // mount tables.
+    return _parseLinuxVolumes(
+      mountTable: await _readMountTable(
+        processRunner: _processRunner,
+        command: "cat",
+        arguments: const ["/proc/mounts"],
+      ),
+    );
   }
+}
+
+Future<String> _readMountTable({
+  required ProcessRunner processRunner,
+  required String command,
+  required List<String> arguments,
+}) async {
+  final result = await processRunner.run(command, arguments);
+  if (result.exitCode != 0) {
+    throw ProcessException(command, arguments, "${result.stderr}", result.exitCode);
+  }
+  return "${result.stdout}";
 }
 
 /// The volumes in `/Volumes`, read from macOS `mount` output, that Finder shows
