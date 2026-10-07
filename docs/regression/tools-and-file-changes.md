@@ -133,8 +133,12 @@ sub-agent parts, plus the signal that a tool changed files.
   those non-null values.
 - Shell commands, output and errors are bounded to the shared limit and truncated
   by runes at the common bridge projection, so a character is never split; the
-  rule is identical live and on replay. The command remains the released title
-  alias for older clients; old title-only payloads still decode.
+  rule is identical live and on replay. Live events keep the command as the
+  released title alias for older clients; transcript pages omit a title that
+  equals `shellCommand`, so a reloaded shell row renders its command from
+  `shellCommand`. Old title-only payloads still decode. Apps at v1.8.3 and
+  older read the command only from the title, so their reloaded shell rows show
+  the tool name without the command; the user accepted that on 2026-10-07.
 - Subtasks retain a prompt bounded to 500 runes, bounded title/outcome/error
   summaries, status, attachments and child-session IDs; ordinary non-shell tool
   stripping never applies to them. The description stays complete because
@@ -425,6 +429,9 @@ guarantee.
   live/history states, subtask outcomes/IDs, multibyte bounds, released title
   decoding and attachments. ACP cases include partial/reordered updates and
   Antigravity alias/exit-only behavior.
+- `bridge/app/test/bridge/repositories/mappers/duplicated_shell_title_mapper_test.dart`
+  and the shell-title case in `bridge/app/test/bridge/services/chat_history_archive_test.dart`
+  prove that database and archived pages omit only a title equal to `shellCommand`.
 - `client/module_app_ui/test/features/session_detail/widgets/transcript_step_row_test.dart`
   measures every step kind's icon, label inset, height and label weight at
   phone and desktop density.

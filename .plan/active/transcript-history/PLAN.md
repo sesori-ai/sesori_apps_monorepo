@@ -172,7 +172,7 @@ edited. This plan records what it supersedes:
   the tool title.
 - Conclusion: removing the title from shell tools changes nothing for v1.8.4
   and newer apps. v1.8.3 and older apps would lose the command label on page
-  reads. See [Open question O1](#open-questions).
+  reads. The user accepted this (see [O1](#answered-questions)).
 
 ### Pages, Turns And The Prompts Screen
 
@@ -486,7 +486,7 @@ titles.
 
 ### Step Dependencies
 
-- Step 2 depends on step 1 and on the user's answer to O1.
+- Step 2 depends on step 1. The user accepted O1 on 2026-10-07.
 - Step 3 depends on step 1. Step 4 depends on step 3.
 - Step 5 depends on steps 2–4 having merged, so that it details phases 2 and
   3 with phase 1's evidence (real compressed sizes).
@@ -586,7 +586,7 @@ Deliberately not added:
 
 | Risk | Evidence level | Accepted outcome |
 |---|---|---|
-| v1.8.3 and older apps lose the shell command label on page reads (W2). | Reasoned from the v1.8.4 release history. | Cosmetic, on apps two releases old. Step 2 waits for the user's O1 answer. |
+| v1.8.3 and older apps lose the shell command label on page reads (W2). | Reasoned from the v1.8.4 release history. | Cosmetic, on apps two releases old. Accepted by the user on 2026-10-07 (O1). |
 | A stale index entry after a background history rewrite that has not yet triggered a refetch (P8). | Theoretical interleaving. | One tap shows an inline error. The next list replacement refetches. |
 | CRIME/BREACH-style length inference on deflated transcript pages. | Theoretical. Needs adaptive injection, length observation and repeated user re-fetches. | Not mitigated. See [Security And Privacy Of W1](#security-and-privacy-of-w1). |
 | Bridge CPU spent deflating a very large load-through response. | Measured sizes: up to 17.4 MB for the largest session. | Measured in step 8. Isolate offload only if the bridge stalls visibly. Attachment responses are never deflated (P4). |
@@ -618,18 +618,13 @@ No other obsolete code was found.
   `architecture-implementation-review` through a sub-agent, within AGENTS.md's
   limits.
 
-## Open Questions
+## Answered Questions
 
-**O1 — W2 on v1.8.3 and older apps.** Those apps render the shell command
-from `title`, so after W2 their reloaded shell rows show only the tool name.
-
-- (a) Accept it: cosmetic, on apps two releases old. **Suggested.**
-- (b) Skip W2. Deflate absorbs most of the duplicate anyway, so the saving
-  under W1 is small.
-- (c) Gate W2 on a new app opt-in. In effect this is (b), plus a field.
-
-Step 2 does not open until the user answers O1. Step 3 does not depend on
-it.
+**O1 — W2 on v1.8.3 and older apps: accepted (user, 2026-10-07).** Those apps
+predate the separate `shellCommand` field and render the shell command from
+`title`, so after W2 their reloaded shell rows show only the tool name. That
+is accepted as cosmetic. Skipping W2 and gating it on an app opt-in were
+declined.
 
 ## Plan Review
 

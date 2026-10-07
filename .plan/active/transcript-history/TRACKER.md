@@ -14,8 +14,9 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 - This plan supersedes turn-navigation D30, the derived-only guardrail, and
   the Later Phases F1/F2. See
   [PLAN](PLAN.md#supersession-of-turn-navigation).
-- Open: O1 (W2 on v1.8.3 and older apps). Option (a) is suggested. Step 2
-  does not open until the user answers.
+- O1 answered by the user on 2026-10-07: accept. v1.8.3 and older apps show
+  reloaded shell rows without the command label; that is cosmetic. See
+  [PLAN](PLAN.md#answered-questions).
 
 ## Guardrails
 
