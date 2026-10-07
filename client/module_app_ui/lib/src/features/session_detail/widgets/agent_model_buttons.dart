@@ -16,7 +16,6 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "composer_surface_style.dart";
 import "model_picker.dart";
 
 /// Composer header exposing the available agent / model / variant selections
@@ -140,7 +139,10 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     ];
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-      child: Row(spacing: 8, children: selectors),
+      child: _pillRowHalo(
+        reachesLayerBottom: false,
+        child: Row(spacing: 8, children: selectors),
+      ),
     );
   }
 }
@@ -185,15 +187,26 @@ class const ReadOnlyAgentModelPills({
       if (variant != null) pill(icon: TablerRegular.gauge, label: variant),
     ];
     if (pills.isEmpty) return const SizedBox.shrink();
-    return DecoratedBox(
-      decoration: composerScrimDecoration(prego: context.prego),
-      child: Padding(
-        padding: EdgeInsetsDirectional.fromSTEB(16, 6, 16, MediaQuery.paddingOf(context).bottom + 8),
+    return Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(16, 6, 16, MediaQuery.paddingOf(context).bottom + 8),
+      // The bottom-most row: its halo runs on to the bottom edge, so nothing
+      // shows below the pills.
+      child: _pillRowHalo(
+        reachesLayerBottom: true,
         child: Row(spacing: 8, children: pills),
       ),
     );
   }
 }
+
+/// One [PregoPageHalo] across the whole pill strip, as wide as the composer,
+/// so the pills and composer read as one quiet surface and no transcript words
+/// show through the gaps between pills.
+Widget _pillRowHalo({required bool reachesLayerBottom, required Widget child}) => PregoPageHalo(
+  radius: PregoRadius.full,
+  reachesLayerBottom: reachesLayerBottom,
+  child: child,
+);
 
 /// A pill's share of the strip: a pointer (compact) pill hugs its label up to a
 /// cap, while touch pills split the width equally.

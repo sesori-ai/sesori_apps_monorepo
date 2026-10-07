@@ -573,7 +573,7 @@ void main() {
     expect(find.text("No messages yet"), findsOneWidget);
   });
 
-  testWidgets("composer fade obscures transcript text behind floating controls", (tester) async {
+  testWidgets("the floating controls fade the transcript behind them with halos in one layer", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
@@ -581,24 +581,18 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    final decoratedBox = tester.widget<DecoratedBox>(
-      find
-          .descendant(
-            of: find.byType(PromptInput),
-            matching: find.byWidgetPredicate(
-              (widget) =>
-                  widget is DecoratedBox &&
-                  widget.decoration is BoxDecoration &&
-                  (widget.decoration as BoxDecoration).gradient is LinearGradient,
-            ),
-          )
-          .first,
-    );
-    final gradient = (decoratedBox.decoration as BoxDecoration).gradient! as LinearGradient;
-    final surface = PregoDesignSystem.light.colors.bgSurface1;
-    expect(gradient.colors[0], surface.withValues(alpha: 0.98));
-    expect(gradient.colors[1], surface.withValues(alpha: 0.88));
-    expect(gradient.colors[2], surface.withValues(alpha: 0));
+    final halos = find.descendant(of: find.byType(PromptInput), matching: find.byType(PregoPageHalo));
+    // The composer and each picker pill carry a halo, all painted by the one
+    // layer over the bottom controls.
+    expect(halos, findsAtLeastNWidgets(2));
+    for (final halo in halos.evaluate()) {
+      expect(
+        find.ancestor(of: find.byWidget(halo.widget), matching: find.byType(PregoPageHaloLayer)),
+        findsOneWidget,
+      );
+    }
+    // Only the composer's runs on to the bottom edge.
+    expect(tester.widgetList<PregoPageHalo>(halos).where((halo) => halo.reachesLayerBottom), hasLength(1));
   });
 
   testWidgets("an empty newest page keeps older transcript paging reachable", (tester) async {

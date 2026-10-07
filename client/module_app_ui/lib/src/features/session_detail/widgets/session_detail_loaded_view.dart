@@ -275,7 +275,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
         ),
         // Floating bottom controls: the needs-you cards docked above the
         // background-tasks bar and composer. Queued submissions are regular
-        // rows in the transcript above them.
+        // rows in the transcript above them. Every control's halo paints in
+        // one layer beneath them all, fading the transcript passing under it.
         if (hasBottomControls)
           Positioned(
             bottom: 0,
@@ -286,20 +287,22 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                 if (!mounted) return;
                 _bottomControlsHeight.value = size.height;
               },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ...needsYou,
-                  if (!widget.readOnly && !state.isArchived)
-                    SessionAutoContinuationNotice(
-                      view: state.session.autoContinuation,
-                      updating: state.isUpdatingAutoContinuation,
-                      canInteract: state.interaction.canInteract,
-                      onEnabledChanged: (enabled) =>
-                          unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
-                    ),
-                  ?widget.bottomControls,
-                ],
+              child: PregoPageHaloLayer(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ...needsYou,
+                    if (!widget.readOnly && !state.isArchived)
+                      SessionAutoContinuationNotice(
+                        view: state.session.autoContinuation,
+                        updating: state.isUpdatingAutoContinuation,
+                        canInteract: state.interaction.canInteract,
+                        onEnabledChanged: (enabled) =>
+                            unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
+                      ),
+                    ?widget.bottomControls,
+                  ],
+                ),
               ),
             ),
           ),

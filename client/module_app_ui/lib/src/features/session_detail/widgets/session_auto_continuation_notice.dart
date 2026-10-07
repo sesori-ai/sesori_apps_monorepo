@@ -52,52 +52,56 @@ class const SessionAutoContinuationNotice({
       liveRegion: true,
       child: Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.xl, 0, PregoSpacing.xl, PregoSpacing.md),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: prego.colors.bgSecondary,
-            borderRadius: BorderRadius.circular(PregoRadius.x2l),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(PregoSpacing.lg),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: PregoSpacing.md,
-                  runSpacing: PregoSpacing.md,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Icon(TablerRegular.clock, size: PregoIconSize.sm, color: prego.colors.textSecondary),
-                    Text(
-                      current.enabled ? loc.sessionAutoContinuationOn : loc.sessionAutoContinuationQuotaReached,
-                      style: prego.textTheme.textSm.medium,
-                    ),
-                    if (current.enabled)
-                      PregoButtonsSolid(
-                        key: const Key("session-auto-continuation-disable"),
-                        label: action,
-                        hierarchy: PregoButtonsSolidHierarchy.link,
-                        size: PregoButtonsSolidSize.sm,
-                        onPressed: updating ? null : () => onEnabledChanged(false),
+        child: PregoPageHalo(
+          radius: PregoRadius.x2l,
+          reachesLayerBottom: false,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: prego.colors.bgSecondary,
+              borderRadius: BorderRadius.circular(PregoRadius.x2l),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(PregoSpacing.lg),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: PregoSpacing.md,
+                    runSpacing: PregoSpacing.md,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Icon(TablerRegular.clock, size: PregoIconSize.sm, color: prego.colors.textSecondary),
+                      Text(
+                        current.enabled ? loc.sessionAutoContinuationOn : loc.sessionAutoContinuationQuotaReached,
+                        style: prego.textTheme.textSm.medium,
                       ),
-                  ],
-                ),
-                if (message != null) ...[
-                  const SizedBox(height: PregoSpacing.xs),
-                  Text(message, style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary)),
-                ],
-                if (canEnable) ...[
-                  const SizedBox(height: PregoSpacing.md),
-                  PregoButtonsSolid(
-                    key: const Key("session-auto-continuation-enable"),
-                    label: action,
-                    hierarchy: PregoButtonsSolidHierarchy.secondary,
-                    size: PregoButtonsSolidSize.sm,
-                    onPressed: updating ? null : () => onEnabledChanged(true),
+                      if (current.enabled)
+                        PregoButtonsSolid(
+                          key: const Key("session-auto-continuation-disable"),
+                          label: action,
+                          hierarchy: PregoButtonsSolidHierarchy.link,
+                          size: PregoButtonsSolidSize.sm,
+                          onPressed: updating ? null : () => onEnabledChanged(false),
+                        ),
+                    ],
                   ),
+                  if (message != null) ...[
+                    const SizedBox(height: PregoSpacing.xs),
+                    Text(message, style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary)),
+                  ],
+                  if (canEnable) ...[
+                    const SizedBox(height: PregoSpacing.md),
+                    PregoButtonsSolid(
+                      key: const Key("session-auto-continuation-enable"),
+                      label: action,
+                      hierarchy: PregoButtonsSolidHierarchy.secondary,
+                      size: PregoButtonsSolidSize.sm,
+                      onPressed: updating ? null : () => onEnabledChanged(true),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

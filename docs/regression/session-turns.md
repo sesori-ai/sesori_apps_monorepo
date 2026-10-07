@@ -640,9 +640,13 @@ defaults and queued client sends coherent.
 - Desktop Escape first releases an active text editor; otherwise it dismisses
   only the current popup route. It never turns Escape into ordinary page Back,
   and a closer surface-specific handler such as the image viewer wins.
-- Transcript content scrolling behind the top navigation or floating composer
-  dissolves into a strong surface-colour fade, keeping the title and controls
-  visually separate and screenshot-readable without text collisions.
+- Transcript content scrolling behind the top navigation dissolves into a strong
+  surface-colour fade. Behind the floating composer controls, each control (tasks
+  bar, composer, notices) carries a page-coloured halo painted in one shared
+  layer beneath them all, so neighbouring halos merge, no halo covers another
+  control, and the composer's halo runs on to the window bottom. The pill row
+  shares one halo as wide as the composer, so no words show between pills. Titles and
+  controls stay visually separate and screenshot-readable without text collisions.
 - When the software keyboard opens, interactive content resizes above it while
   the page surface remains painted underneath it. Rounded or translucent iOS
   keyboards never reveal a black route or platform background around their edges.
@@ -853,8 +857,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 - A normalized user message fails to advance the existing activity marker, or
   assistant/tool/title-only updates replace an established marker and move the
   running session as if they were user activity.
-- Scrolled transcript text remains clearly visible through the fade and collides
-  with the navigation title or floating composer controls.
+- Scrolled transcript text collides with the navigation title or a floating
+  composer control, or stays clearly legible where it passes under the fade or a
+  control's halo; a halo paints over a neighbouring control; or a halo lags
+  behind its control as it moves, resizes, or fades.
 - A live append or streaming update moves a detached viewport, an outgoing
   prompt blanks or duplicates during its sending-to-sent transition, keyboard
   and composer insets obscure newest content, or the keyboard reveals a black
