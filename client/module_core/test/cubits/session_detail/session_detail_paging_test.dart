@@ -329,21 +329,16 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).messages, hasLength(5));
     });
 
-    test("an older bridge and a failure leave the transcript as it was", () async {
-      for (final (result, expected) in [
-        (const SessionMessagesThroughUnsupported(), isA<LoadThroughUnsupported>()),
-        (
-          SessionMessagesThroughFailure(error: ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null)),
-          isA<LoadThroughFailed>(),
-        ),
-      ]) {
-        answerThrough(result: () async => result);
+    test("a failure leaves the transcript as it was", () async {
+      answerThrough(
+        result: () async =>
+            SessionMessagesThroughFailure(error: ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null)),
+      );
 
-        expect(await cubit.loadMessagesThrough(messageId: "m2", seq: 2), expected);
-        final state = cubit.state as SessionDetailLoaded;
-        expect(state.messages, hasLength(2));
-        expect(state.olderMessagesCursor, 5);
-      }
+      expect(await cubit.loadMessagesThrough(messageId: "m2", seq: 2), isA<LoadThroughFailed>());
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.messages, hasLength(2));
+      expect(state.olderMessagesCursor, 5);
     });
 
     test("a range that lands after a refresh is dropped", () async {

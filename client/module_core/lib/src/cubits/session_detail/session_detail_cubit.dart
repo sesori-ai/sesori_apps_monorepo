@@ -733,8 +733,6 @@ class SessionDetailCubit(
     if (latest is! SessionDetailLoaded || _transcriptGeneration != generation) return const LoadThroughSuperseded();
 
     switch (result) {
-      case SessionMessagesThroughUnsupported():
-        return const LoadThroughUnsupported();
       case SessionMessagesThroughFailure():
         return const LoadThroughFailed();
       case SessionMessagesThroughAvailable(:final messages, :final olderMessagesCursor, :final userMessagesBefore):

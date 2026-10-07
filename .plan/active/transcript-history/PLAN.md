@@ -598,12 +598,9 @@ including archived sessions.
   lower boundary (null, the start of history, is lowest). An older page that
   lands after a farther load-through therefore cannot restore its newer
   cursor or count.
-- The router's `no handler found for` 404 here comes from a bridge released
-  before step 8, which lacks this route. The repository maps it to a typed
-  unsupported result ([step 9](#the-index-in-the-app-step-9)), and the cubit
-  returns `Unsupported`. The screen then says the bridge must be updated to
-  open earlier prompts (a new string), instead of offering a retry that
-  cannot succeed.
+- The app far-taps only on a bridge that served the index, and no public
+  release has the index without this route, so any error here, a 404
+  included, is an ordinary failure (step 14b).
 
 **Measure:** step 8 records, for the whole largest session in one response,
 the bridge's deflate time and the app's decode time on the UI isolate. The
@@ -620,12 +617,10 @@ the app's decode, added only if the measurement shows a visible stall.
   whose retiring condition is that no supported bridge predates the route;
 - `SessionPromptIndexFailure`, including a 404 the route itself returns.
 
-The same rule covers the load-through route: the repository maps the
-router's `no handler found for` 404 to its own `Unsupported` variant, with
-the marker; any other 404 stays a failure. Search has no `Unsupported`: the
-app asks only a bridge that served the index, and no public release has the
-index without search, so a 404 there is an ordinary failure. The cubits
-never see a status code.
+The load-through and search routes have no `Unsupported`: the app asks them
+only of a bridge that served the index, and no public release has the index
+without them, so a 404 there is an ordinary failure. The cubits never see a
+status code.
 
 **Decode:** the load-through response decodes via `Isolate.run` (measured
 264–268 ms on the UI thread on a Mac for the worst-case session).
@@ -673,8 +668,7 @@ summary parts.
   - the tapped row shows a spinner after about 150 ms;
   - when the load lands, `_returnToPrompt` jumps and closes the screen as it
     does today;
-  - `TargetMissing` or `Failed` shows an inline error on the screen, and
-    `Unsupported` shows the bridge-update message;
+  - `TargetMissing` or `Failed` shows an inline error on the screen;
   - a second tap replaces the target;
   - closing the screen cancels the jump, not the load.
 - The pending target and its timer are UI-local state in the screen.
@@ -1001,7 +995,6 @@ Deliberately not added:
 | Bridge CPU spent deflating a very large load-through response. | Measured sizes: up to 17.4 MB for the largest session. | Measured in step 8. Isolate offload only if the bridge stalls visibly. Attachment responses are never deflated (P4). |
 | The app decodes a whole-session load-through on the UI isolate. | Same 17.4 MB worst case; decode runs on the calling isolate today. | Step 9 decodes it via `Isolate.run`. |
 | The index takes too long for the largest session. | About 20 ms for the review page's query; the fold over every part is new. | Measured in step 7 against a 300 ms budget. A narrower projection only if it misses. |
-| A bridge released between steps 7 and 8 has the index but not the load-through route. | Release timing. | Typed `Unsupported`: a far tap says the bridge needs an update. Search needs no such case: no public release has the index without it. |
 | A long prompt's unloaded pin shows its start, but once loaded it pins its end. | Layout rule of the sticky overlay. | The pin crossfades when the opener loads. |
 | The loaded-range fold and the index disagree on a prompt's kind. | Known limitation at the loaded edge. | The index wins (P15). |
 

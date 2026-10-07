@@ -1516,9 +1516,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transcriptPromptsGone => 'This prompt is no longer in the session';
 
   @override
-  String get transcriptPromptsBridgeTooOld => 'Update the bridge to open earlier prompts';
-
-  @override
   String get transcriptPromptsRefreshed => 'The session just refreshed. Tap the prompt again.';
 
   @override
