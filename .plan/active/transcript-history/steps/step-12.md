@@ -45,6 +45,9 @@ union; the authored part fits the target.
 
 ## Verification
 
+Measured on code commit `3af61a81f87932045705e4e422c818b98a3ce00d` with Dart
+3.13.4 from Flutter 3.47.5-stable. Later commits on this PR change only docs.
+
 - `dart analyze --fatal-infos` clean in `bridge/` (including `tool/`),
   `sesori_shared`, `client/module_core`, `client/module_app_ui`, `client/app`
   and `client/desktop`.
