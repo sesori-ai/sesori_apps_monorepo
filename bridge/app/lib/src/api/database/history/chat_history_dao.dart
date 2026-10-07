@@ -19,6 +19,10 @@ typedef PagedHistoryRows = ({
 
 @DriftAccessor(tables: [HistoryMessagesTable, HistoryPartsTable, HistorySyncStateTable])
 class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHistoryDaoMixin {
+  /// Keeps a row whose message has role `user`. The role lives only inside
+  /// `info_json`, so typed Drift cannot express it.
+  static const _isUserMessageSql = r"json_extract(info_json, '$.role') = 'user'";
+
   Future<HistorySyncStateTableData?> getSyncState({required String sessionId}) {
     return (select(historySyncStateTable)..where((table) => table.sessionId.equals(sessionId))).getSingleOrNull();
   }
@@ -149,7 +153,7 @@ class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistor
   Future<({List<HistoryMessagesTableData> messages, List<HistoryPartsTableData> parts})> getUserMessageRows({
     required String sessionId,
   }) {
-    const isUser = CustomExpression<bool>(r"json_extract(info_json, '$.role') = 'user'");
+    const isUser = CustomExpression<bool>(_isUserMessageSql);
     return transaction(() async {
       final messages =
           await (select(historyMessagesTable)
@@ -177,8 +181,7 @@ class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistor
   /// `json_extract`, so this one statement is raw SQL.
   Future<int> countUserMessagesBefore({required String sessionId, required int seq}) async {
     final row = await customSelect(
-      "SELECT COUNT(*) AS c FROM history_messages "
-      r"WHERE session_id = ? AND seq < ? AND json_extract(info_json, '$.role') = 'user'",
+      "SELECT COUNT(*) AS c FROM history_messages WHERE session_id = ? AND seq < ? AND $_isUserMessageSql",
       variables: [Variable<String>(sessionId), Variable<int>(seq)],
       readsFrom: {historyMessagesTable},
     ).getSingle();

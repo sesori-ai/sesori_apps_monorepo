@@ -21,6 +21,8 @@ Future<void> main() async {
         },
       );
       stdout.writeln('"$query" matches $matches prompts.');
+      final expected = query == "build" ? 836 : 0;
+      if (matches != expected) throw StateError('"$query" matched $matches prompts, expected $expected.');
     }
   } finally {
     await session.close();

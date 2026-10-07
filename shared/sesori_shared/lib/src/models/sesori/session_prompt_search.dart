@@ -4,7 +4,8 @@ part "session_prompt_search.freezed.dart";
 part "session_prompt_search.g.dart";
 
 /// The body of `POST /session/prompts/search`: finds [query] in the whole text
-/// of every prompt in the session's history, ignoring case.
+/// of every prompt in the session's history, or in an image-only prompt's
+/// attachment file name, ignoring case.
 @Freezed(fromJson: true, toJson: true, copyWith: false)
 sealed class SessionPromptSearchRequest with _$SessionPromptSearchRequest {
   const factory({

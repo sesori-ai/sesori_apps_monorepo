@@ -64,6 +64,11 @@ Branch `transcript-history/prompt-search`. `sesori_shared`, the bridge,
 | `build` (every prompt) | 836 | 17 ms | 20 ms | 31 ms |
 | `no such words` | 0 | 13 ms | — | — |
 
+Rerun after merging main and the first review wave's fixes (16.9 MB of JSON
+after step 12): `build` median 16 ms, max 18 ms, first run 26 ms;
+`no such words` median 12 ms. The benchmark now fails if either count is
+wrong.
+
 For comparison, the prompt index on the same session measured 134 ms
 median in the same run. Reading only user rows keeps search an order of
 magnitude below it, so the 250 ms debounce dominates what the user waits for.
@@ -71,6 +76,14 @@ magnitude below it, so the 250 ms debounce dominates what the user waits for.
 ## Evidence
 
 - Dart 3.13.4 from Flutter 3.47.5-stable. Every check passed.
+- **Measured trees:** the first benchmark and the checks below ran on the
+  uncommitted tree committed as `4348f6e99c` (tree `e5bb7af3b8`); the
+  evidence-only amend `2ad4317fc2` changed no code. After merging main
+  (`ff9a26b09e`), the bridge routing, services, mappers and registration
+  tests (1,069) and every `sesori_shared` test (461) passed. After the first
+  review wave's fixes, the same bridge tests plus `test/bridge/api` (1,121),
+  `dart analyze --fatal-infos` in `bridge/` and `sesori_shared`, and the
+  benchmark rerun passed on the uncommitted tree pushed as the next commit.
 - **In `shared/sesori_shared/`:** `dart test test/transcript/prompt_search_test.dart`
   (blank query, literal case-insensitive match, excerpt shape, emoji-safe cut,
   wire round-trip); `dart analyze --fatal-infos`.

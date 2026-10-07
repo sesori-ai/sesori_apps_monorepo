@@ -973,11 +973,10 @@ class ChatHistoryRepository({
     return _promptSearchMapper.matchesOf(
       messages: [
         for (final entry in ordered)
-          if (entry.info is MessageUser)
-            MessageWithParts(
-              info: entry.info,
-              parts: [for (final part in entry.parts) _indexPart(json: part)],
-            ),
+          MessageWithParts(
+            info: entry.info,
+            parts: [for (final part in entry.parts) _indexPart(json: part)],
+          ),
       ],
       pattern: pattern,
     );
