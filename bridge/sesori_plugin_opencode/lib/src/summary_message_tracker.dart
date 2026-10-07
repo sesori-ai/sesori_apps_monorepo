@@ -1,27 +1,49 @@
-import "dart:collection";
-
 import "models/openapi/assistant_message.g.dart";
+import "models/openapi/compaction_part.g.dart";
+import "models/openapi/text_part.g.dart";
 import "models/sse_event_data.g.dart";
 
-/// Remembers OpenCode's recent compaction summary messages (`summary: true`),
-/// whose text parts render as compaction rows. The `message.updated` naming a
-/// summary message precedes its parts.
-class SummaryMessageTracker() {
-  final Set<String> _messageIds = {};
+/// What the live stream has shown of one compaction summary message: its
+/// latest info, its text parts by id, and the `auto` flag of the compaction
+/// marker it answers, when that marker was seen.
+typedef SummaryMessage = ({AssistantMessage message, Map<String, TextPart> textParts, bool? auto});
 
-  /// Bounds the set, because nothing announces that a summary message is done.
-  static const int _maxRecordedMessages = 16;
+/// Records the raw facts of OpenCode's recent compaction summary messages
+/// (`summary: true`) and compaction markers, so their text parts render as
+/// compaction rows in the state of their message. The `message.updated`
+/// naming a summary message precedes its parts.
+class SummaryMessageTracker() {
+  final Map<String, ({AssistantMessage message, Map<String, TextPart> textParts})> _summaries = {};
+  final Map<String, bool> _markerAuto = {};
+
+  /// Bounds each map, because nothing announces that a compaction is forgotten.
+  static const int _maxRecorded = 16;
 
   void observe(SseEventData event) {
-    if (event case SseMessageUpdated(info: AssistantMessage(summary: true, :final id))) {
-      _messageIds.add(id);
-      if (_messageIds.length > _maxRecordedMessages) _messageIds.remove(_messageIds.first);
+    switch (event) {
+      case SseMessageUpdated(info: final AssistantMessage message) when message.summary ?? false:
+        _summaries[message.id] = (message: message, textParts: _summaries[message.id]?.textParts ?? {});
+        _bound(_summaries);
+      case SseMessagePartUpdated(:final TextPart part) when part.synthetic != true:
+        _summaries[part.messageID]?.textParts[part.id] = part;
+      case SseMessagePartUpdated(:final CompactionPart part):
+        _markerAuto[part.messageID] = part.auto;
+        _bound(_markerAuto);
+      case _:
     }
   }
 
-  Set<String> get messageIds => UnmodifiableSetView(_messageIds);
+  SummaryMessage? summary({required String messageId}) => switch (_summaries[messageId]) {
+    (:final message, :final textParts) => (message: message, textParts: textParts, auto: _markerAuto[message.parentID]),
+    null => null,
+  };
 
   void clear() {
-    _messageIds.clear();
+    _summaries.clear();
+    _markerAuto.clear();
+  }
+
+  static void _bound(Map<String, Object> map) {
+    if (map.length > _maxRecorded) map.remove(map.keys.first);
   }
 }

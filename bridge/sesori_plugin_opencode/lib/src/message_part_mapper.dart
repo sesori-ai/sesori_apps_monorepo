@@ -7,7 +7,9 @@ import "package:sesori_shared/sesori_shared.dart"
         maxTranscriptImageCandidates,
         maxTranscriptImageCollectionBytes;
 
+import "assistant_message_mapper.dart";
 import "models/openapi/agent_part.g.dart";
+import "models/openapi/assistant_message.g.dart";
 import "models/openapi/compaction_part.g.dart";
 import "models/openapi/file_part.g.dart";
 import "models/openapi/part.g.dart";
@@ -53,14 +55,32 @@ class const MessagePartMapper() {
     return part;
   }
 
-  /// Maps a part of OpenCode's compaction summary message (`summary: true`):
-  /// its text is the continuation summary, shown as a compaction row.
-  PluginMessagePart mapSummaryPart(PluginMessagePart part) => switch (part) {
+  /// Maps a part of OpenCode's compaction summary [message] (`summary: true`):
+  /// its text is the continuation summary, shown as a compaction row in the
+  /// state of its message. [auto] is the flag of the compaction marker the
+  /// summary answers, null when that marker is unknown.
+  PluginMessagePart mapSummaryPart(
+    PluginMessagePart part, {
+    required AssistantMessage message,
+    required bool? auto,
+  }) => switch (part) {
     PluginMessagePartText(:final id, :final sessionID, :final messageID, :final text) => PluginMessagePart.compaction(
       id: id,
       sessionID: sessionID,
       messageID: messageID,
-      compactionState: .completed(summary: text.isEmpty ? null : text, freedTokens: null, trigger: null),
+      compactionState: switch (message) {
+        AssistantMessage(:final error?) => .failed(error: openCodeError(error: error).errorMessage),
+        AssistantMessage(time: AssistantMessageTime(completed: null)) => .running(summary: text.isEmpty ? null : text),
+        _ => .completed(
+          summary: text.isEmpty ? null : text,
+          freedTokens: null,
+          trigger: switch (auto) {
+            true => PluginCompactionTrigger.auto,
+            false => PluginCompactionTrigger.manual,
+            null => null,
+          },
+        ),
+      },
     ),
     _ => part,
   };

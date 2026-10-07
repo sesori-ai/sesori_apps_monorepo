@@ -14,13 +14,15 @@ import "models/openapi/assistant_message.g.dart";
 /// the session is re-opened. This mapper is the single owner of that
 /// normalization, shared by both paths so they can never diverge again.
 class const AssistantMessageMapper() {
-  PluginMessage map(AssistantMessage message) {
+  /// [keepsCompactionParts] is whether the message is a compaction summary
+  /// with parts, whose failure shows as a failed compaction part instead.
+  PluginMessage map(AssistantMessage message, {required bool keepsCompactionParts}) {
     final time = PluginMessageTime(
       created: message.time.created,
       completed: message.time.completed,
     );
     final error = message.error;
-    if (error == null) {
+    if (error == null || keepsCompactionParts) {
       return PluginMessage.assistant(
         id: message.id,
         sessionID: message.sessionID,
@@ -32,14 +34,7 @@ class const AssistantMessageMapper() {
         time: time,
       );
     }
-    // OpenCode's structured errors are `{ "name": ..., "data": { "message": ... } }`,
-    // but `error` is typed `Object?`, so a non-map payload (e.g. a bare string)
-    // is possible. Never let a present error fall through as a plain assistant
-    // message — that is exactly the silent error loss this mapper exists to
-    // prevent — so fall back to `toString()` for a non-map error.
-    final errorMap = error is Map<String, dynamic> ? error : null;
-    final data = errorMap?["data"];
-    final dataMap = data is Map<String, dynamic> ? data : const <String, dynamic>{};
+    final (:name, :errorMessage) = openCodeError(error: error);
     return PluginMessage.error(
       id: message.id,
       sessionID: message.sessionID,
@@ -47,9 +42,26 @@ class const AssistantMessageMapper() {
       modelID: message.modelID,
       providerID: message.providerID,
       variant: message.variant,
-      errorName: errorMap?["name"]?.toString() ?? "UnknownError",
-      errorMessage: dataMap["message"]?.toString() ?? (errorMap == null ? error.toString() : "Unknown error"),
+      errorName: name,
+      errorMessage: errorMessage,
       time: time,
     );
   }
+}
+
+/// The name and message of an OpenCode message error.
+///
+/// OpenCode's structured errors are `{ "name": ..., "data": { "message": ... } }`,
+/// but `error` is typed `Object?`, so a non-map payload (e.g. a bare string)
+/// is possible. Never let a present error fall through as a plain assistant
+/// message — that is exactly the silent error loss [AssistantMessageMapper]
+/// exists to prevent — so fall back to `toString()` for a non-map error.
+({String name, String errorMessage}) openCodeError({required Object error}) {
+  final errorMap = error is Map<String, dynamic> ? error : null;
+  final data = errorMap?["data"];
+  final dataMap = data is Map<String, dynamic> ? data : const <String, dynamic>{};
+  return (
+    name: errorMap?["name"]?.toString() ?? "UnknownError",
+    errorMessage: dataMap["message"]?.toString() ?? (errorMap == null ? error.toString() : "Unknown error"),
+  );
 }

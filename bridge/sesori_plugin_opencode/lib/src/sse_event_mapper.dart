@@ -9,21 +9,41 @@ import "models/openapi/user_message.g.dart";
 import "models/sse_event_data.g.dart";
 import "plugin_model_mapper.dart";
 import "question_info_mapper.dart";
+import "summary_message_tracker.dart";
 
 /// Maps OpenCode SSE events and message parts to plugin interface types.
 ///
 /// Extracted from [OpenCodePlugin] to isolate the mapping concern.
-/// This class is stateless — all methods are pure transformations.
+/// This class is stateless — all methods are pure transformations of the
+/// event and the facts passed in.
 class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = const AssistantMessageMapper()}) {
   final MessagePartMapper _messagePartMapper = const MessagePartMapper();
   final QuestionInfoMapper _questionInfoMapper = const QuestionInfoMapper();
 
   /// Maps a live part; the text of a compaction summary message becomes a
-  /// compaction part, as on the REST load path.
-  PluginMessagePart _mapLivePart(Part raw, {required Set<String> summaryMessageIds}) {
+  /// compaction part in the state of its message, as on the REST load path.
+  PluginMessagePart _mapLivePart(Part raw, {required SummaryMessageTracker summaries}) {
     final part = _messagePartMapper.mapPart(raw);
-    return summaryMessageIds.contains(part.messageID) ? _messagePartMapper.mapSummaryPart(part) : part;
+    return switch (summaries.summary(messageId: part.messageID)) {
+      (:final message, :final auto, textParts: _) => _messagePartMapper.mapSummaryPart(
+        part,
+        message: message,
+        auto: auto,
+      ),
+      null => part,
+    };
   }
+
+  /// Once a summary message finishes, its compaction rows settle in its final
+  /// state; their last text arrived before the message finished.
+  List<BridgeSseEvent> _settledSummaryParts({required String messageId, required SummaryMessageTracker summaries}) =>
+      switch (summaries.summary(messageId: messageId)) {
+        (:final message, :final textParts, auto: _) when message.error != null || message.time.completed != null => [
+          for (final part in textParts.values)
+            BridgeSseMessagePartUpdated(part: _mapLivePart(part, summaries: summaries)),
+        ],
+        _ => const [],
+      };
 
   /// Maps a `message.updated` payload to its plugin envelope, mirroring the
   /// REST load path ([PluginModelMapper.mapMessageWithParts]). Crucially this
@@ -31,7 +51,11 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
   /// into the error envelope via [AssistantMessageMapper]; forwarding it as an
   /// assistant message would leave a blank turn on the phone until the session
   /// is re-opened.
-  PluginMessage? _mapMessageInfo(Message info, {required String? promptId}) {
+  PluginMessage? _mapMessageInfo(
+    Message info, {
+    required String? promptId,
+    required bool keepsCompactionParts,
+  }) {
     final pluginMessage = switch (info) {
       UserMessage(:final id, :final sessionID, :final agent, :final time) => PluginMessage.user(
         id: id,
@@ -42,7 +66,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         // anywhere else (the OpenCode TUI, another tool) has none.
         promptId: promptId,
       ),
-      AssistantMessage() => _assistantMessageMapper.map(info),
+      AssistantMessage() => _assistantMessageMapper.map(info, keepsCompactionParts: keepsCompactionParts),
       // Unknown roles from a newer OpenCode server have no plugin shape the
       // bridge can deliver; the event is dropped here.
       _ => null,
@@ -50,7 +74,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
     return pluginMessage;
   }
 
-  /// Maps an [SseEventData] to a [BridgeSseEvent], or null if the event
+  /// Maps an [SseEventData] to its [BridgeSseEvent]s, none when the event
   /// type has no plugin representation.
   ///
   /// [displaySessionId] is the already-resolved root session for permission/
@@ -60,13 +84,24 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
   /// own send created. Both are passed-in values so this mapper stays a pure,
   /// dependency-free transformation.
   ///
-  /// [summaryMessageIds] are the compaction summary messages the plugin has
-  /// seen (see `SummaryMessageTracker`).
-  BridgeSseEvent? map(
+  /// [summaries] holds what the plugin has seen of compaction summary
+  /// messages, already updated with [event].
+  List<BridgeSseEvent> map(
     SseEventData event, {
+    required SummaryMessageTracker summaries,
     String? displaySessionId,
     String? promptId,
-    Set<String> summaryMessageIds = const {},
+  }) => [
+    ?_mapEvent(event, summaries: summaries, displaySessionId: displaySessionId, promptId: promptId),
+    if (event case SseMessageUpdated(info: AssistantMessage(:final id)))
+      ..._settledSummaryParts(messageId: id, summaries: summaries),
+  ];
+
+  BridgeSseEvent? _mapEvent(
+    SseEventData event, {
+    required SummaryMessageTracker summaries,
+    required String? displaySessionId,
+    required String? promptId,
   }) {
     return switch (event) {
       SseServerConnected() => const BridgeSseServerConnected(),
@@ -95,7 +130,14 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         arguments: arguments,
         messageID: messageID,
       ),
-      SseMessageUpdated(:final info) => switch (_mapMessageInfo(info, promptId: promptId)) {
+      SseMessageUpdated(:final info) => switch (_mapMessageInfo(
+        info,
+        promptId: promptId,
+        keepsCompactionParts: switch (info) {
+          AssistantMessage(:final id) => summaries.summary(messageId: id)?.textParts.isNotEmpty ?? false,
+          _ => false,
+        },
+      )) {
         final message? => BridgeSseMessageUpdated(info: message),
         null => null,
       },
@@ -104,7 +146,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         messageID: messageID,
       ),
       SseMessagePartUpdated(:final part) => BridgeSseMessagePartUpdated(
-        part: _mapLivePart(part, summaryMessageIds: summaryMessageIds),
+        part: _mapLivePart(part, summaries: summaries),
       ),
       SseMessagePartDelta(
         :final sessionID,

@@ -861,15 +861,14 @@ class OpenCodePlugin._({
 
           final canonicalEvent = _canonicalizeEvent(event);
           _summaryMessages.observe(canonicalEvent);
-          final bridgeEvent = _mapper.map(
-            canonicalEvent,
-            displaySessionId: _displaySessionIdForEvent(canonicalEvent),
-            promptId: _promptIdForEvent(canonicalEvent),
-            summaryMessageIds: _summaryMessages.messageIds,
-          );
-          if (bridgeEvent != null) {
-            _eventBuffer.add(bridgeEvent);
-          }
+          _mapper
+              .map(
+                canonicalEvent,
+                summaries: _summaryMessages,
+                displaySessionId: _displaySessionIdForEvent(canonicalEvent),
+                promptId: _promptIdForEvent(canonicalEvent),
+              )
+              .forEach(_eventBuffer.add);
           return;
         case SseParseOutcome.ignoredKnownEvent:
           return;

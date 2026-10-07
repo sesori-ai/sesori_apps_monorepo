@@ -345,7 +345,7 @@ void main() {
       expect((stamped[2].info as PluginMessageUser).promptId, isNull);
     });
 
-    test("streams the text of a compaction summary message as a compaction part", () async {
+    test("streams a compaction summary as a running row that settles when its message finishes", () async {
       final plugin = OpenCodePlugin(serverUrl: server.baseUrl);
       await plugin.initialize();
       await server.waitForSseConnection();
@@ -355,15 +355,15 @@ void main() {
 
       Future<void> emit(Map<String, Object?> payload) =>
           server.emitRawSse(jsonEncode({"directory": "/repo", "payload": payload}));
-      await emit({
+      Future<void> summaryMessage({required int? completed}) => emit({
         "type": "message.updated",
         "properties": {
           "info": {
             "id": "msg_summary",
             "sessionID": "s-root",
             "role": "assistant",
-            "time": {"created": 1},
-            "parentID": "msg_user",
+            "time": {"created": 1, "completed": ?completed},
+            "parentID": "msg_marker",
             "modelID": "gpt-5.4",
             "providerID": "openai",
             "mode": "compaction",
@@ -380,6 +380,26 @@ void main() {
           },
         },
       });
+      PluginMessagePart compaction(PluginCompactionState state) => PluginMessagePart.compaction(
+        id: "prt_summary",
+        sessionID: "s-root",
+        messageID: "msg_summary",
+        compactionState: state,
+      );
+
+      await emit({
+        "type": "message.part.updated",
+        "properties": {
+          "part": {
+            "id": "prt_marker",
+            "sessionID": "s-root",
+            "messageID": "msg_marker",
+            "type": "compaction",
+            "auto": true,
+          },
+        },
+      });
+      await summaryMessage(completed: null);
       await emit({
         "type": "message.part.updated",
         "properties": {
@@ -392,18 +412,18 @@ void main() {
           },
         },
       });
-      await _awaitEvents<BridgeSseMessagePartUpdated>(events, count: 1);
-
+      await _awaitEvents<BridgeSseMessagePartUpdated>(events, count: 2);
       expect(
-        events.whereType<BridgeSseMessagePartUpdated>().single.part,
-        equals(
-          const PluginMessagePart.compaction(
-            id: "prt_summary",
-            sessionID: "s-root",
-            messageID: "msg_summary",
-            compactionState: .completed(summary: "## Goal", freedTokens: null, trigger: null),
-          ),
-        ),
+        events.whereType<BridgeSseMessagePartUpdated>().last.part,
+        compaction(const .running(summary: "## Goal")),
+      );
+
+      await summaryMessage(completed: 2);
+      await _awaitEvents<BridgeSseMessagePartUpdated>(events, count: 3);
+      expect(events[events.length - 2], isA<BridgeSseMessageUpdated>());
+      expect(
+        events.whereType<BridgeSseMessagePartUpdated>().last.part,
+        compaction(const .completed(summary: "## Goal", freedTokens: null, trigger: PluginCompactionTrigger.auto)),
       );
     });
 
