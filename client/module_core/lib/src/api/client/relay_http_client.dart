@@ -88,7 +88,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     String path, {
     // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
     required T Function(Map<String, dynamic> json) fromJson,
-    // ignore: no_slop_linter/prefer_specific_type
+    // ignore: no_slop_linter/prefer_specific_type, any JSON-serializable request body, as for post
     required Object body,
   }) => _request(
     method: HttpMethod.post,

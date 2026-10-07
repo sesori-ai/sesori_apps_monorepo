@@ -1013,7 +1013,7 @@
   },
   "transcriptPromptsGone": "This prompt is no longer in the session",
   "@transcriptPromptsGone": {
-    "description": "Notice over the Prompts screen when a tapped earlier prompt was not found as its part of the transcript loaded, for example because the session's history was rewritten."
+    "description": "Notice over the Prompts screen when a tapped earlier prompt was not found in the loaded transcript, for example because the session's history was rewritten."
   },
   "transcriptPromptsBridgeTooOld": "Update the bridge to open earlier prompts",
   "@transcriptPromptsBridgeTooOld": {

@@ -2707,7 +2707,7 @@ abstract class AppLocalizations {
   /// **'Couldn\'t open this prompt. Check your connection and try again.'**
   String get transcriptPromptsOpenFailed;
 
-  /// Notice over the Prompts screen when a tapped earlier prompt was not found as its part of the transcript loaded, for example because the session's history was rewritten.
+  /// Notice over the Prompts screen when a tapped earlier prompt was not found in the loaded transcript, for example because the session's history was rewritten.
   ///
   /// In en, this message translates to:
   /// **'This prompt is no longer in the session'**

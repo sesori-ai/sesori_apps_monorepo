@@ -85,8 +85,9 @@ stored or sent to the bridge.
   session's prompt index, after each load and refresh. Once it arrives the list
   holds every prompt of the session, unloaded ones included with their number,
   time and first line, ends with "{n} prompts" and has no "Load earlier
-  prompts". An index from before a refresh is never shown over the refreshed
-  transcript. Without one — an older bridge or a failed request — the list
+  prompts". A refresh drops the index until it is fetched again: a screen
+  opened meanwhile lists the loaded prompts, and an open screen keeps its rows
+  until the new index joins them. Without one — an older bridge or a failed request — the list
   stays the loaded prompts only, as below.
 - A tap on an unloaded row loads the transcript from that prompt to the loaded
   part. After 150 ms its row shows a spinner; once the messages land the screen
@@ -447,8 +448,9 @@ answer, and on a trackpad while text streams.
   its speed can bend on the way; it still lands exactly.
 - An unloaded prompt is searched by its preview only. A bridge released before
   the prompt index lists and searches only what the transcript has loaded, and
-  "Load earlier prompts" pages back one transcript page at a time; its notice
-  for an unloaded tap has no link to update instructions. An older bridge sends
+  "Load earlier prompts" pages back one transcript page at a time. The "Update
+  the bridge" notice for an unloaded tap has no link to update instructions. An
+  older bridge sends
   no user message count, so its rows carry no numbers. Loading through a far
   prompt decodes the response off the UI isolate, but the relay envelope of a
   whole-session response still decodes on it (about 170 ms on a Mac for a

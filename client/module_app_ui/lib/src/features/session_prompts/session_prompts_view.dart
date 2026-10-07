@@ -668,27 +668,30 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
   }
 }
 
-/// Why a far tap could not move to its prompt, announced as it shows.
+/// Why a far tap could not move to its prompt, announced as it shows. Taps and
+/// drags pass through it to the rows beneath.
 class const _FarTapError({super.key, required final String message}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final colors = prego.colors;
-    return Center(
-      child: Semantics(
-        liveRegion: true,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: colors.bgSecondary,
-            border: Border.all(color: colors.borderSecondary),
-            borderRadius: BorderRadius.circular(PregoRadius.lg),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.md),
-            child: Text(
-              message,
-              textAlign: TextAlign.center,
-              style: prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary),
+    return IgnorePointer(
+      child: Center(
+        child: Semantics(
+          liveRegion: true,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: colors.bgSecondary,
+              border: Border.all(color: colors.borderSecondary),
+              borderRadius: BorderRadius.circular(PregoRadius.lg),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.md),
+              child: Text(
+                message,
+                textAlign: TextAlign.center,
+                style: prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary),
+              ),
             ),
           ),
         ),

@@ -287,6 +287,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// Moves the transcript to [messageId], then closes the Prompts screen once
   /// the move has landed beneath it, so none of its jumps show.
   void _returnToPrompt({required String messageId}) {
+    // A far tap's load can land while the screen is already leaving; closing
+    // it cancelled the move.
+    if (_transition.status == AnimationStatus.reverse) return;
     unawaited(_jumpNotifier.jumpTo(messageId: messageId).then((_) => _closePrompts()));
   }
 
@@ -531,13 +534,15 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     );
     // Any older page landing while the screen is up joins it, also one the
     // transcript was already loading when the screen opened, and so does the
-    // prompt index once it arrives.
+    // prompt index once it arrives. A load and a refresh both drop the index
+    // before fetching it, so it only ever arrives onto none. Dropping it
+    // leaves the open list as it was, like any other transcript change.
     return BlocListener<SessionDetailCubit, SessionDetailState>(
       listenWhen: (previous, current) =>
           previous is SessionDetailLoaded &&
           current is SessionDetailLoaded &&
           ((previous.isLoadingOlderMessages && !current.isLoadingOlderMessages) ||
-              (current.promptIndex != null && !identical(previous.promptIndex, current.promptIndex))),
+              (previous.promptIndex == null && current.promptIndex != null)),
       listener: (context, state) {
         if (state is SessionDetailLoaded) _relistPrompts(state: state);
       },

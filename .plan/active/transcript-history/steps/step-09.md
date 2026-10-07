@@ -37,8 +37,12 @@ Branch `transcript-history/prompts-list`. `client/module_core`,
 
 ## Measurement
 
-Measured once with a throwaway harness (deleted) over the step 7 synthetic
-session: 9,790 messages, a 16.6 M-character `MessageWithPartsResponse` body.
+Measured once on the uncommitted step 9 tree over `origin/main` at
+`a377e6ddea`, with a throwaway harness, `dart run
+tool/benchmarks/tmp_isolate_decode.dart` from `bridge/app/`, deleted after
+the run, so the figures are not reproducible from the checked-in tree. It
+decoded the step 7 synthetic session (`tool/benchmarks/synthetic_session.dart`):
+9,790 messages, a 16.6 M-character `MessageWithPartsResponse` body.
 Dart 3.13.4 JIT on an Apple-silicon Mac, 11 runs, the first discarded. The
 UI stall is the longest gap of a 1 ms periodic timer on the calling isolate.
 
@@ -62,6 +66,9 @@ UI stall is the longest gap of a 1 ms periodic timer on the calling isolate.
 
 ## Evidence
 
+Run on the uncommitted tree that became `60340a272d`, then again after the
+review fixes, from each package directory; every check passed.
+
 - `dart analyze --fatal-infos` in `client/module_core`,
   `client/module_app_ui`, `client/app` and `client/desktop`.
 - Tests, targeted:
@@ -76,6 +83,11 @@ UI stall is the longest gap of a 1 ms periodic timer on the calling isolate.
     older-bridge notice), plus the activity-owner and reasoning-modal tests.
   - `app`: `session_detail_body_test.dart`, the "Prompts" group plus the index
     listing an unloaded prompt that a tap loads and moves to.
+  - PR review: the open list relists only when the index arrives onto none,
+    not on every later change (Freezed's list getter is a new view per read)
+    or when a refresh drops it, and a far tap's load landing after the screen
+    closed moves nothing. Two `session_detail_body_test.dart` tests fail
+    without either fix.
 - No database change; generated churn is Freezed and l10n only.
 - **Architecture review:** `architecture-implementation-review` pass 1
   approved. Its one non-architecture note (the Unsupported doc claimed asking

@@ -985,7 +985,7 @@ Deliberately not added:
 | A stale index entry after a background history rewrite that has not yet triggered a refetch (P8). | Theoretical interleaving. | One tap shows an inline error. The next list replacement refetches. |
 | CRIME/BREACH-style length inference on deflated transcript pages. | Theoretical. Needs adaptive injection, length observation and repeated user re-fetches. | Not mitigated. See [Security And Privacy Of W1](#security-and-privacy-of-w1). |
 | Bridge CPU spent deflating a very large load-through response. | Measured sizes: up to 17.4 MB for the largest session. | Measured in step 8. Isolate offload only if the bridge stalls visibly. Attachment responses are never deflated (P4). |
-| The app decodes a whole-session load-through on the UI isolate. | Same 17.4 MB worst case; decode runs on the calling isolate today. | Measured in step 8 (264–268 ms); step 9 decodes it via `Isolate.run`. |
+| The app decodes a whole-session load-through on the UI isolate. | Same 17.4 MB worst case; decode runs on the calling isolate today. | Step 9 decodes it via `Isolate.run`. |
 | The index takes too long for the largest session. | About 20 ms for the review page's query; the fold over every part is new. | Measured in step 7 against a 300 ms budget. A narrower projection only if it misses. |
 | A bridge released between steps 7 and 8 (or 7 and 11) has the index but not the load-through (or search) route. | Release timing. | Typed `Unsupported`: a far tap says the bridge needs an update; search stays loaded-only without Retry. |
 | A long prompt's unloaded pin shows its start, but once loaded it pins its end. | Layout rule of the sticky overlay. | The pin crossfades when the opener loads. |
