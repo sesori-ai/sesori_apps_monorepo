@@ -84,6 +84,63 @@ class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistor
     });
   }
 
+  /// The sync state and every row from [throughSeq] up to, but not including,
+  /// [before], read from a single snapshot like [getPageRowsWithSyncState].
+  ///
+  /// The range is not cut by a limit, so [hasOlder] comes from an exists
+  /// query, and the user count is taken below [throughSeq]. Parts are selected
+  /// through a subquery on the same range, which keeps a long range clear of
+  /// SQLite's bound-variable limit.
+  Future<({PagedHistoryRows rows, bool hasOlder})> getRowsThroughWithSyncState({
+    required String sessionId,
+    required int throughSeq,
+    required int before,
+  }) {
+    Expression<bool> inRange(HistoryMessagesTable table) =>
+        table.sessionId.equals(sessionId) &
+        table.seq.isBiggerOrEqualValue(throughSeq) &
+        table.seq.isSmallerThanValue(before);
+    return transaction(() async {
+      final syncState = await getSyncState(sessionId: sessionId);
+      final messages =
+          await (select(historyMessagesTable)
+                ..where(inRange)
+                ..orderBy([(table) => OrderingTerm(expression: table.seq)]))
+              .get();
+      final rangeMessageIds = selectOnly(historyMessagesTable)
+        ..addColumns([historyMessagesTable.messageId])
+        ..where(inRange(historyMessagesTable));
+      final parts =
+          await (select(historyPartsTable)
+                ..where(
+                  (table) => table.sessionId.equals(sessionId) & table.messageId.isInQuery(rangeMessageIds),
+                )
+                ..orderBy([
+                  (table) => OrderingTerm(expression: table.messageId),
+                  (table) => OrderingTerm(expression: table.orderIndex),
+                ]))
+              .get();
+      final older =
+          await (selectOnly(historyMessagesTable)
+                ..addColumns([historyMessagesTable.seq])
+                ..where(
+                  historyMessagesTable.sessionId.equals(sessionId) &
+                      historyMessagesTable.seq.isSmallerThanValue(throughSeq),
+                )
+                ..limit(1))
+              .getSingleOrNull();
+      return (
+        rows: (
+          syncState: syncState,
+          messages: messages,
+          parts: parts,
+          userMessagesBefore: await countUserMessagesBefore(sessionId: sessionId, seq: throughSeq),
+        ),
+        hasOlder: older != null,
+      );
+    });
+  }
+
   /// How many of [sessionId]'s messages ordered below [seq] have role `user`.
   ///
   /// The role lives only inside `info_json`, and typed Drift has no

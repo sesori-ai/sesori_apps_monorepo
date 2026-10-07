@@ -6,6 +6,7 @@ import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
 import "../logging/logging.dart";
+import "../repositories/models/session_messages_through_result.dart";
 import "../repositories/models/session_options_repository_result.dart";
 import "../repositories/plugin_repository.dart";
 import "../repositories/session_repository.dart";
@@ -104,6 +105,26 @@ class SessionDetailLoadService({
         return null;
       }(),
     };
+  }
+
+  /// Every message from [throughSeq] up to [before], for a jump to a prompt
+  /// older than the loaded range.
+  Future<SessionMessagesThroughResult> loadMessagesThrough({
+    required String sessionId,
+    required int throughSeq,
+    required int before,
+    required bool storedOnly,
+  }) async {
+    final result = await _repository.getMessagesThrough(
+      sessionId: sessionId,
+      throughSeq: throughSeq,
+      before: before,
+      storedOnly: storedOnly,
+    );
+    if (result case SessionMessagesThroughFailure(:final error)) {
+      logw("Failed to load messages through a prompt: ${error.toString()}");
+    }
+    return result;
   }
 
   Future<SessionDetailLoadResult> _loadSnapshot({

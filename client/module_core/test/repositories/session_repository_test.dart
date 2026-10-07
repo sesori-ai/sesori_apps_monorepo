@@ -7,6 +7,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/prompt_send_fail
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_diff_summary_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_messages_through_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -59,8 +60,14 @@ void main() {
     final api = MockSessionApi();
     final repository = SessionRepository(api: api);
 
-    when(() => api.getMessages(sessionId: "session-1", limit: null, before: null,
-storedOnly: false,)).thenAnswer(
+    when(
+      () => api.getMessages(
+        sessionId: "session-1",
+        limit: null,
+        before: null,
+        storedOnly: false,
+      ),
+    ).thenAnswer(
       (_) async => ApiResponse.success(
         const MessageWithPartsResponse(
           messages: <MessageWithParts>[],
@@ -127,8 +134,12 @@ storedOnly: false,)).thenAnswer(
     when(
       () => api.rejectQuestion(requestId: "question-1", sessionId: "session-1"),
     ).thenAnswer((_) async => ApiResponse.success(null));
-    await repository.getMessages(sessionId: "session-1", limit: null, before: null,
-storedOnly: false,);
+    await repository.getMessages(
+      sessionId: "session-1",
+      limit: null,
+      before: null,
+      storedOnly: false,
+    );
     await repository.getPendingQuestions(sessionId: "session-1");
     await repository.getPendingPermissions(sessionId: "session-1");
     await repository.getChildren(sessionId: "session-1");
@@ -160,8 +171,14 @@ storedOnly: false,);
       ],
     );
     await repository.rejectQuestion(requestId: "question-1", sessionId: "session-1");
-    verify(() => api.getMessages(sessionId: "session-1", limit: null, before: null,
-storedOnly: false,)).called(1);
+    verify(
+      () => api.getMessages(
+        sessionId: "session-1",
+        limit: null,
+        before: null,
+        storedOnly: false,
+      ),
+    ).called(1);
     verify(() => api.getPendingQuestions(sessionId: "session-1")).called(1);
     verify(() => api.getPendingPermissions(sessionId: "session-1")).called(1);
     verify(() => api.getChildren(sessionId: "session-1")).called(1);
@@ -601,6 +618,46 @@ storedOnly: false,)).called(1);
       final result = await summaryFor(response: ApiResponse.error(error));
 
       expect(result, isA<SessionDiffSummaryFailure>());
+    });
+  });
+
+  group("getMessagesThrough", () {
+    Future<SessionMessagesThroughResult> throughFor({required ApiResponse<MessageWithPartsResponse> response}) {
+      final api = MockSessionApi();
+      when(
+        () => api.getMessagesThrough(sessionId: "s1", throughSeq: 2, before: 9, storedOnly: false),
+      ).thenAnswer((_) async => response);
+      return SessionRepository(api: api)
+          .getMessagesThrough(sessionId: "s1", throughSeq: 2, before: 9, storedOnly: false);
+    }
+
+    test("passes the range through", () async {
+      const response = MessageWithPartsResponse(
+        messages: [],
+        nextCursor: 2,
+        replayedPromptDefaults: null,
+        userMessagesBefore: 1,
+      );
+
+      final result = await throughFor(response: ApiResponse.success(response));
+
+      expect(result, isA<SessionMessagesThroughAvailable>().having((value) => value.response, "response", response));
+    });
+
+    test("reads a 404 as a bridge that predates the route", () async {
+      final result = await throughFor(
+        response: ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)),
+      );
+
+      expect(result, isA<SessionMessagesThroughUnsupported>());
+    });
+
+    test("keeps any other status a failure", () async {
+      final error = ApiError.nonSuccessCode(errorCode: 400, rawErrorString: "throughSeq must be lower than before");
+
+      final result = await throughFor(response: ApiResponse.error(error));
+
+      expect(result, isA<SessionMessagesThroughFailure>().having((value) => value.error, "error", error));
     });
   });
 }
