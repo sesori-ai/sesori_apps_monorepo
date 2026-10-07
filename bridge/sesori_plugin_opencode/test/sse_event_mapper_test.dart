@@ -54,7 +54,6 @@ UserMessage _userMessage({required String id}) {
 void main() {
   group("SseEventMapper", () {
     final mapper = SseEventMapper();
-    final summaries = SummaryMessageTracker();
 
     test("maps a live errored assistant message.updated to the error role", () {
       final result = mapper
@@ -67,7 +66,7 @@ void main() {
                 },
               ),
             ),
-            summaries: summaries,
+            summary: null,
           )
           .single;
 
@@ -83,7 +82,7 @@ void main() {
 
     test("maps a live non-errored assistant message.updated to the assistant role", () {
       final result = mapper
-          .map(SseEventData.messageUpdated(info: _assistantMessage(error: null)), summaries: summaries)
+          .map(SseEventData.messageUpdated(info: _assistantMessage(error: null)), summary: null)
           .single;
 
       expect(result, isA<BridgeSseMessageUpdated>());
@@ -98,7 +97,7 @@ void main() {
         directory: "/repo/packages/foo",
       );
 
-      final result = mapper.map(SseEventData.sessionCreated(info: session), summaries: summaries).single;
+      final result = mapper.map(SseEventData.sessionCreated(info: session), summary: null).single;
 
       expect(result, isNotNull);
       final event = result as BridgeSseSessionCreated;
@@ -114,7 +113,7 @@ void main() {
         directory: "/repo/packages/foo",
       );
 
-      final result = mapper.map(SseEventData.sessionUpdated(info: session), summaries: summaries).single;
+      final result = mapper.map(SseEventData.sessionUpdated(info: session), summary: null).single;
 
       expect(result, isNotNull);
       final event = result as BridgeSseSessionUpdated;
@@ -129,7 +128,7 @@ void main() {
         directory: "/repo/packages/foo",
       );
 
-      final result = mapper.map(SseEventData.sessionDeleted(info: session), summaries: summaries).single;
+      final result = mapper.map(SseEventData.sessionDeleted(info: session), summary: null).single;
 
       expect(result, isNotNull);
       final event = result as BridgeSseSessionDeleted;
@@ -142,7 +141,7 @@ void main() {
           .map(
             SseEventData.messageUpdated(info: _userMessage(id: "msg-sent")),
             promptId: "prm_1",
-            summaries: summaries,
+            summary: null,
           )
           .single;
 
@@ -153,7 +152,7 @@ void main() {
       final result = mapper
           .map(
             SseEventData.messageUpdated(info: _userMessage(id: "msg-from-tui")),
-            summaries: summaries,
+            summary: null,
           )
           .single;
 
@@ -164,7 +163,7 @@ void main() {
       final tracker = SummaryMessageTracker();
       List<BridgeSseEvent> handle(SseEventData event) {
         tracker.observe(event);
-        return mapper.map(event, summaries: tracker);
+        return mapper.map(event, summary: tracker.summaryFor(event));
       }
 
       handle(SseEventData.messageUpdated(info: _assistantMessage(error: null, summary: true)));

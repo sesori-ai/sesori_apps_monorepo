@@ -864,7 +864,7 @@ class OpenCodePlugin._({
           _mapper
               .map(
                 canonicalEvent,
-                summaries: _summaryMessages,
+                summary: _summaryMessages.summaryFor(canonicalEvent),
                 displaySessionId: _displaySessionIdForEvent(canonicalEvent),
                 promptId: _promptIdForEvent(canonicalEvent),
               )

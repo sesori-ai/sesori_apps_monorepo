@@ -9,7 +9,7 @@ import "models/openapi/user_message.g.dart";
 import "models/sse_event_data.g.dart";
 import "plugin_model_mapper.dart";
 import "question_info_mapper.dart";
-import "summary_message_tracker.dart";
+import "summary_message_tracker.dart" show SummaryMessage;
 
 /// Maps OpenCode SSE events and message parts to plugin interface types.
 ///
@@ -22,9 +22,9 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
 
   /// Maps a live part; the text of a compaction summary message becomes a
   /// compaction part in the state of its message, as on the REST load path.
-  PluginMessagePart _mapLivePart(Part raw, {required SummaryMessageTracker summaries}) {
+  PluginMessagePart _mapLivePart(Part raw, {required SummaryMessage? summary}) {
     final part = _messagePartMapper.mapPart(raw);
-    return switch (summaries.summary(messageId: part.messageID)) {
+    return switch (summary) {
       (:final message, :final auto, textParts: _) => _messagePartMapper.mapSummaryPart(
         part,
         message: message,
@@ -36,14 +36,12 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
 
   /// Once a summary message finishes, its compaction rows settle in its final
   /// state; their last text arrived before the message finished.
-  List<BridgeSseEvent> _settledSummaryParts({required String messageId, required SummaryMessageTracker summaries}) =>
-      switch (summaries.summary(messageId: messageId)) {
-        (:final message, :final textParts, auto: _) when message.error != null || message.time.completed != null => [
-          for (final part in textParts.values)
-            BridgeSseMessagePartUpdated(part: _mapLivePart(part, summaries: summaries)),
-        ],
-        _ => const [],
-      };
+  List<BridgeSseEvent> _settledSummaryParts({required SummaryMessage? summary}) => switch (summary) {
+    (:final message, :final textParts, auto: _) when message.error != null || message.time.completed != null => [
+      for (final part in textParts) BridgeSseMessagePartUpdated(part: _mapLivePart(part, summary: summary)),
+    ],
+    _ => const [],
+  };
 
   /// Maps a `message.updated` payload to its plugin envelope, mirroring the
   /// REST load path ([PluginModelMapper.mapMessageWithParts]). Crucially this
@@ -84,22 +82,21 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
   /// own send created. Both are passed-in values so this mapper stays a pure,
   /// dependency-free transformation.
   ///
-  /// [summaries] holds what the plugin has seen of compaction summary
-  /// messages, already updated with [event].
+  /// [summary] is what the plugin has seen of the compaction summary message
+  /// [event] belongs to, including [event] itself; null for any other event.
   List<BridgeSseEvent> map(
     SseEventData event, {
-    required SummaryMessageTracker summaries,
+    required SummaryMessage? summary,
     String? displaySessionId,
     String? promptId,
   }) => [
-    ?_mapEvent(event, summaries: summaries, displaySessionId: displaySessionId, promptId: promptId),
-    if (event case SseMessageUpdated(info: AssistantMessage(:final id)))
-      ..._settledSummaryParts(messageId: id, summaries: summaries),
+    ?_mapEvent(event, summary: summary, displaySessionId: displaySessionId, promptId: promptId),
+    if (event is SseMessageUpdated) ..._settledSummaryParts(summary: summary),
   ];
 
   BridgeSseEvent? _mapEvent(
     SseEventData event, {
-    required SummaryMessageTracker summaries,
+    required SummaryMessage? summary,
     required String? displaySessionId,
     required String? promptId,
   }) {
@@ -133,10 +130,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
       SseMessageUpdated(:final info) => switch (_mapMessageInfo(
         info,
         promptId: promptId,
-        keepsCompactionParts: switch (info) {
-          AssistantMessage(:final id) => summaries.summary(messageId: id)?.textParts.isNotEmpty ?? false,
-          _ => false,
-        },
+        keepsCompactionParts: summary?.textParts.isNotEmpty ?? false,
       )) {
         final message? => BridgeSseMessageUpdated(info: message),
         null => null,
@@ -146,7 +140,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
         messageID: messageID,
       ),
       SseMessagePartUpdated(:final part) => BridgeSseMessagePartUpdated(
-        part: _mapLivePart(part, summaries: summaries),
+        part: _mapLivePart(part, summary: summary),
       ),
       SseMessagePartDelta(
         :final sessionID,
