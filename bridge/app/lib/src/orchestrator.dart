@@ -32,6 +32,7 @@ import "foundation/filesystem_permission_validator.dart";
 import "foundation/key_exchange.dart";
 import "foundation/process_runner.dart";
 import "foundation/relay_client.dart";
+import "foundation/relay_plaintext_codec.dart";
 import "foundation/streaming_process_runner.dart";
 import "listeners/chat_history_activity_listener.dart";
 import "listeners/chat_history_listener.dart";
@@ -2427,6 +2428,7 @@ class OrchestratorSession._({
                 connection: connection,
                 connID: connID,
                 pendingRoute: pendingRoute,
+                deflateResponse: req.acceptsDeflatedResponse,
                 phoneIncarnation: phoneIncarnation,
                 activePhoneIncarnations: activePhoneIncarnations,
               ),
@@ -2467,6 +2469,7 @@ class OrchestratorSession._({
     required RelayConnection connection,
     required int connID,
     required PendingRoutedRequest pendingRoute,
+    required bool deflateResponse,
     required Object phoneIncarnation,
     required Map<int, Object> activePhoneIncarnations,
   }) async {
@@ -2497,6 +2500,7 @@ class OrchestratorSession._({
       connection: connection,
       connID: connID,
       response: response,
+      deflate: deflateResponse,
       routeIdentity: routeIdentity,
       phoneIncarnation: phoneIncarnation,
       activePhoneIncarnations: activePhoneIncarnations,
@@ -2519,13 +2523,14 @@ class OrchestratorSession._({
     required RelayConnection connection,
     required int connID,
     required RelayResponse response,
+    required bool deflate,
     required RouteIdentity routeIdentity,
     required Object phoneIncarnation,
     required Map<int, Object> activePhoneIncarnations,
   }) async {
     final ({Uint8List payload, int cleartextLength}) encrypted;
     try {
-      encrypted = await _encryptRelayMessage(message: response, connID: connID);
+      encrypted = await _encryptRelayMessage(message: response, connID: connID, deflate: deflate);
     } on Object catch (error, stackTrace) {
       Log.e("failed to encrypt response for ${routeIdentity.diagnosticLabel} and connId $connID", error, stackTrace);
       return;
@@ -2569,7 +2574,7 @@ class OrchestratorSession._({
     required Map<int, Object> activePhoneIncarnations,
   }) async {
     try {
-      final encrypted = await _encryptRelayMessage(message: response, connID: connID);
+      final encrypted = await _encryptRelayMessage(message: response, connID: connID, deflate: false);
       if (_cancelled) return;
       _sendEncryptedResponseIfCurrent(
         connection: connection,
@@ -2648,12 +2653,14 @@ class OrchestratorSession._({
   Future<({Uint8List payload, int cleartextLength})> _encryptRelayMessage({
     required int connID,
     required RelayMessage message,
+    required bool deflate,
   }) async {
     final respJson = jsonEncode(message.toJson());
     final jsonBytes = utf8.encode(respJson);
-    Log.v("[response] encrypting ${jsonBytes.length} bytes for connID=$connID");
-    final framed = await frame(jsonBytes, encryptor: _sessionEncryptor);
-    return (payload: framed, cleartextLength: jsonBytes.length);
+    final plaintext = encodeRelayPlaintext(json: jsonBytes, deflate: deflate);
+    Log.v("[response] encrypting ${plaintext.length} bytes (json ${jsonBytes.length}) for connID=$connID");
+    final framed = await frame(plaintext, encryptor: _sessionEncryptor);
+    return (payload: framed, cleartextLength: plaintext.length);
   }
 
   RelaySendOutcome _sendEncryptedResponseIfCurrent({
