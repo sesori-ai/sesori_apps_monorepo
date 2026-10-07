@@ -13,6 +13,3 @@ final class const LoadThroughFailed() extends LoadThroughOutcome;
 
 /// The transcript was replaced while the load ran, so it was dropped.
 final class const LoadThroughSuperseded() extends LoadThroughOutcome;
-
-/// The bridge predates the load-through route and must be updated.
-final class const LoadThroughUnsupported() extends LoadThroughOutcome;

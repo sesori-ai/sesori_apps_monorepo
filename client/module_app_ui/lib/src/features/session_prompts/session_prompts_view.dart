@@ -222,7 +222,6 @@ class _PromptsListState() extends State<_PromptsList> with SingleTickerProviderS
       _farTapError = switch (outcome) {
         LoadThroughLoaded() => null,
         LoadThroughTargetMissing() => loc.transcriptPromptsGone,
-        LoadThroughUnsupported() => loc.transcriptPromptsBridgeTooOld,
         LoadThroughFailed() => loc.transcriptPromptsOpenFailed,
         // A refresh replaced the transcript meanwhile; a second tap reads the new one.
         LoadThroughSuperseded() => loc.transcriptPromptsRefreshed,

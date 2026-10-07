@@ -11,7 +11,4 @@ final class const SessionMessagesThroughAvailable({
   required final int? userMessagesBefore,
 }) extends SessionMessagesThroughResult;
 
-/// The bridge predates the load-through route, so asking again cannot succeed.
-final class const SessionMessagesThroughUnsupported() extends SessionMessagesThroughResult;
-
 final class const SessionMessagesThroughFailure({required final ApiError error}) extends SessionMessagesThroughResult;
