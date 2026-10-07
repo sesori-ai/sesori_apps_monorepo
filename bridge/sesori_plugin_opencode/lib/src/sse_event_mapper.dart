@@ -7,9 +7,9 @@ import "models/openapi/message.g.dart";
 import "models/openapi/part.g.dart";
 import "models/openapi/user_message.g.dart";
 import "models/sse_event_data.g.dart";
+import "models/summary_message.dart";
 import "plugin_model_mapper.dart";
 import "question_info_mapper.dart";
-import "summary_message_tracker.dart" show SummaryMessage;
 
 /// Maps OpenCode SSE events and message parts to plugin interface types.
 ///
@@ -130,7 +130,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
       SseMessageUpdated(:final info) => switch (_mapMessageInfo(
         info,
         promptId: promptId,
-        keepsCompactionParts: summary?.textParts.isNotEmpty ?? false,
+        keepsCompactionParts: summary?.textParts.any((part) => part.text.isNotEmpty) ?? false,
       )) {
         final message? => BridgeSseMessageUpdated(info: message),
         null => null,

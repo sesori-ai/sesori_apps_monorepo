@@ -136,5 +136,24 @@ void main() {
       summary(completed: 200, error: fixtureError, auto: true, parts: const []).info,
       isA<PluginMessageError>().having((message) => message.errorMessage, "error", "Fixture failure"),
     );
+    final empty = summary(
+      completed: 200,
+      error: fixtureError,
+      auto: true,
+      parts: const [
+        TextPart(
+          id: "part-1",
+          sessionID: "session-1",
+          messageID: "message-1",
+          text: "",
+          synthetic: null,
+          ignored: null,
+          time: null,
+          metadata: null,
+        ),
+      ],
+    );
+    expect(empty.info, isA<PluginMessageError>().having((message) => message.errorMessage, "error", "Fixture failure"));
+    expect(empty.parts.single, isA<PluginMessagePartText>());
   });
 }

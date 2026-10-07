@@ -68,7 +68,7 @@ sub-agent parts, plus the signal that a tool changed files.
 - A finished context compaction renders as one quiet "Context compacted" row in
   the step style; like visible text it ends a group. While it runs, Pi and Codex
   show a running `compact` tool that the finished row replaces in place,
-  OpenCode v1 shows the live row below from its summary message, and OpenCode
+  OpenCode v1 shows the live row below from its summary's first text, and OpenCode
   v2 shows it once its running snapshot loads. When the
   harness exposes the carried-forward summary, tapping the row opens a
   reading-width modal at once. A long summary shows a spinner that the Markdown
@@ -103,12 +103,15 @@ sub-agent parts, plus the signal that a tool changed files.
   a reload or reconnect mid-compaction they resume with the next words,
   because OpenCode stores no partial summary. When that snapshot cannot load,
   the deltas are dropped and the row appears when the compaction settles. On
-  OpenCode v1 the row runs from the summary message's announcement, its words
-  stream from the summary text's own deltas, and it settles when that message
-  finishes, as a failure when the message carries an error; an errored summary
-  message without text stays an ordinary error message. A v1 compaction that
-  starts while the bridge's OpenCode stream is down shows its summary as plain
-  text until a later transcript read. On either version, if that stream is
+  OpenCode v1 the row starts with the summary's first text, its words stream
+  from that text's own deltas, and it settles when the summary message
+  finishes, as a failure when the message carries an error; OpenCode sends the
+  final text before that update. A summary message that errors before writing
+  any text stays an ordinary error message. A v1 compaction that starts while
+  the bridge's OpenCode stream is down shows its summary as plain text on the
+  live stream; a later read that reloads the transcript from OpenCode maps it
+  to the compaction row in its stored state, a row still running there
+  settling through the idle sweep below. On either version, if that stream is
   down when the compaction ends, the row stays running, like any live part
   stranded by the outage, until a later ordinary transcript read once the
   session is idle; stored-only reads and reads while the session is busy or

@@ -64,6 +64,9 @@ class const MessagePartMapper() {
     required AssistantMessage message,
     required bool? auto,
   }) => switch (part) {
+    // A summary that errored before writing anything stays an ordinary error
+    // message; its empty text renders nothing.
+    PluginMessagePartText(text: "") when message.error != null => part,
     PluginMessagePartText(:final id, :final sessionID, :final messageID, :final text) => PluginMessagePart.compaction(
       id: id,
       sessionID: sessionID,

@@ -159,49 +159,56 @@ void main() {
       expect(((result as BridgeSseMessageUpdated).info as PluginMessageUser).promptId, isNull);
     });
 
-    test("a failed summary message settles its row as the failure note and stays an assistant message", () {
-      final tracker = SummaryMessageTracker();
-      List<BridgeSseEvent> handle(SseEventData event) {
-        tracker.observe(event);
-        return mapper.map(event, summary: tracker.summaryFor(event));
-      }
-
-      handle(SseEventData.messageUpdated(info: _assistantMessage(error: null, summary: true)));
-      handle(
-        const SseEventData.messagePartUpdated(
-          part: TextPart(
-            id: "part-1",
-            sessionID: "session-1",
-            messageID: "msg-1",
-            text: "## Goal",
-            synthetic: null,
-            ignored: null,
-            time: null,
-            metadata: null,
-          ),
-        ),
-      );
-      final settled = handle(
-        SseEventData.messageUpdated(
-          info: _assistantMessage(
-            error: <String, dynamic>{
-              "name": "MessageAbortedError",
-              "data": <String, dynamic>{"message": "Fixture failure"},
-            },
-            summary: true,
-          ),
-        ),
-      );
-
-      expect((settled.first as BridgeSseMessageUpdated).info, isA<PluginMessageAssistant>());
-      expect(
-        (settled.last as BridgeSseMessagePartUpdated).part,
+    for (final (text, info, part) in [
+      (
+        "## Goal",
+        isA<PluginMessageAssistant>(),
         isA<PluginMessagePartCompaction>().having(
           (part) => part.compactionState,
           "state",
           const PluginCompactionState.failed(error: "Fixture failure"),
         ),
-      );
-    });
+      ),
+      // Nothing written: the ordinary error message, with the empty text hidden.
+      ("", isA<PluginMessageError>(), isA<PluginMessagePartText>()),
+    ]) {
+      test("a failed summary message with text '$text' settles as its failure", () {
+        final tracker = SummaryMessageTracker();
+        List<BridgeSseEvent> handle(SseEventData event) {
+          tracker.observe(event);
+          return mapper.map(event, summary: tracker.summaryFor(event));
+        }
+
+        handle(SseEventData.messageUpdated(info: _assistantMessage(error: null, summary: true)));
+        handle(
+          SseEventData.messagePartUpdated(
+            part: TextPart(
+              id: "part-1",
+              sessionID: "session-1",
+              messageID: "msg-1",
+              text: text,
+              synthetic: null,
+              ignored: null,
+              time: null,
+              metadata: null,
+            ),
+          ),
+        );
+        final settled = handle(
+          SseEventData.messageUpdated(
+            info: _assistantMessage(
+              error: <String, dynamic>{
+                "name": "MessageAbortedError",
+                "data": <String, dynamic>{"message": "Fixture failure"},
+              },
+              summary: true,
+            ),
+          ),
+        );
+
+        expect((settled.first as BridgeSseMessageUpdated).info, info);
+        expect((settled.last as BridgeSseMessagePartUpdated).part, part);
+      });
+    }
   });
 }

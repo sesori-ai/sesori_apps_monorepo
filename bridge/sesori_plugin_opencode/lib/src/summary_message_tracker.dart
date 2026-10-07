@@ -2,11 +2,7 @@ import "models/openapi/assistant_message.g.dart";
 import "models/openapi/compaction_part.g.dart";
 import "models/openapi/text_part.g.dart";
 import "models/sse_event_data.g.dart";
-
-/// What the live stream has shown of one compaction summary message: its
-/// latest info, its latest text parts, and the `auto` flag of the compaction
-/// marker it answers, when that marker was seen.
-typedef SummaryMessage = ({AssistantMessage message, List<TextPart> textParts, bool? auto});
+import "models/summary_message.dart";
 
 /// Records the raw facts of OpenCode's recent compaction summary messages
 /// (`summary: true`) and compaction markers, so their text parts render as

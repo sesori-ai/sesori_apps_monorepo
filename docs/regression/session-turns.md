@@ -581,7 +581,8 @@ defaults and queued client sends coherent.
   enqueue acknowledgement. A v1 manual compaction's prompt settles from its
   marker echo, not from the summary message's running row; a v1 summary message
   that errors after writing text settles as a failed compaction note instead of
-  a turn error, while one that errors without text keeps its error message.
+  a turn error, because OpenCode sends that text before the message's final
+  error update, while one that errors without text keeps its error message.
   Native commands take precedence over the fallback.
   Compaction renders only the user-entered command arguments; bridge-authored
   guidance remains backend-only. A message authored in the backend's own UI
