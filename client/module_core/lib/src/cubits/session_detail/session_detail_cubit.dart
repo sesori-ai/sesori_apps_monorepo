@@ -1835,8 +1835,8 @@ class SessionDetailCubit(
   ///
   /// History carries no universal completion signal (several backends load
   /// messages with a null completion time), so coverage is decided by content:
-  /// only a same-ID text/reasoning part that starts or ends with the entire
-  /// buffered value retires it. The suffix case is a reconnect outside the
+  /// only a same-ID streaming part (see [_streamedText]) that starts or ends
+  /// with the entire buffered value retires it. The suffix case is a reconnect outside the
   /// replay window, where the accumulator holds only the tail of a part and
   /// the snapshot is the sole source of its prefix. An absent, shorter or
   /// divergent part keeps the buffer, which still holds live content the
@@ -1856,9 +1856,11 @@ class SessionDetailCubit(
   }
 
   /// The content a streaming delta accumulates for [part], or null for part
-  /// kinds that never stream text.
+  /// kinds that never stream text. A compaction streams its summary only while
+  /// it runs; a settled one's buffer goes with its part update.
   static String? _streamedText(MessagePart part) => switch (part) {
     MessagePartText(:final text) || MessagePartReasoning(:final text) => text,
+    MessagePartCompaction(state: CompactionStateRunning(:final summary)) => summary ?? "",
     MessagePartTool() ||
     MessagePartSubtask() ||
     MessagePartStepStart() ||

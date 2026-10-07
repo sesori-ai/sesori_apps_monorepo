@@ -2182,7 +2182,8 @@ const _streamedPartId = "stream-part";
 /// Text and reasoning parts stream through the same buffer; each case runs for both.
 enum _StreamedPartKind() {
   text,
-  reasoning;
+  reasoning,
+  runningCompaction;
 
   MessagePart part({required String content}) => switch (this) {
     _StreamedPartKind.text => MessagePart.text(
@@ -2196,6 +2197,12 @@ enum _StreamedPartKind() {
       sessionID: _sessionId,
       messageID: _streamedMessageId,
       text: content,
+    ),
+    _StreamedPartKind.runningCompaction => MessagePart.compaction(
+      id: _streamedPartId,
+      sessionID: _sessionId,
+      messageID: _streamedMessageId,
+      state: CompactionState.running(summary: content),
     ),
   };
 

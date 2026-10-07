@@ -153,6 +153,40 @@ void main() {
       );
     });
 
+    test("gives way to a running compaction's own row, and returns once it settles", () {
+      final prompt = _prompt(id: "u1", at: 1000);
+      MessageWithParts compaction({required CompactionState state}) => _agent(
+        id: "a1",
+        parts: [MessagePart.compaction(id: "c", sessionID: "s", messageID: "a1", state: state)],
+      );
+
+      expect(
+        _activity(
+          messages: [
+            prompt,
+            compaction(state: const CompactionState.running(summary: null)),
+          ],
+          isBusy: true,
+        ),
+        isA<TranscriptActivityIdle>(),
+      );
+      for (final settled in [
+        const CompactionState.completed(summary: null, freedTokens: null, trigger: null),
+        const CompactionState.failed(error: null),
+      ]) {
+        expect(
+          _activity(
+            messages: [
+              prompt,
+              compaction(state: settled),
+            ],
+            isBusy: true,
+          ),
+          isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 1000),
+        );
+      }
+    });
+
     group("sub-agents", () {
       final prompt = _prompt(id: "u1", at: 1000);
       final spawned = _agent(
@@ -217,6 +251,22 @@ void main() {
         );
         expect(
           _activity(messages: [prompt, spawned, ownStep], isBusy: true, children: children, childStatuses: bothRunning),
+          isA<TranscriptActivityIdle>(),
+        );
+        const compaction = MessagePart.compaction(
+          id: "c",
+          sessionID: "s",
+          messageID: "a2",
+          state: CompactionState.running(summary: null),
+        );
+        final compacting = _agent(id: "a2", parts: [compaction]);
+        expect(
+          _activity(
+            messages: [prompt, spawned, compacting],
+            isBusy: true,
+            children: children,
+            childStatuses: bothRunning,
+          ),
           isA<TranscriptActivityIdle>(),
         );
         expect(

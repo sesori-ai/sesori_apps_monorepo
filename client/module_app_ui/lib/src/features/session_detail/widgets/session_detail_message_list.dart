@@ -1120,6 +1120,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     if (!message.hasRenderableUserContent) {
       return const SizedBox.shrink();
     }
+    final createdAtMs = message.info.time?.created;
     final card = switch (message.info) {
       // The launch bubble's echo keeps easing like the bubble it replaced.
       MessageUser() when entryId == _launchSlotRowId => _animatedPromptRow(child: _userMessage(message: message)),
@@ -1128,16 +1129,18 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         projectId: widget.projectId,
         blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
+        createdAtMs: createdAtMs,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
       MessageAssistant(:final id) => SystemMessageCard(
         projectId: widget.projectId,
         blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
+        createdAtMs: createdAtMs,
       ),
       final MessageError messageError => ErrorMessageCard(message: messageError),
     };
-    return _revealable(createdAtMs: message.info.time?.created, child: card);
+    return _revealable(createdAtMs: createdAtMs, child: card);
   }
 
   /// A user message's bubble, registered where it is so its pin can stand in

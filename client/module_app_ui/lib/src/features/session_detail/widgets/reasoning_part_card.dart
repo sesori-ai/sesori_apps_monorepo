@@ -1,5 +1,3 @@
-import "dart:math";
-
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -7,6 +5,7 @@ import "../../../extensions/build_context_x.dart";
 import "../../../utils/markdown_plain_text.dart";
 import "../session_detail_presentation_scope.dart";
 import "reasoning_modal.dart";
+import "transcript_latest_words.dart";
 import "transcript_live_row.dart";
 import "transcript_motion.dart";
 
@@ -19,23 +18,6 @@ class const ReasoningPartCard({
 }) extends StatefulWidget {
   @override
   State<ReasoningPartCard> createState() => _ReasoningPartCardState();
-
-  /// How much of the end of a streaming thought the live row considers; more
-  /// than one line holds, so the row stays full, without laying out the whole
-  /// accumulated document on every flush.
-  static const int _kLatestWordsChars = 160;
-
-  /// The latest words of a streaming thought, on one line.
-  @visibleForTesting
-  static String latestWords({required String text}) {
-    var start = max(0, text.length - _kLatestWordsChars);
-    // Never start on the low half of a UTF-16 surrogate pair (emoji etc.):
-    // an orphaned low surrogate renders as a replacement character.
-    if (start > 0 && _isLowSurrogate(text.codeUnitAt(start))) start++;
-    return text.substring(start).replaceAll(RegExp(r"\s+"), " ").trim();
-  }
-
-  static bool _isLowSurrogate(int codeUnit) => (codeUnit & 0xFC00) == 0xDC00;
 }
 
 class _ReasoningPartCardState() extends State<ReasoningPartCard> {
@@ -92,9 +74,9 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
                 below: TranscriptPresenceColumn(
                   children: [
                     if (widget.isStreaming && widget.text.isNotEmpty)
-                      _LatestWords(
+                      TranscriptLatestWords(
                         key: const ValueKey("reasoning.latestWords"),
-                        text: ReasoningPartCard.latestWords(text: widget.text),
+                        text: widget.text,
                         style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
                       ),
                   ],
@@ -138,30 +120,5 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
     // nothing to contribute to it.
     final plain = markdownPlainText(markdown: firstLine, nameImage: null);
     return plain.isEmpty ? firstLine.trim() : plain;
-  }
-}
-
-/// One line holding the end of [text]: the newest words stay in view and the
-/// older start fades out at the leading edge.
-class const _LatestWords({super.key, required final String text, required final TextStyle style})
-    extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final direction = Directionality.of(context);
-    return ShaderMask(
-      shaderCallback: (bounds) => const LinearGradient(
-        begin: AlignmentDirectional.centerStart,
-        end: AlignmentDirectional.centerEnd,
-        colors: [Colors.transparent, Colors.white],
-        stops: [0.0, 0.15],
-      ).createShader(bounds, textDirection: direction),
-      blendMode: BlendMode.dstIn,
-      child: UnconstrainedBox(
-        constrainedAxis: Axis.vertical,
-        alignment: AlignmentDirectional.centerEnd,
-        clipBehavior: Clip.hardEdge,
-        child: Text(text, maxLines: 1, softWrap: false, style: style),
-      ),
-    );
   }
 }

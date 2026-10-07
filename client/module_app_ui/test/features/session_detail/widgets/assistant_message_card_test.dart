@@ -83,6 +83,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
                   )
                   .blocksFor(messageId: widget.message.info.id),
               streamingText: _streamingText,
+              createdAtMs: widget.message.info.time?.created,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             ),
           ),
