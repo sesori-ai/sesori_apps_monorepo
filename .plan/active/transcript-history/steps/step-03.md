@@ -36,8 +36,13 @@ responses.
   a real relay socket and encryption, an asking request's decrypted plaintext
   starts with the marker and inflates to its `RelayResponse`; a non-asking
   request's starts with `{` as today.
-- `dart test` on those files plus `test/bridge/routing` passed;
-  `dart analyze --fatal-infos` is clean for `sesori_shared` and `bridge/app`.
+- Measured on code commit `fe0f1d6054` with Dart 3.13.4 from Flutter
+  3.47.5-stable; this evidence commit changes no code. Every check passed:
+  - in `shared/sesori_shared/`: `dart test test/protocol` and
+    `dart analyze --fatal-infos`;
+  - in `bridge/app/`: `dart test test/foundation/relay_plaintext_codec_test.dart
+    test/bridge/orchestrator_request_concurrency_test.dart test/bridge/routing`
+    and `dart analyze --fatal-infos`.
 - `architecture-implementation-review` (sub-agent, first pass): approved, no
   findings.
 - The relay compatibility pairings are checked in step 4, once the app can
