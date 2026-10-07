@@ -185,6 +185,7 @@ class ChatHistoryService({
         sessionId: sessionId,
         window: window,
         attachmentProjection: attachmentProjection,
+        toolOutputDelivery: toolOutputDelivery,
       );
       return (
         messages: stored.messages,
