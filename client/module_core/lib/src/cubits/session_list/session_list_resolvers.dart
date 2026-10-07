@@ -19,4 +19,10 @@ extension SessionListResolvers on SessionListLoaded {
   /// [SessionListLoaded.unseenBySessionId] tracking when present, else what
   /// the session payload itself said.
   bool isSessionUnseen({required Session session}) => unseenBySessionId[session.id] ?? session.unseen;
+
+  /// Whether a just-created [session] sits at the head of Today: running
+  /// sessions lead it, so while another one runs only a running session does.
+  bool newSessionLeadsToday({required Session session}) =>
+      isSessionRunning(session: session) ||
+      !sessions.any((other) => other.id != session.id && isSessionRunning(session: other));
 }

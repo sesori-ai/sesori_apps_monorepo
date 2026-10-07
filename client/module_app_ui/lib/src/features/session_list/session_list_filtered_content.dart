@@ -91,11 +91,7 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
       sessionIds: launches.sessionIds,
       sessions: state.sessions,
       sessionsChanged: sessionsChanged,
-      // The head of Today: running sessions lead, newest first, and with
-      // nothing running the newest session does.
-      isInSlot: ({required session}) =>
-          state.isSessionRunning(session: session) ||
-          !state.sessions.any((other) => other.id != session.id && state.isSessionRunning(session: other)),
+      isInSlot: state.newSessionLeadsToday,
     );
   }
 
