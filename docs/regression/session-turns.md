@@ -647,10 +647,11 @@ defaults and queued client sends coherent.
   only the current popup route. It never turns Escape into ordinary page Back,
   and a closer surface-specific handler such as the image viewer wins.
 - Transcript content scrolling behind the top navigation dissolves into a strong
-  surface-colour fade. Behind the floating composer controls, each control (pills,
-  tasks bar, composer, notices) carries a page-coloured halo painted in one shared
+  surface-colour fade. Behind the floating composer controls, each control (tasks
+  bar, composer, notices) carries a page-coloured halo painted in one shared
   layer beneath them all, so neighbouring halos merge, no halo covers another
-  control, and the composer's halo runs on to the window bottom. Titles and
+  control, and the composer's halo runs on to the window bottom. The pill row
+  shares one halo as wide as the composer, so no words show between pills. Titles and
   controls stay visually separate and screenshot-readable without text collisions.
 - When the software keyboard opens, interactive content resizes above it while
   the page surface remains painted underneath it. Rounded or translucent iOS
