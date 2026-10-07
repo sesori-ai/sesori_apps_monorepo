@@ -26,7 +26,12 @@ behavior, wire or database change.
   the existing sweep tests pass unchanged. One test was added: a finalized
   running tool keeps its stored image attachment. With the attachment restore
   disabled, that test fails.
-- `dart test` in `bridge/app`: 3,079 passed. `dart analyze --fatal-infos`:
-  no issues. Toolchain: Flutter 3.47.5-stable.
-- `architecture-implementation-review` on the branch against `main`:
-  approved, no findings.
+- Checks, with Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`:
+  - on code commit `a884ede423`, cwd `bridge/app`: `dart test` passed all
+    3,079 tests, and `dart analyze --fatal-infos` reported no issues;
+  - on merge commit `7668238474` (main merged in, no code change of this
+    step), cwd `bridge/app`: `dart test test/bridge/services/` passed all
+    477 tests, and `dart analyze --fatal-infos` reported no issues.
+- `architecture-implementation-review` of `git diff origin/main...HEAD` at
+  `7668238474`, run from the repository root: approved, no findings.
+- This evidence commit changes no code.
