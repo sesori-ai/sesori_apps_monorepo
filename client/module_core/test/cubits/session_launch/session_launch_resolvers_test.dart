@@ -20,15 +20,11 @@ void main() {
     required List<LaunchingSession> launching,
     required Map<String, String> sessionIds,
     required List<Session> sessions,
-    required bool sessionsChanged,
-    bool inSlot = true,
   }) => resolveHeldLaunchSessions(
     previous: previous,
     launching: launching,
     sessionIds: sessionIds,
     sessions: sessions,
-    sessionsChanged: sessionsChanged,
-    isInSlot: ({required session}) => inSlot,
   );
 
   test("a list opened mid-launch shows every session it finds, under the launching row", () {
@@ -37,7 +33,6 @@ void main() {
       launching: [launch],
       sessionIds: const {},
       sessions: [existing],
-      sessionsChanged: true,
     );
 
     expect(rows.placeholders, [launch]);
@@ -50,14 +45,12 @@ void main() {
       launching: [launch],
       sessionIds: const {},
       sessions: [existing],
-      sessionsChanged: true,
     );
     final arrivedEarly = resolve(
       previous: opened,
       launching: [launch],
       sessionIds: const {},
       sessions: [created, existing],
-      sessionsChanged: true,
     );
     expect(arrivedEarly.placeholders, [launch]);
     expect(arrivedEarly.heldSessionIds, {"created"}, reason: "opening it now would find no handoff (#1822)");
@@ -67,7 +60,6 @@ void main() {
       launching: const [],
       sessionIds: const {"launch-1": "created"},
       sessions: [created, existing],
-      sessionsChanged: false,
     );
     expect(promoted.placeholders, isEmpty);
     expect(promoted.heldSessionIds, isEmpty);
@@ -80,7 +72,6 @@ void main() {
       launching: [launch],
       sessionIds: const {},
       sessions: [existing],
-      sessionsChanged: true,
     );
     final elsewhere = resolve(
       previous: opened,
@@ -90,7 +81,6 @@ void main() {
         testSession(id: "other").copyWith(projectID: "project-2"),
         existing,
       ],
-      sessionsChanged: true,
     );
 
     expect(elsewhere.heldSessionIds, isEmpty);
@@ -102,14 +92,12 @@ void main() {
       launching: [launch],
       sessionIds: const {},
       sessions: [existing],
-      sessionsChanged: true,
     );
     final promoted = resolve(
       previous: opened,
       launching: const [],
       sessionIds: const {"launch-1": "created"},
       sessions: [existing],
-      sessionsChanged: false,
     );
     expect(promoted.placeholders, [launch]);
     expect(promoted.heldSessionIds, {"created"});
@@ -120,7 +108,6 @@ void main() {
       launching: const [],
       sessionIds: const {},
       sessions: [created, existing],
-      sessionsChanged: true,
     );
     expect(landed.placeholders, isEmpty);
     expect(landed.heldSessionIds, isEmpty);
@@ -134,37 +121,87 @@ void main() {
         launching: [launch],
         sessionIds: const {},
         sessions: [existing],
-        sessionsChanged: true,
       ),
       launching: const [],
       sessionIds: const {"launch-1": "created"},
-      sessions: [created, existing],
-      sessionsChanged: false,
-      inSlot: false,
+      sessions: [existing, created],
     );
     expect(promoted.placeholders, [launch]);
+    expect(promoted.heldSessionIds, {"created"});
 
-    final launchUpdate = resolve(
+    // An activity or progress emission rebuilds the list with the same sessions.
+    final statusUpdate = resolve(
       previous: promoted,
       launching: const [],
       sessionIds: const {},
-      sessions: [created, existing],
-      sessionsChanged: false,
-      inSlot: false,
+      sessions: [existing, created],
     );
-    expect(launchUpdate.placeholders, [launch], reason: "only a sessions update moves it");
+    expect(statusUpdate.placeholders, [launch], reason: "only a sessions update moves it");
 
     final released = resolve(
-      previous: launchUpdate,
+      previous: statusUpdate,
       launching: const [],
       sessionIds: const {},
-      sessions: [created, existing],
-      sessionsChanged: true,
-      inSlot: false,
+      sessions: [
+        existing,
+        created,
+        testSession(id: "other"),
+      ],
     );
     expect(released.placeholders, isEmpty);
     expect(released.heldSessionIds, isEmpty);
     expect(released.rowKeys, isEmpty, reason: "it moves as an ordinary change");
+  });
+
+  test("launches whose sessions land together each take their own row's place", () {
+    final newer = LaunchingSession(
+      launchId: "launch-2",
+      projectId: "project-1",
+      pluginId: "claude",
+      startedAt: DateTime.utc(2026, 10, 7, 12, 1),
+      title: "Add tests",
+    );
+    final createdNewer = testSession(id: "created-2");
+    final opened = resolve(
+      previous: LaunchRows.none,
+      launching: [newer, launch],
+      sessionIds: const {},
+      sessions: [existing],
+    );
+    expect(opened.placeholders, [newer, launch]);
+
+    final landed = resolve(
+      previous: opened,
+      launching: const [],
+      sessionIds: const {"launch-1": "created", "launch-2": "created-2"},
+      sessions: [createdNewer, created, existing],
+    );
+    expect(landed.placeholders, isEmpty);
+    expect(landed.heldSessionIds, isEmpty);
+    expect(landed.rowKeys, {"created-2": "launch-2", "created": "launch-1"});
+  });
+
+  test("a session lands in place under a newer launch that is still waiting", () {
+    final newer = LaunchingSession(
+      launchId: "launch-2",
+      projectId: "project-1",
+      pluginId: "claude",
+      startedAt: DateTime.utc(2026, 10, 7, 12, 1),
+      title: "Add tests",
+    );
+    final landed = resolve(
+      previous: resolve(
+        previous: LaunchRows.none,
+        launching: [newer, launch],
+        sessionIds: const {},
+        sessions: [existing],
+      ),
+      launching: [newer],
+      sessionIds: const {"launch-1": "created"},
+      sessions: [created, existing],
+    );
+    expect(landed.placeholders, [newer]);
+    expect(landed.rowKeys, {"created": "launch-1"});
   });
 
   test("a launch that failed drops its row", () {
@@ -174,12 +211,10 @@ void main() {
         launching: [launch],
         sessionIds: const {},
         sessions: [existing],
-        sessionsChanged: true,
       ),
       launching: const [],
       sessionIds: const {},
       sessions: [existing],
-      sessionsChanged: false,
     );
 
     expect(failed.placeholders, isEmpty);

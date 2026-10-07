@@ -338,10 +338,12 @@ state.
   session row (instantly under reduced motion) without moving the rows below,
   and the launch never shows two rows: while its project has a launch still
   waiting, a session that arrives after the list first loaded stays out of it,
-  so it can never be opened before its launch resolves. Sessions in the list's
-  first load always show, under the launching row. If the session does not
-  land at the head of Today, it moves there on the next list update as an
-  ordinary change. A failed launch's row leaves the list.
+  so it can never be opened before its launch resolves, even when Archived was
+  shown meanwhile. Sessions in the list's first load always show, under the
+  launching row. Launches whose sessions land together each take their own
+  row's place. If a session does not land in its row's place, it moves where
+  it belongs on the next change to the list's sessions as an ordinary change;
+  activity and progress updates do not count. A failed launch's row leaves the list.
 - On the phone, a search field tops Projects and each session list once they
   have anything to search. It narrows the loaded titles without a request,
   ignoring case and needing every typed word: project names and Activity's

@@ -1541,12 +1541,24 @@
   "newSessionLoadingMessage3": "Almost ready…",
   "newSessionCreationDuplicateWarning": "Sesori couldn't confirm whether a session was created. It may still appear in the session list, and sending again may create a duplicate.",
   "newSessionLaunchingInBackground": "Your new session will appear in the list once it's launched",
-  "newSessionFailedAfterLeaving": "Couldn't create your new session in {project}",
+  "newSessionFailedAfterLeaving": "{count, plural, =1{Couldn't create your new session in {projects}} other{Couldn't create {count} new sessions in {projects}}}",
   "@newSessionFailedAfterLeaving": {
-    "description": "Alert title when creating a new session fails after the user left its composer; its launching row is gone from the lists.",
+    "description": "Alert title when creating new sessions fails after the user left their composers; their launching rows are gone from the lists. projects lists the projects' names.",
     "placeholders": {
-      "project": {
+      "count": {
+        "type": "int"
+      },
+      "projects": {
         "type": "String"
+      }
+    }
+  },
+  "newSessionFailedAfterLeavingUnnamed": "{count, plural, =1{Couldn't create your new session} other{Couldn't create {count} new sessions}}",
+  "@newSessionFailedAfterLeavingUnnamed": {
+    "description": "Alert title when creating new sessions fails after the user left their composers and a project's name is unknown.",
+    "placeholders": {
+      "count": {
+        "type": "int"
       }
     }
   },

@@ -46,6 +46,24 @@ void main() {
     },
   );
 
+  test("a launch created after its composer left names its session before it goes", () async {
+    final states = <SessionLaunchState>[];
+    final subscription = cubit.stream.listen(states.add);
+    addTearDown(subscription.cancel);
+
+    start(launchId: "launch-1", text: "Left", minute: 0);
+    repository.releaseHandoff(launchId: "launch-1");
+    repository.promote(
+      launchId: "launch-1",
+      session: testSession(id: "session-1"),
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(states.map((state) => state.sessionIds), contains(equals({"launch-1": "session-1"})));
+    expect(cubit.state.launching, isEmpty);
+    expect(cubit.state.sessionIds, isEmpty);
+  });
+
   test("only a failure after the composer left reaches the failure alerts", () async {
     final failures = <SessionLaunchFailedAfterLeaving>[];
     final subscription = cubit.failuresAfterLeaving.listen(failures.add);

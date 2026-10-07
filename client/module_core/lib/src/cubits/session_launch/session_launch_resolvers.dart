@@ -1,3 +1,4 @@
+import "package:collection/collection.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../foundation/models/session_launch/session_launch.dart";
@@ -40,6 +41,11 @@ final class const LaunchRows({
   /// first, so a surface opened mid-launch shows every session it finds.
   required final Set<String>? shownSessionIds,
 
+  /// Every session the surface had on its last update, in list order; null
+  /// before its first. Only a change here counts as a sessions update, so
+  /// activity and progress emissions never settle a launching row.
+  required final List<String>? listedSessionIds,
+
   /// The sessions the surface leaves out of this update.
   required final Set<String> heldSessionIds,
 }) {
@@ -48,6 +54,7 @@ final class const LaunchRows({
     named: {},
     rowKeys: {},
     shownSessionIds: null,
+    listedSessionIds: null,
     heldSessionIds: {},
   );
 }
@@ -55,50 +62,65 @@ final class const LaunchRows({
 /// Decides which [sessions] a surface leaves out while launches settle, and
 /// which launching rows it keeps drawing.
 ///
-/// A launching row stays until its session is in the row's slot
-/// ([isInSlot]); its session is held meanwhile, so one launch never shows two
-/// rows. If the update after the one that brought the session in still does
-/// not place it there, the session goes where it belongs as an ordinary
-/// change. While a project has a launch still waiting, a session that
-/// surface has not shown before is held too: it may be that launch's session,
-/// arriving before the reply that names it (D12).
+/// The launching rows lead the list, so a session takes its row's place
+/// without moving anything only when the rows below the ones still waiting
+/// all have their sessions, at the list's head, in the rows' order. Those
+/// settle together; any other launch's session is held, so one launch never
+/// shows two rows. If the sessions update after the one that brought a
+/// session in still does not place it, it goes where it belongs as an
+/// ordinary change. While a project has a launch still waiting, a session
+/// the surface has not shown before is held too: it may be that launch's
+/// session, arriving before the reply that names it (D12).
 ///
 /// [launching] holds only the launches this surface draws rows for, and
-/// [sessionsChanged] says whether this update brings new [sessions].
+/// [sessions] is the surface's list in order.
 LaunchRows resolveHeldLaunchSessions({
   required LaunchRows previous,
   required List<LaunchingSession> launching,
   required Map<String, String> sessionIds,
   required List<Session> sessions,
-  required bool sessionsChanged,
-  required bool Function({required Session session}) isInSlot,
 }) {
-  final present = {for (final session in sessions) session.id: session};
+  final listed = [for (final session in sessions) session.id];
+  final present = listed.toSet();
+  final sessionsChanged = !const ListEquality<String>().equals(previous.listedSessionIds, listed);
   final waiting = {for (final launch in launching) launch.launchId};
-  final placeholders = [...launching];
-  final named = <String, ({String sessionId, bool arrived})>{};
   final rowKeys = {
     for (final MapEntry(key: sessionId, value: launchId) in previous.rowKeys.entries)
-      if (present.containsKey(sessionId)) sessionId: launchId,
+      if (present.contains(sessionId)) sessionId: launchId,
   };
-  final held = <String>{};
 
+  // Each drawn launch that has its session, by launchId. No session means
+  // the creation failed, and the row goes.
+  final resolved = <String, ({String sessionId, bool arrived})>{};
+  final rows = [...launching];
   for (final placeholder in previous.placeholders) {
     if (waiting.contains(placeholder.launchId)) continue;
     final latched = previous.named[placeholder.launchId];
-    // No session means the creation failed, and the row goes.
     final sessionId = latched?.sessionId ?? sessionIds[placeholder.launchId];
     if (sessionId == null) continue;
-    final session = present[sessionId];
-    final arrived = latched?.arrived ?? false;
-    if (session != null && isInSlot(session: session)) {
-      rowKeys[sessionId] = placeholder.launchId;
-      continue;
+    resolved[placeholder.launchId] = (sessionId: sessionId, arrived: latched?.arrived ?? false);
+    rows.add(placeholder);
+  }
+  rows.sort((a, b) => _newestFirst(a: a, b: b));
+
+  final kept = rows.length - _inPlaceCount(rows: rows, resolved: resolved, listed: listed);
+  final placeholders = <LaunchingSession>[];
+  final named = <String, ({String sessionId, bool arrived})>{};
+  final held = <String>{};
+  for (final (index, row) in rows.indexed) {
+    final launch = resolved[row.launchId];
+    if (launch == null) {
+      placeholders.add(row);
+    } else if (index >= kept) {
+      rowKeys[launch.sessionId] = row.launchId;
+    } else if (!(present.contains(launch.sessionId) && launch.arrived && sessionsChanged)) {
+      placeholders.add(row);
+      named[row.launchId] = (
+        sessionId: launch.sessionId,
+        arrived: launch.arrived || present.contains(launch.sessionId),
+      );
+      held.add(launch.sessionId);
     }
-    if (session != null && arrived && sessionsChanged) continue;
-    placeholders.add(placeholder);
-    named[placeholder.launchId] = (sessionId: sessionId, arrived: arrived || session != null);
-    held.add(sessionId);
   }
 
   final shown = previous.shownSessionIds;
@@ -112,15 +134,34 @@ LaunchRows resolveHeldLaunchSessions({
   }
 
   return LaunchRows(
-    placeholders: placeholders..sort((a, b) => _newestFirst(a: a, b: b)),
+    placeholders: placeholders,
     named: named,
     rowKeys: rowKeys,
     shownSessionIds: {
-      for (final id in present.keys)
+      for (final id in listed)
         if (!held.contains(id)) id,
     },
+    listedSessionIds: listed,
     heldSessionIds: held,
   );
+}
+
+/// How many of the last [rows] can give way to their sessions in place: the
+/// longest tail whose sessions open [listed] in the rows' order.
+int _inPlaceCount({
+  required List<LaunchingSession> rows,
+  required Map<String, ({String sessionId, bool arrived})> resolved,
+  required List<String> listed,
+}) {
+  for (var count = rows.length; count > 0; count--) {
+    final tail = rows.sublist(rows.length - count);
+    var matches = true;
+    for (var index = 0; index < count && matches; index++) {
+      matches = resolved[tail[index].launchId]?.sessionId == listed.elementAtOrNull(index);
+    }
+    if (matches) return count;
+  }
+  return 0;
 }
 
 int _newestFirst({required LaunchingSession a, required LaunchingSession b}) {

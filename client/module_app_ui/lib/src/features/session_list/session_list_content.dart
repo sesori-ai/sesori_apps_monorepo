@@ -242,7 +242,7 @@ class const SessionListContent({
               }
             },
           ),
-          if (loaded.sessions.isEmpty && launches.isEmpty)
+          if (loaded.sessions.isEmpty && launchRows.placeholders.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
               child: (loaded.filter != SessionListFilter.active)

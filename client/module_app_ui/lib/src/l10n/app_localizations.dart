@@ -4333,11 +4333,17 @@ abstract class AppLocalizations {
   /// **'Your new session will appear in the list once it\'s launched'**
   String get newSessionLaunchingInBackground;
 
-  /// Alert title when creating a new session fails after the user left its composer; its launching row is gone from the lists.
+  /// Alert title when creating new sessions fails after the user left their composers; their launching rows are gone from the lists. projects lists the projects' names.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t create your new session in {project}'**
-  String newSessionFailedAfterLeaving(String project);
+  /// **'{count, plural, =1{Couldn\'t create your new session in {projects}} other{Couldn\'t create {count} new sessions in {projects}}}'**
+  String newSessionFailedAfterLeaving(int count, String projects);
+
+  /// Alert title when creating new sessions fails after the user left their composers and a project's name is unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Couldn\'t create your new session} other{Couldn\'t create {count} new sessions}}'**
+  String newSessionFailedAfterLeavingUnnamed(int count);
 
   /// No description provided for @commandSourceCommand.
   ///

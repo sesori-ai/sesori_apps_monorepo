@@ -372,9 +372,11 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
       PendingSessionLaunch() || ReleasedPendingSessionLaunch() || CreatedSessionLaunch() => true,
       ReconcilingSessionLaunch(:final followUps) => followUps.isNotEmpty,
     };
-    if (owesSomething) {
-      _storage.write(launch: launch);
-    } else {
+    _storage.write(launch: launch);
+    if (!owesSomething) {
+      // Lists take the session a launch became from a snapshot, so the last
+      // one it appears in names it before it goes.
+      _publishLaunches();
       _storage.clear(launchId: launch.launchId);
     }
     _publishLaunches();

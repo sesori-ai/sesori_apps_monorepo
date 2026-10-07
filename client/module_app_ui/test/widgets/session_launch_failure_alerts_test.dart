@@ -33,39 +33,66 @@ void main() {
     );
   }
 
-  void startAndFail({required bool leftComposer}) {
+  void startAndFail({
+    required bool leftComposer,
+    required String launchId,
+    required String? projectName,
+  }) {
     launches.start(
-      launchId: "launch-1",
-      projectId: "/work/sesori",
+      launchId: launchId,
+      projectId: "/work/$launchId",
       pluginId: "claude",
       startedAt: DateTime.now(),
-      projectName: "Sesori",
+      projectName: projectName,
       submission: NewSessionSubmissionSnapshot.text(
         draft: ComposerDraft.typed(text: "Fix the bug"),
         attachments: const [],
       ),
     );
-    if (leftComposer) launches.releaseHandoff(launchId: "launch-1");
-    launches.fail(launchId: "launch-1", reason: RemoteFailureReason.serverRejected);
+    if (leftComposer) launches.releaseHandoff(launchId: launchId);
+    launches.fail(launchId: launchId, reason: RemoteFailureReason.serverRejected);
+  }
+
+  Future<void> showAlerts(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 500));
   }
 
   testWidgets("a creation that fails after the composer left names its project once", (tester) async {
     await pumpAlerts(tester);
 
-    startAndFail(leftComposer: true);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    startAndFail(leftComposer: true, launchId: "launch-1", projectName: "Sesori");
+    await showAlerts(tester);
 
     expect(find.text("Couldn't create your new session in Sesori"), findsOneWidget);
+  });
+
+  testWidgets("creations that fail together share one alert instead of replacing each other", (tester) async {
+    await pumpAlerts(tester);
+
+    startAndFail(leftComposer: true, launchId: "launch-1", projectName: "Sesori");
+    startAndFail(leftComposer: true, launchId: "launch-2", projectName: "Relay");
+    await showAlerts(tester);
+
+    expect(find.text("Couldn't create 2 new sessions in Sesori, Relay"), findsOneWidget);
+  });
+
+  testWidgets("a failure in a project without a loaded name names no folder", (tester) async {
+    await pumpAlerts(tester);
+
+    startAndFail(leftComposer: true, launchId: "launch-1", projectName: null);
+    await showAlerts(tester);
+
+    expect(find.text("Couldn't create your new session"), findsOneWidget);
   });
 
   testWidgets("a creation that fails while its composer is open shows no alert", (tester) async {
     await pumpAlerts(tester);
 
-    startAndFail(leftComposer: false);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    startAndFail(leftComposer: false, launchId: "launch-1", projectName: "Sesori");
+    await showAlerts(tester);
 
-    expect(find.textContaining("Couldn't create your new session"), findsNothing);
+    expect(find.textContaining("Couldn't create"), findsNothing);
   });
 }

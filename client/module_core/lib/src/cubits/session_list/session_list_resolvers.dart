@@ -19,8 +19,4 @@ extension SessionListResolvers on SessionListLoaded {
   /// [SessionListLoaded.unseenBySessionId] tracking when present, else what
   /// the session payload itself said.
   bool isSessionUnseen({required Session session}) => unseenBySessionId[session.id] ?? session.unseen;
-
-  /// Whether [session] is the list's first row, the head of Today where a
-  /// launching row stands. The service owns the order, so this reads it.
-  bool leadsList({required Session session}) => sessions.firstOrNull?.id == session.id;
 }

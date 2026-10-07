@@ -166,8 +166,9 @@ void main() {
     await settle(tester);
     expect(launchRow, findsOneWidget, reason: "the session is not at the head of Today yet");
 
+    // The cubit rebuilds the list for activity and progress emissions.
     sessionStates.add(
-      SessionListState.loaded(sessions: outOfSlot, baseBranch: null, repoSlug: null, isRefreshing: true),
+      SessionListState.loaded(sessions: [...outOfSlot], baseBranch: null, repoSlug: null, isRefreshing: true),
     );
     await settle(tester);
     expect(launchRow, findsOneWidget, reason: "a status update keeps the same sessions");
@@ -176,6 +177,22 @@ void main() {
     await settle(tester);
     expect(launchRow, findsNothing);
     expect(find.text("Fix the bug"), findsOneWidget);
+  });
+
+  testWidgets("a session that arrives while Archived shows is still held on the way back", (tester) async {
+    await pumpList(tester, sessions: [earlier]);
+    await startLaunch(tester);
+
+    sessionStates.add(
+      const SessionListState.loaded(sessions: [], baseBranch: null, repoSlug: null, filter: SessionListFilter.archived),
+    );
+    await settle(tester);
+    expect(launchRow, findsNothing, reason: "Archived draws no launching rows");
+
+    sessionStates.add(loaded(sessions: [created, earlier]));
+    await settle(tester);
+    expect(launchRow, findsOneWidget);
+    expect(find.text("Fix the bug"), findsOneWidget, reason: "only the launching row, not its session too (#1822)");
   });
 
   testWidgets("with reduced motion the launching row becomes its session at once", (tester) async {
@@ -190,28 +207,34 @@ void main() {
     expect(find.text("Fix the bug"), findsOneWidget);
   });
 
-  testWidgets("a project's first launch shows its row instead of the empty state; search and chips hide it", (
-    tester,
-  ) async {
-    await pumpList(tester, sessions: const []);
-    expect(find.byType(SessionEmptyState), findsOneWidget);
+  testWidgets(
+    "a project's first launch shows its row instead of the empty state; search and chips hide it as no match",
+    (
+      tester,
+    ) async {
+      await pumpList(tester, sessions: const []);
+      expect(find.byType(SessionEmptyState), findsOneWidget);
 
-    await startLaunch(tester);
-    expect(launchRow, findsOneWidget);
-    expect(find.byType(SessionEmptyState), findsNothing);
-    expect(find.text("All · 0"), findsOneWidget, reason: "the chips are in place for the session it becomes");
+      await startLaunch(tester);
+      expect(launchRow, findsOneWidget);
+      expect(find.byType(SessionEmptyState), findsNothing);
+      expect(find.text("All · 0"), findsOneWidget, reason: "the chips are in place for the session it becomes");
 
-    await tester.tap(find.byKey(const Key("session-list-filter-running")));
-    await settle(tester);
-    expect(launchRow, findsNothing);
+      await tester.tap(find.byKey(const Key("session-list-filter-running")));
+      await settle(tester);
+      expect(launchRow, findsNothing);
+      expect(find.text("No sessions match this filter"), findsOneWidget);
+      expect(find.byType(SessionEmptyState), findsNothing);
 
-    await tester.tap(find.byKey(const Key("session-list-filter-all")));
-    await settle(tester);
-    await tester.enterText(find.byType(TextField), "parser");
-    await settle(tester);
-    expect(launchRow, findsNothing);
-    expect(find.byType(SessionEmptyState), findsOneWidget);
-  });
+      await tester.tap(find.byKey(const Key("session-list-filter-all")));
+      await settle(tester);
+      await tester.enterText(find.byType(TextField), "parser");
+      await settle(tester);
+      expect(launchRow, findsNothing);
+      expect(find.text("No matches"), findsOneWidget);
+      expect(find.byType(SessionEmptyState), findsNothing);
+    },
+  );
 
   testWidgets("tapping a launching row explains it is not ready and opens nothing", (tester) async {
     await pumpList(tester, sessions: [earlier]);
