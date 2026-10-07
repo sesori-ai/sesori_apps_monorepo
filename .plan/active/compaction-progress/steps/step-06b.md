@@ -76,7 +76,8 @@ state.
 ## Evidence
 
 Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`, measured on commit
-`5a0322e093` (the last code change; later commits touch only this file).
+`5a0322e093`. Wave 2's `16e4ad4e48` only moved `openCodeError`; it was re-checked
+in the plugin with the same results. Later commits touch only this file.
 
 - **cwd `bridge/`:** `dart analyze --fatal-infos` found no issues.
 - **cwd `bridge/sesori_plugin_opencode`:** `dart analyze --fatal-infos` found
@@ -111,6 +112,9 @@ Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`, measured on commit
     - stale text on settle;
     - a summary that never finishes;
     - duplicate re-emission.
+- **PR wave 2:** cubic found nothing. Codex's one finding was applied:
+  `openCodeError` moved to `models/open_code_error.dart`, so
+  `MessagePartMapper` no longer imports its peer `AssistantMessageMapper`.
 
 ## Size
 
