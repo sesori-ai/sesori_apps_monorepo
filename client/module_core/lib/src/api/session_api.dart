@@ -399,6 +399,27 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  /// Every message from [throughSeq] up to, but not including, [before], in
+  /// one response. A bridge that predates the route answers 404.
+  Future<ApiResponse<MessageWithPartsResponse>> getMessagesThrough({
+    required String sessionId,
+    required int throughSeq,
+    required int before,
+    required bool storedOnly,
+  }) {
+    return _client.post(
+      "/session/messages/through",
+      fromJson: MessageWithPartsResponse.fromJson,
+      body: SessionMessagesThroughRequest(
+        sessionId: sessionId,
+        throughSeq: throughSeq,
+        before: before,
+        attachmentDelivery: MessageAttachmentDelivery.storedReference,
+        storedOnly: storedOnly,
+      ),
+    );
+  }
+
   /// Stops a session with the given sub-agent scope. Typed 409 bodies surface
   /// as their exact refusal/rejection; malformed or unknown bodies stay errors.
   Future<ApiResponse<SessionAbortResponse>> abortSession({

@@ -20,6 +20,7 @@ import "package:test/test.dart";
 import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/test_database.dart";
+import "../../helpers/test_drive_roots_api.dart";
 import "routing_test_helpers.dart";
 
 void main() {
@@ -36,6 +37,7 @@ void main() {
       final filesystemRepository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
       );
       final projectRepository = singlePluginProjectRepository(
         gitCliApi: FakeGitCliApi(),
@@ -210,6 +212,7 @@ void main() {
       filesystemRepository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
       );
     });
 

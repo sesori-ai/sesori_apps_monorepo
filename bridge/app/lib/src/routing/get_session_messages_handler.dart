@@ -1,5 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/models/history_window.dart";
 import "../services/chat_history_service.dart";
 import "request_handler.dart";
 
@@ -30,8 +31,10 @@ class GetSessionMessagesHandler({required final ChatHistoryService _chatHistoryS
 
     final page = await _chatHistoryService.getSessionMessages(
       sessionId: sessionId,
-      limit: body.limit,
-      before: body.before,
+      window: switch (body.limit) {
+        null => const HistoryWindowAll(),
+        final limit => HistoryWindowNewest(limit: limit, before: body.before),
+      },
       attachmentDelivery: body.attachmentDelivery,
       storedOnly: body.storedOnly,
     );

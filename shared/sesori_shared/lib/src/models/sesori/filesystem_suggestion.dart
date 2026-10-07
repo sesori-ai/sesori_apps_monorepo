@@ -19,9 +19,10 @@ sealed class FilesystemSuggestions with _$FilesystemSuggestions {
     required List<FilesystemSuggestion> data,
     required String? path,
 
-    /// The host's mounted drive roots, such as `C:\`, which the browser lists
-    /// beside Home. Filled only on a Windows host and only for a request
-    /// without a prefix; empty otherwise.
+    /// The host's drives, which the browser lists beside Home: a Windows
+    /// host's drive roots such as `C:\`, or the writable disks and partitions
+    /// mounted on a macOS or Linux host, such as `/Volumes/Work SSD`. Filled
+    /// only for a request without a prefix; empty otherwise.
     // COMPATIBILITY 2026-09-24 (v1.9.1): a bridge older than this field omits
     // it, and the browser then shows no drives, as before. Make it required
     // once every supported bridge sends it.

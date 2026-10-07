@@ -6,6 +6,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show res
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart" show FilesystemSuggestion, FilesystemSuggestions;
 
+import "../api/drive_roots_api.dart";
 import "../api/filesystem_api.dart";
 import "../foundation/filesystem_permission_validator.dart";
 
@@ -49,6 +50,7 @@ class BoundedTextFileReadFailure() extends BoundedTextFileReadResult;
 class FilesystemRepository({
     required final FilesystemApi _filesystemApi,
     required final FilesystemPermissionValidator _permissionValidator,
+    required final DriveRootsApi _driveRootsApi,
   }) {
   static const _driveProbeTimeout = Duration(seconds: 2);
 
@@ -110,18 +112,23 @@ class FilesystemRepository({
     return resolveUserHomeDirectory(environment: _filesystemApi.environment) ?? _filesystemApi.currentDirectoryPath();
   }
 
-  /// The mounted drive roots of a Windows host, such as `C:\`, in letter
-  /// order; empty on any other host.
+  /// The drives the folder browser lists beside Home: a Windows host's mounted
+  /// drive roots, such as `C:\`, in letter order, or the writable disks and
+  /// partitions mounted in a macOS or Linux host's usual mount folders, in
+  /// path order. Empty when the mount table is unreadable.
   ///
-  /// Every letter is probed at once, and a probe that fails or has not
+  /// Every candidate is probed at once, and a probe that fails or has not
   /// answered within [_driveProbeTimeout] counts as unmounted, so an
   /// inaccessible or disconnected network drive cannot hold up or fail the
   /// listing it rides on.
   Future<List<String>> listDriveRoots() async {
-    if (!_filesystemApi.isWindows) return const [];
-    final candidates = [
-      for (var letter = "A".codeUnitAt(0); letter <= "Z".codeUnitAt(0); letter++) "${String.fromCharCode(letter)}:\\",
-    ];
+    final List<String> candidates;
+    try {
+      candidates = await _driveRootsApi.listCandidates();
+    } on Exception catch (error, stackTrace) {
+      Log.w("FilesystemRepository: omitting mounted drives after a failed mount-table read", error, stackTrace);
+      return const [];
+    }
     final mounted = await Future.wait([for (final root in candidates) _probeDrive(root: root)]);
     return [
       for (final (index, root) in candidates.indexed)
@@ -140,7 +147,7 @@ class FilesystemRepository({
 
   /// The folder browser's listing: the children of [prefix], or, for the
   /// browser's opening request without a prefix, the children of
-  /// [defaultBrowsePath] together with the host's drive roots. Only the
+  /// [defaultBrowsePath] together with the host's drives. Only the
   /// opening request carries the drives: they do not change while it browses.
   ///
   /// Throws like [listSuggestions].

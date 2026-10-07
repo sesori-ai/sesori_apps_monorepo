@@ -210,3 +210,27 @@ const _$MessageAttachmentDeliveryEnumMap = {
   MessageAttachmentDelivery.inline: 'inline',
   MessageAttachmentDelivery.storedReference: 'storedReference',
 };
+
+_SessionMessagesThroughRequest _$SessionMessagesThroughRequestFromJson(
+  Map json,
+) => _SessionMessagesThroughRequest(
+  sessionId: json['sessionId'] as String,
+  throughSeq: (json['throughSeq'] as num).toInt(),
+  before: (json['before'] as num).toInt(),
+  attachmentDelivery: $enumDecode(
+    _$MessageAttachmentDeliveryEnumMap,
+    json['attachmentDelivery'],
+  ),
+  storedOnly: json['storedOnly'] as bool,
+);
+
+Map<String, dynamic> _$SessionMessagesThroughRequestToJson(
+  _SessionMessagesThroughRequest instance,
+) => <String, dynamic>{
+  'sessionId': instance.sessionId,
+  'throughSeq': instance.throughSeq,
+  'before': instance.before,
+  'attachmentDelivery':
+      _$MessageAttachmentDeliveryEnumMap[instance.attachmentDelivery]!,
+  'storedOnly': instance.storedOnly,
+};

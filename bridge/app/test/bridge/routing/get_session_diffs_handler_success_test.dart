@@ -17,6 +17,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_database.dart";
+import "../../helpers/test_drive_roots_api.dart";
 import "get_session_diffs_handler_test_helpers.dart";
 import "routing_test_helpers.dart";
 
@@ -41,6 +42,7 @@ void main() {
       final filesystemRepository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
       );
       handler = GetSessionDiffsHandler(
         sessionDiffService: SessionDiffService(

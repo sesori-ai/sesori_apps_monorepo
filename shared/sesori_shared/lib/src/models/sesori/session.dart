@@ -179,3 +179,22 @@ sealed class SessionMessagesRequest with _$SessionMessagesRequest {
 
   factory fromJson(Map<String, dynamic> json) => _$SessionMessagesRequestFromJson(json);
 }
+
+/// Request body for `POST /session/messages/through`: every message from
+/// [throughSeq] up to, but not including, [before], in one response.
+///
+/// The app sends it to load everything between its oldest loaded message and
+/// a prompt it has not loaded yet. [throughSeq] must be lower than [before].
+/// The other fields mean what they mean on [SessionMessagesRequest].
+@Freezed(fromJson: true, toJson: true)
+sealed class SessionMessagesThroughRequest with _$SessionMessagesThroughRequest {
+  const factory({
+    required String sessionId,
+    required int throughSeq,
+    required int before,
+    required MessageAttachmentDelivery attachmentDelivery,
+    required bool storedOnly,
+  }) = _SessionMessagesThroughRequest;
+
+  factory fromJson(Map<String, dynamic> json) => _$SessionMessagesThroughRequestFromJson(json);
+}

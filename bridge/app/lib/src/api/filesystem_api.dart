@@ -51,9 +51,6 @@ class const FilesystemApi() {
     return Directory(path).exists();
   }
 
-  /// Whether the bridge runs on Windows.
-  bool get isWindows => Platform.isWindows;
-
   /// Raw process environment for repository-level fallback policy.
   Map<String, String> get environment => Platform.environment;
 
