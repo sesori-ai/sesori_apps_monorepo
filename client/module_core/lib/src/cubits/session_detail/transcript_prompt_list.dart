@@ -181,6 +181,23 @@ class const TranscriptPromptListBuilder() {
     return TranscriptPromptList(entries: List.unmodifiable(entries), isIndexed: true);
   }
 
+  /// The unloaded prompt to pin above the rendered messages [turns] split,
+  /// while they start inside its turn: the last [index] entry before the first
+  /// prompt they hold. Null without an index, or when they start with a prompt
+  /// or at the start of the history.
+  ///
+  /// It reads where the rendered messages start rather than the transcript's
+  /// cursor, so a list still showing what it froze while the reader scrolled
+  /// back pins the prompt above what it shows.
+  SessionPromptIndexEntry? pinAbove({
+    required TranscriptTurns turns,
+    required List<SessionPromptIndexEntry>? index,
+  }) {
+    if (index == null || turns.turns.firstOrNull is! TranscriptPartialTurn) return null;
+    final firstLoaded = index.indexWhere((entry) => turns.turnIndexByMessageId.containsKey(entry.messageId));
+    return (firstLoaded < 0 ? index : index.take(firstLoaded)).lastOrNull;
+  }
+
   List<TranscriptPromptEntry> _loadedEntries({
     required List<MessageWithParts> messages,
     required TranscriptTurns turns,

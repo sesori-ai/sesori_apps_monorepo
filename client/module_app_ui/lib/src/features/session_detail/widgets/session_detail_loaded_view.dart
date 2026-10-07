@@ -252,6 +252,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           onLoadOlderMessages: state.olderMessagesCursor == null
                               ? null
                               : context.read<SessionDetailCubit>().loadOlderMessages,
+                          promptIndex: state.promptIndex,
+                          onLoadThrough: context.read<SessionDetailCubit>().loadMessagesThrough,
                           onCancelQueuedMessage: widget.readOnly
                               ? null
                               : context.read<SessionDetailCubit>().cancelQueuedMessage,
