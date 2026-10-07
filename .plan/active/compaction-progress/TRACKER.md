@@ -46,7 +46,7 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | Step | Branch | Title | Target (changed lines) | Needs |
 |---|---|---|---|---|
 | 1 | `compaction-progress/plan` | [1](#fixed-pr-titles) | ≤ 800 | — |
-| 2 | `compaction-progress/sweep-rule` | [2](#fixed-pr-titles) | ≤ 400 | 1 |
+| 2 | `compaction-progress/sweep-rule` | [2](#fixed-pr-titles) | ≤ 600 (about 350 plan edits) | 1 |
 | 3 | `compaction-progress/contract` | [3](#fixed-pr-titles) | ≤ 1,100 (about 550 generated) | 2 |
 | 4 | `compaction-progress/app` | [4](#fixed-pr-titles) | ≤ 800 | 3 |
 | 5 | `compaction-progress/claude` | [5](#fixed-pr-titles) | ≤ 700 | 4 |

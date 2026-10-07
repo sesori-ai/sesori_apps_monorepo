@@ -759,8 +759,8 @@ tracker. Verify:
 - a new test: a finalized tool part keeps its stored image attachment;
 - `dart analyze --fatal-infos` and `dart test` for `bridge/app`.
 
-There is no user-visible or database change. Target ≤ 400 changed lines,
-including these plan edits.
+There is no user-visible or database change. Target ≤ 600 changed lines,
+about 350 of them these plan edits (mostly the renumbering).
 
 **Step 3 — wire contract and bridge core.** [Architecture 2](#2-wire-contract-and-bridge-core-step-3).
 Verify:
