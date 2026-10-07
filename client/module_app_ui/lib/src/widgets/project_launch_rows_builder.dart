@@ -1,12 +1,7 @@
-import "dart:async";
-
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
-
-/// Each project's sessions in the slot its launching rows lead.
-typedef ProjectLaunchSlots = Map<String, List<Session>> Function({required Map<String, RecentSessionsEntry> entries});
 
 /// A home's Activity slots: each project's running rows, which its launching
 /// rows lead.
@@ -19,16 +14,11 @@ Map<String, List<Session>> runningActivitySlots({required SessionActivityProject
 }
 
 /// Builds a surface that draws launching rows per project, with each
-/// project's [LaunchRows] (see [resolveProjectLaunchRows]).
-///
-/// The rows are resolved on every inventory and launch update rather than in
-/// build, so each update is seen once and a launch's session is never missed.
+/// project's [LaunchRows] from the surface's own [ProjectLaunchRowsCubit].
 class const ProjectLaunchRowsBuilder({
   super.key,
 
-  /// The rows to continue from. A surface opened from another that already
-  /// draws these launches passes that one's rows, so it keeps the launching
-  /// rows that one still holds after their launches have left the cubit.
+  /// See [ProjectLaunchRowsCubit.new]; read once, when the surface opens.
   required final Map<String, LaunchRows> initialRows,
   required final ProjectLaunchSlots slots,
   required final Widget Function({required BuildContext context, required Map<String, LaunchRows> launchRows}) builder,
@@ -37,36 +27,18 @@ class const ProjectLaunchRowsBuilder({
   State<ProjectLaunchRowsBuilder> createState() => _ProjectLaunchRowsBuilderState();
 }
 
+// Stateful only so the cubit reads [slots] through the current widget.
 class _ProjectLaunchRowsBuilderState() extends State<ProjectLaunchRowsBuilder> {
-  late final StreamSubscription<Map<String, RecentSessionsEntry>> _entries;
-  late final StreamSubscription<SessionLaunchState> _launches;
-  late Map<String, LaunchRows> _rows = widget.initialRows;
-
   @override
-  void initState() {
-    super.initState();
-    _rows = _resolve();
-    _entries = context.read<RecentSessionsCubit>().stream.listen((_) => setState(() => _rows = _resolve()));
-    _launches = context.read<SessionLaunchCubit>().stream.listen((_) => setState(() => _rows = _resolve()));
-  }
-
-  @override
-  void dispose() {
-    unawaited(_entries.cancel());
-    unawaited(_launches.cancel());
-    super.dispose();
-  }
-
-  Map<String, LaunchRows> _resolve() {
-    final entries = context.read<RecentSessionsCubit>().state;
-    return resolveProjectLaunchRows(
-      previous: _rows,
-      launches: context.read<SessionLaunchCubit>().state,
-      entries: entries,
-      slots: widget.slots(entries: entries),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.builder(context: context, launchRows: _rows);
+  Widget build(BuildContext context) => BlocProvider(
+    create: (context) => ProjectLaunchRowsCubit(
+      inventoryService: context.read<RecentSessionInventoryService>(),
+      launchService: context.read<SessionLaunchService>(),
+      slots: ({required entries}) => widget.slots(entries: entries),
+      initialRows: widget.initialRows,
+    ),
+    child: BlocBuilder<ProjectLaunchRowsCubit, Map<String, LaunchRows>>(
+      builder: (context, launchRows) => widget.builder(context: context, launchRows: launchRows),
+    ),
+  );
 }

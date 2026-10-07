@@ -86,6 +86,7 @@ void main() {
         providers: [
           BlocProvider<ConnectionOverlayCubit>.value(value: overlayCubit),
           BlocProvider(create: (_) => idleSessionLaunchCubit()),
+          RepositoryProvider(create: (_) => idleSessionLaunchService()),
         ],
         child: MaterialApp.router(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),

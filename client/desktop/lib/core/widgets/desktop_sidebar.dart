@@ -503,13 +503,14 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                   onPressed: toggle,
                 ),
                 // The popout sits on the root navigator, outside the cockpit's
-                // providers, so the sidebar hands over the cubits its rows watch.
+                // providers, so the sidebar hands over what its rows watch.
                 contentBuilder: (_, close) => MultiBlocProvider(
                   providers: [
                     BlocProvider.value(value: context.read<RecentSessionsCubit>()),
                     BlocProvider.value(value: context.read<DesktopSidebarCubit>()),
                     BlocProvider.value(value: context.read<PendingSessionArchiveCubit>()),
-                    BlocProvider.value(value: context.read<SessionLaunchCubit>()),
+                    RepositoryProvider.value(value: context.read<RecentSessionInventoryService>()),
+                    RepositoryProvider.value(value: context.read<SessionLaunchService>()),
                   ],
                   child: _SidebarActivityPopoutList(
                     close: close,

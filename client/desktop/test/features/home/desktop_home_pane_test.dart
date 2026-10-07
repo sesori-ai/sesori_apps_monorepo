@@ -230,6 +230,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
       whenListen(recent, updates, initialState: entries);
+      final launchService = inMemorySessionLaunchService(launchRepository: launches);
       await tester.pumpWidget(
         MaterialApp(
           theme: buildPregoThemeData(brightness: Brightness.light),
@@ -239,10 +240,9 @@ void main() {
             providers: [
               BlocProvider<FileAccessCubit>.value(value: fileAccess),
               BlocProvider<RecentSessionsCubit>.value(value: recent),
-              BlocProvider(
-                create: (_) =>
-                    SessionLaunchCubit(launchService: inMemorySessionLaunchService(launchRepository: launches)),
-              ),
+              RepositoryProvider.value(value: _inventoryOf(recent: recent)),
+              RepositoryProvider.value(value: launchService),
+              BlocProvider(create: (_) => SessionLaunchCubit(launchService: launchService)),
               BlocProvider<PendingSessionArchiveCubit>.value(value: archive),
               BlocProvider<ChatInputModeCubit>.value(value: inputMode),
             ],
@@ -414,6 +414,15 @@ class _MockConnectionService() extends Mock implements ConnectionService;
 class _MockNewSessionCubit() extends MockCubit<NewSessionState> implements NewSessionCubit;
 
 class _MockRecentSessionsCubit() extends MockCubit<Map<String, RecentSessionsEntry>> implements RecentSessionsCubit;
+
+class _MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
+
+/// The inventory behind [recent], as each list's launching rows read it.
+RecentSessionInventoryService _inventoryOf({required RecentSessionsCubit recent}) {
+  final inventory = _MockRecentSessionInventoryService();
+  when(() => inventory.state).thenAnswer((_) => recent.stream.shareValueSeeded(recent.state));
+  return inventory;
+}
 
 class _MockPendingSessionArchiveCubit()
     extends MockCubit<PendingSessionArchiveState>

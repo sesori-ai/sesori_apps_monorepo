@@ -78,6 +78,7 @@ void main() {
 
   Widget app({required BridgeControlState state, Widget? child}) {
     whenListen(bridgeControlCubit, const Stream<BridgeControlState>.empty(), initialState: state);
+    final launchService = inMemorySessionLaunchService(launchRepository: launches);
     return MultiBlocProvider(
       providers: [
         BlocProvider<BridgeControlCubit>.value(value: bridgeControlCubit),
@@ -94,10 +95,9 @@ void main() {
           providers: [
             BlocProvider<ProjectListCubit>.value(value: projects),
             BlocProvider<RecentSessionsCubit>.value(value: recent),
-            BlocProvider(
-              create: (_) =>
-                  SessionLaunchCubit(launchService: inMemorySessionLaunchService(launchRepository: launches)),
-            ),
+            RepositoryProvider.value(value: _inventoryOf(recent: recent)),
+            RepositoryProvider.value(value: launchService),
+            BlocProvider(create: (_) => SessionLaunchCubit(launchService: launchService)),
             BlocProvider(create: (_) => DesktopSidebarRefreshCubit(service: refreshService)),
             BlocProvider<DesktopSidebarCubit>(create: (_) => sidebar = DesktopSidebarCubit(repository: repository)),
             BlocProvider(
@@ -2302,4 +2302,13 @@ class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements
 class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 class _MockRecentSessionsCubit() extends MockCubit<Map<String, RecentSessionsEntry>> implements RecentSessionsCubit;
+
+class _MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
+
+/// The inventory behind [recent], as each list's launching rows read it.
+RecentSessionInventoryService _inventoryOf({required RecentSessionsCubit recent}) {
+  final inventory = _MockRecentSessionInventoryService();
+  when(() => inventory.state).thenAnswer((_) => recent.stream.shareValueSeeded(recent.state));
+  return inventory;
+}
 class _MockRepository() extends Mock implements DesktopInstanceRepository;

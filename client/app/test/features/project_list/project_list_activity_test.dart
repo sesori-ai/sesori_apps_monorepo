@@ -96,13 +96,13 @@ void main() {
       ],
     );
 
+    final launchService = inMemorySessionLaunchService(launchRepository: launches);
     await tester.pumpWidget(
       MultiBlocProvider(
         providers: [
           BlocProvider<ConnectionOverlayCubit>.value(value: overlayCubit),
-          BlocProvider(
-            create: (_) => SessionLaunchCubit(launchService: inMemorySessionLaunchService(launchRepository: launches)),
-          ),
+          RepositoryProvider.value(value: launchService),
+          BlocProvider(create: (_) => SessionLaunchCubit(launchService: launchService)),
         ],
         child: MaterialApp.router(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
