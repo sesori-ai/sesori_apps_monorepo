@@ -696,10 +696,10 @@ class RelayClient._({
     }
 
     final decryptedBytes = await unframe(message, encryptor: encryptor);
-    if (decryptedBytes.length < relayBackgroundDecodeMinBytes) {
-      return _decodeRelayPlaintext(plaintext: decryptedBytes);
+    if (relayPlaintextDecodesInBackground(plaintext: decryptedBytes)) {
+      return await _decodeRelayPlaintextInBackground(plaintext: decryptedBytes);
     }
-    return await _decodeRelayPlaintextInBackground(plaintext: decryptedBytes);
+    return _decodeRelayPlaintext(plaintext: decryptedBytes);
   }
 
   // ignore: no_slop_linter/prefer_specific_type
@@ -842,13 +842,16 @@ final class const RelayResponseLostException({required final String message}) im
   String toString() => message;
 }
 
-/// Decrypted relay plaintext at least this long decodes on a short-lived
-/// isolate. Measured AOT on macOS: a deflated response this long holds about
-/// 256 KB of JSON, which blocks the UI isolate for about 2 ms when decoded
-/// inline, and the isolate adds about 1 ms of latency. Nearly every SSE event
-/// is smaller and stays inline.
+/// Whether decrypted relay [plaintext] decodes on a short-lived isolate:
+/// when it may hold about 256 KB of JSON or more. Measured AOT on macOS,
+/// decoding costs the calling isolate about 11 ms per MB of JSON, so 256 KB
+/// is about 3 ms, while the isolate adds about 2 ms of latency and blocks
+/// nothing. Plain plaintext is judged by its own length. Deflated plaintext
+/// uses a far smaller floor because transcript JSON compresses up to about
+/// 60x: 2 KB covers 256 KB of JSON at up to 128x.
 @visibleForTesting
-const int relayBackgroundDecodeMinBytes = 32 * 1024;
+bool relayPlaintextDecodesInBackground({required List<int> plaintext}) =>
+    plaintext.length >= (_isDeflated(plaintext: plaintext) ? 2 * 1024 : 256 * 1024);
 
 RelayMessage _decodeRelayPlaintext({required List<int> plaintext}) =>
     RelayMessage.fromJson(jsonDecodeMap(utf8.decode(_inflateIfDeflated(plaintext: plaintext))));
@@ -862,8 +865,11 @@ Future<RelayMessage> _decodeRelayPlaintextInBackground({required List<int> plain
 /// with [RelayProtocol.deflatedPlaintextMarker], followed by a raw deflate
 /// stream of the JSON. Any other plaintext is the JSON itself.
 List<int> _inflateIfDeflated({required List<int> plaintext}) {
-  if (plaintext case [RelayProtocol.deflatedPlaintextMarker, ...]) {
+  if (_isDeflated(plaintext: plaintext)) {
     return ZLibDecoder(raw: true).convert(plaintext.sublist(1));
   }
   return plaintext;
 }
+
+bool _isDeflated({required List<int> plaintext}) =>
+    plaintext.isNotEmpty && plaintext.first == RelayProtocol.deflatedPlaintextMarker;

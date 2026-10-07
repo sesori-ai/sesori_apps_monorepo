@@ -211,17 +211,17 @@ void main() {
     );
     await connectFuture.timeout(const Duration(seconds: 1));
 
-    // Random letters barely compress, so the large text stays above the
-    // background-decode threshold even once deflated.
     final random = Random(7);
-    final largeText = String.fromCharCodes(List<int>.generate(80 * 1024, (_) => 0x61 + random.nextInt(26)));
     for (final (:text, :large) in [
       (text: "repeated transcript text " * 50, large: false),
-      (text: largeText, large: true),
+      // Random letters barely compress.
+      (text: String.fromCharCodes(List<int>.generate(300 * 1024, (_) => 0x61 + random.nextInt(26))), large: true),
+      // 2 MB of one repeated phrase deflates to a few KB.
+      (text: "repeated transcript text " * 80000, large: true),
     ]) {
       for (final deflated in [true, false]) {
         final request = RelayRequest(
-          id: "request-$deflated-$large",
+          id: "request-$deflated-${text.length}",
           method: "GET",
           path: "/sessions",
           headers: const {},
@@ -238,14 +238,15 @@ void main() {
         final plaintext = deflated
             ? [RelayProtocol.deflatedPlaintextMarker, ...ZLibEncoder(raw: true).convert(json)]
             : json;
-        expect(plaintext.length >= relayBackgroundDecodeMinBytes, large, reason: "deflated=$deflated large=$large");
+        final reason = "deflated=$deflated plaintext=${plaintext.length} bytes";
+        expect(relayPlaintextDecodesInBackground(plaintext: plaintext), large, reason: reason);
 
         final requestSent = outgoing.moveNext();
         final responseFuture = client.sendRequest(request: request, timeout: const Duration(seconds: 1));
         expect(await requestSent.timeout(const Duration(seconds: 1)), isTrue);
         socket.serverSink.add(await frame(plaintext, encryptor: encryptor));
 
-        expect(await responseFuture, response, reason: "deflated=$deflated large=$large");
+        expect(await responseFuture, response, reason: reason);
       }
     }
   });

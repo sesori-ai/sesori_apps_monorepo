@@ -626,10 +626,13 @@ from the index, load-through or search route to that route's own
 
 **Decode:** the load-through response decodes via `Isolate.run` (measured
 264–268 ms on the UI thread on a Mac for the worst-case session).
-Step 9b also moves the relay envelope's inflate and JSON decode onto a
-short-lived isolate when the decrypted plaintext is at least 32 KB, which
-removes the remaining ~170 ms UI-thread stall for that response. Decryption
-stays on the calling isolate.
+Step 9b moves only the relay envelope's inflate and JSON decode onto a
+short-lived isolate, for decrypted plaintext that may hold about 256 KB of
+JSON or more: 2 KB when deflated, 256 KB when plain. This removes the
+remaining ~170 ms UI-thread stall for the load-through response, whose body
+already decodes in the background. Decryption stays on the calling isolate,
+and every other route still parses its response body into its DTO
+synchronously in `RelayHttpApiClient`.
 The tool-output route needs none, because only a bridge that has it sends
 summary parts.
 
