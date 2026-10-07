@@ -51,20 +51,22 @@ docs. No app change, and no store or database change.
 `dart run tool/benchmarks/prompt_index_benchmark.dart`, run from `bridge/app/`:
 
 - **Session:** a synthetic session the size of the largest measured one, in a
-  file-backed SQLite database. It has 9,790 messages, 836 prompts and
+  database opened through `ChatHistoryDatabase.create`, the bridge's own
+  opener: a background isolate in WAL mode. It has 9,790 messages, 836 prompts and
   16.7 MB of message JSON. The replies are completed shell tools and text.
 - **What it times:** `ChatHistoryRepository.getPromptIndex`, over 11 runs.
   The first run is reported separately.
 - **Result:**
-  - median 156 ms, max 167–170 ms;
-  - first run 187–191 ms, over two invocations.
+  - median 173–176 ms, max 187 ms;
+  - first run 212–218 ms, over two invocations.
 - **Verdict:** inside the 300 ms budget. The narrower-projection escape hatch
   is not needed.
 
 ## Evidence
 
 - Measured with Dart 3.13.4 from Flutter 3.47.5-stable, on code commit
-  `3dc1dfbf44ad5a6bbe7064fd95a4644f533b6ce0`. The evidence commit changes no
+  `9cb0eae3e2d9fb795852cd345e7f33a2d65a00a8` (tree
+  `572659a5e0b29490d3224b53b68e9bdaa4323040`). The evidence commit changes no
   code. Every check passed.
 - **In `shared/sesori_shared/`:**
   - `dart test test/models/session_prompt_index_test.dart`: both kinds
@@ -93,7 +95,9 @@ docs. No app change, and no store or database change.
 - **Architecture review:** `architecture-implementation-review`, pass 1,
   approved with no findings.
 - **Size:**
-  - about 1,280 changed lines, of which 380 are generated Freezed and JSON
+  - about 1,300 changed lines, of which 380 are generated Freezed and JSON
     code;
-  - authored lines are about 900, at the 900-line target, which counts
-    generated code. The overage is all generated output.
+  - that is about 400 lines over the plan's 900-line target, which counts
+    generated code. The authored lines alone are about 920, so the overage is
+    the generated output, kept with its source as AGENTS.md requires, and
+    stays well under the 1,500-line soft cap.
