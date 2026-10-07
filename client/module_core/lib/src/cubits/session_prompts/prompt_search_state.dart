@@ -24,8 +24,9 @@ final class const PromptSearchActive({
 /// How far the bridge's search of the whole history has got. The listed
 /// prompts' own matches show at once whatever it says.
 enum EarlierPromptSearch() {
-  /// Only the listed prompts' own text is searched: the list holds only the
-  /// loaded prompts, or the bridge predates search.
+  /// Only the listed prompts' own text is searched, as the list holds only
+  /// the loaded prompts: no prompt index has arrived, and a bridge without
+  /// one has no search either.
   listedOnly,
 
   /// The bridge is searching, too briefly yet to say so.

@@ -8,7 +8,4 @@ final class const SessionPromptSearchAvailable({
   required final List<SessionPromptSearchMatch> matches,
 }) extends SessionPromptSearchResult;
 
-/// The bridge predates prompt search.
-final class const SessionPromptSearchUnsupported() extends SessionPromptSearchResult;
-
 final class const SessionPromptSearchFailure({required final ApiError error}) extends SessionPromptSearchResult;

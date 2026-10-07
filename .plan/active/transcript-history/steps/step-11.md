@@ -50,8 +50,9 @@ Branch `transcript-history/prompt-search`. `sesori_shared`, the bridge,
   route's behavior, L5 coverage, failure signal and sources. The search reads
   only normalized history, so no harness gap is added to
   `docs/HARNESS_CAPABILITIES.md`.
-- **Compatibility:** a released app never calls the route; a bridge without
-  it answers the router's 404, which 11b maps to `Unsupported`.
+- **Compatibility:** a released app never calls the route. 11b asks only a
+  bridge that served the prompt index, and no public release has the index
+  without search, so 11b needs no `Unsupported` case.
 
 ## Benchmark
 
@@ -112,9 +113,10 @@ Branch `transcript-history/prompt-search-app`. `module_core`,
 
 - **Repository:** `SessionApi.searchPrompts` and
   `SessionRepository.searchPrompts` return the sealed
-  `SessionPromptSearchResult`: `Available(matches)`, `Unsupported` for the
-  router's "no handler found" 404 only (the route never answers 404), and
-  `Failure(error)`.
+  `SessionPromptSearchResult`: `Available(matches)` or `Failure(error)`.
+  The first review wave removed an `Unsupported` case: the index and search
+  shipped after v1.9.0, the last public release, so a bridge with the index
+  but no search route exists only in internal builds.
 - **Cubit:** `PromptSearchCubit` in `module_core/.../cubits/session_prompts/`
   owns the query, the local match over each listed prompt's `searchText`, and
   the bridge's matches. States: `PromptSearchIdle(query)` and
@@ -122,8 +124,7 @@ Branch `transcript-history/prompt-search-app`. `module_core`,
   `listedOnly`, `pending`, `slow`, `done`, `failed`. It asks the bridge only
   when the list `isIndexed` (old public bridges have no index, so they keep
   the loaded-only search), 250 ms after typing pauses; `slow` after 150 ms;
-  the latest search wins; `Unsupported` stops asking for the screen's life;
-  `retry` asks again from `failed`. An index arriving mid-search starts the
+  the latest search wins; `retry` asks again from `failed`. An index arriving mid-search starts the
   bridge's search. Matches keep the list's order; a local match's excerpt
   wins over the bridge's.
 - **Scope and shells:** `SessionDetailPresentationScope.sessionRepository`;
@@ -143,9 +144,9 @@ Branch `transcript-history/prompt-search-app`. `module_core`,
 
 - Dart 3.13.4 from Flutter 3.47.5-stable, on commit `86b82f2081`.
 - **`client/module_core/`:** `dart test test/cubits/session_prompts
-  test/repositories/session_repository_test.dart` (38 tests: debounce, slow,
-  latest wins, Unsupported stops asking, failure then Retry, unindexed never
-  asks, index arriving mid-search, the router's 404 versus another 404);
+  test/repositories/session_repository_test.dart` (37 tests after the
+  first review wave: debounce, slow, latest wins, failure then Retry,
+  unindexed never asks, index arriving mid-search, an error as a failure);
   `dart analyze --fatal-infos`.
 - **`client/module_app_ui/`:** `flutter test test/features/session_prompts
   test/features/session_detail` (446 tests, including the bridge's matches

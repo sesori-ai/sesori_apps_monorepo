@@ -172,11 +172,6 @@ class SessionRepository({
     final response = await _api.searchPrompts(sessionId: sessionId, query: query);
     return switch (response) {
       SuccessResponse(:final data) => SessionPromptSearchAvailable(matches: data.matches),
-      // COMPATIBILITY 2026-10-07 (v1.9.1): a bridge without the
-      // /session/prompts/search route answers with the router's
-      // route-not-found 404. The route itself never answers 404. Remove once
-      // no supported bridge predates the route.
-      ErrorResponse(:final error) when _isMissingRoute(error: error) => const SessionPromptSearchUnsupported(),
       ErrorResponse(:final error) => SessionPromptSearchFailure(error: error),
     };
   }

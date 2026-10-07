@@ -280,8 +280,8 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
   - the bridge's search: asked only after typing pauses and only with the
     prompt index, its matches joining in order, "Searching earlier prompts…"
     only once it is slow, a failure keeping the loaded matches with Retry
-    asking again, a bridge without the route searching the loaded prompts
-    alone, and an index arriving mid-search starting it;
+    asking again, a bridge without the index never asked, and an index
+    arriving mid-search starting it;
   - Escape closing, also after a click outside the field, and the desktop's
     focused field.
 - "Load earlier prompts": at the top, calling the loader, disabled while
@@ -491,12 +491,9 @@ answer, and on a trackpad while text streams.
   While pinned, the prompt covers the top of the rows beneath it. A glide to
   a prompt far above aims at an estimate that sharpens as rows are built, so
   its speed can bend on the way; it still lands exactly.
-- Without the bridge's search, an unloaded prompt is searched by its preview
-  only: a bridge released before the prompt index lists and searches only what
-  the transcript has loaded, and a bridge with the index but without the
-  search route (internal builds only) answers the router's 404, so the screen
-  searches the listed prompts alone until it closes. Before the index,
-  "Load earlier prompts" pages back one transcript page at a time. The "Update
+- A bridge released before the prompt index is never asked to search: it
+  lists and searches only what the transcript has loaded, an unloaded prompt
+  is never listed, and "Load earlier prompts" pages back one transcript page at a time. The "Update
   the bridge" notice for an unloaded tap has no link to update instructions. An
   older bridge sends
   no user message count, so its rows carry no numbers. Loading through a far

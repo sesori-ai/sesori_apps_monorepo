@@ -30,18 +30,12 @@ class PromptSearchCubit({
   /// The bridge's matches for [_pattern] by message id; empty until it answers.
   Map<String, SessionPromptExcerpt> _bridgeMatches = const {};
 
-  /// Set once the bridge answers that it predates search, for the rest of the
-  /// screen.
-  bool _unsupported = false;
-
   /// Counts searches; a bridge answer lands only while its search is the latest.
   int _searches = 0;
   Timer? _debounce;
   Timer? _slow;
 
   this : super(const PromptSearchIdle(query: ""));
-
-  bool get _asksBridge => _prompts.isIndexed && !_unsupported;
 
   /// Takes the screen's list after every relist; the matches follow it.
   void showPrompts({required TranscriptPromptList prompts}) {
@@ -51,7 +45,8 @@ class PromptSearchCubit({
       case PromptSearchIdle():
         return;
       // The prompt index arrived during a search of the loaded prompts alone.
-      case PromptSearchActive(:final query, earlier: EarlierPromptSearch.listedOnly) when !wasIndexed && _asksBridge:
+      case PromptSearchActive(:final query, earlier: EarlierPromptSearch.listedOnly)
+          when !wasIndexed && prompts.isIndexed:
         _start(query: query, pattern: _pattern);
       case PromptSearchActive(:final query, :final earlier):
         _emitActive(query: query, earlier: earlier);
@@ -94,7 +89,7 @@ class PromptSearchCubit({
       emit(PromptSearchIdle(query: query));
       return;
     }
-    if (!_asksBridge) {
+    if (!_prompts.isIndexed) {
       _emitActive(query: query, earlier: EarlierPromptSearch.listedOnly);
       return;
     }
@@ -113,9 +108,6 @@ class PromptSearchCubit({
       case SessionPromptSearchAvailable(:final matches):
         _bridgeMatches = {for (final match in matches) match.messageId: match.excerpt};
         _emitActive(query: state.query, earlier: EarlierPromptSearch.done);
-      case SessionPromptSearchUnsupported():
-        _unsupported = true;
-        _emitActive(query: state.query, earlier: EarlierPromptSearch.listedOnly);
       case SessionPromptSearchFailure(:final error):
         logw("Failed to search the session's earlier prompts", error);
         _emitActive(query: state.query, earlier: EarlierPromptSearch.failed);

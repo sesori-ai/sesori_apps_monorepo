@@ -603,8 +603,7 @@ class _PromptsListState() extends State<_PromptsList> with SingleTickerProviderS
       PromptSearchIdle() =>
         list.isIndexed ? loc.transcriptPromptsCount(list.promptCount) : loc.transcriptPromptsLoaded(list.promptCount),
       PromptSearchActive(:final earlier) => switch (earlier) {
-        EarlierPromptSearch.listedOnly =>
-          list.isIndexed ? loc.transcriptPromptsAllMatches(matchCount) : loc.transcriptPromptsMatches(matchCount),
+        EarlierPromptSearch.listedOnly => loc.transcriptPromptsMatches(matchCount),
         EarlierPromptSearch.pending || EarlierPromptSearch.done => loc.transcriptPromptsAllMatches(matchCount),
         EarlierPromptSearch.slow => loc.transcriptPromptsSearchingEarlier,
         EarlierPromptSearch.failed => loc.transcriptPromptsSearchEarlierFailed,

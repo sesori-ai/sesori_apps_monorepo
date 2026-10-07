@@ -114,24 +114,6 @@ void main() {
     });
   });
 
-  test("a bridge that predates search leaves the listed prompts alone, and is not asked again", () {
-    fakeAsync((async) {
-      answer(query: "deploy", result: () => const SessionPromptSearchUnsupported());
-      final cubit = cubitFor(isIndexed: true)..search(query: "deploy");
-      async.elapse(const Duration(milliseconds: 250));
-
-      expect(_shown(cubit.state), (ids: "new", earlier: EarlierPromptSearch.listedOnly));
-      cubit.search(query: "it");
-      async.elapse(const Duration(seconds: 1));
-      verify(
-        () => repository.searchPrompts(
-          sessionId: "s1",
-          query: any(named: "query"),
-        ),
-      ).called(1);
-    });
-  });
-
   test("a failure keeps the listed matches and Retry asks again", () {
     fakeAsync((async) {
       final results = <SessionPromptSearchResult>[

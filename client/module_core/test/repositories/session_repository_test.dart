@@ -739,17 +739,12 @@ void main() {
       expect(result, isA<SessionPromptSearchAvailable>().having((value) => value.matches, "matches", matches));
     });
 
-    test("reads only the router's 404 as a bridge that predates the route", () async {
-      final unsupported = await searchFor(
-        response: ApiResponse.error(
-          ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "no handler found for POST /session/prompts/search"),
-        ),
-      );
+    test("passes an error through as a failure", () async {
       final error = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "session not found");
-      final failed = await searchFor(response: ApiResponse.error(error));
 
-      expect(unsupported, isA<SessionPromptSearchUnsupported>());
-      expect(failed, isA<SessionPromptSearchFailure>().having((value) => value.error, "error", error));
+      final result = await searchFor(response: ApiResponse.error(error));
+
+      expect(result, isA<SessionPromptSearchFailure>().having((value) => value.error, "error", error));
     });
   });
 }
