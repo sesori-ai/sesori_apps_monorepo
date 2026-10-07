@@ -181,6 +181,7 @@ void main() {
         "shellCommand": "git status",
         "output": "clean",
         "attachments": <Object>[],
+        "form": "full",
       });
     });
 

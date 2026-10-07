@@ -11,8 +11,10 @@ import "../api/database/history/chat_history_database.dart";
 import "../api/models/archived_session_file_dto.dart";
 import "mappers/duplicated_shell_title_mapper.dart";
 import "mappers/prompt_index_mapper.dart";
+import "mappers/summarized_tool_output_mapper.dart";
 import "models/history_window.dart";
 import "models/stored_session.dart";
+import "models/tool_output_lookup.dart";
 
 final class _HistoryReplayComparisonError({required final Object innerError}) implements Exception {
   @override
@@ -132,12 +134,14 @@ class ChatHistoryRepository({
     required AttachmentStorageScope storageScope,
     required HistoryWindow window,
     required MessageAttachmentProjection attachmentProjection,
+    required ToolOutputDelivery toolOutputDelivery,
   }) async {
     final read = await getSessionMessagesWithSyncState(
       sessionId: sessionId,
       storageScope: storageScope,
       window: window,
       attachmentProjection: attachmentProjection,
+      toolOutputDelivery: toolOutputDelivery,
     );
     return read.page;
   }
@@ -154,6 +158,7 @@ class ChatHistoryRepository({
     required AttachmentStorageScope storageScope,
     required HistoryWindow window,
     required MessageAttachmentProjection attachmentProjection,
+    required ToolOutputDelivery toolOutputDelivery,
   }) async {
     final PagedHistoryRows rows;
     final int? nextCursor;
@@ -193,6 +198,7 @@ class ChatHistoryRepository({
         nextCursor: nextCursor,
         userMessagesBefore: rows.userMessagesBefore,
         attachmentProjection: attachmentProjection,
+        toolOutputDelivery: toolOutputDelivery,
       ),
     );
   }
@@ -204,6 +210,7 @@ class ChatHistoryRepository({
     required int? nextCursor,
     required int userMessagesBefore,
     required MessageAttachmentProjection attachmentProjection,
+    required ToolOutputDelivery toolOutputDelivery,
   }) async {
     final partJsonByMessage = <String, List<String>>{};
     for (final row in partRows) {
@@ -211,16 +218,31 @@ class ChatHistoryRepository({
     }
     final messages = [
       for (final row in messageRows)
-        MessageWithParts(
-          info: Message.fromJson(jsonDecodeMap(row.infoJson)),
-          parts: await _rehydrateParts(
-            storageScope: storageScope,
-            partJsons: partJsonByMessage[row.messageId] ?? const [],
-            attachmentProjection: attachmentProjection,
+        _pageMessage(
+          message: MessageWithParts(
+            info: Message.fromJson(jsonDecodeMap(row.infoJson)),
+            parts: await _rehydrateParts(
+              storageScope: storageScope,
+              partJsons: partJsonByMessage[row.messageId] ?? const [],
+              attachmentProjection: attachmentProjection,
+            ),
           ),
-        ).withoutDuplicatedShellTitles(),
+          toolOutputDelivery: toolOutputDelivery,
+        ),
     ];
     return (messages: messages, nextCursor: nextCursor, userMessagesBefore: userMessagesBefore);
+  }
+
+  /// A rehydrated message as every transcript page delivers it.
+  MessageWithParts _pageMessage({
+    required MessageWithParts message,
+    required ToolOutputDelivery toolOutputDelivery,
+  }) {
+    final projected = message.withoutDuplicatedShellTitles();
+    return switch (toolOutputDelivery) {
+      ToolOutputDelivery.inline => projected,
+      ToolOutputDelivery.onExpand => projected.withSummarizedToolOutput(),
+    };
   }
 
   /// Stores one message, appending it after the current maximum when new.
@@ -812,6 +834,7 @@ class ChatHistoryRepository({
     required AttachmentStorageScope storageScope,
     required HistoryWindow window,
     required MessageAttachmentProjection attachmentProjection,
+    required ToolOutputDelivery toolOutputDelivery,
   }) async {
     final ordered = await _readArchivedMessages(sessionId: sessionId);
     if (ordered == null) return null;
@@ -850,14 +873,17 @@ class ChatHistoryRepository({
     return (
       messages: [
         for (final entry in page)
-          MessageWithParts(
-            info: entry.info,
-            parts: await _rehydrateParts(
-              storageScope: storageScope,
-              partJsons: [for (final part in entry.parts) jsonEncode(part)],
-              attachmentProjection: attachmentProjection,
+          _pageMessage(
+            message: MessageWithParts(
+              info: entry.info,
+              parts: await _rehydrateParts(
+                storageScope: storageScope,
+                partJsons: [for (final part in entry.parts) jsonEncode(part)],
+                attachmentProjection: attachmentProjection,
+              ),
             ),
-          ).withoutDuplicatedShellTitles(),
+            toolOutputDelivery: toolOutputDelivery,
+          ),
       ],
       nextCursor: nextCursor,
       userMessagesBefore: userMessagesBefore,
@@ -920,6 +946,42 @@ class ChatHistoryRepository({
     },
     _ => json,
   });
+
+  /// The output and error of the stored tool part [partId] of message
+  /// [messageId], read by its primary key.
+  Future<ToolOutputLookup> getToolOutput({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) async {
+    final row = await _chatHistoryDao.getPart(sessionId: sessionId, messageId: messageId, partId: partId);
+    return row == null ? const ToolOutputMissing() : _toolOutputOf(json: jsonDecodeMap(row.partJson));
+  }
+
+  /// The output and error of tool part [partId] of message [messageId] in the
+  /// session's audit file, or null when no audit file exists.
+  Future<ToolOutputLookup?> getArchivedToolOutput({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) async {
+    final ordered = await _readArchivedMessages(sessionId: sessionId);
+    if (ordered == null) return null;
+    for (final entry in ordered) {
+      if (entry.info.id != messageId) continue;
+      for (final part in entry.parts) {
+        if (part["id"] == partId) return _toolOutputOf(json: part);
+      }
+    }
+    return const ToolOutputMissing();
+  }
+
+  /// A stored tool part decodes directly: output and error never hold
+  /// attachments, so a `stored_file` attachment reading as unknown is unused.
+  ToolOutputLookup _toolOutputOf({required Map<String, dynamic> json}) => switch (MessagePart.fromJson(json)) {
+    MessagePartTool(state: ToolStateFull(:final output, :final error)) => ToolOutputFound(output: output, error: error),
+    _ => const ToolOutputMissing(),
+  };
 
   Future<bool> hasArchive({required String sessionId}) => _archivedSessionStorage.exists(sessionId: sessionId);
 

@@ -31,6 +31,7 @@ class GetSessionMessagesThroughHandler({required final ChatHistoryService _chatH
       sessionId: sessionId,
       window: HistoryWindowThrough(throughSeq: body.throughSeq, before: body.before),
       attachmentDelivery: body.attachmentDelivery,
+      toolOutputDelivery: body.toolOutputDelivery,
       storedOnly: body.storedOnly,
     );
     return MessageWithPartsResponse(

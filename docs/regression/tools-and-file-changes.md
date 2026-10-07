@@ -162,6 +162,17 @@ sub-agent parts, plus the signal that a tool changed files.
   `shellCommand`. Old title-only payloads still decode. Apps at v1.8.3 and
   older read the command only from the title, so their reloaded shell rows show
   the tool name without the command; the user accepted that on 2026-10-07.
+- A transcript page or load-through that asks for `toolOutputDelivery:
+  onExpand` carries each completed, error or cancelled tool that has output or
+  error as a `summary` tool state: status, title, command and attachments, no
+  output or error. Running and pending tools, tools with neither, and subtask
+  task states stay full, and live events always carry full parts. A request that
+  omits the field (v1.9.0 apps) gets full parts. `POST /session/tool-output`
+  answers a summarized part's output and error from the store, or from the
+  audit file for an archived session, outside the session queue and without a
+  backfill; it answers 404 when the part is missing or is not a tool. Tool
+  state JSON without a `form` key (stored rows, v1.9.0 bridges) decodes as
+  full.
 - Subtasks retain a prompt bounded to 500 runes, bounded title/outcome/error
   summaries, status, attachments and child-session IDs; ordinary non-shell tool
   stripping never applies to them. The description stays complete because
@@ -305,6 +316,9 @@ guarantee.
   pattern, or skill, or only the path without the tool name.
 - A tool stays running after the backend finished, or an error renders as a
   completion.
+- A v1.9.0 app, or a request without `toolOutputDelivery`, receives a summary
+  tool part; a summary reaches a live event; or `POST /session/tool-output`
+  answers a part that a page summarized with 404.
 - Shell details grow without bound, pad a short transcript to full height, lose
   long command/output text, copy a truncated preview, let a sideways swipe on
   the panel reveal message timestamps, close during updates, or hide tool
@@ -462,6 +476,14 @@ guarantee.
 - `bridge/app/test/bridge/repositories/mappers/duplicated_shell_title_mapper_test.dart`
   and the shell-title case in `bridge/app/test/bridge/services/chat_history_archive_test.dart`
   prove that database and archived pages omit only a title equal to `shellCommand`.
+- `bridge/app/test/bridge/repositories/mappers/summarized_tool_output_mapper_test.dart`
+  summarizes every finished status and keeps every other one,
+  `bridge/app/test/bridge/services/chat_history_tool_output_test.dart` covers
+  the store and archived pages and output lookups,
+  `bridge/app/test/bridge/routing/get_session_tool_output_handler_test.dart`
+  covers the route's 404 and 400, and
+  `shared/sesori_shared/test/models/tool_state_test.dart` decodes keyless tool
+  state as full and a request without the field as inline.
 - `client/module_app_ui/test/features/session_detail/widgets/transcript_step_row_test.dart`
   measures every step kind's icon, label inset, height and label weight at
   phone and desktop density.
