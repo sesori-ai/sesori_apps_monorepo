@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
 import "../../foundation/models/composer/new_session_submission_snapshot.dart";
+import "../../foundation/models/session_launch/launch_follow_up.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/models/new_session_backend_scope.dart";
 import "../../services/models/new_session_options_source.dart";
@@ -127,6 +128,9 @@ sealed class NewSessionPhase with _$NewSessionPhase {
 
     /// When Send committed; the sending bubble's slow-send copy counts from it.
     required DateTime startedAt,
+
+    /// The messages sent after [submission], as the launch holds them.
+    required List<LaunchFollowUp> followUps,
   }) = NewSessionPhaseSending;
 
   const factory restoringSubmission({

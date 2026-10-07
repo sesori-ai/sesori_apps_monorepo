@@ -943,6 +943,7 @@ void main() {
           ),
           pluginId: "claude",
           startedAt: clock.now().subtract(const Duration(seconds: 3)),
+          composer: null,
           followUpIds: const {},
           acceptedFollowUps: const [],
         ),
@@ -970,6 +971,7 @@ void main() {
           ),
           pluginId: "claude",
           startedAt: clock.now(),
+          composer: null,
           followUpIds: const {},
           acceptedFollowUps: const [],
         ),
@@ -1017,6 +1019,7 @@ void main() {
           ),
           pluginId: "claude",
           startedAt: clock.now(),
+          composer: null,
           followUpIds: const {"prm_refused", "prm_waiting"},
           acceptedFollowUps: const [],
         ),
@@ -2284,6 +2287,7 @@ void main() {
         launchFollowUps: [
           LaunchFollowUp.sending(
             submission: _textSubmission(promptId: "prm_follow", text: "follow"),
+            since: DateTime(2026),
           ),
         ],
       ),

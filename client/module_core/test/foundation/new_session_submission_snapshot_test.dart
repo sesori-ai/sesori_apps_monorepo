@@ -1,6 +1,7 @@
 import "dart:typed_data";
 
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -21,7 +22,7 @@ void main() {
 
   test("a command keeps its intent when its follow-ups carry no images", () {
     expect(
-      command.withFollowUps(followUps: [text(attachments: const [])]),
+      command.withFollowUps(followUps: [text(attachments: const [])], unsent: null),
       NewSessionSubmissionSnapshot.command(
         draft: ComposerDraft.typed(text: "src\n\nthen this"),
         command: "review",
@@ -34,6 +35,7 @@ void main() {
       followUps: [
         text(attachments: [image]),
       ],
+      unsent: null,
     );
 
     expect(restored, isA<NewSessionTextSubmissionSnapshot>());
@@ -41,7 +43,35 @@ void main() {
     expect((restored as NewSessionTextSubmissionSnapshot).attachments, [same(image)]);
   });
 
+  test("what the composer still held is appended after the follow-ups", () {
+    final restored =
+        NewSessionSubmissionSnapshot.text(
+          draft: ComposerDraft.typed(text: "first"),
+          attachments: const [],
+        ).withFollowUps(
+          followUps: [text(attachments: const [])],
+          unsent: UnsentComposer(
+            draft: ComposerDraft.typed(text: " half typed "),
+            command: const CommandInfo(
+              name: "fix",
+              template: null,
+              hints: null,
+              description: null,
+              agent: null,
+              model: null,
+              provider: null,
+              source: null,
+              subtask: null,
+            ),
+            attachments: [image],
+          ),
+        );
+
+    expect(restored.draft.text, "first\n\nthen this\n\n/fix half typed");
+    expect((restored as NewSessionTextSubmissionSnapshot).attachments, [same(image)]);
+  });
+
   test("no follow-ups restores the submission itself", () {
-    expect(command.withFollowUps(followUps: const []), same(command));
+    expect(command.withFollowUps(followUps: const [], unsent: null), same(command));
   });
 }

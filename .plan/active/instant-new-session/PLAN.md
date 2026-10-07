@@ -2106,11 +2106,12 @@ compatibility paths were found: no step changes persistence or the wire.
 | 3/8 | `🚧 [instant-new-session] Hand new-session creation to an app-lifetime launch owner [step 3/8]` | Step 3 design, part 3.a: the launch owner family including `SessionLaunchService` and the typed outcome stream, `NewSessionCubit` handing creation over with its analytics and feedback records, `SessionDetailCubit` taking the handoff and discarding it so every launch is discharged, tests, its regression-document edits. | 950–1,100 authored |
 | 4/8 | `🚧 [instant-new-session] Hand the first message off to the session screen [step 4/8]` | Step 3 design, part 3.b: detail state, the single release funnel, the `sendingSince` slow-send carry, detail presentation, transition-free phone swap, tests, its regression-document edits. | 600–750 authored |
 | 5/10 | `🚧 [instant-new-session] Deliver follow-up messages from the launch owner [step 5/9]` | Step 4 design, part 4.a: sealed `LaunchFollowUp`, service-owned delivery with its retry, cancel and failure log, the handoff-held accepted follow-ups parked by the session screen, the session screen's queue waiting behind the launch's follow-ups, tests. | 900–1,100 |
-| 6/10 | `⚙️ [instant-new-session] Show launch follow-ups on the session screen [step 6/10]` | Step 4 design, part 4.b1, none of it needing the live composer: the session screen's unsent follow-up rows with Retry and Remove through the launch service, the restoration budget check, and a composing failure appending the launch's follow-ups into the restored draft (**D1**), tests. No user-visible change until 7/10 adds follow-ups. | 500–700 |
-| 7/10 | `🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 7/10]` | Step 4 design, part 4.b2: gate split, `queueFollowUp`, shared `generatePromptId`, composer mounted in both sending branches with the desktop move and chrome hiding, the unsent-composer handoff and its **D1** append, the composer seeded before the first load (**D13**) with sending before the load and the loading branch's follow-up bubbles, the bubble-rect test, tests, its regression-document edits. | 900–1,200 |
-| 8/10 | `⚙️ [instant-new-session] Show a launching row in the session lists [step 8/10]` | Step 5 design: row and association streams, `SessionLaunchCubit`, shell providers and the failure alert listener, `PendingSessionLaunchTile` with its tap, the three `SessionTile` hosts, the row-key latch, the hold-until-in-its-slot rule and the **D12** hold-back, the visible-rows empty state, tests, its regression-document edits. | 700–900 |
-| 9/10 | `⚙️ [instant-new-session] Show a launching row in the sidebar and Activity [step 9/10]` | Step 6 design: two sidebar rows, pending `ActivityTile` variant, rail popout provider, the Activity emptiness gates, the phone and desktop home hosts with their 240 ms insertion transition and the projection-based hold, tests, its regression-document edits. | 600–800 |
-| 10/10 | `🌿 [instant-new-session] Run new-session coverage and retire the plan [step 10/10]` | Run the matrix below, record it in `TRACKER.md`, confirm the merged regression documents match what shipped, and move the plan to `.plan/completed/`. | docs only |
+| 6/10 | `⚙️ [instant-new-session] Show launch follow-ups on the session screen [step 6/10]` | Step 4 design, part 4.b1, none of it needing the live composer: the session screen's unsent follow-up rows with Retry and Remove through the launch service, the restoration budget check, and a composing failure appending the launch's follow-ups into the restored draft (**D1**), tests. No user-visible change until 8/11 adds follow-ups. | 500–700 |
+| 7/11 | `🚧 [instant-new-session] Queue follow-ups and hand the unsent composer to the session screen [step 7/11]` | Step 4 design, part 4.b2, its state half: gate split, `queueFollowUp`, shared `generatePromptId`, the unsent-composer handoff and its **D1** append, the session screen's cubit sending before the first load (**D13**) with its queue published into the loading state and kept by a failed load, tests. No user-visible change until 8/11. | 900–1,000 |
+| 8/11 | `🚧 [instant-new-session] Keep the composer live and queue follow-up messages [step 8/11]` | Step 4 design, part 4.b2, its view half: composer mounted in both sending branches with the desktop move and chrome hiding, the composer seeded before the first load (**D13**) and the loading branch's follow-up bubbles, the bubble-rect test, tests, the regression-document edits for 6/10 and this step. | 1,100–1,200 |
+| 9/11 | `⚙️ [instant-new-session] Show a launching row in the session lists [step 9/11]` | Step 5 design: row and association streams, `SessionLaunchCubit`, shell providers and the failure alert listener, `PendingSessionLaunchTile` with its tap, the three `SessionTile` hosts, the row-key latch, the hold-until-in-its-slot rule and the **D12** hold-back, the visible-rows empty state, tests, its regression-document edits. | 700–900 |
+| 10/11 | `⚙️ [instant-new-session] Show a launching row in the sidebar and Activity [step 10/11]` | Step 6 design: two sidebar rows, pending `ActivityTile` variant, rail popout provider, the Activity emptiness gates, the phone and desktop home hosts with their 240 ms insertion transition and the projection-based hold, tests, its regression-document edits. | 600–800 |
+| 11/11 | `🌿 [instant-new-session] Run new-session coverage and retire the plan [step 11/11]` | Run the matrix below, record it in `TRACKER.md`, confirm the merged regression documents match what shipped, and move the plan to `.plan/completed/`. | docs only |
 
 Step 3 ran past about 1,200 lines and was delivered as the pre-approved 3.a and
 3.b split below. Step 4 is split the same way into 4.a (delivery, with no entry
@@ -2120,9 +2121,12 @@ between the owner's delivery and everything the user touches. The user-facing
 half was then split once more, taking the pre-approved cut below: the parts that
 do not need the live composer (the session screen's follow-up rows, the
 restoration budget check and the follow-ups' **D1** append) land first as 6/10.
-The series therefore has ten PRs. The design sections keep their original
-numbers: "Step 4 design" ships as PRs 5/10, 6/10 and 7/10, and so on. Merged PRs
-keep the titles they merged with.
+The rest, implemented in full on one branch, measured about 2,100 changed lines
+and was cut once more between its state and its views: 7/11 lands the cubits' follow-up queue and composer handoff with no
+entry point, and 8/11 the views that use them. The series therefore has eleven
+PRs. The design sections keep their original numbers: "Step 4 design" ships as
+PRs 5/10, 6/10, 7/11 and 8/11, and so on. Merged PRs keep the titles they merged
+with.
 
 Regression documents travel with the step that changes behaviour, which is why
 there is no separate reconciliation PR: each implementation PR leaves the
@@ -2151,12 +2155,11 @@ rather than logic. The third wave raised step 4 by about 150 to 200 lines (the
 sealed follow-up, the failure log and the unsent-composer handoff) and steps 5
 and 6 by about 50 each (the in-slot hold and the emptiness gates). **D13** adds
 about 200 to 250 to step 4 (the composer seeded before the first load), which
-makes the split below the expected path rather than a contingency. If step 4's
-real diff passes about 1,300 lines, the clean cut is to land the shared
-`generatePromptId` extraction and the restoration budget check first as their own
-PR, since neither depends on the live composer, and renumber the series and
-update `TRACKER.md` as the step 3 split below describes; that is a pre-approved
-split of already approved work.
+made a split the expected path rather than a contingency. Step 4 did run long,
+and shipped as the four PRs described after the table (5/10, 6/10, 7/11 and
+8/11), with the series renumbered in `TRACKER.md`; those cuts replaced the
+earlier idea of landing `generatePromptId` and the restoration budget check on
+their own.
 
 **Pre-approved split if step 3 runs long.** Step 3 is the largest step and now
 carries the launch-owner family as well as the detail-side handoff. If the real

@@ -301,7 +301,7 @@ void main() {
   });
 
   for (final auditState in [
-    const SessionDetailState.loading(launchHandoff: null),
+    const SessionDetailState.loading(launchHandoff: null, seededComposer: null),
     const SessionDetailState.failed(reason: RemoteFailureReason.unknown),
   ]) {
     testWidgets("an audit page keeps Back as its only way out in $auditState", (tester) async {
@@ -650,6 +650,7 @@ void main() {
         startedAt: DateTime.now(),
         followUpIds: const {},
         acceptedFollowUps: const [],
+        composer: null,
       ),
     );
     when(() => cubit.state).thenReturn(state);

@@ -15,6 +15,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.d
 import "package:sesori_dart_core/src/foundation/models/composer/new_session_submission_snapshot.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/foundation/models/session_launch/launch_follow_up.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
@@ -1118,8 +1119,10 @@ void main() {
       );
       expect(cubit.state, composingWith<NewSessionPhaseSending>());
 
-      cubit.clearStagedCommand();
+      // The command stays live for the next message; the options are locked.
       cubit.stageCommand(command);
+      expect(cubit.state.agentModelData?.stagedCommand, command);
+      cubit.clearStagedCommand();
       cubit.selectModel(providerID: "other-provider", modelID: "other-model");
 
       expect(cubit.state.agentModelData?.stagedCommand, isNull);
@@ -2411,6 +2414,126 @@ void main() {
         await pending;
 
         expect(launchRepository.takeHandoff(sessionId: "s-1"), isNull);
+      });
+
+      group("the live composer", () {
+        final image = ComposerAttachment(mime: "image/png", bytes: Uint8List.fromList([1]), filename: "a.png");
+
+        List<LaunchFollowUp> followUpsOf(NewSessionCubit cubit) =>
+            ((cubit.state as NewSessionComposing).phase as NewSessionPhaseSending).followUps;
+
+        test("queues messages sent while sending in press order, under the options locked at Send", () async {
+          final cubit = buildCubit(launchRepository: launchRepository);
+          addTearDown(cubit.close);
+          await waitForComposer(cubit);
+          final data = cubit.state.agentModelData;
+
+          cubit.queueFollowUp(
+            draft: ComposerDraft.typed(text: "too early"),
+            command: null,
+            attachments: const [],
+          );
+          expect(cubit.state, composingWith<NewSessionPhaseIdle>(), reason: "only a sending composer queues");
+
+          unawaited(send(cubit));
+          expect(cubit.canSubmitFollowUp, isTrue);
+          cubit.queueFollowUp(
+            draft: ComposerDraft.typed(text: " second "),
+            command: null,
+            attachments: const [],
+          );
+          cubit.queueFollowUp(
+            draft: ComposerDraft.typed(text: "third"),
+            command: null,
+            attachments: const [],
+          );
+          cubit.queueFollowUp(
+            draft: ComposerDraft.typed(text: ""),
+            command: "review",
+            attachments: [image],
+          );
+          // The default plugin declares no attachment support.
+          cubit.queueFollowUp(
+            draft: ComposerDraft.typed(text: "with an image"),
+            command: null,
+            attachments: [image],
+          );
+          await Future<void>.delayed(Duration.zero);
+
+          final followUps = followUpsOf(cubit);
+          expect([for (final followUp in followUps) followUp.submission.text], ["second", "third"]);
+          expect(followUps.every((followUp) => followUp is QueuedLaunchFollowUp), isTrue);
+          expect(followUps.first.submission.promptId, isNot(followUps.last.submission.promptId));
+          expect(followUps.first.submission.promptId, startsWith("prm_"));
+          expect(followUps.first.submission.agent, data?.agent);
+          expect(followUps.first.submission.agentModel, data?.agentModel);
+        });
+
+        test("success hands the session screen what the composer still holds, and forgets it here", () async {
+          final draftRepository = inMemoryComposerDraftRepository();
+          final cubit = buildCubit(composerDraftRepository: draftRepository, launchRepository: launchRepository);
+          addTearDown(cubit.close);
+          await waitForComposer(cubit);
+
+          final pending = send(cubit);
+          cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "next idea"));
+          cubit.saveComposerAttachments(attachments: [image]);
+          cubit.reportComposerFocus(focused: true);
+          response.complete(ApiResponse.success(testSession(id: "s-1")));
+          await pending;
+          await Future<void>.delayed(Duration.zero);
+
+          final composer = launchRepository.takeHandoff(sessionId: "s-1")?.composer;
+          expect(composer?.hadFocus, isTrue);
+          expect(composer?.unsent?.draft.text, "next idea");
+          expect(composer?.unsent?.attachments, [same(image)]);
+          expect(cubit.composerDraft.text, isEmpty);
+          expect(draftRepository.readForNewSession(projectId: "project-1").text, isEmpty);
+        });
+
+        test("a creation landing while voice runs waits for it, then hands over the transcribed draft", () async {
+          final cubit = buildCubit(launchRepository: launchRepository);
+          addTearDown(cubit.close);
+          await waitForComposer(cubit);
+
+          final pending = send(cubit);
+          cubit.setVoiceBusy(busy: true);
+          response.complete(ApiResponse.success(testSession(id: "s-1")));
+          await pending;
+          await Future<void>.delayed(Duration.zero);
+          expect(cubit.state, composingWith<NewSessionPhaseSending>(), reason: "the recording keeps the screen");
+          expect(cubit.canSubmitFollowUp, isTrue);
+
+          cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "spoken words"));
+          cubit.setVoiceBusy(busy: false);
+
+          expect(cubit.state, isA<NewSessionCreated>());
+          final composer = launchRepository.takeHandoff(sessionId: "s-1")?.composer;
+          expect(composer?.unsent?.draft.text, "spoken words");
+        });
+
+        test("a failed create restores the first message, the follow-ups and what is unsent as one draft", () async {
+          final cubit = buildCubit(launchRepository: launchRepository);
+          addTearDown(cubit.close);
+          await waitForComposer(cubit);
+
+          final pending = send(cubit);
+          cubit.queueFollowUp(
+            draft: ComposerDraft.typed(text: "second"),
+            command: null,
+            attachments: const [],
+          );
+          cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "half typed"));
+          cubit.saveComposerAttachments(attachments: [image]);
+          response.complete(ApiResponse.error(ApiError.generic()));
+          await pending;
+          await Future<void>.delayed(Duration.zero);
+
+          final restored =
+              ((cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission).submission;
+          expect(restored.draft.text, "hello\n\nsecond\n\nhalf typed");
+          expect((restored as NewSessionTextSubmissionSnapshot).attachments, [same(image)]);
+        });
       });
     });
 

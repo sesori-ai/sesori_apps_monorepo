@@ -6,11 +6,13 @@ import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/queued_session_submission.dart";
 import "../../foundation/models/session_interaction_state.dart";
 import "../../foundation/models/session_launch/launch_follow_up.dart";
+import "../../foundation/models/session_launch/session_launch_composer.dart";
 import "../../foundation/models/session_launch/session_launch_handoff.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/session_approval_calculator.dart";
 import "../../services/session_selection_calculator.dart";
 import "local_send_phase.dart";
+import "seeded_composer.dart";
 
 part "session_detail_state.freezed.dart";
 
@@ -21,6 +23,17 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// sending bubble until the transcript shows what replaces it. Null for
     /// every ordinary open.
     required SessionLaunchHandoff? launchHandoff,
+
+    /// The launch's composer, when this load builds it before the transcript.
+    /// Null for every ordinary open.
+    required SeededComposer? seededComposer,
+
+    // What the seeded composer's sends show at once: the follow-ups the
+    // launch has not delivered, those this screen parked, and the prompts
+    // sent here. An ordinary load has none.
+    @Default([]) List<LaunchFollowUp> launchFollowUps,
+    @Default([]) List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    @Default([]) List<QueuedSessionSubmission> queuedMessages,
   }) = SessionDetailLoading;
 
   const factory loaded({
@@ -134,7 +147,21 @@ sealed class SessionDetailState with _$SessionDetailState {
     @Default(false) bool isUpdatingAutoContinuation,
   }) = SessionDetailHarnessUnavailable;
 
-  const factory failed({required RemoteFailureReason reason}) = SessionDetailFailed;
+  const factory failed({
+    required RemoteFailureReason reason,
+
+    /// Sends the bridge took that it has not listed yet, shown read-only so
+    /// a failed load does not hide a message that went out.
+    @Default([]) List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+
+    /// Messages sent before this session existed that its launch still owes,
+    /// so a failed load keeps their Retry and Remove actions in view.
+    @Default([]) List<LaunchFollowUp> launchFollowUps,
+
+    /// Prompts sent before the first load that are still waiting for it, so
+    /// a failed load never hides them. Retry sends them once it loads.
+    @Default([]) List<QueuedSessionSubmission> queuedMessages,
+  }) = SessionDetailFailed;
 }
 
 extension SessionDetailStateX on SessionDetailState {
@@ -155,6 +182,16 @@ extension SessionDetailStateX on SessionDetailState {
     SessionDetailLoaded(:final session) || SessionDetailHarnessUnavailable(:final session) => session,
     SessionDetailLoading() || SessionDetailFailed() => null,
   };
+}
+
+extension SessionLaunchComposerX on SessionLaunchComposer {
+  static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
+  static const FastModeToggleCalculator _fastModeToggle = FastModeToggleCalculator();
+
+  FastModeControl get fastModeControl => _fastModeToggle.control(
+    support: _selection.fastModeSupport(providers: providers, model: agentModel),
+    fastMode: fastMode,
+  );
 }
 
 extension SessionDetailLoadedX on SessionDetailLoaded {

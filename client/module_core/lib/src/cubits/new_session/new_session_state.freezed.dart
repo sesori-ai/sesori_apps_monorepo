@@ -978,7 +978,7 @@ String toString() {
 
 
 class NewSessionPhaseSending implements NewSessionPhase {
-  const NewSessionPhaseSending({required this.submission, required this.launchId, required this.startedAt});
+  const NewSessionPhaseSending({required this.submission, required this.launchId, required this.startedAt, required  List<LaunchFollowUp> followUps}): _followUps = followUps;
   
 
  final  NewSessionSubmissionSnapshot submission;
@@ -986,6 +986,15 @@ class NewSessionPhaseSending implements NewSessionPhase {
  final  String launchId;
 /// When Send committed; the sending bubble's slow-send copy counts from it.
  final  DateTime startedAt;
+/// The messages sent after [submission], as the launch holds them.
+ final  List<LaunchFollowUp> _followUps;
+/// The messages sent after [submission], as the launch holds them.
+ List<LaunchFollowUp> get followUps {
+  if (_followUps is EqualUnmodifiableListView) return _followUps;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_followUps);
+}
+
 
 /// Create a copy of NewSessionPhase
 /// with the given fields replaced by the non-null parameter values.
@@ -997,18 +1006,18 @@ $NewSessionPhaseSendingCopyWith<NewSessionPhaseSending> get copyWith => _$NewSes
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseSending&&(identical(other.submission, submission) || other.submission == submission)&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseSending&&(identical(other.submission, submission) || other.submission == submission)&&(identical(other.launchId, launchId) || other.launchId == launchId)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&const DeepCollectionEquality().equals(other.followUps, _followUps));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,submission,launchId,startedAt);
+    return Object.hash(runtimeType,submission,launchId,startedAt,const DeepCollectionEquality().hash(_followUps));
 }
 
 @override
 String toString() {
-    return 'NewSessionPhase.sending(submission: $submission, launchId: $launchId, startedAt: $startedAt)';
+    return 'NewSessionPhase.sending(submission: $submission, launchId: $launchId, startedAt: $startedAt, followUps: $followUps)';
 }
 
 
@@ -1019,7 +1028,7 @@ abstract mixin class $NewSessionPhaseSendingCopyWith<$Res> implements $NewSessio
   factory $NewSessionPhaseSendingCopyWith(NewSessionPhaseSending value, $Res Function(NewSessionPhaseSending) _then) = _$NewSessionPhaseSendingCopyWithImpl;
 @useResult
 $Res call({
- NewSessionSubmissionSnapshot submission, String launchId, DateTime startedAt
+ NewSessionSubmissionSnapshot submission, String launchId, DateTime startedAt, List<LaunchFollowUp> followUps
 });
 
 
@@ -1036,12 +1045,13 @@ class _$NewSessionPhaseSendingCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionPhase
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? submission = null,Object? launchId = null,Object? startedAt = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? submission = null,Object? launchId = null,Object? startedAt = null,Object? followUps = null,}) {
   return _then(NewSessionPhaseSending(
 submission: null == submission ? _self.submission : submission // ignore: cast_nullable_to_non_nullable
 as NewSessionSubmissionSnapshot,launchId: null == launchId ? _self.launchId : launchId // ignore: cast_nullable_to_non_nullable
 as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
-as DateTime,
+as DateTime,followUps: null == followUps ? _self._followUps : followUps // ignore: cast_nullable_to_non_nullable
+as List<LaunchFollowUp>,
   ));
 }
 

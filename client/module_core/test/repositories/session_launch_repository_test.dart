@@ -52,6 +52,7 @@ void main() {
         startedAt: startedAt,
         followUpIds: const {},
         acceptedFollowUps: const [],
+        composer: null,
       ),
     );
     expect(repository.takeHandoff(sessionId: "session-1"), isNull);
@@ -91,6 +92,32 @@ void main() {
 
     expect(storage.readAll(), isEmpty);
     expect(repository.takeHandoff(sessionId: "session-1"), isNull);
+  });
+
+  test("the composer handed over travels with the handoff", () {
+    const composer = SessionLaunchComposer(
+      agents: [],
+      agent: "build",
+      providers: [],
+      agentModel: null,
+      availableVariants: [],
+      commands: [],
+      fastMode: false,
+      supportsPromptAttachments: true,
+      hadFocus: true,
+      unsent: null,
+    );
+    start();
+    repository.handOverComposer(launchId: "launch-1", composer: composer);
+    expect(storage.read(launchId: "launch-1"), isA<PendingSessionLaunch>(), reason: "only a created launch takes it");
+
+    repository.promote(
+      launchId: "launch-1",
+      session: testSession(id: "session-1"),
+    );
+    repository.handOverComposer(launchId: "launch-1", composer: composer);
+
+    expect(repository.takeHandoff(sessionId: "session-1")?.composer, same(composer));
   });
 
   test("a failure goes to the composer while it holds the payload, and nowhere else", () async {

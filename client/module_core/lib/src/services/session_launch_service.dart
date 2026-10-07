@@ -11,6 +11,7 @@ import "../foundation/models/composer/prompt_send_failure.dart";
 import "../foundation/models/composer/queued_session_submission.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../foundation/models/session_launch/launch_follow_up.dart";
+import "../foundation/models/session_launch/session_launch_composer.dart";
 import "../foundation/models/session_launch/session_launch_handoff.dart";
 import "../foundation/models/session_launch/session_launch_outcome.dart";
 import "../logging/logging.dart";
@@ -41,6 +42,12 @@ class SessionLaunchService({
 
   Stream<List<LaunchFollowUp>> watchForSession({required String sessionId}) =>
       _launchRepository.watchForSession(sessionId: sessionId);
+
+  Stream<List<LaunchFollowUp>> watchFollowUps({required String launchId}) =>
+      _launchRepository.watchFollowUps(launchId: launchId);
+
+  void handOverComposer({required String launchId, required SessionLaunchComposer composer}) =>
+      _launchRepository.handOverComposer(launchId: launchId, composer: composer);
 
   /// Queues a message sent after the first one. It is sent once the session
   /// exists and every follow-up before it was accepted, in press order.

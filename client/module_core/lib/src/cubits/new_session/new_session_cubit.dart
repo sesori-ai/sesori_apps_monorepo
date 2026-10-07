@@ -9,10 +9,15 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../errors/api_error_remote_failure_x.dart";
+import "../../foundation/identity/prompt_id.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/composer/new_session_submission_snapshot.dart";
+import "../../foundation/models/composer/queued_session_submission.dart";
+import "../../foundation/models/composer/unsent_composer.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
+import "../../foundation/models/session_launch/launch_follow_up.dart";
+import "../../foundation/models/session_launch/session_launch_composer.dart";
 import "../../foundation/models/session_launch/session_launch_outcome.dart";
 import "../../logging/logging.dart";
 import "../../repositories/composer_draft_repository.dart";
@@ -69,6 +74,14 @@ class NewSessionCubit({
   ComposerDraft _composerDraft = _composerDraftRepository.readForNewSession(projectId: _projectId);
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
   late final StreamSubscription<SessionLaunchOutcome> _launchOutcomeSubscription;
+  StreamSubscription<List<LaunchFollowUp>>? _followUpsSubscription;
+  List<ComposerAttachment> _composerAttachments = const [];
+  bool _composerFocused = false;
+  bool _voiceBusy = false;
+
+  /// A creation that landed while the composer was recording or
+  /// transcribing, applied once the voice input settles.
+  SessionLaunchSucceeded? _successAwaitingVoice;
   late bool _wasConnected;
   int _loadGeneration = 0;
   int _projectLoadGeneration = 0;
@@ -609,6 +622,10 @@ class NewSessionCubit({
         !data.optionsState.authenticationRequired;
   }
 
+  /// Whether Send queues a follow-up: only while the first message is sending.
+  /// A second Send is never a second creation.
+  bool get canSubmitFollowUp => state.phase is NewSessionPhaseSending;
+
   NewSessionComposerPresentation get composerPresentation {
     final data = state.agentModelData;
     if (data == null) return const NewSessionComposerPending();
@@ -850,8 +867,12 @@ class NewSessionCubit({
     }
   }
 
+  /// Whether a command can be staged or cleared. Unlike the option pills, the
+  /// composer's own content stays live while the first message is sending.
+  bool get _canEditCommand => state.phase is NewSessionPhaseSending || _canEditComposer;
+
   void stageCommand(CommandInfo command) {
-    if (!_canEditComposer) return;
+    if (!_canEditCommand) return;
     final options = state.agentModelData?.optionsState.data;
     if (options == null) return;
     final selected = _newSessionOptionsService.stageCommand(options: options, command: command);
@@ -860,10 +881,8 @@ class NewSessionCubit({
   }
 
   void clearStagedCommand() {
-    final current = state;
-    if (current is NewSessionCreated) return;
-    if (current.phase is! NewSessionPhaseSending && !_canEditComposer) return;
-    final options = current.agentModelData?.optionsState.data;
+    if (!_canEditCommand) return;
+    final options = state.agentModelData?.optionsState.data;
     if (options == null) return;
     _replaceOptionsData(options: _newSessionOptionsService.clearStagedCommand(options: options));
   }
@@ -913,9 +932,15 @@ class NewSessionCubit({
           isPluginDiscoveryInFlight: false,
           projectWorktreeCapability: config.projectWorktreeCapability,
         ),
-        phase: NewSessionPhase.sending(submission: submission, launchId: launchId, startedAt: startedAt),
+        phase: NewSessionPhase.sending(
+          submission: submission,
+          launchId: launchId,
+          startedAt: startedAt,
+          followUps: const [],
+        ),
       ),
     );
+    _followUpsSubscription = _sessionLaunchService.watchFollowUps(launchId: launchId).listen(_onFollowUps);
 
     final options = config.optionsState.data;
     final selectedAgentModel = options?.selectedAgentModel;
@@ -944,20 +969,117 @@ class NewSessionCubit({
     );
   }
 
+  /// Queues a message sent while the first one is sending. It inherits the
+  /// options the launch committed at Send, which stay locked until then.
+  void queueFollowUp({
+    required ComposerDraft draft,
+    required String? command,
+    required List<ComposerAttachment> attachments,
+  }) {
+    final current = state;
+    if (current is! NewSessionComposing) return;
+    final phase = current.phase;
+    if (phase is! NewSessionPhaseSending) return;
+    final normalizedCommand = command?.trim();
+    final hasCommand = normalizedCommand != null && normalizedCommand.isNotEmpty;
+    final text = draft.text.trim();
+    if (text.isEmpty && !hasCommand && attachments.isEmpty) return;
+    if (hasCommand && attachments.isNotEmpty) {
+      logw("Refused a /$normalizedCommand follow-up carrying ${attachments.length} attachment(s)");
+      return;
+    }
+    final data = current.config.agentModelData;
+    if (attachments.isNotEmpty && data.plugin?.supportsPromptAttachments != true) {
+      logw("Refused ${attachments.length} follow-up attachment(s) for plugin ${data.plugin?.id}");
+      return;
+    }
+    final submission = hasCommand
+        ? QueuedSessionSubmission.command(
+            promptId: generatePromptId(),
+            text: text,
+            command: normalizedCommand,
+            agent: data.agent,
+            agentModel: data.agentModel,
+            fastMode: data.runsFastMode,
+          )
+        : QueuedSessionSubmission.text(
+            promptId: generatePromptId(),
+            text: text,
+            inputMode: draft.inputMode,
+            attachments: List.unmodifiable(attachments),
+            agent: data.agent,
+            agentModel: data.agentModel,
+            fastMode: data.runsFastMode,
+          );
+    _sessionLaunchService.addFollowUp(launchId: phase.launchId, submission: submission);
+  }
+
+  /// Drops a follow-up that has not been sent yet.
+  void cancelFollowUp({required String promptId}) => _sessionLaunchService.cancelFollowUp(promptId: promptId);
+
+  void _onFollowUps(List<LaunchFollowUp> followUps) {
+    if (isClosed) return;
+    final current = state;
+    if (current is! NewSessionComposing) return;
+    if (current.phase case final NewSessionPhaseSending phase) {
+      emit(current.copyWith(phase: phase.copyWith(followUps: followUps)));
+    }
+  }
+
+  /// What the composer holds that nobody sent, or null when it holds nothing.
+  UnsentComposer? get _unsentComposer {
+    final command = state.stagedCommand;
+    if (_composerDraft.text.trim().isEmpty && command == null && _composerAttachments.isEmpty) return null;
+    return UnsentComposer(draft: _composerDraft, command: command, attachments: _composerAttachments);
+  }
+
+  /// Passes the composer to the session screen about to replace this one, and
+  /// forgets its text here so the next new session for the project starts
+  /// empty instead of showing it again.
+  void _handOverComposer({required String launchId, required AgentModelData data}) {
+    _sessionLaunchService.handOverComposer(
+      launchId: launchId,
+      composer: SessionLaunchComposer(
+        agents: data.agents,
+        agent: data.agent,
+        providers: data.providers,
+        agentModel: data.agentModel,
+        availableVariants: data.availableVariants,
+        commands: data.commands,
+        fastMode: data.runsFastMode,
+        supportsPromptAttachments: data.plugin?.supportsPromptAttachments ?? false,
+        hadFocus: _composerFocused,
+        unsent: _unsentComposer,
+      ),
+    );
+    clearComposerDraft();
+  }
+
   void _onLaunchOutcome(SessionLaunchOutcome outcome) {
     if (isClosed) return;
     final current = state;
     if (current is! NewSessionComposing) return;
     final phase = current.phase;
     if (phase is! NewSessionPhaseSending || phase.launchId != outcome.launchId) return;
+    // Leaving now would end the recording; its words land in the draft the
+    // session screen takes over once it settles.
+    if (outcome is SessionLaunchSucceeded && _voiceBusy) {
+      _successAwaitingVoice = outcome;
+      return;
+    }
+    unawaited(_followUpsSubscription?.cancel());
+    _followUpsSubscription = null;
     switch (outcome) {
       case SessionLaunchSucceeded(:final session):
+        _handOverComposer(launchId: phase.launchId, data: current.config.agentModelData);
         emit(NewSessionState.created(session: session, launchId: phase.launchId));
       case SessionLaunchFailedWhileComposing(:final reason, :final followUps):
-        _restoreSubmission(
-          submission: phase.submission.withFollowUps(followUps: followUps),
-          reason: reason,
-        );
+        // The follow-ups and whatever the composer still holds go into the
+        // restored draft, and the composer holds one command: the first
+        // message's.
+        final submission = phase.submission.withFollowUps(followUps: followUps, unsent: _unsentComposer);
+        if (state.stagedCommand != null) clearStagedCommand();
+        _restoreSubmission(submission: submission, reason: reason);
       case SessionLaunchFailedAfterLeaving():
         // Only a launch this composer released fails this way, and a composer
         // releases its launch only as it closes.
@@ -1047,6 +1169,16 @@ class NewSessionCubit({
 
   ComposerDraft get composerDraft => _composerDraft;
 
+  /// Whether the composer is recording or transcribing. A creation that lands
+  /// meanwhile waits for it to settle.
+  void setVoiceBusy({required bool busy}) {
+    _voiceBusy = busy;
+    final held = _successAwaitingVoice;
+    if (busy || held == null) return;
+    _successAwaitingVoice = null;
+    _onLaunchOutcome(held);
+  }
+
   void saveComposerDraft({required ComposerDraft draft}) {
     _composerDraft = draft;
     _composerDraftRepository.saveForNewSession(projectId: _projectId, draft: draft);
@@ -1055,6 +1187,18 @@ class NewSessionCubit({
   void clearComposerDraft() {
     _composerDraft = ComposerDraft.typed(text: "");
     _composerDraftRepository.clearForNewSession(projectId: _projectId);
+  }
+
+  /// The images the composer has staged, which live only in the composer, so
+  /// they can go with the session that takes it over.
+  void saveComposerAttachments({required List<ComposerAttachment> attachments}) {
+    _composerAttachments = attachments;
+  }
+
+  /// Whether the composer has keyboard focus, so the session screen that takes
+  /// it over can keep the keyboard up.
+  void reportComposerFocus({required bool focused}) {
+    _composerFocused = focused;
   }
 
   void reportVoiceTranscriptionCompleted() {
@@ -1102,6 +1246,7 @@ class NewSessionCubit({
       NewSessionComposing() => null,
     };
     if (launchId != null) _sessionLaunchService.releaseHandoff(launchId: launchId);
+    await _followUpsSubscription?.cancel();
     await _launchOutcomeSubscription.cancel();
     await _connectionStatusSubscription.cancel();
     await super.close();
