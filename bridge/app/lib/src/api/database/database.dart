@@ -3,11 +3,12 @@ import "dart:io";
 import "package:drift/drift.dart";
 import "package:drift/native.dart";
 import "package:path/path.dart" as path;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show normalizeProjectDirectory, resolveUserHomeDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../foundation/data_directory_hardening.dart";
-import "../../foundation/discovered_project_visibility_calculator.dart";
 import "converters/agent_model_converter.dart";
 import "daos/catalog_hydrations_dao.dart";
 import "daos/projects_dao.dart";
@@ -317,13 +318,13 @@ class AppDatabase(super.e) extends _$AppDatabase {
       },
       from19To20: (m, schema) async {
         // Issue #1834: older bridges saved discovered projects hidden, and
-        // scans keep stored visibility. Re-apply today's rule once. The bridge
-        // cannot tell those rows from a user's Remove, so a removed project
-        // reappears once and can be removed again.
-        final visibility = DiscoveredProjectVisibilityCalculator();
+        // scans keep stored visibility. Show every hidden project except
+        // temporary and home dot-directory folders, which scans hide by
+        // default. The bridge cannot tell those rows from a user's Remove, so
+        // a removed project reappears once and can be removed again.
         final hiddenRows = await customSelect("SELECT project_id, path FROM projects_table WHERE hidden = 1").get();
         for (final row in hiddenRows) {
-          if (visibility.shouldHide(projectPath: row.read<String>("path"))) continue;
+          if (_keepHiddenInV20(projectPath: row.read<String>("path"))) continue;
           await customStatement("UPDATE projects_table SET hidden = 0 WHERE project_id = ?", [
             row.read<String>("project_id"),
           ]);
@@ -334,6 +335,21 @@ class AppDatabase(super.e) extends _$AppDatabase {
       await customStatement("PRAGMA foreign_keys = ON");
     },
   );
+
+  /// Frozen copy of the v1.9.1 scan rule, so this migration keeps its meaning
+  /// when the scan rule changes later.
+  static bool _keepHiddenInV20({required String projectPath}) {
+    final projectDirectory = normalizeProjectDirectory(directory: projectPath);
+    final temporaryDirectory = normalizeProjectDirectory(directory: Directory.systemTemp.path);
+    for (final directory in ["/tmp", "/private/tmp", temporaryDirectory]) {
+      if (path.equals(directory, projectDirectory) || path.isWithin(directory, projectDirectory)) return true;
+    }
+    final userHomeDirectory = resolveUserHomeDirectory(environment: Platform.environment);
+    if (userHomeDirectory == null) return false;
+    final homeDirectory = normalizeProjectDirectory(directory: userHomeDirectory);
+    if (!path.isWithin(homeDirectory, projectDirectory)) return false;
+    return path.split(path.relative(projectDirectory, from: homeDirectory)).first.startsWith(".");
+  }
 
   static AppDatabase create({required String dataDirectory}) {
     final directory = createHardenedDirectory(directoryPath: dataDirectory);

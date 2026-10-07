@@ -1,8 +1,11 @@
 import "dart:async";
 import "dart:collection";
+import "dart:io" show Directory, Platform;
 import "dart:math";
 
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
+import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show normalizeProjectDirectory, resolveUserHomeDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -12,7 +15,6 @@ import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/catalog_hydrations_table.dart";
 import "../api/database/tables/projects_table.dart";
 import "../api/database/tables/session_table.dart";
-import "../foundation/discovered_project_visibility_calculator.dart";
 import "../runtime/plugin_runtime.dart";
 import "models/catalog_import_control.dart";
 import "project_catalog_identity_calculator.dart";
@@ -45,8 +47,8 @@ class CatalogImportRepository({
   static const int _responsivenessBatchSize = 512;
   static final Random _secureRandom = Random.secure();
 
-  final DiscoveredProjectVisibilityCalculator _discoveredProjectVisibilityCalculator =
-      DiscoveredProjectVisibilityCalculator();
+  final String? _normalizedUserHomeDirectory = _resolveNormalizedUserHomeDirectory();
+  final String _normalizedTemporaryDirectory = normalizeProjectDirectory(directory: Directory.systemTemp.path);
   final StreamController<List<SessionBackendActivity>> _backendActivityController =
       StreamController<List<SessionBackendActivity>>.broadcast(sync: true);
 
@@ -475,7 +477,7 @@ class CatalogImportRepository({
           final row = _mergeProjectRow(
             observation: observation,
             existing: existing,
-            hiddenWhenNew: _discoveredProjectVisibilityCalculator.shouldHide(projectPath: observation.path),
+            hiddenWhenNew: _shouldHideDiscoveredProject(projectPath: observation.path),
             importStartedAt: importStartedAt,
           );
           projectRows.add(row);
@@ -742,6 +744,17 @@ class CatalogImportRepository({
     }
   }
 
+  bool _shouldHideDiscoveredProject({required String projectPath}) {
+    // Scans discover history; only Add/Open Project explicitly reveals these folders.
+    for (final temporaryDirectory in ["/tmp", "/private/tmp", _normalizedTemporaryDirectory]) {
+      if (p.equals(temporaryDirectory, projectPath) || p.isWithin(temporaryDirectory, projectPath)) return true;
+    }
+    final userHomeDirectory = _normalizedUserHomeDirectory;
+    if (userHomeDirectory == null || !p.isWithin(userHomeDirectory, projectPath)) return false;
+    final relativeSegments = p.split(p.relative(projectPath, from: userHomeDirectory));
+    return relativeSegments.isNotEmpty && relativeSegments.first.startsWith(".");
+  }
+
   String _normalizeRequiredPath(String path) {
     final trimmed = path.trim();
     if (trimmed.isEmpty) throw StateError("plugin returned an empty catalog path");
@@ -751,6 +764,11 @@ class CatalogImportRepository({
   String? _usefulText(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : value;
+  }
+
+  static String? _resolveNormalizedUserHomeDirectory() {
+    final userHomeDirectory = resolveUserHomeDirectory(environment: Platform.environment);
+    return userHomeDirectory == null ? null : normalizeProjectDirectory(directory: userHomeDirectory);
   }
 }
 

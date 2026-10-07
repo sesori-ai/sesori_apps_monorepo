@@ -986,6 +986,7 @@ class SessionRepository({
       await _projectsDao.insertProjectIfMissing(
         projectId: hydratedProject.projectId,
         path: projectDirectory,
+        hidden: false,
       );
       final existingByBackendId = await _sessionDao.getSessionsByBackendIds(
         pluginId: pluginId,

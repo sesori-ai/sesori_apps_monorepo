@@ -181,7 +181,10 @@ class ProjectActivityRepository({
           );
         }
         _requireCurrentProjectActivitySource(source);
-        await _projectsDao.insertProjectsWithPathsIfMissing(projects: missingProjects);
+        await _projectsDao.insertProjectsWithPathsIfMissing(
+          projects: missingProjects,
+          hidden: false,
+        );
         _requireCurrentProjectActivitySource(source);
         return evidence;
       }),
