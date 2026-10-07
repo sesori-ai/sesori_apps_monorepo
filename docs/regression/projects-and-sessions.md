@@ -334,7 +334,8 @@ state.
   nothing; it has no menu or swipe actions. It is left out of the chip counts,
   hidden under Running and Unread, while searching and in Archived, and a
   project whose only row is a launch shows that row rather than the empty
-  state. When the session exists the row cross-fades in place into the real
+  state (on desktop, rather than the empty project's composer), including
+  when the launch came from Home or the page is reopened while it creates. When the session exists the row cross-fades in place into the real
   session row (instantly under reduced motion) without moving the rows below,
   and the launch never shows two rows: while its project has a launch still
   waiting, a session that arrives after the list first loaded stays out of it,

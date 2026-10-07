@@ -42,6 +42,7 @@ void main() {
   late List<String> opened;
   late Stream<NewSessionState> newSessionStates;
   late int newSessionTaps;
+  late SessionLaunchRepository launches;
 
   setUp(() {
     cubit = _MockSessionListCubit();
@@ -56,6 +57,7 @@ void main() {
     opened = [];
     newSessionStates = const Stream<NewSessionState>.empty();
     newSessionTaps = 0;
+    launches = inMemorySessionLaunchRepository();
   });
 
   NewSessionCubit newSessionCubit({required String projectId, required String? projectName}) {
@@ -111,7 +113,10 @@ void main() {
                   cleanupService: SessionCleanupService(repository: MockSessionRepository()),
                 ),
               ),
-              BlocProvider(create: (_) => idleSessionLaunchCubit()),
+              BlocProvider(
+                create: (_) =>
+                    SessionLaunchCubit(launchService: inMemorySessionLaunchService(launchRepository: launches)),
+              ),
               BlocProvider<ChatInputModeCubit>.value(value: inputMode),
             ],
             child: DesktopSessionListView(
@@ -240,6 +245,28 @@ void main() {
 
     await pumpPage(tester: tester, filter: SessionListFilter.archived, sessions: const []);
     expect(find.byType(PromptInput), findsNothing);
+  });
+
+  testWidgets("an empty project with a pending launch shows the launching row, not the composer", (tester) async {
+    // Launched from Home, or the page was left and reopened while it creates.
+    launches.start(
+      launchId: "launch-1",
+      projectId: "project-1",
+      pluginId: "claude",
+      startedAt: DateTime.now(),
+      projectName: "sesori",
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Fix the bug"),
+        attachments: const [],
+      ),
+    );
+    launches.releaseHandoff(launchId: "launch-1");
+    await pumpPage(tester: tester, filter: SessionListFilter.active, sessions: const []);
+    await tester.pump();
+
+    expect(composersFor, isEmpty);
+    expect(find.byType(PromptInput), findsNothing);
+    expect(find.byType(PendingSessionLaunchTile), findsOneWidget);
   });
 
   testWidgets("a session started from an empty project opens", (tester) async {

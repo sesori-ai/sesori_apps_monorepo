@@ -104,7 +104,11 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
     final loaded = state is SessionListLoaded ? state : null;
     final showArchived = loaded != null && loaded.filter != SessionListFilter.active;
     final refreshing = _refreshing || (loaded != null && loaded.isRefreshing);
-    final showComposer = loaded != null && !showArchived && (loaded.sessions.isEmpty || _creating);
+    // A launch from elsewhere already leads the list as its launching row.
+    final launching = context.select(
+      (SessionLaunchCubit launches) => launches.state.launching.any((launch) => launch.projectId == cubit.projectId),
+    );
+    final showComposer = loaded != null && !showArchived && ((loaded.sessions.isEmpty && !launching) || _creating);
     return Scaffold(
       body: Column(
         children: [
