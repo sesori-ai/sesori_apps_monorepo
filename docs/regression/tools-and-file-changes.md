@@ -101,7 +101,10 @@ sub-agent parts, plus the signal that a tool changed files.
   start or, after a bridge reconnect mid-compaction, at the next delta. After
   a reload or reconnect mid-compaction they resume with the next words,
   because OpenCode stores no partial summary. When that snapshot cannot load,
-  the deltas are dropped and the row appears when the compaction settles.
+  the deltas are dropped and the row appears when the compaction settles. If
+  the bridge's OpenCode stream is down when the compaction ends, the row stays
+  running until the next transcript read settles it, like any live part
+  stranded by that outage.
 - A running tool or sub-agent is a live row: the turning outline sparkle leads
   it and a primary-text band sweeps across its dimmed label, visible in both
   themes. Reduced motion keeps the sparkle and label still while screen readers

@@ -498,12 +498,22 @@ void main() {
       }),
     )!;
     await service.coldStart();
-    for (final text in ["Fixture", " summary"]) {
-      final streamed = await service.handleEvent(
-        envelope: frame(type: "session.compaction.delta", data: {"sessionID": "child", "text": text}),
-      );
-      expect((streamed.single as BridgeSseMessagePartDelta).partID, "msg_compaction:0");
-    }
+    Future<List<BridgeSseEvent>> delta({required String text}) => service.handleEvent(
+      envelope: frame(type: "session.compaction.delta", data: {"sessionID": "child", "text": text}),
+    );
+
+    final first = await delta(text: "Fixture");
+    expect(first.whereType<BridgeSseMessageUpdated>().single.info.id, "msg_compaction");
+    expect(
+      first.whereType<BridgeSseMessagePartUpdated>().single.part,
+      isA<PluginMessagePartCompaction>().having(
+        (part) => part.compactionState,
+        "state",
+        const PluginCompactionState.running(summary: null),
+      ),
+    );
+    expect(first.last, isA<BridgeSseMessagePartDelta>().having((delta) => delta.partID, "part", "msg_compaction:0"));
+    expect((await delta(text: " summary")).single, isA<BridgeSseMessagePartDelta>());
     expect(repository.calls.where((call) => call.startsWith("latest:compaction")), hasLength(1));
   });
 

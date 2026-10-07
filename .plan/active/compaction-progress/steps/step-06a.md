@@ -44,7 +44,9 @@ This PR also adds the phase-2 detail to the plan, section 5.
 - **Strip after a reload or reconnect.** OpenCode stores no partial summary,
   so after a reload or bridge reconnect mid-compaction the strip resumes with
   the next words. When the running snapshot cannot load, the deltas are
-  dropped and the row appears when the compaction settles.
+  dropped and the row appears when the compaction settles. If the stream is
+  down when the compaction ends, the row stays running until the next
+  transcript read, like any live part stranded by that outage.
 - **Older apps (Q5).** While the summary streams, an app at v1.9.0 or older
   buffers the words for a part it never shows. It shows neither "Working…"
   nor a row until the compaction ends and the turn continues. This is
@@ -62,7 +64,8 @@ Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
   - deltas reaching only the running row;
   - a service flow (start, delta, end, then a late delta that goes nowhere)
     that settles in place as completed with trigger auto;
-  - a first delta after a reconnect loading the running row once.
+  - a first delta after a reconnect loading and publishing the running row
+    once.
 - **Formatting:** `dart format` was applied only to the touched hunks.
 - **PR media:** fixture widget renders of the running, completed and failed
   row, plus a GIF of the strip and timer, on `pr-media` under
@@ -78,4 +81,5 @@ Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
 
 ## Size
 
-About 705 changed lines against `origin/main`: 304 lines of plan detail, about 80 of this file, 136 of production code, 164 of tests and 19 of docs. Nothing is generated.
+About 725 changed lines against `origin/main`: 304 lines of plan detail, about 85 of this file, 138 of
+production code, 174 of tests and 22 of docs. Nothing is generated.

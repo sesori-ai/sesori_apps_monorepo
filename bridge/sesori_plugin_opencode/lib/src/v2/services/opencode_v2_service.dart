@@ -405,19 +405,21 @@ class OpenCodeV2Service({
       );
     }
     if (event is V2SessionCompactionDelta) {
-      // After a reconnect mid-compaction no start was seen, so the first delta loads the running row.
-      if (_compactions.running(sessionId: event.sessionID) == null && directory != null) {
-        final message = await _repository.getLatestMessage(
-          sessionId: event.sessionID,
-          filter: V2MessageFilter.compaction,
-          directory: directory,
-        );
-        if (message != null) _compactions.observe(message: message);
-      }
-      return _mapper.mapCompactionDelta(
-        event: event,
-        running: _compactions.running(sessionId: event.sessionID),
-      );
+      // After a reconnect mid-compaction no start was seen, so the first delta loads and publishes the running row.
+      final recovered = _compactions.running(sessionId: event.sessionID) == null && directory != null
+          ? await _repository.getLatestMessage(
+              sessionId: event.sessionID,
+              filter: V2MessageFilter.compaction,
+              directory: directory,
+            )
+          : null;
+      if (recovered != null) _compactions.observe(message: recovered);
+      final running = _compactions.running(sessionId: event.sessionID);
+      return [
+        // A settled snapshot was already published by its own terminal event.
+        if (recovered != null && running != null) ..._mapper.mapMessageSnapshot(message: recovered),
+        ..._mapper.mapCompactionDelta(event: event, running: running),
+      ];
     }
     if (directory == null) return const [];
     switch (event) {
