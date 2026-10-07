@@ -27,38 +27,24 @@ void main() {
     sessions: sessions,
   );
 
-  test("a list opened mid-launch shows every session it finds, under the launching row", () {
-    final rows = resolve(
-      previous: LaunchRows.none,
-      launching: [launch],
-      sessionIds: const {},
-      sessions: [existing],
-    );
-
-    expect(rows.placeholders, [launch]);
-    expect(rows.heldSessionIds, isEmpty);
-  });
-
-  test("a list first opened after the launch's session raced in holds it until the launch resolves", () {
-    final raced = testSession(
-      id: "raced",
-      createdAt: launch.startedAt.add(const Duration(seconds: 2)).millisecondsSinceEpoch,
-    );
-    final opened = resolve(
-      previous: LaunchRows.none,
-      launching: [launch],
-      sessionIds: const {},
-      sessions: [raced, existing],
-    );
+  test("a list opened mid-launch holds its project's newest session for each launch waiting, whatever the clocks", () {
+    final newest = testSession(id: "newest", createdAt: 300);
+    final older = testSession(id: "older", createdAt: 200);
+    final elsewhere = testSession(id: "elsewhere", createdAt: 400).copyWith(projectID: "project-2");
+    final sessions = [elsewhere, older, newest];
+    final opened = resolve(previous: LaunchRows.none, launching: [launch], sessionIds: const {}, sessions: sessions);
 
     expect(opened.placeholders, [launch]);
-    expect(opened.heldSessionIds, {"raced"}, reason: "opening it now would find no handoff");
+    expect(opened.heldSessionIds, {"newest"}, reason: "it may be the launch's session, which the bridge's clock dated");
+
+    final failed = resolve(previous: opened, launching: const [], sessionIds: const {}, sessions: sessions);
+    expect(failed.heldSessionIds, isEmpty, reason: "an older session held this way returns once the launch resolves");
   });
 
   test("a session that arrives before the reply naming its launch is held until the launch resolves", () {
     final opened = resolve(
       previous: LaunchRows.none,
-      launching: [launch],
+      launching: const [],
       sessionIds: const {},
       sessions: [existing],
     );
@@ -85,7 +71,7 @@ void main() {
   test("a new session in a project with no waiting launch is shown at once", () {
     final opened = resolve(
       previous: LaunchRows.none,
-      launching: [launch],
+      launching: const [],
       sessionIds: const {},
       sessions: [existing],
     );

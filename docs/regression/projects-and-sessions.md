@@ -346,9 +346,12 @@ state.
   and the launch never shows two rows: while its project has a launch still
   waiting, a session that arrives after the list first loaded stays out of it,
   so it can never be opened before its launch resolves, even when Archived was
-  shown meanwhile. Sessions in the list's first load show under the launching
-  row, except one created after the launch started, which is held the same
-  way, so a list opened mid-launch never shows the launch twice. Launches whose sessions land together each take their own
+  shown meanwhile. A list first loaded mid-launch holds its project's newest
+  sessions, one for each launch still waiting, until those launches resolve,
+  so it never shows a launch twice; an older session held this way returns a
+  moment later. A launch that resolves while the list is loading or shows
+  Archived keeps its row until its session arrives, so an empty project's
+  page shows that row rather than its composer. Launches whose sessions land together each take their own
   row's place. If a session does not land in its row's place, it moves where
   it belongs on the next change to the list's sessions as an ordinary change;
   activity and progress updates do not count. A failed launch's row leaves the list.

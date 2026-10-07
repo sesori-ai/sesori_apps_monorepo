@@ -73,30 +73,7 @@ void main() {
     return composer;
   }
 
-  Future<void> pumpPage({
-    required WidgetTester tester,
-    required SessionListFilter filter,
-    List<Session>? sessions,
-  }) async {
-    when(() => cubit.state).thenReturn(
-      SessionListState.loaded(
-        sessions:
-            sessions ??
-            [
-              testSession(id: "s1", title: "Fix the build", updatedAt: DateTime.now().millisecondsSinceEpoch),
-              testSession(
-                id: "s2",
-                title: "Unread one",
-                updatedAt: DateTime.now().millisecondsSinceEpoch,
-                unseen: true,
-              ),
-            ],
-        filter: filter,
-        activeSessionIds: const {},
-        baseBranch: null,
-        repoSlug: null,
-      ),
-    );
+  Future<void> pumpView({required WidgetTester tester}) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -137,6 +114,33 @@ void main() {
       ),
     );
     await tester.pump();
+  }
+
+  Future<void> pumpPage({
+    required WidgetTester tester,
+    required SessionListFilter filter,
+    List<Session>? sessions,
+  }) async {
+    when(() => cubit.state).thenReturn(
+      SessionListState.loaded(
+        sessions:
+            sessions ??
+            [
+              testSession(id: "s1", title: "Fix the build", updatedAt: DateTime.now().millisecondsSinceEpoch),
+              testSession(
+                id: "s2",
+                title: "Unread one",
+                updatedAt: DateTime.now().millisecondsSinceEpoch,
+                unseen: true,
+              ),
+            ],
+        filter: filter,
+        activeSessionIds: const {},
+        baseBranch: null,
+        repoSlug: null,
+      ),
+    );
+    await pumpView(tester: tester);
   }
 
   testWidgets("the toolbar names the project and starts a new session in it", (tester) async {
@@ -277,6 +281,49 @@ void main() {
     await tester.pump();
     expect(launches.launches.value, isEmpty);
     expect(composersFor, isEmpty, reason: "no blank composer flashes in the gap");
+    expect(find.byType(PendingSessionLaunchTile), findsOneWidget);
+  });
+
+  testWidgets("a launch that resolves while the list loads keeps its row when the list loads empty", (tester) async {
+    final states = StreamController<SessionListState>();
+    addTearDown(states.close);
+    whenListen(cubit, states.stream, initialState: const SessionListState.loading());
+    launches.start(
+      launchId: "launch-1",
+      projectId: "project-1",
+      pluginId: "claude",
+      startedAt: DateTime.now(),
+      projectName: "sesori",
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Fix the bug"),
+        attachments: const [],
+      ),
+    );
+    launches.releaseHandoff(launchId: "launch-1");
+    await pumpView(tester: tester);
+
+    // The reply names the session and the launch clears while the list loads.
+    launches.promote(
+      launchId: "launch-1",
+      session: testSession(id: "created", title: "Fix the bug"),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(launches.launches.value, isEmpty);
+
+    // The load was read before the session existed.
+    states.add(
+      const SessionListState.loaded(
+        sessions: [],
+        filter: SessionListFilter.active,
+        activeSessionIds: {},
+        baseBranch: null,
+        repoSlug: null,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(composersFor, isEmpty, reason: "no blank composer invites a second launch");
     expect(find.byType(PendingSessionLaunchTile), findsOneWidget);
   });
 

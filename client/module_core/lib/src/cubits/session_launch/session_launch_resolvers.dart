@@ -1,5 +1,3 @@
-import "dart:math";
-
 import "package:collection/collection.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -40,8 +38,8 @@ final class const LaunchRows({
   required final Map<String, String> rowKeys,
 
   /// The sessions the surface showed on its last update; null before its
-  /// first, so a surface opened mid-launch shows every session created
-  /// before its project's launch started.
+  /// first, where a surface opened mid-launch holds its project's newest
+  /// sessions instead, one for each launch still waiting.
   required final Set<String>? shownSessionIds,
 
   /// Every session the surface had on its last update, in list order; null
@@ -126,22 +124,33 @@ LaunchRows resolveHeldLaunchSessions({
     }
   }
 
-  // The first snapshot has nothing shown before it, so there a session counts
-  // as new when it was created since its project's oldest waiting launch
-  // started. The two times come from different clocks, so a skew between the
-  // device and the bridge can shift that cut by the skew.
-  final waitingSince = <String, int>{};
+  // The first update has shown nothing before it, so there it holds as many
+  // of a project's newest unnamed sessions as the project has launches
+  // waiting. An older session hidden until the launch resolves costs a
+  // moment; a launch's session shown beside its own row shows it twice.
+  final waitingPerProject = <String, int>{};
   for (final launch in launching) {
-    final started = launch.startedAt.millisecondsSinceEpoch;
-    waitingSince.update(launch.projectId, (since) => min(since, started), ifAbsent: () => started);
+    waitingPerProject.update(launch.projectId, (count) => count + 1, ifAbsent: () => 1);
   }
   final shown = previous.shownSessionIds;
-  final settled = {...sessionIds.values, ...rowKeys.keys};
-  for (final session in sessions) {
-    final since = waitingSince[session.projectID];
-    if (since == null || settled.contains(session.id)) continue;
-    final isNew = shown == null ? (session.time?.created ?? since - 1) >= since : !shown.contains(session.id);
-    if (isNew) held.add(session.id);
+  final settled = {...sessionIds.values, ...rowKeys.keys, ...held};
+  final unnamed = [
+    for (final session in sessions)
+      if (waitingPerProject.containsKey(session.projectID) && !settled.contains(session.id)) session,
+  ];
+  if (shown == null) {
+    final newestFirst = unnamed.sorted((a, b) => (b.time?.created ?? 0).compareTo(a.time?.created ?? 0));
+    for (final session in newestFirst) {
+      final left = waitingPerProject[session.projectID] ?? 0;
+      if (left == 0) continue;
+      waitingPerProject[session.projectID] = left - 1;
+      held.add(session.id);
+    }
+  } else {
+    held.addAll([
+      for (final session in unnamed)
+        if (!shown.contains(session.id)) session.id,
+    ]);
   }
 
   return LaunchRows(
@@ -154,6 +163,34 @@ LaunchRows resolveHeldLaunchSessions({
     },
     listedSessionIds: listed,
     heldSessionIds: held,
+  );
+}
+
+/// Keeps a surface's launching rows and the sessions their launches name
+/// while it shows no active list (loading, failed or another filter), so a
+/// launch that resolves meanwhile still has its row and its session when the
+/// list returns. What the surface last showed stays as it was.
+LaunchRows latchLaunchSessions({
+  required LaunchRows previous,
+  required List<LaunchingSession> launching,
+  required Map<String, String> sessionIds,
+}) {
+  final rows = {
+    for (final row in [...previous.placeholders, ...launching]) row.launchId: row,
+  };
+  return LaunchRows(
+    placeholders: rows.values.toList()..sort((a, b) => _newestFirst(a: a, b: b)),
+    named: {
+      for (final launchId in rows.keys)
+        if (previous.named[launchId] case final latched?)
+          launchId: latched
+        else if (sessionIds[launchId] case final sessionId?)
+          launchId: (sessionId: sessionId, arrived: false),
+    },
+    rowKeys: previous.rowKeys,
+    shownSessionIds: previous.shownSessionIds,
+    listedSessionIds: previous.listedSessionIds,
+    heldSessionIds: previous.heldSessionIds,
   );
 }
 

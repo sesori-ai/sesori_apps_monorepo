@@ -34,8 +34,9 @@ class const SessionListFilteredContent({
   required final Widget archivedEmptyState,
   required final bool searchable,
 
-  /// Told whether launching rows are drawn, each time that changes, for a
-  /// page that would otherwise replace an empty list.
+  /// Told whether the list has launching rows, drawn or kept while it loads,
+  /// each time that changes, for a page that would otherwise replace an empty
+  /// list.
   required final ValueChanged<bool>? onShowsLaunchRowsChanged,
 }) extends StatefulWidget {
   @override
@@ -93,16 +94,20 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
   LaunchRows _resolveLaunchRows() {
     final sessions = context.read<SessionListCubit>();
     final state = sessions.state;
-    // Archived and loading keep what the active list last showed, so a session
-    // that arrives meanwhile is still held on the way back.
-    if (state is! SessionListLoaded || state.filter != SessionListFilter.active) return _launchRows;
     final launches = context.read<SessionLaunchCubit>().state;
+    final launching = [
+      for (final launch in launches.launching)
+        if (launch.projectId == sessions.projectId) launch,
+    ];
+    // Archived and loading keep what the active list last showed, so a session
+    // that arrives meanwhile is still held on the way back, and still record
+    // which session each launch created.
+    if (state is! SessionListLoaded || state.filter != SessionListFilter.active) {
+      return latchLaunchSessions(previous: _launchRows, launching: launching, sessionIds: launches.sessionIds);
+    }
     return resolveHeldLaunchSessions(
       previous: _launchRows,
-      launching: [
-        for (final launch in launches.launching)
-          if (launch.projectId == sessions.projectId) launch,
-      ],
+      launching: launching,
       sessionIds: launches.sessionIds,
       sessions: state.sessions,
     );
