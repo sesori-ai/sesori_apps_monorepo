@@ -3,6 +3,8 @@ import "dart:io";
 import "package:drift/drift.dart";
 import "package:drift/native.dart";
 import "package:path/path.dart" as path;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show normalizeProjectDirectory, resolveUserHomeDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -46,7 +48,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -314,11 +316,40 @@ class AppDatabase(super.e) extends _$AppDatabase {
         // YOLO setting, which is what every session did.
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.approvalOverride);
       },
+      from19To20: (m, schema) async {
+        // Issue #1834: older bridges saved discovered projects hidden, and
+        // scans keep stored visibility. Show every hidden project except
+        // temporary and home dot-directory folders, which scans hide by
+        // default. The bridge cannot tell those rows from a user's Remove, so
+        // a removed project reappears once and can be removed again.
+        final hiddenRows = await customSelect("SELECT project_id, path FROM projects_table WHERE hidden = 1").get();
+        for (final row in hiddenRows) {
+          if (_keepHiddenInV20(projectPath: row.read<String>("path"))) continue;
+          await customStatement("UPDATE projects_table SET hidden = 0 WHERE project_id = ?", [
+            row.read<String>("project_id"),
+          ]);
+        }
+      },
     ),
     beforeOpen: (details) async {
       await customStatement("PRAGMA foreign_keys = ON");
     },
   );
+
+  /// Frozen copy of the v1.9.1 scan rule, so this migration keeps its meaning
+  /// when the scan rule changes later.
+  static bool _keepHiddenInV20({required String projectPath}) {
+    final projectDirectory = normalizeProjectDirectory(directory: projectPath);
+    final temporaryDirectory = normalizeProjectDirectory(directory: Directory.systemTemp.path);
+    for (final directory in ["/tmp", "/private/tmp", temporaryDirectory]) {
+      if (path.equals(directory, projectDirectory) || path.isWithin(directory, projectDirectory)) return true;
+    }
+    final userHomeDirectory = resolveUserHomeDirectory(environment: Platform.environment);
+    if (userHomeDirectory == null) return false;
+    final homeDirectory = normalizeProjectDirectory(directory: userHomeDirectory);
+    if (!path.isWithin(homeDirectory, projectDirectory)) return false;
+    return path.split(path.relative(projectDirectory, from: homeDirectory)).first.startsWith(".");
+  }
 
   static AppDatabase create({required String dataDirectory}) {
     final directory = createHardenedDirectory(directoryPath: dataDirectory);

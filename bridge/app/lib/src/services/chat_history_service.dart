@@ -203,21 +203,17 @@ class ChatHistoryService({
     required int? limit,
     required int? before,
     required MessageAttachmentProjection attachmentProjection,
-  }) async {
-    final stored = await _sessionRepository.getStoredSession(sessionId: sessionId);
-    // The bridge holds no row for this session at all, and a store-only read
-    // has no backfill with which to create one.
-    if (stored == null) {
-      return (
-        messages: const <MessageWithParts>[],
-        nextCursor: null,
-        replayedPromptDefaults: null,
-        awaitingHarnessSync: true,
-        userMessagesBefore: 0,
-      );
-    }
-    final storageScope = _storageScopeFor(session: stored);
-    if (stored.archivedAt != null) {
+  }) => _readStoredHistory(
+    sessionId: sessionId,
+    // A store-only read has no backfill with which to create the missing row.
+    noStoredSession: (
+      messages: const <MessageWithParts>[],
+      nextCursor: null,
+      replayedPromptDefaults: null,
+      awaitingHarnessSync: true,
+      userMessagesBefore: 0,
+    ),
+    readArchive: (storageScope) async {
       final archived = await _chatHistoryRepository.getArchivedSessionMessages(
         sessionId: sessionId,
         storageScope: storageScope,
@@ -227,23 +223,61 @@ class ChatHistoryService({
       );
       // An audit file is the whole transcript of a session the harness can no
       // longer advance, so it owes nothing.
-      if (archived != null) return _messagesPage(page: archived, replayedPromptDefaults: null);
-    }
+      return archived == null ? null : _messagesPage(page: archived, replayedPromptDefaults: null);
+    },
+    readStore: (storageScope) async {
+      // One snapshot for the marker and the rows: outside the queue a backfill
+      // or purge could otherwise commit between them and hand back a page
+      // whose parts belong to a different transcript than its messages, or a
+      // freshness verdict describing neither.
+      final read = await _chatHistoryRepository.getSessionMessagesWithSyncState(
+        sessionId: sessionId,
+        storageScope: storageScope,
+        limit: limit,
+        before: before,
+        attachmentProjection: attachmentProjection,
+      );
+      final state = read.syncState;
+      final synced = state != null && state.syncedAt != null && state.watermark >= state.backendActivityAt;
+      return _messagesPage(page: read.page, replayedPromptDefaults: null, awaitingHarnessSync: !synced);
+    },
+  );
 
-    // One snapshot for the marker and the rows: outside the queue a backfill
-    // or purge could otherwise commit between them and hand back a page whose
-    // parts belong to a different transcript than its messages, or a freshness
-    // verdict describing neither.
-    final read = await _chatHistoryRepository.getSessionMessagesWithSyncState(
-      sessionId: sessionId,
-      storageScope: storageScope,
-      limit: limit,
-      before: before,
-      attachmentProjection: attachmentProjection,
-    );
-    final state = read.syncState;
-    final synced = state != null && state.syncedAt != null && state.watermark >= state.backendActivityAt;
-    return _messagesPage(page: read.page, replayedPromptDefaults: null, awaitingHarnessSync: !synced);
+  /// Every prompt in the session's history, oldest first, kinded by the
+  /// shared prompt-turn rule.
+  ///
+  /// Read like [_storedOnlyPage]: from the store or the audit file alone,
+  /// outside the session queue and without a backfill. The app asks after a
+  /// page read, which has already backfilled when it could. An unknown or
+  /// empty session has no prompts.
+  Future<List<SessionPromptIndexEntry>> getPromptIndex({required String sessionId}) => _readStoredHistory(
+    sessionId: sessionId,
+    noStoredSession: const <SessionPromptIndexEntry>[],
+    readArchive: (_) => _chatHistoryRepository.getArchivedPromptIndex(sessionId: sessionId),
+    readStore: (_) => _chatHistoryRepository.getPromptIndex(sessionId: sessionId),
+  );
+
+  /// Where a read that answers from stored history alone looks: nowhere when
+  /// the bridge holds no row for the session, else an archived session's
+  /// audit file when it has one, else the store.
+  ///
+  /// The audit file is authoritative only once the session is archived:
+  /// export writes it before the archive flip, so a file can exist for a
+  /// session whose newer messages are still in the store.
+  Future<T> _readStoredHistory<T>({
+    required String sessionId,
+    required T noStoredSession,
+    required Future<T?> Function(AttachmentStorageScope storageScope) readArchive,
+    required Future<T> Function(AttachmentStorageScope storageScope) readStore,
+  }) async {
+    final stored = await _sessionRepository.getStoredSession(sessionId: sessionId);
+    if (stored == null) return noStoredSession;
+    final storageScope = _storageScopeFor(session: stored);
+    if (stored.archivedAt != null) {
+      final archived = await readArchive(storageScope);
+      if (archived != null) return archived;
+    }
+    return await readStore(storageScope);
   }
 
   SessionMessagesPage _messagesPage({
