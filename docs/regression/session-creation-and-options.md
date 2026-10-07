@@ -289,17 +289,19 @@ variant, and worktree mode, and creating the session with its first input.
   reduced motion) while the top bar, header, options and footer fade out. A
   second Send never creates a second session: it queues a follow-up below the
   first bubble, removable until it sends, carrying the options committed at the
-  first Send. The pickers stay visible but inert while sending; text, images and
+  first Send. The pills stay visible but read-only while sending: they show the
+  committed options without a caret and open nothing; text, images and
   commands stay live. Creation waits up to 180 s for the bridge before reporting
   an uncertain failure. Back leaves
   creation running under an app-lifetime owner, so a success after leaving still
   records its outcome and clears the options chosen for it exactly as an
   in-route success does. Success replaces the route only when that launch route
   is still current and the returned session is durable. A success landing while
-  the composer records or transcribes voice, or holds a failed recording awaiting
-  Retry or Discard, waits for it to settle, so the
-  transcript reaches the draft the session screen takes over; the first message
-  keeps sending meanwhile. The session screen that
+  the composer records or transcribes voice, holds a failed recording awaiting
+  Retry or Discard, is picking or pasting an image, or has a word still being
+  composed by the keyboard, waits for it to settle, so the result reaches the
+  draft the session screen takes over; the first message keeps sending
+  meanwhile. The session screen that
   replaces it opens on the same bubble, in the same place and with the same
   words, including a "Sending to `<harness>`…" already showing; it never shows
   a loading status or "No messages yet" in between. The bubble stays until the
@@ -308,8 +310,8 @@ variant, and worktree mode, and creating the session with its first input.
   exists, whether or not any screen is open; a failed one offers Retry, and
   Remove after an authoritative rejection. The session screen's composer is
   there from its first frame, in the new-session composer's place, with the
-  committed options, any unsent text, command and images, and the keyboard up
-  when the composer had focus; a message sent before the first load queues
+  committed options (read-only), any unsent text with its caret or selection,
+  command and images, and the keyboard up when the composer had focus; a message sent before the first load queues
   behind the follow-ups and sends when it lands. A failed first load keeps it
   and the follow-ups in view for Retry, and a first load that finds the harness
   blocked keeps them under its notice with their Cancel and Remove actions. The same composer carries into the loaded session.
@@ -503,8 +505,10 @@ startup-extension file failure, retry once the filesystem is usable.
   replacement or the first load, or is lost when the first load fails or finds
   the harness blocked. The
   session screen opens without a composer, with default options instead of the
-  committed ones, without the unsent text or images, or moves the composer when
-  the transcript loads.
+  committed ones, without the unsent text, caret or images, or moves the
+  composer when the transcript loads. A picked or pasted image, or a word
+  mid-composition, lands in neither composer because the route swapped while
+  it was pending.
 - A successful creation does not become the next per-plugin prefill (also when
   the user left the route before it finished), a failed creation replaces it, one plugin's selection leaks into another, or a removed
   saved value prevents current catalog defaults from loading.

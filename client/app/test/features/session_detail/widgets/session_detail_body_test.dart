@@ -444,6 +444,9 @@ void main() {
               attachmentDispatcher: GetIt.instance.get<ComposerAttachmentDispatcher>,
               imageClipboard: GetIt.instance.get<ImageClipboard>,
               child: PromptInput(
+                initialSelection: null,
+                onBusyChanged: null,
+                onSelectionChanged: null,
                 isBusy: false,
                 hasMessages: false,
                 canSend: true,

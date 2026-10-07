@@ -232,7 +232,7 @@ void main() {
         NewSessionProjectWorktreeCapability.loading,
       );
       expect(cubit.canCreateSession, isFalse);
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: true,
@@ -336,7 +336,7 @@ void main() {
       build: buildCubit,
       act: (cubit) async {
         await waitForComposer(cubit);
-        await cubit.createSession(
+        await cubit.submit(
           draft: ComposerDraft.typed(text: "look at this"),
           attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
           dedicatedWorktree: false,
@@ -404,7 +404,7 @@ void main() {
       },
       act: (cubit) async {
         await waitForComposer(cubit);
-        await cubit.createSession(
+        await cubit.submit(
           draft: ComposerDraft.typed(text: "look at this"),
           attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
           dedicatedWorktree: false,
@@ -440,7 +440,7 @@ void main() {
       build: buildCubit,
       act: (cubit) async {
         await waitForComposer(cubit);
-        await cubit.createSession(
+        await cubit.submit(
           draft: ComposerDraft.typed(text: "look at this"),
           attachments: [ComposerAttachment(mime: "image/png", bytes: Uint8List(4), filename: "shot.png")],
           dedicatedWorktree: false,
@@ -490,7 +490,7 @@ void main() {
       },
       act: (cubit) async {
         await waitForComposer(cubit);
-        await cubit.createSession(
+        await cubit.submit(
           attachments: const [],
           draft: ComposerDraft(text: "hello", voiceSpans: [VoiceOriginSpan(start: 0, end: 5)]),
           dedicatedWorktree: false,
@@ -572,7 +572,7 @@ void main() {
       },
       act: (cubit) async {
         await waitForComposer(cubit);
-        await cubit.createSession(
+        await cubit.submit(
           attachments: const [],
           draft: ComposerDraft.typed(text: ""),
           command: "review",
@@ -625,7 +625,7 @@ void main() {
       addTearDown(cubit.close);
       await waitForComposer(cubit);
 
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: true,
@@ -667,7 +667,7 @@ void main() {
       addTearDown(cubit.close);
       await waitForComposer(cubit);
 
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft(text: "sensitive prompt", voiceSpans: [VoiceOriginSpan(start: 0, end: 9)]),
         dedicatedWorktree: false,
@@ -742,7 +742,7 @@ void main() {
       addTearDown(cubit.close);
       await waitForComposer(cubit);
 
-      final pending = cubit.createSession(
+      final pending = cubit.submit(
         draft: draft,
         dedicatedWorktree: false,
         command: null,
@@ -816,7 +816,7 @@ void main() {
       addTearDown(cubit.close);
       await waitForComposer(cubit);
 
-      final pending = cubit.createSession(
+      final pending = cubit.submit(
         draft: ComposerDraft(text: "first voice", voiceSpans: [VoiceOriginSpan(start: 6, end: 11)]),
         dedicatedWorktree: false,
         command: null,
@@ -887,7 +887,7 @@ void main() {
       await waitForComposer(cubit);
       cubit.stageCommand(command);
 
-      final first = cubit.createSession(
+      final first = cubit.submit(
         draft: ComposerDraft.typed(text: ""),
         dedicatedWorktree: false,
         command: command.name,
@@ -905,7 +905,7 @@ void main() {
       cubit.acknowledgeRestoredSubmission(submission: restoring.submission);
       expect(cubit.state, composingWith<NewSessionPhaseCreationError>());
 
-      final second = cubit.createSession(
+      final second = cubit.submit(
         draft: ComposerDraft.typed(text: "next"),
         dedicatedWorktree: false,
         command: null,
@@ -947,7 +947,7 @@ void main() {
       await waitForComposer(cubit);
       cubit.stageCommand(command);
 
-      final pending = cubit.createSession(
+      final pending = cubit.submit(
         draft: ComposerDraft.typed(text: "abandoned"),
         dedicatedWorktree: false,
         command: command.name,
@@ -995,7 +995,7 @@ void main() {
       addTearDown(cubit.close);
       await waitForComposer(cubit);
 
-      final pending = cubit.createSession(
+      final pending = cubit.submit(
         draft: ComposerDraft.typed(text: "restore"),
         dedicatedWorktree: false,
         command: null,
@@ -1111,7 +1111,7 @@ void main() {
       cubit.stageCommand(command);
       final modelBeforeSend = cubit.state.agentModelData?.agentModel;
 
-      final pendingCreate = cubit.createSession(
+      final pendingCreate = cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: ""),
         command: command.name,
@@ -1140,7 +1140,7 @@ void main() {
       cubit.acknowledgeRestoredSubmission(submission: restored.submission);
       expect(cubit.state, composingWith<NewSessionPhaseCreationError>());
 
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "retry"),
         command: cubit.state.agentModelData?.stagedCommand?.name,
@@ -1214,7 +1214,7 @@ void main() {
         NewSessionProjectWorktreeCapability.unsupported,
       );
 
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: true,
@@ -1285,7 +1285,7 @@ void main() {
       act: (cubit) async {
         await waitForComposer(cubit);
         cubit.selectVariant(const SessionVariant(id: "xhigh"));
-        await cubit.createSession(
+        await cubit.submit(
           attachments: const [],
           draft: ComposerDraft.typed(text: "hello"),
           dedicatedWorktree: true,
@@ -1379,7 +1379,7 @@ void main() {
       expect(cubit.state.agentModelData?.fastModeControl, FastModeControl.on);
       expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1")?.fastMode, isTrue);
 
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: false,
@@ -2316,7 +2316,7 @@ void main() {
       },
       act: (cubit) async {
         await waitForComposer(cubit);
-        await cubit.createSession(
+        await cubit.submit(
           attachments: const [],
           draft: ComposerDraft.typed(text: "hello"),
           dedicatedWorktree: true,
@@ -2351,7 +2351,7 @@ void main() {
         ).thenAnswer((_) => response.future);
       });
 
-      Future<void> send(NewSessionCubit cubit) => cubit.createSession(
+      Future<void> send(NewSessionCubit cubit) => cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: false,
@@ -2428,36 +2428,23 @@ void main() {
           await waitForComposer(cubit);
           final data = cubit.state.agentModelData;
 
-          cubit.queueFollowUp(
-            draft: ComposerDraft.typed(text: "too early"),
-            command: null,
-            attachments: const [],
-          );
-          expect(cubit.state, composingWith<NewSessionPhaseIdle>(), reason: "only a sending composer queues");
-
           unawaited(send(cubit));
-          expect(cubit.canSubmitFollowUp, isTrue);
-          cubit.queueFollowUp(
-            draft: ComposerDraft.typed(text: " second "),
-            command: null,
-            attachments: const [],
+          expect(cubit.canSubmit, isTrue);
+          Future<void> followUp({
+            required String text,
+            required String? command,
+            required List<ComposerAttachment> attachments,
+          }) => cubit.submit(
+            draft: ComposerDraft.typed(text: text),
+            dedicatedWorktree: false,
+            command: command,
+            attachments: attachments,
           );
-          cubit.queueFollowUp(
-            draft: ComposerDraft.typed(text: "third"),
-            command: null,
-            attachments: const [],
-          );
-          cubit.queueFollowUp(
-            draft: ComposerDraft.typed(text: ""),
-            command: "review",
-            attachments: [image],
-          );
+          await followUp(text: " second ", command: null, attachments: const []);
+          await followUp(text: "third", command: null, attachments: const []);
+          await followUp(text: "", command: "review", attachments: [image]);
           // The default plugin declares no attachment support.
-          cubit.queueFollowUp(
-            draft: ComposerDraft.typed(text: "with an image"),
-            command: null,
-            attachments: [image],
-          );
+          await followUp(text: "with an image", command: null, attachments: [image]);
           await Future<void>.delayed(Duration.zero);
 
           final followUps = followUpsOf(cubit);
@@ -2477,6 +2464,7 @@ void main() {
 
           final pending = send(cubit);
           cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "next idea"));
+          cubit.reportComposerSelection(selection: (start: 0, end: 4));
           cubit.saveComposerAttachments(attachments: [image]);
           cubit.reportComposerFocus(focused: true);
           response.complete(ApiResponse.success(testSession(id: "s-1")));
@@ -2486,26 +2474,27 @@ void main() {
           final composer = launchRepository.takeHandoff(sessionId: "s-1")?.composer;
           expect(composer?.hadFocus, isTrue);
           expect(composer?.unsent?.draft.text, "next idea");
+          expect(composer?.unsent?.selection, (start: 0, end: 4));
           expect(composer?.unsent?.attachments, [same(image)]);
           expect(cubit.composerDraft.text, isEmpty);
           expect(draftRepository.readForNewSession(projectId: "project-1").text, isEmpty);
         });
 
-        test("a creation landing while voice runs waits for it, then hands over the transcribed draft", () async {
+        test("a creation landing while the composer is busy waits for it, then hands over its draft", () async {
           final cubit = buildCubit(launchRepository: launchRepository);
           addTearDown(cubit.close);
           await waitForComposer(cubit);
 
           final pending = send(cubit);
-          cubit.setVoiceBusy(busy: true);
+          cubit.setComposerBusy(busy: true);
           response.complete(ApiResponse.success(testSession(id: "s-1")));
           await pending;
           await Future<void>.delayed(Duration.zero);
           expect(cubit.state, composingWith<NewSessionPhaseSending>(), reason: "the recording keeps the screen");
-          expect(cubit.canSubmitFollowUp, isTrue);
+          expect(cubit.canSubmit, isTrue);
 
           cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "spoken words"));
-          cubit.setVoiceBusy(busy: false);
+          cubit.setComposerBusy(busy: false);
 
           expect(cubit.state, isA<NewSessionCreated>());
           final composer = launchRepository.takeHandoff(sessionId: "s-1")?.composer;
@@ -2518,8 +2507,9 @@ void main() {
           await waitForComposer(cubit);
 
           final pending = send(cubit);
-          cubit.queueFollowUp(
+          await cubit.submit(
             draft: ComposerDraft.typed(text: "second"),
+            dedicatedWorktree: false,
             command: null,
             attachments: const [],
           );
@@ -2565,7 +2555,7 @@ void main() {
       final cubit = buildCubit();
       await waitForComposer(cubit);
       // Kick off creation but don't await — the request is now in flight.
-      final pending = cubit.createSession(
+      final pending = cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: true,
@@ -2608,7 +2598,7 @@ void main() {
       );
       final cubit = buildCubit();
       await waitForComposer(cubit);
-      final pending = cubit.createSession(
+      final pending = cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hi"),
         dedicatedWorktree: true,
@@ -2666,7 +2656,7 @@ void main() {
       );
       final cubit = buildCubit();
       await waitForComposer(cubit);
-      final pending = cubit.createSession(
+      final pending = cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hi"),
         dedicatedWorktree: true,
@@ -2725,7 +2715,7 @@ void main() {
       expect(cubit.canCreateSession, isTrue);
       expect(cubit.composerPresentation, isA<NewSessionComposerPending>());
 
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: false,
@@ -2774,7 +2764,7 @@ void main() {
             .having((presentation) => presentation.actionHint, "actionHint", "Authenticate locally."),
       );
 
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: false,

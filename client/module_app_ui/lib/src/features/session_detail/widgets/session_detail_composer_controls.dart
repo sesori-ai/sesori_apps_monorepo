@@ -62,8 +62,8 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     final cubit = context.read<SessionDetailCubit>();
     return switch (widget.source) {
       LoadedSessionComposerSource(:final state) => _buildLoaded(context: context, state: state),
-      // The launch's options stay inert until the load, as they were while
-      // the session was being created: the cubit refuses to change them.
+      // The launch's options stay read-only until the load, as they were
+      // while the session was being created: the cubit refuses to change them.
       LaunchSessionComposerSource(:final composer, :final stagedCommand) => _buildComposer(
         context: context,
         // The launch's first message is already in the transcript.
@@ -73,6 +73,9 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
         initialAttachments: cubit.launchAttachments,
         onInitialAttachmentsConsumed: cubit.acknowledgeLaunchAttachments,
         autofocus: composer.hadFocus,
+        initialSelection: composer.unsent?.selection,
+        // D9: the options are committed at Send.
+        optionsReadOnly: true,
         agents: composer.agents,
         selectedAgent: composer.agent,
         providers: composer.providers,
@@ -104,6 +107,8 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     initialAttachments: const [],
     onInitialAttachmentsConsumed: () {},
     autofocus: false,
+    initialSelection: null,
+    optionsReadOnly: false,
     agents: state.availableAgents,
     selectedAgent: state.selectedAgent,
     providers: state.availableProviders,
@@ -135,6 +140,8 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     required List<ComposerAttachment> initialAttachments,
     required VoidCallback onInitialAttachmentsConsumed,
     required bool autofocus,
+    required ({int start, int end})? initialSelection,
+    required bool optionsReadOnly,
     required List<AgentInfo> agents,
     required String? selectedAgent,
     required List<ProviderInfo> providers,
@@ -158,9 +165,12 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
             draftIdentity: widget.sessionId,
             restorationKey: null,
             initialDraft: context.read<SessionDetailCubit>().composerDraft,
+            initialSelection: initialSelection,
             initialAttachments: initialAttachments,
             onInitialAttachmentsConsumed: onInitialAttachmentsConsumed,
             onAttachmentsChanged: null,
+            onSelectionChanged: null,
+            onBusyChanged: null,
             autofocus: autofocus,
             hasMessages: hasMessages,
             attachmentsSupported: attachmentsSupported,
@@ -200,6 +210,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
                 decideFastModeToggle: context.read<SessionDetailCubit>().fastModeToggleDecision,
                 onFastModeChanged: context.read<SessionDetailCubit>().setFastMode,
                 compact: pointer,
+                readOnly: optionsReadOnly,
                 trailing: statusChips(surfaceStyle: surfaceStyle, pointer: pointer),
               ),
             ),

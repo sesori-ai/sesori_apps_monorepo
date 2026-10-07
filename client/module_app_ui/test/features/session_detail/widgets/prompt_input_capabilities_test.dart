@@ -26,9 +26,99 @@ class _NoOpImageClipboard() implements ImageClipboard {
   Future<void> writeImage({required Uint8List bytes}) async {}
 }
 
+class _PendingComposerImagePicker() implements ComposerImagePicker {
+  final pick = Completer<ComposerPickedImage?>();
+
+  @override
+  Future<ComposerPickedImage?> pickImage() => pick.future;
+}
+
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 void main() {
+  testWidgets("starts at the handed-over caret and reports busy while an insert or a word is pending", (tester) async {
+    final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
+    addTearDown(surfaceStyle.dispose);
+    final picker = _PendingComposerImagePicker();
+    final dispatcher = ComposerAttachmentDispatcher(imagePicker: picker);
+    final clipboard = _NoOpImageClipboard();
+    final busy = <bool>[];
+    final selections = <({int start, int end})>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ComposerPresentationScope(
+          voiceSupport: ComposerVoiceSupport.unsupported,
+          inputMode: ChatInputMode.textFirst,
+          isKeyboardVisible: false,
+          sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+          presentation: ComposerPresentation.touch,
+          attachmentDispatcher: () => dispatcher,
+          imageClipboard: () => clipboard,
+          child: Scaffold(
+            body: PromptInput(
+              initialSelection: (start: 2, end: 5),
+              onBusyChanged: busy.add,
+              onSelectionChanged: selections.add,
+              isBusy: false,
+              hasMessages: false,
+              canSend: true,
+              onSend: ({required draft, required command, required attachments}) {},
+              onVoiceTranscriptionCompleted: null,
+              onDraftChanged: (_) {},
+              onDraftCleared: () {},
+              onAbort: () {},
+              surfaceStyleController: surfaceStyle,
+              composerHeader: null,
+              composerTrailing: null,
+              availableCommands: const [],
+              stagedCommand: null,
+              onCommandSelected: (_) {},
+              onCommandCleared: () {},
+              attachmentsSupported: true,
+              draftIdentity: "handoff-session",
+              restorationKey: null,
+              initialDraft: ComposerDraft.typed(text: "carry on"),
+              initialAttachments: const [],
+              onAttachmentsChanged: null,
+              autofocus: false,
+              onInitialAttachmentsConsumed: () {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    final field = tester.widget<TextField>(find.byType(TextField));
+    expect(field.controller?.selection, const TextSelection(baseOffset: 2, extentOffset: 5));
+
+    field.controller?.selection = const TextSelection.collapsed(offset: 1);
+    expect(selections, [(start: 1, end: 1)]);
+
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip("Attach image"));
+    await tester.pump();
+    expect(busy, [true]);
+    picker.pick.complete(null);
+    await tester.pumpAndSettle();
+    expect(busy, [true, false]);
+
+    field.controller?.value = const TextEditingValue(
+      text: "carry onw",
+      selection: TextSelection.collapsed(offset: 9),
+      composing: TextRange(start: 6, end: 9),
+    );
+    expect(busy, [true, false, true]);
+    field.controller?.value = const TextEditingValue(
+      text: "carry onward",
+      selection: TextSelection.collapsed(offset: 12),
+    );
+    expect(busy, [true, false, true, false]);
+  });
+
   testWidgets("staged previews scroll, remove the selected image, and send original remaining bytes", (tester) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
@@ -63,6 +153,9 @@ void main() {
               child: SizedBox(
                 width: 320,
                 child: PromptInput(
+                  initialSelection: null,
+                  onBusyChanged: null,
+                  onSelectionChanged: null,
                   isBusy: false,
                   hasMessages: false,
                   canSend: true,
@@ -159,6 +252,9 @@ void main() {
               child: SizedBox(
                 width: 320,
                 child: PromptInput(
+                  initialSelection: null,
+                  onBusyChanged: null,
+                  onSelectionChanged: null,
                   isBusy: false,
                   hasMessages: false,
                   canSend: true,
@@ -328,6 +424,9 @@ void main() {
           imageClipboard: () => imageClipboard,
           child: Scaffold(
             body: PromptInput(
+              initialSelection: null,
+              onBusyChanged: null,
+              onSelectionChanged: null,
               isBusy: false,
               hasMessages: false,
               canSend: true,
@@ -407,6 +506,9 @@ void main() {
                       builder: (context, style, _) => Text(style.name),
                     ),
                     PromptInput(
+                      initialSelection: null,
+                      onBusyChanged: null,
+                      onSelectionChanged: null,
                       isBusy: false,
                       hasMessages: false,
                       canSend: true,
@@ -484,6 +586,9 @@ Future<void> _pumpCommandComposer({
       imageClipboard: () => imageClipboard,
       child: Scaffold(
         body: PromptInput(
+          initialSelection: null,
+          onBusyChanged: null,
+          onSelectionChanged: null,
           isBusy: false,
           hasMessages: false,
           canSend: true,

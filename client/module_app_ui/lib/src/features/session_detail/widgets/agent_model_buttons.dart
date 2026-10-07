@@ -48,6 +48,10 @@ class const AgentModelButtons({
   /// instead of sharing the strip's width equally (touch shells).
   required final bool compact,
 
+  /// Shows the selections without opening any picker or toggling fast mode,
+  /// for options that are already committed.
+  required final bool readOnly,
+
   /// Status chips after the selectors, such as the session's YOLO chip. Keep
   /// them compact on touch, where the pickers share the remaining width.
   required final List<Widget> trailing,
@@ -106,6 +110,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
             agents: widget.agents,
             selectedAgent: selectedAgent,
             onAgentSelected: widget.onAgentSelected,
+            readOnly: widget.readOnly,
           ),
         ),
       slot(
@@ -116,6 +121,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
           selected: selected,
           providers: widget.providers,
           onModelSelected: widget.onModelSelected,
+          readOnly: widget.readOnly,
         ),
       ),
       if (widget.availableVariants.isNotEmpty)
@@ -126,6 +132,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
             availableVariants: widget.availableVariants,
             selectedVariant: selected?.variant,
             onVariantSelected: widget.onVariantSelected,
+            readOnly: widget.readOnly,
           ),
         ),
       if (widget.fastModeControl != FastModeControl.hidden)
@@ -134,6 +141,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
           control: widget.fastModeControl,
           decide: widget.decideFastModeToggle,
           onFastModeChanged: widget.onFastModeChanged,
+          readOnly: widget.readOnly,
         ),
       ...widget.trailing,
     ];
@@ -261,6 +269,7 @@ class const _AgentMenu({
   required final List<AgentInfo> agents,
   required final String selectedAgent,
   required final ValueChanged<String> onAgentSelected,
+  required final bool readOnly,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -275,7 +284,7 @@ class const _AgentMenu({
         leadingIcon: TablerRegular.robot,
         label: selectedAgent,
         surfaceStyle: surfaceStyle,
-        onPressed: toggle,
+        onPressed: readOnly ? null : toggle,
       ),
       entriesBuilder: () => [
         PregoMenuLabel(text: loc.sessionDetailPickerAgent),
@@ -300,6 +309,7 @@ class const _ModelMenu({
   required final AgentModel? selected,
   required final List<ProviderInfo> providers,
   required final void Function({required String providerID, required String modelID}) onModelSelected,
+  required final bool readOnly,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -311,7 +321,7 @@ class const _ModelMenu({
         leadingIcon: TablerRegular.cpu,
         label: _resolveModelName(context, providers: providers, selected: selected),
         surfaceStyle: surfaceStyle,
-        onPressed: toggle,
+        onPressed: readOnly ? null : toggle,
       ),
       contentBuilder: (context, close) => ModelPicker(
         sections: sections,
@@ -333,6 +343,7 @@ class const _VariantMenu({
   required final List<SessionVariant> availableVariants,
   required final String? selectedVariant,
   required final ValueChanged<SessionVariant> onVariantSelected,
+  required final bool readOnly,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -348,7 +359,7 @@ class const _VariantMenu({
         leadingIcon: TablerRegular.gauge,
         label: selectedVariant ?? availableVariants.first.id,
         surfaceStyle: surfaceStyle,
-        onPressed: toggle,
+        onPressed: readOnly ? null : toggle,
       ),
       entriesBuilder: () => [
         PregoMenuLabel(text: loc.sessionDetailPickerVariant),
@@ -373,11 +384,13 @@ class const _FastModeButton({
   required final FastModeControl control,
   required final FastModeToggleDecision? Function() decide,
   required final ValueChanged<bool> onFastModeChanged,
+  required final bool readOnly,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final label = context.loc.sessionDetailFastMode;
+    final onTap = readOnly ? null : () => unawaited(_onTap(context));
     final borderRadius = BorderRadius.circular(PregoRadius.full);
     final (icon, color) = switch (control) {
       // The yellowest warning step per theme; dark utility scales run in reverse.
@@ -398,7 +411,7 @@ class const _FastModeButton({
         button: true,
         toggled: control == FastModeControl.on,
         label: label,
-        onTap: () => unawaited(_onTap(context)),
+        onTap: onTap,
         excludeSemantics: true,
         child: SizedBox.square(
           dimension: 36,
@@ -412,7 +425,7 @@ class const _FastModeButton({
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   mouseCursor: WidgetStateMouseCursor.clickable,
-                  onTap: () => unawaited(_onTap(context)),
+                  onTap: onTap,
                   borderRadius: borderRadius,
                   child: Center(
                     child: Icon(icon, size: PregoIconSize.sm, color: color),

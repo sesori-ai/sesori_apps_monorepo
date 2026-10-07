@@ -28,7 +28,11 @@ Finder _menuItem(String label) => find.descendant(
   matching: find.widgetWithText(InkWell, label),
 );
 
-Widget _buildApp({required List<AgentInfo> agents, required void Function(String) onAgentSelected}) {
+Widget _buildApp({
+  required List<AgentInfo> agents,
+  required void Function(String) onAgentSelected,
+  required bool readOnly,
+}) {
   return MaterialApp(
     theme: ThemeData(extensions: [PregoDesignSystem.light]),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -39,6 +43,7 @@ Widget _buildApp({required List<AgentInfo> agents, required void Function(String
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           AgentModelButtons(
+            readOnly: readOnly,
             surfaceStyle: PregoComposerSurfaceStyle.subtle,
             agents: agents,
             selectedAgent: "aristotle-impl-review",
@@ -79,6 +84,7 @@ Widget _buildVariantApp({required ValueChanged<SessionVariant> onVariantSelected
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           AgentModelButtons(
+            readOnly: false,
             surfaceStyle: PregoComposerSurfaceStyle.subtle,
             agents: const [],
             selectedAgent: null,
@@ -118,6 +124,7 @@ Widget _buildFastModeApp({
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           AgentModelButtons(
+            readOnly: false,
             surfaceStyle: PregoComposerSurfaceStyle.subtle,
             agents: const [],
             selectedAgent: null,
@@ -300,13 +307,13 @@ void main() {
         ([only], findsNothing),
         ([only, _agent(name: "other", description: "Other")], findsOneWidget),
       ]) {
-        await tester.pumpWidget(_buildApp(agents: agents, onAgentSelected: (_) {}));
+        await tester.pumpWidget(_buildApp(agents: agents, onAgentSelected: (_) {}, readOnly: false));
         expect(find.text("aristotle-impl-review"), matcher);
       }
     });
 
     testWidgets("shows every agent, with none clipped out of reach", (tester) async {
-      await tester.pumpWidget(_buildApp(agents: _agents, onAgentSelected: (_) {}));
+      await tester.pumpWidget(_buildApp(agents: _agents, onAgentSelected: (_) {}, readOnly: false));
 
       await tester.tap(find.text("aristotle-impl-review"));
       await tester.pumpAndSettle();
@@ -321,9 +328,18 @@ void main() {
       expect(popup.maxScrollExtent, equals(0.0));
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
+    testWidgets("read-only shows the agent without opening its picker", (tester) async {
+      await tester.pumpWidget(_buildApp(agents: _agents, onAgentSelected: (_) {}, readOnly: true));
+
+      await tester.tap(find.text("aristotle-impl-review"));
+      await tester.pumpAndSettle();
+
+      expect(_menuItem("plan"), findsNothing);
+    });
+
     testWidgets("selects the agent the tap landed on", (tester) async {
       final selected = <String>[];
-      await tester.pumpWidget(_buildApp(agents: _agents, onAgentSelected: selected.add));
+      await tester.pumpWidget(_buildApp(agents: _agents, onAgentSelected: selected.add, readOnly: false));
 
       await tester.tap(find.text("aristotle-impl-review"));
       await tester.pumpAndSettle();
@@ -341,7 +357,7 @@ void main() {
       final agents = [
         for (var i = 0; i < 14; i++) _agent(name: "agent-$i", description: "Agent number $i."),
       ];
-      await tester.pumpWidget(_buildApp(agents: agents, onAgentSelected: (_) {}));
+      await tester.pumpWidget(_buildApp(agents: agents, onAgentSelected: (_) {}, readOnly: false));
 
       await tester.tap(find.text("aristotle-impl-review"));
       await tester.pumpAndSettle();
@@ -363,6 +379,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: AgentModelButtons(
+            readOnly: false,
             surfaceStyle: PregoComposerSurfaceStyle.subtle,
             agents: [
               _agent(name: "build", description: "Build"),
@@ -422,6 +439,7 @@ void main() {
               // The composer's own inset on a phone.
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: AgentModelButtons(
+                readOnly: false,
                 surfaceStyle: PregoComposerSurfaceStyle.subtle,
                 agents: [
                   _agent(name: "build", description: "Build"),
