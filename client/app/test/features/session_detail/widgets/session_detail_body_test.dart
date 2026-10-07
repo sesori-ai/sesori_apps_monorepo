@@ -99,11 +99,11 @@ Widget _buildApp({
               onShowDiffs: () => context.push("/projects/project-1/sessions/session-1/diffs"),
               pageChrome: null,
               menuEntriesBuilder: menuEntriesBuilder,
-              bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
+              bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>
                   MobileSessionDetailComposerControls(
                     projectId: projectId,
                     sessionId: sessionId,
-                    state: state,
+                    source: source,
                   ),
             ),
           ),
@@ -467,6 +467,8 @@ void main() {
                 restorationKey: restorationKey,
                 initialDraft: draft,
                 initialAttachments: attachments,
+                onAttachmentsChanged: null,
+                autofocus: false,
                 onInitialAttachmentsConsumed: () => consumed++,
               ),
             ),
@@ -655,6 +657,161 @@ void main() {
 
     expect(find.text("No messages yet"), findsNothing);
     expect(find.descendant(of: find.byType(QueuedMessageBubble), matching: find.text("Launch prompt")), findsOneWidget);
+  });
+
+  testWidgets("a launch's composer is up before the first load and carries into the loaded view unmoved", (
+    tester,
+  ) async {
+    final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    final planner = testAgentInfo().copyWith(name: "planner");
+    // The launch committed a non-default agent, and its composer had focus.
+    final composer = SessionLaunchComposer(
+      agents: [testAgentInfo(), planner],
+      agent: "planner",
+      providers: loaded.availableProviders,
+      agentModel: loaded.selectedAgentModel,
+      availableVariants: loaded.availableVariants,
+      commands: const [],
+      fastMode: false,
+      supportsPromptAttachments: true,
+      hadFocus: true,
+      unsent: null,
+    );
+    final handoff = SessionLaunchHandoff(
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Launch prompt"),
+        attachments: const [],
+      ),
+      pluginId: "opencode",
+      startedAt: DateTime.now(),
+      followUpIds: const {},
+      acceptedFollowUps: const [],
+      composer: composer,
+    );
+    final queued = QueuedSessionSubmission.text(
+      promptId: "prm_follow_up",
+      text: "Sent before the load",
+      inputMode: ComposerInputMode.typed,
+      attachments: const [],
+      agent: "planner",
+      agentModel: loaded.selectedAgentModel,
+      fastMode: false,
+    );
+    final states = StreamController<SessionDetailState>();
+    addTearDown(states.close);
+    whenListen(
+      cubit,
+      states.stream,
+      initialState: SessionDetailState.loading(
+        launchHandoff: handoff,
+        seededComposer: SeededComposer(composer: composer, stagedCommand: null),
+        queuedMessages: [queued],
+      ),
+    );
+    when(() => cubit.launchAttachments).thenReturn([
+      ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "staged.png"),
+    ]);
+    when(cubit.acknowledgeLaunchAttachments).thenReturn(null);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+    await tester.pump();
+
+    // The seeded composer: focused, showing the committed agent, and holding
+    // the image staged on the new-session screen.
+    final prompt = find.byType(PromptInput);
+    expect(prompt, findsOneWidget);
+    expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus, isTrue);
+    expect(find.descendant(of: prompt, matching: find.text("planner")), findsOneWidget);
+    expect(find.descendant(of: prompt, matching: find.byType(Image)), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsNothing);
+    final launchBubble = find.ancestor(of: find.text("Launch prompt"), matching: find.byType(QueuedMessageBubble));
+    final queuedBubble = find.ancestor(
+      of: find.text("Sent before the load"),
+      matching: find.byType(QueuedMessageBubble),
+    );
+    final promptState = tester.state(prompt);
+    final promptRect = tester.getRect(prompt);
+    final launchRect = tester.getRect(launchBubble);
+    final queuedRect = tester.getRect(queuedBubble);
+
+    // The first load lands before the harness echoes anything.
+    states.add(loaded.copyWith(launchHandoff: handoff, queuedMessages: [queued]));
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.state(prompt), same(promptState));
+    expect(tester.getRect(prompt), promptRect);
+    expect(tester.getRect(launchBubble), launchRect);
+    expect(tester.getRect(queuedBubble), queuedRect);
+    expect(find.descendant(of: prompt, matching: find.byType(Image)), findsOneWidget);
+  });
+
+  testWidgets("messages sent before a failed first load stay in view, scrolling when many", (tester) async {
+    final state = SessionDetailState.failed(
+      reason: RemoteFailureReason.unknown,
+      queuedMessages: [
+        for (var i = 0; i < 20; i++)
+          QueuedSessionSubmission.text(
+            promptId: "prm_follow_up_$i",
+            text: "Sent before the load $i",
+            inputMode: ComposerInputMode.typed,
+            attachments: const [],
+            agent: null,
+            agentModel: null,
+            fastMode: false,
+          ),
+      ],
+    );
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+
+    // Twenty rows outgrow the screen without overflowing it; the newest shows.
+    expect(tester.takeException(), isNull);
+    expect(find.byType(SessionDetailErrorView), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(QueuedMessageBubble), matching: find.text("Sent before the load 19")),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets("a failed first load keeps the launch's follow-ups and Cancel on queued messages", (tester) async {
+    QueuedSessionSubmission submission({required String promptId, required String text}) =>
+        QueuedSessionSubmission.text(
+          promptId: promptId,
+          text: text,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+          agent: null,
+          agentModel: null,
+          fastMode: false,
+        );
+    final state = SessionDetailState.failed(
+      reason: RemoteFailureReason.unknown,
+      awaitingBridgeSubmissions: [submission(promptId: "prm_taken", text: "Taken by the bridge")],
+      launchFollowUps: [
+        LaunchFollowUp.queued(
+          submission: submission(promptId: "prm_launch", text: "Sent while creating"),
+        ),
+      ],
+      queuedMessages: [submission(promptId: "prm_early", text: "Sent before the load")],
+    );
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+
+    expect(find.text("Taken by the bridge"), findsOneWidget);
+    expect(find.text("Sent while creating"), findsOneWidget);
+    expect(find.text("Sent before the load"), findsOneWidget);
+    final cancels = find.widgetWithText(TextButton, "Cancel");
+    expect(cancels, findsNWidgets(2));
+    await tester.tap(cancels.first);
+    verify(() => cubit.removeLaunchFollowUp(promptId: "prm_launch")).called(1);
+    await tester.tap(cancels.last);
+    verify(() => cubit.cancelQueuedMessage(0)).called(1);
   });
 
   testWidgets("a busy session with no messages shows the Working row instead of the empty label", (tester) async {

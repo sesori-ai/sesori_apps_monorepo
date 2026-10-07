@@ -17,8 +17,21 @@ typedef SessionDetailBottomControlsBuilder = Widget Function({
   required BuildContext context,
   required String projectId,
   required String sessionId,
-  required SessionDetailLoaded state,
+  required SessionComposerSource source,
 });
+
+/// What the session composer is built from.
+sealed class const SessionComposerSource();
+
+/// The loaded session.
+final class const LoadedSessionComposerSource({required final SessionDetailLoaded state}) extends SessionComposerSource;
+
+/// The composer the session's launch handed over, while the first load runs:
+/// it shows the options the launch committed and holds what was unsent.
+final class const LaunchSessionComposerSource({
+  required final SessionLaunchComposer composer,
+  required final CommandInfo? stagedCommand,
+}) extends SessionComposerSource;
 
 /// The widths of the two centred columns a pointer surface reads a session in.
 /// They are separate design constants rather than one number: body text carries
@@ -53,6 +66,10 @@ class SessionDetailLoadedView extends StatefulWidget {
   final TranscriptJumpNotifier jumpNotifier;
   final void Function({required Offset focalPoint}) onPinchIn;
 
+  /// The bottom controls' height as last measured before this view mounted, so
+  /// its first frame insets the transcript as the controls already stand.
+  final double initialBottomControlsHeight;
+
   const new readOnly({
     super.key,
     required this.projectId,
@@ -65,6 +82,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.currentPromptId,
     required this.jumpNotifier,
     required this.onPinchIn,
+    required this.initialBottomControlsHeight,
   }) : readOnly = true;
 
   const new interactive({
@@ -79,6 +97,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.currentPromptId,
     required this.jumpNotifier,
     required this.onPinchIn,
+    required this.initialBottomControlsHeight,
   }) : readOnly = false;
 
   @override
@@ -96,7 +115,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
   /// height frame-by-frame, and each measurement must re-inset only the
   /// message list — not rebuild the whole view including the very composer
   /// being measured.
-  final ValueNotifier<double> _bottomControlsHeight = ValueNotifier<double>(0);
+  late final ValueNotifier<double> _bottomControlsHeight = ValueNotifier<double>(widget.initialBottomControlsHeight);
 
   @override
   void dispose() {

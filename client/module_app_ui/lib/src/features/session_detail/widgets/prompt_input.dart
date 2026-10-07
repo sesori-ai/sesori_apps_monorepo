@@ -163,6 +163,14 @@ class const PromptInput({
   required final List<ComposerAttachment> initialAttachments,
   required final VoidCallback onInitialAttachmentsConsumed,
 
+  /// Told the staged images whenever they change, for an owner that hands them
+  /// on; null when nobody needs them outside this composer.
+  required final ValueChanged<List<ComposerAttachment>>? onAttachmentsChanged,
+
+  /// Takes keyboard focus on the first frame, for a composer that continues
+  /// one which had it.
+  required final bool autofocus,
+
   /// Optional widget rendered inside the composer, above the text-field row.
   final Widget? header,
 }) extends StatefulWidget {
@@ -248,7 +256,13 @@ class _PromptInputState() extends State<PromptInput> {
     _hasText = _controller.text.trim().isNotEmpty;
     _controller.addListener(_handleTextChanged);
     _focusNode.addListener(_handleFocusChanged);
+    if (widget.autofocus) {
+      _typingRequested = true;
+      _focusComposerField();
+    }
   }
+
+  void _reportAttachments() => widget.onAttachmentsChanged?.call(List.unmodifiable(_attachments));
 
   @override
   void didChangeDependencies() {
@@ -288,6 +302,7 @@ class _PromptInputState() extends State<PromptInput> {
       }
       _attachments.add(attachment);
     }
+    _reportAttachments();
     final onConsumed = widget.onInitialAttachmentsConsumed;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -477,6 +492,7 @@ class _PromptInputState() extends State<PromptInput> {
       _pasteGeneration++;
       if (_attachments.isNotEmpty) {
         setState(_attachments.clear);
+        _reportAttachments();
       }
       _controller.clear();
       widget.onDraftCleared();
@@ -514,6 +530,7 @@ class _PromptInputState() extends State<PromptInput> {
     // whatever was staged for the previous pick, so drop it with the action.
     if (widget.attachmentsSupported == false && _attachments.isNotEmpty) {
       setState(_attachments.clear);
+      _reportAttachments();
     }
     if (oldWidget.surfaceStyleController != widget.surfaceStyleController ||
         draftChanged ||
@@ -1664,7 +1681,10 @@ class _PromptInputState() extends State<PromptInput> {
             imageLabel: _attachments[index].filename ?? loc.sessionDetailAttachedImage,
             onOpen: () => _openAttachment(attachment: _attachments[index]),
             removeLabel: loc.sessionDetailRemoveAttachment,
-            onRemove: () => setState(() => _attachments.removeAt(index)),
+            onRemove: () {
+              setState(() => _attachments.removeAt(index));
+              _reportAttachments();
+            },
             image: Hero(
               tag: ObjectKey(_attachments[index]),
               child: Image.memory(
@@ -1886,6 +1906,7 @@ class _PromptInputState() extends State<PromptInput> {
       return false;
     }
     setState(() => _attachments.add(attachment));
+    _reportAttachments();
     return true;
   }
 

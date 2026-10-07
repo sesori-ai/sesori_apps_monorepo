@@ -1,3 +1,6 @@
+import "dart:math" as math;
+
+import "package:flutter/rendering.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -69,12 +72,36 @@ const double _optionsHorizontalPadding = 10;
 /// the composer.
 const double _optionsBottomPadding = PregoSpacing.md;
 
-class _NewSessionViewState() extends State<NewSessionView> {
+/// How long a pointer surface's page takes to become the session at Send: the
+/// composer moves to the bottom while the page around it cross-fades (D8).
+const _sendingMotionDuration = Duration(milliseconds: 240);
+
+class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProviderStateMixin {
   bool _dedicatedWorktree = true;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
   late PregoPopupAlertPresenter _popupAlertPresenter;
   late String _launchingInBackgroundMessage;
+
+  /// One composer through Send and a failure's restore: Flutter moves its
+  /// state wherever the page puts it, so its text, images and focus stay.
+  final _composerKey = GlobalKey();
+
+  /// A pointer surface's page from composing (0) to sending (1).
+  late final AnimationController _sendingMotion;
+
+  /// The sending page as last built, so it can fade out after a failure.
+  Widget? _lastSendingPane;
+
+  @override
+  void initState() {
+    super.initState();
+    _sendingMotion = AnimationController(
+      vsync: this,
+      duration: _sendingMotionDuration,
+      value: context.read<NewSessionCubit>().state.phase is NewSessionPhaseSending ? 1 : 0,
+    )..addStatusListener((_) => setState(() {}));
+  }
 
   @override
   void didChangeDependencies() {
@@ -92,6 +119,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
         popupAlertPresenter.show(title: message);
       });
     }
+    _sendingMotion.dispose();
     super.dispose();
   }
 
@@ -263,38 +291,37 @@ class _NewSessionViewState() extends State<NewSessionView> {
   }
 
   /// The page under [chrome]: one centred column that scrolls as a whole when
-  /// the pane is too short for it.
+  /// the pane is too short for it. At Send the page becomes the session it is
+  /// creating: the top bar, header, options and footer fade out as the
+  /// message fades in above the composer, which moves to the bottom edge where
+  /// the session screen keeps it (D8). A failure plays it backwards.
   Widget _buildChromePage({
     required NewSessionPageChrome chrome,
-    required NewSessionSubmissionSnapshot? sendingSubmission,
-    required DateTime? sendingSince,
-    required String? harnessName,
+    required Widget? sendingPane,
     required Widget header,
     required Widget? options,
     required Widget? composer,
   }) {
-    return Scaffold(
-      body: Column(
-        children: [
-          chrome.topBar,
-          ?widget.banner,
-          Expanded(
-            child: _crossFadeSending(
-              // The top bar sits above the transcript, as on the session page,
-              // so nothing scrolls behind it and no top inset is needed.
-              sending: sendingSubmission == null
-                  ? null
-                  : PregoTopBarInsetScope(
-                      baseInset: 0,
-                      bannerHeight: const AlwaysStoppedAnimation<double>(0),
-                      child: SessionLaunchSubmissionView(
-                        submission: sendingSubmission,
-                        harnessName: harnessName,
-                        transcriptWidth: chrome.transcriptWidth,
-                        sendingSince: sendingSince,
-                      ),
-                    ),
-              composing: Center(
+    final isSending = sendingPane != null;
+    if (sendingPane != null) _lastSendingPane = sendingPane;
+    final lastSendingPane = _lastSendingPane;
+    final idleOpacity = ReverseAnimation(_sendingMotion);
+    Widget fadingIdle(Widget child) => FadeTransition(opacity: idleOpacity, child: child);
+    // The composer's place in the column keeps its height while the column
+    // fades, so nothing there shifts as it leaves.
+    final composerHeight = switch (_composerKey.currentContext?.findRenderObject()) {
+      final RenderBox box when box.hasSize => box.size.height,
+      _ => 0.0,
+    };
+    final idle = IgnorePointer(
+      ignoring: isSending,
+      child: ExcludeFocus(
+        excluding: isSending,
+        child: Column(
+          children: [
+            fadingIdle(chrome.topBar),
+            Expanded(
+              child: Center(
                 child: SingleChildScrollView(
                   key: const Key("new_session_options_scroll"),
                   padding: const EdgeInsets.all(PregoSpacing.xl),
@@ -305,15 +332,54 @@ class _NewSessionViewState() extends State<NewSessionView> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       spacing: PregoSpacing.lg,
                       children: [
-                        header,
-                        ?options,
-                        ?composer,
-                        ?chrome.footer,
+                        fadingIdle(header),
+                        if (options != null) fadingIdle(options),
+                        if (isSending) SizedBox(height: composerHeight) else ?composer,
+                        if (chrome.footer case final footer?) fadingIdle(footer),
                       ],
                     ),
                   ),
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+    final session = lastSendingPane == null
+        ? null
+        : LayoutBuilder(
+            // The composer spans the column the session screen gives it.
+            builder: (context, constraints) => Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: IgnorePointer(
+                    ignoring: !isSending,
+                    child: FadeTransition(opacity: _sendingMotion, child: lastSendingPane),
+                  ),
+                ),
+                if (isSending && composer != null)
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: math.max(0, (constraints.maxWidth - chrome.maxContentWidth) / 2) + 16,
+                    ),
+                    child: composer,
+                  ),
+              ],
+            ),
+          );
+    return Scaffold(
+      body: Column(
+        children: [
+          ?widget.banner,
+          Expanded(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (!isSending || !_sendingMotion.isCompleted) idle,
+                if (isSending || !_sendingMotion.isDismissed) ?session,
+              ],
             ),
           ),
         ],
@@ -321,13 +387,22 @@ class _NewSessionViewState() extends State<NewSessionView> {
     );
   }
 
-  /// Send turns the page into the session it is creating, showing the message
-  /// as it will sit in the session's transcript, and a failed creation turns it
-  /// back. Both directions cross-fade with the transcript's own motion rather
-  /// than cutting; reduced motion swaps at once.
-  ///
-  /// The fading composer gives up focus at Send, so the keyboard closes while
-  /// the bubble fades in instead of dropping the bubble once the fade ends.
+  /// Plays the page's change at Send, or back after a failure; reduced motion
+  /// makes it at once.
+  void _onSendingChanged({required bool sending}) {
+    if (context.isReducedMotion) {
+      _sendingMotion.value = sending ? 1 : 0;
+    } else if (sending) {
+      _sendingMotion.forward();
+    } else {
+      _sendingMotion.reverse();
+    }
+  }
+
+  /// Send turns the options into the session it is creating, showing the
+  /// message as it will sit in the session's transcript above the composer,
+  /// and a failed creation turns it back. Both directions cross-fade with the
+  /// transcript's own motion rather than cutting; reduced motion swaps at once.
   Widget _crossFadeSending({required Widget? sending, required Widget composing}) {
     final child = sending == null
         ? KeyedSubtree(key: const ValueKey("new_session_composing"), child: composing)
@@ -350,7 +425,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
   }
 
   Widget _buildComposer({
-    required bool canSend,
+    required bool isSending,
     required NewSessionSubmissionSnapshot? restoringSubmission,
     required List<ComposerAttachment> restoredAttachments,
     required AgentModelData? composerData,
@@ -361,50 +436,97 @@ class _NewSessionViewState() extends State<NewSessionView> {
       child: _ComposerSurfaceStyleOwner(
         initialDraft: cubit.composerDraft,
         stagedCommand: composerData?.stagedCommand,
-        builder: ({required context, required surfaceStyleController}) => PromptInput(
-          draftIdentity: ComposerDraftRepository.newSessionIdentity(projectId: widget.projectId),
-          restorationKey: restoringSubmission == null ? null : ObjectKey(restoringSubmission),
-          initialDraft: context.read<NewSessionCubit>().composerDraft,
-          initialAttachments: restoredAttachments,
-          onInitialAttachmentsConsumed: () {
-            final submission = restoringSubmission;
-            if (submission != null) {
-              context.read<NewSessionCubit>().acknowledgeRestoredSubmission(submission: submission);
-            }
-          },
-          hasMessages: false,
-          canSend: canSend,
-          attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
-          isBusy: false,
-          onSend: ({required draft, required command, required attachments}) {
-            context.read<NewSessionCubit>().createSession(
-              draft: draft,
-              command: command,
-              attachments: attachments,
-              dedicatedWorktree: _dedicatedWorktree,
-            );
-          },
-          onVoiceTranscriptionCompleted: ComposerPresentationScope.of(context).voiceSupport.isSupported
-              ? context.read<NewSessionCubit>().reportVoiceTranscriptionCompleted
-              : null,
-          onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(draft: draft),
-          onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
-          onAbort: _dismissScreen,
-          surfaceStyleController: surfaceStyleController,
-          header: _buildErrorBanner(state),
-          composerHeader: _buildComposerHeader(
-            cubit: cubit,
-            state: state,
-            surfaceStyleController: surfaceStyleController,
-            compact: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
+        builder: ({required context, required surfaceStyleController}) => _reportingVoice(
+          context: context,
+          child: Focus(
+            // Reports focus for the session screen that takes the composer over.
+            canRequestFocus: false,
+            skipTraversal: true,
+            onFocusChange: (focused) => context.read<NewSessionCubit>().reportComposerFocus(focused: focused),
+            child: PromptInput(
+              draftIdentity: ComposerDraftRepository.newSessionIdentity(projectId: widget.projectId),
+              restorationKey: restoringSubmission == null ? null : ObjectKey(restoringSubmission),
+              initialDraft: context.read<NewSessionCubit>().composerDraft,
+              initialAttachments: restoredAttachments,
+              onInitialAttachmentsConsumed: () {
+                final submission = restoringSubmission;
+                if (submission != null) {
+                  context.read<NewSessionCubit>().acknowledgeRestoredSubmission(submission: submission);
+                }
+              },
+              onAttachmentsChanged: (attachments) =>
+                  context.read<NewSessionCubit>().saveComposerAttachments(attachments: attachments),
+              autofocus: false,
+              // The first message is in the transcript once it is sending.
+              hasMessages: isSending,
+              canSend: cubit.canCreateSession || cubit.canSubmitFollowUp,
+              attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
+              isBusy: false,
+              // A message sent while the first one is sending follows it.
+              onSend: ({required draft, required command, required attachments}) {
+                final cubit = context.read<NewSessionCubit>();
+                if (cubit.canSubmitFollowUp) {
+                  cubit.queueFollowUp(draft: draft, command: command, attachments: attachments);
+                } else {
+                  cubit.createSession(
+                    draft: draft,
+                    command: command,
+                    attachments: attachments,
+                    dedicatedWorktree: _dedicatedWorktree,
+                  );
+                }
+              },
+              onVoiceTranscriptionCompleted: ComposerPresentationScope.of(context).voiceSupport.isSupported
+                  ? context.read<NewSessionCubit>().reportVoiceTranscriptionCompleted
+                  : null,
+              onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(draft: draft),
+              onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
+              onAbort: _dismissScreen,
+              surfaceStyleController: surfaceStyleController,
+              header: _buildErrorBanner(state),
+              composerHeader: _buildComposerHeader(
+                cubit: cubit,
+                state: state,
+                surfaceStyleController: surfaceStyleController,
+                compact: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
+              ),
+              composerTrailing: null,
+              availableCommands: composerData?.commands ?? const [],
+              stagedCommand: composerData?.stagedCommand,
+              onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+              onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
+            ),
           ),
-          composerTrailing: null,
-          availableCommands: composerData?.commands ?? const [],
-          stagedCommand: composerData?.stagedCommand,
-          onCommandSelected: context.read<NewSessionCubit>().stageCommand,
-          onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
         ),
       ),
+    );
+  }
+
+  /// Tells the cubit while the composer records, transcribes, or holds a
+  /// recording awaiting Retry, so a creation landing meanwhile keeps this
+  /// screen until the words reach the draft the session screen takes over.
+  Widget _reportingVoice({required BuildContext context, required Widget child}) {
+    if (!ComposerPresentationScope.of(context).voiceSupport.isSupported) return child;
+    bool runs(VoiceInputState state) => switch (state) {
+      VoiceInputIdle() => false,
+      VoiceInputStarting() ||
+      VoiceInputRecording() ||
+      VoiceInputTranscribing() ||
+      // A failed transcription keeps its recording until Retry or Discard.
+      VoiceInputRetryPending() ||
+      VoiceInputRetrying() ||
+      VoiceInputRetryCancelling() ||
+      VoiceInputDiscarding() ||
+      // Settles once the composer has put the transcript in its draft.
+      VoiceInputCompleted() ||
+      VoiceInputStartFailed() ||
+      VoiceInputTranscriptionFailed() ||
+      VoiceInputCancelling() => true,
+    };
+    return BlocListener<VoiceInputCubit, VoiceInputState>(
+      listenWhen: (previous, current) => runs(previous) != runs(current),
+      listener: (context, state) => context.read<NewSessionCubit>().setVoiceBusy(busy: runs(state)),
+      child: child,
     );
   }
 
@@ -421,7 +543,6 @@ class _NewSessionViewState() extends State<NewSessionView> {
       NewSessionPhaseDiscoveryError() ||
       null => null,
     };
-    final sendingSubmission = sendingPhase?.submission;
     final isSending = sendingPhase != null;
     final composerData = state.agentModelData;
     final restoringSubmission = switch (state.phase) {
@@ -451,7 +572,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
     final notice = _buildBlockedNotice(cubit: cubit);
     // A notice hides the composer rather than replacing it, so staged images,
     // which live only in the composer, survive until the notice clears.
-    final composer = cubit.hasNoHarnesses
+    final composerColumn = cubit.hasNoHarnesses
         ? null
         : Column(
             mainAxisSize: MainAxisSize.min,
@@ -470,7 +591,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
                 child: ExcludeFocus(
                   excluding: notice != null,
                   child: _buildComposer(
-                    canSend: cubit.canCreateSession && !isSending,
+                    isSending: isSending,
                     restoringSubmission: restoringSubmission,
                     restoredAttachments: restoredAttachments,
                     composerData: composerData,
@@ -480,6 +601,33 @@ class _NewSessionViewState() extends State<NewSessionView> {
               ),
             ],
           );
+    final composer = switch (composerColumn) {
+      null => null,
+      final column => KeyedSubtree(
+        key: _composerKey,
+        child: widget.pageChrome == null
+            ? column
+            : _SlideFromLastPosition(progress: _sendingMotion, towardSending: isSending, child: column),
+      ),
+    };
+    Widget? sendingPane({required double? transcriptWidth}) => switch (sendingPhase) {
+      null => null,
+      final phase => SessionLaunchSubmissionView(
+        submission: phase.submission,
+        harnessName: harnessName,
+        transcriptWidth: transcriptWidth,
+        sendingSince: phase.startedAt,
+        awaitingBridgeSubmissions: const [],
+        launchFollowUps: phase.followUps,
+        queuedMessages: const [],
+        // Follow-ups only send once the session exists, on its own screen.
+        onRetryLaunchFollowUp: null,
+        onRemoveLaunchFollowUp: cubit.cancelFollowUp,
+        onCancelQueuedMessage: null,
+        // The composer sits below rather than over it.
+        bottomInset: 0,
+      ),
+    };
     final header = NewSessionHeader(
       projectId: widget.projectId,
       projectName: widget.projectName,
@@ -491,9 +639,16 @@ class _NewSessionViewState() extends State<NewSessionView> {
       null => null,
       final chrome => _buildChromePage(
         chrome: chrome,
-        sendingSubmission: sendingSubmission,
-        sendingSince: sendingPhase?.startedAt,
-        harnessName: harnessName,
+        // Nothing scrolls behind a pointer surface's bars, so the transcript
+        // needs no top inset.
+        sendingPane: switch (sendingPane(transcriptWidth: chrome.transcriptWidth)) {
+          null => null,
+          final pane => PregoTopBarInsetScope(
+            baseInset: 0,
+            bannerHeight: const AlwaysStoppedAnimation<double>(0),
+            child: pane,
+          ),
+        },
         header: header,
         options: options,
         composer: composer,
@@ -502,9 +657,11 @@ class _NewSessionViewState() extends State<NewSessionView> {
 
     Widget listening({required Widget child}) => BlocListener<NewSessionCubit, NewSessionState>(
       listenWhen: (previous, current) =>
+          (previous.phase is NewSessionPhaseSending) != (current.phase is NewSessionPhaseSending) ||
           current is NewSessionCreated ||
           NewSessionCubit.newlyRequiredLogin(previous: previous, current: current) != null,
       listener: (context, state) {
+        if (widget.pageChrome != null) _onSendingChanged(sending: state.phase is NewSessionPhaseSending);
         if (state case NewSessionCreated(:final session)) {
           // The user may have navigated elsewhere (e.g. opened another
           // session from the split-view list) while creation was in flight.
@@ -555,19 +712,12 @@ class _NewSessionViewState() extends State<NewSessionView> {
           // sending transcript owns its scroll too.
           SliverFillRemaining(
             hasScrollBody: true,
-            child: _crossFadeSending(
-              sending: sendingSubmission == null
-                  ? null
-                  : SessionLaunchSubmissionView(
-                      submission: sendingSubmission,
-                      harnessName: harnessName,
-                      transcriptWidth: null,
-                      sendingSince: sendingPhase?.startedAt,
-                    ),
-              composing: Column(
-                children: [
-                  Expanded(
-                    child: PregoTopBarInsetBuilder(
+            child: Column(
+              children: [
+                Expanded(
+                  child: _crossFadeSending(
+                    sending: sendingPane(transcriptWidth: null),
+                    composing: PregoTopBarInsetBuilder(
                       builder: (context, topInset, child) => CustomScrollView(
                         key: const Key("new_session_options_scroll"),
                         // The composer owns keyboard focus. This supporting
@@ -597,9 +747,9 @@ class _NewSessionViewState() extends State<NewSessionView> {
                       ),
                     ),
                   ),
-                  if (composer != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: composer),
-                ],
-              ),
+                ),
+                if (composer != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: composer),
+              ],
             ),
           ),
         ],
@@ -749,4 +899,93 @@ class const _OptionPillsPlaceholder({required final bool compact}) extends State
       ),
     );
   }
+}
+
+/// Paints [child] sliding from where it last painted to where it lies now,
+/// along [progress], each time [towardSending] flips: the composer's one move
+/// between the centred column and the bottom edge (D8). Only the painting
+/// moves; layout and the composer's state are already in their new place.
+class const _SlideFromLastPosition({
+  required final Animation<double> progress,
+  required final bool towardSending,
+  required super.child,
+}) extends SingleChildRenderObjectWidget {
+  @override
+  _RenderSlideFromLastPosition createRenderObject(BuildContext context) =>
+      _RenderSlideFromLastPosition(progress: progress, towardSending: towardSending);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderSlideFromLastPosition renderObject) {
+    renderObject.update(progress: progress, towardSending: towardSending);
+  }
+}
+
+class _RenderSlideFromLastPosition({required Animation<double> progress, required bool towardSending})
+    extends RenderProxyBox {
+  Animation<double> _progress = progress;
+  bool _towardSending = towardSending;
+
+  /// Where the child last painted, globally; the next move starts there.
+  Offset? _lastPosition;
+
+  /// How far the child was from its new place when the move began.
+  Offset _from = Offset.zero;
+
+  /// Where the child paints relative to its layout, so taps and semantics
+  /// follow what is on screen during the move.
+  Offset _shift = Offset.zero;
+  bool _moved = false;
+
+  void update({required Animation<double> progress, required bool towardSending}) {
+    if (!identical(progress, _progress)) {
+      if (attached) _progress.removeListener(markNeedsPaint);
+      _progress = progress;
+      if (attached) _progress.addListener(markNeedsPaint);
+    }
+    if (towardSending != _towardSending) {
+      _towardSending = towardSending;
+      _moved = true;
+      markNeedsPaint();
+    }
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _progress.addListener(markNeedsPaint);
+  }
+
+  @override
+  void detach() {
+    _progress.removeListener(markNeedsPaint);
+    super.detach();
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final position = localToGlobal(Offset.zero);
+    final done = _towardSending ? _progress.value : 1 - _progress.value;
+    final remaining = 1 - Curves.easeOutCubic.transform(done);
+    if (_moved) {
+      // A flip mid-move (a launch failing within the motion) resumes from
+      // where the child painted, scaled to the part of the curve still left.
+      final gap = (_lastPosition ?? position) - position;
+      _from = remaining < 1e-6 ? Offset.zero : gap / remaining;
+      _moved = false;
+    }
+    _shift = _from * remaining;
+    _lastPosition = position + _shift;
+    super.paint(context, offset + _shift);
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) => result.addWithPaintOffset(
+    offset: _shift,
+    position: position,
+    hitTest: (result, transformed) => super.hitTestChildren(result, position: transformed),
+  );
+
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) =>
+      transform.translateByDouble(_shift.dx, _shift.dy, 0, 1);
 }

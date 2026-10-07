@@ -278,21 +278,40 @@ variant, and worktree mode, and creating the session with its first input.
 - Prompt and slash-command starts are exclusive; only user-authored text is
   user-visible, and attachments appear only where declared. The session keys on
   the stable project identifier and carries title, defaults, and worktree facts.
-- Send immediately cross-fades the composer into the submitted message, shown as
+- Send immediately cross-fades the options into the submitted message, shown as
   the session transcript's sending bubble (text, `/command args`, and local image
-  previews) at the transcript's newest-row position, while the unresolved URI
-  remains `/projects/<projectId>/sessions/new`. It never shows a spinner page.
-  After about two seconds the bubble reads "Sending to `<harness>`…". The
-  composer stays replaced and duplicate Send is blocked. Creation waits up to
-  180 s for the bridge before reporting an uncertain failure. Back leaves
+  previews) at the transcript's newest-row position above the composer, while the
+  unresolved URI remains `/projects/<projectId>/sessions/new`. It never shows a
+  spinner page. After about two seconds the bubble reads "Sending to
+  `<harness>`…". The composer stays mounted with its text, staged images, voice
+  and focus; on a pointer surface it moves once from the centred column to the
+  bottom edge at the session page's composer width (240 ms, instant under
+  reduced motion) while the top bar, header, options and footer fade out. A
+  second Send never creates a second session: it queues a follow-up below the
+  first bubble, removable until it sends, carrying the options committed at the
+  first Send. The pickers stay visible but inert while sending; text, images and
+  commands stay live. Creation waits up to 180 s for the bridge before reporting
+  an uncertain failure. Back leaves
   creation running under an app-lifetime owner, so a success after leaving still
   records its outcome and clears the options chosen for it exactly as an
   in-route success does. Success replaces the route only when that launch route
-  is still current and the returned session is durable. The session screen that
+  is still current and the returned session is durable. A success landing while
+  the composer records or transcribes voice, or holds a failed recording awaiting
+  Retry or Discard, waits for it to settle, so the
+  transcript reaches the draft the session screen takes over; the first message
+  keeps sending meanwhile. The session screen that
   replaces it opens on the same bubble, in the same place and with the same
   words, including a "Sending to `<harness>`…" already showing; it never shows
   a loading status or "No messages yet" in between. The bubble stays until the
   harness's own transcript or queue shows the message, and a stop removes it.
+  The follow-ups follow it in the same rows, sent in press order once the session
+  exists, whether or not any screen is open; a failed one offers Retry, and
+  Remove after an authoritative rejection. The session screen's composer is
+  there from its first frame, in the new-session composer's place, with the
+  committed options, any unsent text, command and images, and the keyboard up
+  when the composer had focus; a message sent before the first load queues
+  behind the follow-ups and sends when it lands, and a failed first load keeps it
+  in view for Retry. The same composer carries into the loaded session.
 - Mobile and desktop compose the same new-session view while retaining
   shell-owned routing, DI, connection-banner policy, and platform capabilities.
   Mobile keeps voice capture and keyboard visibility. Desktop is explicitly
@@ -302,8 +321,10 @@ variant, and worktree mode, and creating the session with its first input.
 - A creation failure on the still-current route restores the exact submitted
   text/voice spans, command intent, and memory-only attachment identities once,
   and warns that manual resend can duplicate a session because response loss
-  cannot prove the bridge did not commit. It never auto-resends. Failure after
-  leaving the route does not repopulate shared composer state.
+  cannot prove the bridge did not commit. It never auto-resends. Queued
+  follow-ups and whatever was still in the composer are appended to that draft
+  in the order typed, each after a blank line, with their images re-staged.
+  Failure after leaving the route does not repopulate shared composer state.
 - Attachment-bearing creation yields incrementally while encoding attachment
   base64, inner request JSON, and outer relay-envelope JSON/UTF-8. Maximum-size
   input preserves the exact wire payload without copying attachment buffers to
@@ -402,8 +423,8 @@ variant, and worktree mode, and creating the session with its first input.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
 | L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window or captured before the bridge process started is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `sesori/color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. Pi startup dialog fixtures: answer questions before initial history, cancel catalog-probe dialogs without granting access, and preserve queued commands and partial UTF-8 bytes when native RPC takes over. |
-| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders the submitted message as a sending bubble at the unresolved route, blocks duplicate submit, waits up to 180 s for a cold create, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; loading keeps the layout with shimmering pills and a failure shows one retry; a New Session options refresh (background, Retry, Load, or Recheck) updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render; a sub-agent's page and an archived session show only the run details their harness knows, as read-only pills. Scoped authentication-required discovery replaces the composer with the login card, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
-| L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
+| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders the submitted message as a sending bubble at the unresolved route above the same live composer (on desktop moved to the bottom edge), a second Send queues a follow-up below it instead of a second session, waits up to 180 s for a cold create, and replaces with the durable session with the composer and every bubble in place; a success landing mid-recording waits for the transcript, which the session screen's draft then holds; follow-ups send in press order after the first message, and a message sent from the session screen before its first load sends after them, or stays in view for Retry when that load fails; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; loading keeps the layout with shimmering pills and a failure shows one retry; a New Session options refresh (background, Retry, Load, or Recheck) updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render; a sub-agent's page and an archived session show only the run details their harness knows, as read-only pills. Scoped authentication-required discovery replaces the composer with the login card, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
+| L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, with queued follow-ups and unsent composer content appended in typed order, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
 ## Exploration Guidance
@@ -474,6 +495,14 @@ startup-extension file failure, retry once the filesystem is usable.
   "No messages yet", moves or re-words the sending bubble, reverts
   "Sending to `<harness>`…" to "Sending", or shows the bubble beside the
   delivered message.
+- Send disposes or empties the composer, drops its images or focus, jumps it
+  instead of moving it on a pointer surface, or lets a picker change the
+  options of a launch in flight. A follow-up creates a second session, sends
+  out of press order or ahead of the first message, vanishes at the route
+  replacement or the first load, or is lost when the first load fails. The
+  session screen opens without a composer, with default options instead of the
+  committed ones, without the unsent text or images, or moves the composer when
+  the transcript loads.
 - A successful creation does not become the next per-plugin prefill (also when
   the user left the route before it finished), a failed creation replaces it, one plugin's selection leaks into another, or a removed
   saved value prevents current catalog defaults from loading.

@@ -17,6 +17,7 @@ import "message_timestamp_reveal.dart";
 import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
+import "session_launch_submission_view.dart";
 import "system_message_card.dart";
 import "transcript_glide_activity.dart";
 import "transcript_jump_notifier.dart";
@@ -1063,7 +1064,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             isCommand: submission.isCommand,
             attachmentCount: submission.attachments.length,
             localAttachments: submission.attachments,
-            presentation: _launchFollowUpPresentation(followUp: launchFollowUp),
+            presentation: launchFollowUpPresentation(
+              followUp: launchFollowUp,
+              harnessName: widget.harnessName,
+              onRetry: widget.onRetryLaunchFollowUp,
+              onRemove: widget.onRemoveLaunchFollowUp,
+            ),
           ),
         ),
       );
@@ -1141,29 +1147,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     registry: _promptSlots,
     child: UserMessageCard(message: message),
   );
-
-  QueuedMessageBubblePresentation _launchFollowUpPresentation({required LaunchFollowUp followUp}) {
-    final promptId = followUp.submission.promptId;
-    final onRetry = widget.onRetryLaunchFollowUp;
-    final onRemove = widget.onRemoveLaunchFollowUp;
-    return switch (followUp) {
-      SendingLaunchFollowUp(:final since) => QueuedMessageBubblePresentation.sending(
-        harnessName: widget.harnessName,
-        sendingSince: since,
-      ),
-      QueuedLaunchFollowUp() when onRemove != null => QueuedMessageBubblePresentation.pending(
-        onCancel: () => onRemove(promptId: promptId),
-      ),
-      QueuedLaunchFollowUp() || AcceptedLaunchFollowUp() => const QueuedMessageBubblePresentation.pendingReadOnly(),
-      // A lost response may already have reached the bridge, so only an
-      // authoritative rejection can be removed; Retry is safe either way,
-      // since the bridge drops a promptId it already took.
-      FailedLaunchFollowUp(:final failure) => QueuedMessageBubblePresentation.failed(
-        onRetry: onRetry == null ? null : () => onRetry(promptId: promptId),
-        onRemove: onRemove == null || failure != PromptSendFailure.rejected ? null : () => onRemove(promptId: promptId),
-      ),
-    };
-  }
 
   void _cancelQueuedSubmission({required QueuedSessionSubmission submission}) {
     final onCancelQueuedMessage = widget.onCancelQueuedMessage;
