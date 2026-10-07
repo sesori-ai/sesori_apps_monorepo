@@ -2345,8 +2345,14 @@ void main() {
     final runningMessage = events.whereType<BridgeSseMessageUpdated>().single;
     final runningPart = events.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(runningPart.messageID, runningMessage.info.id);
-    expect(runningPart.state.status, PluginToolStatus.running);
-    expect(runningPart.state.title, isNull);
+    expect(
+      runningPart,
+      isA<PluginMessagePartCompaction>().having(
+        (part) => part.compactionState,
+        "compactionState",
+        const PluginCompactionState.running(summary: null),
+      ),
+    );
 
     process.emit(frame: {"type": "compaction_end", "aborted": false, "willRetry": false});
     await pump();

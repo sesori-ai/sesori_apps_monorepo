@@ -22,6 +22,7 @@ void main() {
         messageTimeParser: const DeepSeekMessageTimeParser(),
         subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
         delegationTracker: DeepSeekDelegationTracker(),
+        compactionTracker: DeepSeekCompactionTracker(clock: const ServerClock()),
       )..setSessionProject("root", "/project");
       mapper.beginTurn(sessionId: "root", messageId: null);
     });

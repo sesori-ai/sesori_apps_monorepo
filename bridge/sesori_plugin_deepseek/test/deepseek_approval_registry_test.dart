@@ -56,6 +56,7 @@ void main() {
       messageTimeParser: const DeepSeekMessageTimeParser(),
       subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
       delegationTracker: DeepSeekDelegationTracker(),
+      compactionTracker: DeepSeekCompactionTracker(clock: const ServerClock()),
     );
     final plugin = DeepSeekPlugin(
       launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "deepseek", args: []),

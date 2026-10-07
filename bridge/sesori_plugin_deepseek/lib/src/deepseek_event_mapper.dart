@@ -5,6 +5,7 @@ import "api/deepseek_acp_api.dart";
 import "api/models/deepseek_protocol_dto.dart";
 import "deepseek_message_time_parser.dart";
 import "repositories/mappers/deepseek_subagent_mapper.dart";
+import "repositories/trackers/deepseek_compaction_tracker.dart";
 import "repositories/trackers/deepseek_delegation_tracker.dart";
 
 class DeepSeekEventMapper({
@@ -16,6 +17,7 @@ class DeepSeekEventMapper({
   required final DeepSeekMessageTimeParser messageTimeParser,
   required final DeepSeekSubagentMapper subagentMapper,
   required final DeepSeekDelegationTracker delegationTracker,
+  required final DeepSeekCompactionTracker compactionTracker,
 }) extends AcpEventMapper {
   @override
   PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) =>
@@ -26,11 +28,13 @@ class DeepSeekEventMapper({
   void resetLiveState() {
     _deferredDelegations.clear();
     delegationTracker.clear();
+    compactionTracker.clear();
   }
 
   @override
   void beginTurn({required String sessionId, required String? messageId}) {
     _deferredDelegations.remove(sessionId);
+    compactionTracker.forgetSession(sessionId: sessionId);
     super.beginTurn(sessionId: sessionId, messageId: messageId);
   }
 
@@ -38,6 +42,7 @@ class DeepSeekEventMapper({
   void forgetSession(String sessionId) {
     _deferredDelegations.remove(sessionId);
     delegationTracker.forgetSession(sessionId: sessionId);
+    compactionTracker.forgetSession(sessionId: sessionId);
     super.forgetSession(sessionId);
   }
 
@@ -142,9 +147,24 @@ class DeepSeekEventMapper({
     try {
       final status = api.parseSessionStatus(notification.params);
       return switch (status) {
-        DeepSeekCompactionCompletedStatusDto() => [BridgeSseSessionCompacted(sessionID: status.sessionId)],
+        DeepSeekCompactionStartedStatusDto(:final sessionId) => _compactionRow(
+          sessionId: sessionId,
+          compaction: compactionTracker.start(sessionId: sessionId),
+          state: const .running(summary: null),
+        ),
+        // DeepSeek reports no summary, tokens or trigger. A completion with no
+        // recorded start keeps only the session event.
+        DeepSeekCompactionCompletedStatusDto(:final sessionId) => [
+          if (compactionTracker.finish(sessionId: sessionId) case final compaction?)
+            ..._compactionRow(
+              sessionId: sessionId,
+              compaction: compaction,
+              state: const .completed(summary: null, freedTokens: null, trigger: null),
+            ),
+          BridgeSseSessionCompacted(sessionID: sessionId),
+        ],
         DeepSeekWarningStatusDto() => _mapWarning(status),
-        DeepSeekRetryStatusDto() || DeepSeekCompactionStartedStatusDto() => const [],
+        DeepSeekRetryStatusDto() => const [],
       };
     } on Object catch (error, stackTrace) {
       Log.w("[deepseek] ignored malformed session status notification", error, stackTrace);
@@ -248,6 +268,36 @@ class DeepSeekEventMapper({
       error: state.error,
     );
   }
+
+  /// The live compaction row: one system message stamped at the start, with
+  /// one part that settles in place. DeepSeek's history has no compaction
+  /// record, so the row is live only.
+  List<BridgeSseEvent> _compactionRow({
+    required String sessionId,
+    required DeepSeekRunningCompaction compaction,
+    required PluginCompactionState state,
+  }) => [
+    BridgeSseMessageUpdated(
+      info: PluginMessage.assistant(
+        id: compaction.messageId,
+        sessionID: sessionId,
+        agent: null,
+        modelID: null,
+        providerID: null,
+        variant: null,
+        sender: PluginMessageSender.system,
+        time: PluginMessageTime(created: compaction.startedAtMs, completed: null),
+      ),
+    ),
+    BridgeSseMessagePartUpdated(
+      part: PluginMessagePart.compaction(
+        id: "${compaction.messageId}-part",
+        sessionID: sessionId,
+        messageID: compaction.messageId,
+        compactionState: state,
+      ),
+    ),
+  ];
 
   List<BridgeSseEvent> _mapWarning(DeepSeekWarningStatusDto status) {
     Log.w("[deepseek] session warning for ${status.sessionId}: ${status.message}");

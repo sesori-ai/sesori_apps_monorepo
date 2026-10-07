@@ -17,6 +17,7 @@ import "../repositories/deepseek_history_repository.dart";
 import "../repositories/deepseek_session_repository.dart";
 import "../repositories/mappers/deepseek_catalog_mapper.dart";
 import "../repositories/mappers/deepseek_subagent_mapper.dart";
+import "../repositories/trackers/deepseek_compaction_tracker.dart";
 import "../repositories/trackers/deepseek_delegation_tracker.dart";
 import "../services/deepseek_session_options_service.dart";
 import "../services/deepseek_session_service.dart";
@@ -283,6 +284,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
       messageTimeParser: messageTimeParser,
       subagentMapper: subagentMapper,
       delegationTracker: delegationTracker,
+      compactionTracker: DeepSeekCompactionTracker(clock: const ServerClock()),
     );
     const catalogMapper = DeepSeekCatalogMapper();
     const catalogRepository = DeepSeekCatalogRepository(api: api, mapper: catalogMapper);

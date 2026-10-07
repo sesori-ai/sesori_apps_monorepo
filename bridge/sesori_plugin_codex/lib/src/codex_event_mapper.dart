@@ -553,34 +553,32 @@ class CodexEventMapper({
           attachments: const [],
         );
       case "contextCompaction":
-        if (!completed) {
-          return _toolItemEvents(
-            threadId: threadId,
-            itemId: itemId,
-            tool: "compact",
-            shellCommand: null,
-            // Status already conveys progress; compaction has no additional detail.
-            title: null,
-            status: PluginToolStatus.running,
-            time: time,
-            attachments: const [],
-          );
-        }
+        // The running row's timer counts from the message's creation time, so
+        // a start without `startedAtMs` is stamped now and kept for the settle.
+        final compactionTime =
+            time ??
+            (_itemTimes[(threadId: threadId, itemId: itemId)] = PluginMessageTime(
+              created: DateTime.now().millisecondsSinceEpoch,
+              completed: null,
+            ));
+        // Codex reports no failure, tokens, trigger or live summary: a missing
+        // completion is left to the bridge's idle sweep.
         return [
           BridgeSseMessageUpdated(
-            info: _assistantMessage(itemId: itemId, threadId: threadId, time: time),
+            info: _assistantMessage(itemId: itemId, threadId: threadId, time: compactionTime),
           ),
-          // Keeps the running card's part id, so the row replaces it in place.
-          // The live item carries no summary; a replayed rollout can.
+          // One part id from start to finish, so the row settles in place.
           BridgeSseMessagePartUpdated(
             part: PluginMessagePart.compaction(
               id: "$itemId-tool",
               sessionID: threadId,
               messageID: itemId,
-              compactionState: const .completed(summary: null, freedTokens: null, trigger: null),
+              compactionState: completed
+                  ? const .completed(summary: null, freedTokens: null, trigger: null)
+                  : const .running(summary: null),
             ),
           ),
-          BridgeSseSessionCompacted(sessionID: threadId),
+          if (completed) BridgeSseSessionCompacted(sessionID: threadId),
         ];
       default:
         // todoList, hookPrompt, … — codex item kinds with no mobile
