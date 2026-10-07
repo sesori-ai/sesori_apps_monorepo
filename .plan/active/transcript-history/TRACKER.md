@@ -67,6 +67,7 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | 7 | `transcript-history/prompt-index` | [7](#fixed-pr-titles) | ≤ 900 | 6 |
 | 8 | `transcript-history/load-through` | [8](#fixed-pr-titles) | ≤ 600 | 5 |
 | 9 | `transcript-history/prompts-list` | [9](#fixed-pr-titles) | ≤ 1,300 | 7, 8 |
+| 9b | `transcript-history/relay-decode-isolate` | [9b](#fixed-pr-titles) | ≤ 200 | 4 |
 | 10 | `transcript-history/unloaded-pin` | [10](#fixed-pr-titles) | ≤ 500 | 9 |
 | 11 | `transcript-history/prompt-search` | [11](#fixed-pr-titles) | ≤ 800 | 9 |
 | 12 | `transcript-history/slim-tools-bridge` | [12](#fixed-pr-titles) | ≤ 900 | 8 |
@@ -89,6 +90,7 @@ outgrows its target; that split renumbers this table and the titles together.
 7. `🚧 [transcript-history] Serve a session prompt index from the bridge [step 7/15]`
 8. `🚧 [transcript-history] Load every message down to a chosen prompt [step 8/15]`
 9. `🚧 [transcript-history] List every prompt and jump to unloaded ones [step 9/15]`
+9b. `🌿 [transcript-history] Decode large relay responses off the UI isolate [step 9b]`
 10. `⚙️ [transcript-history] Pin the prompt above an unloaded range [step 10/15]`
 11. `⚙️ [transcript-history] Search every prompt through the bridge [step 11/15]`
 12. `🚧 [transcript-history] Serve slim tool parts and a tool detail route [step 12/15]`

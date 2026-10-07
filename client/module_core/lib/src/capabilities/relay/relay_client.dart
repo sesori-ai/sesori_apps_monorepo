@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io" show ZLibDecoder;
+import "dart:isolate";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
@@ -695,18 +696,10 @@ class RelayClient._({
     }
 
     final decryptedBytes = await unframe(message, encryptor: encryptor);
-    final decoded = jsonDecodeMap(utf8.decode(_inflateIfDeflated(decryptedBytes)));
-    return RelayMessage.fromJson(decoded);
-  }
-
-  /// A response to a request that set `acceptsDeflatedResponse` may start
-  /// with [RelayProtocol.deflatedPlaintextMarker], followed by a raw deflate
-  /// stream of the JSON. Any other plaintext is the JSON itself.
-  List<int> _inflateIfDeflated(List<int> plaintext) {
-    if (plaintext case [RelayProtocol.deflatedPlaintextMarker, ...]) {
-      return ZLibDecoder(raw: true).convert(plaintext.sublist(1));
+    if (decryptedBytes.length < relayBackgroundDecodeMinBytes) {
+      return _decodeRelayPlaintext(plaintext: decryptedBytes);
     }
-    return plaintext;
+    return await _decodeRelayPlaintextInBackground(plaintext: decryptedBytes);
   }
 
   // ignore: no_slop_linter/prefer_specific_type
@@ -847,4 +840,30 @@ class const _BridgeOfflineDuringHandshake() implements Exception;
 final class const RelayResponseLostException({required final String message}) implements Exception {
   @override
   String toString() => message;
+}
+
+/// Decrypted relay plaintext at least this long decodes on a short-lived
+/// isolate. Measured AOT on macOS: a deflated response this long holds about
+/// 256 KB of JSON, which blocks the UI isolate for about 2 ms when decoded
+/// inline, and the isolate adds about 1 ms of latency. Nearly every SSE event
+/// is smaller and stays inline.
+@visibleForTesting
+const int relayBackgroundDecodeMinBytes = 32 * 1024;
+
+RelayMessage _decodeRelayPlaintext({required List<int> plaintext}) =>
+    RelayMessage.fromJson(jsonDecodeMap(utf8.decode(_inflateIfDeflated(plaintext: plaintext))));
+
+/// Top level so the isolate's closure captures only [plaintext], never the
+/// client or its encryptor.
+Future<RelayMessage> _decodeRelayPlaintextInBackground({required List<int> plaintext}) =>
+    Isolate.run(() => _decodeRelayPlaintext(plaintext: plaintext));
+
+/// A response to a request that set `acceptsDeflatedResponse` may start
+/// with [RelayProtocol.deflatedPlaintextMarker], followed by a raw deflate
+/// stream of the JSON. Any other plaintext is the JSON itself.
+List<int> _inflateIfDeflated({required List<int> plaintext}) {
+  if (plaintext case [RelayProtocol.deflatedPlaintextMarker, ...]) {
+    return ZLibDecoder(raw: true).convert(plaintext.sublist(1));
+  }
+  return plaintext;
 }
