@@ -1490,6 +1490,26 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String transcriptPromptsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count prompts',
+      one: '1 prompt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get transcriptPromptsOpenFailed => 'Couldn\'t open this prompt. Check your connection and try again.';
+
+  @override
+  String get transcriptPromptsGone => 'This prompt is no longer in the session';
+
+  @override
+  String get transcriptPromptsBridgeTooOld => 'Update the bridge to open earlier prompts';
+
+  @override
   String get transcriptPromptsNoDate => 'No date';
 
   @override

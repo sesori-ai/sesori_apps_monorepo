@@ -2695,6 +2695,30 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 prompt loaded} other{{count} prompts loaded}}'**
   String transcriptPromptsLoaded(int count);
 
+  /// Last row of the Prompts screen when it lists every prompt in the session, loaded or not: how many there are.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 prompt} other{{count} prompts}}'**
+  String transcriptPromptsCount(int count);
+
+  /// Notice over the Prompts screen when loading the transcript up to a tapped earlier prompt failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open this prompt. Check your connection and try again.'**
+  String get transcriptPromptsOpenFailed;
+
+  /// Notice over the Prompts screen when a tapped earlier prompt was not found as its part of the transcript loaded, for example because the session's history was rewritten.
+  ///
+  /// In en, this message translates to:
+  /// **'This prompt is no longer in the session'**
+  String get transcriptPromptsGone;
+
+  /// Notice over the Prompts screen when a tapped earlier prompt cannot be opened because the connected bridge is too old to load it.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the bridge to open earlier prompts'**
+  String get transcriptPromptsBridgeTooOld;
+
   /// Day header of the Prompts screen over prompts whose send time is unknown.
   ///
   /// In en, this message translates to:

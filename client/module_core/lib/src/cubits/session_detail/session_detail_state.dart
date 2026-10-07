@@ -55,6 +55,12 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// re-issued while it runs.
     @Default(false) bool isLoadingOlderMessages,
 
+    /// Every prompt in the session's history, oldest first, so the Prompts
+    /// screen can list the ones not loaded yet. Null until it arrives, when
+    /// the bridge predates it or its fetch failed, and when the transcript
+    /// already loaded the whole history.
+    required List<SessionPromptIndexEntry>? promptIndex,
+
     required Map<String, String> streamingText,
     required SessionStatus sessionStatus,
     required List<SesoriQuestionAsked> pendingQuestions,

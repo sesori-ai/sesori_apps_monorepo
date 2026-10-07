@@ -40,6 +40,7 @@ SessionDetailState _loadedState({
     launchHandoff: null,
     olderMessagesCursor: null,
     userMessagesBeforeOldest: null,
+    promptIndex: null,
     streamingText: streamingText,
     sessionStatus: const SessionStatus.idle(),
     pendingQuestions: const [],

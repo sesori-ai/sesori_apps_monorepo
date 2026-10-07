@@ -152,6 +152,7 @@ SessionDetailLoaded _loadedState({
     launchHandoff: null,
     olderMessagesCursor: null,
     userMessagesBeforeOldest: userMessagesBeforeOldest,
+    promptIndex: null,
     streamingText: const {},
     sessionStatus: sessionStatus,
     pendingQuestions: pendingQuestions,
@@ -1102,6 +1103,7 @@ void main() {
       launchHandoff: null,
       olderMessagesCursor: null,
       userMessagesBeforeOldest: null,
+      promptIndex: null,
       streamingText: const {},
       sessionStatus: const SessionStatus.idle(),
       pendingQuestions: const [],
@@ -1417,6 +1419,50 @@ void main() {
       await tester.drag(prompts, const Offset(0, 2000));
       await tester.pumpAndSettle();
       expect(find.text("Older 0"), findsOneWidget);
+    });
+
+    testWidgets("the prompt index lists unloaded prompts, and a tap on one loads it and moves there", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final state = _loadedState(
+        pendingQuestions: const [],
+        pendingPermissions: const [],
+        messages: turns,
+      ).copyWith(olderMessagesCursor: 42);
+      when(() => cubit.state).thenReturn(state);
+      whenListen(cubit, states.stream, initialState: state);
+      final older = [
+        textMessage(id: "older-u0", user: true, text: "Older 0"),
+        textMessage(id: "older-a0", user: false, text: "Older answer 0"),
+      ];
+      final withOlder = state.copyWith(messages: [...older, ...turns], olderMessagesCursor: null);
+      when(() => cubit.loadMessagesThrough(messageId: "older-u0", seq: 1)).thenAnswer((_) async {
+        when(() => cubit.state).thenReturn(withOlder);
+        states.add(withOlder);
+        return const LoadThroughLoaded();
+      });
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      await openPrompts(tester);
+      expect(find.byKey(const Key("session-prompts-load-earlier")), findsOneWidget);
+
+      final indexed = state.copyWith(
+        promptIndex: const [
+          SessionPromptIndexEntry.opener(messageId: "older-u0", seq: 1, number: 1, createdAt: null, preview: "Older 0"),
+        ],
+      );
+      when(() => cubit.state).thenReturn(indexed);
+      states.add(indexed);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("session-prompts-load-earlier")), findsNothing);
+      await tester.drag(find.descendant(of: layer, matching: find.byType(CustomScrollView)), const Offset(0, 2000));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text("Older 0"));
+      await tester.pumpAndSettle();
+
+      verify(() => cubit.loadMessagesThrough(messageId: "older-u0", seq: 1)).called(1);
+      expect(layer, findsNothing, reason: "the screen closes once the transcript has moved to the prompt");
     });
 
     testWidgets("Load earlier prompts is disabled while the transcript refreshes", (tester) async {

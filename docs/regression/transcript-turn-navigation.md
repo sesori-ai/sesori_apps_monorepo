@@ -5,10 +5,11 @@
 A session transcript reads as turns: a prompt, the agent's steps and its
 answer. While reading, the latest prompt or steer above the top edge stays
 pinned there. A Prompts screen, opened by a button or a pinch, lists every
-loaded prompt in the transcript's order, opens on the one being read and
-returns to any prompt with one tap. Phone and desktop derive the same turns and
-prompt list from the loaded messages; turns and the list are never stored or
-sent to the bridge.
+prompt of the session in the transcript's order, opens on the one being read and
+returns to any prompt with one tap, loading the transcript through it when it
+is not loaded yet. Phone and desktop derive the same turns and prompt list from
+the loaded messages and the bridge's prompt index; turns and the list are never
+stored or sent to the bridge.
 
 ## Required Behavior
 
@@ -80,6 +81,21 @@ sent to the bridge.
   them for undated prompts; a session with no timed prompt shows no headers and
   no times. The list ends with "{n} prompts loaded"; an empty session with no
   earlier page reads "No prompts in this session yet".
+- While the session has earlier messages, the app also asks the bridge for the
+  session's prompt index, after each load and refresh. Once it arrives the list
+  holds every prompt of the session, unloaded ones included with their number,
+  time and first line, ends with "{n} prompts" and has no "Load earlier
+  prompts". An index from before a refresh is never shown over the refreshed
+  transcript. Without one — an older bridge or a failed request — the list
+  stays the loaded prompts only, as below.
+- A tap on an unloaded row loads the transcript from that prompt to the loaded
+  part. After 150 ms its row shows a spinner; once the messages land the screen
+  closes onto the prompt exactly as for a loaded row. A tap on another row
+  meanwhile replaces the target. A failed load shows a notice at the bottom of
+  the list and moves nothing: "Couldn't open this prompt…" for an error, "This
+  prompt is no longer in the session" when the loaded range lacks it, and
+  "Update the bridge to open earlier prompts" for a bridge without the route.
+  Closing the screen cancels the jump, not the load.
 - A prompt's number is its place among all of the session's user messages,
   loaded or not, counted by the bridge from its own history: the first prompt
   is 1, and a user message the list hides still takes a number. Loading older
@@ -100,7 +116,8 @@ sent to the bridge.
   running as it opened. That lists the transcript's prompts afresh, with the
   rows on screen kept in place. Before then, a new prompt arriving or another
   transcript change does not move or add rows.
-- While the session has earlier messages, "Load earlier prompts" heads the list.
+- While the session has earlier messages and no prompt index, "Load earlier
+  prompts" heads the list.
   It loads the transcript's next older page, is disabled while that runs or
   while the transcript refreshes, and disappears once the session's start has
   loaded. At a large text size or a narrow width its label wraps and shows
@@ -110,7 +127,7 @@ sent to the bridge.
   the same load, unless the list cannot scroll that far: one shorter than the
   screen, or a last page smaller than the control loaded from the very top.
 - Typing in the search field filters the rows as it is typed, ignoring case,
-  over each prompt's whole text. Each remaining row grows by one line showing
+  over each loaded prompt's whole text and each unloaded prompt's preview. Each remaining row grows by one line showing
   the words around its first match, the match highlighted, so a match past the
   row's first line still shows why it matched, in any script and at any text
   size; an excerpt never splits a code point (surrogate pair). Rows that no
@@ -232,6 +249,13 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
   prompts joining the filter below it with the reader's row
   still, also when the control disappears; a page the transcript was already
   loading as the screen opened joining it.
+- The prompt index: fetched after a load and a refresh only while earlier
+  messages exist, kept null on failure, an older index dropped on refresh; the
+  merge of indexed, unloaded and unindexed loaded prompts; the full count and
+  no "Load earlier prompts" with an index.
+- A tap on an unloaded row: the spinner only after the delay, the move once
+  loaded, a second tap replacing the first, and the older-bridge notice.
+- The load-through response decoding off the calling isolate.
 - Numbers and times: prompt numbers from the bridge's count kept through three
   older pages with hidden user messages and automation; no numbers without a
   count; the bridge's count for every page read (snapshot, stored-only,
@@ -276,6 +300,11 @@ On the release-target phone and on macOS, on a session of three or more pages:
   prompt being read with no visible scroll, its numbers matching the prompts'
   places in the session after paging back to the start, and a tap landing an
   opener, a follow-up and a far prompt.
+- On a session of several hundred prompts, the screen listing all of them
+  before any paging, and a tap on the oldest loading it and landing on it, with
+  the spinner only on a slow link and the screen still scrolling smoothly while
+  the response decodes. Against a bridge released before the prompt index, the
+  list showing the loaded prompts with "Load earlier prompts".
 - Typing a search, clearing it and loading earlier prompts with nothing under
   the reader jumping.
 - Escape and ⌘[ closing on macOS, back and close leaving the transcript
@@ -344,8 +373,13 @@ answer, and on a trackpad while text streams.
 - The Prompts screen opens scrolled away from the prompt being read, visibly
   scrolls into place, tints a different prompt or loses the tint; lists prompts
   out of the transcript's order, a follow-up above or away from its opener, or
-  a prompt the transcript has not loaded; shows day headers out of order or
-  "No date" below them.
+  a prompt the transcript has not loaded while the bridge sent no index; shows
+  day headers out of order or "No date" below them.
+- With an index, a prompt of the session is missing or listed twice; a tap on
+  an unloaded row lands elsewhere, shows its spinner at once on a fast load,
+  moves the transcript after a failure or after the screen closed, or a
+  replaced tap still lands; an older bridge shows anything but the loaded
+  prompts.
 - A prompt's number changes when an older page loads, skips or repeats against
   the session's prompts, or starts at 1 on a page that is not the session's
   start; a prompt sent to an ACP harness shows no time.
@@ -411,9 +445,14 @@ answer, and on a trackpad while text streams.
   While pinned, the prompt covers the top of the rows beneath it. A glide to
   a prompt far above aims at an estimate that sharpens as rows are built, so
   its speed can bend on the way; it still lands exactly.
-- The Prompts screen lists and searches only what the transcript has loaded;
-  "Load earlier prompts" pages back one transcript page at a time. An older bridge sends no
-  user message count, so its rows carry no numbers. On Grok, Antigravity,
+- An unloaded prompt is searched by its preview only. A bridge released before
+  the prompt index lists and searches only what the transcript has loaded, and
+  "Load earlier prompts" pages back one transcript page at a time; its notice
+  for an unloaded tap has no link to update instructions. An older bridge sends
+  no user message count, so its rows carry no numbers. Loading through a far
+  prompt decodes the response off the UI isolate, but the relay envelope of a
+  whole-session response still decodes on it (about 170 ms on a Mac for a
+  10,000-message session). On Grok, Antigravity,
   Copilot, Cursor, Hermes and OMP a prompt read back from the harness's own
   history carries no time.
 
@@ -450,4 +489,11 @@ answer, and on a trackpad while text streams.
 - The ACP prompt stamp: `localUserMessageTime` in
   `bridge/sesori_plugin_acp/lib/src/acp_event_mapper.dart` and
   `bridge/sesori_plugin_acp/test/acp_event_mapper_test.dart`
-- `.plan/active/turn-navigation/PLAN.md`
+- The prompt index and load-through: `transcript_prompt_list.dart` and
+  `session_detail_cubit.dart` under
+  `client/module_core/lib/src/cubits/session_detail/`,
+  `client/module_core/lib/src/repositories/session_repository.dart`,
+  `client/module_core/lib/src/api/client/relay_http_client.dart`, and their
+  tests
+- `.plan/active/turn-navigation/PLAN.md` and
+  `.plan/active/transcript-history/PLAN.md`

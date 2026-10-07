@@ -214,6 +214,7 @@ export "src/repositories/models/session_abort_rejected_exception.dart";
 export "src/repositories/models/session_cleanup_rejection.dart";
 export "src/repositories/models/session_diff_summary_result.dart";
 export "src/repositories/models/session_messages_through_result.dart";
+export "src/repositories/models/session_prompt_index_result.dart";
 export "src/repositories/notification_preferences_repository.dart";
 export "src/repositories/notification_repository.dart";
 export "src/repositories/permission_repository.dart";

@@ -15,6 +15,7 @@ void main() {
       messages: [],
       olderMessagesCursor: null,
       userMessagesBeforeOldest: null,
+      promptIndex: null,
       streamingText: {},
       sessionStatus: SessionStatus.idle(),
       pendingQuestions: [],

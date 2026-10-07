@@ -7,6 +7,14 @@ import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+/// Counts the decodes [_countedValue] ran on whichever isolate reads it.
+var _decodesOnThisIsolate = 0;
+
+String _countedValue(Map<String, dynamic> json) {
+  _decodesOnThisIsolate++;
+  return json["value"] as String;
+}
+
 void main() {
   setUpAll(() {
     registerCoreFallbackValues();
@@ -105,6 +113,34 @@ void main() {
         expect(request.method, equals("POST"));
         expect(request.path, contains("/session"));
         expect(request.acceptsDeflatedResponse, isTrue);
+      });
+
+      test("a background-decoded POST parses off this isolate and still reports bad JSON", () async {
+        final bodies = ['{"value":"ok"}', '{"value":'];
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer((_) async => RelayResponse(id: "req", status: 200, headers: const {}, body: bodies.removeAt(0)));
+
+        final decoded = await client.postDecodedInBackground<String>(
+          "/session/messages/through",
+          fromJson: _countedValue,
+          body: {"key": "value"},
+        );
+        final malformed = await client.postDecodedInBackground<String>(
+          "/session/messages/through",
+          fromJson: _countedValue,
+          body: {"key": "value"},
+        );
+
+        expect(decoded, isA<SuccessResponse<String>>().having((response) => response.data, "data", "ok"));
+        expect(_decodesOnThisIsolate, 0, reason: "the decode ran on another isolate");
+        expect(
+          malformed,
+          isA<ErrorResponse<String>>().having((response) => response.error, "error", isA<JsonParsingError>()),
+        );
       });
 
       test("attachment POST uses its longer timeout and asks for a plain response", () async {

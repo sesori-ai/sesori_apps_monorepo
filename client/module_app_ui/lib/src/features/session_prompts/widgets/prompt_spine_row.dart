@@ -49,6 +49,10 @@ class const PromptSpineRow({
   /// How far [excerpt] has faded in, from 0 to 1, while the row grows to
   /// show it. The list sets the row's height; whatever does not fit is cut.
   required final double grown,
+
+  /// Whether a tap is still loading the transcript up to this prompt, which
+  /// shows a spinner beside its text.
+  required final bool loading,
   required final VoidCallback onTap,
 }) extends StatelessWidget {
   @override
@@ -138,6 +142,14 @@ class const PromptSpineRow({
                             ),
                           ),
                         ),
+                        if (loading)
+                          Padding(
+                            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.lg),
+                            child: SizedBox.square(
+                              dimension: _lineExtent(textScaler: MediaQuery.textScalerOf(context)),
+                              child: const PregoActivityIndicator(color: null),
+                            ),
+                          ),
                         if (time != null)
                           Padding(
                             padding: const EdgeInsetsDirectional.only(start: PregoSpacing.lg),

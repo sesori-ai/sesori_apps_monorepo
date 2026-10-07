@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/repositories/models/session_abort_not_accep
 import "package:sesori_dart_core/src/repositories/models/session_diff_summary_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_messages_through_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -678,6 +679,38 @@ void main() {
       final result = await throughFor(response: ApiResponse.error(error));
 
       expect(result, isA<SessionMessagesThroughFailure>().having((value) => value.error, "error", error));
+    });
+  });
+
+  group("getPromptIndex", () {
+    Future<SessionPromptIndexResult> indexFor({required ApiResponse<SessionPromptIndexResponse> response}) {
+      final api = MockSessionApi();
+      when(() => api.getPromptIndex(sessionId: "s1")).thenAnswer((_) async => response);
+      return SessionRepository(api: api).getPromptIndex(sessionId: "s1");
+    }
+
+    test("passes the entries through", () async {
+      const entries = [
+        SessionPromptIndexEntry.opener(messageId: "m1", seq: 1, number: 1, createdAt: null, preview: "Hi"),
+      ];
+
+      final result = await indexFor(response: ApiResponse.success(const SessionPromptIndexResponse(entries: entries)));
+
+      expect(result, isA<SessionPromptIndexAvailable>().having((value) => value.entries, "entries", entries));
+    });
+
+    test("reads only the router's 404 as a bridge that predates the route", () async {
+      final unsupported = await indexFor(
+        response: ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "no handler found for POST /session/prompts"),
+        ),
+      );
+      final failed = await indexFor(
+        response: ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "session not found")),
+      );
+
+      expect(unsupported, isA<SessionPromptIndexUnsupported>());
+      expect(failed, isA<SessionPromptIndexFailure>());
     });
   });
 }

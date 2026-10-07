@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:math" as math;
 import "dart:ui" show lerpDouble;
 
@@ -23,10 +24,15 @@ const _kLoadEarlierPadding = EdgeInsets.symmetric(horizontal: 12, vertical: 8);
 const _kFilterDuration = Duration(milliseconds: 200);
 const _kFilterCurve = Curves.easeOutCubic;
 
-/// The Prompts screen: the session's loaded prompts in the transcript's order,
+/// How long a tapped unloaded prompt loads before its row shows a spinner, so
+/// a quick load shows none.
+const _kFarTapSpinnerDelay = Duration(milliseconds: 150);
+
+/// The Prompts screen: the session's prompts in the transcript's order,
 /// earlier above, grouped under their days, under a search field that narrows
 /// them. It opens on [anchorMessageId]'s row, tinted, just below its day's
-/// heading.
+/// heading. A tap on a prompt the transcript has not loaded yet loads up to it
+/// while the screen stays, then moves there like any other tap.
 class const SessionPromptsView({
   super.key,
   required final TranscriptPromptList prompts,
@@ -39,7 +45,7 @@ class const SessionPromptsView({
   required final double? maxWidth,
 
   /// Loads the session's page before the earliest listed prompt; null once
-  /// the session's start has loaded.
+  /// the session's start has loaded or [prompts] lists every prompt.
   required final VoidCallback? onLoadEarlier,
 
   /// Whether that page is loading or the transcript is refreshing, either of
@@ -49,7 +55,12 @@ class const SessionPromptsView({
   /// Whether the search field takes the keyboard as the screen opens, as on a
   /// pointer surface, where typing is the quickest way in.
   required final bool autofocusSearch,
+
+  /// Moves the transcript to a loaded prompt and closes the screen.
   required final void Function({required String messageId}) onPromptTap,
+
+  /// Loads the transcript up to the unloaded prompt [messageId] at [seq].
+  required final Future<LoadThroughOutcome> Function({required String messageId, required int seq}) onLoadThrough,
   required final VoidCallback onClose,
 }) extends StatefulWidget {
   @override
@@ -95,6 +106,10 @@ typedef _Hold = ({String messageId, double fromY, double toY});
 /// The row the reader was on and its y on screen.
 typedef _Place = ({String messageId, double y});
 
+/// The unloaded prompt a tap is loading up to, and whether the load has run
+/// long enough for its row to show a spinner.
+typedef _FarTap = ({String messageId, bool showsSpinner});
+
 class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTickerProviderStateMixin {
   ScrollController? _scrollController;
 
@@ -114,11 +129,62 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
   /// The last build's extents, for the list's arithmetic between builds.
   _Extents? _extents;
 
+  /// The pending far tap; a later tap replaces it, and closing the screen
+  /// drops it with the screen.
+  _FarTap? _farTap;
+  Timer? _farTapSpinner;
+
+  /// Why the last far tap could not move to its prompt, shown over the list's
+  /// foot until the next tap.
+  String? _farTapError;
+
   @override
   void dispose() {
+    _farTapSpinner?.cancel();
     _filter.dispose();
     _scrollController?.dispose();
     super.dispose();
+  }
+
+  void _tapPrompt({required TranscriptPromptEntry entry}) {
+    _farTapSpinner?.cancel();
+    switch (entry.source) {
+      case TranscriptPromptLoaded():
+        setState(() {
+          _farTap = null;
+          _farTapError = null;
+        });
+        widget.onPromptTap(messageId: entry.messageId);
+      case TranscriptPromptUnloaded(:final seq):
+        unawaited(_loadThrough(messageId: entry.messageId, seq: seq));
+    }
+  }
+
+  /// Loads up to the unloaded prompt [messageId] with the screen still up,
+  /// then moves to it unless another tap took over meanwhile.
+  Future<void> _loadThrough({required String messageId, required int seq}) async {
+    setState(() {
+      _farTap = (messageId: messageId, showsSpinner: false);
+      _farTapError = null;
+    });
+    _farTapSpinner = Timer(_kFarTapSpinnerDelay, () {
+      if (_farTap?.messageId == messageId) setState(() => _farTap = (messageId: messageId, showsSpinner: true));
+    });
+    final outcome = await widget.onLoadThrough(messageId: messageId, seq: seq);
+    if (!mounted || _farTap?.messageId != messageId) return;
+    _farTapSpinner?.cancel();
+    final loc = context.loc;
+    setState(() {
+      _farTap = null;
+      _farTapError = switch (outcome) {
+        LoadThroughLoaded() => null,
+        LoadThroughTargetMissing() => loc.transcriptPromptsGone,
+        LoadThroughUnsupported() => loc.transcriptPromptsBridgeTooOld,
+        // A refresh replaced the transcript meanwhile; a second tap reads the new one.
+        LoadThroughFailed() || LoadThroughSuperseded() => loc.transcriptPromptsOpenFailed,
+      };
+    });
+    if (outcome is LoadThroughLoaded) widget.onPromptTap(messageId: messageId);
   }
 
   RegExp? get _search => promptSearchPattern(query: _query);
@@ -146,7 +212,7 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
     final change = _change;
     final progress = _kFilterCurve.transform(_filter.value);
     _Row rowOf(TranscriptPromptEntry entry) {
-      final text = entry.fullText;
+      final text = entry.searchText;
       final match = text == null ? null : search?.firstMatch(text);
       final kept = search == null || match != null;
       final to = kept ? 1.0 : 0.0;
@@ -411,15 +477,35 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
                 ),
               ),
               Expanded(
-                child: list.entries.isEmpty && loadEarlier == null
-                    ? Center(child: Text(loc.transcriptPromptsEmpty, style: countStyle))
-                    : LayoutBuilder(
-                        builder: (context, constraints) => _buildList(
-                          context: context,
-                          constraints: constraints,
-                          countStyle: countStyle,
-                        ),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: list.entries.isEmpty && loadEarlier == null
+                          ? Center(child: Text(loc.transcriptPromptsEmpty, style: countStyle))
+                          : LayoutBuilder(
+                              builder: (context, constraints) => _buildList(
+                                context: context,
+                                constraints: constraints,
+                                countStyle: countStyle,
+                              ),
+                            ),
+                    ),
+                    // Over the list's foot rather than in it, so nothing the
+                    // reader is on moves when it shows.
+                    PositionedDirectional(
+                      start: PregoSpacing.lg,
+                      end: PregoSpacing.lg,
+                      bottom: padding.bottom + PregoSpacing.lg,
+                      child: AnimatedSwitcher(
+                        duration: _kFilterDuration,
+                        child: switch (_farTapError) {
+                          final error? => _FarTapError(key: ValueKey(error), message: error),
+                          null => const SizedBox.shrink(),
+                        },
                       ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -443,7 +529,9 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
     final search = _search;
     final matchCount = frame.groups.fold(0, (count, group) => count + group.rows.where((row) => row.kept).length);
     final count = search == null
-        ? loc.transcriptPromptsLoaded(list.promptCount)
+        ? list.isIndexed
+              ? loc.transcriptPromptsCount(list.promptCount)
+              : loc.transcriptPromptsLoaded(list.promptCount)
         : loc.transcriptPromptsMatches(matchCount);
     final loadEarlierLabelStyle = Theme.of(context).textTheme.labelLarge;
     // Measured, as large text or a narrow screen can wrap the labels. Bold Text
@@ -500,7 +588,7 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
           index < rows.length ? _rowExtent(row: rows[index], frame: frame, extents: extents) : null,
       itemBuilder: (context, index) {
         final row = rows[index];
-        final text = row.entry.fullText;
+        final text = row.entry.searchText;
         final match = row.match;
         final spineRow = PromptSpineRow(
           entry: row.entry,
@@ -508,7 +596,8 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
           highlighted: row.entry.messageId == highlightedId,
           excerpt: text == null || match == null ? null : promptExcerpt(text: text, match: match),
           grown: frame.grown,
-          onTap: () => widget.onPromptTap(messageId: row.entry.messageId),
+          loading: _farTap == (messageId: row.entry.messageId, showsSpinner: true),
+          onTap: () => _tapPrompt(entry: row.entry),
         );
         return KeyedSubtree(
           key: ValueKey(row.entry.messageId),
@@ -575,6 +664,35 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Why a far tap could not move to its prompt, announced as it shows.
+class const _FarTapError({super.key, required final String message}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final colors = prego.colors;
+    return Center(
+      child: Semantics(
+        liveRegion: true,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: colors.bgSecondary,
+            border: Border.all(color: colors.borderSecondary),
+            borderRadius: BorderRadius.circular(PregoRadius.lg),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.md),
+            child: Text(
+              message,
+              textAlign: TextAlign.center,
+              style: prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

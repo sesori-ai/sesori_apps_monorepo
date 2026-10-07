@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:isolate";
 
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
@@ -34,6 +35,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     timeout: _defaultRequestTimeout,
     acceptsDeflatedResponse: true,
     sensitiveResponse: false,
+    decodesInBackground: false,
   );
 
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
@@ -56,6 +58,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     timeout: timeout,
     acceptsDeflatedResponse: true,
     sensitiveResponse: false,
+    decodesInBackground: false,
   );
 
   Future<ApiResponse<T>> postWithTimeout<T>(
@@ -76,6 +79,28 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     // Attachment bytes are already compressed; deflating them gains little.
     acceptsDeflatedResponse: false,
     sensitiveResponse: true,
+    decodesInBackground: false,
+  );
+
+  /// A POST whose response is large enough that decoding it on the UI isolate
+  /// would stall frames, so it decodes on a short-lived isolate instead.
+  Future<ApiResponse<T>> postDecodedInBackground<T>(
+    String path, {
+    // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
+    required T Function(Map<String, dynamic> json) fromJson,
+    // ignore: no_slop_linter/prefer_specific_type
+    required Object body,
+  }) => _request(
+    method: HttpMethod.post,
+    path: path,
+    fromJson: fromJson,
+    queryParameters: null,
+    body: body,
+    extraHeaders: null,
+    timeout: _defaultRequestTimeout,
+    acceptsDeflatedResponse: true,
+    sensitiveResponse: false,
+    decodesInBackground: true,
   );
 
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
@@ -97,6 +122,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     timeout: _defaultRequestTimeout,
     acceptsDeflatedResponse: true,
     sensitiveResponse: false,
+    decodesInBackground: false,
   );
 
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
@@ -118,6 +144,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     timeout: _defaultRequestTimeout,
     acceptsDeflatedResponse: true,
     sensitiveResponse: false,
+    decodesInBackground: false,
   );
 
   Future<ApiResponse<T>> _request<T>({
@@ -132,6 +159,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     required Duration timeout,
     required bool acceptsDeflatedResponse,
     required bool sensitiveResponse,
+    required bool decodesInBackground,
   }) async {
     final relayClient = _connectionService.relayClient;
     if (relayClient == null || !relayClient.isConnected) {
@@ -149,6 +177,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
         timeout: timeout,
         acceptsDeflatedResponse: acceptsDeflatedResponse,
         sensitiveResponse: sensitiveResponse,
+        decodesInBackground: decodesInBackground,
       ),
     );
   }
@@ -174,6 +203,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     required Duration timeout,
     required bool acceptsDeflatedResponse,
     required bool sensitiveResponse,
+    required bool decodesInBackground,
   }) async {
     final requestId = _requestIdGenerator();
     final fullPath = Uri(path: path, queryParameters: queryParameters).toString();
@@ -216,8 +246,11 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
       }
 
       try {
-        final json = jsonDecodeMap(responseBody);
-        return ApiResponse.success(fromJson(json));
+        return ApiResponse.success(
+          decodesInBackground
+              ? await _decodeInBackground(body: responseBody, fromJson: fromJson)
+              : fromJson(jsonDecodeMap(responseBody)),
+        );
       } catch (error, stackTrace) {
         final failure = ApiError.jsonParsing(
           jsonString: sensitiveResponse ? _sensitiveParsingErrorMarker : responseBody,
@@ -243,3 +276,11 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     return ApiResponse.error(ApiError.dartHttpClient(Exception("Relay is not connected")));
   }
 }
+
+/// Top level so the isolate's closure captures only [body] and [fromJson],
+/// never the client.
+Future<T> _decodeInBackground<T>({
+  required String body,
+  // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
+  required T Function(Map<String, dynamic> json) fromJson,
+}) => Isolate.run(() => fromJson(jsonDecodeMap(body)));

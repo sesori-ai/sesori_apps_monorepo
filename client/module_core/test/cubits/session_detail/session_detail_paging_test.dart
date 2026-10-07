@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/cubits/session_detail/load_through_outcome.
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/repositories/models/session_messages_through_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_approval_service.dart";
 import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
@@ -44,6 +45,7 @@ void main() {
     required List<MessageWithParts> messages,
     required int? olderMessagesCursor,
     required int? userMessagesBefore,
+    required Future<SessionPromptIndexResult> Function() promptIndex,
   }) async {
     loadService = MockSessionDetailLoadService();
     connectionService = MockConnectionService();
@@ -59,6 +61,7 @@ void main() {
     when(() => connectionService.events).thenAnswer((_) => globalEvents.stream);
     when(() => connectionService.status).thenAnswer((_) => connectionStatus);
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
+    when(() => loadService.loadPromptIndex(sessionId: _sessionId)).thenAnswer((_) => promptIndex());
     when(
       () => loadService.load(
         session: any(named: "session"),
@@ -126,6 +129,7 @@ void main() {
         ],
         olderMessagesCursor: 5,
         userMessagesBefore: 4,
+        promptIndex: () async => const SessionPromptIndexUnsupported(),
       );
     });
 
@@ -266,6 +270,7 @@ void main() {
         ],
         olderMessagesCursor: 5,
         userMessagesBefore: 4,
+        promptIndex: () async => const SessionPromptIndexUnsupported(),
       );
     });
 
@@ -393,6 +398,75 @@ void main() {
       expect(state.olderMessagesCursor, 2, reason: "the newer page's cursor would reload m2 to m3");
       expect(state.userMessagesBeforeOldest, 1, reason: "the count moves with its cursor");
       expect(state.isLoadingOlderMessages, isFalse);
+    });
+  });
+
+  group("the prompt index", () {
+    const first = [
+      SessionPromptIndexEntry.opener(messageId: "m1", seq: 1, number: 1, createdAt: null, preview: "First"),
+    ];
+    const second = [
+      SessionPromptIndexEntry.opener(messageId: "m2", seq: 2, number: 1, createdAt: null, preview: "Second"),
+    ];
+
+    test("arrives for a transcript with older history", () async {
+      await openSession(
+        messages: [_message(id: "m5")],
+        olderMessagesCursor: 5,
+        userMessagesBefore: 4,
+        promptIndex: () async => const SessionPromptIndexAvailable(entries: first),
+      );
+      await pumpEventQueue();
+
+      expect((cubit.state as SessionDetailLoaded).promptIndex, first);
+    });
+
+    test("is not asked for when the whole history is loaded", () async {
+      await openSession(
+        messages: [_message(id: "m5")],
+        olderMessagesCursor: null,
+        userMessagesBefore: 0,
+        promptIndex: () async => const SessionPromptIndexAvailable(entries: first),
+      );
+      await pumpEventQueue();
+
+      expect((cubit.state as SessionDetailLoaded).promptIndex, isNull);
+      verifyNever(() => loadService.loadPromptIndex(sessionId: any(named: "sessionId")));
+    });
+
+    test("stays null when the fetch fails", () async {
+      await openSession(
+        messages: [_message(id: "m5")],
+        olderMessagesCursor: 5,
+        userMessagesBefore: 4,
+        promptIndex: () async =>
+            SessionPromptIndexFailure(error: ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null)),
+      );
+      await pumpEventQueue();
+
+      expect((cubit.state as SessionDetailLoaded).promptIndex, isNull);
+    });
+
+    test("is refetched on a refresh, and an index that lands after it is dropped", () async {
+      final stale = Completer<SessionPromptIndexResult>();
+      final results = [stale.future, Future.value(const SessionPromptIndexAvailable(entries: second))];
+      await openSession(
+        messages: [_message(id: "m5")],
+        olderMessagesCursor: 5,
+        userMessagesBefore: 4,
+        promptIndex: () => results.removeAt(0),
+      );
+
+      await cubit.reload();
+      await pumpEventQueue();
+      stale.complete(const SessionPromptIndexAvailable(entries: first));
+      await pumpEventQueue();
+
+      expect(
+        (cubit.state as SessionDetailLoaded).promptIndex,
+        second,
+        reason: "the first index describes the transcript the refresh replaced",
+      );
     });
   });
 }
