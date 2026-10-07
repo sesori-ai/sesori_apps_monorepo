@@ -296,7 +296,8 @@ variant, and worktree mode, and creating the session with its first input.
   records its outcome and clears the options chosen for it exactly as an
   in-route success does. Success replaces the route only when that launch route
   is still current and the returned session is durable. A success landing while
-  the composer records or transcribes voice waits for it to settle, so the
+  the composer records or transcribes voice, or holds a failed recording awaiting
+  Retry or Discard, waits for it to settle, so the
   transcript reaches the draft the session screen takes over; the first message
   keeps sending meanwhile. The session screen that
   replaces it opens on the same bubble, in the same place and with the same

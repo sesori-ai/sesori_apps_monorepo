@@ -502,16 +502,18 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     );
   }
 
-  /// Tells the cubit while the composer records or transcribes, so a creation
-  /// landing meanwhile keeps this screen until the words reach the draft the
-  /// session screen takes over.
+  /// Tells the cubit while the composer records, transcribes, or holds a
+  /// recording awaiting Retry, so a creation landing meanwhile keeps this
+  /// screen until the words reach the draft the session screen takes over.
   Widget _reportingVoice({required BuildContext context, required Widget child}) {
     if (!ComposerPresentationScope.of(context).voiceSupport.isSupported) return child;
     bool runs(VoiceInputState state) => switch (state) {
-      VoiceInputIdle() || VoiceInputRetryPending() => false,
+      VoiceInputIdle() => false,
       VoiceInputStarting() ||
       VoiceInputRecording() ||
       VoiceInputTranscribing() ||
+      // A failed transcription keeps its recording until Retry or Discard.
+      VoiceInputRetryPending() ||
       VoiceInputRetrying() ||
       VoiceInputRetryCancelling() ||
       VoiceInputDiscarding() ||
