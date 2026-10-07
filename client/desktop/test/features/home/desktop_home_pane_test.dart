@@ -356,6 +356,55 @@ void main() {
       expect(top(createdRow), lessThan(top(find.text("Recent"))));
     });
 
+    testWidgets("a launch whose session first shows waiting on the user gives way to it in Needs you", (tester) async {
+      final created = _session(id: "created", projectId: "one", updated: 5).copyWith(title: "Fix the bug");
+      Map<String, RecentSessionsEntry> entries({required List<Session> sessions}) => {
+        "one": RecentSessionsLoaded(
+          sourceSessions: sessions,
+          visibleSessions: sessions,
+          activityBySessionId: {for (final session in sessions) session.id: _activity(awaitingInput: true)},
+          listStateBySessionId: const {},
+        ),
+      };
+      final updates = StreamController<Map<String, RecentSessionsEntry>>();
+      addTearDown(updates.close);
+      await pumpStart(
+        tester: tester,
+        entries: entries(sessions: const []),
+        updates: updates.stream,
+      );
+      Future<void> settle() async {
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+
+      launches.start(
+        launchId: "launch-1",
+        projectId: "one",
+        pluginId: "claude",
+        startedAt: DateTime.now(),
+        projectName: "One",
+        submission: NewSessionSubmissionSnapshot.text(
+          draft: ComposerDraft.typed(text: "Fix the bug"),
+          attachments: const [],
+        ),
+      );
+      launches.releaseHandoff(launchId: "launch-1");
+      await settle();
+      final launchRow = find.byKey(const ValueKey("desktop-home-launch-launch-1"));
+      expect(launchRow, findsOneWidget);
+
+      // It never runs without waiting, so it never reaches Running.
+      launches.promote(launchId: "launch-1", session: created);
+      updates.add(entries(sessions: [created]));
+      await settle();
+      expect(launchRow, findsNothing);
+      final createdRow = find.byKey(const ValueKey("desktop-home-created"));
+      expect(createdRow, findsOneWidget);
+      expect(tester.getTopLeft(find.text("Needs you")).dy, lessThan(tester.getTopLeft(createdRow).dy));
+    });
+
     testWidgets("picking another project gives it its own cubit", (tester) async {
       await pumpStart(tester: tester, entries: const {});
       expect(find.text("Needs you"), findsNothing);

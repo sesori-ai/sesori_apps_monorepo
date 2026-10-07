@@ -376,9 +376,8 @@ class _ProjectListViewState() extends State<ProjectListView> {
         // above comes and goes.
         key: const ValueKey("project-list-rows"),
         initialRows: const {},
-        slots: ({required entries}) => runningActivitySlots(
-          projection: _projection(projects: projects, entries: entries),
-        ),
+        slots: runningActivitySlots,
+        slotInputs: _activityInputs(projects: projects),
         builder: ({required context, required launchRows}) {
           final activity = _activityRows(context: context, projects: projects, launchRows: launchRows);
           return SliverMainAxisGroup(
@@ -442,16 +441,8 @@ class _ProjectListViewState() extends State<ProjectListView> {
   }
 
   // The phone has no mark-unread-to-set-aside and no sticky selection.
-  static SessionActivityProjection _projection({
-    required List<ProjectSummary> projects,
-    required Map<String, RecentSessionsEntry> entries,
-  }) => SessionActivityProjection.from(
-    projects: projects,
-    entries: entries,
-    deferredSessions: const {},
-    stickySessionId: null,
-    hiddenSessionIds: const {},
-  );
+  static ActivitySlotInputs _activityInputs({required List<ProjectSummary> projects}) =>
+      (projects: projects, deferredSessions: const {}, hiddenSessionIds: const {}, stickySessionId: null);
 
   /// The Activity group over the project rows: sessions waiting for the user,
   /// then running ones, across projects, each opening its session. A launch
@@ -462,7 +453,10 @@ class _ProjectListViewState() extends State<ProjectListView> {
     required List<ProjectSummary> projects,
     required Map<String, LaunchRows> launchRows,
   }) {
-    final projection = _projection(projects: projects, entries: context.watch<RecentSessionsCubit>().state);
+    final projection = activityProjection(
+      entries: context.watch<RecentSessionsCubit>().state,
+      inputs: _activityInputs(projects: projects),
+    );
     final held = {for (final rows in launchRows.values) ...rows.heldSessionIds};
     List<SessionActivityItem> matched(List<SessionActivityItem> items) => matchTitles(
       items: items.where((item) => !held.contains(item.entry.session.id)),

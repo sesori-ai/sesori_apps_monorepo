@@ -404,41 +404,42 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
   }
 
   @override
-  Widget build(BuildContext context) => ProjectLaunchRowsBuilder(
-    initialRows: const {},
-    slots: ({required entries}) => _activitySlots(
-      context: context,
+  Widget build(BuildContext context) {
+    final ActivitySlotInputs activityInputs = (
       projects: widget.projects,
-      entries: entries,
-      stickySessionId: _stickyActivitySessionId,
-    ),
-    builder: ({required context, required launchRows}) {
-      final activityLaunches = launchRows;
-      return ProjectLaunchRowsBuilder(
-        initialRows: const {},
-        slots: _projectSlots,
-        builder: ({required context, required launchRows}) => _buildInventory(
-          context: context,
-          activityLaunches: activityLaunches,
-          projectLaunches: launchRows,
-        ),
-      );
-    },
-  );
-
-  Widget _buildInventory({
-    required BuildContext context,
-    required Map<String, LaunchRows> activityLaunches,
-    required Map<String, LaunchRows> projectLaunches,
-  }) {
-    final entries = context.watch<RecentSessionsCubit>().state;
-    final projection = SessionActivityProjection.from(
-      projects: widget.projects,
-      entries: entries,
       deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
       hiddenSessionIds: context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
       stickySessionId: _stickyActivitySessionId,
     );
+    return ProjectLaunchRowsBuilder(
+      initialRows: const {},
+      slots: _activitySlots,
+      slotInputs: activityInputs,
+      builder: ({required context, required launchRows}) {
+        final activityLaunches = launchRows;
+        return ProjectLaunchRowsBuilder(
+          initialRows: const {},
+          slots: _projectSlots,
+          slotInputs: (),
+          builder: ({required context, required launchRows}) => _buildInventory(
+            context: context,
+            activityInputs: activityInputs,
+            activityLaunches: activityLaunches,
+            projectLaunches: launchRows,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInventory({
+    required BuildContext context,
+    required ActivitySlotInputs activityInputs,
+    required Map<String, LaunchRows> activityLaunches,
+    required Map<String, LaunchRows> projectLaunches,
+  }) {
+    final entries = context.watch<RecentSessionsCubit>().state;
+    final projection = activityProjection(entries: entries, inputs: activityInputs);
     final activityGroups = _activityGroups(
       projects: widget.projects,
       projection: projection,
@@ -659,85 +660,79 @@ class const _SidebarActivityPopoutList({
   required final _SidebarSessionMenuEntriesBuilder sessionMenuEntries,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => ProjectLaunchRowsBuilder(
-    initialRows: initialRows,
-    slots: ({required entries}) => _activitySlots(
-      context: context,
+  Widget build(BuildContext context) {
+    final ActivitySlotInputs inputs = (
       projects: projects,
-      entries: entries,
+      deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
+      hiddenSessionIds: context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
       stickySessionId: stickySessionId,
-    ),
-    builder: ({required context, required launchRows}) {
-      final entries = context.watch<RecentSessionsCubit>().state;
-      final groups = _activityGroups(
-        projects: projects,
-        projection: SessionActivityProjection.from(
+    );
+    return ProjectLaunchRowsBuilder(
+      initialRows: initialRows,
+      slots: _activitySlots,
+      slotInputs: inputs,
+      builder: ({required context, required launchRows}) {
+        final entries = context.watch<RecentSessionsCubit>().state;
+        final groups = _activityGroups(
           projects: projects,
+          projection: activityProjection(entries: entries, inputs: inputs),
           entries: entries,
-          deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
-          hiddenSessionIds: context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
-          stickySessionId: stickySessionId,
-        ),
-        entries: entries,
-        launchRows: launchRows,
-      );
-      // The last row left the open popout: close it rather than leave an empty
-      // bubble. [close] pops the top route, so only while this route is that one.
-      final route = ModalRoute.of(context);
-      if (groups.isEmpty && route != null && route.isCurrent) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (route.isCurrent) close();
-        });
-      }
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final (:group, :launches) in groups)
-            _SidebarActivityProjectGroup(
-              key: ValueKey("sidebar-activity-${group.project.id}"),
-              group: group,
-              launches: launches,
-              projectName: desktopProjectDisplayName(context: context, project: group.project),
-              expansion: kAlwaysCompleteAnimation,
-              selectedSessionId: group.project.id == selectedProjectId ? selectedSessionId : null,
-              onOpenSession: onOpenSession,
-              sessionMenuEntries: sessionMenuEntries,
-            ),
-        ],
-      );
-    },
-  );
+          launchRows: launchRows,
+        );
+        // The last row left the open popout: close it rather than leave an empty
+        // bubble. [close] pops the top route, so only while this route is that one.
+        final route = ModalRoute.of(context);
+        if (groups.isEmpty && route != null && route.isCurrent) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (route.isCurrent) close();
+          });
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (:group, :launches) in groups)
+              _SidebarActivityProjectGroup(
+                key: ValueKey("sidebar-activity-${group.project.id}"),
+                group: group,
+                launches: launches,
+                projectName: desktopProjectDisplayName(context: context, project: group.project),
+                expansion: kAlwaysCompleteAnimation,
+                selectedSessionId: group.project.id == selectedProjectId ? selectedSessionId : null,
+                onOpenSession: onOpenSession,
+                sessionMenuEntries: sessionMenuEntries,
+              ),
+          ],
+        );
+      },
+    );
+  }
 }
 
 /// A project's Activity group and the launching rows that lead it.
 typedef _SidebarActivityGroup = ({SessionActivityGroup group, LaunchRows launches});
 
 /// Activity's slots: each project's Activity rows, which its launching rows
-/// lead.
-Map<String, List<Session>> _activitySlots({
-  required BuildContext context,
-  required List<ProjectSummary> projects,
+/// lead. A launch whose session waits on the user gives way to it at once.
+Map<String, LaunchSlot> _activitySlots({
   required Map<String, RecentSessionsEntry> entries,
-  required String? stickySessionId,
-}) {
-  final projection = SessionActivityProjection.from(
-    projects: projects,
-    entries: entries,
-    deferredSessions: context.read<DesktopSidebarCubit>().state.deferredSessions,
-    hiddenSessionIds: context.read<PendingSessionArchiveCubit>().state.hiddenIds,
-    stickySessionId: stickySessionId,
-  );
-  return {
-    for (final group in projection.activityGroups) group.project.id: [for (final item in group.sessions) item.session],
-  };
-}
+  required ActivitySlotInputs inputs,
+}) => {
+  for (final group in activityProjection(entries: entries, inputs: inputs).activityGroups)
+    group.project.id: (
+      sessions: [for (final item in group.sessions) item.session],
+      placedSessionIds: {
+        for (final item in group.sessions)
+          if (item.isAwaitingInput) item.session.id,
+      },
+    ),
+};
 
 /// A project group's slot: all of the project's sessions, which its launching
 /// rows lead.
-Map<String, List<Session>> _projectSlots({required Map<String, RecentSessionsEntry> entries}) => {
+Map<String, LaunchSlot> _projectSlots({required Map<String, RecentSessionsEntry> entries, required () inputs}) => {
   for (final MapEntry(key: projectId, value: entry) in entries.entries)
-    if (entry is RecentSessionsLoaded) projectId: entry.visibleSessions,
+    if (entry is RecentSessionsLoaded) projectId: (sessions: entry.visibleSessions, placedSessionIds: const {}),
 };
 
 /// Activity's project groups with their launching rows. A project whose only

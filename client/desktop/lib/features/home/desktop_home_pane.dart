@@ -262,36 +262,23 @@ class const _DesktopHomeSections({
   required final List<ProjectSummary> projects,
   required final SidebarSessionOpenedCallback onOpenSession,
 }) extends StatelessWidget {
-  SessionActivityProjection _projection({
-    required Map<String, RecentSessionsEntry> entries,
-    required Set<String> hiddenSessionIds,
-  }) => SessionActivityProjection.from(
-    projects: projects,
-    entries: entries,
-    deferredSessions: const {},
-    stickySessionId: null,
-    hiddenSessionIds: hiddenSessionIds,
-  );
-
   @override
   Widget build(BuildContext context) {
-    final hidden = context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds);
+    final ActivitySlotInputs inputs = (
+      projects: projects,
+      deferredSessions: const {},
+      hiddenSessionIds: context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
+      stickySessionId: null,
+    );
     return ProjectLaunchRowsBuilder(
       initialRows: const {},
-      slots: ({required entries}) => runningActivitySlots(
-        projection: _projection(
-          entries: entries,
-          hiddenSessionIds: context.read<PendingSessionArchiveCubit>().state.hiddenIds,
-        ),
-      ),
+      slots: runningActivitySlots,
+      slotInputs: inputs,
       builder: ({required context, required launchRows}) {
         final loc = context.loc;
-        final projection = _projection(
-          entries: context.watch<RecentSessionsCubit>().state,
-          hiddenSessionIds: hidden,
-        );
+        final projection = activityProjection(entries: context.watch<RecentSessionsCubit>().state, inputs: inputs);
         // A launch's session stays out of every section until it takes the
-        // launching row's place in Running.
+        // launching row's place in Running, or gives way to it in Needs you.
         final held = {for (final rows in launchRows.values) ...rows.heldSessionIds};
         List<_HomeRow> sessions(Iterable<SessionActivityItem> items) => [
           for (final item in items)

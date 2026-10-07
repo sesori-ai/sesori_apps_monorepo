@@ -26,6 +26,7 @@ void main() {
     sessionIds: sessionIds,
     sessions: sessions,
     slot: sessions,
+    placedSessionIds: const {},
   );
 
   test("a list opened mid-launch holds its project's newest session for each launch waiting, whatever the clocks", () {
@@ -240,7 +241,7 @@ void main() {
       previous: previous,
       launches: launches,
       entries: {"project-1": entry},
-      slots: {"project-1": running},
+      slots: {"project-1": (sessions: running, placedSessionIds: const {})},
     );
     const promotedState = SessionLaunchState(launching: [], sessionIds: {"launch-1": "created"});
 

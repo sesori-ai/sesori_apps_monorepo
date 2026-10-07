@@ -77,13 +77,16 @@ final class const LaunchRows({
 /// [launching] holds only the launches this surface draws rows for, and
 /// [sessions] is the surface's list in order. [slot] is the rows the
 /// launching rows lead, in order: a session takes its row's place only at
-/// the head of these.
+/// the head of these. A launch whose session is among [placedSessionIds],
+/// shown outside the slot where it needs no further update to settle (it waits
+/// on the user), gives way at once.
 LaunchRows resolveHeldLaunchSessions({
   required LaunchRows previous,
   required List<LaunchingSession> launching,
   required Map<String, String> sessionIds,
   required List<Session> sessions,
   required List<Session> slot,
+  required Set<String> placedSessionIds,
 }) {
   final listed = [for (final session in sessions) session.id];
   final present = listed.toSet();
@@ -119,7 +122,8 @@ LaunchRows resolveHeldLaunchSessions({
       placeholders.add(row);
     } else if (index >= kept) {
       rowKeys[launch.sessionId] = row.launchId;
-    } else if (!(present.contains(launch.sessionId) && launch.arrived && sessionsChanged)) {
+    } else if (!placedSessionIds.contains(launch.sessionId) &&
+        !(present.contains(launch.sessionId) && launch.arrived && sessionsChanged)) {
       placeholders.add(row);
       named[row.launchId] = (
         sessionId: launch.sessionId,
@@ -202,6 +206,10 @@ LaunchRows latchLaunchSessions({
   );
 }
 
+/// Where a surface draws a project's launching rows: at the head of
+/// [sessions]. See [resolveHeldLaunchSessions] for [placedSessionIds].
+typedef LaunchSlot = ({List<Session> sessions, Set<String> placedSessionIds});
+
 /// Each project's launching rows on a surface that draws a project's launches
 /// at the head of its [slots] rows: Activity's rows for the project, or all
 /// of the project's sessions. A launch's session takes its row's place only
@@ -212,7 +220,7 @@ Map<String, LaunchRows> resolveProjectLaunchRows({
   required Map<String, LaunchRows> previous,
   required SessionLaunchState launches,
   required Map<String, RecentSessionsEntry> entries,
-  required Map<String, List<Session>> slots,
+  required Map<String, LaunchSlot> slots,
 }) => {
   for (final MapEntry(key: projectId, value: entry) in entries.entries)
     projectId: _projectLaunchRows(
@@ -223,7 +231,7 @@ Map<String, LaunchRows> resolveProjectLaunchRows({
       ],
       sessionIds: launches.sessionIds,
       entry: entry,
-      slot: slots[projectId] ?? const [],
+      slot: slots[projectId] ?? (sessions: const [], placedSessionIds: const {}),
     ),
 };
 
@@ -232,21 +240,22 @@ LaunchRows _projectLaunchRows({
   required List<LaunchingSession> launching,
   required Map<String, String> sessionIds,
   required RecentSessionsEntry entry,
-  required List<Session> slot,
+  required LaunchSlot slot,
 }) {
   if (entry is! RecentSessionsLoaded) {
     return latchLaunchSessions(previous: previous, launching: launching, sessionIds: sessionIds);
   }
-  final inSlot = {for (final session in slot) session.id};
+  final inSlot = {for (final session in slot.sessions) session.id};
   return resolveHeldLaunchSessions(
     previous: previous,
     launching: launching,
     sessionIds: sessionIds,
     sessions: [
-      ...slot,
+      ...slot.sessions,
       ...entry.visibleSessions.where((session) => !inSlot.contains(session.id)),
     ],
-    slot: slot,
+    slot: slot.sessions,
+    placedSessionIds: slot.placedSessionIds,
   );
 }
 

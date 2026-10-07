@@ -111,6 +111,7 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
       sessionIds: launches.sessionIds,
       sessions: state.sessions,
       slot: state.sessions,
+      placedSessionIds: const {},
     );
   }
 
