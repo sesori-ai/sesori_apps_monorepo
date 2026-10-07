@@ -619,7 +619,11 @@ void main() {
       expect((summaryEvents.first as BridgeSseMessageUpdated).info.id, "summary-frame");
       expect(
         (summaryEvents.last as BridgeSseMessagePartUpdated).part,
-        isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", summary),
+        isA<PluginMessagePartCompaction>().having(
+          (part) => part.compactionState,
+          "compactionState",
+          const PluginCompactionState.completed(summary: summary, freedTokens: null, trigger: null),
+        ),
       );
       // Only the frame right after the boundary is the summary; a later
       // harness-generated frame is dropped instead of becoming a user bubble.

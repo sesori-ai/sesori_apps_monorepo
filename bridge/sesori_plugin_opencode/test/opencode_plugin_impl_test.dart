@@ -401,7 +401,7 @@ void main() {
             id: "prt_summary",
             sessionID: "s-root",
             messageID: "msg_summary",
-            summary: "## Goal",
+            compactionState: .completed(summary: "## Goal", freedTokens: null, trigger: null),
           ),
         ),
       );

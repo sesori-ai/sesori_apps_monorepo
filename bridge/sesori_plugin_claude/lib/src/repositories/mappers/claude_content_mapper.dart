@@ -291,7 +291,7 @@ final class const ClaudeContentMapper() {
           id: "$messageId-compaction",
           sessionID: sessionId,
           messageID: messageId,
-          summary: summary.isEmpty ? null : summary,
+          compactionState: .completed(summary: summary.isEmpty ? null : summary, freedTokens: null, trigger: null),
         ),
       ],
     );

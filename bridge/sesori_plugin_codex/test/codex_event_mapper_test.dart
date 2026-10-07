@@ -818,7 +818,14 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(completed, hasLength(3));
       final completedPart = (completed[1] as BridgeSseMessagePartUpdated).part;
       expect(completedPart.id, startedPart.id);
-      expect(completedPart, isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", isNull));
+      expect(
+        completedPart,
+        isA<PluginMessagePartCompaction>().having(
+          (part) => part.compactionState,
+          "compactionState",
+          const PluginCompactionState.completed(summary: null, freedTokens: null, trigger: null),
+        ),
+      );
       expect(
         completed.whereType<BridgeSseSessionCompacted>().single.sessionID,
         "t-1",

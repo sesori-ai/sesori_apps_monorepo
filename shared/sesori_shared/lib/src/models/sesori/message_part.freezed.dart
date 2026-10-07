@@ -1081,15 +1081,13 @@ as String,
 @JsonSerializable()
 
 class MessagePartCompaction extends MessagePart {
-  const MessagePartCompaction({required this.id, required this.sessionID, required this.messageID, required this.summary,  String? $type}): $type = $type ?? 'compaction',super._();
+  const MessagePartCompaction({required this.id, required this.sessionID, required this.messageID, this.state = const CompactionState.completed(summary: null, freedTokens: null, trigger: null),  String? $type}): $type = $type ?? 'compaction',super._();
   factory MessagePartCompaction.fromJson(Map<String, dynamic> json) => _$MessagePartCompactionFromJson(json);
 
 @override final  String id;
 @override final  String sessionID;
 @override final  String messageID;
-/// The continuation summary the harness carried forward, when it exposes
-/// one. Null when the harness keeps it private.
- final  String? summary;
+@JsonKey() final  CompactionState state;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1108,18 +1106,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.summary, summary) || other.summary == summary));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is MessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.state, state) || other.state == state));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,sessionID,messageID,summary);
+    return Object.hash(runtimeType,id,sessionID,messageID,state);
 }
 
 @override
 String toString() {
-    return 'MessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID, summary: $summary)';
+    return 'MessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID, state: $state)';
 }
 
 
@@ -1130,11 +1128,11 @@ abstract mixin class $MessagePartCompactionCopyWith<$Res> implements $MessagePar
   factory $MessagePartCompactionCopyWith(MessagePartCompaction value, $Res Function(MessagePartCompaction) _then) = _$MessagePartCompactionCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String sessionID, String messageID, String? summary
+ String id, String sessionID, String messageID, CompactionState state
 });
 
 
-
+$CompactionStateCopyWith<$Res> get state;
 
 }
 /// @nodoc
@@ -1147,12 +1145,304 @@ class _$MessagePartCompactionCopyWithImpl<$Res>
 
 /// Create a copy of MessagePart
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? summary = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? messageID = null,Object? state = null,}) {
   return _then(MessagePartCompaction(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,messageID: null == messageID ? _self.messageID : messageID // ignore: cast_nullable_to_non_nullable
-as String,summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
+as String,state: null == state ? _self.state : state // ignore: cast_nullable_to_non_nullable
+as CompactionState,
+  ));
+}
+
+/// Create a copy of MessagePart
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CompactionStateCopyWith<$Res> get state {
+  
+  return $CompactionStateCopyWith<$Res>(_self.state, (value) {
+    return _then(_self.copyWith(state: value));
+  });
+}
+}
+
+CompactionState _$CompactionStateFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['status']) {
+                  case 'running':
+          return CompactionStateRunning.fromJson(
+            json
+          );
+                case 'failed':
+          return CompactionStateFailed.fromJson(
+            json
+          );
+        
+          default:
+            return CompactionStateCompleted.fromJson(
+  json
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$CompactionState {
+
+
+
+  /// Serializes this CompactionState to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CompactionState);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'CompactionState()';
+}
+
+
+}
+
+/// @nodoc
+class $CompactionStateCopyWith<$Res>  {
+$CompactionStateCopyWith(CompactionState _, $Res Function(CompactionState) __);
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class CompactionStateRunning implements CompactionState {
+  const CompactionStateRunning({required this.summary,  String? $type}): $type = $type ?? 'running';
+  factory CompactionStateRunning.fromJson(Map<String, dynamic> json) => _$CompactionStateRunningFromJson(json);
+
+ final  String? summary;
+
+@JsonKey(name: 'status')
+final String $type;
+
+
+/// Create a copy of CompactionState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CompactionStateRunningCopyWith<CompactionStateRunning> get copyWith => _$CompactionStateRunningCopyWithImpl<CompactionStateRunning>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CompactionStateRunningToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CompactionStateRunning&&(identical(other.summary, summary) || other.summary == summary));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,summary);
+}
+
+@override
+String toString() {
+    return 'CompactionState.running(summary: $summary)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CompactionStateRunningCopyWith<$Res> implements $CompactionStateCopyWith<$Res> {
+  factory $CompactionStateRunningCopyWith(CompactionStateRunning value, $Res Function(CompactionStateRunning) _then) = _$CompactionStateRunningCopyWithImpl;
+@useResult
+$Res call({
+ String? summary
+});
+
+
+
+
+}
+/// @nodoc
+class _$CompactionStateRunningCopyWithImpl<$Res>
+    implements $CompactionStateRunningCopyWith<$Res> {
+  _$CompactionStateRunningCopyWithImpl(this._self, this._then);
+
+  final CompactionStateRunning _self;
+  final $Res Function(CompactionStateRunning) _then;
+
+/// Create a copy of CompactionState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? summary = freezed,}) {
+  return _then(CompactionStateRunning(
+summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class CompactionStateCompleted implements CompactionState {
+  const CompactionStateCompleted({required this.summary, required this.freedTokens, @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) required this.trigger,  String? $type}): $type = $type ?? 'completed';
+  factory CompactionStateCompleted.fromJson(Map<String, dynamic> json) => _$CompactionStateCompletedFromJson(json);
+
+ final  String? summary;
+ final  int? freedTokens;
+@JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) final  CompactionTrigger? trigger;
+
+@JsonKey(name: 'status')
+final String $type;
+
+
+/// Create a copy of CompactionState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CompactionStateCompletedCopyWith<CompactionStateCompleted> get copyWith => _$CompactionStateCompletedCopyWithImpl<CompactionStateCompleted>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CompactionStateCompletedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CompactionStateCompleted&&(identical(other.summary, summary) || other.summary == summary)&&(identical(other.freedTokens, freedTokens) || other.freedTokens == freedTokens)&&(identical(other.trigger, trigger) || other.trigger == trigger));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,summary,freedTokens,trigger);
+}
+
+@override
+String toString() {
+    return 'CompactionState.completed(summary: $summary, freedTokens: $freedTokens, trigger: $trigger)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CompactionStateCompletedCopyWith<$Res> implements $CompactionStateCopyWith<$Res> {
+  factory $CompactionStateCompletedCopyWith(CompactionStateCompleted value, $Res Function(CompactionStateCompleted) _then) = _$CompactionStateCompletedCopyWithImpl;
+@useResult
+$Res call({
+ String? summary, int? freedTokens,@JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) CompactionTrigger? trigger
+});
+
+
+
+
+}
+/// @nodoc
+class _$CompactionStateCompletedCopyWithImpl<$Res>
+    implements $CompactionStateCompletedCopyWith<$Res> {
+  _$CompactionStateCompletedCopyWithImpl(this._self, this._then);
+
+  final CompactionStateCompleted _self;
+  final $Res Function(CompactionStateCompleted) _then;
+
+/// Create a copy of CompactionState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? summary = freezed,Object? freedTokens = freezed,Object? trigger = freezed,}) {
+  return _then(CompactionStateCompleted(
+summary: freezed == summary ? _self.summary : summary // ignore: cast_nullable_to_non_nullable
+as String?,freedTokens: freezed == freedTokens ? _self.freedTokens : freedTokens // ignore: cast_nullable_to_non_nullable
+as int?,trigger: freezed == trigger ? _self.trigger : trigger // ignore: cast_nullable_to_non_nullable
+as CompactionTrigger?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class CompactionStateFailed implements CompactionState {
+  const CompactionStateFailed({required this.error,  String? $type}): $type = $type ?? 'failed';
+  factory CompactionStateFailed.fromJson(Map<String, dynamic> json) => _$CompactionStateFailedFromJson(json);
+
+ final  String? error;
+
+@JsonKey(name: 'status')
+final String $type;
+
+
+/// Create a copy of CompactionState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CompactionStateFailedCopyWith<CompactionStateFailed> get copyWith => _$CompactionStateFailedCopyWithImpl<CompactionStateFailed>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CompactionStateFailedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CompactionStateFailed&&(identical(other.error, error) || other.error == error));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
+
+@override
+String toString() {
+    return 'CompactionState.failed(error: $error)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CompactionStateFailedCopyWith<$Res> implements $CompactionStateCopyWith<$Res> {
+  factory $CompactionStateFailedCopyWith(CompactionStateFailed value, $Res Function(CompactionStateFailed) _then) = _$CompactionStateFailedCopyWithImpl;
+@useResult
+$Res call({
+ String? error
+});
+
+
+
+
+}
+/// @nodoc
+class _$CompactionStateFailedCopyWithImpl<$Res>
+    implements $CompactionStateFailedCopyWith<$Res> {
+  _$CompactionStateFailedCopyWithImpl(this._self, this._then);
+
+  final CompactionStateFailed _self;
+  final $Res Function(CompactionStateFailed) _then;
+
+/// Create a copy of CompactionState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? error = freezed,}) {
+  return _then(CompactionStateFailed(
+error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
