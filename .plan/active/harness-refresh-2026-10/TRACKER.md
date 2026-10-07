@@ -16,13 +16,12 @@ Total: 13 (highest step identifier; dropped Steps 3 and 8 get no PR; titles use 
 | 9 | 🌱 Cursor ACP sub-agent wire probe | 2 | merged (#1864) |
 | 10.a | 🚧 Cursor native child sessions (D10 floor 2026.09.23, D11) | 9 | merged (#1870, #1871) |
 | 10.b | 🌿 Delete the inert Cursor live Task path and orphaned ACP residency hooks | 10.a | merged (#1874) |
-| 11 | 🌿 DeepSeek consumer pin | external adapter release | blocked (see below) |
-| 12 | 🌱 Regression docs reconcile | 2–10.b | in review |
+| 11 | 🌿 DeepSeek consumer pin | adapter v0.2.0 (sesori-deepseek-acp #22) | in review |
+| 12 | 🌱 Regression docs reconcile | 2–10.b | merged (#1875) |
 | 13 | 🌱 Final coverage and retirement | 11, 12 | pending |
 
-Step 11 needs a session with `sesori-deepseek-acp` checked out (handoff in
-`PLAN.md`). It does not hold Steps 2–12; its own PR updates the docs it touches.
-Step 13 waits for Step 11, or for the owner's recorded exclusion of DeepSeek.
+Step 11's adapter work merged as `sesori-deepseek-acp` #22 and shipped as
+release v0.2.0 (DeepSeek Harness 0.2.0-rc.2); the consumer pin follows it.
 
 ## Final follow-ups (collected as work proceeds)
 
