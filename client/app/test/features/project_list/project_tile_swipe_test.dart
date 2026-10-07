@@ -84,8 +84,11 @@ void main() {
     );
 
     await tester.pumpWidget(
-      BlocProvider<ConnectionOverlayCubit>.value(
-        value: overlayCubit,
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<ConnectionOverlayCubit>.value(value: overlayCubit),
+          BlocProvider(create: (_) => idleSessionLaunchCubit()),
+        ],
         child: MaterialApp.router(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,

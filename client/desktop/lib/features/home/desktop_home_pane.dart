@@ -33,7 +33,7 @@ class const DesktopHomePane({
       return DesktopHomeStart(
         projects: projects,
         createNewSessionCubit: ({required projectId, required projectName}) =>
-          createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
+            createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
         onOpenSession: onOpenSession,
         onOpenHarnessSettings: onOpenHarnessSettings,
       );
@@ -262,27 +262,70 @@ class const _DesktopHomeSections({
   required final List<ProjectSummary> projects,
   required final SidebarSessionOpenedCallback onOpenSession,
 }) extends StatelessWidget {
+  SessionActivityProjection _projection({
+    required Map<String, RecentSessionsEntry> entries,
+    required Set<String> hiddenSessionIds,
+  }) => SessionActivityProjection.from(
+    projects: projects,
+    entries: entries,
+    deferredSessions: const {},
+    stickySessionId: null,
+    hiddenSessionIds: hiddenSessionIds,
+  );
+
   @override
   Widget build(BuildContext context) {
-    final loc = context.loc;
-    final projection = SessionActivityProjection.from(
-      projects: projects,
-      entries: context.watch<RecentSessionsCubit>().state,
-      deferredSessions: const {},
-      stickySessionId: null,
-      hiddenSessionIds: context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
-    );
-    final sections = [
-      (title: loc.desktopHomeNeedsYou, items: projection.needsYou),
-      (title: loc.sessionListRunning, items: projection.running),
-      (title: loc.desktopHomeRecent, items: projection.recent.take(_recentLimit).toList()),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final section in sections)
-          if (section.items.isNotEmpty) ...[
-            Padding(
+    final hidden = context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds);
+    return ProjectLaunchRowsBuilder(
+      slots: ({required entries}) => runningActivitySlots(
+        projection: _projection(
+          entries: entries,
+          hiddenSessionIds: context.read<PendingSessionArchiveCubit>().state.hiddenIds,
+        ),
+      ),
+      builder: ({required context, required launchRows}) {
+        final loc = context.loc;
+        final projection = _projection(
+          entries: context.watch<RecentSessionsCubit>().state,
+          hiddenSessionIds: hidden,
+        );
+        // A launch's session stays out of every section until it takes the
+        // launching row's place in Running.
+        final held = {for (final rows in launchRows.values) ...rows.heldSessionIds};
+        List<_HomeRow> sessions(Iterable<SessionActivityItem> items) => [
+          for (final item in items)
+            if (!held.contains(item.entry.session.id))
+              _HomeSessionRow(item: item, rowKey: launchRows[item.project.id]?.rowKeys[item.entry.session.id]),
+        ];
+        final sections = [
+          (title: loc.desktopHomeNeedsYou, rows: sessions(projection.needsYou)),
+          (
+            title: loc.sessionListRunning,
+            rows: [
+              // A launch leads its project's running rows, where its session will run.
+              for (final project in projects) ...[
+                for (final launch in launchRows[project.id]?.placeholders ?? const <LaunchingSession>[])
+                  _HomeLaunchRow(launch: launch, project: project),
+                ...sessions(projection.running.where((item) => item.project.id == project.id)),
+              ],
+            ],
+          ),
+          (title: loc.desktopHomeRecent, rows: sessions(projection.recent).take(_recentLimit).toList()),
+        ];
+        // One list, headings included, so a section enters and leaves with its
+        // rows and nothing below moves in one frame.
+        return PregoAnimatedList<_HomeRow>(
+          items: [
+            for (final section in sections)
+              if (section.rows.isNotEmpty) ...[_HomeHeading(title: section.title), ...section.rows],
+          ],
+          itemKey: (row) => switch (row) {
+            _HomeHeading(:final title) => ValueKey(("heading", title)),
+            _HomeSessionRow(:final item, :final rowKey) => ValueKey(rowKey ?? item.entry.session.id),
+            _HomeLaunchRow(:final launch) => ValueKey(launch.launchId),
+          },
+          itemBuilder: (context, _, row) => switch (row) {
+            _HomeHeading(:final title) => Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(
                 PregoSpacing.xl,
                 PregoSpacing.xl,
@@ -292,28 +335,48 @@ class const _DesktopHomeSections({
               child: Semantics(
                 header: true,
                 child: Text(
-                  section.title,
+                  title,
                   style: context.prego.textTheme.textSm.medium.copyWith(color: context.prego.colors.textTertiary),
                 ),
               ),
             ),
-            for (final item in section.items)
-              ActivityTile(
-                key: ValueKey("desktop-home-${item.entry.session.id}"),
-                entry: item.entry,
-                projectName: projectDisplayName(loc: loc, project: item.project),
-                onOpen: () => onOpenSession(
-                  context: context,
-                  project: item.project,
-                  displayName: projectDisplayName(loc: loc, project: item.project),
-                  session: item.entry.session,
-                ),
+            _HomeSessionRow(item: (:final project, :final entry)) => ActivityTile(
+              key: ValueKey("desktop-home-${entry.session.id}"),
+              entry: entry,
+              projectName: projectDisplayName(loc: loc, project: project),
+              onOpen: () => onOpenSession(
+                context: context,
+                project: project,
+                displayName: projectDisplayName(loc: loc, project: project),
+                session: entry.session,
               ),
-          ],
-      ],
+            ),
+            _HomeLaunchRow(:final launch, :final project) => PendingActivityTile(
+              key: ValueKey("desktop-home-launch-${launch.launchId}"),
+              launch: launch,
+              projectName: projectDisplayName(loc: loc, project: project),
+            ),
+          },
+        );
+      },
     );
   }
 }
+
+/// One entry of the home's sections: a heading, a session, or a launch.
+sealed class const _HomeRow();
+
+final class const _HomeHeading({required final String title}) extends _HomeRow;
+
+final class const _HomeSessionRow({
+  required final SessionActivityItem item,
+
+  /// The launch whose row this session took the place of, kept as its key.
+  required final String? rowKey,
+}) extends _HomeRow;
+
+final class const _HomeLaunchRow({required final LaunchingSession launch, required final ProjectSummary project})
+    extends _HomeRow;
 
 /// Recent stays a glance; the sidebar lists the rest.
 const int _recentLimit = 5;

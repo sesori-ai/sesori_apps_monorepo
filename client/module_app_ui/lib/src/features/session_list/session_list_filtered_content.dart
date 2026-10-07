@@ -110,6 +110,7 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
       launching: launching,
       sessionIds: launches.sessionIds,
       sessions: state.sessions,
+      slot: state.sessions,
     );
   }
 

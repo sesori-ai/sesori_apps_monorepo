@@ -33,6 +33,7 @@ void main() {
   late _MockRefreshService refreshService;
   late _MockWindowHost windowHost;
   late _MockAuthGateCubit authGate;
+  late SessionLaunchRepository launches;
 
   setUpAll(() => registerFallbackValue(const DesktopSidebarLayout()));
   tearDown(GetIt.instance.reset);
@@ -42,6 +43,7 @@ void main() {
     when(windowHost.startDragging).thenAnswer((_) async {});
     when(windowHost.toggleZoom).thenAnswer((_) async {});
     GetIt.instance.registerSingleton<WindowHost>(windowHost);
+    launches = inMemorySessionLaunchRepository();
     bridgeControlCubit = _MockBridgeControlCubit();
     authGate = _MockAuthGateCubit();
     whenListen(authGate, const Stream<AuthGateState>.empty(), initialState: const AuthGateState.signedIn(user: null));
@@ -92,6 +94,10 @@ void main() {
           providers: [
             BlocProvider<ProjectListCubit>.value(value: projects),
             BlocProvider<RecentSessionsCubit>.value(value: recent),
+            BlocProvider(
+              create: (_) =>
+                  SessionLaunchCubit(launchService: inMemorySessionLaunchService(launchRepository: launches)),
+            ),
             BlocProvider(create: (_) => DesktopSidebarRefreshCubit(service: refreshService)),
             BlocProvider<DesktopSidebarCubit>(create: (_) => sidebar = DesktopSidebarCubit(repository: repository)),
             BlocProvider(
@@ -671,6 +677,132 @@ void main() {
     await tester.pumpAndSettle();
     expect(activityRow, findsOneWidget);
     await updates.close();
+  });
+
+  group("a launching session", () {
+    final old = _session(id: "old").copyWith(time: const SessionTime(created: 1, updated: 1, archived: null));
+    final created = _session(
+      id: "created",
+    ).copyWith(title: "Fix the bug", time: const SessionTime(created: 2, updated: 2, archived: null));
+    Map<String, RecentSessionsEntry> entries({required List<Session> sessions, required bool running}) => {
+      "project-1": RecentSessionsLoaded(
+        sourceSessions: sessions,
+        visibleSessions: sessions,
+        activityBySessionId: {
+          if (running)
+            "created": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+        },
+        listStateBySessionId: const {},
+      ),
+    };
+    void launch() {
+      launches.start(
+        launchId: "launch-1",
+        projectId: "project-1",
+        pluginId: "claude",
+        startedAt: DateTime.now(),
+        projectName: "Sesori Desktop",
+        submission: NewSessionSubmissionSnapshot.text(
+          draft: ComposerDraft.typed(text: "Fix the bug"),
+          attachments: const [],
+        ),
+      );
+      launches.releaseHandoff(launchId: "launch-1");
+    }
+
+    // The launch reaches the rows a few microtask hops later; then they animate in.
+    Future<void> settle(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    Widget shell({required void Function(String sessionId) onOpen}) => app(
+      state: running,
+      child: DesktopCockpitShell(
+        selectedProjectId: null,
+        selectedSessionId: null,
+        onOpenSession: ({required context, required project, required displayName, required session}) =>
+            onOpen(session.id),
+        onNewSession: _openProject,
+        sessionActions: _sessionActions,
+        onOpenProject: _openProject,
+        onOpenBridgeSettings: _noOp,
+        onOpenProjects: _noOp,
+        onOpenSettings: _noOp,
+        onGoBack: _noOp,
+        child: const SizedBox.shrink(),
+      ),
+    );
+
+    testWidgets("leads Activity and its project, opens nothing, and gives way to its session", (tester) async {
+      final updates = StreamController<Map<String, RecentSessionsEntry>>();
+      whenListen(recent, updates.stream, initialState: entries(sessions: [old], running: false));
+      final opened = <String>[];
+      await tester.pumpWidget(shell(onOpen: opened.add));
+      await tester.pump(const Duration(milliseconds: 500));
+
+      launch();
+      await settle(tester);
+      final activityLaunch = find.byKey(const ValueKey("sidebar-activity-launch-launch-1"));
+      final projectLaunch = find.byKey(const ValueKey("sidebar-launch-project-1-launch-1"));
+      expect(find.descendant(of: activityLaunch, matching: find.text("Fix the bug")), findsOneWidget);
+      expect(find.descendant(of: projectLaunch, matching: find.text("Fix the bug")), findsOneWidget);
+      // Nothing to select, keep sticky or act on until the session exists.
+      expect(find.descendant(of: activityLaunch, matching: find.byType(PregoAnchorMenu)), findsNothing);
+      expect(find.descendant(of: projectLaunch, matching: find.byType(PregoAnchorMenu)), findsNothing);
+      await tester.tap(activityLaunch);
+      await tester.pump();
+      expect(find.text("This session is still being created. You can open it once it's ready."), findsOneWidget);
+      expect(opened, isEmpty);
+      await tester.pump(const Duration(seconds: 5));
+
+      // The session reaches its project before it runs: the project row becomes it in
+      // place, while Activity keeps the launching row instead of dropping it.
+      launches.promote(launchId: "launch-1", session: created);
+      updates.add(entries(sessions: [created, old], running: false));
+      await settle(tester);
+      expect(projectLaunch, findsNothing);
+      expect(find.byKey(const ValueKey("sidebar-session-project-1-created")), findsOneWidget);
+      expect(activityLaunch, findsOneWidget);
+      expect(find.byKey(const ValueKey("sidebar-activity-session-project-1-created")), findsNothing);
+
+      // Once it runs, Activity swaps it in.
+      updates.add(entries(sessions: [created, old], running: true));
+      await settle(tester);
+      expect(activityLaunch, findsNothing);
+      expect(find.byKey(const ValueKey("sidebar-activity-session-project-1-created")), findsOneWidget);
+      await updates.close();
+    });
+
+    testWidgets("alone still shows the rail's Activity button and keeps its popout open", (tester) async {
+      final updates = StreamController<Map<String, RecentSessionsEntry>>();
+      when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout(collapsed: true));
+      whenListen(recent, updates.stream, initialState: entries(sessions: [old], running: false));
+      await tester.pumpWidget(shell(onOpen: (_) {}));
+      await tester.pump(const Duration(milliseconds: 500));
+      final button = find.byKey(const Key("desktop-sidebar-rail-activity"));
+      expect(button, findsNothing);
+
+      launch();
+      await settle(tester);
+      expect(find.descendant(of: button, matching: find.text("1")), findsOneWidget);
+      await tester.tap(button);
+      await settle(tester);
+      final popout = find.byKey(const Key("desktop-sidebar-activity-popout"));
+      expect(find.descendant(of: popout, matching: find.text("Fix the bug")), findsOneWidget);
+
+      launches.promote(launchId: "launch-1", session: created);
+      updates.add(entries(sessions: [created, old], running: true));
+      await settle(tester);
+      expect(popout, findsOneWidget);
+      expect(
+        find.descendant(of: popout, matching: find.byKey(const ValueKey("sidebar-activity-launch-launch-1"))),
+        findsNothing,
+      );
+      expect(find.descendant(of: popout, matching: find.text("Fix the bug")), findsOneWidget);
+      await updates.close();
+    });
   });
 
   testWidgets("recent inventory failure stays project-local and retries explicitly", (tester) async {

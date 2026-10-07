@@ -27,6 +27,7 @@ void main() {
   late MockRegisteredBridgesService mockRegisteredBridgesService;
   late StubConnectionOverlayCubit overlayCubit;
   late MockRecentSessionInventoryService inventory;
+  late SessionLaunchRepository launches;
 
   setUpAll(registerAllFallbackValues);
 
@@ -36,6 +37,7 @@ void main() {
     mockProjectRepository = MockProjectRepository();
     mockRegisteredBridgesService = MockRegisteredBridgesService();
     overlayCubit = StubConnectionOverlayCubit();
+    launches = inMemorySessionLaunchRepository();
 
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
@@ -95,8 +97,13 @@ void main() {
     );
 
     await tester.pumpWidget(
-      BlocProvider<ConnectionOverlayCubit>.value(
-        value: overlayCubit,
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<ConnectionOverlayCubit>.value(value: overlayCubit),
+          BlocProvider(
+            create: (_) => SessionLaunchCubit(launchService: inMemorySessionLaunchService(launchRepository: launches)),
+          ),
+        ],
         child: MaterialApp.router(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -161,6 +168,103 @@ void main() {
 
     expect(openedSessionId, "waiting");
   });
+
+  void launch() {
+    launches.start(
+      launchId: "launch-1",
+      projectId: project.id,
+      pluginId: "claude",
+      startedAt: DateTime.now(),
+      projectName: "My App",
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Fix the bug"),
+        attachments: const [],
+      ),
+    );
+    launches.releaseHandoff(launchId: "launch-1");
+  }
+
+  // The launch reaches the rows a few microtask hops later; then they animate in.
+  Future<void> settle(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+  }
+
+  testWidgets("a launch leads Activity until it ends, opens nothing, and a search hides it", (tester) async {
+    String? openedSessionId;
+    await pumpScreen(
+      tester,
+      sessions: [testSession(id: "idle", title: "Idle")],
+      activity: const {},
+      onSessionRoute: (id) => openedSessionId = id,
+    );
+    expect(find.text("Activity"), findsNothing);
+
+    launch();
+    await settle(tester);
+    final launchRow = find.byKey(const ValueKey("project-list-launch-launch-1"));
+    expect(find.text("Activity"), findsOneWidget);
+    expect(find.descendant(of: launchRow, matching: find.text("Fix the bug")), findsOneWidget);
+    await tester.tap(launchRow);
+    await tester.pump();
+    expect(find.text("This session is still being created. You can open it once it's ready."), findsOneWidget);
+    expect(openedSessionId, isNull);
+    await tester.pump(const Duration(seconds: 5));
+
+    // It has no title to match yet.
+    await tester.enterText(find.byType(TextField), "My");
+    await settle(tester);
+    expect(launchRow, findsNothing);
+    await tester.enterText(find.byType(TextField), "");
+    await settle(tester);
+    expect(launchRow, findsOneWidget);
+
+    launches.fail(launchId: "launch-1", reason: RemoteFailureReason.networkDown);
+    await settle(tester);
+    expect(launchRow, findsNothing);
+    expect(find.text("Activity"), findsNothing);
+  });
+
+  for (final reducedMotion in [false, true]) {
+    testWidgets(
+      reducedMotion
+          ? "a launch's row appears at once under reduced motion"
+          : "a launch's row grows in and moves the projects below it continuously",
+      (tester) async {
+        if (reducedMotion) {
+          tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+            disableAnimations: true,
+          );
+          addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        }
+        await pumpScreen(
+          tester,
+          sessions: [testSession(id: "idle", title: "Idle")],
+          activity: const {},
+          onSessionRoute: (_) {},
+        );
+        double projectTop() => tester.getTopLeft(find.text("My App")).dy;
+        final before = projectTop();
+
+        launch();
+        await tester.pump();
+        await tester.pump();
+        final start = projectTop();
+        await tester.pump(const Duration(milliseconds: 130));
+        final middle = projectTop();
+        await tester.pump(const Duration(milliseconds: 400));
+        final end = projectTop();
+        expect(end, greaterThan(before));
+        if (reducedMotion) {
+          expect(start, end);
+        } else {
+          expect(start, lessThan(middle));
+          expect(middle, lessThan(end));
+        }
+      },
+    );
+  }
 
   testWidgets("pulling to refresh also re-reads each project's sessions", (tester) async {
     await pumpScreen(

@@ -404,7 +404,31 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ProjectLaunchRowsBuilder(
+    slots: ({required entries}) => _activitySlots(
+      context: context,
+      projects: widget.projects,
+      entries: entries,
+      stickySessionId: _stickyActivitySessionId,
+    ),
+    builder: ({required context, required launchRows}) {
+      final activityLaunches = launchRows;
+      return ProjectLaunchRowsBuilder(
+        slots: _projectSlots,
+        builder: ({required context, required launchRows}) => _buildInventory(
+          context: context,
+          activityLaunches: activityLaunches,
+          projectLaunches: launchRows,
+        ),
+      );
+    },
+  );
+
+  Widget _buildInventory({
+    required BuildContext context,
+    required Map<String, LaunchRows> activityLaunches,
+    required Map<String, LaunchRows> projectLaunches,
+  }) {
     final entries = context.watch<RecentSessionsCubit>().state;
     final projection = SessionActivityProjection.from(
       projects: widget.projects,
@@ -413,10 +437,19 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
       hiddenSessionIds: context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
       stickySessionId: _stickyActivitySessionId,
     );
+    final activityGroups = _activityGroups(
+      projects: widget.projects,
+      projection: projection,
+      entries: entries,
+      launchRows: activityLaunches,
+    );
     final activityFolded = context.select((DesktopSidebarCubit cubit) => cubit.state.activitySectionCollapsed);
     final projectsFolded = context.select((DesktopSidebarCubit cubit) => cubit.state.projectsSectionCollapsed);
-    final activitySessions = [for (final group in projection.activityGroups) ...group.sessions];
+    final activitySessions = [for (final (:group, launches: _) in activityGroups) ...group.sessions];
+    // A launch is never a session here: never selected, sticky or given a menu.
     _activitySessionIds = {for (final item in activitySessions) item.session.id};
+    final activityLaunching = [for (final (group: _, :launches) in activityGroups) ...launches.placeholders].length;
+    final activityCount = activitySessions.length + activityLaunching;
     final activityRunning = activitySessions.where((item) => item.isRunning).length;
     // A sticky row is seen and idle, so the button says only what its rows' flags say.
     final activityStatuses = [
@@ -449,18 +482,18 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
       builder: (context, railed) => CustomScrollView(
         key: const Key("desktop-sidebar-project-list"),
         slivers: [
-          if (railed && activitySessions.isNotEmpty)
+          if (railed && activityGroups.isNotEmpty)
             SliverToBoxAdapter(
               child: DesktopSidebarActivityPopout(
                 railStart: DesktopSidebar.panelMargin,
                 triggerBuilder: (_, toggle) => _SidebarButton(
                   key: const Key("desktop-sidebar-rail-activity"),
-                  label: context.loc.desktopSidebarActivity(activitySessions.length),
-                  icon: PregoAiLoader(size: 20, animate: activityRunning > 0),
+                  label: context.loc.desktopSidebarActivity(activityCount),
+                  icon: PregoAiLoader(size: 20, animate: activityRunning + activityLaunching > 0),
                   expansion: kAlwaysDismissedAnimation,
                   selected: false,
                   status: (
-                    icon: _CountPill(count: activitySessions.length),
+                    icon: _CountPill(count: activityCount),
                     label: activityStatuses.isEmpty ? null : activityStatuses.join(", "),
                     detail: null,
                   ),
@@ -474,6 +507,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                     BlocProvider.value(value: context.read<RecentSessionsCubit>()),
                     BlocProvider.value(value: context.read<DesktopSidebarCubit>()),
                     BlocProvider.value(value: context.read<PendingSessionArchiveCubit>()),
+                    BlocProvider.value(value: context.read<SessionLaunchCubit>()),
                   ],
                   child: _SidebarActivityPopoutList(
                     close: close,
@@ -499,24 +533,26 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
             SliverToBoxAdapter(
               key: const Key("desktop-sidebar-activity-header"),
               child: DesktopSidebarSectionHeader(
-                label: context.loc.desktopSidebarActivity(_activitySessionIds.length),
+                label: context.loc.desktopSidebarActivity(activityCount),
                 collapsed: activityFolded,
-                expansion: projection.activityGroups.isEmpty ? kAlwaysDismissedAnimation : widget.expansion,
+                expansion: activityGroups.isEmpty ? kAlwaysDismissedAnimation : widget.expansion,
                 onToggle: () => unawaited(context.read<DesktopSidebarCubit>().toggleActivitySection()),
                 action: null,
               ),
             ),
           ),
           gutter(
-            PregoAnimatedSliverList<SessionActivityGroup>(
+            PregoAnimatedSliverList<_SidebarActivityGroup>(
               key: const Key("desktop-sidebar-activity-list"),
-              items: railed || activityFolded ? const [] : projection.activityGroups,
-              itemKey: (group) => ValueKey(group.project.id),
-              itemBuilder: (context, _, group) {
+              items: railed || activityFolded ? const [] : activityGroups,
+              itemKey: (item) => ValueKey(item.group.project.id),
+              itemBuilder: (context, _, item) {
+                final (:group, :launches) = item;
                 final projectName = desktopProjectDisplayName(context: context, project: group.project);
                 return _SidebarActivityProjectGroup(
                   key: ValueKey("sidebar-activity-${group.project.id}"),
                   group: group,
+                  launches: launches,
                   projectName: projectName,
                   expansion: widget.expansion,
                   // The open session is highlighted once, under its project.
@@ -586,6 +622,7 @@ class _SidebarInventoryState() extends State<_SidebarInventory> {
                   running: widget.runningByProjectId[project.id] ?? 0,
                   unseen: widget.unseenByProjectId[project.id] ?? project.hasUnseenChanges,
                   entry: entry,
+                  launches: projectLaunches[project.id] ?? LaunchRows.none,
                   expansion: widget.expansion,
                   expanded: !widget.collapsedProjectIds.contains(project.id),
                   selected: project.id == widget.selectedProjectId,
@@ -615,44 +652,141 @@ class const _SidebarActivityPopoutList({
   required final _SidebarSessionMenuEntriesBuilder sessionMenuEntries,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    final projection = SessionActivityProjection.from(
+  Widget build(BuildContext context) => ProjectLaunchRowsBuilder(
+    slots: ({required entries}) => _activitySlots(
+      context: context,
       projects: projects,
-      entries: context.watch<RecentSessionsCubit>().state,
-      deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
-      hiddenSessionIds: context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
+      entries: entries,
       stickySessionId: stickySessionId,
-    );
-    // The last row left the open popout: close it rather than leave an empty
-    // bubble. [close] pops the top route, so only while this route is that one.
-    final route = ModalRoute.of(context);
-    if (projection.activityGroups.isEmpty && route != null && route.isCurrent) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (route.isCurrent) close();
-      });
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (final group in projection.activityGroups)
-          _SidebarActivityProjectGroup(
-            key: ValueKey("sidebar-activity-${group.project.id}"),
-            group: group,
-            projectName: desktopProjectDisplayName(context: context, project: group.project),
-            expansion: kAlwaysCompleteAnimation,
-            selectedSessionId: group.project.id == selectedProjectId ? selectedSessionId : null,
-            onOpenSession: onOpenSession,
-            sessionMenuEntries: sessionMenuEntries,
-          ),
-      ],
-    );
-  }
+    ),
+    builder: ({required context, required launchRows}) {
+      final entries = context.watch<RecentSessionsCubit>().state;
+      final groups = _activityGroups(
+        projects: projects,
+        projection: SessionActivityProjection.from(
+          projects: projects,
+          entries: entries,
+          deferredSessions: context.select((DesktopSidebarCubit cubit) => cubit.state.deferredSessions),
+          hiddenSessionIds: context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
+          stickySessionId: stickySessionId,
+        ),
+        entries: entries,
+        launchRows: launchRows,
+      );
+      // The last row left the open popout: close it rather than leave an empty
+      // bubble. [close] pops the top route, so only while this route is that one.
+      final route = ModalRoute.of(context);
+      if (groups.isEmpty && route != null && route.isCurrent) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (route.isCurrent) close();
+        });
+      }
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final (:group, :launches) in groups)
+            _SidebarActivityProjectGroup(
+              key: ValueKey("sidebar-activity-${group.project.id}"),
+              group: group,
+              launches: launches,
+              projectName: desktopProjectDisplayName(context: context, project: group.project),
+              expansion: kAlwaysCompleteAnimation,
+              selectedSessionId: group.project.id == selectedProjectId ? selectedSessionId : null,
+              onOpenSession: onOpenSession,
+              sessionMenuEntries: sessionMenuEntries,
+            ),
+        ],
+      );
+    },
+  );
 }
+
+/// A project's Activity group and the launching rows that lead it.
+typedef _SidebarActivityGroup = ({SessionActivityGroup group, LaunchRows launches});
+
+/// Activity's slots: each project's Activity rows, which its launching rows
+/// lead.
+Map<String, List<Session>> _activitySlots({
+  required BuildContext context,
+  required List<ProjectSummary> projects,
+  required Map<String, RecentSessionsEntry> entries,
+  required String? stickySessionId,
+}) {
+  final projection = SessionActivityProjection.from(
+    projects: projects,
+    entries: entries,
+    deferredSessions: context.read<DesktopSidebarCubit>().state.deferredSessions,
+    hiddenSessionIds: context.read<PendingSessionArchiveCubit>().state.hiddenIds,
+    stickySessionId: stickySessionId,
+  );
+  return {
+    for (final group in projection.activityGroups) group.project.id: [for (final item in group.sessions) item.session],
+  };
+}
+
+/// A project group's slot: all of the project's sessions, which its launching
+/// rows lead.
+Map<String, List<Session>> _projectSlots({required Map<String, RecentSessionsEntry> entries}) => {
+  for (final MapEntry(key: projectId, value: entry) in entries.entries)
+    if (entry is RecentSessionsLoaded) projectId: entry.visibleSessions,
+};
+
+/// Activity's project groups with their launching rows. A project whose only
+/// Activity is a launch still gets a group, so the launch has somewhere to
+/// appear, and a session held for a launch stays out of its group.
+List<_SidebarActivityGroup> _activityGroups({
+  required List<ProjectSummary> projects,
+  required SessionActivityProjection projection,
+  required Map<String, RecentSessionsEntry> entries,
+  required Map<String, LaunchRows> launchRows,
+}) {
+  final groups = {for (final group in projection.activityGroups) group.project.id: group};
+  final activity = <_SidebarActivityGroup>[];
+  for (final project in projects) {
+    final launches = launchRows[project.id] ?? LaunchRows.none;
+    final group = groups[project.id];
+    final sessions = [
+      for (final item in group?.sessions ?? const <SessionActivityEntry>[])
+        if (!launches.heldSessionIds.contains(item.session.id)) item,
+    ];
+    if (sessions.isEmpty && launches.placeholders.isEmpty) continue;
+    final entry = entries[project.id];
+    activity.add((
+      group: SessionActivityGroup(
+        project: project,
+        sourceSessions: group?.sourceSessions ?? (entry is RecentSessionsLoaded ? entry.sourceSessions : const []),
+        sessions: sessions,
+      ),
+      launches: launches,
+    ));
+  }
+  return activity;
+}
+
+/// A row of a sidebar session list: a launch still being created, or a row of
+/// the list's own type.
+sealed class const _SidebarListRow<T>();
+
+final class const _SidebarLaunchItem<T>({required final LaunchingSession launch}) extends _SidebarListRow<T>;
+
+final class const _SidebarSessionItem<T>({required final T row}) extends _SidebarListRow<T>;
+
+/// [rows] led by [launches]' launching rows.
+List<_SidebarListRow<T>> _withLaunches<T>({required LaunchRows launches, required List<T> rows}) => [
+  for (final launch in launches.placeholders) _SidebarLaunchItem<T>(launch: launch),
+  for (final row in rows) _SidebarSessionItem<T>(row: row),
+];
+
+/// A session that took a launching row's place keeps the launch's key, so
+/// its row changes in place.
+Key _sessionRowKey({required LaunchRows launches, required String sessionId}) =>
+    ValueKey(launches.rowKeys[sessionId] ?? sessionId);
 
 class const _SidebarActivityProjectGroup({
   super.key,
   required final SessionActivityGroup group,
+  required final LaunchRows launches,
   required final String projectName,
   required final Animation<double> expansion,
   required final String? selectedSessionId,
@@ -660,37 +794,50 @@ class const _SidebarActivityProjectGroup({
   required final _SidebarSessionMenuEntriesBuilder sessionMenuEntries,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => BlocProvider<SessionListCubit>(
-    create: (_) => createSessionListCubit(
-      locator: getIt,
-      projectId: group.project.id,
-      mode: SessionListMode.actions(sessions: group.sourceSessions),
-    ),
-    child: Builder(
-      builder: (actionContext) => PregoAnimatedList<SessionActivityEntry>(
-        items: group.sessions,
-        itemKey: (item) => ValueKey(item.session.id),
-        itemBuilder: (context, _, item) => _SidebarActivitySessionRow(
-          key: ValueKey("sidebar-activity-session-${group.project.id}-${item.session.id}"),
-          item: item,
-          projectName: projectName,
-          selected: item.session.id == selectedSessionId,
-          expansion: expansion,
-          onPressed: () => onOpenSession(
-            context: actionContext,
-            project: group.project,
-            displayName: projectName,
-            session: item.session,
-          ),
-          acquireMenuLease: () => actionContext.read<SessionListCubit>().retainActionScope(),
-          menuEntries: () {
-            final cubit = actionContext.read<SessionListCubit>()..updateActionSession(session: item.session);
-            return sessionMenuEntries(cubit: cubit, session: item.session);
+  Widget build(BuildContext context) {
+    return BlocProvider<SessionListCubit>(
+      create: (_) => createSessionListCubit(
+        locator: getIt,
+        projectId: group.project.id,
+        mode: SessionListMode.actions(sessions: group.sourceSessions),
+      ),
+      child: Builder(
+        builder: (actionContext) => PregoAnimatedList<_SidebarListRow<SessionActivityEntry>>(
+          items: _withLaunches(launches: launches, rows: group.sessions),
+          itemKey: (row) => switch (row) {
+            _SidebarLaunchItem(:final launch) => ValueKey(launch.launchId),
+            _SidebarSessionItem(row: final item) => _sessionRowKey(launches: launches, sessionId: item.session.id),
+          },
+          itemBuilder: (context, _, row) => switch (row) {
+            _SidebarLaunchItem(:final launch) => _SidebarActivityLaunchRow(
+              key: ValueKey("sidebar-activity-launch-${launch.launchId}"),
+              launch: launch,
+              projectName: projectName,
+              expansion: expansion,
+            ),
+            _SidebarSessionItem(row: final item) => _SidebarActivitySessionRow(
+              key: ValueKey("sidebar-activity-session-${group.project.id}-${item.session.id}"),
+              item: item,
+              projectName: projectName,
+              selected: item.session.id == selectedSessionId,
+              expansion: expansion,
+              onPressed: () => onOpenSession(
+                context: actionContext,
+                project: group.project,
+                displayName: projectName,
+                session: item.session,
+              ),
+              acquireMenuLease: () => actionContext.read<SessionListCubit>().retainActionScope(),
+              menuEntries: () {
+                final cubit = actionContext.read<SessionListCubit>()..updateActionSession(session: item.session);
+                return sessionMenuEntries(cubit: cubit, session: item.session);
+              },
+            ),
           },
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class const _SidebarProjectGroup({
@@ -700,6 +847,9 @@ class const _SidebarProjectGroup({
   required final int running,
   required final bool unseen,
   required final RecentSessionsEntry? entry,
+
+  /// The project's launching rows, which lead its sessions.
+  required final LaunchRows launches,
   required final Animation<double> expansion,
   required final bool expanded,
   required final bool selected,
@@ -731,8 +881,13 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
   @override
   Widget build(BuildContext context) {
     final entry = widget.entry;
-    // A session being archived leaves its project at once.
-    final hidden = context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds);
+    final launches = widget.launches;
+    // A session being archived leaves its project at once, and one held for a
+    // launch waits for its launching row.
+    final hidden = {
+      ...context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
+      ...launches.heldSessionIds,
+    };
     final rows = entry is RecentSessionsLoaded
         ? entry
               .rows(selectedSessionId: widget.selectedSessionId, idleLimit: _idleRowLimit)
@@ -760,27 +915,40 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                 RecentSessionsLoaded() => Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    PregoAnimatedList<Session>(
-                      items: rows,
-                      itemKey: (session) => ValueKey(session.id),
-                      itemBuilder: (context, _, session) => _SidebarSessionRow(
-                        key: ValueKey("sidebar-session-${widget.project.id}-${session.id}"),
-                        session: session,
-                        entry: entry,
-                        selected: session.id == widget.selectedSessionId,
-                        expansion: widget.expansion,
-                        onPressed: () => widget.onOpenSession(
-                          context: actionContext,
-                          project: widget.project,
-                          displayName: widget.name,
-                          session: session,
+                    PregoAnimatedList<_SidebarListRow<Session>>(
+                      items: _withLaunches(launches: launches, rows: rows),
+                      itemKey: (row) => switch (row) {
+                        _SidebarLaunchItem(:final launch) => ValueKey(launch.launchId),
+                        _SidebarSessionItem(row: final session) => _sessionRowKey(
+                          launches: launches,
+                          sessionId: session.id,
                         ),
-                        acquireMenuLease: () => actionContext.read<SessionListCubit>().retainActionScope(),
-                        menuEntries: () {
-                          final cubit = actionContext.read<SessionListCubit>()..updateActionSession(session: session);
-                          return widget.sessionMenuEntries(cubit: cubit, session: session);
-                        },
-                      ),
+                      },
+                      itemBuilder: (context, _, row) => switch (row) {
+                        _SidebarLaunchItem(:final launch) => _SidebarProjectLaunchRow(
+                          key: ValueKey("sidebar-launch-${widget.project.id}-${launch.launchId}"),
+                          launch: launch,
+                          expansion: widget.expansion,
+                        ),
+                        _SidebarSessionItem(row: final session) => _SidebarSessionRow(
+                          key: ValueKey("sidebar-session-${widget.project.id}-${session.id}"),
+                          session: session,
+                          entry: entry,
+                          selected: session.id == widget.selectedSessionId,
+                          expansion: widget.expansion,
+                          onPressed: () => widget.onOpenSession(
+                            context: actionContext,
+                            project: widget.project,
+                            displayName: widget.name,
+                            session: session,
+                          ),
+                          acquireMenuLease: () => actionContext.read<SessionListCubit>().retainActionScope(),
+                          menuEntries: () {
+                            final cubit = actionContext.read<SessionListCubit>()..updateActionSession(session: session);
+                            return widget.sessionMenuEntries(cubit: cubit, session: session);
+                          },
+                        ),
+                      },
                     ),
                     if (entry.visibleSessions.where((s) => !hidden.contains(s.id)).length - rows.length case final more
                         when more > 0)
@@ -1104,6 +1272,145 @@ class const _SidebarActivitySessionRow({
     );
   }
 }
+
+/// A launch still being created, in [_SidebarActivitySessionRow]'s geometry:
+/// the running sparkle, the first line of the first message, and "Creating…"
+/// before the harness and the project, with no time. A tap shows the alert
+/// that it cannot be opened yet; it is never selected and has no menu.
+class const _SidebarActivityLaunchRow({
+  super.key,
+  required final LaunchingSession launch,
+  required final String projectName,
+  required final Animation<double> expansion,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final loc = context.loc;
+    final title = launch.title ?? loc.sessionListUntitled;
+    final detail = "${loc.sessionListCreating} · ${PregoBrandLogo.displayNameFor(launch.pluginId)} · $projectName";
+    final description = "${loc.desktopSidebarActivitySession(title, projectName)}, ${loc.sessionListCreating}";
+    void showAlert() => PregoPopupAlertPresenter.of(context).show(title: loc.sessionListLaunchingAlert);
+    return DesktopSidebarPhaseBuilder(
+      expansion: expansion,
+      builder: (context, phase) => Semantics(
+        button: true,
+        label: description,
+        onTap: showAlert,
+        excludeSemantics: true,
+        child: _ConditionalTooltip(
+          enabled: phase != DesktopSidebarPhase.open,
+          message: description,
+          child: InkWell(
+            mouseCursor: WidgetStateMouseCursor.clickable,
+            onTap: showAlert,
+            child: DesktopSidebarExpansionBuilder(
+              expansion: expansion,
+              builder: (expansion, content) => Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14 + 2 * expansion, vertical: 6),
+                child: content,
+              ),
+              child: Row(
+                children: [
+                  const SizedBox.square(
+                    dimension: DesktopSessionSignals.width,
+                    child: Center(child: PregoAiLoader(size: _sidebarSparkleSize)),
+                  ),
+                  if (phase != DesktopSidebarPhase.rail)
+                    Expanded(
+                      child: ClipRect(
+                        child: FadeTransition(
+                          opacity: expansion,
+                          child: _LabelInset(
+                            expansion: expansion,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _TooltipWhenTruncated(
+                                  message: title,
+                                  style: _sessionTitleStyle(context: context, unseen: false),
+                                ),
+                                _TooltipWhenTruncated(
+                                  message: detail,
+                                  style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A launch still being created, in [_SidebarSessionRow]'s geometry: the
+/// running sparkle and the first line of the first message, with no time. A
+/// tap shows the alert that it cannot be opened yet; it is never selected and
+/// has no menu.
+class const _SidebarProjectLaunchRow({
+  super.key,
+  required final LaunchingSession launch,
+  required final Animation<double> expansion,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final title = launch.title ?? loc.sessionListUntitled;
+    final description = "$title, ${loc.sessionListCreating}, ${PregoBrandLogo.displayNameFor(launch.pluginId)}";
+    void showAlert() => PregoPopupAlertPresenter.of(context).show(title: loc.sessionListLaunchingAlert);
+    return Semantics(
+      button: true,
+      label: description,
+      onTap: showAlert,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: description,
+        child: InkWell(
+          mouseCursor: WidgetStateMouseCursor.clickable,
+          onTap: showAlert,
+          child: DesktopSidebarExpansionBuilder(
+            expansion: expansion,
+            builder: (expansion, content) => Padding(
+              padding: EdgeInsets.symmetric(horizontal: PregoSpacing.md + PregoSpacing.sm * expansion, vertical: 6),
+              child: content,
+            ),
+            child: Row(
+              children: [
+                // The status column sits under the project's avatar.
+                const SizedBox(
+                  width: DesktopSessionSignals.width,
+                  child: Center(child: PregoAiLoader(size: _sidebarSparkleSize)),
+                ),
+                AnimatedBuilder(
+                  animation: expansion,
+                  builder: (_, _) => SizedBox(width: PregoSpacing.md * expansion.value),
+                ),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: _sessionTitleStyle(context: context, unseen: false),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The size of [DesktopSessionSignals]' sparkle.
+const double _sidebarSparkleSize = 14;
 
 /// When a quiet session row resumes on its own. Waiting and running outrank a
 /// scheduled continuation.

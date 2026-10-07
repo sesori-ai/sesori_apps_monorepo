@@ -64,8 +64,11 @@ void main() {
   });
 
   Widget app() {
-    return BlocProvider<ConnectionOverlayCubit>.value(
-      value: overlayCubit,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<ConnectionOverlayCubit>.value(value: overlayCubit),
+        BlocProvider(create: (_) => idleSessionLaunchCubit()),
+      ],
       child: MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
