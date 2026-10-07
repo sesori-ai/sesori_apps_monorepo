@@ -2113,7 +2113,8 @@ compatibility paths were found: no step changes persistence or the wire.
 | 10/13 | `⚙️ [instant-new-session] Close the step 8 composer review gaps [step 10/13]` | The rest of the #1873 review findings: read-only options while sending, the caret carried at handoff, one composer-busy signal, one `submit` intent, tests, its regression-document edits. | 650–750 |
 | 11/13 | `⚙️ [instant-new-session] Show a launching row in the session lists [step 11/13]` | Step 5 design: row and association streams, `SessionLaunchCubit`, shell providers and the failure alert listener, `PendingSessionLaunchTile` with its tap, the three `SessionTile` hosts, the row-key latch, the hold-until-in-its-slot rule and the **D12** hold-back, the visible-rows empty state, tests, its regression-document edits. | 700–900 |
 | 12/13 | `⚙️ [instant-new-session] Show a launching row in the sidebar and Activity [step 12/13]` | Step 6 design: two sidebar rows, pending `ActivityTile` variant, rail popout provider, the Activity emptiness gates, the phone and desktop home hosts with their 240 ms insertion transition and the projection-based hold, tests, its regression-document edits. | 600–800 |
-| 13/13 | `🌿 [instant-new-session] Run new-session coverage and retire the plan [step 13/13]` | Run the matrix below, record it in `TRACKER.md`, confirm the merged regression documents match what shipped, and move the plan to `.plan/completed/`. | docs only |
+| 13/14 | `⚙️ [instant-new-session] Close the launching-row review deferrals [step 13/14]` | The step 11 deferrals: a newer launch landing before an older one takes its own row's place once the older one settles, the session list's launching rows move from widget state into `SessionListLaunchRowsCubit`, and the archive Undo limitation names the launch failure alert; the #1896 regression-document gaps; tests. | 300–400 |
+| 14/14 | `🌿 [instant-new-session] Run new-session coverage and retire the plan [step 14/14]` | Run the matrix below, record it in `TRACKER.md`, confirm the merged regression documents match what shipped, and move the plan to `.plan/completed/`. | docs only |
 
 Step 3 ran past about 1,200 lines and was delivered as the pre-approved 3.a and
 3.b split below. Step 4 is split the same way into 4.a (delivery, with no entry
@@ -2127,7 +2128,8 @@ The rest, implemented in full on one branch, measured about 2,100 changed lines
 and was cut once more between its state and its views: 7/11 lands the cubits' follow-up queue and composer handoff with no
 entry point, and 8/11 the views that use them. 8/11 merged with review findings unanswered;
 closing them measured about 1,100 lines, so 9/13 and 10/13 were inserted. The
-series therefore has thirteen PRs. The design sections keep their original numbers: "Step 4 design" ships as
+series therefore had thirteen PRs. The step 11 review deferrals were then picked up
+ahead of coverage as 13/14, so it has fourteen. The design sections keep their original numbers: "Step 4 design" ships as
 PRs 5/10, 6/10, 7/11 and 8/11, and so on. Merged PRs keep the titles they merged
 with.
 

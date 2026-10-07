@@ -41,7 +41,7 @@ Widget _buildScreenApp({required Widget child}) {
           create: (_) =>
               PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
         ),
-        BlocProvider(create: (_) => idleSessionLaunchCubit()),
+        RepositoryProvider(create: (_) => idleSessionLaunchService()),
       ],
       child: MaterialApp(
         theme: ThemeData(

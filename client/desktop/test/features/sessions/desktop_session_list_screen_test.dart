@@ -74,6 +74,7 @@ void main() {
   }
 
   Future<void> pumpView({required WidgetTester tester}) async {
+    final launchService = inMemorySessionLaunchService(launchRepository: launches);
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -90,10 +91,8 @@ void main() {
                   cleanupService: SessionCleanupService(repository: MockSessionRepository()),
                 ),
               ),
-              BlocProvider(
-                create: (_) =>
-                    SessionLaunchCubit(launchService: inMemorySessionLaunchService(launchRepository: launches)),
-              ),
+              RepositoryProvider.value(value: launchService),
+              BlocProvider(create: (_) => SessionLaunchCubit(launchService: launchService)),
               BlocProvider<ChatInputModeCubit>.value(value: inputMode),
             ],
             child: DesktopSessionListView(

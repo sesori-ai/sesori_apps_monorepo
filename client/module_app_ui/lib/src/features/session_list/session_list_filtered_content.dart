@@ -22,9 +22,9 @@ import "session_tile.dart";
 /// A session inside the shell's archive Undo window is hidden at once, and a
 /// committed archive refreshes the list.
 ///
-/// The project's launches lead the active list as launching rows. This is
-/// the one place the list resolves which sessions launches hold back, so the
-/// rows and the chips' counts agree.
+/// The project's launches lead the active list as launching rows, resolved by
+/// the list's own [SessionListLaunchRowsCubit], so the rows and the chips'
+/// counts agree on which sessions launches hold back.
 class const SessionListFilteredContent({
   super.key,
   required final String? projectName,
@@ -47,23 +47,11 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
   SessionListQuickFilter _filter = SessionListQuickFilter.all;
   String _query = "";
   late final StreamSubscription<PendingSessionArchiveOutcome> _archiveOutcomes;
-  late final StreamSubscription<SessionListState> _sessionStates;
-  late final StreamSubscription<SessionLaunchState> _launchStates;
-  LaunchRows _launchRows = LaunchRows.none;
 
   @override
   void initState() {
     super.initState();
-    _launchRows = _resolveLaunchRows();
-    if (_launchRows.placeholders.isNotEmpty) {
-      // Not during the build that mounts this list.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) widget.onShowsLaunchRowsChanged?.call(_launchRows.placeholders.isNotEmpty);
-      });
-    }
     final sessions = context.read<SessionListCubit>();
-    _sessionStates = sessions.stream.listen((_) => _updateLaunchRows());
-    _launchStates = context.read<SessionLaunchCubit>().stream.listen((_) => _updateLaunchRows());
     // The bridge publishes no session event on archive, so a committed archive
     // refreshes the list for the Archived view to show the session at once.
     _archiveOutcomes = context.read<PendingSessionArchiveCubit>().outcomes.listen((outcome) {
@@ -77,46 +65,46 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
   @override
   void dispose() {
     unawaited(_archiveOutcomes.cancel());
-    unawaited(_sessionStates.cancel());
-    unawaited(_launchStates.cancel());
     super.dispose();
   }
 
-  void _updateLaunchRows() {
-    final showedRows = _launchRows.placeholders.isNotEmpty;
-    setState(() => _launchRows = _resolveLaunchRows());
-    final showsRows = _launchRows.placeholders.isNotEmpty;
-    if (showsRows != showedRows) widget.onShowsLaunchRowsChanged?.call(showsRows);
-  }
-
-  /// Run on every list and launch update rather than in build, so each
-  /// update is seen once and a launch's session is never missed.
-  LaunchRows _resolveLaunchRows() {
-    final sessions = context.read<SessionListCubit>();
-    final state = sessions.state;
-    final launches = context.read<SessionLaunchCubit>().state;
-    final launching = [
-      for (final launch in launches.launching)
-        if (launch.projectId == sessions.projectId) launch,
-    ];
-    // Archived and loading keep what the active list last showed, so a session
-    // that arrives meanwhile is still held on the way back, and still record
-    // which session each launch created.
-    if (state is! SessionListLoaded || state.filter != SessionListFilter.active) {
-      return latchLaunchSessions(previous: _launchRows, launching: launching, sessionIds: launches.sessionIds);
-    }
-    return resolveHeldLaunchSessions(
-      previous: _launchRows,
-      launching: launching,
-      sessionIds: launches.sessionIds,
-      sessions: state.sessions,
-      slot: state.sessions,
-      placedSessionIds: const {},
-    );
-  }
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => BlocProvider(
+    create: (context) {
+      final sessions = context.read<SessionListCubit>();
+      final launchRows = SessionListLaunchRowsCubit(
+        launchService: context.read<SessionLaunchService>(),
+        projectId: sessions.projectId,
+        activeSessions: _activeSessions(state: sessions.state),
+      );
+      if (launchRows.state.placeholders.isNotEmpty) {
+        // Not during the build that mounts this list.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) widget.onShowsLaunchRowsChanged?.call(true);
+        });
+      }
+      return launchRows;
+    },
+    child: MultiBlocListener(
+      listeners: [
+        BlocListener<SessionListCubit, SessionListState>(
+          listener: (context, state) =>
+              context.read<SessionListLaunchRowsCubit>().updateList(activeSessions: _activeSessions(state: state)),
+        ),
+        BlocListener<SessionListLaunchRowsCubit, LaunchRows>(
+          listenWhen: (previous, current) => previous.placeholders.isNotEmpty != current.placeholders.isNotEmpty,
+          listener: (_, launchRows) => widget.onShowsLaunchRowsChanged?.call(launchRows.placeholders.isNotEmpty),
+        ),
+      ],
+      child: Builder(builder: _buildContent),
+    ),
+  );
+
+  /// The sessions the active list shows, or null while it shows none.
+  static List<Session>? _activeSessions({required SessionListState state}) =>
+      state is SessionListLoaded && state.filter == SessionListFilter.active ? state.sessions : null;
+
+  Widget _buildContent(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<SessionListCubit>().state;
     final loaded = state is SessionListLoaded ? state : null;
@@ -124,7 +112,8 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
     // The chips narrow the active list only; Archived shows everything it has.
     final filter = showArchived ? SessionListQuickFilter.all : _filter;
     // Only the active list draws launching rows and holds their sessions.
-    final launchRows = loaded?.filter == SessionListFilter.active ? _launchRows : LaunchRows.none;
+    final activeRows = context.watch<SessionListLaunchRowsCubit>().state;
+    final launchRows = loaded?.filter == SessionListFilter.active ? activeRows : LaunchRows.none;
     final hidden = {
       ...context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
       ...launchRows.heldSessionIds,

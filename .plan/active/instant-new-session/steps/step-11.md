@@ -6,7 +6,7 @@ verified.
 ## Deferred
 
 These review findings were declined on #1891 because the damage was small next
-to the change they needed. Step 13 decides whether to pick them up.
+to the change they needed. Step 13/14 picked them up; see `step-13.md`.
 
 | Finding | Flow | Why deferred |
 |---|---|---|

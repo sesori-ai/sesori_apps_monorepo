@@ -54,7 +54,7 @@ void main() {
                   cleanupService: SessionCleanupService(repository: MockSessionRepository()),
                 ),
               ),
-              BlocProvider(create: (_) => idleSessionLaunchCubit()),
+              RepositoryProvider(create: (_) => idleSessionLaunchService()),
             ],
             child: Align(
               alignment: Alignment.topLeft,

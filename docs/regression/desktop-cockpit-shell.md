@@ -102,7 +102,9 @@ The main pane hosts one full-width routed page.
   menu. When its session reaches the head of the rows the launching row leads, the session row swaps in without
   moving anything (it keeps the launching row's key); a session
   that reaches its project before it runs stays out of the project's other rows and Recent, and the launching row
-  keeps its Activity place until the session runs or the next sessions update places it as an ordinary change.
+  keeps its Activity place until the session runs or the next sessions update places it as an ordinary change. A
+  session that first waits on the user gives way at once to its Needs you row, and marking a session unread or
+  setting it aside re-resolves the rows without waiting for a sessions update.
 - Expanded projects show every running session (the same running rule as the project's running count) and the first
   two other active visible sessions, plus the open session when present outside them, all in the shared list's order.
   While the project has more, "Show N more" (12 pt tertiary) reveals up to ten more in place; it is absent when nothing
