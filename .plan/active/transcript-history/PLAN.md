@@ -702,6 +702,9 @@ list, the far tap and the older-bridge fallback.
 
 ### Search Every Prompt (Step 11)
 
+Step 11 lands as two PRs: 11a carries the shared helpers, the wire contract
+and the bridge route; 11b carries the app. See `steps/step-11.md`.
+
 **Shared:** `promptSearchPattern` and `promptExcerpt` move from
 `client/module_app_ui/lib/src/features/session_prompts/prompt_search.dart`
 to `sesori_shared`, so both sides match and cut alike.

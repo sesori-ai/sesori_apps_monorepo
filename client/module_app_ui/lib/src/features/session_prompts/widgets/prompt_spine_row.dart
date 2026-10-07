@@ -1,9 +1,9 @@
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart" show SessionPromptExcerpt;
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "../prompt_search.dart";
 
 const double _kVerticalPadding = PregoSpacing.md;
 const double _kRailX = PregoSpacing.xl + 4;
@@ -44,7 +44,7 @@ class const PromptSpineRow({
   required final bool highlighted,
 
   /// Where the search found this prompt; null while not searching.
-  required final PromptExcerpt? excerpt,
+  required final SessionPromptExcerpt? excerpt,
 
   /// How far [excerpt] has faded in, from 0 to 1, while the row grows to
   /// show it. The list sets the row's height; whatever does not fit is cut.

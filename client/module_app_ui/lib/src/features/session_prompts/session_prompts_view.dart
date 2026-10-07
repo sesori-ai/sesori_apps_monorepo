@@ -5,11 +5,11 @@ import "dart:ui" show lerpDouble;
 import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart" show promptExcerpt, promptSearchPattern;
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../widgets/list_search_field.dart";
-import "prompt_search.dart";
 import "widgets/prompt_day_header.dart";
 import "widgets/prompt_spine_row.dart";
 

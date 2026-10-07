@@ -148,6 +148,7 @@ void main() {
     final history = createTestChatHistory(storedSessionArchivedAt: 300);
     await _captureTranscript(history: history);
     final stored = await history.service.getPromptIndex(sessionId: _sessionId);
+    final storedMatches = await history.service.searchPrompts(sessionId: _sessionId, query: "the");
     await history.repository.exportSession(
       session: const StoredSession(
         id: _sessionId,
@@ -176,11 +177,36 @@ void main() {
 
     expect(_shape(entries: archived), _expected);
     expect(archived, stored, reason: "the audit file keeps the store's seqs");
+    expect(await history.service.searchPrompts(sessionId: _sessionId, query: "the"), storedMatches);
+    expect(storedMatches, hasLength(2));
   });
 
-  test("a session with no stored history lists no prompts", () async {
+  test("search finds a query in every prompt's text or attachment name, and nowhere else", () async {
+    final history = createTestChatHistory();
+    await _captureTranscript(history: history);
+    _deleteSpillFiles(history: history);
+    Future<List<SessionPromptSearchMatch>> search(String query) =>
+        history.service.searchPrompts(sessionId: _sessionId, query: query);
+
+    expect(await search("THE"), const [
+      SessionPromptSearchMatch(
+        messageId: "u1",
+        excerpt: SessionPromptExcerpt(before: "Fix ", match: "the", after: " build"),
+      ),
+      SessionPromptSearchMatch(
+        messageId: "u2",
+        excerpt: SessionPromptExcerpt(before: "and ", match: "the", after: " tests"),
+      ),
+    ]);
+    expect([for (final match in await search("shot")) match.messageId], ["u3"]);
+    expect(await search("Done"), isEmpty, reason: "answers are not prompts");
+    expect(await search("  "), isEmpty);
+  });
+
+  test("a session with no stored history lists and matches no prompts", () async {
     final history = createTestChatHistory();
 
     expect(await history.service.getPromptIndex(sessionId: "unknown"), isEmpty);
+    expect(await history.service.searchPrompts(sessionId: "unknown", query: "the"), isEmpty);
   });
 }

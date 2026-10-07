@@ -141,6 +141,36 @@ class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistor
     });
   }
 
+  /// The session's user messages oldest-first and their parts, read from a
+  /// single snapshot like [getPageRowsWithSyncState].
+  ///
+  /// Parts are selected through a subquery on the same rows, which keeps a
+  /// long session clear of SQLite's bound-variable limit.
+  Future<({List<HistoryMessagesTableData> messages, List<HistoryPartsTableData> parts})> getUserMessageRows({
+    required String sessionId,
+  }) {
+    const isUser = CustomExpression<bool>(r"json_extract(info_json, '$.role') = 'user'");
+    return transaction(() async {
+      final messages =
+          await (select(historyMessagesTable)
+                ..where((table) => table.sessionId.equals(sessionId) & isUser)
+                ..orderBy([(table) => OrderingTerm(expression: table.seq)]))
+              .get();
+      final userMessageIds = selectOnly(historyMessagesTable)
+        ..addColumns([historyMessagesTable.messageId])
+        ..where(historyMessagesTable.sessionId.equals(sessionId) & isUser);
+      final parts =
+          await (select(historyPartsTable)
+                ..where((table) => table.sessionId.equals(sessionId) & table.messageId.isInQuery(userMessageIds))
+                ..orderBy([
+                  (table) => OrderingTerm(expression: table.messageId),
+                  (table) => OrderingTerm(expression: table.orderIndex),
+                ]))
+              .get();
+      return (messages: messages, parts: parts);
+    });
+  }
+
   /// How many of [sessionId]'s messages ordered below [seq] have role `user`.
   ///
   /// The role lives only inside `info_json`, and typed Drift has no

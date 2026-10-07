@@ -11,6 +11,7 @@ import "../api/database/history/chat_history_database.dart";
 import "../api/models/archived_session_file_dto.dart";
 import "mappers/duplicated_shell_title_mapper.dart";
 import "mappers/prompt_index_mapper.dart";
+import "mappers/prompt_search_mapper.dart";
 import "models/history_window.dart";
 import "models/stored_session.dart";
 
@@ -82,6 +83,7 @@ class ChatHistoryRepository({
   static const _archiveSchemaVersion = 1;
   static const _semanticMatchBridgeId = "history-semantic-match";
   static const _promptIndexMapper = PromptIndexMapper();
+  static const _promptSearchMapper = PromptSearchMapper();
 
   Future<Uint8List?> readStoredAttachment({
     required AttachmentStorageScope storageScope,
@@ -910,9 +912,55 @@ class ChatHistoryRepository({
     );
   }
 
-  /// A stored part for the prompt index. A `stored_file` attachment, which the
-  /// shared union would read as unknown, becomes its metadata, as a page shows
-  /// it when its spill file is gone, so an image-only prompt stays listed.
+  /// The prompts in the session's stored transcript that hold [pattern],
+  /// oldest first. Only user rows are read, from one database snapshot, and
+  /// attachments decode as in [getPromptIndex].
+  Future<List<SessionPromptSearchMatch>> searchPrompts({required String sessionId, required RegExp pattern}) async {
+    final rows = await _chatHistoryDao.getUserMessageRows(sessionId: sessionId);
+    final partJsonByMessage = <String, List<String>>{};
+    for (final row in rows.parts) {
+      partJsonByMessage.putIfAbsent(row.messageId, () => []).add(row.partJson);
+    }
+    return _promptSearchMapper.matchesOf(
+      messages: [
+        for (final row in rows.messages)
+          MessageWithParts(
+            info: Message.fromJson(jsonDecodeMap(row.infoJson)),
+            parts: [
+              for (final partJson in partJsonByMessage[row.messageId] ?? const <String>[])
+                _indexPart(json: jsonDecodeMap(partJson)),
+            ],
+          ),
+      ],
+      pattern: pattern,
+    );
+  }
+
+  /// The prompts in the session's audit file that hold [pattern], oldest
+  /// first, or null when no audit file exists.
+  Future<List<SessionPromptSearchMatch>?> searchArchivedPrompts({
+    required String sessionId,
+    required RegExp pattern,
+  }) async {
+    final ordered = await _readArchivedMessages(sessionId: sessionId);
+    if (ordered == null) return null;
+    return _promptSearchMapper.matchesOf(
+      messages: [
+        for (final entry in ordered)
+          if (entry.info is MessageUser)
+            MessageWithParts(
+              info: entry.info,
+              parts: [for (final part in entry.parts) _indexPart(json: part)],
+            ),
+      ],
+      pattern: pattern,
+    );
+  }
+
+  /// A stored part for the prompt index and search. A `stored_file`
+  /// attachment, which the shared union would read as unknown, becomes its
+  /// metadata, as a page shows it when its spill file is gone, so an
+  /// image-only prompt stays listed.
   MessagePart _indexPart({required Map<String, dynamic> json}) => MessagePart.fromJson(switch (json["attachment"]) {
     final Map<String, dynamic> attachment when attachment["source"] == "stored_file" => {
       ...json,
