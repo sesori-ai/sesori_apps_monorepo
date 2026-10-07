@@ -56,4 +56,5 @@ Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
 
 ## Size
 
-Authored about 760 changed lines, generated localization output 38.
+817 changed lines against `origin/main`: 779 authored (this file included),
+38 generated localization output.
