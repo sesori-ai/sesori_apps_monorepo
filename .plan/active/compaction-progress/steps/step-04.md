@@ -54,6 +54,12 @@ Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
   rule and a running compaction in the streamed-part buffer table.
 - No `client/app` or `client/desktop` test renders the row.
 
+## Architecture Review
+
+`architecture-implementation-review` of `git diff origin/main...HEAD` at
+`3f1c2fcf0f`: approved, no findings. It confirmed P5, P8, P9, P11 and P12,
+the two new classes, and no wire, database or plugin change.
+
 ## Size
 
 817 changed lines against `origin/main`: 779 authored (this file included),
