@@ -297,7 +297,8 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
   no "Load earlier prompts" with an index.
 - A tap on an unloaded row: the spinner only after the delay, the move once
   loaded, a second tap replacing the first, and the older-bridge notice.
-- The load-through response decoding off the calling isolate.
+- The load-through and bridge search responses decoding off the calling
+  isolate.
 - Numbers and times: prompt numbers from the bridge's count kept through three
   older pages with hidden user messages and automation; no numbers without a
   count; the bridge's count for every page read (snapshot, stored-only,
@@ -348,7 +349,9 @@ On the release-target phone and on macOS, on a session of three or more pages:
   the response decodes. Against a bridge released before the prompt index, the
   list showing the loaded prompts with "Load earlier prompts".
 - Typing a search, clearing it and loading earlier prompts with nothing under
-  the reader jumping.
+  the reader jumping. On the long session, a search finding a prompt that only
+  the bridge's search matches, "Searching earlier prompts…" only on a slow
+  link, and the list's end not jumping as the status changes.
 - Escape and ⌘[ closing on macOS, back and close leaving the transcript
   unmoved, and every way out but the iOS edge swipe shrinking the screen back.
 - The transition in and out, and again with Reduce Motion on, with nothing
@@ -434,10 +437,14 @@ answer, and on a trackpad while text streams.
   after the screen closes.
 - Typing, clearing or opening the search moves the row being read; rows pop
   in or out instead of folding; a filtered row shows no reason for its match;
-  a day header stays over no rows; the match count claims more than the loaded
-  range; the rows under the reader move when earlier prompts load or when
+  a day header stays over no rows; without an index, the match count claims
+  more than the loaded range; the rows under the reader move when earlier prompts load or when
   "Load earlier prompts" disappears; the control stays enabled while loading
   or refreshing, or its wrapped label is clipped.
+- With an index, a prompt the bridge's search finds stays folded or joins out
+  of order, "Searching earlier prompts…" flashes on a quick answer, the list's
+  end jumps as its status changes, or a failed search drops the loaded matches
+  or offers no Retry. A bridge without the index is asked to search.
 - The Prompts screen pops in or out, jumps mid-transition, scales under
   reduced motion, or the transcript moves or reflows behind it. The iOS edge
   swipe does not track the finger, the screen snaps instead of following or
@@ -494,13 +501,11 @@ answer, and on a trackpad while text streams.
   its speed can bend on the way; it still lands exactly.
 - A bridge released before the prompt index is never asked to search: it
   lists and searches only what the transcript has loaded, an unloaded prompt
-  is never listed, and "Load earlier prompts" pages back one transcript page at a time. The "Update
-  the bridge" notice for an unloaded tap has no link to update instructions. An
-  older bridge sends
-  no user message count, so its rows carry no numbers. Loading through a far
-  prompt decodes the response off the UI isolate, but the relay envelope of a
-  whole-session response still decodes on it (about 170 ms on a Mac for a
-  10,000-message session). On Grok, Antigravity,
+  is never listed, and "Load earlier prompts" pages back one transcript page at
+  a time. An older bridge sends no user message count, so its rows carry no
+  numbers. The "Update the bridge" notice, shown only by a bridge that sends the
+  index without the load-through route, has no link to update instructions. On
+  Grok, Antigravity,
   Copilot, Cursor, Hermes and OMP a prompt read back from the harness's own
   history carries no time.
 

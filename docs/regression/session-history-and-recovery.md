@@ -67,8 +67,11 @@ reconnect or restart.
   in one snapshot; an archived session's audit file is read whole and its user
   messages kept. Either read runs outside the session queue and never
   backfills. A blank query, an unknown session or a
-  session with no match finds none, and an empty session id is a 400, so the
-  route never answers 404 and a 404 means a bridge that predates it.
+  session with no match finds none, and an empty session id is a 400; the
+  route never answers 404. The app asks only a bridge that sent the prompt
+  index, so a v1.9.0 bridge, which has neither route, is never asked, and the
+  app treats any search error, a 404 included, as an ordinary failure with
+  Retry.
 - The load-through (`POST /session/messages/through`) returns, in one
   response, every message from a chosen prompt's `seq` (`throughSeq`) up to
   the app's oldest loaded cursor (`before`), through the same read path as a
@@ -400,7 +403,8 @@ rules where supported.
 - Prompt search misses a prompt whose text, or an image-only prompt whose
   attachment name, contains the query, matches assistant text or a hidden prompt, treats the query as a
   pattern, answers 404 for a session it does not know, or cuts an excerpt
-  differently from the app's loaded-prompt search.
+  differently from the app's loaded-prompt search; the app asks a bridge that
+  sent no index, or reads a search error as an older bridge.
 - The load-through misses or duplicates a message at either end of its
   range, reports a cursor or count that differs from paging back to the
   same prompt, reads differently from a page on the store, store-only or
