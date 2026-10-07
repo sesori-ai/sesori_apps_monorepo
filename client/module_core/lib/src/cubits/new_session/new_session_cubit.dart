@@ -1032,6 +1032,12 @@ class NewSessionCubit({
             agentModel: data.agentModel,
             fastMode: data.runsFastMode,
           );
+    // A failure held for the busy composer has already ended the launch, so
+    // the message joins what that failure restores instead of being dropped.
+    if (_outcomeAwaitingComposer case final SessionLaunchFailedWhileComposing failure) {
+      _outcomeAwaitingComposer = failure.copyWith(followUps: [...failure.followUps, submission]);
+      return;
+    }
     _sessionLaunchService.addFollowUp(launchId: phase.launchId, submission: submission);
   }
 
@@ -1213,6 +1219,7 @@ class NewSessionCubit({
 
   void clearComposerDraft() {
     _composerDraft = ComposerDraft.typed(text: "");
+    _composerSelection = null;
     _composerDraftRepository.clearForNewSession(projectId: _projectId);
   }
 

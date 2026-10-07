@@ -2528,6 +2528,56 @@ void main() {
           expect(restored.draft.text, "hello\n\nsecond\n\nhalf typed");
           expect((restored as NewSessionTextSubmissionSnapshot).attachments, [same(image)]);
         });
+
+        test("a message sent while a failure waits for the busy composer joins the restored draft", () async {
+          final cubit = buildCubit(launchRepository: launchRepository);
+          addTearDown(cubit.close);
+          await waitForComposer(cubit);
+
+          final pending = send(cubit);
+          cubit.setComposerBusy(busy: true);
+          response.complete(ApiResponse.error(ApiError.generic()));
+          await pending;
+          await Future<void>.delayed(Duration.zero);
+          await cubit.submit(
+            draft: ComposerDraft.typed(text: "sent late"),
+            dedicatedWorktree: false,
+            command: null,
+            attachments: const [],
+          );
+          cubit.clearComposerDraft();
+          cubit.setComposerBusy(busy: false);
+
+          final restored =
+              ((cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission).submission;
+          expect(restored.draft.text, "hello\n\nsent late");
+        });
+
+        test("a draft cleared by Send hands over no stale selection", () async {
+          final cubit = buildCubit(launchRepository: launchRepository);
+          addTearDown(cubit.close);
+          await waitForComposer(cubit);
+
+          final pending = send(cubit);
+          cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "next idea"));
+          cubit.reportComposerSelection(selection: (base: 0, extent: 9));
+          await cubit.submit(
+            draft: ComposerDraft.typed(text: "next idea"),
+            dedicatedWorktree: false,
+            command: null,
+            attachments: const [],
+          );
+          cubit.clearComposerDraft();
+          cubit.saveComposerAttachments(attachments: [image]);
+          response.complete(ApiResponse.success(testSession(id: "s-1")));
+          await pending;
+          await Future<void>.delayed(Duration.zero);
+
+          final unsent = launchRepository.takeHandoff(sessionId: "s-1")?.composer?.unsent;
+          expect(unsent?.draft.text, isEmpty);
+          expect(unsent?.selection, isNull);
+          expect(unsent?.attachments, [same(image)]);
+        });
       });
     });
 
