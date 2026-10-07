@@ -247,19 +247,17 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
     });
   }
 
-  /// Inserts one project with its explicit [path] and [hidden] state when it
-  /// does not exist. Existing rows are untouched.
+  /// Inserts one visible project with its explicit [path] when it does not
+  /// exist. Existing rows are untouched.
   Future<void> insertProjectIfMissing({
     required String projectId,
     required String path,
-    required bool hidden,
   }) async {
     final insertedAt = DateTime.now().millisecondsSinceEpoch;
     await into(projectsTable).insert(
       ProjectsTableCompanion.insert(
         projectId: projectId,
         path: path,
-        hidden: Value(hidden),
         createdAt: Value(insertedAt),
         updatedAt: Value(insertedAt),
         projectionUpdatedAt: insertedAt,
@@ -268,9 +266,10 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
     );
   }
 
+  /// Inserts visible projects for the ids in [projects] that are missing.
+  /// Existing rows are untouched.
   Future<void> insertProjectsWithPathsIfMissing({
     required Map<String, ({String path, int? createdAt, int? updatedAt})> projects,
-    required bool hidden,
   }) async {
     if (projects.isEmpty) return;
     final insertedAt = DateTime.now().millisecondsSinceEpoch;
@@ -284,7 +283,6 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
             return ProjectsTableCompanion.insert(
               projectId: entry.key,
               path: entry.value.path,
-              hidden: Value(hidden),
               createdAt: Value(createdAt),
               updatedAt: Value(updatedAt),
               projectionUpdatedAt: updatedAt,

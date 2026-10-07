@@ -7,6 +7,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../foundation/data_directory_hardening.dart";
+import "../../foundation/discovered_project_visibility_calculator.dart";
 import "converters/agent_model_converter.dart";
 import "daos/catalog_hydrations_dao.dart";
 import "daos/projects_dao.dart";
@@ -46,7 +47,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 20;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -313,6 +314,20 @@ class AppDatabase(super.e) extends _$AppDatabase {
         // No session had an override before v19; null follows the bridge
         // YOLO setting, which is what every session did.
         await m.addColumn(schema.sessionsTable, schema.sessionsTable.approvalOverride);
+      },
+      from19To20: (m, schema) async {
+        // Issue #1834: older bridges saved discovered projects hidden, and
+        // scans keep stored visibility. Re-apply today's rule once. The bridge
+        // cannot tell those rows from a user's Remove, so a removed project
+        // reappears once and can be removed again.
+        final visibility = DiscoveredProjectVisibilityCalculator();
+        final hiddenRows = await customSelect("SELECT project_id, path FROM projects_table WHERE hidden = 1").get();
+        for (final row in hiddenRows) {
+          if (visibility.shouldHide(projectPath: row.read<String>("path"))) continue;
+          await customStatement("UPDATE projects_table SET hidden = 0 WHERE project_id = ?", [
+            row.read<String>("project_id"),
+          ]);
+        }
       },
     ),
     beforeOpen: (details) async {

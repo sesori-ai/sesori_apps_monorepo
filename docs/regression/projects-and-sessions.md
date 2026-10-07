@@ -56,7 +56,10 @@ state.
   every project and session, including hidden temporary projects; rescanning an
   unchanged catalog reports nothing new. Only deliberately selecting a folder
   through Add/Open Project reveals it, and later scans preserve that choice.
-  No existing project is backfilled or reclassified. Catalog scans are per plugin,
+  A project first seen through OpenCode's project list or a session already
+  running at startup is added visible, whatever its folder. Upgrading to schema
+  v20 shows, once, every hidden project the scan rule above would show (#1834);
+  a project the user had removed reappears and can be removed again. Catalog scans are per plugin,
   atomic, non-destructive, cancellable, and attribute progress.
 - A completed import reports both the totals it published and, separately, how
   much of that was new. The two are not interchangeable: a re-import of an
@@ -566,6 +569,8 @@ started one. Restore harness eligibility afterwards.
   any scan exposes a new home dot-directory or temporary project, hidden projects'
   sessions are omitted or counted as new again on an unchanged rescan, or a folder
   deliberately revealed through Add/Open Project is hidden again.
+- An ordinary project is missing from Projects after a fresh install or upgrade
+  while its sessions exist on the bridge.
 - Desktop wide navigation recreates the session inventory on each selected
   detail/diff route, loses selection, or narrow navigation renders both panes.
 - Antigravity import parses SQLite/brain/token content, writes Google files, scans during an ordinary catalog read,

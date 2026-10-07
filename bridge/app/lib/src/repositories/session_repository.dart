@@ -906,7 +906,7 @@ class SessionRepository({
           preferredProjectId: project.id,
           observedPath: project.directory,
         );
-        final hydratedProject = existing ?? _hiddenProjectPlaceholder(projectId: project.id, path: project.directory);
+        final hydratedProject = existing ?? _projectPlaceholder(projectId: project.id, path: project.directory);
         if (hydratedProjectIds.contains(hydratedProject.projectId)) continue;
         final sessions = await plugin.getSessions(projectId: project.directory, start: null, limit: null);
         hydratedProjectIds.add(hydratedProject.projectId);
@@ -982,11 +982,10 @@ class SessionRepository({
         observedPath: projectDirectory,
       );
       final hydratedProject =
-          existingProject ?? _hiddenProjectPlaceholder(projectId: preferredProjectId, path: projectDirectory);
+          existingProject ?? _projectPlaceholder(projectId: preferredProjectId, path: projectDirectory);
       await _projectsDao.insertProjectIfMissing(
         projectId: hydratedProject.projectId,
         path: projectDirectory,
-        hidden: true,
       );
       final existingByBackendId = await _sessionDao.getSessionsByBackendIds(
         pluginId: pluginId,
@@ -1692,13 +1691,12 @@ class SessionRepository({
     throw StateError('Plugin "$pluginId" does not support persisted session cleanup');
   }
 
-  ProjectDto _hiddenProjectPlaceholder({
+  ProjectDto _projectPlaceholder({
     required String projectId,
     required String path,
   }) => ProjectDto(
     projectId: projectId,
     path: path,
-    hidden: true,
     prCacheGithubLogin: null,
     createdAt: 0,
     updatedAt: 0,
