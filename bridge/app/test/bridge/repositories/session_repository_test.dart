@@ -1741,8 +1741,8 @@ void main() {
       expect(commit.backendSessionIds, ["backend-root"]);
       expect(commit.kind, SessionBindingCommitKind.catalogSync);
       expect(commit.generation, 1);
-      expect((await db.projectsDao.getProject(projectId: directory))?.hidden, isTrue);
-      expect(await db.projectsDao.getCatalogProjects(), isEmpty);
+      expect((await db.projectsDao.getProject(projectId: directory))?.hidden, isFalse);
+      expect([for (final project in await db.projectsDao.getCatalogProjects()) project.projectId], [directory]);
       expect(
         (await db.sessionDao.getSessionByBinding(
           pluginId: plugin.id,

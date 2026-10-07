@@ -1835,12 +1835,13 @@ class SessionDetailCubit(
   ///
   /// History carries no universal completion signal (several backends load
   /// messages with a null completion time), so coverage is decided by content:
-  /// only a same-ID text/reasoning part that starts or ends with the entire
-  /// buffered value retires it. The suffix case is a reconnect outside the
+  /// only a same-ID streaming part (see [_streamedText]) that starts or ends
+  /// with the entire buffered value retires it. The suffix case is a reconnect outside the
   /// replay window, where the accumulator holds only the tail of a part and
   /// the snapshot is the sole source of its prefix. An absent, shorter or
   /// divergent part keeps the buffer, which still holds live content the
-  /// transcript has not shown it can replace.
+  /// transcript has not shown it can replace. A same-ID compaction that has
+  /// settled retires it too, since it will stream no more.
   void _retireStreamingPartsCoveredBy({required List<MessageWithParts> messages}) {
     final buffered = _streamingBuffer.snapshot();
     if (buffered.isEmpty) return;
@@ -1848,17 +1849,24 @@ class SessionDetailCubit(
       for (final part in message.parts) {
         final live = buffered[part.id];
         if (live == null) continue;
-        final installed = _streamedText(part);
-        if (installed == null) continue;
-        if (installed.startsWith(live) || installed.endsWith(live)) _streamingBuffer.removePart(part.id);
+        final covered = switch ((part, _streamedText(part))) {
+          // A settled compaction streams no more, so the snapshot settling it
+          // retires its buffer, as its own part update would.
+          (MessagePartCompaction(state: CompactionStateCompleted() || CompactionStateFailed()), _) => true,
+          (_, final installed?) => installed.startsWith(live) || installed.endsWith(live),
+          (_, null) => false,
+        };
+        if (covered) _streamingBuffer.removePart(part.id);
       }
     }
   }
 
   /// The content a streaming delta accumulates for [part], or null for part
-  /// kinds that never stream text.
+  /// kinds that never stream text, or a running compaction with no summary
+  /// yet. A compaction streams its summary only while it runs.
   static String? _streamedText(MessagePart part) => switch (part) {
     MessagePartText(:final text) || MessagePartReasoning(:final text) => text,
+    MessagePartCompaction(state: CompactionStateRunning(:final summary)) => summary,
     MessagePartTool() ||
     MessagePartSubtask() ||
     MessagePartStepStart() ||

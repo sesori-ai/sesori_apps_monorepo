@@ -1,6 +1,7 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_latest_words.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
@@ -200,20 +201,20 @@ void main() {
 
   group("latest words", () {
     test("returns a short thought on one line", () {
-      expect(ReasoningPartCard.latestWords(text: "short\n\nthought  here"), "short thought here");
+      expect(TranscriptLatestWords.latestWords(text: "short\n\nthought  here"), "short thought here");
     });
 
     test("keeps only the end of a long thought", () {
       final text = "${"a" * 800} newest words";
 
-      expect(ReasoningPartCard.latestWords(text: text), "${"a" * 147} newest words");
+      expect(TranscriptLatestWords.latestWords(text: text), "${"a" * 147} newest words");
     });
 
     test("never starts on an orphaned UTF-16 low surrogate", () {
       // The cut lands between the emoji's two code units.
       final text = "${"x" * 10}😀${"y" * 159}";
 
-      expect(ReasoningPartCard.latestWords(text: text), "y" * 159);
+      expect(TranscriptLatestWords.latestWords(text: text), "y" * 159);
     });
   });
 

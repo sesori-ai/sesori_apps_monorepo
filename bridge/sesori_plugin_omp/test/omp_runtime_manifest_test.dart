@@ -8,12 +8,12 @@ import "package:test/test.dart";
 void main() {
   const manifest = OmpRuntimeManifest();
 
-  test("keeps the PATH floor and targets v18.3.0", () {
+  test("keeps the PATH floor and targets v18.8.0", () {
     expect(manifest.runtimeId, "omp");
     expect(manifest.pathExecutableName, "omp");
     expect(manifest.binaryFileName, Platform.isWindows ? "omp.exe" : "omp");
     expect(manifest.minPathVersion.raw, "17.2.13");
-    expect(OmpRuntimeManifest.targetVersion, "18.3.0");
+    expect(OmpRuntimeManifest.targetVersion, "18.8.0");
     expect(manifest.bundledVersion.raw, OmpRuntimeManifest.targetVersion);
     expect(manifest.parseVersion(value: "omp/17.3.8")?.raw, "17.3.8");
     expect(manifest.parseVersion(value: "17.3.8"), isNull);
@@ -69,10 +69,10 @@ void main() {
     expect(manifest.supportsManagedInstallOn(target: target), isTrue);
     expect(asset, isA<DirectBinaryRuntimeAsset>());
     expect(asset.assetName, "omp-windows-arm64.exe");
-    expect(asset.sha256, "aed8edaa8a1d8e29ac846d2b88818a3bc6ab21b78cac59267f1406c873fe5fc7");
+    expect(asset.sha256, "ef38574b1d10bf6e389678fd3d40b894413603c9cd1dd4d8d450154221be9602");
     expect(
       manifest.downloadUrlFor(asset: asset),
-      "https://github.com/can1357/oh-my-pi/releases/download/v18.3.0/omp-windows-arm64.exe",
+      "https://github.com/can1357/oh-my-pi/releases/download/v18.8.0/omp-windows-arm64.exe",
     );
   });
 
@@ -82,7 +82,7 @@ void main() {
     )!;
     expect(
       manifest.downloadUrlFor(asset: asset),
-      "https://github.com/can1357/oh-my-pi/releases/download/v18.3.0/omp-darwin-arm64",
+      "https://github.com/can1357/oh-my-pi/releases/download/v18.8.0/omp-darwin-arm64",
     );
   });
 }

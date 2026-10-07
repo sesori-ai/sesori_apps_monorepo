@@ -1620,6 +1620,22 @@
   "@sessionDetailContextCompacted": {"description": "Quiet transcript row marking where the coding agent summarized its earlier conversation to free context space."},
   "sessionDetailCompactionSummaryTitle": "Compaction summary",
   "@sessionDetailCompactionSummaryTitle": {"description": "Title of the modal showing the summary the coding agent carried forward when it compacted its context."},
+  "sessionDetailCompactingContext": "Compacting context",
+  "@sessionDetailCompactingContext": {"description": "Live transcript row while the coding agent summarizes its earlier conversation to free context space. An elapsed time may follow, e.g. 'Compacting context · 1m 42s'."},
+  "sessionDetailCompactionFailed": "Compaction failed",
+  "@sessionDetailCompactionFailed": {"description": "Quiet transcript note when the coding agent could not summarize its earlier conversation. The harness's error may follow, e.g. 'Compaction failed · The turn ended before compaction finished.'"},
+  "sessionDetailCompactionFreedTokens": "freed {tokens} tokens",
+  "@sessionDetailCompactionFreedTokens": {
+    "description": "Detail after 'Context compacted' saying how much context space the compaction freed, e.g. 'Context compacted · freed 142k tokens'. Starts lowercase because it follows a separator.",
+    "placeholders": {
+      "tokens": {
+        "type": "String",
+        "example": "142k"
+      }
+    }
+  },
+  "sessionDetailCompactionAuto": "auto",
+  "@sessionDetailCompactionAuto": {"description": "Detail after 'Context compacted' when the coding agent compacted on its own rather than on the user's request, e.g. 'Context compacted · auto'. Lowercase because it follows a separator."},
   "sessionDetailCopy": "Copy",
   "emptySessionDetailTitle": "Select a session",
   "emptySessionDetailSubtitle": "Choose a session from the list to view details",

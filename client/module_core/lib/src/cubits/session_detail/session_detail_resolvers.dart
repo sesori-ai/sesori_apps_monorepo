@@ -2,44 +2,6 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "session_detail_state.dart";
 
-extension SessionMessagePresentation on MessageWithParts {
-  bool get hasRenderableUserContent {
-    if (info is! MessageUser) return true;
-    return parts.any(
-      (part) => switch (part) {
-        MessagePartText(:final text) => text.isNotEmpty,
-        MessagePartFile(:final attachment) => attachment is! MessageAttachmentUnknown,
-        MessagePartReasoning() ||
-        MessagePartTool() ||
-        MessagePartSubtask() ||
-        MessagePartStepStart() ||
-        MessagePartStepFinish() ||
-        MessagePartSnapshot() ||
-        MessagePartPatch() ||
-        MessagePartAgent() ||
-        MessagePartRetry() ||
-        MessagePartCompaction() => false,
-      },
-    );
-  }
-
-  /// What a user prompt says, wherever the app names it outside its bubble:
-  /// its whole text, else its first attachment's name, else null. Views show
-  /// their localized "Attachment" for null.
-  String? get promptText {
-    final text = parts.whereType<MessagePartText>().map((part) => part.text).join("\n");
-    if (text.isNotEmpty) return text;
-    final filename = switch (parts.whereType<MessagePartFile>().firstOrNull?.attachment) {
-      MessageAttachmentInlineImage(:final filename) ||
-      MessageAttachmentRemoteUrl(:final filename) ||
-      MessageAttachmentStoredImage(:final filename) ||
-      MessageAttachmentMetadata(:final filename) => filename?.trim(),
-      MessageAttachmentUnknown() || null => null,
-    };
-    return filename == null || filename.isEmpty ? null : filename;
-  }
-}
-
 /// The first line of [text] that holds more than whitespace, trimmed; null
 /// when none does. Stops at that line, since the text can be long.
 String? firstNonBlankLine({required String text}) {
@@ -125,10 +87,11 @@ extension SessionDetailResolvers on SessionDetailState {
     return self is SessionDetailLoaded && self.messages.any((message) => message.hasRenderableUserContent);
   }
 
-  /// Resolves the display text and streaming flag for a reasoning part.
+  /// Resolves the display text and streaming flag for a streamed part: text,
+  /// reasoning, or a running compaction's summary so far.
   ///
   /// Returns the streaming text if the part is actively streaming,
-  /// otherwise falls back to the finalized text in [messages].
+  /// otherwise falls back to the installed text in [messages].
   ({String text, bool isStreaming}) resolvePartContent({
     required String partId,
     required String messageId,
@@ -145,6 +108,7 @@ extension SessionDetailResolvers on SessionDetailState {
         if (p.id != partId) continue;
         final text = switch (p) {
           MessagePartText(:final text) || MessagePartReasoning(:final text) => text,
+          MessagePartCompaction(state: CompactionStateRunning(:final summary)) => summary,
           MessagePartTool() ||
           MessagePartSubtask() ||
           MessagePartStepStart() ||

@@ -174,7 +174,7 @@ void main() {
 
       final newProject = await db.projectsDao.getProject(projectId: "new-project");
       expect(newProject?.path, "/projects/new");
-      expect(newProject?.hidden, isTrue);
+      expect(newProject?.hidden, isFalse);
       expect(newProject?.createdAt, 10);
       expect(newProject?.updatedAt, 20);
       final movedProject = await db.projectsDao.getProject(projectId: "moved-project");

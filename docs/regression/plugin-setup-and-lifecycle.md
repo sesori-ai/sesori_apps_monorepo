@@ -16,8 +16,8 @@ Antigravity moved to `1.3.0` and OpenCode to `2.0.24` the same day.
 Pi was refreshed on **2026-10-06** to `1.0.4`, and its approved PATH minimum rose to
 `0.99.0`. Cursor's PATH minimum rose to `2026.09.23` on 2026-10-06 with native sub-agent
 child sessions. Older PATH installs of either get the existing update action.
-Hermes was already on its latest release. OMP stays on `18.3.0`; the rows below record why.
-DeepSeek moved to adapter `0.2.0` on 2026-10-07.
+Hermes was already on its latest release.
+DeepSeek moved to adapter `0.2.0` and OMP to `18.8.0` on 2026-10-07.
 Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 6,
 Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. GitHub digests and available
 checksum lists agree; Cursor/Antigravity hashes are locally computed, not publisher
@@ -35,7 +35,7 @@ Pi's and Cursor's; Antigravity retains its exact-pair policy rather than an inde
 | Claude Code | `2.1.291` | `2.1.221` | Current-target native stream-json/permissions/replay/interrupt and real authentication/provider behavior remain unverified. |
 | Hermes Agent | `0.21.5` (`v2026.9.24`) | `0.20.0` | Current-target real CLI ACP initialize/list, configured new/load/replay and persisted deletion remain unverified. |
 | Pi | `1.0.4` | `0.99.0` | Six archive hashes match the published `SHA256SUMS` and GitHub digests. A 2026-10-06 sandboxed macOS arm64 production install (digest sentinel), `--version`, inspect-setup, RPC command listing and the production catalog probe passed with no credentials and network denied after download; `/llama` is hidden. An authenticated Pi 1.0.4 session completed during the startup-dialog work (see `HARNESS_CAPABILITIES.md`). Settlement/retry/compaction, queue and fresh-process reuse on the current target remain unverified. |
-| Oh My Pi | `18.3.0` | `17.2.13` | Eight verified direct-binary mappings. `18.6.3` was rejected on 2026-10-06: its `session/load` and `session/resume` fail with "Could not restore model" for a session whose model was removed, which breaks resume-then-delete cleanup and history; `18.3.0` does not. Re-probing the next release for that failure is pending. Current-target native install/version/ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
+| Oh My Pi | `18.8.0` | `17.2.13` | Eight direct-binary hashes match `SHA256SUMS.txt` and the GitHub digests; the macOS arm64 binary reports `omp/18.8.0`. **Known limitation (accepted):** from `18.6.3`, `session/load` and `session/resume` fail closed with "Could not restore model `<provider/id>`" when the session's saved model is no longer usable (renamed id, removed credentials or local model). Such a session cannot be continued: a prompt fails with an inline error naming the model and stating that it is no longer available, without dispatching the prompt. Opening its history while the bridge store is stale shows the generic load-failure state, and resume-then-delete cleanup cannot remove it, so the bridge logs and retries that cleanup at startup. Current-target native ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
 | DeepSeek | `0.2.0` | `0.1.5` | Owned adapter release v0.2.0, embedding DeepSeek Harness `0.2.0-rc.2` (upstream `next`). Six hashes computed from downloads and matched against `checksums.txt`; the macOS arm64 asset reports `sesori-deepseek-acp/0.2.0 deepseek-harness/0.2.0-rc.2 acp/1` and `check` returns ok. The producer's packaged fake-provider smoke passed on all six platforms; no authenticated turn. |
 | Grok Build | `1.0.46` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
 

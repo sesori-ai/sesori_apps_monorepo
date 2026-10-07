@@ -85,8 +85,12 @@ residue is cosmetic and is not migrated.
 
 The client groups a transcript into turns from its messages alone, so a
 follow-up sent while a turn runs stays inside that turn only where the harness
-delivers it into the running turn. See
-`docs/regression/transcript-turn-navigation.md`.
+delivers it into the running turn. The bridge's prompt index
+(`POST /session/prompts`) kinds every stored prompt with the same shared rule
+(`splitPromptTurns` in `sesori_shared`) over normalized history, so every
+harness gets the index. The client applies the same rule to the range it has
+loaded, so a prompt at the start of a partial range can lack the earlier
+context the full-history index sees. See `docs/regression/transcript-turn-navigation.md`.
 
 | Harness | Follow-up sent while a turn runs | Stays in the running turn |
 |---|---|---|
@@ -347,6 +351,14 @@ They do not claim that a harness's native CLI could never implement an equivalen
 | Enabled preference when runtime is unknown | 🚫 Not supported: unknown does not prove disabled; clients omit the switch. |
 | Overall installation percentage or active-session count | 🚫 Not supported: only optional download percentage and idle/busy/unknown work state are reported. |
 | Replay a failed installation observed by this client within the connection | ✅ Implemented for every harness advertising installation; memory only, not cross-device history. |
+
+## Reopening a session whose model is gone
+
+Only OMP is assessed here. Other harnesses are not assessed.
+
+| Harness | Status |
+|---|---|
+| OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.8.0` source, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale shows the generic load-failure state, and its persisted cleanup is retried at bridge startup. |
 
 ## External Codex session activity
 

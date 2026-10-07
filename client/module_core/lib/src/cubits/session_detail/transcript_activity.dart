@@ -28,8 +28,8 @@ final class const TranscriptActivitySubAgents({
   required final int? sinceMs,
 }) extends TranscriptActivity;
 
-/// No live row: the session is idle, or streaming text, a live step or the
-/// retry row already shows progress.
+/// No live row: the session is idle, or streaming text, a live step, a running
+/// compaction or the retry row already shows progress.
 final class const TranscriptActivityIdle() extends TranscriptActivity;
 
 /// Decides the transcript's live row. Pure and stateless like
@@ -40,7 +40,8 @@ class const TranscriptActivityBuilder() {
     required Transcript transcript,
     required TranscriptTurns turns,
 
-    /// Supplies the time of the message holding each sub-agent step.
+    /// Supplies the time of the message holding each sub-agent step, and any
+    /// running compaction.
     required List<MessageWithParts> messages,
 
     /// Whether the session works, with no question or permission waiting.
@@ -56,13 +57,15 @@ class const TranscriptActivityBuilder() {
   }) {
     if (!isBusy || retryErrorMessage != null || hasStreamingText) return const TranscriptActivityIdle();
     final running = runningChildren(children: children, childStatuses: childStatuses);
-    if (running.isNotEmpty && !mainAgentRunning && !_hasOwnRunningStep(transcript: transcript)) {
+    // A running compaction's own row is live, and it is the main agent's work.
+    final compacting = _isCompacting(messages: messages);
+    if (running.isNotEmpty && !mainAgentRunning && !compacting && !_hasOwnRunningStep(transcript: transcript)) {
       return TranscriptActivitySubAgents(
         count: running.length,
         sinceMs: _earliestStart(running: running, transcript: transcript, messages: messages),
       );
     }
-    if (transcript.liveStep != null) return const TranscriptActivityIdle();
+    if (transcript.liveStep != null || compacting) return const TranscriptActivityIdle();
     // While busy, the last turn is the running one.
     return TranscriptActivityWorking(
       sinceMs: switch (turns.turns.lastOrNull) {
@@ -71,6 +74,10 @@ class const TranscriptActivityBuilder() {
       },
     );
   }
+
+  static bool _isCompacting({required List<MessageWithParts> messages}) => messages.any(
+    (message) => message.parts.any((part) => part is MessagePartCompaction && part.state is CompactionStateRunning),
+  );
 
   /// Whether the main agent runs a step of its own; a running sub-agent step
   /// is the sub-agent's work, not the main agent's.

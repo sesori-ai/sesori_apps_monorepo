@@ -4459,6 +4459,30 @@ abstract class AppLocalizations {
   /// **'Compaction summary'**
   String get sessionDetailCompactionSummaryTitle;
 
+  /// Live transcript row while the coding agent summarizes its earlier conversation to free context space. An elapsed time may follow, e.g. 'Compacting context · 1m 42s'.
+  ///
+  /// In en, this message translates to:
+  /// **'Compacting context'**
+  String get sessionDetailCompactingContext;
+
+  /// Quiet transcript note when the coding agent could not summarize its earlier conversation. The harness's error may follow, e.g. 'Compaction failed · The turn ended before compaction finished.'
+  ///
+  /// In en, this message translates to:
+  /// **'Compaction failed'**
+  String get sessionDetailCompactionFailed;
+
+  /// Detail after 'Context compacted' saying how much context space the compaction freed, e.g. 'Context compacted · freed 142k tokens'. Starts lowercase because it follows a separator.
+  ///
+  /// In en, this message translates to:
+  /// **'freed {tokens} tokens'**
+  String sessionDetailCompactionFreedTokens(String tokens);
+
+  /// Detail after 'Context compacted' when the coding agent compacted on its own rather than on the user's request, e.g. 'Context compacted · auto'. Lowercase because it follows a separator.
+  ///
+  /// In en, this message translates to:
+  /// **'auto'**
+  String get sessionDetailCompactionAuto;
+
   /// No description provided for @sessionDetailCopy.
   ///
   /// In en, this message translates to:
