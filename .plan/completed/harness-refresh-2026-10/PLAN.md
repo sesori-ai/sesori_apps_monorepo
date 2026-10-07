@@ -3,7 +3,21 @@
 ## Status and constraints
 
 - **Plan slug:** `harness-refresh-2026-10`.
-- **Status:** planned. Step 1 publishes this plan.
+- **Status:** completed 2026-10-07 and retired by Step 13. Every planned step is
+  merged, dropped, or closed as "no change" (see [TRACKER](TRACKER.md)). Each PR's
+  CI ran the owning packages' tests and `dart analyze --fatal-infos`; native checks
+  ran on the macOS arm64 host only.
+- **Accepted gaps (owner, 2026-10-07, review round 5 Q2):** the remaining checks
+  that need credentials or other machines are accepted as recorded gaps, not
+  executed:
+  - Cursor sub-agents on an authenticated account: tile renders and opens the child
+    session (L3), live and reloaded; root stop and its 10 s cascade; and the three
+    open wire questions in the TRACKER follow-ups.
+  - Authenticated turns on the new targets: Claude 2.1.291, Copilot 1.0.92,
+    Grok 1.0.46, Codex 0.160.1 (both transports), OpenCode 2.0.24 provider list,
+    Pi 1.0.4 settlement/retry/queue, Antigravity 1.3.0 login, DeepSeek adapter
+    0.2.0.
+  - Every platform other than macOS arm64, covered by digest agreement only.
 - **Planning baseline:** `main` at `6be008b529` (2026-10-06).
 - **Procedure:** `.agents/skills/update-backend-runtimes/SKILL.md`. Read-only release
   audits for all eleven registered harnesses ran on 2026-10-06.
@@ -565,9 +579,7 @@ the consumer pin is Step 11's PR. The original handoff follows for reference.
 2. Only then pin the consumer: `deepseek_runtime_manifest.dart` target and six
    digests, plus tests.
 
-This needs a session with that repository checked out. Record the blocker in
-`TRACKER.md` and keep Step 11 open; it does not hold Steps 2–12. Step 13
-retirement waits for Step 11 or the owner's recorded exclusion of DeepSeek.
+Done: adapter v0.2.0 shipped and the consumer pin merged (#1883).
 
 ## Verification
 
