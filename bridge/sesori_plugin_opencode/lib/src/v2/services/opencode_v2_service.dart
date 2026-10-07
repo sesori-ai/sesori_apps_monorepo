@@ -405,6 +405,15 @@ class OpenCodeV2Service({
       );
     }
     if (event is V2SessionCompactionDelta) {
+      // After a reconnect mid-compaction no start was seen, so the first delta loads the running row.
+      if (_compactions.running(sessionId: event.sessionID) == null && directory != null) {
+        final message = await _repository.getLatestMessage(
+          sessionId: event.sessionID,
+          filter: V2MessageFilter.compaction,
+          directory: directory,
+        );
+        if (message != null) _compactions.observe(message: message);
+      }
       return _mapper.mapCompactionDelta(
         event: event,
         running: _compactions.running(sessionId: event.sessionID),

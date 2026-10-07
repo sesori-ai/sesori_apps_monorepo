@@ -544,10 +544,12 @@ Design:
   `reset()`. The SSE consumer awaits each event, so the `started` snapshot is
   recorded before the first delta is handled.
 - `OpenCodeV2Service` routes the delta through the tracker and the mapper,
-  and `OpenCodeV2Plugin.create` injects the tracker.
-- Accepted: after a reload mid-compaction the strip starts from the next
-  delta, because the stored summary is empty. A delta whose `started`
-  snapshot failed to load is dropped, and the row still settles at `ended`.
+  and `OpenCodeV2Plugin.create` injects the tracker. A delta with no recorded
+  running part (after a bridge reconnect mid-compaction) first loads the
+  running snapshot the same way the start does.
+- Accepted: after a reload or reconnect mid-compaction the strip starts from
+  the next delta, because the stored summary is empty. A delta whose running
+  snapshot cannot load is dropped, and the row still settles at `ended`.
 
 **OpenCode v1 (step 6b).** Today `SummaryMessageTracker` (owned by
 `OpenCodePlugin`) remembers up to 16 summary message ids, and
@@ -977,10 +979,11 @@ Verify:
 - event-mapper tests: only a completed snapshot reports the session
   compacted, and a delta reaches only a known running part;
 - a service test: start, delta, end, then a late delta, with one part id
-  throughout;
+  throughout; and one where the first delta after a reconnect loads the
+  running row;
 - `dart analyze --fatal-infos` and `dart test` for `sesori_plugin_opencode`.
 
-Target ≤ 800 changed lines, about 200 of them this plan detail.
+Target ≤ 800 changed lines, about 300 of them this plan detail.
 
 **Step 6b — OpenCode v1.** Verify:
 

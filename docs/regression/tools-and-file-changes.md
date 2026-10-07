@@ -68,7 +68,7 @@ sub-agent parts, plus the signal that a tool changed files.
 - A finished context compaction renders as one quiet "Context compacted" row in
   the step style; like visible text it ends a group. While it runs, Pi and Codex
   show a running `compact` tool that the finished row replaces in place, and
-  OpenCode v2 shows the live row below from its start. When the
+  OpenCode v2 shows the live row below once its running snapshot loads. When the
   harness exposes the carried-forward summary, tapping the row opens a
   reading-width modal at once. A long summary shows a spinner that the Markdown
   replaces once the modal's entry transition ends (at once under reduced
@@ -97,8 +97,11 @@ sub-agent parts, plus the signal that a tool changed files.
   the transcript as a quiet "Compaction failed" note in secondary text, with
   its error ellipsized on the one line and read whole by screen readers; it
   is inert and has no retry. On OpenCode v2 the words stream from the native
-  compaction deltas; after a reload mid-compaction they resume with the next
-  words, because OpenCode stores no partial summary.
+  compaction deltas once the bridge has loaded the running snapshot, at the
+  start or, after a bridge reconnect mid-compaction, at the next delta. After
+  a reload or reconnect mid-compaction they resume with the next words,
+  because OpenCode stores no partial summary. When that snapshot cannot load,
+  the deltas are dropped and the row appears when the compaction settles.
 - A running tool or sub-agent is a live row: the turning outline sparkle leads
   it and a primary-text band sweeps across its dimmed label, visible in both
   themes. Reduced motion keeps the sparkle and label still while screen readers

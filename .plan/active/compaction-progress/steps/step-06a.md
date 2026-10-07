@@ -24,7 +24,9 @@ This PR also adds the phase-2 detail to the plan, section 5.
   part delta on the running part, or into nothing.
 - The new `OpenCodeV2CompactionTracker` keeps each session's running part.
   `OpenCodeV2Service` records every compaction snapshot it fetches, routes
-  deltas through the tracker and clears it in `reset()`.
+  deltas through the tracker and clears it in `reset()`. A delta with no
+  recorded running part (after a bridge reconnect mid-compaction) first
+  loads the running snapshot, so the strip resumes.
   `OpenCodeV2Plugin.create` injects it.
 - Docs:
   - `HARNESS_CAPABILITIES.md`: the OpenCode v2 compaction row now records the
@@ -39,8 +41,10 @@ This PR also adds the phase-2 detail to the plan, section 5.
 
 - **No freed count on v2.** The completed message's `tokens` is the usage of
   the summary call itself, not the context before and after compaction.
-- **Strip after a reload.** OpenCode stores no partial summary, so after a
-  reload mid-compaction the strip resumes with the next words.
+- **Strip after a reload or reconnect.** OpenCode stores no partial summary,
+  so after a reload or bridge reconnect mid-compaction the strip resumes with
+  the next words. When the running snapshot cannot load, the deltas are
+  dropped and the row appears when the compaction settles.
 - **Older apps (Q5).** While the summary streams, an app at v1.9.0 or older
   buffers the words for a part it never shows. It shows neither "Working…"
   nor a row until the compaction ends and the turn continues. This is
@@ -52,12 +56,13 @@ Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
 
 - **`bridge/`:** `dart analyze --fatal-infos` found no issues.
 - **`bridge/sesori_plugin_opencode`:** `dart analyze --fatal-infos` found no
-  issues, and `dart test test/v2` passed all 135 tests. The tests cover:
+  issues, and `dart test test/v2` passed all 136 tests. The tests cover:
   - every status mapping and the trigger table, with the stable part id;
   - `SessionCompacted` reported only for a completed part;
   - deltas reaching only the running row;
   - a service flow (start, delta, end, then a late delta that goes nowhere)
-    that settles in place as completed with trigger auto.
+    that settles in place as completed with trigger auto;
+  - a first delta after a reconnect loading the running row once.
 - **Formatting:** `dart format` was applied only to the touched hunks.
 - **PR media:** fixture widget renders of the running, completed and failed
   row, plus a GIF of the strip and timer, on `pr-media` under
@@ -73,4 +78,4 @@ Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
 
 ## Size
 
-About 670 changed lines against `origin/main`. That is 301 lines of plan detail, about 80 lines of this file, 127 lines of production code, 140 lines of tests and 15 lines of docs. Nothing is generated.
+About 705 changed lines against `origin/main`: 304 lines of plan detail, about 80 of this file, 136 of production code, 164 of tests and 19 of docs. Nothing is generated.

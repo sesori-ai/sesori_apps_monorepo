@@ -483,6 +483,30 @@ void main() {
     expect(await delta(), isEmpty);
   });
 
+  test("after a reconnect mid-compaction the first delta loads the running row", () async {
+    repository.latest[V2MessageFilter.compaction] = messages.mapMessage(
+      sessionId: "child",
+      agentNames: names,
+      message: SessionMessageInfo.fromJson(const <String, dynamic>{
+        "id": "msg_compaction",
+        "type": "compaction",
+        "status": "running",
+        "reason": "auto",
+        "summary": "",
+        "recent": "",
+        "time": <String, int>{"created": 1},
+      }),
+    )!;
+    await service.coldStart();
+    for (final text in ["Fixture", " summary"]) {
+      final streamed = await service.handleEvent(
+        envelope: frame(type: "session.compaction.delta", data: {"sessionID": "child", "text": text}),
+      );
+      expect((streamed.single as BridgeSseMessagePartDelta).partID, "msg_compaction:0");
+    }
+    expect(repository.calls.where((call) => call.startsWith("latest:compaction")), hasLength(1));
+  });
+
   test("inbox delivery uses its message identity and absent control rows remain absent", () async {
     await service.coldStart();
     repository.calls.clear();
