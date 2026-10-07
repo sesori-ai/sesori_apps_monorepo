@@ -434,66 +434,95 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       child: _ComposerSurfaceStyleOwner(
         initialDraft: cubit.composerDraft,
         stagedCommand: composerData?.stagedCommand,
-        builder: ({required context, required surfaceStyleController}) => Focus(
-          // Reports focus for the session screen that takes the composer over.
-          canRequestFocus: false,
-          skipTraversal: true,
-          onFocusChange: (focused) => context.read<NewSessionCubit>().reportComposerFocus(focused: focused),
-          child: PromptInput(
-            draftIdentity: ComposerDraftRepository.newSessionIdentity(projectId: widget.projectId),
-            restorationKey: restoringSubmission == null ? null : ObjectKey(restoringSubmission),
-            initialDraft: context.read<NewSessionCubit>().composerDraft,
-            initialAttachments: restoredAttachments,
-            onInitialAttachmentsConsumed: () {
-              final submission = restoringSubmission;
-              if (submission != null) {
-                context.read<NewSessionCubit>().acknowledgeRestoredSubmission(submission: submission);
-              }
-            },
-            onAttachmentsChanged: (attachments) =>
-                context.read<NewSessionCubit>().saveComposerAttachments(attachments: attachments),
-            autofocus: false,
-            // The first message is in the transcript once it is sending.
-            hasMessages: isSending,
-            canSend: cubit.canCreateSession || cubit.canSubmitFollowUp,
-            attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
-            isBusy: false,
-            // A message sent while the first one is sending follows it.
-            onSend: ({required draft, required command, required attachments}) {
-              final cubit = context.read<NewSessionCubit>();
-              if (cubit.canSubmitFollowUp) {
-                cubit.queueFollowUp(draft: draft, command: command, attachments: attachments);
-              } else {
-                cubit.createSession(
-                  draft: draft,
-                  command: command,
-                  attachments: attachments,
-                  dedicatedWorktree: _dedicatedWorktree,
-                );
-              }
-            },
-            onVoiceTranscriptionCompleted: ComposerPresentationScope.of(context).voiceSupport.isSupported
-                ? context.read<NewSessionCubit>().reportVoiceTranscriptionCompleted
-                : null,
-            onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(draft: draft),
-            onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
-            onAbort: _dismissScreen,
-            surfaceStyleController: surfaceStyleController,
-            header: _buildErrorBanner(state),
-            composerHeader: _buildComposerHeader(
-              cubit: cubit,
-              state: state,
+        builder: ({required context, required surfaceStyleController}) => _reportingVoice(
+          context: context,
+          child: Focus(
+            // Reports focus for the session screen that takes the composer over.
+            canRequestFocus: false,
+            skipTraversal: true,
+            onFocusChange: (focused) => context.read<NewSessionCubit>().reportComposerFocus(focused: focused),
+            child: PromptInput(
+              draftIdentity: ComposerDraftRepository.newSessionIdentity(projectId: widget.projectId),
+              restorationKey: restoringSubmission == null ? null : ObjectKey(restoringSubmission),
+              initialDraft: context.read<NewSessionCubit>().composerDraft,
+              initialAttachments: restoredAttachments,
+              onInitialAttachmentsConsumed: () {
+                final submission = restoringSubmission;
+                if (submission != null) {
+                  context.read<NewSessionCubit>().acknowledgeRestoredSubmission(submission: submission);
+                }
+              },
+              onAttachmentsChanged: (attachments) =>
+                  context.read<NewSessionCubit>().saveComposerAttachments(attachments: attachments),
+              autofocus: false,
+              // The first message is in the transcript once it is sending.
+              hasMessages: isSending,
+              canSend: cubit.canCreateSession || cubit.canSubmitFollowUp,
+              attachmentsSupported: composerData?.plugin?.supportsPromptAttachments,
+              isBusy: false,
+              // A message sent while the first one is sending follows it.
+              onSend: ({required draft, required command, required attachments}) {
+                final cubit = context.read<NewSessionCubit>();
+                if (cubit.canSubmitFollowUp) {
+                  cubit.queueFollowUp(draft: draft, command: command, attachments: attachments);
+                } else {
+                  cubit.createSession(
+                    draft: draft,
+                    command: command,
+                    attachments: attachments,
+                    dedicatedWorktree: _dedicatedWorktree,
+                  );
+                }
+              },
+              onVoiceTranscriptionCompleted: ComposerPresentationScope.of(context).voiceSupport.isSupported
+                  ? context.read<NewSessionCubit>().reportVoiceTranscriptionCompleted
+                  : null,
+              onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(draft: draft),
+              onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
+              onAbort: _dismissScreen,
               surfaceStyleController: surfaceStyleController,
-              compact: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
+              header: _buildErrorBanner(state),
+              composerHeader: _buildComposerHeader(
+                cubit: cubit,
+                state: state,
+                surfaceStyleController: surfaceStyleController,
+                compact: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
+              ),
+              composerTrailing: null,
+              availableCommands: composerData?.commands ?? const [],
+              stagedCommand: composerData?.stagedCommand,
+              onCommandSelected: context.read<NewSessionCubit>().stageCommand,
+              onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
             ),
-            composerTrailing: null,
-            availableCommands: composerData?.commands ?? const [],
-            stagedCommand: composerData?.stagedCommand,
-            onCommandSelected: context.read<NewSessionCubit>().stageCommand,
-            onCommandCleared: context.read<NewSessionCubit>().clearStagedCommand,
           ),
         ),
       ),
+    );
+  }
+
+  /// Tells the cubit while the composer records or transcribes, so a creation
+  /// landing meanwhile keeps this screen until the words reach the draft the
+  /// session screen takes over.
+  Widget _reportingVoice({required BuildContext context, required Widget child}) {
+    if (!ComposerPresentationScope.of(context).voiceSupport.isSupported) return child;
+    bool runs(VoiceInputState state) => switch (state) {
+      VoiceInputIdle() || VoiceInputRetryPending() => false,
+      VoiceInputStarting() ||
+      VoiceInputRecording() ||
+      VoiceInputTranscribing() ||
+      VoiceInputRetrying() ||
+      VoiceInputRetryCancelling() ||
+      VoiceInputDiscarding() ||
+      // Settles once the composer has put the transcript in its draft.
+      VoiceInputCompleted() ||
+      VoiceInputStartFailed() ||
+      VoiceInputTranscriptionFailed() ||
+      VoiceInputCancelling() => true,
+    };
+    return BlocListener<VoiceInputCubit, VoiceInputState>(
+      listenWhen: (previous, current) => runs(previous) != runs(current),
+      listener: (context, state) => context.read<NewSessionCubit>().setVoiceBusy(busy: runs(state)),
+      child: child,
     );
   }
 
