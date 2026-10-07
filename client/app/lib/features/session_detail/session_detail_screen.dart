@@ -94,6 +94,7 @@ class const _MobileSessionDetailBody({
       imageSaver: getIt.get<ImageSaver>,
       imageClipboard: getIt.get<ImageClipboard>,
       imageSharer: getIt.get<ImageSharer>,
+      sessionRepository: getIt.get<SessionRepository>,
       canShareImages: kIsWeb || defaultTargetPlatform != TargetPlatform.linux,
       openExternalLink: openExternalLink,
       openBridgeSettings: () => context.pushRoute(const AppRoute.settings()),

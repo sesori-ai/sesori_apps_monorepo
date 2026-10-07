@@ -2737,6 +2737,24 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{No matches} =1{1 match} other{{count} matches}}'**
   String transcriptPromptsAllMatches(int count);
 
+  /// Last row of the Prompts screen while the bridge searches the whole text of every prompt and has not answered yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching earlier prompts…'**
+  String get transcriptPromptsSearchingEarlier;
+
+  /// Last row of the Prompts screen when the bridge's search of every prompt failed; the matches already shown stay.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t search earlier prompts'**
+  String get transcriptPromptsSearchEarlierFailed;
+
+  /// Button under the failed search row of the Prompts screen that asks the bridge to search every prompt again.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get transcriptPromptsSearchRetry;
+
   /// Day header of the Prompts screen over prompts whose send time is unknown.
   ///
   /// In en, this message translates to:

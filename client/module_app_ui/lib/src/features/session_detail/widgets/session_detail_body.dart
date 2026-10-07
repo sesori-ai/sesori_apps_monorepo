@@ -493,6 +493,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                           onRelease: _releasePinchOut,
                         ),
                         child: SessionPromptsView(
+                          sessionId: widget.sessionId,
                           prompts: prompts.list,
                           anchorMessageId: prompts.anchorMessageId,
                           maxWidth: pageChrome?.columnWidths.transcript,

@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/repositories/models/session_diff_summary_re
 import "package:sesori_dart_core/src/repositories/models/session_messages_through_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_prompt_search_result.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -713,6 +714,42 @@ void main() {
 
       expect(unsupported, isA<SessionPromptIndexUnsupported>());
       expect(failed, isA<SessionPromptIndexFailure>());
+    });
+  });
+
+  group("searchPrompts", () {
+    Future<SessionPromptSearchResult> searchFor({required ApiResponse<SessionPromptSearchResponse> response}) {
+      final api = MockSessionApi();
+      when(() => api.searchPrompts(sessionId: "s1", query: "deploy")).thenAnswer((_) async => response);
+      return SessionRepository(api: api).searchPrompts(sessionId: "s1", query: "deploy");
+    }
+
+    test("passes the matches through", () async {
+      const matches = [
+        SessionPromptSearchMatch(
+          messageId: "m1",
+          excerpt: SessionPromptExcerpt(before: "", match: "deploy", after: " it"),
+        ),
+      ];
+
+      final result = await searchFor(
+        response: ApiResponse.success(const SessionPromptSearchResponse(matches: matches)),
+      );
+
+      expect(result, isA<SessionPromptSearchAvailable>().having((value) => value.matches, "matches", matches));
+    });
+
+    test("reads only the router's 404 as a bridge that predates the route", () async {
+      final unsupported = await searchFor(
+        response: ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "no handler found for POST /session/prompts/search"),
+        ),
+      );
+      final error = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "session not found");
+      final failed = await searchFor(response: ApiResponse.error(error));
+
+      expect(unsupported, isA<SessionPromptSearchUnsupported>());
+      expect(failed, isA<SessionPromptSearchFailure>().having((value) => value.error, "error", error));
     });
   });
 }

@@ -163,7 +163,17 @@ stored or sent to the bridge.
   list then ends with "{n} matches" over every prompt once the prompt index has
   arrived, and without one with "{n} matches in the prompts loaded so far"
   ("No matches…" when none, in both). Earlier prompts loaded during a search
-  join the filter. The desktop focuses the field
+  join the filter.
+- Once the prompt index has arrived, the bridge also searches every prompt's
+  whole text about 250 ms after typing pauses (the latest search wins), and
+  the listed rows of the prompts it finds unfold into the search in the list's
+  order, with the reader's row held as above. A bridge answering within about
+  150 ms shows no extra word; a slower one shows "Searching earlier prompts…"
+  in place of the count until it answers, and the count then counts both. A
+  failed bridge search keeps the loaded matches, ends the list with "Couldn't
+  search earlier prompts" and a Retry button that asks again; the list's end
+  keeps Retry's room for the whole search, so it never jumps as Retry comes and
+  goes. An index arriving during a search starts the bridge's search. The desktop focuses the field
   on opening; the phone waits for a tap. Escape closes the screen, also while
   typing and after a click outside the field, and the search is not kept.
 - A tap on a row closes the screen, once the transcript has landed beneath it,
@@ -267,6 +277,11 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
     at a large text size on a narrow phone, and an excerpt never splitting a
     code point (surrogate pair);
   - day headers only for days with a match, and the match count;
+  - the bridge's search: asked only after typing pauses and only with the
+    prompt index, its matches joining in order, "Searching earlier prompts…"
+    only once it is slow, a failure keeping the loaded matches with Retry
+    asking again, a bridge without the route searching the loaded prompts
+    alone, and an index arriving mid-search starting it;
   - Escape closing, also after a click outside the field, and the desktop's
     focused field.
 - "Load earlier prompts": at the top, calling the loader, disabled while
@@ -476,8 +491,11 @@ answer, and on a trackpad while text streams.
   While pinned, the prompt covers the top of the rows beneath it. A glide to
   a prompt far above aims at an estimate that sharpens as rows are built, so
   its speed can bend on the way; it still lands exactly.
-- An unloaded prompt is searched by its preview only. A bridge released before
-  the prompt index lists and searches only what the transcript has loaded, and
+- Without the bridge's search, an unloaded prompt is searched by its preview
+  only: a bridge released before the prompt index lists and searches only what
+  the transcript has loaded, and a bridge with the index but without the
+  search route (internal builds only) answers the router's 404, so the screen
+  searches the listed prompts alone until it closes. Before the index,
   "Load earlier prompts" pages back one transcript page at a time. The "Update
   the bridge" notice for an unloaded tap has no link to update instructions. An
   older bridge sends
@@ -527,5 +545,8 @@ answer, and on a trackpad while text streams.
   `client/module_core/lib/src/repositories/session_repository.dart`,
   `client/module_core/lib/src/api/client/relay_http_client.dart`, and their
   tests
+- The bridge's prompt search: `client/module_core/lib/src/cubits/session_prompts/`
+  and `client/module_core/test/cubits/session_prompts/prompt_search_cubit_test.dart`;
+  the route is in `docs/regression/session-history-and-recovery.md`
 - `.plan/active/turn-navigation/PLAN.md` and
   `.plan/active/transcript-history/PLAN.md`

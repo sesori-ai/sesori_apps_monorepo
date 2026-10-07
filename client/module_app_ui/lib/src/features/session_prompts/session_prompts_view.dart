@@ -2,14 +2,17 @@ import "dart:async";
 import "dart:math" as math;
 import "dart:ui" show lerpDouble;
 
+import "package:flutter/foundation.dart" show setEquals;
 import "package:flutter/services.dart" show LogicalKeyboardKey;
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart" show promptExcerpt, promptSearchPattern;
+import "package:sesori_shared/sesori_shared.dart" show SessionPromptExcerpt;
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../widgets/list_search_field.dart";
+import "../session_detail/session_detail_presentation_scope.dart";
 import "widgets/prompt_day_header.dart";
 import "widgets/prompt_spine_row.dart";
 
@@ -33,8 +36,13 @@ const _kFarTapSpinnerDelay = Duration(milliseconds: 150);
 /// them. It opens on [anchorMessageId]'s row, tinted, just below its day's
 /// heading. A tap on a prompt the transcript has not loaded yet loads up to it
 /// while the screen stays, then moves there like any other tap.
+///
+/// Search runs through a [PromptSearchCubit] the screen owns, which asks the
+/// bridge for prompts whose whole text matches through the
+/// [SessionDetailPresentationScope]'s session repository.
 class const SessionPromptsView({
   super.key,
+  required final String sessionId,
   required final TranscriptPromptList prompts,
 
   /// The prompt the reader was on when the screen opened; null or not listed
@@ -62,17 +70,29 @@ class const SessionPromptsView({
   /// Loads the transcript up to the unloaded prompt [messageId] at [seq].
   required final Future<LoadThroughOutcome> Function({required String messageId, required int seq}) onLoadThrough,
   required final VoidCallback onClose,
-}) extends StatefulWidget {
+}) extends StatelessWidget {
   @override
-  State<SessionPromptsView> createState() => _SessionPromptsViewState();
+  Widget build(BuildContext context) => BlocProvider(
+    create: (context) => PromptSearchCubit(
+      sessionRepository: SessionDetailPresentationScope.read(context).sessionRepository(),
+      sessionId: sessionId,
+      prompts: prompts,
+    ),
+    child: _PromptsList(view: this),
+  );
+}
+
+class const _PromptsList({required final SessionPromptsView view}) extends StatefulWidget {
+  @override
+  State<_PromptsList> createState() => _PromptsListState();
 }
 
 /// A run of prompts sharing one day, or every prompt when none has a time.
 typedef _Group = ({DateTime? day, List<TranscriptPromptEntry> entries});
 
 /// A prompt at one instant of a search change: how much of its row shows,
-/// from 0 to 1, whether the search keeps it, and where the search found it.
-typedef _Row = ({TranscriptPromptEntry entry, double shown, bool kept, Match? match});
+/// from 0 to 1, whether the search keeps it, and the words around its match.
+typedef _Row = ({TranscriptPromptEntry entry, double shown, bool kept, SessionPromptExcerpt? match});
 
 /// A day's prompts at one instant, and how much of its heading shows.
 typedef _ShownGroup = ({DateTime? day, double shown, List<_Row> rows});
@@ -97,7 +117,11 @@ typedef _Extents = ({double row, double excerpt, double header, double loadEarli
 /// the rows were as it began, and the match each row showed then, which the
 /// rows it folds away keep until they are gone, also through a change that
 /// replaces it before it settles.
-typedef _FilterChange = ({Map<String, double> shownFrom, double grownFrom, Map<String, Match> matchesFrom});
+typedef _FilterChange = ({
+  Map<String, double> shownFrom,
+  double grownFrom,
+  Map<String, SessionPromptExcerpt> matchesFrom,
+});
 
 /// The row a search change keeps in view: it moves from where it was on screen
 /// to where the row the reader was on was, so the reader's place never jumps.
@@ -110,11 +134,12 @@ typedef _Place = ({String messageId, double y});
 /// long enough for its row to show a spinner.
 typedef _FarTap = ({String messageId, bool showsSpinner});
 
-class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTickerProviderStateMixin {
+class _PromptsListState() extends State<_PromptsList> with SingleTickerProviderStateMixin {
   ScrollController? _scrollController;
 
-  /// What the search field holds.
-  String _query = "";
+  /// The search the rows show, which the cubit's latest state replaces.
+  PromptSearchState _search = const PromptSearchIdle(query: "");
+  late final StreamSubscription<PromptSearchState> _searches;
   _FilterChange? _change;
   _Hold? _hold;
 
@@ -142,7 +167,16 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
   String? _farTapError;
 
   @override
+  void initState() {
+    super.initState();
+    final cubit = context.read<PromptSearchCubit>();
+    // Each event shows the cubit's latest state, so a queued older event never brings back a search already replaced.
+    _searches = cubit.stream.listen((_) => _showSearch(cubit.state));
+  }
+
+  @override
   void dispose() {
+    unawaited(_searches.cancel());
     _farTapSpinner?.cancel();
     _filter.dispose();
     _scrollController?.dispose();
@@ -158,7 +192,7 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
           _farTap = null;
           _farTapError = null;
         });
-        widget.onPromptTap(messageId: entry.messageId);
+        _view.onPromptTap(messageId: entry.messageId);
       case TranscriptPromptUnloaded(:final seq):
         // Another tap on the prompt already loading waits for that load.
         if (_farTap?.messageId != entry.messageId) unawaited(_loadThrough(messageId: entry.messageId, seq: seq));
@@ -179,7 +213,7 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
       _kFarTapSpinnerDelay,
       () => setState(() => _farTap = (messageId: messageId, showsSpinner: true)),
     );
-    final outcome = await widget.onLoadThrough(messageId: messageId, seq: seq);
+    final outcome = await _view.onLoadThrough(messageId: messageId, seq: seq);
     if (!mounted || tap != _taps) return;
     _farTapSpinner?.cancel();
     final loc = context.loc;
@@ -194,10 +228,10 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
         LoadThroughSuperseded() => loc.transcriptPromptsRefreshed,
       };
     });
-    if (outcome is LoadThroughLoaded) widget.onPromptTap(messageId: messageId);
+    if (outcome is LoadThroughLoaded) _view.onPromptTap(messageId: messageId);
   }
 
-  RegExp? get _search => promptSearchPattern(query: _query);
+  SessionPromptsView get _view => widget.view;
 
   static List<_Group> _groupsOf({required TranscriptPromptList list}) {
     if (!list.hasTimes) return [(day: null, entries: list.entries)];
@@ -213,18 +247,17 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
   }
 
   String? _highlightedIn({required TranscriptPromptList list}) =>
-      list.entries.any((entry) => entry.messageId == widget.anchorMessageId) ? widget.anchorMessageId : null;
+      list.entries.any((entry) => entry.messageId == _view.anchorMessageId) ? _view.anchorMessageId : null;
 
   /// [list] as the current search change stands. Day groups stay the runs the
   /// whole list has, so filtering never merges two of them.
   _Frame _frameOf({required TranscriptPromptList list}) {
-    final search = _search;
+    final matches = _matchesOf(search: _search);
     final change = _change;
     final progress = _kFilterCurve.transform(_filter.value);
     _Row rowOf(TranscriptPromptEntry entry) {
-      final text = entry.searchText;
-      final match = text == null ? null : search?.firstMatch(text);
-      final kept = search == null || match != null;
+      final match = matches?[entry.messageId];
+      final kept = matches == null || match != null;
       final to = kept ? 1.0 : 0.0;
       final shown = lerpDouble(change?.shownFrom[entry.messageId] ?? to, to, progress) ?? to;
       return (entry: entry, shown: shown, kept: kept, match: match ?? change?.matchesFrom[entry.messageId]);
@@ -235,7 +268,7 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
       final rows = group.entries.map(rowOf).toList();
       groups.add((day: group.day, shown: rows.map((row) => row.shown).fold(0.0, math.max), rows: rows));
     }
-    final grownTo = search == null ? 0.0 : 1.0;
+    final grownTo = matches == null ? 0.0 : 1.0;
     final grown = lerpDouble(change?.grownFrom ?? grownTo, grownTo, progress) ?? grownTo;
     return (groups: groups, grown: grown, grouped: list.hasTimes);
   }
@@ -289,12 +322,34 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
     return layout.rows.entries.where((row) => reachesBelow(row.value)).firstOrNull?.key;
   }
 
-  void _onSearch(String query) {
-    final previous = _search;
-    final before = _frameOf(list: widget.prompts);
-    _query = query;
-    final search = _search;
-    if (search?.pattern == previous?.pattern) return;
+  /// Lays a switch out at the incoming child's size, so a taller outgoing one
+  /// fades out clipped rather than overflowing the measured end of the list.
+  static Widget _sizedByIncoming({required Widget? current, required List<Widget> previous}) => Stack(
+    alignment: Alignment.center,
+    children: [
+      for (final child in previous) Positioned(top: 0, left: 0, right: 0, child: child),
+      ?current,
+    ],
+  );
+
+  /// The matching prompts, or null while the field holds no search.
+  static Map<String, SessionPromptExcerpt>? _matchesOf({required PromptSearchState search}) => switch (search) {
+    PromptSearchIdle() => null,
+    PromptSearchActive(:final matches) => matches,
+  };
+
+  /// Takes the cubit's latest search. A change in which prompts match folds
+  /// rows away and brings others in, with the reader's row held in place, as
+  /// the bridge's matches joining do.
+  void _showSearch(PromptSearchState next) {
+    final previous = _matchesOf(search: _search);
+    final matches = _matchesOf(search: next);
+    final before = _frameOf(list: _view.prompts);
+    _search = next;
+    if ((previous == null) == (matches == null) && setEquals(previous?.keys.toSet(), matches?.keys.toSet())) {
+      setState(() {});
+      return;
+    }
     setState(() {
       _change = (
         shownFrom: {
@@ -325,11 +380,11 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
     final controller = _scrollController;
     if (extents == null || controller == null || !controller.hasClients) return null;
     final position = controller.position;
-    final layout = _layoutOf(frame: before, loadsEarlier: widget.onLoadEarlier != null, extents: extents);
+    final layout = _layoutOf(frame: before, loadsEarlier: _view.onLoadEarlier != null, extents: extents);
     final readerId = _readerRow(
       layout: layout,
       position: position,
-      highlightedId: _highlightedIn(list: widget.prompts),
+      highlightedId: _highlightedIn(list: _view.prompts),
     );
     final readerTop = layout.rows[readerId]?.top;
     final onScreen = readerId != null && readerTop != null
@@ -338,7 +393,7 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
     final reader = onScreen ?? _parked;
     if (reader == null) return null;
     final rows = [
-      for (final group in _frameOf(list: widget.prompts).groups) ...group.rows,
+      for (final group in _frameOf(list: _view.prompts).groups) ...group.rows,
     ];
     final readerIndex = rows.indexWhere((row) => row.entry.messageId == reader.messageId);
     final anchor =
@@ -366,8 +421,8 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
     if (extents != null && controller != null && controller.hasClients) {
       final position = controller.position;
       final layout = _layoutOf(
-        frame: _frameOf(list: widget.prompts),
-        loadsEarlier: widget.onLoadEarlier != null,
+        frame: _frameOf(list: _view.prompts),
+        loadsEarlier: _view.onLoadEarlier != null,
         extents: extents,
       );
       final hold = _hold;
@@ -389,29 +444,36 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
   /// Keeps the row the reader is on where it is when the list changes under
   /// it: earlier prompts arriving above it, or "Load earlier prompts" leaving.
   @override
-  void didUpdateWidget(SessionPromptsView oldWidget) {
+  void didUpdateWidget(_PromptsList oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final old = oldWidget.view;
+    final promptsChanged = !identical(old.prompts, _view.prompts);
+    if (!promptsChanged && (old.onLoadEarlier == null) == (_view.onLoadEarlier == null)) return;
     final extents = _extents;
+    final before = extents == null
+        ? null
+        : _layoutOf(
+            frame: _frameOf(list: old.prompts),
+            loadsEarlier: old.onLoadEarlier != null,
+            extents: extents,
+          );
+    if (promptsChanged) {
+      // The cubit matches the new list at once, so this build lays the rows out with it.
+      final cubit = context.read<PromptSearchCubit>()..showPrompts(prompts: _view.prompts);
+      _search = cubit.state;
+    }
     final controller = _scrollController;
-    final unchanged =
-        identical(oldWidget.prompts, widget.prompts) &&
-        (oldWidget.onLoadEarlier == null) == (widget.onLoadEarlier == null);
-    if (unchanged || extents == null || controller == null || !controller.hasClients) return;
+    if (extents == null || before == null || controller == null || !controller.hasClients) return;
     final position = controller.position;
-    final before = _layoutOf(
-      frame: _frameOf(list: oldWidget.prompts),
-      loadsEarlier: oldWidget.onLoadEarlier != null,
-      extents: extents,
-    );
     final after = _layoutOf(
-      frame: _frameOf(list: widget.prompts),
-      loadsEarlier: widget.onLoadEarlier != null,
+      frame: _frameOf(list: _view.prompts),
+      loadsEarlier: _view.onLoadEarlier != null,
       extents: extents,
     );
     final readerId = _readerRow(
       layout: before,
       position: position,
-      highlightedId: _highlightedIn(list: oldWidget.prompts),
+      highlightedId: _highlightedIn(list: old.prompts),
     );
     final beforeTop = before.rows[readerId]?.top;
     final afterTop = after.rows[readerId]?.top;
@@ -441,18 +503,18 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
     final prego = context.prego;
     final loc = context.loc;
     final padding = MediaQuery.paddingOf(context);
-    final list = widget.prompts;
+    final list = _view.prompts;
     final countStyle = prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary);
-    final loadEarlier = widget.onLoadEarlier;
+    final loadEarlier = _view.onLoadEarlier;
 
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.escape): widget.onClose,
+        const SingleActivator(LogicalKeyboardKey.escape): _view.onClose,
       },
       // Holds the keyboard when the field does not, also once a click outside
       // has taken it from the field, so Escape lands here.
       child: FocusScope(
-        autofocus: !widget.autofocusSearch,
+        autofocus: !_view.autofocusSearch,
         child: Material(
           color: Theme.of(context).scaffoldBackgroundColor,
           child: Column(
@@ -464,23 +526,23 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
                 padding: EdgeInsetsDirectional.only(top: padding.top, start: PregoSpacing.lg, end: PregoSpacing.sm),
                 // As wide as the list's column, so the field sits over the rows.
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: widget.maxWidth ?? double.infinity),
+                  constraints: BoxConstraints(maxWidth: _view.maxWidth ?? double.infinity),
                   child: Row(
                     children: [
                       Expanded(
                         child: ListSearchField(
-                          query: _query,
+                          query: _search.query,
                           hintText: loc.transcriptPromptsSearchHint,
-                          autofocus: widget.autofocusSearch,
+                          autofocus: _view.autofocusSearch,
                           padding: EdgeInsets.zero,
-                          onChanged: _onSearch,
+                          onChanged: (query) => context.read<PromptSearchCubit>().search(query: query),
                         ),
                       ),
                       IconButton(
                         key: const Key("session-prompts-close"),
                         tooltip: loc.transcriptPromptsClose,
                         icon: const Icon(TablerRegular.x, size: PregoIconSize.md),
-                        onPressed: widget.onClose,
+                        onPressed: _view.onClose,
                       ),
                     ],
                   ),
@@ -532,19 +594,32 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
     final loc = context.loc;
     final padding = MediaQuery.paddingOf(context);
     final textScaler = MediaQuery.textScalerOf(context);
-    final list = widget.prompts;
+    final list = _view.prompts;
     final frame = _frameOf(list: list);
     final highlightedId = _highlightedIn(list: list);
-    final loadEarlier = widget.onLoadEarlier;
-    final search = _search;
+    final loadEarlier = _view.onLoadEarlier;
     final matchCount = frame.groups.fold(0, (count, group) => count + group.rows.where((row) => row.kept).length);
-    final count = search == null
-        ? list.isIndexed
-              ? loc.transcriptPromptsCount(list.promptCount)
-              : loc.transcriptPromptsLoaded(list.promptCount)
-        : list.isIndexed
-        ? loc.transcriptPromptsAllMatches(matchCount)
-        : loc.transcriptPromptsMatches(matchCount);
+    final count = switch (_search) {
+      PromptSearchIdle() =>
+        list.isIndexed ? loc.transcriptPromptsCount(list.promptCount) : loc.transcriptPromptsLoaded(list.promptCount),
+      PromptSearchActive(:final earlier) => switch (earlier) {
+        EarlierPromptSearch.listedOnly =>
+          list.isIndexed ? loc.transcriptPromptsAllMatches(matchCount) : loc.transcriptPromptsMatches(matchCount),
+        EarlierPromptSearch.pending || EarlierPromptSearch.done => loc.transcriptPromptsAllMatches(matchCount),
+        EarlierPromptSearch.slow => loc.transcriptPromptsSearchingEarlier,
+        EarlierPromptSearch.failed => loc.transcriptPromptsSearchEarlierFailed,
+      },
+    };
+    final searchFailed = switch (_search) {
+      PromptSearchIdle() => false,
+      PromptSearchActive(:final earlier) => earlier == EarlierPromptSearch.failed,
+    };
+    // Room for Retry stays for the whole search of earlier prompts, so the
+    // list's end never jumps as Retry comes and goes.
+    final reservesRetry = switch (_search) {
+      PromptSearchIdle() || PromptSearchActive(earlier: EarlierPromptSearch.listedOnly) => false,
+      PromptSearchActive() => true,
+    };
     final loadEarlierLabelStyle = Theme.of(context).textTheme.labelLarge;
     // Measured, as large text or a narrow screen can wrap the labels. Bold Text
     // and the platform's spacing overrides apply, as [Text] applies them.
@@ -565,20 +640,24 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
       return height;
     }
 
-    final loadEarlierLabelHeight = heightOf(
-      text: loc.transcriptPromptsLoadEarlier,
-      style: loadEarlierLabelStyle,
-      maxWidth: math.max(0.0, constraints.maxWidth - _kLoadEarlierPadding.horizontal),
+    double buttonExtent({required String label}) => math.max(
+      kMinInteractiveDimension,
+      heightOf(
+            text: label,
+            style: loadEarlierLabelStyle,
+            maxWidth: math.max(0.0, constraints.maxWidth - _kLoadEarlierPadding.horizontal),
+          ) +
+          _kLoadEarlierPadding.vertical,
     );
+    final retryExtent = buttonExtent(label: loc.transcriptPromptsSearchRetry);
     final extents = _extents = (
       row: promptRowExtent(textScaler: textScaler),
       excerpt: promptExcerptExtent(textScaler: textScaler),
       header: promptDayHeaderExtent(textScaler: textScaler),
-      loadEarlier:
-          math.max(kMinInteractiveDimension, loadEarlierLabelHeight + _kLoadEarlierPadding.vertical) +
-          PregoSpacing.md * 2,
+      loadEarlier: buttonExtent(label: loc.transcriptPromptsLoadEarlier) + PregoSpacing.md * 2,
       trailing:
           heightOf(text: count, style: countStyle, maxWidth: constraints.maxWidth) +
+          (reservesRetry ? retryExtent : 0) +
           PregoSpacing.xl * 2 +
           padding.bottom,
     );
@@ -591,7 +670,7 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
         viewport: constraints.maxHeight,
       ),
     );
-    final maxWidth = widget.maxWidth;
+    final maxWidth = _view.maxWidth;
     final inset = maxWidth == null ? 0.0 : math.max(0.0, (constraints.maxWidth - maxWidth) / 2);
 
     SliverVariedExtentList rows({required List<_Row> rows}) => SliverVariedExtentList.builder(
@@ -600,13 +679,11 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
           index < rows.length ? _rowExtent(row: rows[index], frame: frame, extents: extents) : null,
       itemBuilder: (context, index) {
         final row = rows[index];
-        final text = row.entry.searchText;
-        final match = row.match;
         final spineRow = PromptSpineRow(
           entry: row.entry,
           showsTime: frame.grouped,
           highlighted: row.entry.messageId == highlightedId,
-          excerpt: text == null || match == null ? null : promptExcerpt(text: text, match: match),
+          excerpt: row.match,
           grown: frame.grown,
           loading: _farTap == (messageId: row.entry.messageId, showsSpinner: true),
           onTap: () => _tapPrompt(entry: row.entry),
@@ -633,7 +710,7 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
                     textStyle: WidgetStatePropertyAll(loadEarlierLabelStyle),
                     padding: const WidgetStatePropertyAll(_kLoadEarlierPadding),
                   ),
-                  onPressed: widget.isLoadEarlierBusy ? null : loadEarlier,
+                  onPressed: _view.isLoadEarlierBusy ? null : loadEarlier,
                   child: Text(loc.transcriptPromptsLoadEarlier, textAlign: TextAlign.center),
                 ),
               ),
@@ -670,7 +747,36 @@ class _SessionPromptsViewState() extends State<SessionPromptsView> with SingleTi
             child: Padding(
               padding: EdgeInsetsDirectional.only(bottom: padding.bottom),
               child: Center(
-                child: Text(count, textAlign: TextAlign.center, style: countStyle),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Fades between counts, so the bridge's answer reads as one.
+                    AnimatedSwitcher(
+                      duration: _kFilterDuration,
+                      layoutBuilder: (current, previous) => _sizedByIncoming(current: current, previous: previous),
+                      child: Text(count, key: ValueKey(count), textAlign: TextAlign.center, style: countStyle),
+                    ),
+                    if (reservesRetry)
+                      SizedBox(
+                        height: retryExtent,
+                        child: AnimatedSwitcher(
+                          duration: _kFilterDuration,
+                          layoutBuilder: (current, previous) => _sizedByIncoming(current: current, previous: previous),
+                          child: searchFailed
+                              ? TextButton(
+                                  key: const Key("session-prompts-search-retry"),
+                                  style: ButtonStyle(
+                                    textStyle: WidgetStatePropertyAll(loadEarlierLabelStyle),
+                                    padding: const WidgetStatePropertyAll(_kLoadEarlierPadding),
+                                  ),
+                                  onPressed: () => context.read<PromptSearchCubit>().retry(),
+                                  child: Text(loc.transcriptPromptsSearchRetry, textAlign: TextAlign.center),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),

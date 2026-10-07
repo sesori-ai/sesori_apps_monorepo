@@ -94,6 +94,7 @@ class const DesktopSessionDetailScreen({
             imageSaver: getIt.get<ImageSaver>,
             imageClipboard: getIt.get<ImageClipboard>,
             imageSharer: getIt.get<ImageSharer>,
+            sessionRepository: getIt.get<SessionRepository>,
             canShareImages: defaultTargetPlatform != TargetPlatform.linux,
           ),
         ),
@@ -128,6 +129,7 @@ class const DesktopSessionDetailView({
   required final SessionDetailCapabilityProvider<ImageSaver> imageSaver,
   required final SessionDetailCapabilityProvider<ImageClipboard> imageClipboard,
   required final SessionDetailCapabilityProvider<ImageSharer> imageSharer,
+  required final SessionDetailCapabilityProvider<SessionRepository> sessionRepository,
   required final bool canShareImages,
 }) extends StatelessWidget {
   @override
@@ -137,6 +139,7 @@ class const DesktopSessionDetailView({
       imageSaver: imageSaver,
       imageClipboard: imageClipboard,
       imageSharer: imageSharer,
+      sessionRepository: sessionRepository,
       canShareImages: canShareImages,
       openExternalLink: openDesktopExternalLink,
       openSession: onOpenSession,
