@@ -35,7 +35,7 @@ void main() {
     const mapper = AssistantMessageMapper();
 
     test("maps a non-errored assistant message to PluginMessage.assistant", () {
-      final result = mapper.map(_assistantMessage(error: null));
+      final result = mapper.map(_assistantMessage(error: null), keepsCompactionParts: false);
 
       expect(result, isA<PluginMessageAssistant>());
       final assistant = result as PluginMessageAssistant;
@@ -57,6 +57,7 @@ void main() {
             "data": <String, dynamic>{"message": "invalid api key"},
           },
         ),
+        keepsCompactionParts: false,
       );
 
       expect(result, isA<PluginMessageError>());
@@ -72,7 +73,7 @@ void main() {
     });
 
     test("falls back to placeholders when the error shape is missing fields", () {
-      final result = mapper.map(_assistantMessage(error: <String, dynamic>{}));
+      final result = mapper.map(_assistantMessage(error: <String, dynamic>{}), keepsCompactionParts: false);
 
       expect(result, isA<PluginMessageError>());
       final error = result as PluginMessageError;
@@ -83,12 +84,18 @@ void main() {
     test("maps a non-map (string) error payload to PluginMessage.error via toString", () {
       // OpenCode types `error` as `Object?`, so a bare string is possible. A
       // present error must never fall through as a plain assistant message.
-      final result = mapper.map(_assistantMessage(error: "Internal Server Error"));
+      final result = mapper.map(_assistantMessage(error: "Internal Server Error"), keepsCompactionParts: false);
 
       expect(result, isA<PluginMessageError>());
       final error = result as PluginMessageError;
       expect(error.errorName, equals("UnknownError"));
       expect(error.errorMessage, equals("Internal Server Error"));
+    });
+
+    test("keeps an errored summary with compaction parts an assistant message", () {
+      final result = mapper.map(_assistantMessage(error: "Fixture failure"), keepsCompactionParts: true);
+
+      expect(result, isA<PluginMessageAssistant>());
     });
 
     test("serializes an errored message to the shared MessageError JSON shape", () {
@@ -99,6 +106,7 @@ void main() {
             "data": <String, dynamic>{"message": "kaboom"},
           },
         ),
+        keepsCompactionParts: false,
       );
 
       // The phone re-parses this map via the shared `Message.fromJson`, which
