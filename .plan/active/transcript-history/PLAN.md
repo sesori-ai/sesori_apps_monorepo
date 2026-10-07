@@ -834,7 +834,7 @@ added plus deleted lines against the merge base, including generated code.
 | 2 | W2 repository page projection, tests, docs | ≤ 250 | 🌿 one pure projection at two sites |
 | 3 | W1 shared field and marker, bridge codec and deflate, tests | ≤ 450, including generated Freezed and JSON | 🚧 encrypted transport, compatibility |
 | 4 | W1 app ask and inflate, tests, security and connectivity docs | ≤ 400 | 🚧 encrypted transport, every response path |
-| 5 | Detail phases 2 and 3, then architecture review | ≤ 700; landed at about 710, the review record and user answers being the overage | 🌱 docs only |
+| 5 | Detail phases 2 and 3, then architecture review | ≤ 700; landed at about 730, the review record, user answers and review fixes being the overage | 🌱 docs only |
 | 6 | Move the follow-up rule and the prompt extension into `sesori_shared` | ≤ 600 | ⚙️ cross-package move with parity |
 | 7 | `POST /session/prompts`: wire union, store and archive paths, benchmark | ≤ 900, including generated | 🚧 new wire contract, archived path |
 | 8 | `POST /session/messages/through`, `HistoryWindow`, app load-through | ≤ 600, plus generated | 🚧 paging and wire change |
