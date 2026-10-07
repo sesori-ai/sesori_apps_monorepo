@@ -48,8 +48,8 @@ class const AgentModelButtons({
   /// instead of sharing the strip's width equally (touch shells).
   required final bool compact,
 
-  /// Shows the selections without opening any picker or toggling fast mode,
-  /// for options that are already committed.
+  /// Shows the committed selections exactly as the live pills draw them,
+  /// without opening any picker or toggling fast mode.
   required final bool readOnly,
 
   /// Status chips after the selectors, such as the session's YOLO chip. Keep
@@ -100,7 +100,10 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     // One agent is no choice: the entry appears only when there is another.
     final hasAgentSelection = widget.agents.length > 1 && selectedAgent != null;
     final compact = widget.compact;
-    Widget slot(Widget menu) => _pickerSlot(compact: compact, child: menu);
+    // Locking leaves each pill's geometry untouched, so nothing shifts as the
+    // options turn read-only, and blocks its taps, hover cursor and actions.
+    Widget lock(Widget control) => IgnorePointer(ignoring: widget.readOnly, child: control);
+    Widget slot(Widget menu) => _pickerSlot(compact: compact, child: lock(menu));
     final selectors = [
       if (hasAgentSelection)
         slot(
@@ -110,7 +113,6 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
             agents: widget.agents,
             selectedAgent: selectedAgent,
             onAgentSelected: widget.onAgentSelected,
-            readOnly: widget.readOnly,
           ),
         ),
       slot(
@@ -121,7 +123,6 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
           selected: selected,
           providers: widget.providers,
           onModelSelected: widget.onModelSelected,
-          readOnly: widget.readOnly,
         ),
       ),
       if (widget.availableVariants.isNotEmpty)
@@ -132,16 +133,16 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
             availableVariants: widget.availableVariants,
             selectedVariant: selected?.variant,
             onVariantSelected: widget.onVariantSelected,
-            readOnly: widget.readOnly,
           ),
         ),
       if (widget.fastModeControl != FastModeControl.hidden)
-        _FastModeButton(
-          surfaceStyle: widget.surfaceStyle,
-          control: widget.fastModeControl,
-          decide: widget.decideFastModeToggle,
-          onFastModeChanged: widget.onFastModeChanged,
-          readOnly: widget.readOnly,
+        lock(
+          _FastModeButton(
+            surfaceStyle: widget.surfaceStyle,
+            control: widget.fastModeControl,
+            decide: widget.decideFastModeToggle,
+            onFastModeChanged: widget.onFastModeChanged,
+          ),
         ),
       ...widget.trailing,
     ];
@@ -269,7 +270,6 @@ class const _AgentMenu({
   required final List<AgentInfo> agents,
   required final String selectedAgent,
   required final ValueChanged<String> onAgentSelected,
-  required final bool readOnly,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -284,7 +284,7 @@ class const _AgentMenu({
         leadingIcon: TablerRegular.robot,
         label: selectedAgent,
         surfaceStyle: surfaceStyle,
-        onPressed: readOnly ? null : toggle,
+        onPressed: toggle,
       ),
       entriesBuilder: () => [
         PregoMenuLabel(text: loc.sessionDetailPickerAgent),
@@ -309,7 +309,6 @@ class const _ModelMenu({
   required final AgentModel? selected,
   required final List<ProviderInfo> providers,
   required final void Function({required String providerID, required String modelID}) onModelSelected,
-  required final bool readOnly,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -321,7 +320,7 @@ class const _ModelMenu({
         leadingIcon: TablerRegular.cpu,
         label: _resolveModelName(context, providers: providers, selected: selected),
         surfaceStyle: surfaceStyle,
-        onPressed: readOnly ? null : toggle,
+        onPressed: toggle,
       ),
       contentBuilder: (context, close) => ModelPicker(
         sections: sections,
@@ -343,7 +342,6 @@ class const _VariantMenu({
   required final List<SessionVariant> availableVariants,
   required final String? selectedVariant,
   required final ValueChanged<SessionVariant> onVariantSelected,
-  required final bool readOnly,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -359,7 +357,7 @@ class const _VariantMenu({
         leadingIcon: TablerRegular.gauge,
         label: selectedVariant ?? availableVariants.first.id,
         surfaceStyle: surfaceStyle,
-        onPressed: readOnly ? null : toggle,
+        onPressed: toggle,
       ),
       entriesBuilder: () => [
         PregoMenuLabel(text: loc.sessionDetailPickerVariant),
@@ -384,13 +382,11 @@ class const _FastModeButton({
   required final FastModeControl control,
   required final FastModeToggleDecision? Function() decide,
   required final ValueChanged<bool> onFastModeChanged,
-  required final bool readOnly,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
     final label = context.loc.sessionDetailFastMode;
-    final onTap = readOnly ? null : () => unawaited(_onTap(context));
     final borderRadius = BorderRadius.circular(PregoRadius.full);
     final (icon, color) = switch (control) {
       // The yellowest warning step per theme; dark utility scales run in reverse.
@@ -411,7 +407,7 @@ class const _FastModeButton({
         button: true,
         toggled: control == FastModeControl.on,
         label: label,
-        onTap: onTap,
+        onTap: () => unawaited(_onTap(context)),
         excludeSemantics: true,
         child: SizedBox.square(
           dimension: 36,
@@ -425,7 +421,7 @@ class const _FastModeButton({
                 clipBehavior: Clip.antiAlias,
                 child: InkWell(
                   mouseCursor: WidgetStateMouseCursor.clickable,
-                  onTap: onTap,
+                  onTap: () => unawaited(_onTap(context)),
                   borderRadius: borderRadius,
                   child: Center(
                     child: Icon(icon, size: PregoIconSize.sm, color: color),

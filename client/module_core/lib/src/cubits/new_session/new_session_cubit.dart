@@ -77,12 +77,12 @@ class NewSessionCubit({
   StreamSubscription<List<LaunchFollowUp>>? _followUpsSubscription;
   List<ComposerAttachment> _composerAttachments = const [];
   bool _composerFocused = false;
-  ({int start, int end})? _composerSelection;
+  ({int base, int extent})? _composerSelection;
   bool _composerBusy = false;
 
-  /// A creation that landed while the composer had work in flight, applied
-  /// once that work settles.
-  SessionLaunchSucceeded? _successAwaitingComposer;
+  /// A creation outcome that landed while the composer had work in flight,
+  /// applied once that work settles.
+  SessionLaunchOutcome? _outcomeAwaitingComposer;
   late bool _wasConnected;
   int _loadGeneration = 0;
   int _projectLoadGeneration = 0;
@@ -1087,11 +1087,11 @@ class NewSessionCubit({
     if (current is! NewSessionComposing) return;
     final phase = current.phase;
     if (phase is! NewSessionPhaseSending || phase.launchId != outcome.launchId) return;
-    // Leaving now would drop the recording, the image being picked or pasted,
-    // or the word being composed; they land in what the session screen takes
-    // over once they settle.
-    if (outcome is SessionLaunchSucceeded && _composerBusy) {
-      _successAwaitingComposer = outcome;
+    // Leaving or restoring now would drop the recording, the image being
+    // picked or pasted, or the word being composed; they land in what the
+    // session screen takes over, or in the restored draft, once they settle.
+    if (_composerBusy) {
+      _outcomeAwaitingComposer = outcome;
       return;
     }
     unawaited(_followUpsSubscription?.cancel());
@@ -1200,9 +1200,9 @@ class NewSessionCubit({
   /// A creation that lands meanwhile waits for it to settle.
   void setComposerBusy({required bool busy}) {
     _composerBusy = busy;
-    final held = _successAwaitingComposer;
+    final held = _outcomeAwaitingComposer;
     if (busy || held == null) return;
-    _successAwaitingComposer = null;
+    _outcomeAwaitingComposer = null;
     _onLaunchOutcome(held);
   }
 
@@ -1230,7 +1230,7 @@ class NewSessionCubit({
 
   /// Where the caret or selection sits in the draft, so the session screen
   /// that takes the composer over keeps it there.
-  void reportComposerSelection({required ({int start, int end}) selection}) {
+  void reportComposerSelection({required ({int base, int extent}) selection}) {
     _composerSelection = selection;
   }
 

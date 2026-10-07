@@ -12,7 +12,7 @@ final class const UnsentComposer({
 
   /// Where the caret or selection sat in [draft]'s text; null leaves the caret
   /// at its end.
-  required final ({int start, int end})? selection,
+  required final ({int base, int extent})? selection,
   required final CommandInfo? command,
   required final List<ComposerAttachment> attachments,
 });

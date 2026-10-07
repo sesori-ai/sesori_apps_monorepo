@@ -163,7 +163,7 @@ class const PromptInput({
 
   /// Where the caret or selection starts in [initialDraft]; null puts the
   /// caret at its end.
-  required final ({int start, int end})? initialSelection,
+  required final ({int base, int extent})? initialSelection,
   required final List<ComposerAttachment> initialAttachments,
   required final VoidCallback onInitialAttachmentsConsumed,
 
@@ -173,7 +173,7 @@ class const PromptInput({
 
   /// Told where the caret or selection moves, for an owner that hands the
   /// composer on; null when nobody needs it outside this composer.
-  required final ValueChanged<({int start, int end})>? onSelectionChanged,
+  required final ValueChanged<({int base, int extent})>? onSelectionChanged,
 
   /// Told when work starts or settles whose result lands in this composer
   /// later — a voice recording or transcription, an image pick or paste, or a
@@ -271,8 +271,8 @@ class _PromptInputState() extends State<PromptInput> {
       controller: _controller,
     );
     _applyDraft(draft: widget.initialDraft, notify: false);
-    if (widget.initialSelection case (:final start, :final end)) {
-      _controller.selection = TextSelection(baseOffset: start, extentOffset: end);
+    if (widget.initialSelection case (:final base, :final extent)) {
+      _controller.selection = TextSelection(baseOffset: base, extentOffset: extent);
       _previousEditingValue = _controller.value;
     }
     _restoreInitialAttachments();
@@ -355,7 +355,7 @@ class _PromptInputState() extends State<PromptInput> {
     }
     final selection = currentValue.selection;
     if (selection.isValid && selection != _previousEditingValue.selection) {
-      widget.onSelectionChanged?.call((start: selection.start, end: selection.end));
+      widget.onSelectionChanged?.call((base: selection.baseOffset, extent: selection.extentOffset));
     }
     _previousEditingValue = currentValue;
     final hasText = currentValue.text.trim().isNotEmpty;
@@ -366,8 +366,10 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   /// Tells [PromptInput.onBusyChanged] when the composer starts or settles
-  /// work whose result lands in it later.
+  /// work whose result lands in it later. A pick or paste that settles after
+  /// this composer is gone stays silent, as its owner may be gone too.
   void _reportBusy() {
+    if (!mounted) return;
     final composing = _controller.value.composing;
     final busy = _voiceBusy || _pendingInserts > 0 || (composing.isValid && !composing.isCollapsed);
     if (busy == _reportedBusy) return;

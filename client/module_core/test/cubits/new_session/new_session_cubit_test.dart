@@ -2464,7 +2464,7 @@ void main() {
 
           final pending = send(cubit);
           cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "next idea"));
-          cubit.reportComposerSelection(selection: (start: 0, end: 4));
+          cubit.reportComposerSelection(selection: (base: 0, extent: 4));
           cubit.saveComposerAttachments(attachments: [image]);
           cubit.reportComposerFocus(focused: true);
           response.complete(ApiResponse.success(testSession(id: "s-1")));
@@ -2474,7 +2474,7 @@ void main() {
           final composer = launchRepository.takeHandoff(sessionId: "s-1")?.composer;
           expect(composer?.hadFocus, isTrue);
           expect(composer?.unsent?.draft.text, "next idea");
-          expect(composer?.unsent?.selection, (start: 0, end: 4));
+          expect(composer?.unsent?.selection, (base: 0, extent: 4));
           expect(composer?.unsent?.attachments, [same(image)]);
           expect(cubit.composerDraft.text, isEmpty);
           expect(draftRepository.readForNewSession(projectId: "project-1").text, isEmpty);
@@ -2514,10 +2514,14 @@ void main() {
             attachments: const [],
           );
           cubit.saveComposerDraft(draft: ComposerDraft.typed(text: "half typed"));
-          cubit.saveComposerAttachments(attachments: [image]);
+          // The failure lands while an image pick is pending, and waits for it.
+          cubit.setComposerBusy(busy: true);
           response.complete(ApiResponse.error(ApiError.generic()));
           await pending;
           await Future<void>.delayed(Duration.zero);
+          expect(cubit.state, composingWith<NewSessionPhaseSending>());
+          cubit.saveComposerAttachments(attachments: [image]);
+          cubit.setComposerBusy(busy: false);
 
           final restored =
               ((cubit.state as NewSessionComposing).phase as NewSessionPhaseRestoringSubmission).submission;

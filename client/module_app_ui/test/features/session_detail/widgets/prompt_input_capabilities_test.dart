@@ -27,7 +27,7 @@ class _NoOpImageClipboard() implements ImageClipboard {
 }
 
 class _PendingComposerImagePicker() implements ComposerImagePicker {
-  final pick = Completer<ComposerPickedImage?>();
+  Completer<ComposerPickedImage?> pick = Completer();
 
   @override
   Future<ComposerPickedImage?> pickImage() => pick.future;
@@ -43,7 +43,7 @@ void main() {
     final dispatcher = ComposerAttachmentDispatcher(imagePicker: picker);
     final clipboard = _NoOpImageClipboard();
     final busy = <bool>[];
-    final selections = <({int start, int end})>[];
+    final selections = <({int base, int extent})>[];
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -59,7 +59,7 @@ void main() {
           imageClipboard: () => clipboard,
           child: Scaffold(
             body: PromptInput(
-              initialSelection: (start: 2, end: 5),
+              initialSelection: (base: 5, extent: 2),
               onBusyChanged: busy.add,
               onSelectionChanged: selections.add,
               isBusy: false,
@@ -92,10 +92,11 @@ void main() {
     );
     await tester.pump();
     final field = tester.widget<TextField>(find.byType(TextField));
-    expect(field.controller?.selection, const TextSelection(baseOffset: 2, extentOffset: 5));
+    // A backward selection keeps its active end.
+    expect(field.controller?.selection, const TextSelection(baseOffset: 5, extentOffset: 2));
 
-    field.controller?.selection = const TextSelection.collapsed(offset: 1);
-    expect(selections, [(start: 1, end: 1)]);
+    field.controller?.selection = const TextSelection(baseOffset: 4, extentOffset: 1);
+    expect(selections, [(base: 4, extent: 1)]);
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
@@ -117,6 +118,19 @@ void main() {
       selection: TextSelection.collapsed(offset: 12),
     );
     expect(busy, [true, false, true, false]);
+
+    // A pick that settles after the composer is gone reports nothing.
+    picker.pick = Completer();
+    await tester.tap(find.byIcon(TablerRegular.chevron_right));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip("Attach image"));
+    await tester.pump();
+    expect(busy, [true, false, true, false, true]);
+    await tester.pumpWidget(const SizedBox());
+    picker.pick.complete(null);
+    await tester.pump();
+    expect(busy, [true, false, true, false, true]);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("staged previews scroll, remove the selected image, and send original remaining bytes", (tester) async {

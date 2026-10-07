@@ -140,7 +140,7 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
     required List<ComposerAttachment> initialAttachments,
     required VoidCallback onInitialAttachmentsConsumed,
     required bool autofocus,
-    required ({int start, int end})? initialSelection,
+    required ({int base, int extent})? initialSelection,
     required bool optionsReadOnly,
     required List<AgentInfo> agents,
     required String? selectedAgent,
