@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/api/drive_roots_api.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PlatformOs;
 
 import "fake_process_runner.dart";
@@ -8,4 +9,5 @@ import "fake_process_runner.dart";
 final windowsDriveRootsApi = DriveRootsApi.forPlatform(
   platform: PlatformOs.windows,
   processRunner: NoopProcessRunner(),
+  filesystemApi: const FilesystemApi(),
 );

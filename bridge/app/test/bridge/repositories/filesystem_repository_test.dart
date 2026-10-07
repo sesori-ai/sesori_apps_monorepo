@@ -161,7 +161,11 @@ void main() {
       final repo = FilesystemRepository(
         filesystemApi: _DriveFilesystemApi(probes: {"/Volumes/Work SSD": Future.value(true)}),
         permissionValidator: const FilesystemPermissionValidator(),
-        driveRootsApi: DriveRootsApi.forPlatform(platform: PlatformOs.macos, processRunner: processRunner),
+        driveRootsApi: DriveRootsApi.forPlatform(
+          platform: PlatformOs.macos,
+          processRunner: processRunner,
+          filesystemApi: const FilesystemApi(),
+        ),
       );
 
       expect(await repo.listDriveRoots(), ["/Volumes/Work SSD"]);
@@ -175,6 +179,7 @@ void main() {
         driveRootsApi: DriveRootsApi.forPlatform(
           platform: PlatformOs.macos,
           processRunner: RecordingProcessRunner(exitCode: 1, stderr: "mount: failed"),
+          filesystemApi: const FilesystemApi(),
         ),
       );
 
