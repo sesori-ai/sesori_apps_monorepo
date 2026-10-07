@@ -25,6 +25,10 @@ class SessionLaunchCubit({required final SessionLaunchService _launchService}) e
   Stream<SessionLaunchFailedAfterLeaving> get failuresAfterLeaving =>
       _launchService.outcomes.whereType<SessionLaunchFailedAfterLeaving>();
 
+  /// Fires when signing out dropped every launch, so a failure not yet told,
+  /// or still on screen, goes with them.
+  Stream<void> get discarded => _launchService.discarded;
+
   @override
   Future<void> close() async {
     await _launches.cancel();

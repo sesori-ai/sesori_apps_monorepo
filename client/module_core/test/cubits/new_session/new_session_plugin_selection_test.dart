@@ -152,6 +152,7 @@ void main() {
         feedbackPromptService: FakeFeedbackPromptService(),
         productAnalyticsService: stubbedProductAnalyticsService(),
         selectionTracker: selectionTracker,
+        authSession: FakeAuthSession(initialState: const AuthState.initial()),
       ),
       projectId: "project-1",
       projectName: null,

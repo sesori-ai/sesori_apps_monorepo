@@ -293,6 +293,7 @@ class AdaptiveSessionRouterTestHarness() {
         feedbackPromptService: getIt<FeedbackPromptService>(),
         productAnalyticsService: productAnalyticsService,
         selectionTracker: getIt<NewSessionSelectionTracker>(),
+        authSession: authSession,
       ),
     );
     getIt.registerSingleton<AuthSession>(authSession);

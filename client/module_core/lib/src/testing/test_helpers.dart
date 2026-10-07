@@ -289,10 +289,7 @@ class MockProductAnalyticsService() extends Mock implements ProductAnalyticsServ
 
 ComposerDraftRepository inMemoryComposerDraftRepository() => ComposerDraftRepository(storage: ComposerDraftStorage());
 
-SessionLaunchRepository inMemorySessionLaunchRepository() => SessionLaunchRepository(
-  storage: SessionLaunchStorage(),
-  authSession: FakeAuthSession(initialState: const AuthState.initial()),
-);
+SessionLaunchRepository inMemorySessionLaunchRepository() => SessionLaunchRepository(storage: SessionLaunchStorage());
 
 /// A launch service over [launchRepository] whose own sends go to an unstubbed
 /// mock, for tests that drive launches through the repository.
@@ -303,6 +300,7 @@ SessionLaunchService inMemorySessionLaunchService({required SessionLaunchReposit
       feedbackPromptService: FakeFeedbackPromptService(),
       productAnalyticsService: MockProductAnalyticsService(),
       selectionTracker: NewSessionSelectionTracker(),
+      authSession: FakeAuthSession(initialState: const AuthState.initial()),
     );
 
 /// A launch cubit with no launches, for widget tests that render a session list.

@@ -339,8 +339,10 @@ variant, and worktree mode, and creating the session with its first input.
   same duplicate warning. Failures that land together, such as every creation
   in flight when the bridge drops, share one alert ("Couldn't create 2 new
   sessions in `<projects>`") rather than replacing each other. Signing
-  out drops every launch, so no launching row or failure alert reaches the
-  login screen or the next account. A failure on the still-current route shows no such alert.
+  out drops every launch and takes away a failure alert that is still showing
+  or about to show, so no launching row or failure alert reaches the login
+  screen or the next account. A failure on the still-current route shows no
+  such alert.
 - Attachment-bearing creation yields incrementally while encoding attachment
   base64, inner request JSON, and outer relay-envelope JSON/UTF-8. Maximum-size
   input preserves the exact wire payload without copying attachment buffers to

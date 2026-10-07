@@ -9,9 +9,12 @@ import "package:theme_prego/module_prego.dart";
 
 void main() {
   late SessionLaunchRepository launches;
+  late FakeAuthSession auth;
 
   Future<void> pumpAlerts(WidgetTester tester) async {
     launches = inMemorySessionLaunchRepository();
+    auth = FakeAuthSession(initialState: const AuthState.initial());
+    addTearDown(auth.dispose);
     await tester.pumpWidget(
       MaterialApp.router(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -22,8 +25,16 @@ void main() {
             GoRoute(
               path: "/",
               builder: (_, _) => BlocProvider(
-                create: (_) =>
-                    SessionLaunchCubit(launchService: inMemorySessionLaunchService(launchRepository: launches)),
+                create: (_) => SessionLaunchCubit(
+                  launchService: SessionLaunchService(
+                    sessionRepository: MockSessionRepository(),
+                    launchRepository: launches,
+                    feedbackPromptService: FakeFeedbackPromptService(),
+                    productAnalyticsService: MockProductAnalyticsService(),
+                    selectionTracker: NewSessionSelectionTracker(),
+                    authSession: auth,
+                  ),
+                ),
                 child: const SessionLaunchFailureAlerts(navigatorKey: null, child: Scaffold()),
               ),
             ),
@@ -85,6 +96,20 @@ void main() {
     await showAlerts(tester);
 
     expect(find.text("Couldn't create your new session"), findsOneWidget);
+  });
+
+  testWidgets("signing out takes a shown alert and one still being batched with it", (tester) async {
+    await pumpAlerts(tester);
+    startAndFail(leftComposer: true, launchId: "launch-1", projectName: "Sesori");
+    await showAlerts(tester);
+    expect(find.text("Couldn't create your new session in Sesori"), findsOneWidget);
+
+    startAndFail(leftComposer: true, launchId: "launch-2", projectName: "Relay");
+    auth.emit(const AuthState.unauthenticated());
+    await showAlerts(tester);
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.textContaining("Couldn't create"), findsNothing);
   });
 
   testWidgets("a creation that fails while its composer is open shows no alert", (tester) async {

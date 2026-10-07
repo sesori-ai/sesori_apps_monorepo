@@ -261,13 +261,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i414.SessionInteractionCalculator>(
       () => const _i414.SessionInteractionCalculator(),
     );
-    gh.lazySingleton<_i818.SessionLaunchRepository>(
-      () => _i818.SessionLaunchRepository(
-        storage: gh<_i384.SessionLaunchStorage>(),
-        authSession: gh<_i442.AuthSession>(),
-      ),
-      dispose: (i) => i.dispose(),
-    );
     gh.lazySingleton<_i176.VoiceApi>(
       () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
     );
@@ -403,6 +396,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i649.AnalyticsReleaseCutoffApi>(
       () => _i649.AnalyticsReleaseCutoffApi(
         source: gh<_i345.AnalyticsReleaseCutoffSource>(),
+      ),
+    );
+    gh.lazySingleton<_i818.SessionLaunchRepository>(
+      () => _i818.SessionLaunchRepository(
+        storage: gh<_i384.SessionLaunchStorage>(),
       ),
     );
     gh.lazySingleton<_i205.BridgeRepository>(
@@ -616,6 +614,17 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i8.SessionLaunchService>(
+      () => _i8.SessionLaunchService(
+        sessionRepository: gh<_i7.SessionRepository>(),
+        launchRepository: gh<_i818.SessionLaunchRepository>(),
+        feedbackPromptService: gh<_i905.FeedbackPromptService>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+        selectionTracker: gh<_i913.NewSessionSelectionTracker>(),
+        authSession: gh<_i442.AuthSession>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i337.PluginRepository>(
       () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
     );
@@ -674,15 +683,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i18.SessionViewingService(
         viewRepository: gh<_i143.ViewDeclarationRepository>(),
         lifecycleSource: gh<_i904.LifecycleSource>(),
-      ),
-    );
-    gh.lazySingleton<_i8.SessionLaunchService>(
-      () => _i8.SessionLaunchService(
-        sessionRepository: gh<_i7.SessionRepository>(),
-        launchRepository: gh<_i818.SessionLaunchRepository>(),
-        feedbackPromptService: gh<_i905.FeedbackPromptService>(),
-        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
-        selectionTracker: gh<_i913.NewSessionSelectionTracker>(),
       ),
     );
     gh.lazySingleton<_i531.MessageImageRepository>(

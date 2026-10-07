@@ -35,7 +35,26 @@ class SessionLaunchService({
   required final FeedbackPromptService _feedbackPromptService,
   required final ProductAnalyticsService _productAnalyticsService,
   required final NewSessionSelectionTracker _selectionTracker,
+  required final AuthSession _authSession,
 }) {
+  late final StreamSubscription<AuthState> _authStates;
+  final StreamController<void> _discarded = StreamController<void>.broadcast();
+
+  this {
+    // Launches belong to the account that started them: signing out drops
+    // them, so no launching row or failure alert reaches the login screen or
+    // the next account.
+    _authStates = _authSession.authStateStream.listen((state) {
+      if (state is! AuthUnauthenticated) return;
+      _launchRepository.clearAll();
+      _discarded.add(null);
+    });
+  }
+
+  /// Fires when signing out dropped every launch, so whatever was about to be
+  /// said about them goes too.
+  Stream<void> get discarded => _discarded.stream;
+
   Stream<SessionLaunchOutcome> get outcomes => _launchRepository.outcomes;
 
   ValueStream<List<SessionLaunch>> get launches => _launchRepository.launches;
@@ -252,5 +271,11 @@ class SessionLaunchService({
             logw("Failed to report new-session outcome analytics event", error, stackTrace);
           }),
     );
+  }
+
+  @disposeMethod
+  Future<void> dispose() async {
+    await _authStates.cancel();
+    await _discarded.close();
   }
 }

@@ -24,17 +24,28 @@ class const SessionLaunchFailureAlerts({
 
 class _SessionLaunchFailureAlertsState() extends State<SessionLaunchFailureAlerts> {
   late final StreamSubscription<SessionLaunchFailedAfterLeaving> _failures;
+  late final StreamSubscription<void> _discarded;
   final List<SessionLaunchFailedAfterLeaving> _batch = [];
   Timer? _flush;
 
   @override
   void initState() {
     super.initState();
-    _failures = context.read<SessionLaunchCubit>().failuresAfterLeaving.listen((failure) {
+    final launches = context.read<SessionLaunchCubit>();
+    _failures = launches.failuresAfterLeaving.listen((failure) {
       // Failures that land together, such as every create in flight when the
       // bridge goes away, share one alert instead of replacing each other.
       _batch.add(failure);
       _flush ??= Timer(_batchWindow, _show);
+    });
+    // Signed out: a pending or visible alert names the old account's projects.
+    // The overlay keeps one alert at a time, so this dismisses whichever is
+    // up, and that one belongs to the old account too.
+    _discarded = launches.discarded.listen((_) {
+      _flush?.cancel();
+      _flush = null;
+      _batch.clear();
+      _presenter()?.dismiss();
     });
   }
 
@@ -42,20 +53,25 @@ class _SessionLaunchFailureAlertsState() extends State<SessionLaunchFailureAlert
   void dispose() {
     _flush?.cancel();
     unawaited(_failures.cancel());
+    unawaited(_discarded.cancel());
     super.dispose();
+  }
+
+  PregoPopupAlertPresenter? _presenter() {
+    final navigatorKey = widget.navigatorKey;
+    final overlay = navigatorKey?.currentState?.overlay;
+    return navigatorKey == null
+        ? PregoPopupAlertPresenter.of(context)
+        : overlay == null
+        ? null
+        : PregoPopupAlertPresenter.fromOverlayState(overlay);
   }
 
   void _show() {
     final failures = [..._batch];
     _batch.clear();
     _flush = null;
-    final navigatorKey = widget.navigatorKey;
-    final overlay = navigatorKey?.currentState?.overlay;
-    final presenter = navigatorKey == null
-        ? PregoPopupAlertPresenter.of(context)
-        : overlay == null
-        ? null
-        : PregoPopupAlertPresenter.fromOverlayState(overlay);
+    final presenter = _presenter();
     final loc = context.loc;
     final names = {for (final failure in failures) failure.projectName};
     presenter?.show(

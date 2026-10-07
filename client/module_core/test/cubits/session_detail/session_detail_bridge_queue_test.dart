@@ -2363,26 +2363,22 @@ void main() {
 
     test("opening the created session discharges its launch", () async {
       final storage = SessionLaunchStorage();
-      final repository =
-          SessionLaunchRepository(
-              storage: storage,
-              authSession: FakeAuthSession(initialState: const AuthState.initial()),
-            )
-            ..start(
-              launchId: "launch-1",
-              projectId: "project-1",
-              pluginId: "claude",
-              startedAt: DateTime.utc(2026, 9, 27),
-              projectName: null,
-              submission: NewSessionSubmissionSnapshot.text(
-                draft: ComposerDraft.typed(text: "Hello"),
-                attachments: const [],
-              ),
-            )
-            ..promote(
-              launchId: "launch-1",
-              session: testSession(id: _sessionId),
-            );
+      final repository = SessionLaunchRepository(storage: storage)
+        ..start(
+          launchId: "launch-1",
+          projectId: "project-1",
+          pluginId: "claude",
+          startedAt: DateTime.utc(2026, 9, 27),
+          projectName: null,
+          submission: NewSessionSubmissionSnapshot.text(
+            draft: ComposerDraft.typed(text: "Hello"),
+            attachments: const [],
+          ),
+        )
+        ..promote(
+          launchId: "launch-1",
+          session: testSession(id: _sessionId),
+        );
 
       await createLoadedCubit(sessionLaunchRepository: repository);
 
@@ -2415,10 +2411,7 @@ void main() {
             composer: composer,
           ),
         );
-        return SessionLaunchRepository(
-          storage: storage,
-          authSession: FakeAuthSession(initialState: const AuthState.initial()),
-        );
+        return SessionLaunchRepository(storage: storage);
       }
 
       QueuedSessionSubmission followUp({required String promptId}) => QueuedSessionSubmission.text(

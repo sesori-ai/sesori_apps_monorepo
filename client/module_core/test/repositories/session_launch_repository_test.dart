@@ -18,10 +18,7 @@ void main() {
 
   setUp(() {
     storage = SessionLaunchStorage();
-    repository = SessionLaunchRepository(
-      storage: storage,
-      authSession: FakeAuthSession(initialState: const AuthState.initial()),
-    );
+    repository = SessionLaunchRepository(storage: storage);
     outcomes = [];
     subscription = repository.outcomes.listen(outcomes.add);
   });
@@ -36,33 +33,6 @@ void main() {
     projectName: "Sesori",
     submission: submission,
   );
-
-  test("signing out drops every launch, so a later failure reaches no one", () async {
-    final auth = FakeAuthSession(initialState: const AuthState.initial());
-    addTearDown(auth.dispose);
-    final signedIn = SessionLaunchRepository(storage: SessionLaunchStorage(), authSession: auth);
-    addTearDown(signedIn.dispose);
-    final failures = <SessionLaunchOutcome>[];
-    final failuresSubscription = signedIn.outcomes.listen(failures.add);
-    addTearDown(failuresSubscription.cancel);
-    signedIn.start(
-      launchId: "launch-1",
-      projectId: "project-1",
-      pluginId: "claude",
-      startedAt: startedAt,
-      projectName: "Sesori",
-      submission: submission,
-    );
-    signedIn.releaseHandoff(launchId: "launch-1");
-
-    auth.emit(const AuthState.unauthenticated());
-    await Future<void>.delayed(Duration.zero);
-    expect(signedIn.launches.value, isEmpty, reason: "no launching row outlives the account");
-
-    signedIn.fail(launchId: "launch-1", reason: RemoteFailureReason.serverRejected);
-    await Future<void>.delayed(Duration.zero);
-    expect(failures, isEmpty, reason: "the old project's name never reaches the login screen or the next account");
-  });
 
   test("hands the first message over once, and only for its own created session", () async {
     start();
