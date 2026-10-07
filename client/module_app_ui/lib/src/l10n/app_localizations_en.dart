@@ -486,9 +486,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPullRequestRefreshStateChanged => 'The bridge setting changed while you were editing. Try again.';
 
   @override
-  String get settingsPullRequestRefreshUnavailable => 'Unavailable';
-
-  @override
   String get settingsPullRequestRefreshRetry => 'Retry pull request refresh setting';
 
   @override
@@ -804,7 +801,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessesLoading => 'Loading harnesses';
 
   @override
-  String get harnessesUnsupportedTitle => 'Harnesses aren\'t supported';
+  String get harnessesUnsupportedTitle => 'Your bridge needs an update';
 
   @override
   String get harnessesUnsupportedDescription => 'Update the connected bridge to view and manage its harnesses.';
@@ -1281,6 +1278,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sessionDetailStopNotAcceptedGenericMessage =>
       'Sesori couldn’t safely stop this session. Restart the harness, then try again.';
+
+  @override
+  String get sessionDetailStopNotAcceptedSubAgentMessage =>
+      'Stop the parent session; this harness cannot stop sub-agents individually.';
 
   @override
   String get sessionDetailStopScopeTitle => 'Sub-agents are running';
@@ -2892,4 +2893,43 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sessionAutoContinuationAlreadySubmitted =>
       'Auto continuation disabled. The previous continuation was already sent; future automatic sends are disabled.';
+
+  @override
+  String get bridgeUpdateHowTo => 'How to update';
+
+  @override
+  String get bridgeUpdateTitle => 'Update Sesori Bridge';
+
+  @override
+  String get bridgeUpdateIntro => 'On the computer running the bridge:';
+
+  @override
+  String get bridgeUpdateStepUpdate => '1. Update the bridge';
+
+  @override
+  String get bridgeUpdateStepRestart => '2. Restart it. In its terminal, press Ctrl+C, then run:';
+
+  @override
+  String get bridgeUpdateRestartService => 'Running it as a service (launchd, systemd)? Restart the service instead.';
+
+  @override
+  String get bridgeUpdateReinstallIntro => 'If step 1 fails or the command isn\'t found, reinstall:';
+
+  @override
+  String get bridgeUpdateMethodMacLinux => 'macOS / Linux';
+
+  @override
+  String get bridgeUpdateMethodWindows => 'Windows (PowerShell)';
+
+  @override
+  String get bridgeUpdateMethodNpm => 'npm';
+
+  @override
+  String get bridgeUpdateMethodBun => 'bun';
+
+  @override
+  String get bridgeUpdateReinstallRestart => 'Then start the bridge again.';
+
+  @override
+  String get bridgeUpdateCopyCommand => 'Copy command';
 }

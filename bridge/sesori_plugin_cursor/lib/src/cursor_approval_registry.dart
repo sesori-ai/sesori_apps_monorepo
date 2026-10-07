@@ -7,9 +7,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// questions.
 ///
 /// Cursor's non-blocking extension *requests* (`cursor/generate_image`,
-/// `cursor/update_todos`, `cursor/task`) are acknowledged and re-injected into
-/// its notification pipeline. Completed foreground Task requests are
-/// correlated at the Cursor event-mapper boundary.
+/// `cursor/update_todos`) are acknowledged and re-injected into its
+/// notification pipeline. `cursor/task` is only acknowledged: the native
+/// `subagent_spawned` / `subagent_state_update` notifications own sub-agents.
 ///
 /// NOTE: Cursor's exact reply payload shapes are not formally documented; the
 /// builders below are best-effort and should be confirmed against a real
@@ -31,7 +31,10 @@ class CursorApprovalRegistry({
   @override
   bool handleExtensionRequest(AcpServerRequest request) {
     switch (request.method) {
-      case "cursor/generate_image" || "cursor/update_todos" || "cursor/task":
+      case "cursor/task":
+        respond(request.id, const <String, Object?>{});
+        return true;
+      case "cursor/generate_image" || "cursor/update_todos":
         respond(request.id, const <String, Object?>{});
         try {
           _onFireAndForgetNotification(AcpNotification(method: request.method, params: request.params));

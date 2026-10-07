@@ -198,6 +198,8 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Pin:** `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_runtime_manifest.dart`.
   Target is the exact `YYYY.MM.DD-<build>` string. PATH comparison uses the leading
   calendar date; preserve that separate minimum and the raw bundled build value.
+  The minimum is `2026.09.23`, the oldest build with evidence for the native
+  sub-agent child sessions Sesori always enables (`_meta.subagents`).
 - **Assets:** four self-hashed archives at
   `https://downloads.cursor.com/lab/<build>/<os>/<arch>/agent-cli-package.tar.gz`,
   for `darwin`/`linux` and `arm64`/`x64`. No Windows package. Download/hash all
@@ -209,8 +211,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   configured load/replay behavior used by the adapter. If that fixture is
   unavailable, update the target and retain load/replay/model/mode checks in
   final follow-up. Confirm download URLs resolve before consumer publication.
-- **Audit:** model switching, history/load, native Task/subagent coverage and
-  settings. Report inaccessible upstream source rather than guessing from CLI UX.
+- **Audit:** model switching, history/load, the native `subagent_spawned` /
+  `subagent_state_update` shapes and Task `rawInput`, and settings. Report
+  inaccessible upstream source rather than guessing from CLI UX.
 
 ## Claude Code
 
@@ -313,6 +316,10 @@ concrete problem can justify a documented temporary hold with a resolution path.
   roots; use an allowlist, not inherited credentials, and preserve production
   approval policy. Missing fixtures become final checks while the target moves
   forward. Current-host execution is the ordinary existing-platform scope.
+  Also run the model-restore probe: `session/load` and `session/resume` must
+  succeed for a session whose saved model was removed. `18.6.3` failed it with
+  "Could not restore model" (2026-10-06), which breaks resume-then-delete
+  cleanup and history, so the pin stays on `18.3.0` until a release passes.
   A new Windows ARM64 mapping needs native install/version/ACP smoke to claim
   native verification; another host is not that proof. If a runner is missing,
   retain the approved implementation and record the native check for final

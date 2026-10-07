@@ -13,6 +13,8 @@ _CursorTaskInputDto _$CursorTaskInputDtoFromJson(Map json) =>
         json['_toolName'],
         unknownValue: CursorTaskTool.unknown,
       ),
+      prompt: json['prompt'] as String?,
+      description: json['description'] as String?,
     );
 
 const _$CursorTaskToolEnumMap = {
@@ -22,24 +24,6 @@ const _$CursorTaskToolEnumMap = {
 
 _CursorTaskOutputDto _$CursorTaskOutputDtoFromJson(Map json) =>
     _CursorTaskOutputDto(isBackground: json['isBackground'] as bool);
-
-_CursorSubagentTypeDto _$CursorSubagentTypeDtoFromJson(Map json) =>
-    _CursorSubagentTypeDto(
-      custom: json['custom'] == null
-          ? null
-          : CursorSubagentCustomTypeDto.fromJson(
-              Map<String, dynamic>.from(json['custom'] as Map),
-            ),
-    );
-
-_CursorSubagentCustomTypeDto _$CursorSubagentCustomTypeDtoFromJson(Map json) =>
-    _CursorSubagentCustomTypeDto(
-      unspecified: json['unspecified'] == null
-          ? null
-          : CursorSubagentUnspecifiedDto.fromJson(
-              Map<String, dynamic>.from(json['unspecified'] as Map),
-            ),
-    );
 
 _CursorSubagentUnspecifiedDto _$CursorSubagentUnspecifiedDtoFromJson(
   Map json,
@@ -99,13 +83,3 @@ const _$CursorTaskReplayStatusEnumMap = {
   CursorTaskReplayStatus.failed: 'failed',
   CursorTaskReplayStatus.unknown: 'unknown',
 };
-
-_CursorTaskRequestDto _$CursorTaskRequestDtoFromJson(Map json) =>
-    _CursorTaskRequestDto(
-      toolCallId: json['toolCallId'] as String,
-      description: json['description'] as String,
-      prompt: json['prompt'] as String,
-      subagentType: CursorSubagentTypeDto.fromJson(
-        Map<String, dynamic>.from(json['subagentType'] as Map),
-      ),
-    );

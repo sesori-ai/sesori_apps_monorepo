@@ -14,7 +14,7 @@ void main() {
     // the download and mis-name the on-disk version directory.
     expect(CursorRuntimeManifest.targetVersion, "2026.10.01-e373342");
     expect(manifest.bundledVersion.raw, CursorRuntimeManifest.targetVersion);
-    expect(manifest.minPathVersion.raw, "2026.07.16");
+    expect(manifest.minPathVersion.raw, "2026.09.23");
   });
 
   test("publishes darwin and linux packages but not windows", () {

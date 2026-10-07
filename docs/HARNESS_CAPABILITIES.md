@@ -146,8 +146,9 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
   duration; others give no reset. Other providers/formats remain unverified.
   A positive duration is anchored to the original assistant timestamp. Unknown
   or malformed resets remain unknown. Synthetic-provider RPC probes on the
-  managed target (0.85.1) and PATH floor (0.84.1) confirmed that `agent_settled`
-  follows final retry resolution. Those probes did not exhaust a real account;
+  then-current managed target (0.85.1) and PATH floor (0.84.1) confirmed that
+  `agent_settled` follows final retry resolution; they have not been re-run on
+  the current target (1.0.4) or floor (0.99.0). Those probes did not exhaust a real account;
   provider-format evidence comes from local errors and pinned upstream source.
   This evidence does not establish support for Oh My Pi's ACP seam.
 - Codex local rollouts and documented app-server account limits contain reset
@@ -279,7 +280,8 @@ sub-agents finish.
 | OpenCode | ✅ The child session's `time.created`. | ✅ For background children the parent is idle and `prompt_async` starts a turn. A foreground Task is the parent's own running step, so the row does not show. |
 | DeepSeek | ✅ The sub-agent step's message time. | ✅ By code, not probed live (the adapter is not installed on the probe machine): the parent idles while a background child runs, and the shared ACP path sends `session/prompt` at once. A foreground child keeps the parent's turn running, so the row does not show. A prompt that meets DeepSeek's own follow-up turn after a child settles is unconfirmed. |
 | Grok | ❌ No time: no message or child session carries one, so the row shows no timer. | ✅ `session/prompt` at once while the root is idle. A prompt sent during the wake turn that follows a finished sub-agent cancels that turn and is then answered. |
-| Cursor, Antigravity, Copilot, Hermes, OMP, Pi | Not applicable: no running sub-agent lifecycle reaches the client, so the row never shows. | Not applicable. |
+| Cursor | Not applicable: the root turn stays open while any sub-agent runs, so the row never shows. | Not applicable: a follow-up prompt is stop-and-send, and the root cancel stops every sub-agent, background ones included. |
+| Antigravity, Copilot, Hermes, OMP, Pi | Not applicable: no running sub-agent lifecycle reaches the client, so the row never shows. | Not applicable. |
 
 ## OpenCode v2 adapter
 
@@ -310,9 +312,9 @@ package `1.3.0`, including managed installation and explicit/PATH pair selection
 and local harness as siblings, uses a conservative two-minute bound for each archive listing/extraction command,
 and must pass the isolated initialize-only
 identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install.
-Package `1.3.0` macOS arm64 hardened extraction passed, but the isolated native probe aborted with SIGABRT before a usable
-version result. Native initialization, managed installation and authenticated behavior remain unverified on every
-target. The earlier `1.2.1` initialize/teardown and macOS x64 extraction observations are historical evidence, not
+Package `1.3.0` macOS arm64 hardened extraction passed, and a 2026-10-06 network-denied macOS arm64 run passed the
+production managed installation, `--version`, initialize and teardown. Other native targets and authenticated behavior
+remain unverified. The earlier `1.2.1` initialize/teardown and macOS x64 extraction observations are historical evidence, not
 verification of the current pin.
 Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
 The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual setup, remote personal login and
@@ -472,9 +474,10 @@ shows (verified from plugin code on 2026-09-26):
 | Codex | ⬜ placeholder | ✅ from history | ✅ from history |
 | DeepSeek | 🚫 | ✅ live, 🚫 after a restart | 🚫 |
 | Grok | ⬜ placeholder | ✅ live, unverified from history | Unverified from history, 🚫 live |
+| Cursor | ⬜ placeholder | ✅ live when Cursor announces it, 🚫 after a restart | 🚫 |
 | Pi (forks) | 🚫 | ✅ | ✅ |
 
-Antigravity, Copilot, Cursor, Hermes and OMP produce no child sessions.
+Antigravity, Copilot, Hermes and OMP produce no child sessions.
 
 - Claude, Codex and Grok record the sub-agent's type natively, but it only
   labels the parent's subtask tile.
@@ -688,8 +691,8 @@ reconciliation when connected to an older bridge.
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Sub-agents rendered as inline subtask tiles | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | ✅⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
-| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
-| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | 🚫¹⁹ | ✅ (snapshot)³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
+| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | ✅⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | 🚫¹⁹ | ✅ (snapshot)³ | 🚫⁴ | ✅ (root only)⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
 | Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | 🚫¹⁹ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
 
@@ -747,45 +750,31 @@ changelog says ACP clients receive subagent IDs since 1.0.81; Sesori has not
 re-probed, so these cells stay 🚫 until a probe confirms usable sub-agent
 identity.
 
-⁵ Cursor (managed target `cursor-agent 2026.08.11-e8db854`, probed
-2026-09-11) emits a standard `Task: …` call and then one correlated
-`cursor/task` JSON-RPC request when that Task-tool invocation completes. A
-foreground invocation's completion is also sub-agent completion; a background
-invocation completes at launch and exposes `isBackground: true`, while the
-background work continues without a later terminal lifecycle or child
-transcript. `session/load` replays stable full standard Task input/result facts,
-not `cursor/task`; Sesori now replaces an exact completed foreground replay card
-with the same childless tile while preserving replay-local identity and order.
-The live request's nested tagged presentation is `custom → unspecified`; replay
-uses the distinct `unspecified` tag directly. Separate typed boundary DTOs map
-both exact shapes to one closed presentation value, while unknown or malformed
-variants stay generic. Pending/in-progress calls lack presentation facts and `isBackground`, so their
-mode is unknown and they remain generic; cancelled foreground calls also remain
-generic cancelled cards because no `cursor/task` follows cancellation. Sesori
-now replaces only an exact live standard completion with explicit
-`isBackground: false` plus a complete correlated request, producing one
-completed childless tile with stable part identity. Missing/unknown/malformed,
-unmatched, background, and failed cases with standard facts stay generic. A cancelled
-Task is absent from replay when Cursor emits no standard frame; no completed tile is synthesized. Standard `session/cancel`
-authoritatively cancels an active root prompt. Safe Task confirmation is
-side-effect-free with exact active count; named-root stop waits up to 20 seconds,
-then rechecks background and active work. Timeout or survivors yield HTTP 502
-after cancellation, never false success. A background Task survives root cancel,
-so “`stop` cancels them all” remains **not supported**. While that observation is
-unresolved, every policy returns concrete HTTP 409 `notPerformed` before input or
-cancellation. Client drain pauses; that variant retains queued prompts and shows
-restart recovery even for unknown reasons. Malformed bodies, unknown variants,
-and post-cancel failures remain ambiguous. The observation keeps only ACP process
-work state busy until session cleanup or process reset; root `end_turn` and UI
-idle never claim background completion. Bounded managed-target production-
-composition QA passed live terminal replacement, two equivalent cold loads,
-mode-unknown generic presentation, exact active-Task confirmation/keep
-rejection, named-root cancellation with a generic cancelled card, process/session
-reuse, root idle before later background permission, residency, and identical
-non-mutating post-background refusal for all three policies. One bounded race
-attempt cancelled before background resolution, so post-cancel background
-transition remains automated rather than native evidence. No phone, desktop,
-child, background completion, or full-background-stop coverage is inferred.
+⁵ Cursor (PATH minimum `2026.09.23`, managed target `2026.10.01-e373342`;
+shapes derived from the CLI bundle on 2026-10-06 and not yet confirmed on the
+wire) runs each sub-agent as a native child session once the client sends
+`clientCapabilities._meta.subagents: true`, which Sesori always does. A Task
+tool call renders no generic card: `subagent_spawned` opens one tile linked to
+the child session, and `subagent_state_update` settles it (`completed`,
+`failed` as error, `cancelled`, and `disconnected` as error because the outcome
+is unknown; an unknown state finishes nothing). The tile's prompt comes from the
+Task call's input. Nested sub-agents attach to their direct parent, and a
+resumed sub-agent run is a new `<agentId>.<n>` child. Cursor holds the root
+prompt open while any sub-agent runs, background ones included, so the root
+stays busy until they finish. `cursor/task` requests are acknowledged and
+ignored. Reloaded history (`session/load`) keeps its childless tiles for
+completed foreground Task calls; only live tiles link a child session.
+Unverified: whether loading a child id returns its transcript, whether
+`session/list` lists child sessions, and whether pre-capability transcripts
+carry `agentId`.
+Cursor can cancel only the root: `session/cancel` cascades to every
+descendant. A stop on the root while sub-agents run asks for confirmation;
+`stop` sends one root cancel, resolves pending input for the root and every
+descendant, waits up to 20 seconds, and then fails with HTTP 502 if any
+sub-agent is still running. A stop addressed to a sub-agent session is refused
+with a "stop the parent session" message before any cancel, and queued prompts
+stay. A follow-up prompt while sub-agents run uses the shared stop-and-send, so
+it cancels every running sub-agent, background ones included, as on Grok.
 
 ⁶ Hermes (hermes-agent 0.19.0) has `delegate_task`, but its ACP adapter
 flattens delegation into an ordinary tool call and maps `session/cancel` to a

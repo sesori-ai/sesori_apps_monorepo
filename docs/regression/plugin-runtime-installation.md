@@ -207,9 +207,9 @@ download, verification, or placement. Use a disposable data directory.
   validates the exact ACP runtime identity `1.3.0`. The initialize-only validator uses
   disposable managed state, a sanitized false-inheritance environment, and the shared abort signal; it neither
   authenticates nor creates a session. All six archive hashes, layouts and permissions are independently verified;
-  hardened macOS arm64 extraction passed. The isolated native probe aborted with SIGABRT before a usable version result,
-  so native initialize/teardown, the complete managed pipeline and authenticated behavior remain unverified on every
-  target. Earlier `1.2.1` native observations do not verify this pin.
+  hardened macOS arm64 extraction passed. A 2026-10-06 network-denied macOS arm64 run passed the complete managed
+  pipeline (`ProvisionReady`, archive served from the verified local copy), `--version`, initialize and teardown.
+  Other native targets and authenticated behavior remain unverified. Earlier `1.2.1` native observations do not verify this pin.
 - Startup upgrade replaces only an existing Sesori-managed runtime; otherwise Install remains explicit. A PATH runtime
   preserves managed directories and suppresses automatic managed downloads.
 - There is no hot swap: a generation started on the older supported runtime keeps it until

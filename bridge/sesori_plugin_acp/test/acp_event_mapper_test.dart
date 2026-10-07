@@ -1579,6 +1579,152 @@ void main() {
       expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "real answer");
     });
   });
+
+  group("AcpEventMapper harness sub-agent seam", () {
+    late _SpawnHookMapper mapper;
+
+    setUp(() {
+      mapper = _SpawnHookMapper();
+      mapper.beginTurn(sessionId: "root", messageId: null);
+    });
+
+    AcpNotification update({required String sessionId, required Map<String, dynamic> body}) =>
+        AcpNotification(method: AcpMethods.sessionUpdate, params: {"sessionId": sessionId, "update": body});
+
+    List<BridgeSseEvent> spawnFrame({required String kind, required Map<String, dynamic>? rawInput}) => mapper.map(
+      update(
+        sessionId: "root",
+        body: {
+          "sessionUpdate": kind,
+          "toolCallId": "spawn-1",
+          "title": "Task",
+          "rawInput": ?rawInput,
+        },
+      ),
+    );
+
+    test("only session/update kinds the base does not handle reach the hook", () {
+      mapper.map(update(sessionId: "root", body: {"sessionUpdate": "plan", "entries": <Object?>[]}));
+      expect(mapper.harnessUpdates, isEmpty);
+
+      final events = mapper.map(update(sessionId: "root", body: {"sessionUpdate": "harness_kind", "value": 1}));
+      expect(mapper.harnessUpdates.single, (sessionId: "root", kind: "harness_kind"));
+      expect(events.single, isA<BridgeSseTodoUpdated>());
+
+      final base = AcpEventMapper(
+        launchDirectory: "/repo",
+        pluginId: "acp",
+        configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: AcpChildSessionTracker(),
+      );
+      expect(
+        base.map(update(sessionId: "root", body: {"sessionUpdate": "current_mode_update", "currentModeId": "x"})),
+        isEmpty,
+      );
+    });
+
+    test("a suppressed spawn call keeps its latest non-null input for its lifetime", () {
+      expect(spawnFrame(kind: "tool_call", rawInput: {"spawn": true, "prompt": "first"}), isEmpty);
+      expect(mapper.spawnToolCallInput(sessionId: "root", toolCallId: "spawn-1"), {"spawn": true, "prompt": "first"});
+
+      expect(spawnFrame(kind: "tool_call_update", rawInput: null), isEmpty);
+      expect(mapper.spawnToolCallInput(sessionId: "root", toolCallId: "spawn-1"), {"spawn": true, "prompt": "first"});
+
+      expect(spawnFrame(kind: "tool_call_update", rawInput: {"spawn": true, "prompt": "full"}), isEmpty);
+      expect(mapper.spawnToolCallInput(sessionId: "root", toolCallId: "spawn-1"), {"spawn": true, "prompt": "full"});
+      expect(mapper.spawnToolCallInput(sessionId: "other", toolCallId: "spawn-1"), isNull);
+
+      mapper.beginTurn(sessionId: "root", messageId: null);
+      expect(mapper.spawnToolCallInput(sessionId: "root", toolCallId: "spawn-1"), isNull);
+
+      spawnFrame(kind: "tool_call", rawInput: {"spawn": true});
+      mapper.forgetSession("root");
+      expect(mapper.spawnToolCallInput(sessionId: "root", toolCallId: "spawn-1"), isNull);
+    });
+
+    test("a reordered spawn update is suppressed and records its input", () {
+      expect(spawnFrame(kind: "tool_call_update", rawInput: {"spawn": true, "prompt": "early"}), isEmpty);
+      expect(mapper.spawnToolCallInput(sessionId: "root", toolCallId: "spawn-1"), {"spawn": true, "prompt": "early"});
+      expect(spawnFrame(kind: "tool_call", rawInput: null), isEmpty);
+      expect(mapper.spawnToolCallInput(sessionId: "root", toolCallId: "spawn-1"), {"spawn": true, "prompt": "early"});
+    });
+
+    test("reasoning streamed before a suppressed spawn is finalized at the spawn", () {
+      mapper.map(
+        update(
+          sessionId: "root",
+          body: {
+            "sessionUpdate": "agent_thought_chunk",
+            "content": {"type": "text", "text": "plan the delegation"},
+          },
+        ),
+      );
+
+      final events = spawnFrame(kind: "tool_call", rawInput: {"spawn": true});
+
+      final reasoning = events.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(reasoning, isA<PluginMessagePartReasoning>());
+      expect((reasoning as PluginMessagePartReasoning).text, "plan the delegation");
+      expect(
+        events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part),
+        isNot(contains(isA<PluginMessagePartTool>())),
+      );
+    });
+
+    test("a child's last streamed text or reasoning is finalized when it finishes", () {
+      for (final (childSessionId, kind, partType) in const [
+        ("child-text", "agent_message_chunk", PluginMessagePartType.text),
+        ("child-reasoning", "agent_thought_chunk", PluginMessagePartType.reasoning),
+      ]) {
+        mapper.mapChildSpawned(
+          sessionId: "root",
+          spawn: AcpChildSpawn(
+            childSessionId: childSessionId,
+            description: "Inspect",
+            agent: "explore",
+            prompt: "Inspect",
+            isBackground: false,
+          ),
+        );
+        mapper.map(
+          update(
+            sessionId: childSessionId,
+            body: {
+              "sessionUpdate": kind,
+              "content": {"type": "text", "text": "last words"},
+            },
+          ),
+        );
+
+        final events = mapper.mapChildFinished(
+          childSessionId: childSessionId,
+          status: PluginToolStatus.completed,
+          output: null,
+          error: null,
+        );
+
+        final finalized = (events.first as BridgeSseMessagePartUpdated).part;
+        expect(finalized.sessionID, childSessionId);
+        expect(finalized.type, partType);
+        expect(
+          events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part),
+          contains(isA<PluginMessagePartSubtask>()),
+        );
+        expect(
+          mapper
+              .mapChildFinished(
+                childSessionId: childSessionId,
+                status: PluginToolStatus.completed,
+                output: null,
+                error: null,
+              )
+              .whereType<BridgeSseMessagePartUpdated>()
+              .where((event) => event.part.sessionID == childSessionId),
+          isEmpty,
+        );
+      }
+    });
+  });
 }
 
 /// Test double: classifies any message whose trimmed text starts with "HALT:"
@@ -1598,5 +1744,34 @@ class _HaltMapper({required super.configurationTracker}) extends AcpEventMapper 
       return const AcpHaltNotice(errorName: "test_halt");
     }
     return null;
+  }
+}
+
+/// Test double: classifies `rawInput.spawn == true` as a spawn and records
+/// every harness `session/update` it receives.
+class _SpawnHookMapper() extends AcpEventMapper {
+  this
+    : super(
+        launchDirectory: "/repo",
+        pluginId: "acp",
+        configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: AcpChildSessionTracker(),
+      );
+
+  final List<({String sessionId, String? kind})> harnessUpdates = [];
+
+  @override
+  bool isSubagentSpawnToolCall({required Map<String, dynamic> update}) {
+    final rawInput = update["rawInput"];
+    return rawInput is Map && rawInput["spawn"] == true;
+  }
+
+  @override
+  List<BridgeSseEvent> mapHarnessSessionUpdate({
+    required String sessionId,
+    required Map<String, dynamic> update,
+  }) {
+    harnessUpdates.add((sessionId: sessionId, kind: update["sessionUpdate"] as String?));
+    return [BridgeSseTodoUpdated(sessionID: sessionId)];
   }
 }

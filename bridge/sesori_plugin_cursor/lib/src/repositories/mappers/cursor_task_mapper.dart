@@ -7,14 +7,9 @@ enum CursorSubagentPresentation() {
   unknown,
 }
 
-/// Pure Cursor Task transport normalization and completed presentation shared
-/// by live mapping and replay-local history projection.
+/// Pure Cursor Task transport normalization and completed presentation for
+/// replay-local history projection.
 final class const CursorTaskMapper() {
-  CursorSubagentPresentation livePresentation({required CursorSubagentTypeDto subagentType}) =>
-      subagentType.custom?.unspecified == null
-      ? CursorSubagentPresentation.unknown
-      : CursorSubagentPresentation.unspecified;
-
   CursorSubagentPresentation replayPresentation({required CursorTaskReplaySubagentTypeDto subagentType}) =>
       subagentType.unspecified == null ? CursorSubagentPresentation.unknown : CursorSubagentPresentation.unspecified;
 

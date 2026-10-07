@@ -56,19 +56,29 @@ sealed class SessionAbortResponse with _$SessionAbortResponse {
 /// Why the bridge could not safely perform an abort.
 @JsonEnum()
 enum SessionAbortRefusalReason() {
+  // COMPATIBILITY 2026-10-06 (v1.9.1): Released bridges (v1.8.4–v1.9.x) send this refusal from
+  // the removed ACP residency path. Remove once those bridges are unsupported.
   @JsonValue("residentWorkCompletionUnknown")
   residentWorkCompletionUnknown,
+
+  /// The stop named a sub-agent session, but the harness can only stop the
+  /// parent session, which stops its sub-agents with it.
+  @JsonValue("subAgentStopUnsupported")
+  subAgentStopUnsupported,
 
   @JsonValue("unknown")
   unknownEnumValue,
 }
 
-SessionAbortRefusalReason _abortRefusalReasonFromJson(String value) => value == "residentWorkCompletionUnknown"
-    ? SessionAbortRefusalReason.residentWorkCompletionUnknown
-    : SessionAbortRefusalReason.unknownEnumValue;
+SessionAbortRefusalReason _abortRefusalReasonFromJson(String value) => switch (value) {
+  "residentWorkCompletionUnknown" => SessionAbortRefusalReason.residentWorkCompletionUnknown,
+  "subAgentStopUnsupported" => SessionAbortRefusalReason.subAgentStopUnsupported,
+  _ => SessionAbortRefusalReason.unknownEnumValue,
+};
 
 String _abortRefusalReasonToJson(SessionAbortRefusalReason value) => switch (value) {
   SessionAbortRefusalReason.residentWorkCompletionUnknown => "residentWorkCompletionUnknown",
+  SessionAbortRefusalReason.subAgentStopUnsupported => "subAgentStopUnsupported",
   SessionAbortRefusalReason.unknownEnumValue => "unknown",
 };
 

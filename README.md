@@ -191,9 +191,9 @@ Every integration ships enabled by default — pick your assistant when you star
 - **Sessions:** supervised `default` mode only, no persistent approvals. Before a real session supplies model choices,
   a new session in a fresh process uses the account default. Local deletion does not erase Google's retained history.
 - **Evidence:** package `1.3.0` has independently verified hashes, sibling layouts and permissions for all six archives;
-  hardened macOS arm64 extraction passed. The isolated native probe aborted with SIGABRT before a usable version result,
-  so native initialization, managed installation, real OAuth and authenticated sessions remain unverified. Native
-  execution on Intel Macs and Linux/Windows also remains unverified. Earlier `1.2.1` native evidence is historical.
+  hardened macOS arm64 extraction passed. A network-denied macOS arm64 run passed managed installation, `--version`,
+  initialize and teardown. Real OAuth and authenticated sessions remain unverified, as does native execution on Intel
+  Macs and Linux/Windows. Earlier `1.2.1` native evidence is historical.
   See the [Antigravity guide](docs/ANTIGRAVITY.md) for setup, images/history behavior, safety boundaries and verification
   limits.
 

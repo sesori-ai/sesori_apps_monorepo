@@ -32,7 +32,9 @@ enum CursorTaskReplayStatus() {
   unknown,
 }
 
-/// Cursor-owned boundary model for identifying standard Task calls.
+/// Cursor-owned boundary model for a standard Task call's `rawInput`: it
+/// identifies the call as a sub-agent spawn and carries the spawn's prompt,
+/// which Cursor's `subagent_spawned` notification does not repeat.
 @Freezed(fromJson: true, toJson: false)
 sealed class CursorTaskInputDto with _$CursorTaskInputDto {
   const factory({
@@ -41,6 +43,8 @@ sealed class CursorTaskInputDto with _$CursorTaskInputDto {
       unknownEnumValue: CursorTaskTool.unknown,
     )
     required CursorTaskTool toolName,
+    required String? prompt,
+    required String? description,
   }) = _CursorTaskInputDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CursorTaskInputDtoFromJson(json);
@@ -52,22 +56,6 @@ sealed class CursorTaskOutputDto with _$CursorTaskOutputDto {
   const factory({required bool isBackground}) = _CursorTaskOutputDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CursorTaskOutputDtoFromJson(json);
-}
-
-/// Cursor's observed tagged sub-agent presentation variant.
-@Freezed(fromJson: true, toJson: false)
-sealed class CursorSubagentTypeDto with _$CursorSubagentTypeDto {
-  const factory({required CursorSubagentCustomTypeDto? custom}) = _CursorSubagentTypeDto;
-
-  factory fromJson(Map<String, dynamic> json) => _$CursorSubagentTypeDtoFromJson(json);
-}
-
-/// Payload of Cursor's observed live `custom` sub-agent type variant.
-@Freezed(fromJson: true, toJson: false)
-sealed class CursorSubagentCustomTypeDto with _$CursorSubagentCustomTypeDto {
-  const factory({required CursorSubagentUnspecifiedDto? unspecified}) = _CursorSubagentCustomTypeDto;
-
-  factory fromJson(Map<String, dynamic> json) => _$CursorSubagentCustomTypeDtoFromJson(json);
 }
 
 /// Empty payload marking Cursor's observed `unspecified` custom sub-agent.
@@ -113,19 +101,4 @@ sealed class CursorTaskReplayUpdateDto with _$CursorTaskReplayUpdateDto {
   }) = _CursorTaskReplayUpdateDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CursorTaskReplayUpdateDtoFromJson(json);
-}
-
-/// Presentation and exact tool correlation from Cursor's terminal
-/// `cursor/task` request. Agent/model identifiers are deliberately omitted:
-/// Cursor exposes no child session, and they are not presentation authority.
-@Freezed(fromJson: true, toJson: false)
-sealed class CursorTaskRequestDto with _$CursorTaskRequestDto {
-  const factory({
-    required String toolCallId,
-    required String description,
-    required String prompt,
-    required CursorSubagentTypeDto subagentType,
-  }) = _CursorTaskRequestDto;
-
-  factory fromJson(Map<String, dynamic> json) => _$CursorTaskRequestDtoFromJson(json);
 }

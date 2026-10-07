@@ -92,6 +92,7 @@ export "src/platform/external_link_opener.dart";
 export "src/platform/go_router_route_source.dart";
 export "src/support/legal_links.dart";
 export "src/support/support_links.dart";
+export "src/utils/bridge_install.dart";
 export "src/utils/copy_text_to_clipboard.dart";
 export "src/utils/syntax_highlight.dart";
 export "src/widgets/catalog_scan_row.dart";

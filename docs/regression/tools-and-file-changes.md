@@ -203,29 +203,18 @@ sub-agent parts, plus the signal that a tool changed files.
   identity and terminal policy, or an unlinked tile when no child was created;
   unrelated tools retain the generic ACP projection. Initialization requires v2.
 - Cursor's fire-and-forget extensions preserve exact tool-call attribution before
-  active-turn fallback. Task lookup distinguishes one owner, no owner, and
-  duplicate-id ambiguity; an ambiguous request is dropped without fallback and
-  consumes neither root. Standard Task pending/running cards remain generic and
-  mode-unknown. Cancellation/failure settles those generic cards before root
-  settlement. An explicit standard completion with `isBackground: false`,
-  including an initial terminal `tool_call`, retains exact root/tool correlation
-  for the following acknowledged `cursor/task` request; complete nonblank
-  prompt/description and known subagent presentation replace that same part once
-  with a completed childless subtask tile. Missing, unknown, malformed, unmatched,
-  background, failed, and cancelled facts retain the generic card. Every
-  prior-turn Task record clears at the next turn; deletion and process reset also
-  clear correlation. Explicit background completion retires that Task record
-  into one root-level unresolved observation without creating a task id set,
-  running count, completion, tile, or child. Prompt-write ordering keeps the
-  accepted user message and buffered generic terminal update ahead of the routed
-  request. The managed target's live request uses the nested tagged shape
-  `custom → unspecified`, while replay uses the distinct `unspecified` tagged
-  shape; both parse into one closed presentation value. Unknown or malformed
-  variants retain the generic card. No child session, root/session activity
-  effect, or background terminal lifecycle is claimed. Bounded production-
-  composition QA verified live replacement after the generic terminal card,
-  generic mode-unknown presentation, generic background presentation, and two
-  equivalent cold replay replacements.
+  active-turn fallback. A Task call (`rawInput._toolName: task`) is a sub-agent
+  spawn: its generic card is suppressed from the first frame, and the latest
+  Task input is kept for the native `subagent_spawned` notification, which
+  opens the single tile linked to the child session. The tile's description is
+  the spawn's nonblank `task`, else the Task input's description; its prompt
+  is the Task input's prompt, else the `task`. The child's model is stamped when
+  Cursor announces one. `cursor/task` requests are acknowledged and ignored.
+  Replay keeps projecting a completed foreground Task into a childless tile.
+  The shapes come from the CLI bundle. Live confirmation on an authenticated
+  account is pending: a real spawn/state pair, the child streaming into its own
+  session, nested and resumed children, no generic Task card next to the tile,
+  and (L3) the tile rendering and opening its child session.
 - Antigravity normalizes its `formatted_output`, `exit_code`, `command_line`, and `working_dir` aliases before the
   shared ACP live or replay mapper retains tool state. Raw provider payloads and canonical output are independently
   bounded; local image paths remain metadata and are never read. Exact duplicate text is removed, differing standard
@@ -342,14 +331,11 @@ guarantee.
 - A part carries fields owned by another variant, or a released known-type
   payload fails to decode because an older bridge omitted variant data, or a
   current peer serializes null variant data.
-- A Cursor extension cross-binds sessions or falls back across ambiguous duplicate
-  tool ids; a pending/running Task becomes a child/tile; root/activity state
-  changes; a non-foreground terminal becomes a tile; prior-turn active or
-  completed correlation survives the next turn; identity changes during
-  replacement; `cursor/task` is not acknowledged or overtakes its accepted user
-  message/generic terminal card; prompt cancellation/failure leaves a current
-  generic Task running; live/replay tagged sub-agent shapes are conflated; or
-  either exact known shape fails replacement.
+- A Cursor extension cross-binds sessions; a Task call renders a generic card
+  next to its sub-agent tile; a spawn opens no tile, a second tile, or a tile
+  without a child link; `cursor/task` is not acknowledged or produces a tile;
+  a sub-agent state settles the wrong child or an unknown state finishes one;
+  or live/replay tagged sub-agent shapes are conflated in replay.
 - Antigravity changes ACP status from an exit code, loses an exit note to truncation, leaks an image path as a fetched
   attachment, retains unbounded/redundant raw fields, drops differing text, or produces different normalized state from
   equivalent live/replay source envelopes. Its upstream `invoke_subagent` status mismatch is retained as generic data;

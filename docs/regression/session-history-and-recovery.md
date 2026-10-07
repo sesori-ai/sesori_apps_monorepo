@@ -138,14 +138,19 @@ reconnect or restart.
   assistant identities.
 - Cursor `session/load` replaces only a fully typed completed foreground Task's
   generic card, preserving its replay-local part identity, title, output,
-  attachments, and transcript order. Its native replay input uses
-  `subagentType.unspecified`, distinct from the live request's
-  `subagentType.custom.unspecified`; separate typed DTOs map both exact shapes
-  to one closed presentation value. Background, incomplete, malformed,
-  unknown, nonterminal, unmatched, and update-only facts remain generic; an
-  omitted cancelled Task remains absent. Bounded production-composition QA
+  attachments, and transcript order. Its typed replay input's
+  `subagentType.unspecified` maps to one closed presentation value. Background,
+  incomplete, malformed, unknown, nonterminal, unmatched, and update-only facts
+  remain generic; an omitted cancelled Task remains absent. Replayed native
+  sub-agent frames are ignored, so a reloaded tile stays childless even when its
+  live tile linked a child session. Bounded production-composition QA
   passed two fresh cold loads with one equivalent completed childless tile and
   stable replay-local identity, without requiring equality with the live id.
+  That QA predates native child sessions. On an authenticated account, these
+  remain pending: whether loading a child id returns its transcript (needed
+  before reloaded tiles can link children), whether `session/list` lists child
+  sessions as top-level sessions, and whether pre-capability transcripts carry
+  `agentId`.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. Exact identities satisfy their replay occurrences
   first and anchor neighboring order by identity even when replay revises their

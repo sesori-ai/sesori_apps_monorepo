@@ -38,7 +38,7 @@ change. Bridge-owned, plugin-agnostic, backed by the user's local gh CLI.
 - Presence is connection-scoped and unioned across devices; one timer serves the
   active set and none runs while it is empty. The interval defaults to 30s, is
   validated 15-3600s, changes live, and needs a restart for manual config edits;
-  older bridges render as unsupported.
+  older bridges render as unsupported with a way to the bridge update steps.
 - PR changes emit only project-scoped sessionsUpdated: no unseen state, no push.
 
 ## Regression Levels

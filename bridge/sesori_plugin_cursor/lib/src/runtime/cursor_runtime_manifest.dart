@@ -33,9 +33,10 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 /// newer Cursor capability.
 class const CursorRuntimeManifest() extends RuntimeManifest {
   /// Minimum pre-installed (PATH) Cursor CLI build the bridge uses as-is.
-  /// Earlier builds advertise `acp` model switching and `session/load` but
-  /// silently no-op them, so the experience breaks invisibly.
-  static final CalendarRuntimeVersion _minPathVersion = CalendarRuntimeVersion.parse(value: "2026.07.16");
+  /// `2026.09.23` is the oldest build with evidence for the native sub-agent
+  /// child sessions the bridge always enables (`_meta.subagents`); without
+  /// them, Task calls would render no tile at all.
+  static final CalendarRuntimeVersion _minPathVersion = CalendarRuntimeVersion.parse(value: "2026.09.23");
 
   /// The latest official-installer Cursor build targeted by this plugin.
   static const String targetVersion = "2026.10.01-e373342";

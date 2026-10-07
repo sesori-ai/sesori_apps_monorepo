@@ -11,13 +11,13 @@ import "cursor_event_mapper.dart";
 import "models/cursor_catalog_models.dart";
 import "repositories/cursor_catalog_repository.dart";
 import "repositories/cursor_generated_image_reader.dart";
+import "repositories/mappers/cursor_subagent_mapper.dart";
 import "repositories/mappers/cursor_task_mapper.dart";
 import "repositories/trackers/cursor_task_replay_tracker.dart";
 import "services/cursor_catalog_service.dart";
 import "services/cursor_session_cleanup_service.dart";
 import "services/cursor_session_options_service.dart";
 import "trackers/cursor_catalog_tracker.dart";
-import "trackers/cursor_task_tracker.dart";
 
 /// Cursor backend over ACP plus Cursor's config-option model picker.
 ///
@@ -35,7 +35,6 @@ class CursorPlugin._({
   required final CursorCatalogTracker _catalogTracker,
   required CursorSessionOptionsService cursorSessionOptionsService,
   required final AcpSessionConfigurationTracker _configurationTracker,
-  required final CursorTaskTracker _taskTracker,
   required final CursorTaskMapper _taskMapper,
   required super.commandTracker,
   required super.sessionOptionsService,
@@ -74,7 +73,6 @@ class CursorPlugin._({
     final childSessionTracker = AcpChildSessionTracker();
     final stagedCommandTracker = AcpCommandTracker();
     final configurationTracker = AcpSessionConfigurationTracker();
-    final taskTracker = CursorTaskTracker();
     const taskMapper = CursorTaskMapper();
     final acpSessionOptionsService = AcpSessionOptionsService(
       configurationTracker: configurationTracker,
@@ -110,8 +108,7 @@ class CursorPlugin._({
       configurationTracker: configurationTracker,
       childSessions: childSessionTracker,
       generatedImageReader: const CursorGeneratedImageReader(),
-      taskTracker: taskTracker,
-      taskMapper: taskMapper,
+      subagentMapper: const CursorSubagentMapper(),
       activeSessionResolver: () => plugin.activeTurnSessionId,
     );
     return plugin = CursorPlugin._(
@@ -125,7 +122,6 @@ class CursorPlugin._({
       catalogTracker: catalogTracker,
       cursorSessionOptionsService: cursorSessionOptionsService,
       configurationTracker: configurationTracker,
-      taskTracker: taskTracker,
       taskMapper: taskMapper,
       commandTracker: commandTracker,
       sessionOptionsService: acpSessionOptionsService,
@@ -138,9 +134,7 @@ class CursorPlugin._({
         id: pluginId,
         agentDisplayName: "Cursor",
         eventMapper: mapper,
-      ) {
-    registerProcessResidencyChanges(changes: _taskTracker.residencyChanges);
-  }
+      );
 
   final CursorSessionOptionsService _sessionOptionsService = cursorSessionOptionsService;
   String? _appliedModelId;
@@ -165,16 +159,6 @@ class CursorPlugin._({
 
   @override
   AcpScopedStopCapability get scopedStopCapability => AcpScopedStopCapability.rootSessionCancel;
-
-  @override
-  bool get requiresProcessResidency => _taskTracker.requiresProcessResidency;
-
-  @override
-  bool hasUnresolvedResidentWork({required String sessionId}) =>
-      _taskTracker.hasUnresolvedBackgroundWork(sessionId: sessionId);
-
-  @override
-  int activeScopedStopWorkCount({required String sessionId}) => _taskTracker.activeTaskCount(sessionId: sessionId);
 
   @override
   Map<String, dynamic>? get initializeCapabilityMeta => CursorBinary.acpCapabilityMeta;
@@ -333,10 +317,6 @@ class CursorPlugin._({
 
   @override
   void onConnectionReset() {
-    // Pending prompt RPCs fail first, allowing their turn catch paths to emit
-    // Task errors. Reset then drops any remaining correlation without
-    // fabricating terminal lifecycle solely from process teardown.
-    _taskTracker.clear();
     _appliedModelId = null;
     _appliedModeId = null;
     _appliedThoughtLevelId = null;
@@ -400,10 +380,5 @@ class CursorPlugin._({
       Log.w("[cursor] failed to dispose catalog service", error, stack);
     }
     await super.dispose();
-    try {
-      await _taskTracker.dispose();
-    } on Object catch (error, stack) {
-      Log.w("[cursor] failed to dispose Task tracker", error, stack);
-    }
   }
 }
