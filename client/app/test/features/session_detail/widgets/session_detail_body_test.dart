@@ -2092,7 +2092,11 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("a first load that finds the harness blocked keeps the owed messages and their actions", (tester) async {
+  testWidgets("owed messages hold still from the launch through a blocked first load and its Recheck", (
+    tester,
+  ) async {
+    tester.view.padding = const FakeViewPadding(bottom: 102);
+    addTearDown(tester.view.resetPadding);
     QueuedSessionSubmission submission({required String promptId, required String text}) =>
         QueuedSessionSubmission.text(
           promptId: promptId,
@@ -2114,23 +2118,48 @@ void main() {
     whenListen(
       cubit,
       states.stream,
-      initialState: SessionDetailState.harnessUnavailable(
-        session: testSession(),
-        interaction: authRequired,
+      initialState: SessionDetailState.loading(
+        launchHandoff: SessionLaunchHandoff(
+          submission: NewSessionSubmissionSnapshot.text(
+            draft: ComposerDraft.typed(text: "Launch prompt"),
+            attachments: const [],
+          ),
+          pluginId: "claude",
+          startedAt: DateTime.now(),
+          followUpIds: const {"prm_launch"},
+          acceptedFollowUps: const [],
+          composer: null,
+        ),
+        seededComposer: null,
         launchFollowUps: launchFollowUps,
         queuedMessages: queuedMessages,
       ),
     );
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
-    await tester.pumpAndSettle();
-
-    expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
-    expect(find.text("Sent while creating"), findsOneWidget);
-    final last = find.ancestor(of: find.text("Sent before the load"), matching: find.byType(QueuedMessageBubble));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    Finder bubbleOf(String text) => find.ancestor(of: find.text(text), matching: find.byType(QueuedMessageBubble));
+    final followUp = bubbleOf("Sent while creating");
+    final last = bubbleOf("Sent before the load");
+    final followUpRect = tester.getRect(followUp);
     final lastRect = tester.getRect(last);
-    // Bottom-anchored, as on the loading screen, not halfway up the page.
-    expect(lastRect.bottom, greaterThan(tester.view.physicalSize.height / tester.view.devicePixelRatio - 120));
+
+    // The first load finds the harness blocked: the notice sits above the
+    // owed messages, which neither move nor lose their actions.
+    states.add(
+      SessionDetailState.harnessUnavailable(
+        session: testSession(),
+        interaction: authRequired,
+        launchFollowUps: launchFollowUps,
+        queuedMessages: queuedMessages,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
+    expect(tester.getRect(followUp), followUpRect);
+    expect(tester.getRect(last), lastRect);
     final cancels = find.widgetWithText(TextButton, "Cancel");
     expect(cancels, findsNWidgets(2));
     await tester.tap(cancels.first);
@@ -2148,8 +2177,9 @@ void main() {
       ),
     );
     await tester.pump();
+    await tester.pump();
     expect(find.byType(PregoLaunchStatus), findsOneWidget);
-    expect(find.text("Sent while creating"), findsOneWidget);
+    expect(tester.getRect(followUp), followUpRect);
     expect(tester.getRect(last), lastRect);
     expect(tester.takeException(), isNull);
   });

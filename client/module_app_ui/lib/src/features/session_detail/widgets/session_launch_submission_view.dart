@@ -16,7 +16,10 @@ typedef LaunchFollowUpAction = void Function({required String promptId});
 /// take over without moving them.
 class const SessionLaunchSubmissionView({
   super.key,
-  required final NewSessionSubmissionSnapshot submission,
+
+  /// The first message while it is still sending; null when only the messages
+  /// owed after it remain, as under a failed or blocked first load.
+  required final NewSessionSubmissionSnapshot? submission,
 
   /// Null until the harness is known; the bubble then only says "Sending".
   required final String? harnessName,
@@ -70,17 +73,19 @@ class const SessionLaunchSubmissionView({
       presentation: presentation,
     );
     final onCancelQueuedMessage = this.onCancelQueuedMessage;
+    final submission = this.submission;
     final rows = [
-      bubble(
-        key: const ValueKey("session-launch-first"),
-        displayText: submission.displayText,
-        isCommand: submission is NewSessionCommandSubmissionSnapshot,
-        attachments: switch (submission) {
-          NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
-          NewSessionCommandSubmissionSnapshot() => const <ComposerAttachment>[],
-        },
-        presentation: QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: sendingSince),
-      ),
+      if (submission != null)
+        bubble(
+          key: const ValueKey("session-launch-first"),
+          displayText: submission.displayText,
+          isCommand: submission is NewSessionCommandSubmissionSnapshot,
+          attachments: switch (submission) {
+            NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
+            NewSessionCommandSubmissionSnapshot() => const <ComposerAttachment>[],
+          },
+          presentation: QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: sendingSince),
+        ),
       for (final submission in awaitingBridgeSubmissions)
         queued(submission: submission, presentation: const QueuedMessageBubblePresentation.pendingReadOnly()),
       for (final followUp in launchFollowUps)
