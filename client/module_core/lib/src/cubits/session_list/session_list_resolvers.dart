@@ -20,9 +20,7 @@ extension SessionListResolvers on SessionListLoaded {
   /// the session payload itself said.
   bool isSessionUnseen({required Session session}) => unseenBySessionId[session.id] ?? session.unseen;
 
-  /// Whether a just-created [session] sits at the head of Today: running
-  /// sessions lead it, so while another one runs only a running session does.
-  bool newSessionLeadsToday({required Session session}) =>
-      isSessionRunning(session: session) ||
-      !sessions.any((other) => other.id != session.id && isSessionRunning(session: other));
+  /// Whether [session] is the list's first row, the head of Today where a
+  /// launching row stands. The service owns the order, so this reads it.
+  bool leadsList({required Session session}) => sessions.firstOrNull?.id == session.id;
 }

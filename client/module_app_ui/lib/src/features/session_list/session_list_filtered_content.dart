@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -42,7 +43,7 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
   SessionListQuickFilter _filter = SessionListQuickFilter.all;
   String _query = "";
   late final StreamSubscription<PendingSessionArchiveOutcome> _archiveOutcomes;
-  late final StreamSubscription<SessionListState> _sessionStates;
+  late final StreamSubscription<List<Session>?> _sessionStates;
   late final StreamSubscription<SessionLaunchState> _launchStates;
   LaunchRows _launchRows = LaunchRows.none;
 
@@ -50,15 +51,21 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
   void initState() {
     super.initState();
     _launchRows = _resolveLaunchRows(sessionsChanged: true);
-    _sessionStates = context.read<SessionListCubit>().stream.listen(
-      (_) => setState(() => _launchRows = _resolveLaunchRows(sessionsChanged: true)),
-    );
+    final sessions = context.read<SessionListCubit>();
+    // Only a changed sessions list counts as an update; activity and scan-progress
+    // emissions keep the list's sessions and must not settle a launching row.
+    List<Session>? sessionsOf(SessionListState state) => state is SessionListLoaded ? state.sessions : null;
+    _sessionStates = sessions.stream
+        .map(sessionsOf)
+        .startWith(sessionsOf(sessions.state))
+        .distinct()
+        .skip(1)
+        .listen((_) => setState(() => _launchRows = _resolveLaunchRows(sessionsChanged: true)));
     _launchStates = context.read<SessionLaunchCubit>().stream.listen(
       (_) => setState(() => _launchRows = _resolveLaunchRows(sessionsChanged: false)),
     );
     // The bridge publishes no session event on archive, so a committed archive
     // refreshes the list for the Archived view to show the session at once.
-    final sessions = context.read<SessionListCubit>();
     _archiveOutcomes = context.read<PendingSessionArchiveCubit>().outcomes.listen((outcome) {
       if (outcome case PendingSessionArchiveCommitted() || PendingSessionArchiveWorktreeKept()
           when outcome.session.projectID == sessions.projectId) {
@@ -91,7 +98,7 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
       sessionIds: launches.sessionIds,
       sessions: state.sessions,
       sessionsChanged: sessionsChanged,
-      isInSlot: state.newSessionLeadsToday,
+      isInSlot: state.leadsList,
     );
   }
 

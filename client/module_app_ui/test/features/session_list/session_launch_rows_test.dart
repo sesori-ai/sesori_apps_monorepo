@@ -157,6 +157,27 @@ void main() {
     expect(rowBelowTop(tester), below);
   });
 
+  testWidgets("a session out of the row's slot waits for the next sessions update, not a status one", (tester) async {
+    await pumpList(tester, sessions: [earlier]);
+    await startLaunch(tester);
+    launches.promote(launchId: "launch-1", session: created);
+    final outOfSlot = [earlier, created];
+    sessionStates.add(loaded(sessions: outOfSlot));
+    await settle(tester);
+    expect(launchRow, findsOneWidget, reason: "the session is not at the head of Today yet");
+
+    sessionStates.add(
+      SessionListState.loaded(sessions: outOfSlot, baseBranch: null, repoSlug: null, isRefreshing: true),
+    );
+    await settle(tester);
+    expect(launchRow, findsOneWidget, reason: "a status update keeps the same sessions");
+
+    sessionStates.add(loaded(sessions: [created, earlier]));
+    await settle(tester);
+    expect(launchRow, findsNothing);
+    expect(find.text("Fix the bug"), findsOneWidget);
+  });
+
   testWidgets("with reduced motion the launching row becomes its session at once", (tester) async {
     await pumpList(tester, sessions: [earlier], reduceMotion: true);
     await startLaunch(tester);

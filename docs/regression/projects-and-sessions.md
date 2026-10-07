@@ -330,9 +330,10 @@ state.
   project whose only row is a launch shows that row rather than the empty
   state. When the session exists the row cross-fades in place into the real
   session row (instantly under reduced motion) without moving the rows below,
-  and the launch never shows two rows: a session the list has not shown
-  before stays out of it while its project has a launch still waiting, so it
-  can never be opened before its launch resolves. If the session does not
+  and the launch never shows two rows: while its project has a launch still
+  waiting, a session that arrives after the list first loaded stays out of it,
+  so it can never be opened before its launch resolves. Sessions in the list's
+  first load always show, under the launching row. If the session does not
   land at the head of Today, it moves there on the next list update as an
   ordinary change. A failed launch's row leaves the list.
 - On the phone, a search field tops Projects and each session list once they
