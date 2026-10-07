@@ -972,11 +972,14 @@ class ChatHistoryRepository({
     if (ordered == null) return null;
     return _promptSearchMapper.matchesOf(
       messages: [
+        // Only user messages decode their parts, as the store reads only user
+        // rows, so an assistant part never costs time or aborts the search.
         for (final entry in ordered)
-          MessageWithParts(
-            info: entry.info,
-            parts: [for (final part in entry.parts) _indexPart(json: part)],
-          ),
+          if (entry.info is MessageUser)
+            MessageWithParts(
+              info: entry.info,
+              parts: [for (final part in entry.parts) _indexPart(json: part)],
+            ),
       ],
       pattern: pattern,
     );
