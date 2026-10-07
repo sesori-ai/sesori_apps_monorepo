@@ -75,10 +75,11 @@ sub-agent parts, plus the signal that a tool changed files.
   `docs/HARNESS_CAPABILITIES.md` for which harnesses mark compaction.
 - The compaction part carries its state: running (with any summary written so
   far), completed (with the summary, freed tokens and an `auto` or `manual`
-  trigger when the harness reports them) or failed (with the error). A part
-  from a released bridge carries no state and reads as completed with no
-  details; a state status this client does not know reads the same way, and an
-  unknown trigger reads as absent, so the transcript still decodes.
+  trigger when the harness reports them) or failed (with the error when there
+  is one). A part from a released bridge carries no state and reads as
+  completed with no details; a state status this client does not know reads as
+  completed with whichever completed fields it carries, and an unknown trigger
+  reads as absent, so the transcript still decodes.
 - A running tool or sub-agent is a live row: the turning outline sparkle leads
   it and a primary-text band sweeps across its dimmed label, visible in both
   themes. Reduced motion keeps the sparkle and label still while screen readers

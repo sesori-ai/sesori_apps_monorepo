@@ -402,8 +402,10 @@ rules where supported.
   queued peer message or task outcome disappears, changes identity or moves to
   another turn after reload or re-import, or a finished background task tile
   shows cancelled after reload.
-- A stored compaction stays running after its turn went idle or after a read
-  of an idle session, or the sweep rewrites a completed or failed compaction.
+- A stored compaction stays running after its turn went idle or after an
+  ordinary history read of an idle session (a store-only read skips the sweep,
+  as it does for tools), or the sweep rewrites a completed or failed
+  compaction.
 - Antigravity scans private SQLite/brain/token content, writes Google history, recovers metadata more than once per live
   connection, lets fallback attribution replace bridge/live data, retries an arbitrary resume failure through load, or
   normalizes live and replay differently.

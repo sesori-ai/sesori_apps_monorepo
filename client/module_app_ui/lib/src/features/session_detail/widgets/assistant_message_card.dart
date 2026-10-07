@@ -112,7 +112,7 @@ class const AssistantMessageCard({
       MessagePartCompaction(:final state) => switch (state) {
         CompactionStateCompleted(:final summary) => CompactionPartWidget(key: ValueKey(part.id), summary: summary),
         // No plugin reports a compaction in progress or failed yet.
-        CompactionStateRunning() || CompactionStateFailed() => const SizedBox.shrink(),
+        CompactionStateRunning() || CompactionStateFailed() => SizedBox.shrink(key: ValueKey(part.id)),
       },
       // Steps render in their group; the builder never puts them here.
       MessagePartReasoning() ||

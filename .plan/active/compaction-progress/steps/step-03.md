@@ -39,7 +39,11 @@ change and no database migration.
 ## Evidence
 
 Checks, with Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`, on code
-commit `fcbf54672b`:
+commit `fcbf54672b`. Each command ran with the named package as its cwd:
+`dart test -r failures-only` (full suite) and `dart analyze --fatal-infos`
+for the Dart packages, and `flutter test <file>` for `module_app_ui`. The
+evidence commit and the review-fix commit that follow change no tested
+behavior.
 
 - `shared/sesori_shared/test/models/compaction_state_test.dart`: a
   v1.9.0-shaped state-less part decodes as completed with no details; each

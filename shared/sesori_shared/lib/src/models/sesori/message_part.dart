@@ -237,8 +237,8 @@ enum CompactionTrigger() {
 
 /// How far one context compaction got.
 ///
-/// A status added by a newer bridge reads as [CompactionState.completed] with
-/// no details, so the transcript still decodes.
+/// A status added by a newer bridge decodes as [CompactionState.completed],
+/// keeping any completed fields it carries, so the transcript still decodes.
 @Freezed(unionKey: "status", fallbackUnion: "completed", fromJson: true, toJson: true)
 sealed class CompactionState with _$CompactionState {
   /// Compacting now. [summary] is the text written so far, when the harness
