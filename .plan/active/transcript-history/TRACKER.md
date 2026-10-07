@@ -48,7 +48,9 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 - Prompt numbers come from the bridge or not at all.
 - The index, search and tool-output routes read the store or the audit file
   alone, outside the session queue, and never backfill (P10). The index and
-  search handlers never answer 404, so a 404 there means an older bridge.
+  search handlers never answer 404, so a 404 from the index route means an
+  older bridge. The app searches only a bridge that sent the index, so any
+  search error, a 404 included, is an ordinary failure with Retry.
 - A slim tool part is its own `ToolState` variant, never nullable fields plus
   a flag. Keyless `ToolState` JSON decodes as full.
 - Choosing index entries for the list, the pin and search matches is
