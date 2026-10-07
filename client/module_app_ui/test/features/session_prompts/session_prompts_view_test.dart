@@ -771,6 +771,39 @@ void main() {
       expect(find.textContaining("then deploy again", findRichText: true), findsOneWidget);
     });
 
+    testWidgets("at a large text size the list's end holds still as the bridge's status changes", (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final answer = Completer<SessionPromptSearchResult>();
+      final repository = _MockSessionRepository();
+      when(() => repository.searchPrompts(sessionId: "s1", query: "Prompt")).thenAnswer((_) => answer.future);
+      await _pump(
+        tester,
+        entries: [for (var index = 0; index < 20; index++) _opener(id: "p$index", day: null)],
+        anchor: null,
+        isIndexed: true,
+        repository: repository,
+      );
+      await tester.enterText(find.byType(TextField), "Prompt");
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump(const Duration(milliseconds: 150));
+      await tester.pumpAndSettle();
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -10000));
+      await tester.pumpAndSettle();
+      // The status wraps at this size, while the count it gives way to does not.
+      expect(find.text("Searching earlier prompts…"), findsOneWidget);
+      final lastTop = _topOf(tester, "p19");
+
+      answer.complete(const SessionPromptSearchAvailable(matches: []));
+      await tester.pumpAndSettle();
+
+      expect(find.text("20 matches"), findsOneWidget);
+      expect(_topOf(tester, "p19"), lastTop);
+    });
+
     testWidgets("a failed bridge search keeps the loaded matches and Retry asks again", (tester) async {
       final repository = _MockSessionRepository();
       var answers = <SessionPromptSearchResult>[

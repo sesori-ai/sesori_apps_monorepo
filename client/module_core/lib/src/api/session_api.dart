@@ -451,8 +451,8 @@ class SessionApi({required final RelayHttpApiClient _client}) {
   /// Every prompt in the session's history that holds [query], oldest first.
   /// A bridge that predates the route answers 404.
   Future<ApiResponse<SessionPromptSearchResponse>> searchPrompts({required String sessionId, required String query}) {
-    return _client.post(
-      "/session/prompts/search",
+    return _client.postDecodedInBackground(
+      path: "/session/prompts/search",
       fromJson: SessionPromptSearchResponse.fromJson,
       body: SessionPromptSearchRequest(sessionId: sessionId, query: query),
     );

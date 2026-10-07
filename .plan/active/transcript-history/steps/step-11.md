@@ -135,8 +135,10 @@ Branch `transcript-history/prompt-search-app`. `module_core`,
   row held; a status-only change just rebuilds. A relist adopts the cubit's
   matches for the new list in the same build. The list's end shows the count,
   "Searching earlier prompts…" while slow, or "Couldn't search earlier
-  prompts" with Retry. Retry's room is kept for the whole bridge search, and
-  outgoing text fades without sizing the end, so the end never jumps.
+  prompts" with Retry. Retry's room and the tallest status's are kept for
+  the whole bridge search (the second review wave added the status), and
+  outgoing text fades without sizing the end, so the end never jumps. The
+  response decodes off the UI isolate, as the load-through's does.
 - **Docs:** `docs/regression/transcript-turn-navigation.md` covers the
   bridge's search, the statuses, Retry and the older bridges.
 

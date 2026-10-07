@@ -172,8 +172,9 @@ stored or sent to the bridge.
   in place of the count until it answers, and the count then counts both. A
   failed bridge search keeps the loaded matches, ends the list with "Couldn't
   search earlier prompts" and a Retry button that asks again; the list's end
-  keeps Retry's room for the whole search, so it never jumps as Retry comes and
-  goes. An index arriving during a search starts the bridge's search. The desktop focuses the field
+  keeps Retry's room and the tallest status's for the whole search, so it
+  never jumps as they come and go, also when a status wraps at a large text
+  size. An index arriving during a search starts the bridge's search. The desktop focuses the field
   on opening; the phone waits for a tap. Escape closes the screen, also while
   typing and after a click outside the field, and the search is not kept.
 - A tap on a row closes the screen, once the transcript has landed beneath it,

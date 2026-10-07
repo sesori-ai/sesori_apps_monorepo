@@ -613,8 +613,8 @@ class _PromptsListState() extends State<_PromptsList> with SingleTickerProviderS
       PromptSearchIdle() => false,
       PromptSearchActive(:final earlier) => earlier == EarlierPromptSearch.failed,
     };
-    // Room for Retry stays for the whole search of earlier prompts, so the
-    // list's end never jumps as Retry comes and goes.
+    // Room for Retry and for the tallest status stays for the whole search of
+    // earlier prompts, so the list's end never jumps as they come and go.
     final reservesRetry = switch (_search) {
       PromptSearchIdle() || PromptSearchActive(earlier: EarlierPromptSearch.listedOnly) => false,
       PromptSearchActive() => true,
@@ -655,7 +655,10 @@ class _PromptsListState() extends State<_PromptsList> with SingleTickerProviderS
       header: promptDayHeaderExtent(textScaler: textScaler),
       loadEarlier: buttonExtent(label: loc.transcriptPromptsLoadEarlier) + PregoSpacing.md * 2,
       trailing:
-          heightOf(text: count, style: countStyle, maxWidth: constraints.maxWidth) +
+          [
+            count,
+            if (reservesRetry) ...[loc.transcriptPromptsSearchingEarlier, loc.transcriptPromptsSearchEarlierFailed],
+          ].map((text) => heightOf(text: text, style: countStyle, maxWidth: constraints.maxWidth)).reduce(math.max) +
           (reservesRetry ? retryExtent : 0) +
           PregoSpacing.xl * 2 +
           padding.bottom,
