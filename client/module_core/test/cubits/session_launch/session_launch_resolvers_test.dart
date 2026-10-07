@@ -356,6 +356,40 @@ void main() {
       expect(released["project-1"]?.heldSessionIds, isEmpty);
     });
 
+    test("a newer launch in place takes its row as soon as the older one goes as an ordinary change", () {
+      final newer = LaunchingSession(
+        launchId: "launch-2",
+        projectId: "project-1",
+        pluginId: "claude",
+        startedAt: DateTime.utc(2026, 10, 7, 12, 1),
+        title: "Add tests",
+      );
+      final createdNewer = testSession(id: "created-2");
+      const named = SessionLaunchState(launching: [], sessionIds: {"launch-1": "created", "launch-2": "created-2"});
+      final bothNamed = resolveActivity(
+        previous: resolveActivity(
+          previous: const {},
+          launches: SessionLaunchState(launching: [newer, launch], sessionIds: const {}),
+          entry: loaded([existing]),
+          running: const [],
+        ),
+        launches: named,
+        entry: loaded([createdNewer, created, existing]),
+        running: [createdNewer],
+      );
+      expect(bothNamed["project-1"]?.placeholders, [newer, launch]);
+
+      // The older session never runs, so it goes where it belongs.
+      final settled = resolveActivity(
+        previous: bothNamed,
+        launches: named,
+        entry: loaded([testSession(id: "other"), createdNewer, created, existing]),
+        running: [createdNewer],
+      );
+      expect(settled["project-1"]?.placeholders, isEmpty, reason: "no update is left to settle the newer row");
+      expect(settled["project-1"]?.rowKeys, {"created-2": "launch-2"});
+    });
+
     test("keeps a project's row and its session while the project reloads", () {
       final opened = resolveActivity(
         previous: const {},

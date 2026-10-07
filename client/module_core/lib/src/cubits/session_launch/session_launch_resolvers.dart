@@ -90,6 +90,32 @@ LaunchRows resolveHeldLaunchSessions({
   required List<Session> slot,
   required Set<String> placedSessionIds,
 }) {
+  LaunchRows pass(LaunchRows previous) => _resolveHeldLaunchSessionsOnce(
+    previous: previous,
+    launching: launching,
+    sessionIds: sessionIds,
+    sessions: sessions,
+    slot: slot,
+    placedSessionIds: placedSessionIds,
+  );
+  // A row that goes as an ordinary change can leave the rows above it in
+  // place, so pass again until no more rows settle. A pass without a sessions
+  // change only settles rows, so this ends within one pass per row.
+  var rows = pass(previous);
+  for (var next = pass(rows); next.placeholders.length < rows.placeholders.length; next = pass(rows)) {
+    rows = next;
+  }
+  return rows;
+}
+
+LaunchRows _resolveHeldLaunchSessionsOnce({
+  required LaunchRows previous,
+  required List<LaunchingSession> launching,
+  required Map<String, String> sessionIds,
+  required List<Session> sessions,
+  required List<Session> slot,
+  required Set<String> placedSessionIds,
+}) {
   final listed = [for (final session in sessions) session.id];
   final present = listed.toSet();
   final sessionsChanged = !const ListEquality<String>().equals(previous.listedSessionIds, listed);
