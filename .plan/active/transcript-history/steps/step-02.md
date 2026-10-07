@@ -31,7 +31,8 @@ database change.
   `_$ToolStateFromJson` reads `title: json['title'] as String?`, so a missing
   key decodes to null. The shared `build.yaml` sets `include_if_null: false`,
   so the page omits the key rather than sending `null`.
-- **v1.9.0 renders the row correctly.** In `git show v1.9.0:client/module_app_ui/lib/src/features/session_detail/widgets/tool_part_widget.dart`,
+- **v1.9.0 renders the row correctly.** In
+  `git show v1.9.0:client/module_app_ui/lib/src/features/session_detail/widgets/tool_part_widget.dart`,
   `ToolPartWidget.build` renders `_ShellToolPreview(command: command, ...)`
   whenever `state.shellCommand != null`. The title (`detail`) is used only in
   the `else` branch for non-shell tools, which this step never touches. A
@@ -59,8 +60,9 @@ database change.
   repository, a plugin shell tool (whose live mapping aliases the title to the
   command) is served with no `title` key in its wire JSON. This headless route
   read stands in for the plan's manual debug-server page read.
-- Measured on code commit `28fae0bba4` with Dart 3.13.4 from Flutter
-  3.47.5-stable; this evidence commit changes no code. Every check passed in
+- Measured on code commit `28fae0bba438ba6ffc7926431d24428cc8cee1b2` (tree
+  `1aeed53280b9475bbe624f74c754de9e4d44fffe`) with Dart 3.13.4 from Flutter
+  3.47.5-stable; the evidence commits change no code. Every check passed in
   `bridge/app/`: `dart test test/bridge/routing test/bridge/repositories/mappers
   test/bridge/services test/bridge/plugin_to_shared_mapping_test.dart
   test/bridge/persistence` (1,078 tests) and `dart analyze --fatal-infos`.
