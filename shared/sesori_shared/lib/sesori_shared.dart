@@ -101,5 +101,6 @@ export "src/protocol/control_message.dart";
 export "src/protocol/framing.dart";
 export "src/protocol/messages.dart";
 export "src/reporting/failure_reporter.dart";
+export "src/transcript/prompt_turns.dart";
 export "src/voice/project_glossary_key.dart";
 export "src/voice/project_glossary_scope.dart";
