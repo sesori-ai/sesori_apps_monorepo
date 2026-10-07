@@ -64,7 +64,7 @@ void main() {
     whenListen(composer, newSessionStates, initialState: _composing);
     when(() => composer.needsHarnessDiscovery).thenReturn(false);
     when(() => composer.hasNoHarnesses).thenReturn(false);
-    when(() => composer.canCreateSession).thenReturn(true);
+    when(() => composer.canSubmit).thenReturn(true);
     when(() => composer.canRefreshOptions).thenReturn(false);
     when(() => composer.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => composer.composerDraft).thenReturn(ComposerDraft.typed(text: ""));

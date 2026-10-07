@@ -9,6 +9,10 @@ import "composer_draft.dart";
 @immutable
 final class const UnsentComposer({
   required final ComposerDraft draft,
+
+  /// Where the caret or selection sat in [draft]'s text; null leaves the caret
+  /// at its end.
+  required final ({int base, int extent})? selection,
   required final CommandInfo? command,
   required final List<ComposerAttachment> attachments,
 });

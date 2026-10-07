@@ -46,7 +46,7 @@ void main() {
     whenListen(newSessionCubit, const Stream<NewSessionState>.empty(), initialState: _state);
     when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
     when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
-    when(() => newSessionCubit.canCreateSession).thenReturn(true);
+    when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.voiceFirst);
@@ -102,7 +102,7 @@ void main() {
     whenListen(newSessionCubit, const Stream<NewSessionState>.empty(), initialState: _state);
     when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
     when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
-    when(() => newSessionCubit.canCreateSession).thenReturn(true);
+    when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.canRefreshOptions).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
@@ -191,8 +191,7 @@ void main() {
     whenListen(newSessionCubit, states.stream, initialState: _state);
     when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
     when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
-    when(() => newSessionCubit.canCreateSession).thenReturn(true);
-    when(() => newSessionCubit.canSubmitFollowUp).thenReturn(false);
+    when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
@@ -226,8 +225,6 @@ void main() {
     final promptState = tester.state(prompt);
     final centredRect = tester.getRect(prompt);
 
-    when(() => newSessionCubit.canCreateSession).thenReturn(false);
-    when(() => newSessionCubit.canSubmitFollowUp).thenReturn(true);
     states.add(sending);
     await tester.pump();
     // The move is animated: the toolbar is still fading out, and the composer
@@ -281,7 +278,7 @@ void main() {
       whenListen(newSessionCubit, const Stream<NewSessionState>.empty(), initialState: _state);
       when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
       when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
-      when(() => newSessionCubit.canCreateSession).thenReturn(true);
+      when(() => newSessionCubit.canSubmit).thenReturn(true);
       when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
       var draft = ComposerDraft.typed(text: "");
       when(() => newSessionCubit.composerDraft).thenAnswer((_) => draft);
