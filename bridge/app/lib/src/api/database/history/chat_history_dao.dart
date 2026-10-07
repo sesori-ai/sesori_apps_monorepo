@@ -237,13 +237,21 @@ class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistor
     required String messageId,
     required String partId,
   }) async {
-    final row =
-        await (select(historyPartsTable)..where(
-              (table) =>
-                  table.sessionId.equals(sessionId) & table.messageId.equals(messageId) & table.partId.equals(partId),
-            ))
-            .getSingleOrNull();
+    final row = await getPart(sessionId: sessionId, messageId: messageId, partId: partId);
     return row?.orderIndex;
+  }
+
+  /// One part by its primary key.
+  Future<HistoryPartsTableData?> getPart({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) {
+    return (select(historyPartsTable)..where(
+          (table) =>
+              table.sessionId.equals(sessionId) & table.messageId.equals(messageId) & table.partId.equals(partId),
+        ))
+        .getSingleOrNull();
   }
 
   Future<void> upsertMessage({required HistoryMessagesTableData row}) {

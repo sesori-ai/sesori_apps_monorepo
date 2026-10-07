@@ -193,6 +193,12 @@ _SessionMessagesRequest _$SessionMessagesRequestFromJson(Map json) =>
           ) ??
           MessageAttachmentDelivery.inline,
       storedOnly: json['storedOnly'] as bool? ?? false,
+      toolOutputDelivery:
+          $enumDecodeNullable(
+            _$ToolOutputDeliveryEnumMap,
+            json['toolOutputDelivery'],
+          ) ??
+          ToolOutputDelivery.inline,
     );
 
 Map<String, dynamic> _$SessionMessagesRequestToJson(
@@ -204,11 +210,18 @@ Map<String, dynamic> _$SessionMessagesRequestToJson(
   'attachmentDelivery':
       _$MessageAttachmentDeliveryEnumMap[instance.attachmentDelivery]!,
   'storedOnly': instance.storedOnly,
+  'toolOutputDelivery':
+      _$ToolOutputDeliveryEnumMap[instance.toolOutputDelivery]!,
 };
 
 const _$MessageAttachmentDeliveryEnumMap = {
   MessageAttachmentDelivery.inline: 'inline',
   MessageAttachmentDelivery.storedReference: 'storedReference',
+};
+
+const _$ToolOutputDeliveryEnumMap = {
+  ToolOutputDelivery.inline: 'inline',
+  ToolOutputDelivery.onExpand: 'onExpand',
 };
 
 _SessionMessagesThroughRequest _$SessionMessagesThroughRequestFromJson(
@@ -222,6 +235,10 @@ _SessionMessagesThroughRequest _$SessionMessagesThroughRequestFromJson(
     json['attachmentDelivery'],
   ),
   storedOnly: json['storedOnly'] as bool,
+  toolOutputDelivery: $enumDecode(
+    _$ToolOutputDeliveryEnumMap,
+    json['toolOutputDelivery'],
+  ),
 );
 
 Map<String, dynamic> _$SessionMessagesThroughRequestToJson(
@@ -233,4 +250,6 @@ Map<String, dynamic> _$SessionMessagesThroughRequestToJson(
   'attachmentDelivery':
       _$MessageAttachmentDeliveryEnumMap[instance.attachmentDelivery]!,
   'storedOnly': instance.storedOnly,
+  'toolOutputDelivery':
+      _$ToolOutputDeliveryEnumMap[instance.toolOutputDelivery]!,
 };

@@ -15,7 +15,13 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
   Widget build(BuildContext context) {
     final prego = context.prego;
     final state = part.state;
-    final hasDetails = state.shellCommand != null || state.output != null || state.error != null;
+    final hasDetails =
+        state.shellCommand != null ||
+        switch (state) {
+          ToolStateFull(:final output, :final error) => output != null || error != null,
+          // The bridge summarizes only tools that have output or error.
+          ToolStateSummary() => true,
+        };
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -143,8 +149,10 @@ class _ToolPanelState() extends State<_ToolPanel> {
     final loc = context.loc;
     final state = widget.part.state;
     final command = state.shellCommand;
-    final output = state.output;
-    final error = state.error;
+    final (output, error) = switch (state) {
+      ToolStateFull(:final output, :final error) => (output, error),
+      ToolStateSummary() => (null, null),
+    };
     final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
     final blocks = <TextSpan>[
       if (command != null) TextSpan(text: "\$ $command"),

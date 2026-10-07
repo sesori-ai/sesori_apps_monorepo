@@ -418,6 +418,8 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         before: before,
         attachmentDelivery: MessageAttachmentDelivery.storedReference,
         storedOnly: storedOnly,
+        // Full tool parts until the transcript can fetch a summary's output.
+        toolOutputDelivery: ToolOutputDelivery.inline,
       ),
     );
   }

@@ -85,11 +85,13 @@ class TestChatHistoryRepository({
     int? limit,
     int? before,
     MessageAttachmentProjection attachmentProjection = const InlineMessageAttachmentProjection(),
+    ToolOutputDelivery toolOutputDelivery = ToolOutputDelivery.inline,
   }) => super.getSessionMessages(
     sessionId: sessionId,
     storageScope: storageScope,
     window: window ?? _windowOf(limit: limit, before: before),
     attachmentProjection: attachmentProjection,
+    toolOutputDelivery: toolOutputDelivery,
   );
 }
 
@@ -106,11 +108,13 @@ class TestChatHistoryService({
     int? limit,
     int? before,
     MessageAttachmentDelivery attachmentDelivery = MessageAttachmentDelivery.inline,
+    ToolOutputDelivery toolOutputDelivery = ToolOutputDelivery.inline,
     bool storedOnly = false,
   }) => super.getSessionMessages(
     sessionId: sessionId,
     window: window ?? _windowOf(limit: limit, before: before),
     attachmentDelivery: attachmentDelivery,
+    toolOutputDelivery: toolOutputDelivery,
     storedOnly: storedOnly,
   );
 
@@ -121,10 +125,12 @@ class TestChatHistoryService({
     int? limit,
     int? before,
     MessageAttachmentDelivery attachmentDelivery = MessageAttachmentDelivery.inline,
+    ToolOutputDelivery toolOutputDelivery = ToolOutputDelivery.inline,
   }) => super.getArchivedSessionMessages(
     sessionId: sessionId,
     window: window ?? _windowOf(limit: limit, before: before),
     attachmentDelivery: attachmentDelivery,
+    toolOutputDelivery: toolOutputDelivery,
   );
 }
 

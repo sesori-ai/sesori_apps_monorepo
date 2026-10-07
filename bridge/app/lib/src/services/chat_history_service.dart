@@ -12,6 +12,7 @@ import "../repositories/attachment_thumbnail_builder.dart";
 import "../repositories/chat_history_repository.dart";
 import "../repositories/models/history_window.dart";
 import "../repositories/models/stored_session.dart";
+import "../repositories/models/tool_output_lookup.dart";
 import "../repositories/session_repository.dart";
 
 sealed class const SessionAttachmentResult();
@@ -84,6 +85,7 @@ class ChatHistoryService({
     required String sessionId,
     required HistoryWindow window,
     required MessageAttachmentDelivery attachmentDelivery,
+    required ToolOutputDelivery toolOutputDelivery,
     required bool storedOnly,
   }) async {
     final attachmentProjection = _attachmentProjectionFor(delivery: attachmentDelivery);
@@ -92,6 +94,7 @@ class ChatHistoryService({
         sessionId: sessionId,
         window: window,
         attachmentProjection: attachmentProjection,
+        toolOutputDelivery: toolOutputDelivery,
       );
     }
     // The archive check, the freshness decision, and the read all run inside
@@ -116,6 +119,7 @@ class ChatHistoryService({
             storageScope: storageScope,
             window: window,
             attachmentProjection: attachmentProjection,
+            toolOutputDelivery: toolOutputDelivery,
           );
           if (archived != null) return archived;
         }
@@ -129,6 +133,7 @@ class ChatHistoryService({
           storageScope: storageScope,
           window: window,
           attachmentProjection: attachmentProjection,
+          toolOutputDelivery: toolOutputDelivery,
         );
       },
     );
@@ -152,6 +157,7 @@ class ChatHistoryService({
           storageScope: storageScope,
           window: window,
           attachmentProjection: attachmentProjection,
+          toolOutputDelivery: toolOutputDelivery,
         ),
       );
       return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
@@ -171,6 +177,7 @@ class ChatHistoryService({
         storageScope: storageScope,
         window: window,
         attachmentProjection: attachmentProjection,
+        toolOutputDelivery: toolOutputDelivery,
       ),
     );
     return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
@@ -194,6 +201,7 @@ class ChatHistoryService({
     required String sessionId,
     required HistoryWindow window,
     required MessageAttachmentProjection attachmentProjection,
+    required ToolOutputDelivery toolOutputDelivery,
   }) => _readStoredHistory(
     sessionId: sessionId,
     // A store-only read has no backfill with which to create the missing row.
@@ -210,6 +218,7 @@ class ChatHistoryService({
         storageScope: storageScope,
         window: window,
         attachmentProjection: attachmentProjection,
+        toolOutputDelivery: toolOutputDelivery,
       );
       // An audit file is the whole transcript of a session the harness can no
       // longer advance, so it owes nothing.
@@ -225,6 +234,7 @@ class ChatHistoryService({
         storageScope: storageScope,
         window: window,
         attachmentProjection: attachmentProjection,
+        toolOutputDelivery: toolOutputDelivery,
       );
       final state = read.syncState;
       final synced = state != null && state.syncedAt != null && state.watermark >= state.backendActivityAt;
@@ -261,6 +271,29 @@ class ChatHistoryService({
       readStore: (_) => _chatHistoryRepository.searchPrompts(sessionId: sessionId, pattern: pattern),
     );
   }
+
+  /// The output and error a summary tool part withheld, read like
+  /// [getPromptIndex]: from the store or the audit file alone, outside the
+  /// session queue and without a backfill. The app asks only for a part a page
+  /// already delivered.
+  Future<ToolOutputLookup> getToolOutput({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) => _readStoredHistory(
+    sessionId: sessionId,
+    noStoredSession: const ToolOutputMissing(),
+    readArchive: (_) => _chatHistoryRepository.getArchivedToolOutput(
+      sessionId: sessionId,
+      messageId: messageId,
+      partId: partId,
+    ),
+    readStore: (_) => _chatHistoryRepository.getToolOutput(
+      sessionId: sessionId,
+      messageId: messageId,
+      partId: partId,
+    ),
+  );
 
   /// Where a read that answers from stored history alone looks: nowhere when
   /// the bridge holds no row for the session, else an archived session's
@@ -673,9 +706,11 @@ class ChatHistoryService({
   /// turn, which is a cancellation, not a tool error. A compaction still
   /// running when its turn ended never compacted, so it ends as failed.
   MessagePart? _endUnfinishedPart({required MessagePart part}) => switch (part) {
-    MessagePartTool(:final state) && final tool when _unfinishedStatuses.contains(state.status) => tool.copyWith(
-      state: state.copyWith(status: ToolStatus.error, error: "The turn ended before this tool reported a result."),
-    ),
+    // Stored tool parts are always full; only page reads summarize them.
+    MessagePartTool(:final ToolStateFull state) && final tool when _unfinishedStatuses.contains(state.status) =>
+      tool.copyWith(
+        state: state.copyWith(status: ToolStatus.error, error: "The turn ended before this tool reported a result."),
+      ),
     MessagePartSubtask(:final taskState?) && final subtask when _unfinishedStatuses.contains(taskState.status) =>
       subtask.copyWith(taskState: taskState.copyWith(status: ToolStatus.cancelled)),
     MessagePartCompaction(state: CompactionStateRunning()) && final compaction => compaction.copyWith(
@@ -895,6 +930,7 @@ class ChatHistoryService({
     required String sessionId,
     required HistoryWindow window,
     required MessageAttachmentDelivery attachmentDelivery,
+    required ToolOutputDelivery toolOutputDelivery,
   }) async {
     final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
     if (session == null) return null;
@@ -904,6 +940,7 @@ class ChatHistoryService({
       storageScope: _storageScopeFor(session: session),
       window: window,
       attachmentProjection: attachmentProjection,
+      toolOutputDelivery: toolOutputDelivery,
     );
   }
 
