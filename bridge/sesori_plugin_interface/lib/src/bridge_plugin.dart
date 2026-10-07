@@ -16,6 +16,7 @@ import "models/plugin_session_options.dart";
 import "models/plugin_session_status.dart";
 import "models/plugin_session_variant.dart";
 import "plugin_permission_reply.dart";
+import "plugin_session_unrestorable_exception.dart";
 import "plugin_stale_options_exception.dart";
 
 // Note: as far as architecture goes, this MUST be treated as part of API layer

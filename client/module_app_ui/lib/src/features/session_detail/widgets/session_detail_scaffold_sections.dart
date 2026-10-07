@@ -123,7 +123,7 @@ class const SessionDetailCannotContinueNotice({super.key, required final String 
           leading: Icon(TablerRegular.alert_triangle, size: PregoIconSize.md, color: prego.colors.textWarningPrimary),
           title: Text(context.loc.sessionDetailCannotContinueTitle),
           titleStyle: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
-          subtitle: Text(message),
+          subtitle: Text(message, maxLines: 3, overflow: TextOverflow.ellipsis),
           subtitleStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
         ),
       ),

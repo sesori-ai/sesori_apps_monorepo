@@ -26,7 +26,8 @@ reconnect or restart.
   only OMP's "Could not restore model"), an ordinary page or load-through read
   serves what the store holds instead of failing: flagged `awaitingHarnessSync`
   and carrying the plugin's `cannotContinueMessage`. An empty store serves an
-  empty page with that message. Nothing is written, so the store stays stale
+  empty page with that message when the bridge has the session's row but no
+  message rows; a session the bridge has no row for still fails. Nothing is written, so the store stays stale
   and the next open retries the backfill; once it succeeds the message is
   gone. The app shows the message under a "Can't continue this session" banner
   that floats above the transcript and fades in and out without moving it; the
