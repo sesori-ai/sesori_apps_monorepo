@@ -119,7 +119,7 @@ evidence; none is a user decision.
 | P11 | The index and search decode stored attachments as metadata. They never touch spill files. | A stored row keeps an image as the bridge-internal `stored_file` source, which the shared `MessageAttachment` union decodes to `MessageAttachmentUnknown`. That would make an image-only prompt non-renderable and drop it from the index. Page reads avoid this through `_rehydrateAttachment`, which stats the spill file for every attachment. The index needs only the filename, which `_metadataAttachment` already keeps. |
 | P12 | Search returns message ids and excerpts only. It scans user rows without the turn fold. | The app searches the bridge only when it holds an index, which already carries every kind, number and time. A user prompt's text alone decides a match. |
 | P13 | A slim tool part is a second `ToolState` variant, not a flag. The page request opts in through an enum that mirrors `MessageAttachmentDelivery`. See [W3](#w3-slim-tool-parts-steps-12-and-13). | It satisfies the step 1 review's exclusivity constraint. It also keeps every existing `ToolState(` call site and the `MessagePart.tool` default valid. |
-| P14 | Fetched tool output lives in a cubit map keyed by part id. The map survives list replacement. A full part for the same id always wins over it. | A refresh brings summary parts back. If the fetched output were merged into the messages, every refresh (each app resume) would collapse expanded rows back to loading, and they would jump when the output returned. |
+| P14 | Fetched tool output lives in a cubit map keyed by message id and part id, the stored part's identity (`history_parts`). The map survives list replacement. A full part for the same key always wins over it. | A refresh brings summary parts back. If the fetched output were merged into the messages, every refresh (each app resume) would collapse expanded rows back to loading, and they would jump when the output returned. |
 | P15 | When an index is present, it decides every listed prompt's kind, number and time. Loaded prompts that the index lacks (sent after it was fetched) follow it, classified by the shared rule over the loaded range. | The index folds the whole history. The loaded-range fold can misread the first loaded user message (`docs/regression/transcript-turn-navigation.md`, Known Limitations). |
 
 ## Supersession Of Turn-Navigation
@@ -508,8 +508,10 @@ is written in:
   gave none; the ACP family now has one (D38, `localUserMessageTime` in
   `bridge/sesori_plugin_acp/lib/src/acp_event_mapper.dart`).
 - `preview` is `promptText` with leading whitespace trimmed, cut to at most
-  300 UTF-16 code units without splitting a surrogate pair. It is null only
-  when `promptText` is null (an attachment whose name is unknown). There is
+  300 UTF-16 code units without splitting a surrogate pair. It is null when
+  `promptText` is null (an attachment whose name is unknown) or holds only
+  whitespace, never an empty string, matching `firstNonBlankLine` on the
+  loaded list. There is
   no "text continues" flag: the app shows previews as one line, and search
   goes to the bridge.
 - The handler never answers 404. An unknown or empty session returns an
@@ -590,13 +592,18 @@ including archived sessions.
 - It takes the tapped entry's `messageId` and `seq`, and returns a sealed
   result: `Loaded`, `TargetMissing` (the load landed without that message),
   `Failed`, or `Superseded` (the generation changed while it ran).
-- It shares the prepend with `loadOlderMessages`. The prepend keeps the
-  older cursor and its count from the response, and an older page and a
-  load-through that land together cannot move the cursor back: a null
-  cursor wins.
-- A 404 here can only come from a bridge released between steps 7 and 8,
-  which has the index but not this route. It gets no special handling: the
-  tap fails inline.
+- It shares the prepend with `loadOlderMessages`. The cursor and
+  `userMessagesBeforeOldest` move together as one pair from one response,
+  and only toward older history: the prepend keeps whichever pair has the
+  lower boundary (null, the start of history, is lowest). An older page that
+  lands after a farther load-through therefore cannot restore its newer
+  cursor or count.
+- A 404 here comes from a bridge released between steps 7 and 8, which has
+  the index but not this route. The repository maps it to a typed
+  unsupported result ([step 9](#the-index-in-the-app-step-9)), and the cubit
+  returns `Unsupported`. The screen then says the bridge must be updated to
+  open earlier prompts (a new string), instead of offering a retry that
+  cannot succeed.
 
 **Measure:** step 8 records, for the whole largest session in one response,
 the bridge's deflate time and the app's decode time on the UI isolate. The
@@ -612,6 +619,12 @@ the app's decode, added only if the measurement shows a visible stall.
   marker whose retiring condition is that no supported bridge predates the
   route;
 - `SessionPromptIndexFailure`.
+
+The same rule covers every route this phase adds: the repository maps a 404
+from the index, load-through or search route to that route's own
+`Unsupported` variant, with the marker. The cubits never see a status code.
+The tool-output route needs none, because only a bridge that has it sends
+summary parts.
 
 **Cubit and state:**
 
@@ -647,7 +660,8 @@ the app's decode, added only if the measurement shows a visible stall.
   - the tapped row shows a spinner after about 150 ms;
   - when the load lands, `_returnToPrompt` jumps and closes the screen as it
     does today;
-  - `TargetMissing` or `Failed` shows an inline error on the screen;
+  - `TargetMissing` or `Failed` shows an inline error on the screen, and
+    `Unsupported` shows the bridge-update message;
   - a second tap replaces the target;
   - closing the screen cancels the jump, not the load.
 - The pending target and its timer are UI-local state in the screen.
@@ -667,6 +681,13 @@ list, the far tap and the older-bridge fallback.
 - A tap on that pin runs the far-tap flow from step 9.
 - The pin shows the entry's preview in the normal pinned bubble, cut at the
   compact pin height ([O2](#user-decisions-final)).
+- A loaded pin shows its prompt's end instead when the prompt is longer than
+  the overlay's 10,000-character copy budget or taller than the rows below
+  the pin line (`TranscriptStickyPromptOverlay._endOf`,
+  `layOutTranscriptStickyPrompts`). The index cannot know the second case,
+  so for those prompts the pin's content changes when the opener loads. The
+  pin crossfades between the two, so the change is explained, not a snap.
+  Prompts that pin their start, most of them, swap invisibly.
 
 ### Search Every Prompt (Step 11)
 
@@ -698,8 +719,11 @@ layout.
 
 **App:**
 
-- `SessionRepository.searchPrompts` returns `Available(matches)` or
-  `Failure`.
+- `SessionRepository.searchPrompts` returns `Available(matches)`,
+  `Unsupported` (a bridge between steps 7 and 11) or `Failure`.
+- `Unsupported` keeps loaded-range search with today's "in the prompts
+  loaded so far" wording and no Retry, and the cubit stops asking the bridge
+  for the rest of that screen. `Failure` follows O3.
 - A `module_core` `PromptSearchCubit` owns the query, the loaded-range
   matches and the bridge matches. It debounces the bridge query by 250 ms,
   and the latest query wins.
@@ -781,8 +805,8 @@ layout.
 - `SessionApi.getToolOutput` → `SessionRepository.getToolOutput`, which
   returns a sealed `ToolOutputResult`: `Available(output, error)` or
   `Failure`.
-- `SessionDetailCubit` holds a map from part id to a sealed
-  `ToolOutputFetch`: `Loading`, `Loaded(output, error)` or `Failed` (P14).
+- `SessionDetailCubit` holds a map from a typed `(messageId, partId)` key,
+  the stored part's identity, to a sealed `ToolOutputFetch`: `Loading`, `Loaded(output, error)` or `Failed` (P14).
   `fetchToolOutput(messageId, partId)` fills it.
 - `ToolPartWidget` shows the disclosure for every summary part, because the
   bridge summarizes only parts that have output or error. No flag is needed.
@@ -930,7 +954,7 @@ results per request and adds no table or column.
 | 2 | One nullable prompt index in the session detail state, replaced on list replacement (P8). | Q1/Q2 need it. |
 | 2 | One pending far-tap target and its spinner timer, local to the Prompts screen. | Q5 needs it. |
 | 2 | `PromptSearchCubit`: the query, the two match sets and the debounce timer. | Q4 needs it. |
-| 3 | One map from part id to `ToolOutputFetch` in the cubit (P14). | W3 needs it. |
+| 3 | One map from `(messageId, partId)` to `ToolOutputFetch` in the cubit (P14). | W3 needs it. |
 
 **Persistent change:** the `ToolState` union key adds a few bytes to tool
 parts stored after step 12. Older rows decode through `fallbackUnion`.
@@ -959,7 +983,8 @@ Deliberately not added:
 | Bridge CPU spent deflating a very large load-through response. | Measured sizes: up to 17.4 MB for the largest session. | Measured in step 8. Isolate offload only if the bridge stalls visibly. Attachment responses are never deflated (P4). |
 | The app decodes a whole-session load-through on the UI isolate. | Same 17.4 MB worst case; decode runs on the calling isolate today. | Measured in step 8. `Isolate.run` only if a frame stall is visible. |
 | The index takes too long for the largest session. | About 20 ms for the review page's query; the fold over every part is new. | Measured in step 7 against a 300 ms budget. A narrower projection only if it misses. |
-| A bridge released between steps 7 and 8 has the index but not the load-through route. | Release timing. | A far tap fails inline; loaded prompts still work. |
+| A bridge released between steps 7 and 8 (or 7 and 11) has the index but not the load-through (or search) route. | Release timing. | Typed `Unsupported`: a far tap says the bridge needs an update; search stays loaded-only without Retry. |
+| A long prompt's unloaded pin shows its start, but once loaded it pins its end. | Layout rule of the sticky overlay. | The pin crossfades when the opener loads. |
 | The loaded-range fold and the index disagree on a prompt's kind. | Known limitation at the loaded edge. | The index wins (P15). |
 
 ## Cleanup Assessment
