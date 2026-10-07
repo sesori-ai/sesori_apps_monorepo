@@ -104,3 +104,63 @@ magnitude below it, so the 250 ms debounce dominates what the user waits for.
   approved with no findings.
 - **Size:** about 800 changed lines, of which about 385 are generated Freezed
   and JSON code.
+
+## 11b Scope Delivered
+
+Branch `transcript-history/prompt-search-app`. `module_core`,
+`module_app_ui`, both shells and docs. No wire, store or database change.
+
+- **Repository:** `SessionApi.searchPrompts` and
+  `SessionRepository.searchPrompts` return the sealed
+  `SessionPromptSearchResult`: `Available(matches)`, `Unsupported` for the
+  router's "no handler found" 404 only (the route never answers 404), and
+  `Failure(error)`.
+- **Cubit:** `PromptSearchCubit` in `module_core/.../cubits/session_prompts/`
+  owns the query, the local match over each listed prompt's `searchText`, and
+  the bridge's matches. States: `PromptSearchIdle(query)` and
+  `PromptSearchActive(query, matches, earlier)`, with `EarlierPromptSearch`
+  `listedOnly`, `pending`, `slow`, `done`, `failed`. It asks the bridge only
+  when the list `isIndexed` (old public bridges have no index, so they keep
+  the loaded-only search), 250 ms after typing pauses; `slow` after 150 ms;
+  the latest search wins; `Unsupported` stops asking for the screen's life;
+  `retry` asks again from `failed`. An index arriving mid-search starts the
+  bridge's search. Matches keep the list's order; a local match's excerpt
+  wins over the bridge's.
+- **Scope and shells:** `SessionDetailPresentationScope.sessionRepository`;
+  the phone's `SessionDetailScreen` and the desktop's
+  `DesktopSessionDetailScreen` supply `getIt.get<SessionRepository>`.
+- **View:** `SessionPromptsView` provides the cubit and renders its state.
+  A change in which prompts match runs the existing fold with the reader's
+  row held; a status-only change just rebuilds. A relist adopts the cubit's
+  matches for the new list in the same build. The list's end shows the count,
+  "Searching earlier prompts…" while slow, or "Couldn't search earlier
+  prompts" with Retry. Retry's room is kept for the whole bridge search, and
+  outgoing text fades without sizing the end, so the end never jumps.
+- **Docs:** `docs/regression/transcript-turn-navigation.md` covers the
+  bridge's search, the statuses, Retry and the older bridges.
+
+## 11b Evidence
+
+- Dart 3.13.4 from Flutter 3.47.5-stable, on commit `86b82f2081`.
+- **`client/module_core/`:** `dart test test/cubits/session_prompts
+  test/repositories/session_repository_test.dart` (38 tests: debounce, slow,
+  latest wins, Unsupported stops asking, failure then Retry, unindexed never
+  asks, index arriving mid-search, the router's 404 versus another 404);
+  `dart analyze --fatal-infos`.
+- **`client/module_app_ui/`:** `flutter test test/features/session_prompts
+  test/features/session_detail` (446 tests, including the bridge's matches
+  joining in order and a failed search with Retry); `dart analyze
+  --fatal-infos`.
+- **`client/app/`:** `flutter test test/features/session_detail
+  test/features/new_session` (264 tests); `dart analyze --fatal-infos lib
+  test/features`.
+- **`client/desktop/`:** `flutter test
+  test/features/sessions/desktop_session_detail_screen_test.dart` (13 tests);
+  `dart analyze --fatal-infos lib test/features`.
+- **Renders:** fixture widget renders on `pr-media` under
+  `transcript-history/prompt-search/`. No device recording: the
+  agent-device and peekaboo servers were disconnected.
+- **Architecture review:** `architecture-implementation-review`, pass 1,
+  approved with no findings.
+- **Size:** about 950 changed lines, of which 27 are generated localization
+  code.
