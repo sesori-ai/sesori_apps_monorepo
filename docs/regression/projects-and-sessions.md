@@ -361,8 +361,8 @@ state.
   Archived keeps its row until its session arrives, so an empty project's
   page shows that row rather than its composer. Launches whose sessions land together each take their own
   row's place, and a newer launch whose session lands while an older launch below it is still being created
-  keeps its row until the older one lands or fails, then takes its own row's place. If a session does not land in its row's place, it moves where
-  it belongs on the next change to the list's sessions as an ordinary change;
+  keeps its row until the older one lands or fails, then takes its own row's place. If a session does not
+  land in its row's place, it moves where it belongs on the next change to the list's sessions as an ordinary change;
   activity and progress updates do not count. A failed launch's row leaves the list.
 - On the phone, a search field tops Projects and each session list once they
   have anything to search. It narrows the loaded titles without a request,

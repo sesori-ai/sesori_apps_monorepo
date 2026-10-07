@@ -236,8 +236,22 @@ void main() {
     );
     expect(sessionsUpdate.placeholders, [newer, launch], reason: "it is in place but for the older row below it");
 
+    // The older launch's reply names its session before the list has it.
+    final olderNamed = resolve(
+      previous: resolve(
+        previous: sessionsUpdate,
+        launching: const [],
+        sessionIds: const {"launch-1": "created", "launch-2": "created-2"},
+        sessions: [createdNewer, existing, elsewhere],
+      ),
+      launching: const [],
+      sessionIds: const {"launch-1": "created", "launch-2": "created-2"},
+      sessions: [createdNewer, existing],
+    );
+    expect(olderNamed.placeholders, [newer, launch], reason: "the older session is still on its way");
+
     final bothLanded = resolve(
-      previous: sessionsUpdate,
+      previous: olderNamed,
       launching: const [],
       sessionIds: const {"launch-1": "created", "launch-2": "created-2"},
       sessions: [createdNewer, created, existing, elsewhere],

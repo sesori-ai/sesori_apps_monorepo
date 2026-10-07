@@ -115,16 +115,16 @@ LaunchRows resolveHeldLaunchSessions({
 
   final slotIds = [for (final session in slot) session.id];
   final kept = rows.length - _inPlaceCount(rows: rows, resolved: resolved, slot: slotIds);
-  // The rows that would take their places were the still-waiting rows among
-  // them gone. Waiting is bounded by the create timeout, so they wait it out.
-  final resolvedRows = [
+  // The rows that would take their places were the rows whose sessions have
+  // not reached the slot yet gone: still waiting (bounded by the create
+  // timeout), or named with the session still on its way. They wait those out.
+  final inSlot = slotIds.toSet();
+  final slotRows = [
     for (final row in rows)
-      if (resolved.containsKey(row.launchId)) row,
+      if (resolved[row.launchId] case final launch? when inSlot.contains(launch.sessionId)) row,
   ];
   final inPlaceOnceSettled = {
-    for (final row in resolvedRows.skip(
-      resolvedRows.length - _inPlaceCount(rows: resolvedRows, resolved: resolved, slot: slotIds),
-    ))
+    for (final row in slotRows.skip(slotRows.length - _inPlaceCount(rows: slotRows, resolved: resolved, slot: slotIds)))
       row.launchId,
   };
   final placeholders = <LaunchingSession>[];

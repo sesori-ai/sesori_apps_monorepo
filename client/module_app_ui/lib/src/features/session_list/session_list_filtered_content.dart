@@ -80,7 +80,7 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
       if (launchRows.state.placeholders.isNotEmpty) {
         // Not during the build that mounts this list.
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) widget.onShowsLaunchRowsChanged?.call(true);
+          if (mounted) widget.onShowsLaunchRowsChanged?.call(launchRows.state.placeholders.isNotEmpty);
         });
       }
       return launchRows;

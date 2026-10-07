@@ -6,7 +6,8 @@ verified.
 ## Deferred
 
 These review findings were declined on #1891 because the damage was small next
-to the change they needed. Step 13/14 picked them up; see `step-13.md`.
+to the change they needed. Step 13/14 fixed the two launching-row findings and kept
+the alert one as a documented limitation; see `step-13.md`.
 
 | Finding | Flow | Why deferred |
 |---|---|---|
