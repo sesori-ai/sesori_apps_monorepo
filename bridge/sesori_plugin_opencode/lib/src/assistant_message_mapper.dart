@@ -1,5 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "models/open_code_error.dart";
 import "models/openapi/assistant_message.g.dart";
 
 /// Maps an OpenCode [AssistantMessage] to a plugin [PluginMessage],
@@ -47,21 +48,4 @@ class const AssistantMessageMapper() {
       time: time,
     );
   }
-}
-
-/// The name and message of an OpenCode message error.
-///
-/// OpenCode's structured errors are `{ "name": ..., "data": { "message": ... } }`,
-/// but `error` is typed `Object?`, so a non-map payload (e.g. a bare string)
-/// is possible. Never let a present error fall through as a plain assistant
-/// message — that is exactly the silent error loss [AssistantMessageMapper]
-/// exists to prevent — so fall back to `toString()` for a non-map error.
-({String name, String errorMessage}) openCodeError({required Object error}) {
-  final errorMap = error is Map<String, dynamic> ? error : null;
-  final data = errorMap?["data"];
-  final dataMap = data is Map<String, dynamic> ? data : const <String, dynamic>{};
-  return (
-    name: errorMap?["name"]?.toString() ?? "UnknownError",
-    errorMessage: dataMap["message"]?.toString() ?? (errorMap == null ? error.toString() : "Unknown error"),
-  );
 }

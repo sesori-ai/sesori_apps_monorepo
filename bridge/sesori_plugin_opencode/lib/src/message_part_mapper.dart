@@ -7,7 +7,7 @@ import "package:sesori_shared/sesori_shared.dart"
         maxTranscriptImageCandidates,
         maxTranscriptImageCollectionBytes;
 
-import "assistant_message_mapper.dart";
+import "models/open_code_error.dart";
 import "models/openapi/agent_part.g.dart";
 import "models/openapi/assistant_message.g.dart";
 import "models/openapi/compaction_part.g.dart";
