@@ -624,7 +624,8 @@ The same rule covers every route this phase adds: the repository maps a 404
 from the index, load-through or search route to that route's own
 `Unsupported` variant, with the marker. The cubits never see a status code.
 
-**Decode:** the load-through response decodes via `Isolate.run` (measured 264–268 ms on the UI thread on a Mac for the worst-case session).
+**Decode:** the load-through response decodes via `Isolate.run` (measured
+264–268 ms on the UI thread on a Mac for the worst-case session).
 The tool-output route needs none, because only a bridge that has it sends
 summary parts.
 

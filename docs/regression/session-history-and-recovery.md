@@ -53,9 +53,11 @@ reconnect or restart.
   attachment projection behave exactly as they do for a page. Its cursor is
   `throughSeq` while an older message exists and null at the start of
   history, and its `userMessagesBefore` counts the users before `throughSeq`.
-  `throughSeq >= before` and an empty session id are 400s, so a 404 means a
-  bridge that predates the route, and the app maps it to an unsupported
-  result rather than a retryable failure. The app prepends the range like an
+  `throughSeq >= before` and an empty session id are 400s. The app maps only
+  the router's route-not-found 404 (a bridge that predates the route) to an
+  unsupported result; a 404 from the route itself, such as a plugin that lost
+  the transcript, stays a failure. A load asked for while a refresh is in
+  flight is not sent. The app prepends the range like an
   older page, and its cursor and count only ever move toward older history,
   so a page that lands after a farther load-through cannot restore a newer
   pair. A load that lands after a refresh is discarded. It does the same for
@@ -375,8 +377,10 @@ rules where supported.
 - The load-through misses or duplicates a message at either end of its
   range, reports a cursor or count that differs from paging back to the
   same prompt, reads differently from a page on the store, store-only or
-  archive path, treats a bridge's 404 as a retryable failure, or lets a
-  late older page move the app's cursor back toward newer history.
+  archive path, treats an older bridge's route-not-found 404 as a retryable
+  failure or the route's own 404 as an older bridge, splices a range read
+  from a cursor that a refresh was replacing, or lets a late older page move
+  the app's cursor back toward newer history.
 - A store-only read reaches the harness, waits on or fails with another reader's
   backfill, fails instead of serving what the store holds, returns parts that
   belong to a different transcript than its messages, or misreports freshness in

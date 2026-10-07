@@ -143,10 +143,13 @@ class SessionRepository({
         userMessagesBefore: data.userMessagesBefore,
       ),
       // COMPATIBILITY 2026-10-07 (v1.9.1): a bridge without the
-      // /session/messages/through route answers with the router's 404, and
-      // the route itself never answers 404. Remove once no supported bridge
+      // /session/messages/through route answers with the router's
+      // route-not-found 404. A 404 from the route itself (a plugin that lost
+      // the transcript) stays a failure. Remove once no supported bridge
       // predates the route.
-      ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const SessionMessagesThroughUnsupported(),
+      ErrorResponse(error: NonSuccessCodeError(errorCode: 404, :final rawErrorString))
+          when rawErrorString?.startsWith("no handler found for ") ?? false =>
+        const SessionMessagesThroughUnsupported(),
       ErrorResponse(:final error) => SessionMessagesThroughFailure(error: error),
     };
   }

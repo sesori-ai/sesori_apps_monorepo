@@ -350,6 +350,32 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).messages, hasLength(2));
     });
 
+    test("a range asked for during a refresh is not sent", () async {
+      // The refresh has bumped the generation but still shows the old
+      // cursor, so a range read from it would splice onto the refreshed page.
+      final metadata = Completer<SessionDetailMetadataLoadResult>();
+      when(() => loadService.loadMetadata(sessionId: _sessionId)).thenAnswer((_) => metadata.future);
+
+      connectionService.emitDataMayBeStale();
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.isRefreshing,
+        description: "a refreshing transcript",
+      );
+
+      expect(await cubit.loadMessagesThrough(messageId: "m2", seq: 2), isA<LoadThroughSuperseded>());
+      verifyNever(
+        () => loadService.loadMessagesThrough(
+          sessionId: any(named: "sessionId"),
+          throughSeq: any(named: "throughSeq"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      );
+      metadata.complete(SessionDetailMetadataFailed(error: StateError("offline"), stackTrace: null));
+      await pumpEventQueue();
+    });
+
     test("an older page landing after a farther range keeps the farther cursor", () async {
       final page = Completer<SessionMessagePage?>();
       when(

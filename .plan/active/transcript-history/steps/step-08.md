@@ -33,9 +33,10 @@ screen change.
   - `SessionApi.getMessagesThrough` → `SessionRepository.getMessagesThrough`
     → `SessionDetailLoadService.loadMessagesThrough` →
     `SessionDetailCubit.loadMessagesThrough`.
-  - The repository returns a sealed `SessionMessagesThroughResult`. Any 404
-    maps to `SessionMessagesThroughUnsupported`, with a dated COMPATIBILITY
-    marker (v1.9.1).
+  - The repository returns a sealed `SessionMessagesThroughResult`. The
+    router's route-not-found 404 maps to `SessionMessagesThroughUnsupported`,
+    with a dated COMPATIBILITY marker (v1.9.1); the route's own 404 (a
+    plugin that lost the transcript) stays a failure (PR review).
   - The cubit returns a sealed `LoadThroughOutcome`: `Loaded`,
     `TargetMissing`, `Failed`, `Superseded` or `Unsupported`. It shares
     `_prependOlderPage` with `loadOlderMessages`; the cursor and
@@ -60,11 +61,16 @@ Dart 3.13.4 JIT on an Apple-silicon Mac.
 
 | Stage | Isolate | Median | Max |
 |---|---|---|---|
-| Bridge read (repository, store path) | bridge | 171 ms | 178 ms |
-| Bridge encode (`jsonEncode` of the body and the `RelayResponse` envelope, UTF-8) | bridge | 297 ms | 302 ms |
-| Bridge deflate (`ZLibEncoder(raw: true)`, 17.6 MB plaintext) | bridge | 33 ms synthetic, about 250 ms realistic | 33 ms |
-| App inflate and decode (`ZLibDecoder(raw: true)`, UTF-8, envelope `jsonDecode`, body `jsonDecode`, `MessageWithPartsResponse.fromJson`) | UI | 264–268 ms | 275 ms |
+| Bridge read | bridge | 171 ms | 178 ms |
+| Bridge encode | bridge | 297 ms | 302 ms |
+| Bridge deflate | bridge | 33 ms synthetic, about 250 ms realistic | 33 ms |
+| App inflate and decode | UI | 264–268 ms | 275 ms |
 
+- **Stages:** the read is the repository's store path. The encode is
+  `jsonEncode` of the body and the `RelayResponse` envelope, then UTF-8.
+  The deflate is `ZLibEncoder(raw: true)` over the 17.6 MB plaintext. The
+  app stage is `ZLibDecoder(raw: true)`, UTF-8, the envelope's and the
+  body's `jsonDecode`, and `MessageWithPartsResponse.fromJson`.
 - The synthetic text is repetitive, so it deflates 60× (17.6 MB to 0.3 MB)
   and deflates far faster than real transcripts, which deflate about 4.5×.
   A one-off control deflated 17.6 MB of the repository's Dart source (6×):
@@ -74,7 +80,9 @@ Dart 3.13.4 JIT on an Apple-silicon Mac.
 - **Bridge verdict:** about 0.7 s of read, encode and deflate on the bridge
   isolate for the worst case, which only delays other relay traffic for that
   moment. No UI runs there, so the bridge isolate escape hatch is not added.
-- **App verdict (step 9):** the load-through response decodes via `Isolate.run` (measured 264–268 ms on the UI thread on a Mac for the worst-case session).
+- **App verdict, decided for step 9 (this step still decodes on the UI
+  isolate):** the load-through response decodes via `Isolate.run` (measured
+  264–268 ms on the UI thread on a Mac for the worst-case session).
 
 ## Evidence
 
@@ -101,8 +109,10 @@ Dart 3.13.4 JIT on an Apple-silicon Mac.
     for `throughSeq >= before` and for an empty id, and the request
     round-trip.
   - `session_repository_test.dart`, "getMessagesThrough": the range passes
-    through, a 404 reads as Unsupported, and any other status stays a
-    Failure.
+    through, the router's route-not-found 404 reads as Unsupported, and the
+    route's own 404 and any other status stay a Failure.
+  - `session_detail_paging_test.dart` also checks that a load asked for
+    during a refresh is not sent (PR review).
   - `session_detail_paging_test.dart`, "loading through a prompt": the
     prepend takes the range's cursor and count, an already-loaded target
     sends no request, a range without the target reports it missing but

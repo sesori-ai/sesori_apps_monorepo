@@ -122,7 +122,7 @@ class SessionDetailLoadService({
       storedOnly: storedOnly,
     );
     if (result case SessionMessagesThroughFailure(:final error)) {
-      logw("Failed to load messages through a prompt: ${error.toString()}");
+      logw("Failed to load messages through a prompt", error);
     }
     return result;
   }

@@ -706,7 +706,9 @@ class SessionDetailCubit(
   /// prepend, and the farther of the two keeps the cursor.
   Future<LoadThroughOutcome> loadMessagesThrough({required String messageId, required int seq}) async {
     final current = state;
-    if (current is! SessionDetailLoaded) return const LoadThroughSuperseded();
+    // As in [loadOlderMessages]: a refresh has already bumped the generation
+    // but not yet replaced the transcript, so this cursor is about to go stale.
+    if (current is! SessionDetailLoaded || current.isRefreshing) return const LoadThroughSuperseded();
     if (current.messages.any((message) => message.info.id == messageId)) return const LoadThroughLoaded();
     final cursor = current.olderMessagesCursor;
     // Everything from the cursor on is loaded, so a target there is gone.
@@ -742,7 +744,10 @@ class SessionDetailCubit(
           deferredPartEventSequence: deferredPartEventSequence,
           isLoadingOlderMessages: latest.isLoadingOlderMessages,
         );
-        return messages.any((message) => message.info.id == messageId)
+        // The merged transcript decides, since a live update may have
+        // delivered the target while the range was in flight.
+        final merged = state;
+        return merged is SessionDetailLoaded && merged.messages.any((message) => message.info.id == messageId)
             ? const LoadThroughLoaded()
             : const LoadThroughTargetMissing();
     }
