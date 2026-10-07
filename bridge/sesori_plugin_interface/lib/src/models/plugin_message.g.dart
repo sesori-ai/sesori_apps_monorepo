@@ -131,7 +131,7 @@ Map<String, dynamic> _$PluginMessagePartCompactionToJson(
   'id': instance.id,
   'sessionID': instance.sessionID,
   'messageID': instance.messageID,
-  'summary': ?instance.summary,
+  'compactionState': instance.compactionState.toJson(),
   'type': instance.$type,
 };
 
@@ -188,6 +188,28 @@ const _$PluginToolStatusEnumMap = {
   PluginToolStatus.cancelled: 'cancelled',
   PluginToolStatus.unknown: 'unknown',
 };
+
+Map<String, dynamic> _$PluginCompactionStateRunningToJson(
+  PluginCompactionStateRunning instance,
+) => <String, dynamic>{'summary': ?instance.summary, 'status': instance.$type};
+
+Map<String, dynamic> _$PluginCompactionStateCompletedToJson(
+  PluginCompactionStateCompleted instance,
+) => <String, dynamic>{
+  'summary': ?instance.summary,
+  'freedTokens': ?instance.freedTokens,
+  'trigger': ?_$PluginCompactionTriggerEnumMap[instance.trigger],
+  'status': instance.$type,
+};
+
+const _$PluginCompactionTriggerEnumMap = {
+  PluginCompactionTrigger.manual: 'manual',
+  PluginCompactionTrigger.auto: 'auto',
+};
+
+Map<String, dynamic> _$PluginCompactionStateFailedToJson(
+  PluginCompactionStateFailed instance,
+) => <String, dynamic>{'error': ?instance.error, 'status': instance.$type};
 
 Map<String, dynamic> _$PluginMessageUserToJson(PluginMessageUser instance) =>
     <String, dynamic>{

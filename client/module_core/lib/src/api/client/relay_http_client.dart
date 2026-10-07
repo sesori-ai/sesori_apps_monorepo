@@ -32,6 +32,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     body: null,
     extraHeaders: headers,
     timeout: _defaultRequestTimeout,
+    acceptsDeflatedResponse: true,
     sensitiveResponse: false,
   );
 
@@ -53,6 +54,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     body: body,
     extraHeaders: headers,
     timeout: timeout,
+    acceptsDeflatedResponse: true,
     sensitiveResponse: false,
   );
 
@@ -71,6 +73,8 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     body: body,
     extraHeaders: null,
     timeout: timeout,
+    // Attachment bytes are already compressed; deflating them gains little.
+    acceptsDeflatedResponse: false,
     sensitiveResponse: true,
   );
 
@@ -91,6 +95,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     body: body,
     extraHeaders: headers,
     timeout: _defaultRequestTimeout,
+    acceptsDeflatedResponse: true,
     sensitiveResponse: false,
   );
 
@@ -111,6 +116,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     body: body,
     extraHeaders: headers,
     timeout: _defaultRequestTimeout,
+    acceptsDeflatedResponse: true,
     sensitiveResponse: false,
   );
 
@@ -124,6 +130,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     required Object? body,
     required Map<String, String>? extraHeaders,
     required Duration timeout,
+    required bool acceptsDeflatedResponse,
     required bool sensitiveResponse,
   }) async {
     final relayClient = _connectionService.relayClient;
@@ -140,6 +147,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
         body: body,
         extraHeaders: extraHeaders,
         timeout: timeout,
+        acceptsDeflatedResponse: acceptsDeflatedResponse,
         sensitiveResponse: sensitiveResponse,
       ),
     );
@@ -164,6 +172,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     Object? body,
     Map<String, String>? extraHeaders,
     required Duration timeout,
+    required bool acceptsDeflatedResponse,
     required bool sensitiveResponse,
   }) async {
     final requestId = _requestIdGenerator();
@@ -187,6 +196,7 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
           path: fullPath,
           headers: headers,
           body: bodyString,
+          acceptsDeflatedResponse: acceptsDeflatedResponse,
         ),
         timeout: timeout,
       );

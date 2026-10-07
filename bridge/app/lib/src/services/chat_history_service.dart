@@ -553,11 +553,12 @@ class ChatHistoryService({
     };
   }
 
-  /// Finalizes tool parts left open after the session's turn ended, returning
-  /// each rewritten part in both delivery shapes for live emission.
+  /// Finalizes tool, subtask and compaction parts left open after the
+  /// session's turn ended, returning each rewritten part in both delivery
+  /// shapes for live emission.
   ///
-  /// A stored `pending`/`running` tool part whose turn is over can never
-  /// receive a result, so it would spin forever on every later read. The
+  /// A stored `pending`/`running` tool part or running compaction whose turn
+  /// is over can never finish, so it would spin forever on every later read. The
   /// sweep does not touch the session's freshness marks: rewriting local rows
   /// is neither a live capture nor backend activity, and advancing the
   /// watermark here could make a stale store look current.
@@ -620,6 +621,8 @@ class ChatHistoryService({
     );
   }
 
+  /// The stored statuses the sweep prefilters on. A running compaction's
+  /// stored `"status":"running"` matches [ToolStatus.running]'s marker.
   static const _unfinishedStatuses = {ToolStatus.pending, ToolStatus.running};
 
   /// How [part] ends when its turn ended before it finished, or null when it
@@ -628,18 +631,22 @@ class ChatHistoryService({
   /// A tool left `pending`/`running` after its turn ended can never receive a
   /// result — the backend reports tool completion only within the turn that
   /// ran it — so it ends as an error. A subtask's sub-agent died with its
-  /// turn, which is a cancellation, not a tool error.
+  /// turn, which is a cancellation, not a tool error. A compaction still
+  /// running when its turn ended never compacted, so it ends as failed.
   MessagePart? _endUnfinishedPart({required MessagePart part}) => switch (part) {
     MessagePartTool(:final state) && final tool when _unfinishedStatuses.contains(state.status) => tool.copyWith(
       state: state.copyWith(status: ToolStatus.error, error: "The turn ended before this tool reported a result."),
     ),
     MessagePartSubtask(:final taskState?) && final subtask when _unfinishedStatuses.contains(taskState.status) =>
       subtask.copyWith(taskState: taskState.copyWith(status: ToolStatus.cancelled)),
+    MessagePartCompaction(state: CompactionStateRunning()) && final compaction => compaction.copyWith(
+      state: const CompactionState.failed(error: "The turn ended before compaction finished."),
+    ),
     _ => null,
   };
 
-  /// Finalizes the session's open tool parts unless a turn is running now, and
-  /// reports whether anything was rewritten.
+  /// Finalizes the session's unfinished parts (tools, subtasks, compactions)
+  /// unless a turn is running now, and reports whether anything was rewritten.
   ///
   /// A read-path sweep, so it mutates rows without projecting delivery shapes:
   /// the caller re-reads the page itself, and projection could fail for

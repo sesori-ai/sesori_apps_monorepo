@@ -108,7 +108,7 @@ void main() {
           id: "part-1",
           sessionID: "session-1",
           messageID: "message-1",
-          summary: "## Goal\nShip the row.",
+          compactionState: .completed(summary: "## Goal\nShip the row.", freedTokens: null, trigger: null),
         ),
       ),
     );

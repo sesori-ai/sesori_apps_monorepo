@@ -291,7 +291,7 @@ final class PiHistoryMapper({
           id: _toolPartId(messageId: messageId),
           sessionID: sessionId,
           messageID: messageId,
-          summary: summary,
+          compactionState: .completed(summary: summary, freedTokens: null, trigger: null),
         ),
       ],
     );

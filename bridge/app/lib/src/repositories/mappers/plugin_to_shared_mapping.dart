@@ -94,6 +94,23 @@ extension PluginToolStateMapping on PluginToolState {
       text == null ? null : String.fromCharCodes(text.runes.take(maxToolOutputLength));
 }
 
+/// Maps [PluginCompactionState] to the shared [CompactionState].
+extension PluginCompactionStateMapping on PluginCompactionState {
+  CompactionState toShared() => switch (this) {
+    PluginCompactionStateRunning(:final summary) => CompactionState.running(summary: summary),
+    PluginCompactionStateCompleted(:final summary, :final freedTokens, :final trigger) => CompactionState.completed(
+      summary: summary,
+      freedTokens: freedTokens,
+      trigger: switch (trigger) {
+        null => null,
+        PluginCompactionTrigger.manual => CompactionTrigger.manual,
+        PluginCompactionTrigger.auto => CompactionTrigger.auto,
+      },
+    ),
+    PluginCompactionStateFailed(:final error) => CompactionState.failed(error: error),
+  };
+}
+
 /// Maps a plugin-interface [PluginQuestionInfo] to the shared [QuestionInfo]
 /// wire model. Layer-neutral so it can be shared by the SSE path
 /// ([BridgeEventMapper]) and the repository/REST path ([PluginPendingQuestion]).
@@ -191,11 +208,11 @@ extension PluginMessagePartMapping on PluginMessagePart {
       attempt: attempt,
       retryError: retryError,
     ),
-    PluginMessagePartCompaction(:final id, :final messageID, :final summary) => MessagePart.compaction(
+    PluginMessagePartCompaction(:final id, :final messageID, :final compactionState) => MessagePart.compaction(
       id: id,
       sessionID: sessionId,
       messageID: messageID,
-      summary: summary,
+      state: compactionState.toShared(),
     ),
     PluginMessagePartUnknown() => throw StateError(
       "PluginMessagePartUnknown must be filtered out before mapping to shared model",

@@ -16,8 +16,8 @@ Antigravity moved to `1.3.0` and OpenCode to `2.0.24` the same day.
 Pi was refreshed on **2026-10-06** to `1.0.4`, and its approved PATH minimum rose to
 `0.99.0`. Cursor's PATH minimum rose to `2026.09.23` on 2026-10-06 with native sub-agent
 child sessions. Older PATH installs of either get the existing update action.
-Hermes was already on its latest release. OMP stays on `18.3.0` and DeepSeek on adapter
-`0.1.7`; the rows below record why.
+Hermes was already on its latest release. OMP stays on `18.3.0`; the rows below record why.
+DeepSeek moved to adapter `0.2.0` on 2026-10-07.
 Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 6,
 Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. GitHub digests and available
 checksum lists agree; Cursor/Antigravity hashes are locally computed, not publisher
@@ -36,7 +36,7 @@ Pi's and Cursor's; Antigravity retains its exact-pair policy rather than an inde
 | Hermes Agent | `0.21.5` (`v2026.9.24`) | `0.20.0` | Current-target real CLI ACP initialize/list, configured new/load/replay and persisted deletion remain unverified. |
 | Pi | `1.0.4` | `0.99.0` | Six archive hashes match the published `SHA256SUMS` and GitHub digests. A 2026-10-06 sandboxed macOS arm64 production install (digest sentinel), `--version`, inspect-setup, RPC command listing and the production catalog probe passed with no credentials and network denied after download; `/llama` is hidden. An authenticated Pi 1.0.4 session completed during the startup-dialog work (see `HARNESS_CAPABILITIES.md`). Settlement/retry/compaction, queue and fresh-process reuse on the current target remain unverified. |
 | Oh My Pi | `18.3.0` | `17.2.13` | Eight verified direct-binary mappings. `18.6.3` was rejected on 2026-10-06: its `session/load` and `session/resume` fail with "Could not restore model" for a session whose model was removed, which breaks resume-then-delete cleanup and history; `18.3.0` does not. Re-probing the next release for that failure is pending. Current-target native install/version/ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
-| DeepSeek | `0.1.7` (unchanged) | `0.1.5` | Latest stable owned adapter, embedding DeepSeek Harness `0.1.5-rc.2`. Six hashes rechecked; no fresh native or authenticated run. Moving to upstream `0.2.0-rc.2` waits on an adapter release from `sesori-ai/sesori-deepseek-acp`; the consumer pin follows that release. |
+| DeepSeek | `0.2.0` | `0.1.5` | Owned adapter release v0.2.0, embedding DeepSeek Harness `0.2.0-rc.2` (upstream `next`). Six hashes computed from downloads and matched against `checksums.txt`; the macOS arm64 asset reports `sesori-deepseek-acp/0.2.0 deepseek-harness/0.2.0-rc.2 acp/1` and `check` returns ok. The producer's packaged fake-provider smoke passed on all six platforms; no authenticated turn. |
 | Grok Build | `1.0.46` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
 
 Target/asset/descriptor unit coverage does not prove native or authenticated
@@ -111,7 +111,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its
   descriptor honors an explicit `--deepseek-bin` path before a compatible PATH
   release (`>=0.1.5`) and then a managed release at or above that minimum,
-  preferring the pinned `0.1.7` target. An outdated explicit
+  preferring the pinned `0.2.0` target. An outdated explicit
   binary is rejected; an old or malformed PATH candidate falls through to managed
   selection. It performs bounded parseable-version and
   side-effect-free `check --state-dir` probes, advertises install only on a
@@ -125,21 +125,25 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   0.1.4 verified that the bridge and native runtime survived atomic cancellation
   of an independently resumed child and its grandchild after #1379, and accepted
   a successful follow-up turn. That evidence does not requalify current managed
-  target 0.1.7 or cover setup selection, crash reconnect, idle suspension/reap,
+  target 0.2.0 or cover setup selection, crash reconnect, idle suspension/reap,
   bridge restart, desktop, or another platform.
 - Standard ACP owns DeepSeek lifecycle, prompts, config options, and permissions;
   `deepseek/*` adds catalog, detached history, rename, questions, bounded statuses,
   and correlated sub-agent lifecycle on that same connection. Normal `DSH_HOME` remains the source
-  of settings, credentials, providers, and skills but its session root is never
-  scanned. Adapter 0.1.7 initializes and loads only the application-owned
+  of credentials (`.credentials.yaml` or the environment) and skills, but its session
+  root is never scanned. Since adapter 0.2.0 (DeepSeek Harness 0.2.0-rc.2), provider
+  settings live in `$DSH_HOME/profiles/sesori/cordis.patch.yml`; `settings.yaml` is
+  ignored with no automatic import, and a custom provider `baseURL` must speak the
+  Anthropic Messages API. The adapter initializes and loads only the application-owned
   `$DSH_HOME/profiles/sesori` profile at startup, so explicitly installed bundle and
   patch plugins run after restart, including after `dsh --profile sesori` rewrites the
   profile root; a pinned-graph fallback after that rewrite is a failure. The adapter
   resolves one immutable entry snapshot,
   then reapplies its pinned storage, telemetry, hot-reload, sandbox, approval,
-  agent/sub-agent, and transport constraints. An unavailable, invalid, or failing
-  profile falls back once to the pinned in-memory graph without changing active ACP
-  sessions. Profile plugins are trusted local in-process code with access to prompts,
+  agent/sub-agent, and transport constraints. A failing optional profile plugin is reported
+  on stderr and skipped while the rest of the profile runs; an unavailable or invalid
+  profile, or a failing required row, falls back once to the pinned in-memory graph
+  without changing active ACP sessions. Profile plugins are trusted local in-process code with access to prompts,
   files, credentials, Node APIs, and the network; this local trust grant does not
   extend to a future cloud or otherwise managed-trust runtime. Session, attachment,
   query, and spill mutations stay below plugin state, and session-local

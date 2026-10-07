@@ -175,7 +175,7 @@ class const V2MessageMapper() {
             id: partId(messageId: message.id, ordinal: 0),
             sessionID: sessionId,
             messageID: message.id,
-            summary: message.summary,
+            compactionState: .completed(summary: message.summary, freedTokens: null, trigger: null),
           ),
         ];
       case SessionMessageCompactionRunning():

@@ -555,6 +555,9 @@ Historical verification notes keep their original versions.
 
 ### Step 11 handoff (external dependency)
 
+Done 2026-10-07: `sesori-deepseek-acp` #22 merged and release v0.2.0 published;
+the consumer pin is Step 11's PR. The original handoff follows for reference.
+
 1. In `sesori-ai/sesori-deepseek-acp`, migrate to `@deepseek-ai/dsh-*` `0.2.0-rc.2`
    (or a newer RC/stable published by then). Address the five areas listed above,
    run adapter conformance on all six native packages, and publish a release

@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io" show ZLibDecoder;
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
@@ -694,8 +695,18 @@ class RelayClient._({
     }
 
     final decryptedBytes = await unframe(message, encryptor: encryptor);
-    final decoded = jsonDecodeMap(utf8.decode(decryptedBytes));
+    final decoded = jsonDecodeMap(utf8.decode(_inflateIfDeflated(decryptedBytes)));
     return RelayMessage.fromJson(decoded);
+  }
+
+  /// A response to a request that set `acceptsDeflatedResponse` may start
+  /// with [RelayProtocol.deflatedPlaintextMarker], followed by a raw deflate
+  /// stream of the JSON. Any other plaintext is the JSON itself.
+  List<int> _inflateIfDeflated(List<int> plaintext) {
+    if (plaintext case [RelayProtocol.deflatedPlaintextMarker, ...]) {
+      return ZLibDecoder(raw: true).convert(plaintext.sublist(1));
+    }
+    return plaintext;
   }
 
   // ignore: no_slop_linter/prefer_specific_type

@@ -28,7 +28,8 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 ## Guardrails
 
 - No new part type and no new session status. The state lives on
-  `MessagePart.compaction` with `@Default(completed)`.
+  `MessagePart.compaction` (`state`, with `@Default(completed)`), mirrored by
+  `PluginMessagePart.compaction` (`compactionState`) since step 3.
 - Backend vocabulary (Claude `compact_result`, Pi reasons, OpenCode `reason`,
   token fields) stays inside its plugin. Shared code and the client see only
   `CompactionState` and `CompactionTrigger`.

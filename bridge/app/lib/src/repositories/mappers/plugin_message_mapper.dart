@@ -71,7 +71,12 @@ extension PluginMessageWithPartsMapper on PluginMessageWithParts {
   MessageWithParts toSharedMessageWithParts({required String sessionId}) {
     return MessageWithParts(
       info: info.toSharedMessage(sessionId: sessionId),
-      parts: parts.map((part) => part.toShared(sessionId: sessionId)).toList(),
+      // Backends emit unknown parts for content blocks they cannot model
+      // (e.g. Claude's server_tool_use); skip them like the live event path.
+      parts: parts
+          .where((part) => part is! PluginMessagePartUnknown)
+          .map((part) => part.toShared(sessionId: sessionId))
+          .toList(),
     );
   }
 }

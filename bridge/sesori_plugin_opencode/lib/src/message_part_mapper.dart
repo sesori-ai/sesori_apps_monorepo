@@ -60,7 +60,7 @@ class const MessagePartMapper() {
       id: id,
       sessionID: sessionID,
       messageID: messageID,
-      summary: text.isEmpty ? null : text,
+      compactionState: .completed(summary: text.isEmpty ? null : text, freedTokens: null, trigger: null),
     ),
     _ => part,
   };
