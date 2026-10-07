@@ -24,7 +24,7 @@ sub-agent parts, plus the signal that a tool changed files.
   Skills that load through a file read of `SKILL.md` are visible by that path.
   Pi learns the title at `toolcall_end`, so a card announced by `toolcall_start`
   shows it from the running or terminal update onward, live and after replay.
-  Every step (a tool, a command, a thought, a sub-agent, a finished compaction)
+  Every step (a tool, a command, a thought, a sub-agent, a compaction)
   renders as one lightweight secondary-text row layout, on phone and desktop
   alike: its icon, or the live sparkle, centred in one 20 px slot, then one
   14 px line holding a bold label and its regular detail, at a button's height
@@ -80,6 +80,22 @@ sub-agent parts, plus the signal that a tool changed files.
   completed with no details; a state status this client does not know reads as
   completed with whichever completed fields it carries, and an unknown trigger
   reads as absent, so the transcript still decodes.
+- A running compaction is a live row on phone and desktop: the sparkle, a
+  shimmering "Compacting context" and, when its message carries a creation
+  time, " · 1m 42s" ticking from that time, so it reads the same after a reopen;
+  without one the row shows no time. Screen readers hear the row with the time
+  of its last build, not every second. When the harness streams the summary,
+  its newest words fade in on one line under the row, as under Thinking. While
+  a compaction runs, “Working…” and the sub-agents row give way to it; once it
+  settles and the turn goes on, “Working…” returns. The row settles in place,
+  keyed by its part: the sparkle cross-fades to the fold icon (or an alert),
+  the label stops shimmering and the words fold away, so the row keeps its
+  one-line height; reduced motion makes the settle instant. A completed row
+  reads "Context compacted · freed 142k tokens · auto" with only the details
+  the harness reports, and a manual trigger is never named. A failure stays in
+  the transcript as a quiet "Compaction failed" note in secondary text, with
+  its error ellipsized on the one line and read whole by screen readers; it
+  is inert and has no retry.
 - A running tool or sub-agent is a live row: the turning outline sparkle leads
   it and a primary-text band sweeps across its dimmed label, visible in both
   themes. Reduced motion keeps the sparkle and label still while screen readers
@@ -324,6 +340,13 @@ guarantee.
   empty modal; tapping a long summary stalls before the ripple, skips the
   modal's entry transition, or leaves the spinner in place; the Claude summary
   appears live but not after reload, or the reverse.
+- A running compaction shows no timer although its message has a creation
+  time, its timer restarts on reopen or is announced every second, “Working…”
+  or the sub-agents row shows beside it, or “Working…” stays away after it
+  settles while the turn goes on; the row jumps, flashes, changes height apart
+  from the words folding, or is re-inserted when it settles; a failure shows
+  no note, a red alert, a retry or a tappable row; a manual compaction says
+  “manual”.
 - A live row spins or shimmers under reduced motion, a thinking tail hides the
   newest words or wraps past one line, or the jump button names a step, shimmers
   or changes width instead of reading “Jump to latest”.
@@ -447,7 +470,17 @@ guarantee.
   round-trips every state.
 - `client/module_app_ui/test/features/session_detail/widgets/compaction_part_widget_test.dart`
   opens a long compaction summary behind a spinner at both densities and shows
-  it at once under reduced motion or when it is short.
+  it at once under reduced motion or when it is short; it also covers the
+  running row's timer with a fake clock and its read-once semantics, the
+  streamed words, the in-place settle (cross-fade, held height, words folding,
+  instant under reduced motion), the details, the failed note and the token
+  count formatter. `transcript_step_row_test.dart` measures the running and
+  failed rows with the other step kinds, and `session_detail_message_list_test.dart`
+  checks the row replaces “Working…” and settles without a re-insert.
+- `client/module_core/test/cubits/session_detail/transcript_activity_test.dart`
+  covers “Working…” and the sub-agents row giving way to a running compaction,
+  and `session_detail_event_buffer_test.dart` streams a running compaction's
+  summary across a silent refresh like text and reasoning.
 - Owning Claude content/history/tracker, Pi history/dispatcher, OpenCode part
   mapper, Codex rollout/tracker/history, ACP replay/content, Grok adapter,
   Antigravity normalizer and DeepSeek replay/time tests guard backend semantics.

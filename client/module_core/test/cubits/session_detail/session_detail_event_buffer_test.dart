@@ -1718,6 +1718,26 @@ void main() {
 
           expect((cubit.state as SessionDetailLoaded).streamingText, isEmpty);
         });
+
+        if (kind == _StreamedPartKind.runningCompaction) {
+          test("a snapshot settling the compaction retires its buffer", () async {
+            final (:cubit, :refresh) = await startStreaming(delta: "before-");
+            await completeRefresh(
+              cubit: cubit,
+              refresh: refresh,
+              parts: const [
+                MessagePart.compaction(
+                  id: _streamedPartId,
+                  sessionID: _sessionId,
+                  messageID: _streamedMessageId,
+                  state: CompactionState.failed(error: null),
+                ),
+              ],
+            );
+
+            expect((cubit.state as SessionDetailLoaded).streamingText, isEmpty);
+          });
+        }
       }
     });
 
@@ -2182,7 +2202,8 @@ const _streamedPartId = "stream-part";
 /// Text and reasoning parts stream through the same buffer; each case runs for both.
 enum _StreamedPartKind() {
   text,
-  reasoning;
+  reasoning,
+  runningCompaction;
 
   MessagePart part({required String content}) => switch (this) {
     _StreamedPartKind.text => MessagePart.text(
@@ -2196,6 +2217,12 @@ enum _StreamedPartKind() {
       sessionID: _sessionId,
       messageID: _streamedMessageId,
       text: content,
+    ),
+    _StreamedPartKind.runningCompaction => MessagePart.compaction(
+      id: _streamedPartId,
+      sessionID: _sessionId,
+      messageID: _streamedMessageId,
+      state: CompactionState.running(summary: content),
     ),
   };
 

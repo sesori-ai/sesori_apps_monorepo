@@ -125,10 +125,11 @@ extension SessionDetailResolvers on SessionDetailState {
     return self is SessionDetailLoaded && self.messages.any((message) => message.hasRenderableUserContent);
   }
 
-  /// Resolves the display text and streaming flag for a reasoning part.
+  /// Resolves the display text and streaming flag for a streamed part: text,
+  /// reasoning, or a running compaction's summary so far.
   ///
   /// Returns the streaming text if the part is actively streaming,
-  /// otherwise falls back to the finalized text in [messages].
+  /// otherwise falls back to the installed text in [messages].
   ({String text, bool isStreaming}) resolvePartContent({
     required String partId,
     required String messageId,
@@ -145,6 +146,7 @@ extension SessionDetailResolvers on SessionDetailState {
         if (p.id != partId) continue;
         final text = switch (p) {
           MessagePartText(:final text) || MessagePartReasoning(:final text) => text,
+          MessagePartCompaction(state: CompactionStateRunning(:final summary)) => summary,
           MessagePartTool() ||
           MessagePartSubtask() ||
           MessagePartStepStart() ||

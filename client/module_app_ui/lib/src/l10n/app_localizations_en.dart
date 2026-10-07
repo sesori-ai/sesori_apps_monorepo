@@ -2473,6 +2473,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailCompactionSummaryTitle => 'Compaction summary';
 
   @override
+  String get sessionDetailCompactingContext => 'Compacting context';
+
+  @override
+  String get sessionDetailCompactionFailed => 'Compaction failed';
+
+  @override
+  String sessionDetailCompactionFreedTokens(String tokens) {
+    return 'freed $tokens tokens';
+  }
+
+  @override
+  String get sessionDetailCompactionAuto => 'auto';
+
+  @override
   String get sessionDetailCopy => 'Copy';
 
   @override

@@ -7,6 +7,7 @@ import "package:flutter/rendering.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/compaction_part_widget.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_jump_notifier.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_prompt_slot.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_layout.dart";
@@ -1878,6 +1879,70 @@ void main() {
       ..setRetryErrorMessage("Rate limited");
     await settle();
     expect(find.text("Working…"), findsNothing);
+  });
+
+  testWidgets("a running compaction ticks in its own row instead of Working…, then settles in place", (tester) async {
+    await withClock(Clock(() => tester.binding.clock.now()), () async {
+      await tester.binding.setSurfaceSize(const Size(900, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final startedAt = tester.binding.clock.now().millisecondsSinceEpoch - 102000;
+      MessageWithParts compaction({required CompactionState state}) => MessageWithParts(
+        info: Message.assistant(
+          id: "assistant-1",
+          sessionID: "session-1",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          time: MessageTime(created: startedAt, completed: null),
+        ),
+        parts: [
+          MessagePart.compaction(
+            id: "assistant-1-compaction",
+            sessionID: "session-1",
+            messageID: "assistant-1",
+            state: state,
+          ),
+        ],
+      );
+      final prompt = _userMessages(count: 1);
+      final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: harnessKey,
+          initialMessages: [
+            ...prompt,
+            compaction(state: const CompactionState.running(summary: null)),
+          ],
+          initialStreamingText: const {},
+        ),
+      );
+      harnessKey.currentState?.setBusy(true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // The row counts from its message's creation.
+      expect(find.text("Working…"), findsNothing);
+      expect(find.textContaining("Compacting context"), findsOneWidget);
+      expect(find.text("1m 42s"), findsOneWidget);
+      final row = tester.element(find.byType(CompactionPartWidget));
+      final height = tester.getSize(find.byType(CompactionPartWidget)).height;
+
+      harnessKey.currentState?.replaceMessages([
+        ...prompt,
+        compaction(
+          state: const CompactionState.completed(summary: null, freedTokens: 142000, trigger: CompactionTrigger.auto),
+        ),
+      ]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text("Context compacted · freed 142k tokens · auto"), findsOneWidget);
+      // The same row, never re-inserted, at the same height.
+      expect(tester.element(find.byType(CompactionPartWidget)), same(row));
+      expect(tester.getSize(find.byType(CompactionPartWidget)).height, height);
+      // The turn goes on, so Working… returns under the settled row.
+      expect(find.text("Working…"), findsOneWidget);
+    });
   });
 
   testWidgets("the sub-agent row takes over from Working… with an ease while only sub-agents run", (tester) async {
