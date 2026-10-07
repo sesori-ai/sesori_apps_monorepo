@@ -21,6 +21,16 @@ reconnect or restart.
   never starts a stopped backend. Only a first backfill or a re-read after the
   backend advanced may reach it; backfill is lazy and per session, and a session
   advanced outside Sesori is detected as stale, re-read, and re-cached.
+- When a backfill fails because the plugin reports that the backend cannot
+  restore the session as stored (`PluginSessionUnrestorableException`; today
+  only OMP's "Could not restore model"), an ordinary page or load-through read
+  serves what the store holds instead of failing: flagged `awaitingHarnessSync`
+  and carrying the plugin's `cannotContinueMessage`. An empty store serves an
+  empty page with that message. Nothing is written, so the store stays stale
+  and the next open retries the backfill; once it succeeds the message is
+  gone. The app shows the message under a "Can't continue this session" banner
+  that floats above the transcript and fades in and out without moving it; the
+  composer stays enabled. Any other backfill failure still fails the read.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness
@@ -381,6 +391,10 @@ rules where supported.
   failure or the route's own 404 as an older bridge, splices a range read
   from a cursor that a refresh was replacing, or lets a late older page move
   the app's cursor back toward newer history.
+- An unrestorable session's history open returns a load failure instead of
+  the stored transcript, the banner is missing or persists after a successful
+  backfill, the fallback marks the store synced, or the banner moves the
+  transcript or disables the composer.
 - A store-only read reaches the harness, waits on or fails with another reader's
   backfill, fails instead of serving what the store holds, returns parts that
   belong to a different transcript than its messages, or misreports freshness in

@@ -84,6 +84,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     // `false` = child, `null` = unknown (metadata lookup failed).
     required bool? isRootSession,
     required bool isArchived,
+
+    /// The harness's explanation of why this session can no longer be
+    /// continued, shown above the transcript; null when nothing restricts it.
+    required String? cannotContinueMessage,
     // Queued messages (waiting to be sent when connection is restored).
     required List<QueuedSessionSubmission> queuedMessages,
     // The head submission awaiting bridge acceptance, or failed; later

@@ -2,7 +2,7 @@ import "dart:async";
 import "dart:typed_data";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show KeyedParallelLock, ParallelLock;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginSessionUnrestorableException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/attachment_spill_storage.dart";
@@ -48,11 +48,17 @@ typedef SessionMessagesPage = ({
   SessionPromptDefaults? replayedPromptDefaults,
 
   /// Whether the store served this page while behind the harness, so newer
-  /// messages may be missing. Only a store-only read can report this.
+  /// messages may be missing. Only a store-only read, or a read whose
+  /// backfill the backend refused because it cannot restore the session, can
+  /// report this.
   bool awaitingHarnessSync,
 
   /// How many of the session's user messages are older than [messages].
   int userMessagesBefore,
+
+  /// The plugin's explanation when the backend cannot restore the session, so
+  /// it cannot be continued; `null` when nothing restricts it.
+  String? cannotContinueMessage,
 });
 
 /// The single writer of the chat history store.
@@ -157,7 +163,29 @@ class ChatHistoryService({
       return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
     }
 
-    final replayedPromptDefaults = await _backfillSessionForRead(sessionId: sessionId);
+    final SessionPromptDefaults? replayedPromptDefaults;
+    try {
+      replayedPromptDefaults = await _backfillSessionForRead(sessionId: sessionId);
+    } on PluginSessionUnrestorableException catch (error, stackTrace) {
+      // The backend refuses to reopen the session as stored, so serve what the
+      // store already holds with the plugin's explanation. Nothing is written:
+      // the store stays stale, so a later open retries and recovers once the
+      // backend can restore the session again.
+      Log.w("Backend cannot restore session $sessionId; serving stored history", error.cause, stackTrace);
+      final stored = await _storedOnlyPage(
+        sessionId: sessionId,
+        window: window,
+        attachmentProjection: attachmentProjection,
+      );
+      return (
+        messages: stored.messages,
+        nextCursor: stored.nextCursor,
+        replayedPromptDefaults: null,
+        awaitingHarnessSync: true,
+        userMessagesBefore: stored.userMessagesBefore,
+        cannotContinueMessage: error.message,
+      );
+    }
     // A backend transcript reports no result for a tool whose turn died, so a
     // fresh backfill can import open tool parts that will never complete.
     await _sweepUnlessTurnRunning(sessionId: sessionId);
@@ -203,6 +231,7 @@ class ChatHistoryService({
       replayedPromptDefaults: null,
       awaitingHarnessSync: true,
       userMessagesBefore: 0,
+      cannotContinueMessage: null,
     ),
     readArchive: (storageScope) async {
       final archived = await _chatHistoryRepository.getArchivedSessionMessages(
@@ -279,6 +308,7 @@ class ChatHistoryService({
     replayedPromptDefaults: replayedPromptDefaults,
     awaitingHarnessSync: awaitingHarnessSync,
     userMessagesBefore: page.userMessagesBefore,
+    cannotContinueMessage: null,
   );
 
   MessageAttachmentProjection _attachmentProjectionFor({required MessageAttachmentDelivery delivery}) =>

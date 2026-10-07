@@ -39,6 +39,7 @@ class GetSessionMessagesThroughHandler({required final ChatHistoryService _chatH
       replayedPromptDefaults: page.replayedPromptDefaults,
       awaitingHarnessSync: page.awaitingHarnessSync,
       userMessagesBefore: page.userMessagesBefore,
+      cannotContinueMessage: page.cannotContinueMessage,
     );
   }
 }

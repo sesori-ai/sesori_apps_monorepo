@@ -44,6 +44,7 @@ class GetSessionMessagesHandler({required final ChatHistoryService _chatHistoryS
       replayedPromptDefaults: page.replayedPromptDefaults,
       awaitingHarnessSync: page.awaitingHarnessSync,
       userMessagesBefore: page.userMessagesBefore,
+      cannotContinueMessage: page.cannotContinueMessage,
     );
   }
 }

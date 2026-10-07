@@ -33,6 +33,7 @@ Future<void> main() async {
           replayedPromptDefaults: null,
           awaitingHarnessSync: false,
           userMessagesBefore: page.userMessagesBefore,
+          cannotContinueMessage: null,
         );
       },
     );

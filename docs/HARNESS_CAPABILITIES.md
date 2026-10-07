@@ -358,7 +358,7 @@ Only OMP is assessed here. Other harnesses are not assessed.
 
 | Harness | Status |
 |---|---|
-| OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.8.0` source, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale shows the generic load-failure state, and its persisted cleanup is retried at bridge startup. |
+| OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.8.0` source, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale serves the history the bridge already stores, with a persistent banner saying the session can't be continued. A session the bridge holds no record of still fails to open. Its persisted cleanup is retried at bridge startup. Upstream: https://github.com/can1357/oh-my-pi/issues/14806. |
 
 ## External Codex session activity
 

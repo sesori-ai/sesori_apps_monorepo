@@ -191,6 +191,7 @@ void main() {
           promptDefaults: null,
           isRootSession: true,
           isArchived: false,
+          cannotContinueMessage: null,
         ),
       ),
     );
@@ -295,6 +296,7 @@ void main() {
         promptDefaults: null,
         isRootSession: true,
         isArchived: false,
+        cannotContinueMessage: null,
       ),
     );
 
@@ -386,6 +388,7 @@ void _stubLoadApis(MockSessionRepository service) {
         nextCursor: null,
         userMessagesBefore: null,
         replayedPromptDefaults: null,
+        cannotContinueMessage: null,
       ),
     ),
   );

@@ -170,6 +170,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -230,6 +231,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -320,6 +322,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -392,6 +395,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -449,6 +453,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -523,6 +528,7 @@ void main() {
           promptDefaults: null,
           isRootSession: true,
           isArchived: false,
+          cannotContinueMessage: null,
         );
       }
 
@@ -593,6 +599,7 @@ void main() {
         promptDefaults: null,
         isRootSession: true,
         isArchived: false,
+        cannotContinueMessage: null,
       );
       when(
         () => mockLoadService.load(
@@ -714,6 +721,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -781,6 +789,7 @@ void main() {
         promptDefaults: null,
         isRootSession: true,
         isArchived: false,
+        cannotContinueMessage: null,
       );
       when(
         () => mockLoadService.load(
@@ -871,6 +880,7 @@ void main() {
         promptDefaults: null,
         isRootSession: true,
         isArchived: false,
+        cannotContinueMessage: null,
       );
       const unsupportedSnapshot = SessionDetailSnapshot(
         areOptionsStale: false,
@@ -893,6 +903,7 @@ void main() {
         promptDefaults: null,
         isRootSession: true,
         isArchived: false,
+        cannotContinueMessage: null,
       );
       when(
         () => mockLoadService.load(
@@ -1022,6 +1033,7 @@ void main() {
         promptDefaults: null,
         isRootSession: true,
         isArchived: false,
+        cannotContinueMessage: null,
       );
       when(
         () => mockLoadService.load(
@@ -1151,6 +1163,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -1232,6 +1245,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -1273,6 +1287,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -1347,6 +1362,7 @@ void main() {
         promptDefaults: null,
         isRootSession: true,
         isArchived: false,
+        cannotContinueMessage: null,
       );
 
       when(
@@ -1775,6 +1791,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -1840,6 +1857,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -1929,6 +1947,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -2007,6 +2026,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -2085,6 +2105,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -2156,6 +2177,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -2273,6 +2295,7 @@ SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages, int? 
       promptDefaults: null,
       isRootSession: true,
       isArchived: false,
+      cannotContinueMessage: null,
     );
 
 Future<void> _awaitStreamingText(SessionDetailCubit cubit, {required String partId, required String text}) async {

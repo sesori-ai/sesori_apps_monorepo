@@ -112,7 +112,10 @@ sealed class BridgePluginApi() {
   /// [PluginOperationException] — when history retrieval *fails* (transport,
   /// auth, replay errors), never swallow the failure into an empty list: the
   /// phone renders an error-with-retry state for a failed load, which must
-  /// stay distinguishable from "no messages yet".
+  /// stay distinguishable from "no messages yet". When the backend refuses to
+  /// restore this session's history as stored, throw the typed
+  /// [PluginSessionUnrestorableException] so the bridge can serve the history
+  /// it already holds with the plugin's explanation.
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId);
 
   /// Sends a prompt to a session.

@@ -1484,6 +1484,7 @@
   },
   "newSessionProjectUnavailable": "Couldn’t verify whether this project supports worktrees. Try again before creating the session.",
   "sessionDetailArchivedNotice": "This session is archived and read-only.",
+  "sessionDetailCannotContinueTitle": "Can't continue this session",
   "sessionDetailHarnessFallbackName": "This harness",
   "sessionDetailHarnessDisabledReason": "{harnessName} is disabled.",
   "@sessionDetailHarnessDisabledReason": {"placeholders": {"harnessName": {"type": "String"}}},

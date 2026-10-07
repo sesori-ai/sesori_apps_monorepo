@@ -207,6 +207,7 @@ void main() {
             promptDefaults: promptDefaults,
             isRootSession: true,
             isArchived: isArchived,
+            cannotContinueMessage: null,
           ),
         );
       });
@@ -239,6 +240,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         );
       });
@@ -280,6 +282,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
