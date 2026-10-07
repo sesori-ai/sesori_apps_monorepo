@@ -509,7 +509,7 @@ void main() {
     });
     tearDown(() => states.close());
 
-    Widget transcript({required Map<ToolOutputKey, ToolOutputFetch> toolOutputs}) {
+    Widget transcript({required Map<ToolOutputKey, ToolOutputFetch> toolOutputs, required MessagePartTool part}) {
       whenListen(cubit, states.stream, initialState: _loaded(toolOutputs: toolOutputs));
       return MaterialApp(
         theme: buildPregoThemeData(brightness: Brightness.light),
@@ -522,10 +522,10 @@ void main() {
               height: 500,
               child: ListView(
                 reverse: true,
-                children: const [
-                  SizedBox(height: 350),
-                  ToolPartWidget(part: summary),
-                  SizedBox(height: 500),
+                children: [
+                  const SizedBox(height: 350),
+                  ToolPartWidget(part: part),
+                  const SizedBox(height: 500),
                 ],
               ),
             ),
@@ -541,7 +541,7 @@ void main() {
         .opacity;
 
     testWidgets("fetches its output on opening and eases to it with the header still", (tester) async {
-      await tester.pumpWidget(transcript(toolOutputs: const {}));
+      await tester.pumpWidget(transcript(toolOutputs: const {}, part: summary));
       final header = tester.getRect(find.byKey(_toggle));
 
       await tester.tap(find.byKey(_toggle));
@@ -578,7 +578,7 @@ void main() {
     });
 
     testWidgets("a failed fetch offers a retry inside the panel", (tester) async {
-      await tester.pumpWidget(transcript(toolOutputs: const {key: ToolOutputFailed()}));
+      await tester.pumpWidget(transcript(toolOutputs: const {key: ToolOutputFailed()}, part: summary));
 
       await tester.tap(find.byKey(_toggle));
       // The panel's animation starts on the first frame after the tap.
@@ -589,12 +589,100 @@ void main() {
 
       // Once on opening, which also retries, and once for the tap.
       verify(() => cubit.fetchToolOutput(messageId: "message-1", partId: "tool-1")).called(2);
+      states.add(_loaded(toolOutputs: const {key: ToolOutputLoading()}));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(spinnerOpacity(tester), 0, reason: "a retry waits as long as the first fetch before its spinner");
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("a failure in large text grows instead of clipping", (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 3;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.pumpWidget(transcript(toolOutputs: const {key: ToolOutputFailed()}, part: summary));
+
+      await tester.tap(find.byKey(_toggle));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final failure = find.text("Could not load the output.");
+      final row = find.ancestor(of: failure, matching: find.byType(Row)).first;
+      expect(tester.getSize(row).height, greaterThan(44));
+      expect(tester.getSize(row).height, greaterThanOrEqualTo(tester.getSize(failure).height));
+      expect(find.byKey(const ValueKey("toolOutput.retry")).hitTestable(), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("an output shorter than the loading row eases down to it", (tester) async {
+      const tool = MessagePartTool(
+        id: "tool-1",
+        sessionID: "session-1",
+        messageID: "message-1",
+        tool: "Lookup",
+        state: ToolState.summary(status: ToolStatus.completed, title: null, shellCommand: null, attachments: []),
+      );
+      await tester.pumpWidget(transcript(toolOutputs: const {key: ToolOutputLoading()}, part: tool));
+      await tester.tap(find.byKey(_toggle));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final loading = _shellHeight(tester);
+
+      states.add(_loaded(toolOutputs: {key: const ToolOutputLoaded(output: "ok", error: null)}));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final easing = _shellHeight(tester);
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(easing, lessThan(loading));
+      expect(_shellHeight(tester), lessThan(easing));
+    });
+
+    testWidgets("keeps the command's sideways scroll when the output arrives", (tester) async {
+      const tool = MessagePartTool(
+        id: "tool-1",
+        sessionID: "session-1",
+        messageID: "message-1",
+        tool: "Bash",
+        state: ToolState.summary(
+          status: ToolStatus.completed,
+          title: null,
+          shellCommand: "dart test --reporter expanded --concurrency 1 test/features/session_detail/widgets",
+          attachments: [],
+        ),
+      );
+      double sidewaysOffset() => tester
+          .state<ScrollableState>(
+            find.descendant(
+              of: find.byKey(const ValueKey("shellTool.viewport")),
+              matching: find.byWidgetPredicate(
+                (widget) => widget is Scrollable && widget.axisDirection == AxisDirection.right,
+              ),
+            ),
+          )
+          .position
+          .pixels;
+      await tester.pumpWidget(transcript(toolOutputs: const {key: ToolOutputLoading()}, part: tool));
+      await tester.tap(find.byKey(_toggle));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.drag(find.byKey(const ValueKey("shellTool.viewport")), const Offset(-120, 0));
+      await tester.pump();
+      final scrolled = sidewaysOffset();
+      expect(scrolled, greaterThan(0));
+
+      states.add(_loaded(toolOutputs: {key: const ToolOutputLoaded(output: "ok", error: null)}));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(sidewaysOffset(), scrolled);
     });
 
     testWidgets("an output fetched earlier opens at once", (tester) async {
       await tester.pumpWidget(
-        transcript(toolOutputs: {key: const ToolOutputLoaded(output: "done", error: null)}),
+        transcript(
+          toolOutputs: {key: const ToolOutputLoaded(output: "done", error: null)},
+          part: summary,
+        ),
       );
 
       await tester.tap(find.byKey(_toggle));

@@ -14,13 +14,15 @@ import "transcript_motion.dart";
 /// away; the disclosure scrolls by the same amount as it grows, so the tapped
 /// header stays still while there is room below it.
 ///
-/// A [panel] with a new key replaces the open one by easing from the old
-/// panel's height to its own, with the header held still the same way.
+/// When [panelComplete] changes while open, the panel eases from its old
+/// height to its new one, with the header held still the same way. The panel
+/// keeps its state.
 class const TranscriptDisclosure({
   super.key,
   required final Key toggleKey,
   required final Widget Function({required bool expanded}) headerBuilder,
   required final Widget panel,
+  required final bool panelComplete,
 }) extends StatefulWidget {
   @override
   State<TranscriptDisclosure> createState() => _TranscriptDisclosureState();
@@ -41,8 +43,9 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
 
   final _panelKey = GlobalKey();
 
-  /// The heights an open panel eases between after it was replaced. For the
-  /// first frame, while the new panel lays out, both are the old height.
+  /// The heights an open panel eases between after [TranscriptDisclosure.panelComplete]
+  /// changed. For the first frame, while the new content lays out, both are
+  /// the old height.
   ({double from, double to})? _resizing;
 
   /// How much of the panel's height the transcript has already made room for.
@@ -60,7 +63,7 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
   @override
   void didUpdateWidget(TranscriptDisclosure oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.panel.key == oldWidget.panel.key || _disclosure.isDismissed) return;
+    if (widget.panelComplete == oldWidget.panelComplete || _disclosure.isDismissed) return;
     final from = _panelHeight();
     if (from == null) return;
     _resizing = (from: from, to: from);
@@ -97,15 +100,15 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
     if (status.isDismissed) setState(() {});
   }
 
-  /// Runs once the replacement panel has laid out at the old height, so its
-  /// own height is known before the panel starts to move.
+  /// Runs once the new content has laid out at the old height, so its own
+  /// height is known before the panel starts to move.
   void _easeToNewHeight() {
     final resizing = _resizing;
     if (!mounted || resizing == null) return;
     final panel = _panelKey.currentContext?.findRenderObject();
     if (panel is! RenderBox || !panel.hasSize || context.isReducedMotion) {
       setState(() => _resizing = null);
-      // The new panel has laid out, so the transcript makes room for it
+      // The new content has laid out, so the transcript makes room for it
       // before the next frame shows it.
       _keepHeaderInPlace();
       return;
@@ -180,6 +183,7 @@ class _TranscriptDisclosureState() extends State<TranscriptDisclosure> with Tick
           builder: (context, child) => SizedBox(height: _panelHeight(), child: child),
           child: OverflowBox(
             alignment: AlignmentDirectional.topStart,
+            minHeight: 0,
             maxHeight: double.infinity,
             child: panel,
           ),

@@ -178,11 +178,13 @@ sub-agent parts, plus the signal that a tool changed files.
   v1.9.0 bridge ignores the field and sends full parts, which render as
   before. Until the output arrives the panel shows its title and any command
   over a fixed-height row; a spinner fades in there only after 150 ms, so a
-  quick fetch never flashes one, and Copy is hidden. When the output arrives
-  the panel eases over 200 ms from that height to its own, and the tapped
-  header stays still as when opening. A failed fetch shows “Could not load the
-  output.” with Retry in the same row, so the panel does not change height;
-  closing and reopening retries too. A fetched output survives a silent
+  quick fetch never flashes one, and Copy keeps its place but is hidden. When
+  the output arrives the panel eases over 200 ms from that height to its own,
+  taller or shorter, the tapped header stays still as when opening, and a
+  command scrolled sideways keeps its offset. A failed fetch shows “Could not
+  load the output.” with Retry in the same row, so the panel does not change
+  height unless large text needs more room; Retry, or closing and reopening,
+  fetches again with a fresh 150 ms spinner delay. A fetched output survives a silent
   refresh and reopens at once; a full reload fetches it again on the next
   expand. A full part always wins over it.
 - Subtasks retain a prompt bounded to 500 runes, bounded title/outcome/error
@@ -501,9 +503,10 @@ guarantee.
   `shared/sesori_shared/test/models/tool_state_test.dart` decodes keyless tool
   state as full and a request without the field as inline.
 - `client/module_app_ui/test/features/session_detail/widgets/tool_part_widget_test.dart`
-  ("a summary part") fetches on opening, holds the spinner back for 150 ms,
-  eases to the output with the header still, retries from the panel and opens
-  a fetched output at once. `client/module_core/test/cubits/session_detail/session_detail_paging_test.dart`
+  ("a summary part") fetches on opening, holds the spinner back for 150 ms
+  (also on a retry), eases to a taller or shorter output with the header and
+  title still, keeps the command's sideways scroll, grows the failure for
+  large text, retries from the panel and opens a fetched output at once. `client/module_core/test/cubits/session_detail/session_detail_paging_test.dart`
   ("summary tool output") fetches once while a fetch is in flight, retries
   after a failure and keeps the output across a silent refresh.
 - `client/module_app_ui/test/features/session_detail/widgets/transcript_step_row_test.dart`

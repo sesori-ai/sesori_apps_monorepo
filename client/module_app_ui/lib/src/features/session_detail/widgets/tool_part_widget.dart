@@ -33,14 +33,7 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
       child: Column(
         crossAxisAlignment: .start,
         children: [
-          if (hasDetails)
-            TranscriptDisclosure(
-              toggleKey: const ValueKey("shellTool.toggle"),
-              headerBuilder: ({required expanded}) => _ToolHeader(part: part),
-              panel: _panel(context: context),
-            )
-          else
-            _ToolHeader(part: part),
+          if (hasDetails) _disclosure(context: context) else _ToolHeader(part: part),
           if (state.attachments.isNotEmpty)
             Padding(
               padding: EdgeInsetsDirectional.only(top: prego.spacing.xs),
@@ -55,9 +48,9 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
   }
 
   /// A full part carries its own output. A summary's output is fetched when
-  /// its panel opens, and the panel's key changes once it arrives, so the
-  /// disclosure eases from the loading panel's height to the output's.
-  Widget _panel({required BuildContext context}) {
+  /// its panel opens, and once it arrives the disclosure eases from the
+  /// loading panel's height to the output's.
+  Widget _disclosure({required BuildContext context}) {
     final output = switch (part.state) {
       ToolStateFull(:final output, :final error) => ToolOutputLoaded(output: output, error: error),
       ToolStateSummary() =>
@@ -69,16 +62,20 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
             ) ??
             const ToolOutputLoading(),
     };
-    return _ToolPanel(
-      key: ValueKey(output is ToolOutputLoaded),
-      part: part,
-      output: output,
-      fetchOutput: switch (part.state) {
-        ToolStateFull() => null,
-        ToolStateSummary() => () => unawaited(
-          context.read<SessionDetailCubit>().fetchToolOutput(messageId: part.messageID, partId: part.id),
-        ),
-      },
+    return TranscriptDisclosure(
+      toggleKey: const ValueKey("shellTool.toggle"),
+      headerBuilder: ({required expanded}) => _ToolHeader(part: part),
+      panelComplete: output is ToolOutputLoaded,
+      panel: _ToolPanel(
+        part: part,
+        output: output,
+        fetchOutput: switch (part.state) {
+          ToolStateFull() => null,
+          ToolStateSummary() => () => unawaited(
+            context.read<SessionDetailCubit>().fetchToolOutput(messageId: part.messageID, partId: part.id),
+          ),
+        },
+      ),
     );
   }
 
@@ -162,7 +159,6 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
 /// bounded viewport that scrolls on both axes. Until a summary's output
 /// arrives, a fixed-height row below the command stands in for it.
 class const _ToolPanel({
-  super.key,
   required final MessagePartTool part,
   required final ToolOutputFetch output,
 
@@ -326,7 +322,13 @@ class _ToolPanelState() extends State<_ToolPanel> {
                 ),
               ),
             if (fetch is! ToolOutputLoaded && fetchOutput != null)
-              _PendingOutput(fetch: fetch, retry: fetchOutput, textStyle: style),
+              // A retry starts a new spinner delay.
+              _PendingOutput(
+                key: ValueKey(fetch is ToolOutputFailed),
+                fetch: fetch,
+                retry: fetchOutput,
+                textStyle: style,
+              ),
           ],
         ),
       ),
@@ -336,8 +338,9 @@ class _ToolPanelState() extends State<_ToolPanel> {
 
 /// Stands in for a summary's output until it arrives. It keeps one height
 /// whether the output loads or failed, so the panel resizes only once, when
-/// the output comes.
+/// the output comes; only text too large for that height grows it.
 class const _PendingOutput({
+  super.key,
   required final ToolOutputFetch fetch,
   required final VoidCallback retry,
   required final TextStyle textStyle,
@@ -370,8 +373,9 @@ class _PendingOutputState() extends State<_PendingOutput> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    return SizedBox(
-      height: 44,
+    // Large text may wrap the failure; it then grows instead of clipping.
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 44),
       child: switch (widget.fetch) {
         ToolOutputFailed() => Row(
           children: [
@@ -384,6 +388,10 @@ class _PendingOutputState() extends State<_PendingOutput> {
             TextButton(
               key: const ValueKey("toolOutput.retry"),
               onPressed: widget.retry,
+              style: TextButton.styleFrom(
+                minimumSize: const Size(44, 44),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
               child: Text(loc.sessionDetailToolOutputRetry),
             ),
           ],
