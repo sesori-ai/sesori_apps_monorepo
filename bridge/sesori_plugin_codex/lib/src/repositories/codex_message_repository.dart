@@ -620,16 +620,14 @@ class CodexMessageRepository({
           payload: CodexRolloutItemCompletedEventDto(
             item: CodexRolloutCompletedUserMessageDto(:final id),
             :final startedAtMs,
-            :final completedAtMs,
           ),
         ):
           // Key the row as the live mapper does, by the item id and its start,
           // so a reload replaces the live row instead of adding a second one.
           if (unkeyedUserMessage case final pending?) {
-            final created = startedAtMs ?? completedAtMs;
             pending.liveItem = (
               id: id,
-              time: created == null ? pending.time : PluginMessageTime(created: created, completed: null),
+              time: startedAtMs == null ? pending.time : PluginMessageTime(created: startedAtMs, completed: null),
             );
             unkeyedUserMessage = null;
           }
