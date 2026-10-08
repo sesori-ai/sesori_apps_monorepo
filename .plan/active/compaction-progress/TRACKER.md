@@ -60,6 +60,7 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | 6 | `compaction-progress/opencode` | [6](#fixed-pr-titles) | ≤ 800 | 4 |
 | 7 | `compaction-progress/pi-codex-deepseek` | [7](#fixed-pr-titles) | ≤ 900 | 4, step 6's plan detail |
 | 7b | `compaction-progress/codex-reimport-dedup` | [7b](#fixed-pr-titles) | ≤ 400 | 7 |
+| 7c | `compaction-progress/pi-compaction-settle` | [7c](#fixed-pr-titles) | ≤ 400 | 7 |
 | 8 | `compaction-progress/step-8-docs` | [8](#fixed-pr-titles) | ≤ 300 | 2–7 |
 | 9 | `compaction-progress/retire` | [9](#fixed-pr-titles) | ≤ 250 | 8 |
 
@@ -78,6 +79,8 @@ Steps 3 and 4 include generated Freezed, JSON and localization output.
 6. `⚙️ [compaction-progress] Stream OpenCode compaction into the live row [step 6/9]`
 7. `⚙️ [compaction-progress] Move Pi, Codex and DeepSeek onto the live compaction row [step 7/9]`
    - 7b. `🌿 [compaction-progress] Keep one Codex compaction row after a reload [step 7b/9]`
+     (a fix found by step 9's live run)
+   - 7c. `🌿 [compaction-progress] Settle Pi compaction without a failed flash [step 7c/9]`
      (a fix found by step 9's live run)
 8. `🌱 [compaction-progress] Reconcile the docs with shipped compaction progress [step 8/9]`
 9. `🌱 [compaction-progress] Record the matrix and retire the plan [step 9/9]`

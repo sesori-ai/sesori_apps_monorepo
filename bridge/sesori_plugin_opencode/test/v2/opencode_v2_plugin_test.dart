@@ -234,6 +234,20 @@ void main() {
     expect(plugin.currentWorkState, PluginWorkState.idle);
   });
 
+  test("a known folder deleted from disk keeps live events flowing for other sessions", () async {
+    server.missingDirectory = "/fixture/deleted";
+    server.permissions = [_permission];
+    await plugin.initialize();
+    expect(await plugin.getPendingPermissions(sessionId: _sessionId), hasLength(1));
+    final delta = _next<BridgeSseMessagePartDelta>(plugin: plugin);
+    await server.emit(
+      type: "session.text.delta",
+      data: {"assistantMessageID": "assistant", "ordinal": 0, "delta": "Still live"},
+    );
+    expect((await delta).delta, "Still live");
+    expect(server.streams, hasLength(1));
+  });
+
   test("managed interruption waits for native settlement rather than the interrupt ACK", () async {
     await plugin.initialize();
     final busy = plugin.workState.firstWhere((state) => state == PluginWorkState.busy);
@@ -269,6 +283,7 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
   bool failHistory = false;
   bool failReplies = false;
   bool allowClosedResponse = false;
+  String? missingDirectory;
   List<Map<String, Object?>> forms = [];
   List<Map<String, Object?>> permissions = [];
   Map<String, dynamic>? promptBody;
@@ -330,7 +345,12 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
         if (!agentEntered.isCompleted) agentEntered.complete();
         await agentGate?.future;
       }
-      if (path.endsWith("/prompt")) {
+      if (missingDirectory != null &&
+          (path == "/api/form" || path == "/api/permission/request") &&
+          request.uri.queryParameters["location[directory]"] == missingDirectory) {
+        request.response.statusCode = 404;
+        request.response.write(jsonEncode({"_tag": "LocationNotFoundError", "message": "Location not found"}));
+      } else if (path.endsWith("/prompt")) {
         promptBody = jsonDecodeMap(await utf8.decoder.bind(request).join());
         promptEntered.complete();
         await promptGate?.future;
@@ -364,7 +384,15 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
           "/api/project" => [native["project"]],
           "/api/location" => v2LocationFixture,
           "/api/session" => {
-            "data": [v2SessionFixture],
+            "data": [
+              v2SessionFixture,
+              if (missingDirectory case final directory?)
+                {
+                  ...v2SessionFixture,
+                  "id": "session-deleted",
+                  "location": {"directory": directory},
+                },
+            ],
             "cursor": {"next": null},
           },
           "/api/session/active" => {"data": <String, Object?>{}},
