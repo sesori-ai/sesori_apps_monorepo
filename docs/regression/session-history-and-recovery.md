@@ -318,6 +318,11 @@ reconnect or restart.
   copied parent `session_meta`; root sessions, ordinary forks, malformed
   headers, and copies whose first child-turn boundary is unresolved remain
   untouched.
+- Codex replay keys a user prompt by the `item_completed/UserMessage` item
+  written after its response item, with that item's start time, which is the
+  id and time the live `userMessage` row carries. A re-import therefore
+  replaces the live prompt row instead of adding a second copy. Rollouts
+  without that item keep the response-item id.
 - Claude's CLI-authored API-failure assistant frame and its terminal result
   render as one error with the persisted assistant message identity. Transcript
   records marked `isApiErrorMessage` replay as that same error rather than as a
@@ -477,6 +482,7 @@ rules where supported.
   rolled-back history. A Codex child transcript repeats copied parent turns, or
   a root, ordinary fork, or malformed rollout loses its own first turn because
   it resembled a copied sub-agent prefix.
+- A Codex prompt sent from Sesori appears twice after a reload or reconnect.
 - A Claude API failure appears once as ordinary assistant text and again as an
   error, or changes identity between live delivery and transcript replay. After
   a bridge restart an idle Claude root still shows a running subtask tile, or a

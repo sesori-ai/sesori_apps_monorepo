@@ -1985,6 +1985,70 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
     });
 
+    test("message projection keys a user message by its UserMessage item, like the live row", () {
+      // Codex's real record order: generated context and the prompt as
+      // response items, then the completed item the live `userMessage` row
+      // came from.
+      Map<String, Object?> userResponseItem({required String id, required String text}) => {
+        "timestamp": "2026-10-08T18:05:40.583Z",
+        "type": "response_item",
+        "payload": {
+          "type": "message",
+          "id": id,
+          "role": "user",
+          "content": [
+            {"type": "input_text", "text": text},
+          ],
+        },
+      };
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/10/08/rollout-user-message-item.jsonl",
+        sessionId: "019a0000-1111-2222-3333-cccccccccccf",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode(
+            userResponseItem(id: "msg-context", text: "<environment_context>cwd</environment_context>"),
+          ),
+          jsonEncode(userResponseItem(id: "msg-prompt", text: "first prompt")),
+          jsonEncode({
+            "timestamp": "2026-10-08T18:05:40.584Z",
+            "type": "event_msg",
+            "payload": {
+              "type": "item_completed",
+              "thread_id": "019a0000-1111-2222-3333-cccccccccccf",
+              "turn_id": "turn-1",
+              "item": {
+                "type": "UserMessage",
+                "id": "user-live-1",
+                "content": [
+                  {"type": "text", "text": "first prompt", "text_elements": <Object?>[]},
+                ],
+              },
+              "started_at_ms": 1791482740584,
+              "completed_at_ms": 1791482740584,
+            },
+          }),
+        ],
+      );
+
+      final messages = projectRootMessagesWithoutChildReplay(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-cccccccccccf",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      // The live mapper emits message `<item id>` with part `<item id>-text`,
+      // created at `startedAtMs`, so the bridge's replay pairs them by id.
+      final message = messages.single;
+      expect(message.info, isA<PluginMessageUser>());
+      expect(message.info.id, "user-live-1");
+      expect(message.info.time, const PluginMessageTime(created: 1791482740584, completed: null));
+      expect(message.parts.single.id, "user-live-1-text");
+      expect(message.parts.single.text, "first prompt");
+    });
+
     test("message projection restores image generations with stable persisted and fallback ids", () {
       final path = _writeRollout(
         codexHome,

@@ -354,6 +354,9 @@ class CodexMessageRepository({
     // The last compaction row still under its replay-counter id. The
     // `ContextCompaction` item written after its `compacted` line re-keys it.
     ({int slot, String? summary, PluginMessageTime? time})? unkeyedCompaction;
+    // The last visible user message still under its response-item id. The
+    // `UserMessage` item written after it re-keys it.
+    _PendingUserMessage? unkeyedUserMessage;
     String? sessionProvider;
     String? currentModel;
     String? currentVariant;
@@ -613,6 +616,24 @@ class CodexMessageRepository({
             unkeyedCompaction = null;
           }
           continue;
+        case CodexRolloutEventMessageLineDto(
+          payload: CodexRolloutItemCompletedEventDto(
+            item: CodexRolloutCompletedUserMessageDto(:final id),
+            :final startedAtMs,
+            :final completedAtMs,
+          ),
+        ):
+          // Key the row as the live mapper does, by the item id and its start,
+          // so a reload replaces the live row instead of adding a second one.
+          if (unkeyedUserMessage case final pending?) {
+            final created = startedAtMs ?? completedAtMs;
+            pending.liveItem = (
+              id: id,
+              time: created == null ? pending.time : PluginMessageTime(created: created, completed: null),
+            );
+            unkeyedUserMessage = null;
+          }
+          continue;
         case CodexRolloutEventMessageLineDto():
           continue;
         case CodexRolloutResponseItemLineDto(
@@ -721,16 +742,16 @@ class CodexMessageRepository({
           if (role == CodexRolloutRole.user) {
             final fallbackText = _userVisibleText(content: content);
             final legacyCounter = fallbackText == null && attachments.isEmpty ? null : (messageCounter += 1);
-            pendingUserMessages.add(
-              _PendingUserMessage(
-                slot: messages.length,
-                persistedId: id,
-                fallbackText: fallbackText,
-                attachments: attachments,
-                legacyCounter: legacyCounter,
-                time: messageTime,
-              ),
+            final pending = _PendingUserMessage(
+              slot: messages.length,
+              persistedId: id,
+              fallbackText: fallbackText,
+              attachments: attachments,
+              legacyCounter: legacyCounter,
+              time: messageTime,
             );
+            pendingUserMessages.add(pending);
+            if (legacyCounter != null) unkeyedUserMessage = pending;
             messages.add(null);
             continue;
           }
@@ -774,16 +795,19 @@ class CodexMessageRepository({
       if (pending.resolved || legacyCounter == null || (fallbackText == null && pending.attachments.isEmpty)) {
         continue;
       }
-      final messageId = _persistedOrLegacyMessageId(
-        persistedId: pending.persistedId,
-        legacyCounter: legacyCounter,
-      );
+      final liveItem = pending.liveItem;
+      final messageId =
+          liveItem?.id ??
+          _persistedOrLegacyMessageId(
+            persistedId: pending.persistedId,
+            legacyCounter: legacyCounter,
+          );
       messages[pending.slot] = _textMessage(
         info: PluginMessage.user(
           id: messageId,
           sessionID: sessionId,
           agent: null,
-          time: pending.time,
+          time: liveItem == null ? pending.time : liveItem.time,
           promptId: null,
         ),
         messageId: messageId,
@@ -910,4 +934,8 @@ class _PendingUserMessage({
   required final PluginMessageTime? time,
 }) {
   bool resolved = false;
+
+  /// The live `userMessage` item's id and time, once its `UserMessage` item
+  /// is read.
+  ({String id, PluginMessageTime? time})? liveItem;
 }
