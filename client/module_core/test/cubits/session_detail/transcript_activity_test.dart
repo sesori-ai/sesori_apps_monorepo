@@ -2,13 +2,13 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-MessageWithParts _prompt({required String id, required int? at}) => MessageWithParts(
+MessageWithParts _prompt({required String id, required int? at, String? promptId}) => MessageWithParts(
   info: Message.user(
     id: id,
     sessionID: "s",
     agent: null,
     time: at == null ? null : MessageTime(created: at, completed: null),
-    promptId: null,
+    promptId: promptId,
   ),
   parts: [MessagePart.text(id: "$id-text", sessionID: "s", messageID: id, text: "Fix the build")],
 );
@@ -66,6 +66,9 @@ TranscriptActivity _activity({
   Map<String, String> streamingText = const {},
   List<Session> children = const [],
   Map<String, SessionStatus> childStatuses = const {},
+  List<String> sendingPromptIds = const [],
+  List<QueuedSessionPrompt> queuedPrompts = const [],
+  Map<String, int> promptAcceptedAt = const {},
 }) {
   final transcript = const TranscriptBuilder().build(
     messages: messages,
@@ -82,11 +85,67 @@ TranscriptActivity _activity({
     hasStreamingText: streamingText.isNotEmpty,
     children: children,
     childStatuses: childStatuses,
+    sendingPromptIds: sendingPromptIds,
+    queuedPrompts: queuedPrompts,
+    promptAcceptedAt: promptAcceptedAt,
   );
 }
 
+QueuedSessionPrompt _held({required String id, required int acceptedAt}) => QueuedSessionPrompt(
+  id: id,
+  dispatchState: QueuedPromptDispatchState.dispatched,
+  text: "Next",
+  command: null,
+  attachmentCount: 0,
+  createdAt: acceptedAt,
+);
+
+/// A finished earlier turn: its prompt at 1000 and the agent's answer.
+final List<MessageWithParts> _finishedTurn = [
+  _prompt(id: "u1", at: 1000, promptId: "p1"),
+  _agent(
+    id: "a1",
+    parts: [const MessagePart.text(id: "t", sessionID: "s", messageID: "a1", text: "Done.")],
+  ),
+];
+
 void main() {
   group("TranscriptActivityBuilder", () {
+    group("a new prompt that has not shown its message", () {
+      test("shows no time while this surface still sends it", () {
+        final activity = _activity(messages: _finishedTurn, isBusy: true, sendingPromptIds: ["p2"]);
+
+        expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", isNull));
+      });
+
+      test("counts from when the bridge accepted it, not from the earlier turn", () {
+        final activity = _activity(
+          messages: _finishedTurn,
+          isBusy: true,
+          queuedPrompts: [_held(id: "p2", acceptedAt: 9000)],
+        );
+
+        expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 9000));
+      });
+
+      test("keeps its acceptance time once its later message arrives", () {
+        final activity = _activity(
+          messages: [
+            ..._finishedTurn,
+            _prompt(id: "u2", at: 12000, promptId: "p2"),
+          ],
+          isBusy: true,
+          // The bridge may still list it, and the send may still be pending,
+          // for a moment after the message lands.
+          queuedPrompts: [_held(id: "p2", acceptedAt: 9000)],
+          sendingPromptIds: ["p2"],
+          promptAcceptedAt: {"p2": 9000},
+        );
+
+        expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 9000));
+      });
+    });
+
     test("works since the running turn's prompt was sent", () {
       final activity = _activity(
         messages: [

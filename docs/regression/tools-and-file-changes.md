@@ -141,7 +141,11 @@ sub-agent parts, plus the signal that a tool changed files.
   sent time, the row reads “Working… · 1m 43s”, ticking each second from that
   time, so it reads the same after a reopen or on another device; a message
   sent mid-turn restarts it from that message, while automation and hidden user
-  messages do not; without one
+  messages do not. A new prompt that has not shown its message yet is the
+  newest: while this surface still sends it the row reads plain “Working…”, and
+  once the bridge holds it the row counts from the bridge's acceptance time,
+  which it keeps when the prompt's message arrives, so the count starts near
+  zero and never steps back; without one
   (see “Live timers” in `docs/HARNESS_CAPABILITIES.md`) it reads plain
   “Working…”. Screen readers hear the time as of the row's build, not every
   second. Transcript durations read “42s”, “1m 02s” or “1h 05m 12s”, seconds
@@ -424,7 +428,8 @@ guarantee.
   in either theme.
 - “Working…” shows a time that restarts on reopen, runs backwards, or is
   announced every second, or counts from the turn's first prompt after a
-  message was sent mid-turn.
+  message was sent mid-turn, or from an earlier prompt while a new one is
+  still sending or held by the bridge.
 - The sub-agent row shows “Working” or the sparkle, shows while a question or
   permission waits, beside the main agent's own running step or streaming
   text, or while the main agent waits on a foreground sub-agent, jumps instead of easing when it takes over from “Working…”, changes
