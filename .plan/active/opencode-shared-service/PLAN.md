@@ -4,8 +4,8 @@
 
 - **Plan slug:** `opencode-shared-service`
 - **Status:** Active. Phase 1 shipped: Step 1 merged in #1923, Step 2 in #1924, Step 3 in #1925. Step 4 (phase-1
-  verification and the phase-2 plan) merged in #1926. Step 5 (phase 2 start path) is in review. Phase 3 is still
-  rough.
+  verification and the phase-2 plan) merged in #1926. Step 5 (phase 2 start path) merged in #1927. Step 6 (re-attach after
+  a drop) is in review. Phase 3 is still rough.
 - **Plan date:** 2026-10-08
 - **Implementation base:** `main` at `2ad69c9545`
 - **Scope:** OpenCode 2 only. OpenCode 1 has no background service, so it needs no work. No other harness has a

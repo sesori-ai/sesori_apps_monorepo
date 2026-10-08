@@ -666,6 +666,7 @@ class const CodexPluginDescriptor({
       status: PluginStatusController(initial: const PluginStarting()),
       clock: host.clock,
       degradedDebounce: _degradedDebounce,
+      disconnectOutcome: ManagedRuntimeDisconnectOutcome.degrade,
     );
 
     // Arm the exit monitor with the disabled restart policy: an unexpected child

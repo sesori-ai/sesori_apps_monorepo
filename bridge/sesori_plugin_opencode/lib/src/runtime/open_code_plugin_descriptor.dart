@@ -738,7 +738,7 @@ class const OpenCodePluginDescriptor({
       } on PluginStartException catch (error) {
         Log.w(
           "[opencode] the shared OpenCode service at $serverUrl stopped answering: ${error.message}. "
-          "Starting degraded; the bridge keeps retrying it.",
+          "Starting degraded; the next request looks for the service again.",
         );
         handle = null;
       }
@@ -865,6 +865,12 @@ class const OpenCodePluginDescriptor({
       status: PluginStatusController(initial: const PluginStarting()),
       clock: host.clock,
       degradedDebounce: _degradedDebounce,
+      // A shared service can restart or move; failing lets the next request
+      // run discovery again. Attach and managed servers cannot be re-found, so
+      // they keep retrying the same address.
+      disconnectOutcome: mode == _OpenCodeServerMode.shared
+          ? ManagedRuntimeDisconnectOutcome.fail
+          : ManagedRuntimeDisconnectOutcome.degrade,
     );
 
     // Construct and arm the exit monitor with bounded restart: an unexpected
@@ -915,7 +921,8 @@ class const OpenCodePluginDescriptor({
       // accepts but never answers would hang start() under the bridge's startup
       // mutex. Keep the legacy fail-soft shape instead: report degraded now and
       // run the cold-start in the background; the SSE stream keeps retrying and
-      // recovers the tracker when the server appears.
+      // recovers the tracker when the server appears. In shared mode the
+      // reporter fails the generation after the debounce instead.
       reporter.markDegradedNow();
       unawaited(
         api.initialize().catchError((Object error, StackTrace stackTrace) {

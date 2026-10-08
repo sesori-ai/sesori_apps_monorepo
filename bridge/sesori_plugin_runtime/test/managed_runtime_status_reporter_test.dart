@@ -16,6 +16,7 @@ void main() {
       status: status,
       clock: clock,
       degradedDebounce: const Duration(seconds: 5),
+      disconnectOutcome: ManagedRuntimeDisconnectOutcome.degrade,
     );
   });
 
@@ -73,6 +74,59 @@ void main() {
     await pumpEventQueue();
 
     expect(status.current, isA<PluginReady>());
+  });
+
+  group("with the fail outcome", () {
+    setUp(() {
+      reporter = ManagedRuntimeStatusReporter(
+        status: status,
+        clock: clock,
+        degradedDebounce: const Duration(seconds: 5),
+        disconnectOutcome: ManagedRuntimeDisconnectOutcome.fail,
+      );
+    });
+
+    test("a disconnect past the debounce fails", () async {
+      reporter.markConnected();
+      reporter.markDisconnected();
+
+      expect(status.current, isA<PluginReady>());
+      clock.fireAll();
+      await pumpEventQueue();
+
+      expect(status.current, isA<PluginFailed>());
+    });
+
+    test("a reconnect inside the debounce does not fail", () async {
+      reporter.markConnected();
+      reporter.markDisconnected();
+      reporter.markConnected();
+
+      clock.fireAll();
+      await pumpEventQueue();
+
+      expect(status.current, isA<PluginReady>());
+    });
+
+    test("markDegradedNow degrades now and fails after the debounce", () async {
+      reporter.markDegradedNow();
+
+      expect(status.current, isA<PluginDegraded>());
+      clock.fireAll();
+      await pumpEventQueue();
+
+      expect(status.current, isA<PluginFailed>());
+    });
+
+    test("a reconnect after markDegradedNow cancels the failure", () async {
+      reporter.markDegradedNow();
+      reporter.markConnected();
+
+      clock.fireAll();
+      await pumpEventQueue();
+
+      expect(status.current, isA<PluginReady>());
+    });
   });
 }
 

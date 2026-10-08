@@ -1252,13 +1252,15 @@ void main() {
       }
     });
 
-    test("starts degraded on the v2 adapter when the service stops answering after discovery", () async {
+    test("fails after the debounce when the service stops answering after discovery, so it can be re-found", () async {
       registerService();
       final host = sharedHost();
 
       final plugin = await descriptor(infoStatus: (call) => call == 0 ? 200 : 503).start(host);
+      // The immediate clock elapses the debounce on the next turn.
+      await pumpEventQueue();
 
-      expect(plugin.currentStatus, isA<PluginDegraded>());
+      expect(plugin.currentStatus, isA<PluginFailed>());
       expect(plugin.describe().details["mode"], equals("shared"));
       expect(apiRecorder.protocol, isA<OpenCodeProtocolV2>());
       expect(host.processes.spawnedProcesses, isEmpty);

@@ -99,6 +99,7 @@ ManagedRuntimeBridgePlugin<String, _Api> _plugin({
       status: status,
       clock: const _Clock(),
       degradedDebounce: Duration.zero,
+      disconnectOutcome: ManagedRuntimeDisconnectOutcome.degrade,
     ),
     monitor: monitor,
     service: service,
