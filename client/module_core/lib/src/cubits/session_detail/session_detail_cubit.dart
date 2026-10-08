@@ -30,7 +30,10 @@ import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/models/plugin_management_result.dart";
 import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
+import "../../repositories/models/session_messages_through_result.dart";
 import "../../repositories/models/session_options_repository_result.dart";
+import "../../repositories/models/session_prompt_index_result.dart";
+import "../../repositories/models/tool_output_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/bridge_settings_service.dart";
@@ -52,6 +55,7 @@ import "../../services/session_viewing_service.dart";
 import "../../services/sse_event_tracker.dart";
 import "../../services/transcript_snapshot_calculator.dart";
 import "deferred_part_event_buffer.dart";
+import "load_through_outcome.dart";
 import "local_send_phase.dart";
 import "prompt_send_queue.dart";
 import "seeded_composer.dart";
@@ -60,6 +64,7 @@ import "session_detail_notice.dart";
 import "session_detail_resolvers.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
+import "tool_output_fetch.dart";
 
 enum _SessionRefreshTrigger(final String logValue) {
   commandExecuted("command_executed"),
@@ -554,6 +559,7 @@ class SessionDetailCubit(
                 interaction: becameAvailable ? interactionAtLoad : _interaction,
               ),
             );
+            unawaited(_fetchPromptIndex());
             if (becameAvailable) {
               _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
             } else if (_interaction.canInteract) {
@@ -689,6 +695,137 @@ class SessionDetailCubit(
       return;
     }
 
+    _prependOlderPage(
+      latest: latest,
+      page: page,
+      deferredPartEventSequence: deferredPartEventSequence,
+      isLoadingOlderMessages: false,
+    );
+  }
+
+  /// Loads every message from [seq] down to the loaded range in one request,
+  /// so the prompt [messageId] at [seq] can be shown.
+  ///
+  /// Runs beside [loadOlderMessages] rather than waiting for it: both only
+  /// prepend, and the farther of the two keeps the cursor.
+  Future<LoadThroughOutcome> loadMessagesThrough({required String messageId, required int seq}) async {
+    final current = state;
+    // As in [loadOlderMessages]: a refresh has already bumped the generation
+    // but not yet replaced the transcript, so this cursor is about to go stale.
+    if (current is! SessionDetailLoaded || current.isRefreshing) return const LoadThroughSuperseded();
+    if (current.messages.any((message) => message.info.id == messageId)) return const LoadThroughLoaded();
+    final cursor = current.olderMessagesCursor;
+    // Everything from the cursor on is loaded, so a target there is gone.
+    if (cursor == null || seq >= cursor) return const LoadThroughTargetMissing();
+
+    final generation = _transcriptGeneration;
+    final deferredPartEventSequence = _deferredPartEvents.latestSequence;
+    final result = await _loadService.loadMessagesThrough(
+      sessionId: _sessionId,
+      throughSeq: seq,
+      before: cursor,
+      storedOnly: !_interaction.canInteract,
+    );
+    if (isClosed) return const LoadThroughSuperseded();
+    final latest = state;
+    // As in [loadOlderMessages]: a range read against a replaced transcript
+    // would splice unrelated history onto it.
+    if (latest is! SessionDetailLoaded || _transcriptGeneration != generation) return const LoadThroughSuperseded();
+
+    switch (result) {
+      case SessionMessagesThroughFailure():
+        return const LoadThroughFailed();
+      case SessionMessagesThroughAvailable(:final messages, :final olderMessagesCursor, :final userMessagesBefore):
+        _prependOlderPage(
+          latest: latest,
+          page: (
+            messages: messages,
+            olderMessagesCursor: olderMessagesCursor,
+            userMessagesBefore: userMessagesBefore,
+          ),
+          deferredPartEventSequence: deferredPartEventSequence,
+          isLoadingOlderMessages: latest.isLoadingOlderMessages,
+        );
+        // The merged transcript decides, since a live update may have
+        // delivered the target while the range was in flight.
+        final merged = state;
+        return merged is SessionDetailLoaded && merged.messages.any((message) => message.info.id == messageId)
+            ? const LoadThroughLoaded()
+            : const LoadThroughTargetMissing();
+    }
+  }
+
+  /// Fetches the prompt index for the transcript just emitted, when it lacks
+  /// older history the Prompts screen should still list.
+  ///
+  /// The index is applied only to the transcript it was asked for; a
+  /// replacement meanwhile asks again itself.
+  Future<void> _fetchPromptIndex() async {
+    final current = state;
+    if (current is! SessionDetailLoaded || current.olderMessagesCursor == null) return;
+    final generation = _transcriptGeneration;
+    final result = await _loadService.loadPromptIndex(sessionId: _sessionId);
+    if (isClosed || _transcriptGeneration != generation) return;
+    final latest = state;
+    // Unsupported and failed fetches leave the list built from what is
+    // loaded; the load service logs a failure.
+    if (latest is SessionDetailLoaded && result is SessionPromptIndexAvailable) {
+      emit(latest.copyWith(promptIndex: result.entries));
+    }
+  }
+
+  /// Fetches the output of an expanded summary tool part, unless it is
+  /// already loaded or on its way. A failed fetch tries again.
+  Future<void> fetchToolOutput({required String messageId, required String partId}) async {
+    final key = (messageId: messageId, partId: partId);
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    if (current.toolOutputs[key] case ToolOutputLoading() || ToolOutputLoaded()) return;
+    emit(current.copyWith(toolOutputs: {...current.toolOutputs, key: const ToolOutputLoading()}));
+    final result = await _loadService.loadToolOutput(sessionId: _sessionId, messageId: messageId, partId: partId);
+    if (isClosed) return;
+    final latest = state;
+    if (latest is! SessionDetailLoaded) return;
+    final fetch = switch (result) {
+      ToolOutputAvailable(:final output, :final error) => ToolOutputLoaded(output: output, error: error),
+      ToolOutputFailure() => const ToolOutputFailed(),
+    };
+    emit(latest.copyWith(toolOutputs: {...latest.toolOutputs, key: fetch}));
+  }
+
+  /// Keeps the output of a finished tool that arrived live, so a later page
+  /// that summarizes the same part shows it without a fetch (P14).
+  static Map<ToolOutputKey, ToolOutputFetch> _withFinishedToolOutput({
+    required Map<ToolOutputKey, ToolOutputFetch> toolOutputs,
+    required MessagePart part,
+  }) {
+    if (part
+        case MessagePartTool(
+          :final messageID,
+          :final id,
+          state: ToolStateFull(
+            status: ToolStatus.completed || ToolStatus.error || ToolStatus.cancelled,
+            :final output,
+            :final error,
+          ),
+        )
+        when output != null || error != null) {
+      return {...toolOutputs, (messageId: messageID, partId: id): ToolOutputLoaded(output: output, error: error)};
+    }
+    return toolOutputs;
+  }
+
+  /// Prepends [page] to [latest]'s messages.
+  ///
+  /// The cursor and the user count move as one pair, and only toward older
+  /// history: a page that lands after a farther one keeps the farther pair,
+  /// whose cursor is lower (null, the start of history, is lowest).
+  void _prependOlderPage({
+    required SessionDetailLoaded latest,
+    required SessionMessagePage page,
+    required int deferredPartEventSequence,
+    required bool isLoadingOlderMessages,
+  }) {
     // Merge by id rather than concatenating. Live events can append a message
     // while the page is in flight, and an older page must never duplicate or
     // reorder what is already shown.
@@ -701,12 +838,17 @@ class SessionDetailCubit(
       messageIds: page.messages.map((message) => message.info.id),
       sequence: deferredPartEventSequence,
     );
+    final pageIsFarther = switch ((page.olderMessagesCursor, latest.olderMessagesCursor)) {
+      (null, _) => true,
+      (_, null) => false,
+      (final int pageCursor, final int loadedCursor) => pageCursor < loadedCursor,
+    };
     emit(
       latest.copyWith(
         messages: [...older, ...latest.messages],
-        olderMessagesCursor: page.olderMessagesCursor,
-        userMessagesBeforeOldest: page.userMessagesBefore,
-        isLoadingOlderMessages: false,
+        olderMessagesCursor: pageIsFarther ? page.olderMessagesCursor : latest.olderMessagesCursor,
+        userMessagesBeforeOldest: pageIsFarther ? page.userMessagesBefore : latest.userMessagesBeforeOldest,
+        isLoadingOlderMessages: isLoadingOlderMessages,
       ),
     );
     _drainDeferredPartsForLoadedMessages();
@@ -1036,6 +1178,8 @@ class SessionDetailCubit(
               olderMessagesCursor: snapshot.olderMessagesCursor,
               userMessagesBeforeOldest: snapshot.userMessagesBefore,
               isLoadingOlderMessages: false,
+              // Refetched below for the replaced transcript.
+              promptIndex: null,
               streamingText: _streamingBuffer.snapshot(),
               sessionStatus: refreshedSessionStatus,
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
@@ -1046,6 +1190,7 @@ class SessionDetailCubit(
               children: refreshedChildSessions,
               childStatuses: derived.childStatuses,
               isArchived: snapshot.isArchived,
+              cannotContinueMessage: snapshot.cannotContinueMessage,
               availableAgents: availableAgents,
               availableProviders: availableProviders,
               availableCommands: availableCommands,
@@ -1067,6 +1212,7 @@ class SessionDetailCubit(
             ),
           );
           if (!optionsSuperseded) _refreshStaleOptions(snapshot: snapshot);
+          unawaited(_fetchPromptIndex());
           _tryDrainQueue();
           // The refreshed transcript has rendered, so it is safe to re-declare
           // the view (which marks the session seen on the bridge).
@@ -1912,6 +2058,7 @@ class SessionDetailCubit(
       current.copyWith(
         messages: messages,
         streamingText: _streamingBuffer.snapshot(),
+        toolOutputs: _withFinishedToolOutput(toolOutputs: current.toolOutputs, part: part),
       ),
     );
     // The part may be what makes a delivered user prompt renderable.
@@ -3170,6 +3317,7 @@ class SessionDetailCubit(
       messages: snapshot.messages,
       olderMessagesCursor: snapshot.olderMessagesCursor,
       userMessagesBeforeOldest: snapshot.userMessagesBefore,
+      promptIndex: null,
       streamingText: const {},
       sessionStatus: initialSessionStatus,
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
@@ -3185,6 +3333,7 @@ class SessionDetailCubit(
       childStatuses: derived.childStatuses,
       isRootSession: snapshot.isRootSession,
       isArchived: snapshot.isArchived,
+      cannotContinueMessage: snapshot.cannotContinueMessage,
       queuedMessages: queue.queuedMessages,
       awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
       localSend: queue.localSend,

@@ -28,6 +28,10 @@ explicit restart, and the connection states the app presents.
   The app reads both deflated and plain responses. Compatibility: a v1.9.0
   bridge ignores the ask and replies plain, which the app reads as before; a
   v1.9.0 app never asks and receives plain responses byte for byte as before.
+  The app decrypts every response on the calling isolate, then inflates and
+  parses one that may hold about 256 KB of JSON or more (2 KB of deflated
+  plaintext, 256 KB of plain) on a short-lived isolate, so a whole-session
+  response does not stall the UI; smaller responses decode in place.
 - Frames are handled sequentially per connection, but a slow route or unresponsive
   harness must not stall key exchange, disconnect detection, or further requests.
 - Matched handler failures are mapped at one route boundary: unmatched routes
@@ -171,7 +175,8 @@ the bridge starts, how many clients are present, and whether restart is explicit
 - Plaintext session content crossing the relay, or a client served without key exchange.
 - A new app failing to load pages from a v1.9.0 bridge, a v1.9.0 app receiving
   a deflated response, an attachment fetch or live event arriving deflated, or
-  a deflated response that the app cannot read.
+  a deflated response that the app cannot read. A large response decoding on
+  the UI isolate, or decoding differently off it.
 - Health keeps responding while clients cannot reach the bridge after relay
   acceptance or client reachability was independently established, or one slow
   route freezes all traffic.

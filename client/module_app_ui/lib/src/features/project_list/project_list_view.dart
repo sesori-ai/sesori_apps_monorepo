@@ -9,6 +9,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../extensions/build_context_x.dart";
 import "../../widgets/catalog_scan_row.dart";
 import "../../widgets/list_search_field.dart";
+import "../../widgets/project_launch_rows_builder.dart";
 import "../../widgets/remote_failure_view.dart";
 import "project_path_labels.dart";
 import "widgets/activity_tile.dart";
@@ -16,6 +17,21 @@ import "widgets/project_tile.dart";
 
 /// Enough placeholder rows to fill a phone screen while the first page loads.
 const int _skeletonRows = 6;
+
+/// One entry of the Activity group: a heading, a session, or a launch.
+sealed class const _ActivityRow();
+
+final class const _ActivityHeading({required final String text}) extends _ActivityRow;
+
+final class const _ActivitySessionRow({
+  required final SessionActivityItem item,
+
+  /// The launch whose row this session took the place of, kept as its key.
+  required final String? rowKey,
+}) extends _ActivityRow;
+
+final class const _ActivityLaunchRow({required final LaunchingSession launch, required final ProjectSummary project})
+    extends _ActivityRow;
 
 typedef ProjectListContextAction = void Function({required BuildContext context});
 
@@ -336,7 +352,6 @@ class _ProjectListViewState() extends State<ProjectListView> {
       titleOf: (project) => projectDisplayName(loc: loc, project: project),
       query: _query,
     );
-    final activity = _activitySlivers(context: context, projects: projects);
     return [
       if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
       SliverToBoxAdapter(
@@ -356,32 +371,58 @@ class _ProjectListViewState() extends State<ProjectListView> {
             onChanged: (query) => setState(() => _query = query),
           ),
         ),
-      ...activity,
-      // Keep the list mounted at zero items so its final row can finish the
-      // closing transition before the connected-empty view takes over.
-      PregoAnimatedSliverList<ProjectSummary>(
-        key: const ValueKey("project-list"),
-        items: matchedProjects,
-        itemKey: (project) => ValueKey(project.id),
-        itemBuilder: (context, _, project) => ProjectTile(
-          project: project,
-          pathLabel: pathLabels[project.id] ?? project.path,
-          activeSessions: runningByProjectId[project.id] ?? 0,
-          unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
-          onOpen: widget.onOpenProject,
-        ),
+      ProjectLaunchRowsBuilder(
+        // Keyed so the lists inside keep their state as the search field
+        // above comes and goes.
+        key: const ValueKey("project-list-rows"),
+        initialRows: const {},
+        slots: runningActivitySlots,
+        slotInputs: _activityInputs(projects: projects),
+        builder: ({required context, required launchRows}) {
+          final activity = _activityRows(context: context, projects: projects, launchRows: launchRows);
+          return SliverMainAxisGroup(
+            slivers: [
+              // Activity enters and leaves like its rows, headings included, so
+              // nothing below moves in one frame.
+              PregoAnimatedSliverList<_ActivityRow>(
+                key: const ValueKey("project-list-activity"),
+                items: activity,
+                itemKey: (row) => switch (row) {
+                  _ActivityHeading(:final text) => ValueKey(("heading", text)),
+                  _ActivitySessionRow(:final item, :final rowKey) => ValueKey(rowKey ?? item.entry.session.id),
+                  _ActivityLaunchRow(:final launch) => ValueKey(launch.launchId),
+                },
+                itemBuilder: (context, _, row) => _activityRow(context: context, row: row),
+              ),
+              // Keep the list mounted at zero items so its final row can finish the
+              // closing transition before the connected-empty view takes over.
+              PregoAnimatedSliverList<ProjectSummary>(
+                key: const ValueKey("project-list"),
+                items: matchedProjects,
+                itemKey: (project) => ValueKey(project.id),
+                itemBuilder: (context, _, project) => ProjectTile(
+                  project: project,
+                  pathLabel: pathLabels[project.id] ?? project.path,
+                  activeSessions: runningByProjectId[project.id] ?? 0,
+                  unseen: unseenByProjectId[project.id] ?? project.hasUnseenChanges,
+                  onOpen: widget.onOpenProject,
+                ),
+              ),
+              if (projects.isNotEmpty && activity.isEmpty && matchedProjects.isEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(PregoSpacing.x3l),
+                    child: Text(
+                      context.loc.listSearchNoMatches,
+                      textAlign: TextAlign.center,
+                      style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textTertiary),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
-      if (projects.isNotEmpty && activity.isEmpty && matchedProjects.isEmpty)
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(PregoSpacing.x3l),
-            child: Text(
-              context.loc.listSearchNoMatches,
-              textAlign: TextAlign.center,
-              style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textTertiary),
-            ),
-          ),
-        ),
       if (projects.isEmpty)
         // Same shape as the disconnected bodies above: the empty state joins
         // the page scroll rather than nesting one of its own.
@@ -399,27 +440,59 @@ class _ProjectListViewState() extends State<ProjectListView> {
     ];
   }
 
+  // The phone has no mark-unread-to-set-aside and no sticky selection.
+  static ActivitySlotInputs _activityInputs({required List<ProjectSummary> projects}) =>
+      (projects: projects, deferredSessions: const {}, hiddenSessionIds: const {}, stickySessionId: null);
+
   /// The Activity group over the project rows: sessions waiting for the user,
-  /// then running ones, across projects, each opening its session. Nothing
+  /// then running ones, across projects, each opening its session. A launch
+  /// leads its project's running rows, where its session will run. Nothing
   /// while no session is in motion, so the projects keep the top of the page.
-  List<Widget> _activitySlivers({required BuildContext context, required List<ProjectSummary> projects}) {
-    final projection = SessionActivityProjection.from(
-      projects: projects,
+  List<_ActivityRow> _activityRows({
+    required BuildContext context,
+    required List<ProjectSummary> projects,
+    required Map<String, LaunchRows> launchRows,
+  }) {
+    final projection = activityProjection(
       entries: context.watch<RecentSessionsCubit>().state,
-      // The phone has no mark-unread-to-set-aside and no sticky selection.
-      deferredSessions: const {},
-      stickySessionId: null,
-      hiddenSessionIds: const {},
+      inputs: _activityInputs(projects: projects),
     );
-    final activity = matchTitles(
-      items: projection.waitingFirst,
+    final held = {for (final rows in launchRows.values) ...rows.heldSessionIds};
+    List<SessionActivityItem> matched(List<SessionActivityItem> items) => matchTitles(
+      items: items.where((item) => !held.contains(item.entry.session.id)),
       titleOf: (item) => item.entry.session.title,
       query: _query,
     );
-    if (activity.isEmpty) return const [];
+    _ActivitySessionRow sessionRow(SessionActivityItem item) => _ActivitySessionRow(
+      item: item,
+      rowKey: launchRows[item.project.id]?.rowKeys[item.entry.session.id],
+    );
+    final running = matched(projection.running);
+    // A launching row has no title to match yet, so a search hides it.
+    final searching = _query.trim().isNotEmpty;
+    final rows = <_ActivityRow>[
+      for (final item in matched(projection.needsYou)) sessionRow(item),
+      for (final project in projects) ...[
+        if (!searching)
+          for (final launch in launchRows[project.id]?.placeholders ?? const <LaunchingSession>[])
+            _ActivityLaunchRow(launch: launch, project: project),
+        for (final item in running)
+          if (item.project.id == project.id) sessionRow(item),
+      ],
+    ];
+    if (rows.isEmpty) return const [];
     final loc = context.loc;
-    Widget heading(String text) => SliverToBoxAdapter(
-      child: Padding(
+    return [
+      _ActivityHeading(text: loc.projectListActivity),
+      ...rows,
+      _ActivityHeading(text: loc.projectListTitle),
+    ];
+  }
+
+  Widget _activityRow({required BuildContext context, required _ActivityRow row}) {
+    final loc = context.loc;
+    return switch (row) {
+      _ActivityHeading(:final text) => Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 12),
         child: Semantics(
           header: true,
@@ -429,27 +502,23 @@ class _ProjectListViewState() extends State<ProjectListView> {
           ),
         ),
       ),
-    );
-    return [
-      heading(loc.projectListActivity),
-      SliverList.list(
-        children: [
-          for (final (:project, :entry) in activity)
-            ActivityTile(
-              key: ValueKey("project-list-activity-${entry.session.id}"),
-              entry: entry,
-              projectName: projectDisplayName(loc: loc, project: project),
-              onOpen: () => widget.onOpenSession(
-                context: context,
-                project: project,
-                displayName: projectDisplayName(loc: loc, project: project),
-                session: entry.session,
-              ),
-            ),
-        ],
+      _ActivitySessionRow(item: (:final project, :final entry)) => ActivityTile(
+        key: ValueKey("project-list-activity-${entry.session.id}"),
+        entry: entry,
+        projectName: projectDisplayName(loc: loc, project: project),
+        onOpen: () => widget.onOpenSession(
+          context: context,
+          project: project,
+          displayName: projectDisplayName(loc: loc, project: project),
+          session: entry.session,
+        ),
       ),
-      heading(loc.projectListTitle),
-    ];
+      _ActivityLaunchRow(:final launch, :final project) => PendingActivityTile(
+        key: ValueKey("project-list-launch-${launch.launchId}"),
+        launch: launch,
+        projectName: projectDisplayName(loc: loc, project: project),
+      ),
+    };
   }
 
   Future<void> _refreshProjects(BuildContext context) async {

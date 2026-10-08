@@ -7,7 +7,10 @@ import "package:sesori_dart_core/src/foundation/models/composer/prompt_send_fail
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_diff_summary_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_messages_through_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_prompt_search_result.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -59,14 +62,21 @@ void main() {
     final api = MockSessionApi();
     final repository = SessionRepository(api: api);
 
-    when(() => api.getMessages(sessionId: "session-1", limit: null, before: null,
-storedOnly: false,)).thenAnswer(
+    when(
+      () => api.getMessages(
+        sessionId: "session-1",
+        limit: null,
+        before: null,
+        storedOnly: false,
+      ),
+    ).thenAnswer(
       (_) async => ApiResponse.success(
         const MessageWithPartsResponse(
           messages: <MessageWithParts>[],
           nextCursor: null,
           userMessagesBefore: null,
           replayedPromptDefaults: null,
+          cannotContinueMessage: null,
         ),
       ),
     );
@@ -127,8 +137,12 @@ storedOnly: false,)).thenAnswer(
     when(
       () => api.rejectQuestion(requestId: "question-1", sessionId: "session-1"),
     ).thenAnswer((_) async => ApiResponse.success(null));
-    await repository.getMessages(sessionId: "session-1", limit: null, before: null,
-storedOnly: false,);
+    await repository.getMessages(
+      sessionId: "session-1",
+      limit: null,
+      before: null,
+      storedOnly: false,
+    );
     await repository.getPendingQuestions(sessionId: "session-1");
     await repository.getPendingPermissions(sessionId: "session-1");
     await repository.getChildren(sessionId: "session-1");
@@ -160,8 +174,14 @@ storedOnly: false,);
       ],
     );
     await repository.rejectQuestion(requestId: "question-1", sessionId: "session-1");
-    verify(() => api.getMessages(sessionId: "session-1", limit: null, before: null,
-storedOnly: false,)).called(1);
+    verify(
+      () => api.getMessages(
+        sessionId: "session-1",
+        limit: null,
+        before: null,
+        storedOnly: false,
+      ),
+    ).called(1);
     verify(() => api.getPendingQuestions(sessionId: "session-1")).called(1);
     verify(() => api.getPendingPermissions(sessionId: "session-1")).called(1);
     verify(() => api.getChildren(sessionId: "session-1")).called(1);
@@ -601,6 +621,117 @@ storedOnly: false,)).called(1);
       final result = await summaryFor(response: ApiResponse.error(error));
 
       expect(result, isA<SessionDiffSummaryFailure>());
+    });
+  });
+
+  group("getMessagesThrough", () {
+    Future<SessionMessagesThroughResult> throughFor({required ApiResponse<MessageWithPartsResponse> response}) {
+      final api = MockSessionApi();
+      when(
+        () => api.getMessagesThrough(sessionId: "s1", throughSeq: 2, before: 9, storedOnly: false),
+      ).thenAnswer((_) async => response);
+      return SessionRepository(api: api)
+          .getMessagesThrough(sessionId: "s1", throughSeq: 2, before: 9, storedOnly: false);
+    }
+
+    test("passes the range through", () async {
+      const response = MessageWithPartsResponse(
+        messages: [],
+        nextCursor: 2,
+        replayedPromptDefaults: null,
+        userMessagesBefore: 1,
+        cannotContinueMessage: null,
+      );
+
+      final result = await throughFor(response: ApiResponse.success(response));
+
+      expect(
+        result,
+        isA<SessionMessagesThroughAvailable>()
+            .having((value) => value.messages, "messages", response.messages)
+            .having((value) => value.olderMessagesCursor, "olderMessagesCursor", 2)
+            .having((value) => value.userMessagesBefore, "userMessagesBefore", 1),
+      );
+    });
+
+    test("keeps the route's own 404 a failure", () async {
+      // A plugin that lost the transcript answers 404 through the route.
+      final error = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "session not found");
+
+      final result = await throughFor(response: ApiResponse.error(error));
+
+      expect(result, isA<SessionMessagesThroughFailure>().having((value) => value.error, "error", error));
+    });
+
+    test("keeps any other status a failure", () async {
+      final error = ApiError.nonSuccessCode(errorCode: 400, rawErrorString: "throughSeq must be lower than before");
+
+      final result = await throughFor(response: ApiResponse.error(error));
+
+      expect(result, isA<SessionMessagesThroughFailure>().having((value) => value.error, "error", error));
+    });
+  });
+
+  group("getPromptIndex", () {
+    Future<SessionPromptIndexResult> indexFor({required ApiResponse<SessionPromptIndexResponse> response}) {
+      final api = MockSessionApi();
+      when(() => api.getPromptIndex(sessionId: "s1")).thenAnswer((_) async => response);
+      return SessionRepository(api: api).getPromptIndex(sessionId: "s1");
+    }
+
+    test("passes the entries through", () async {
+      const entries = [
+        SessionPromptIndexEntry.opener(messageId: "m1", seq: 1, number: 1, createdAt: null, preview: "Hi"),
+      ];
+
+      final result = await indexFor(response: ApiResponse.success(const SessionPromptIndexResponse(entries: entries)));
+
+      expect(result, isA<SessionPromptIndexAvailable>().having((value) => value.entries, "entries", entries));
+    });
+
+    test("reads only the router's 404 as a bridge that predates the route", () async {
+      final unsupported = await indexFor(
+        response: ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "no handler found for POST /session/prompts"),
+        ),
+      );
+      final failed = await indexFor(
+        response: ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "session not found")),
+      );
+
+      expect(unsupported, isA<SessionPromptIndexUnsupported>());
+      expect(failed, isA<SessionPromptIndexFailure>());
+    });
+  });
+
+  group("searchPrompts", () {
+    Future<SessionPromptSearchResult> searchFor({required ApiResponse<SessionPromptSearchResponse> response}) {
+      final api = MockSessionApi();
+      when(() => api.searchPrompts(sessionId: "s1", query: "deploy")).thenAnswer((_) async => response);
+      return SessionRepository(api: api).searchPrompts(sessionId: "s1", query: "deploy");
+    }
+
+    test("passes the matches through", () async {
+      const matches = [
+        SessionPromptSearchMatch(
+          messageId: "m1",
+          excerpt: SessionPromptExcerpt(before: "", match: "deploy", after: " it"),
+        ),
+      ];
+
+      final result = await searchFor(
+        response: ApiResponse.success(const SessionPromptSearchResponse(matches: matches)),
+      );
+
+      expect(result, isA<SessionPromptSearchAvailable>().having((value) => value.matches, "matches", matches));
+    });
+
+    test("passes an error through as a failure", () async {
+      final error = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "session not found");
+
+      final result = await searchFor(response: ApiResponse.error(error));
+
+      expect(result, isA<SessionPromptSearchFailure>().having((value) => value.error, "error", error));
     });
   });
 }

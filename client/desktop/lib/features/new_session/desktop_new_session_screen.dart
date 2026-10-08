@@ -29,7 +29,7 @@ class const DesktopNewSessionScreen({
   Widget build(BuildContext context) {
     final projectList = context.watch<ProjectListCubit>().state;
     return BlocProvider(
-      create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId),
+      create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
       child: DesktopNewSessionView(
         projectId: projectId,
         projectName: projectName,

@@ -52,7 +52,8 @@ class const DesktopSessionListScreen({
       onSessionTap: onSessionTap,
       actionDispatcher: actionDispatcher,
       onNewSession: onNewSession,
-      createNewSessionCubit: ({required projectId}) => createNewSessionCubit(locator: getIt, projectId: projectId),
+      createNewSessionCubit: ({required projectId, required projectName}) =>
+          createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
       onOpenHarnessSettings: onOpenHarnessSettings,
     );
   }
@@ -65,7 +66,8 @@ class const DesktopSessionListView({
   required final SessionOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
   required final VoidCallback onNewSession,
-  required final NewSessionCubit Function({required String projectId}) createNewSessionCubit,
+  required final NewSessionCubit Function({required String projectId, required String? projectName})
+  createNewSessionCubit,
   required final VoidCallback onOpenHarnessSettings,
 }) extends StatefulWidget {
   static const double maxContentWidth = 760;
@@ -83,6 +85,10 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
   /// until then, even if the bridge lists the new session first, so the
   /// session it starts still opens.
   bool _creating = false;
+
+  /// The list still draws a launching row, including one whose session the
+  /// create reply named but the list has not received yet.
+  bool _listShowsLaunchRows = false;
 
   Future<void> _refresh() async {
     setState(() => _refreshing = true);
@@ -102,7 +108,15 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
     final loaded = state is SessionListLoaded ? state : null;
     final showArchived = loaded != null && loaded.filter != SessionListFilter.active;
     final refreshing = _refreshing || (loaded != null && loaded.isRefreshing);
-    final showComposer = loaded != null && !showArchived && (loaded.sessions.isEmpty || _creating);
+    // A launch from elsewhere already leads the list as its launching row, and
+    // keeps it until its session lands there.
+    final launching = context.select(
+      (SessionLaunchCubit launches) => launches.state.launching.any((launch) => launch.projectId == cubit.projectId),
+    );
+    final showComposer =
+        loaded != null &&
+        !showArchived &&
+        ((loaded.sessions.isEmpty && !launching && !_listShowsLaunchRows) || _creating);
     return Scaffold(
       body: Column(
         children: [
@@ -185,7 +199,7 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
           Expanded(
             child: showComposer
                 ? BlocProvider(
-                    create: (_) => widget.createNewSessionCubit(projectId: cubit.projectId),
+                    create: (_) => widget.createNewSessionCubit(projectId: cubit.projectId, projectName: projectName),
                     child: BlocListener<NewSessionCubit, NewSessionState>(
                       listener: (context, state) => setState(() => _creating = state.phase is NewSessionPhaseSending),
                       child: NewSessionView(
@@ -250,6 +264,8 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                                 archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
                                 // The desktop searches from its command palette.
                                 searchable: false,
+                                onShowsLaunchRowsChanged: (showsRows) =>
+                                    setState(() => _listShowsLaunchRows = showsRows),
                               ),
                             ],
                           ),

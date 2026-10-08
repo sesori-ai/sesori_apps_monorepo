@@ -909,6 +909,9 @@
   "sessionDetailToolCancelled": "Cancelled",
   "sessionDetailShell": "Shell",
   "sessionDetailCommandRan": "Ran",
+  "sessionDetailToolOutputLoading": "Loading output",
+  "sessionDetailToolOutputFailed": "Could not load the output.",
+  "sessionDetailToolOutputRetry": "Retry",
   "sessionDetailFollowOutput": "Follow",
   "transcriptSummarySteps": "{count, plural, =1{1 step} other{{count} steps}}",
   "@transcriptSummarySteps": {
@@ -1001,6 +1004,44 @@
   "@transcriptPromptsLoaded": {
     "description": "Last row of the Prompts screen: how many prompts the list holds. Older prompts may not have loaded yet.",
     "placeholders": {"count": {"type": "int"}}
+  },
+  "transcriptPromptsCount": "{count, plural, =1{1 prompt} other{{count} prompts}}",
+  "@transcriptPromptsCount": {
+    "description": "Last row of the Prompts screen when it lists every prompt in the session, loaded or not: how many there are.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "transcriptPromptsOpenFailed": "Couldn't open this prompt. Check your connection and try again.",
+  "@transcriptPromptsOpenFailed": {
+    "description": "Notice over the Prompts screen when loading the transcript up to a tapped earlier prompt failed."
+  },
+  "transcriptPromptsGone": "This prompt is no longer in the session",
+  "@transcriptPromptsGone": {
+    "description": "Notice over the Prompts screen when a tapped earlier prompt was not found in the loaded transcript, for example because the session's history was rewritten."
+  },
+  "transcriptPromptsRefreshed": "The session just refreshed. Tap the prompt again.",
+  "@transcriptPromptsRefreshed": {
+    "description": "Notice over the Prompts screen when the session refreshed while a tapped earlier prompt was loading, so the load was dropped."
+  },
+  "transcriptPromptsLoading": "Loading",
+  "@transcriptPromptsLoading": {
+    "description": "What screen readers say about a Prompts row while the transcript loads up to its earlier prompt."
+  },
+  "transcriptPromptsAllMatches": "{count, plural, =0{No matches} =1{1 match} other{{count} matches}}",
+  "@transcriptPromptsAllMatches": {
+    "description": "Last row of the Prompts screen while searching once it lists every prompt of the session: how many prompts match.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "transcriptPromptsSearchingEarlier": "Searching earlier prompts…",
+  "@transcriptPromptsSearchingEarlier": {
+    "description": "Last row of the Prompts screen while the bridge searches the whole text of every prompt and has not answered yet."
+  },
+  "transcriptPromptsSearchEarlierFailed": "Couldn't search earlier prompts",
+  "@transcriptPromptsSearchEarlierFailed": {
+    "description": "Last row of the Prompts screen when the bridge's search of every prompt failed; the matches already shown stay."
+  },
+  "transcriptPromptsSearchRetry": "Retry",
+  "@transcriptPromptsSearchRetry": {
+    "description": "Button under the failed search row of the Prompts screen that asks the bridge to search every prompt again."
   },
   "transcriptPromptsNoDate": "No date",
   "@transcriptPromptsNoDate": {
@@ -1263,6 +1304,14 @@
   "@sessionListRunning": {
     "description": "Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle"
   },
+  "sessionListCreating": "Creating…",
+  "@sessionListCreating": {
+    "description": "Leads the meta line of a launching row, before the harness name: the bridge is still creating this new session."
+  },
+  "sessionListLaunchingAlert": "This session is still being created. You can open it once it's ready.",
+  "@sessionListLaunchingAlert": {
+    "description": "Alert shown when the user taps a launching row, a new session the bridge has not created yet."
+  },
   "sessionListResumes": "Resumes {time}",
   "@sessionListResumes": {
     "description": "Shown on a session row, in place of its last-activity time, while the bridge has scheduled an automatic continuation after a quota reset. The time is local, with the date only when it is not today.",
@@ -1446,6 +1495,7 @@
   },
   "newSessionProjectUnavailable": "Couldn’t verify whether this project supports worktrees. Try again before creating the session.",
   "sessionDetailArchivedNotice": "This session is archived and read-only.",
+  "sessionDetailCannotContinueTitle": "Can't continue this session",
   "sessionDetailHarnessFallbackName": "This harness",
   "sessionDetailHarnessDisabledReason": "{harnessName} is disabled.",
   "@sessionDetailHarnessDisabledReason": {"placeholders": {"harnessName": {"type": "String"}}},
@@ -1533,6 +1583,27 @@
   "newSessionLoadingMessage3": "Almost ready…",
   "newSessionCreationDuplicateWarning": "Sesori couldn't confirm whether a session was created. It may still appear in the session list, and sending again may create a duplicate.",
   "newSessionLaunchingInBackground": "Your new session will appear in the list once it's launched",
+  "newSessionFailedAfterLeaving": "{count, plural, =1{Couldn't create your new session in {projects}} other{Couldn't create {count} new sessions in {projects}}}",
+  "@newSessionFailedAfterLeaving": {
+    "description": "Alert title when creating new sessions fails after the user left their composers; their launching rows are gone from the lists. projects lists the projects' names.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "projects": {
+        "type": "String"
+      }
+    }
+  },
+  "newSessionFailedAfterLeavingUnnamed": "{count, plural, =1{Couldn't create your new session} other{Couldn't create {count} new sessions}}",
+  "@newSessionFailedAfterLeavingUnnamed": {
+    "description": "Alert title when creating new sessions fails after the user left their composers and a project's name is unknown.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "commandSourceCommand": "Command",
   "commandSourceMcp": "MCP",
   "commandSourceSkill": "Skill",

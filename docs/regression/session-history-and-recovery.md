@@ -21,6 +21,17 @@ reconnect or restart.
   never starts a stopped backend. Only a first backfill or a re-read after the
   backend advanced may reach it; backfill is lazy and per session, and a session
   advanced outside Sesori is detected as stale, re-read, and re-cached.
+- When a backfill fails because the plugin reports that the backend cannot
+  restore the session as stored (`PluginSessionUnrestorableException`; today
+  only OMP's "Could not restore model"), an ordinary page or load-through read
+  serves what the store holds instead of failing: flagged `awaitingHarnessSync`
+  and carrying the plugin's `cannotContinueMessage`. An empty store serves an
+  empty page with that message when the bridge has the session's row but no
+  message rows; a session the bridge has no row for still fails. Nothing is written, so the store stays stale
+  and the next open retries the backfill; once it succeeds the message is
+  gone. The app shows the message under a "Can't continue this session" banner
+  that floats above the transcript and fades in and out without moving it; the
+  composer stays enabled. Any other backfill failure still fails the read.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness
@@ -32,6 +43,50 @@ reconnect or restart.
   wholly before or wholly after the page. Every other read keeps the
   backfilling behavior, and an older app or bridge on either side of the
   contract keeps it too.
+- The prompt index (`POST /session/prompts`) lists every rendered user prompt
+  in the session's history, oldest first, whether or not the app has loaded
+  it. Each entry carries its message id and `seq`, its kind (opener or
+  follow-up, by the shared `splitPromptTurns` rule the client also uses), its
+  number among all the session's user messages (hidden ones count but get no
+  entry, matching `userMessagesBefore`), its creation time when the harness
+  gave one, and a preview of at most 300 UTF-16 code units, null rather than
+  empty when there is nothing to show. It reads like a store-only read: from
+  the store in one snapshot, or from an archived session's audit file, outside
+  the session queue, never backfilling. An image-only prompt is listed by its
+  stored file name without reading the spill file. An unknown session, or one
+  with no rendered prompts, lists none, and an empty session id is a 400, so
+  the route never answers 404 and a 404 means a bridge that predates it. It does the same for every harness, since it reads only
+  normalized history.
+- Prompt search (`POST /session/prompts/search`) finds a query in the whole
+  text of every rendered user prompt, oldest first, whether or not the app has
+  loaded it. The query matches literally and case-insensitively against the
+  prompt's text, or an image-only prompt's file name, by the shared
+  `promptSearchPattern` rule; each match carries its message id and a short
+  excerpt (`before`, `match`, `after`) cut by the shared `promptExcerpt` rule
+  the app also uses for loaded prompts. The store read selects only user rows,
+  in one snapshot; an archived session's audit file is read whole and its user
+  messages kept. Either read runs outside the session queue and never
+  backfills. A blank query, an unknown session or a
+  session with no match finds none, and an empty session id is a 400; the
+  route never answers 404. The app asks only a bridge that sent the prompt
+  index, so a v1.9.0 bridge, which has neither route, is never asked, and the
+  app treats any search error, a 404 included, as an ordinary failure with
+  Retry.
+- The load-through (`POST /session/messages/through`) returns, in one
+  response, every message from a chosen prompt's `seq` (`throughSeq`) up to
+  the app's oldest loaded cursor (`before`), through the same read path as a
+  page: freshness, backfill, `storedOnly`, the archived audit file and the
+  attachment projection behave exactly as they do for a page. Its cursor is
+  `throughSeq` while an older message exists and null at the start of
+  history, and its `userMessagesBefore` counts the users before `throughSeq`.
+  `throughSeq >= before` and an empty session id are 400s. The app asks only
+  a bridge that sent the prompt index, and every such bridge has the route,
+  so any error, a 404 included, is an ordinary failure. A load asked for while
+  a refresh is in flight is not sent. The app prepends the range like an
+  older page, and its cursor and count only ever move toward older history,
+  so a page that lands after a farther load-through cannot restore a newer
+  pair. A load that lands after a refresh is discarded. It does the same for
+  every harness, since it reads only normalized history.
 - Session detail resolves canonical catalog metadata before the history request.
   A block does not itself withhold history: a cold blocked open reads store-only
   and renders whatever the bridge holds, with the block reported in the composer's
@@ -304,7 +359,7 @@ reconnect or restart.
 | L2 Routine | Automated client: a live block preserves messages; a block or metadata failure during reload restores the transcript and replays buffered events; content restoration failure stays read-only with guidance to reopen the chat. Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Codex also trims only verified sub-agent copied prefixes while preserving root and ordinary-fork history, and replays rollback markers to remove reverted turn content and subtasks while retaining prior and subsequently appended turns, including cumulative rollbacks and fork-prefix boundaries; Claude also covers one stable live/replay identity for a CLI-authored API failure and suppression of its duplicate terminal result, plus live/replay parity for queued follow-ups, peer messages and task outcomes, and hiding harness-generated user frames under either flag spelling while keeping peer injections, tool results and task outcomes, while Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, early tool-call metadata with the missing-metadata fallback, duplicate terminal suppression, cumulative tool updates, and live/replay final parity. Automated DeepSeek coverage checks direct-parent live/replay tile identity, multiple ordered storage-safe content runs, latest metadata across pages, unbound startup errors, and live-state isolation. |
 | L3 Release | Client end to end on the release-target client platform: compare cold blocked history, a live block after history renders, and restored eligibility without route reopening. Every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool parts and image parts where declared. Grok additionally retains its exact loaded model/effort attribution across first load, cold reopen, plugin restart, and bridge restart. |
 | L4 Extended | Client end to end on macOS desktop and iOS, plus an Android variation: change availability from a second client while history is visible and while reload is in flight, page back through an older page on a blocked session whose store is behind the harness, and confirm a blocked session the bridge stored nothing for reports the block instead of an empty transcript; reconnect inside/outside replay and switch bridge identity without losing retained or buffered content. Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. Copilot and Grok additionally replace their ACP process, reload the same session, and converge standard replay with the bridge transcript without duplicate live delivery. |
-| L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
+| L5 Full | Automated and headless bridge for the prompt index (store and archive reads, hidden and image-only prompts, empty-id validation), prompt search (store and archive reads agree, case-insensitive literal match in a prompt's text or an image-only prompt's attachment name, blank query and unknown session find nothing, empty-id validation), the load-through (store, store-only and archive reads of one range, the cursor ending at the first message, range and empty-id validation) with the app's older-only cursor and count, unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
 
 ## Exploration Guidance
 
@@ -339,6 +394,26 @@ rules where supported.
   marks its own updates unread. Interaction returns before a successful content/options refresh. A failed restoration erases the retained
   transcript or tells the user that availability itself could not be checked. A
   blocked state other than authentication-required offers harness-status Recheck.
+- The prompt index misses a prompt or lists a hidden one, kinds a prompt
+  differently from the app's loaded-range turns, numbers prompts differently
+  from `userMessagesBefore`, drops an image-only prompt, answers 404 for a
+  session it does not know, starts the harness, or reads an archived session's
+  purged store instead of its audit file.
+- Prompt search misses a prompt whose text, or an image-only prompt whose
+  attachment name, contains the query, matches assistant text or a hidden prompt, treats the query as a
+  pattern, answers 404 for a session it does not know, or cuts an excerpt
+  differently from the app's loaded-prompt search; the app asks a bridge that
+  sent no index, or reads a search error as an older bridge.
+- The load-through misses or duplicates a message at either end of its
+  range, reports a cursor or count that differs from paging back to the
+  same prompt, reads differently from a page on the store, store-only or
+  archive path, splices a range read from a cursor that a refresh was
+  replacing, or lets a late older page move the app's cursor back toward newer
+  history.
+- An unrestorable session's history open returns a load failure instead of
+  the stored transcript, the banner is missing or persists after a successful
+  backfill, the fallback marks the store synced, or the banner moves the
+  transcript or disables the composer.
 - A store-only read reaches the harness, waits on or fails with another reader's
   backfill, fails instead of serving what the store holds, returns parts that
   belong to a different transcript than its messages, or misreports freshness in
@@ -449,7 +524,24 @@ rules where supported.
 
 Bridge chat-history service, repository, reconcile service, history listeners,
 SSE replay window, and routed request dispatch; database and audit compatibility
-tests under `bridge/app/test/bridge/services/`; client session-detail load/cubit
+tests under `bridge/app/test/bridge/services/`; the prompt index in
+`bridge/app/lib/src/repositories/mappers/prompt_index_mapper.dart` and
+`bridge/app/lib/src/routing/get_session_prompt_index_handler.dart`, with
+`chat_history_prompt_index_test.dart`, `prompt_index_mapper_test.dart`,
+`get_session_prompt_index_handler_test.dart` and
+`bridge/app/tool/benchmarks/prompt_index_benchmark.dart`; prompt search in
+`bridge/app/lib/src/repositories/mappers/prompt_search_mapper.dart`,
+`bridge/app/lib/src/routing/search_session_prompts_handler.dart` and the shared
+`shared/sesori_shared/lib/src/transcript/prompt_search.dart`, with
+`chat_history_prompt_index_test.dart`, `search_session_prompts_handler_test.dart`,
+`shared/sesori_shared/test/transcript/prompt_search_test.dart` and
+`bridge/app/tool/benchmarks/prompt_search_benchmark.dart`; the load-through in
+`bridge/app/lib/src/routing/get_session_messages_through_handler.dart` and the
+`HistoryWindow` read of `ChatHistoryRepository`, with
+`chat_history_pagination_test.dart`, `get_session_messages_through_handler_test.dart`
+and `bridge/app/tool/benchmarks/load_through_benchmark.dart`, and in the app
+`SessionRepository.getMessagesThrough` and `SessionDetailCubit.loadMessagesThrough`
+with `session_repository_test.dart` and `session_detail_paging_test.dart`; client session-detail load/cubit
 code and focused metadata, blocking, reload-race and event-buffer tests; Pi
 session process repository, storage API, and history mapper; shared ACP event mapper, turn serialization,
 and session loader plus Antigravity, Copilot, Cursor, and Grok plugins and package tests; shared

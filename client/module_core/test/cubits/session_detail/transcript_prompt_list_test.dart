@@ -71,11 +71,41 @@ TranscriptPromptList _list({
   required List<MessageWithParts> messages,
   bool hasOlderMessages = false,
   int? userMessagesBefore,
+  List<SessionPromptIndexEntry>? index,
+  int? olderMessagesCursor,
 }) => const TranscriptPromptListBuilder().build(
   messages: messages,
   turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: hasOlderMessages),
   userMessagesBefore: userMessagesBefore,
+  index: index,
+  olderMessagesCursor: olderMessagesCursor,
 );
+
+SessionPromptIndexEntry _indexed({
+  required String id,
+  required int seq,
+  required int number,
+  int? at,
+  String? opener,
+}) => opener == null
+    ? SessionPromptIndexEntry.opener(messageId: id, seq: seq, number: number, createdAt: at, preview: "Preview $id")
+    : SessionPromptIndexEntry.followUp(
+        messageId: id,
+        seq: seq,
+        number: number,
+        createdAt: at,
+        preview: "Preview $id",
+        openerMessageId: opener,
+      );
+
+/// `u1@3` for an unloaded prompt at seq 3, `u1` for a loaded one.
+List<String> _sources({required TranscriptPromptList list}) => [
+  for (final entry in list.entries)
+    switch (entry.source) {
+      TranscriptPromptLoaded() => entry.messageId,
+      TranscriptPromptUnloaded(:final seq) => "${entry.messageId}@$seq",
+    },
+];
 
 /// `u1` per opener and `  u2<u1` per follow-up, in list order.
 List<String> _shape({required TranscriptPromptList list}) => [
@@ -214,7 +244,7 @@ void main() {
       );
 
       expect(list.entries.map((entry) => entry.text), ["Fix the build", "screen.png", null]);
-      expect(list.entries.map((entry) => entry.fullText), [
+      expect(list.entries.map((entry) => entry.searchText), [
         "\n  Fix the build  \nthen deploy\nThanks",
         "screen.png",
         null,
@@ -271,6 +301,113 @@ void main() {
       ];
 
       expect(describe(), describe());
+    });
+  });
+
+  group("TranscriptPromptListBuilder with a prompt index", () {
+    test("lists unloaded prompts from the index, and the index decides every prompt's kind, number and time", () {
+      // The loaded fold reads u3 as an opener, as it cannot see the turn
+      // that started before the loaded range.
+      final list = _list(
+        hasOlderMessages: true,
+        userMessagesBefore: 2,
+        olderMessagesCursor: 30,
+        messages: [
+          _user(id: "u3"),
+          _answer(id: "a3"),
+          _user(id: "u4"),
+        ],
+        index: [
+          _indexed(id: "u1", seq: 10, number: 1, at: _monday),
+          _indexed(id: "u2", seq: 20, number: 2, opener: "u1"),
+          _indexed(id: "u3", seq: 30, number: 3, at: _tuesday, opener: "u1"),
+          _indexed(id: "u4", seq: 40, number: 4),
+        ],
+      );
+
+      expect(list.isIndexed, isTrue);
+      expect(_shape(list: list), ["u1", "  u2<u1", "  u3<u1", "u4"]);
+      expect(_sources(list: list), ["u1@10", "u2@20", "u3", "u4"]);
+      expect(list.entries.map((entry) => entry.number), [1, 2, 3, 4]);
+      expect(list.entries.map((entry) => entry.createdAt), [_monday, null, _tuesday, null]);
+      // An undated follow-up groups under its opener's day.
+      expect(_days(list: list), [DateTime(2026, 9, 21), DateTime(2026, 9, 21), DateTime(2026, 9, 22), null]);
+      expect(list.entries.map((entry) => entry.text), ["Preview u1", "Preview u2", "Prompt u3", "Prompt u4"]);
+      expect(list.entries.map((entry) => entry.searchText), ["Preview u1", "Preview u2", "Prompt u3", "Prompt u4"]);
+    });
+
+    test("lists loaded prompts the index lacks after it, as the loaded range reads them", () {
+      final list = _list(
+        userMessagesBefore: 1,
+        olderMessagesCursor: 20,
+        messages: [
+          _user(id: "u2"),
+          _working(id: "a2"),
+          _user(id: "u3"),
+          _answer(id: "a3"),
+          _user(id: "u4"),
+        ],
+        index: [
+          _indexed(id: "u1", seq: 10, number: 1),
+          _indexed(id: "u2", seq: 20, number: 2),
+        ],
+      );
+
+      expect(_shape(list: list), ["u1", "u2", "  u3<u2", "u4"]);
+      expect(_sources(list: list), ["u1@10", "u2", "u3", "u4"]);
+      expect(list.entries.map((entry) => entry.number), [1, 2, 3, 4]);
+    });
+
+    test("drops an indexed prompt inside the loaded range that the transcript does not show", () {
+      final list = _list(
+        olderMessagesCursor: 20,
+        messages: [_user(id: "u2")],
+        index: [
+          _indexed(id: "u1", seq: 10, number: 1),
+          _indexed(id: "u2", seq: 20, number: 2),
+          _indexed(id: "gone", seq: 25, number: 3),
+        ],
+      );
+
+      expect(_sources(list: list), ["u1@10", "u2"]);
+    });
+  });
+
+  group("TranscriptPromptListBuilder.pinAbove", () {
+    final index = [
+      _indexed(id: "u1", seq: 10, number: 1),
+      _indexed(id: "u2", seq: 20, number: 2),
+      _indexed(id: "u3", seq: 21, number: 3, opener: "u2"),
+      _indexed(id: "u4", seq: 40, number: 4),
+    ];
+
+    String? pinOf({required List<MessageWithParts> messages, required bool hasOlderMessages}) =>
+        const TranscriptPromptListBuilder()
+            .pinAbove(
+              turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: hasOlderMessages),
+              index: index,
+            )
+            ?.messageId;
+
+    test("pins the last prompt before the loaded range while it starts inside that prompt's turn", () {
+      expect(pinOf(messages: [_working(id: "a3"), _answer(id: "a4"), _user(id: "u4")], hasOlderMessages: true), "u3");
+      // A loaded range without a prompt is all inside the latest one's turn.
+      expect(pinOf(messages: [_answer(id: "a4")], hasOlderMessages: true), "u4");
+    });
+
+    test("pins nothing when the loaded range starts with a prompt or at the start of the history", () {
+      expect(pinOf(messages: [_user(id: "u4"), _answer(id: "a4")], hasOlderMessages: true), isNull);
+      expect(pinOf(messages: [_answer(id: "a0"), _user(id: "u1")], hasOlderMessages: false), isNull);
+    });
+
+    test("pins nothing without an index", () {
+      final messages = [_answer(id: "a3"), _user(id: "u4")];
+      final pin = const TranscriptPromptListBuilder().pinAbove(
+        turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: true),
+        index: null,
+      );
+
+      expect(pin, isNull);
     });
   });
 }

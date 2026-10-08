@@ -96,7 +96,11 @@ SessionListCubit createSessionListCubit({
   );
 }
 
-NewSessionCubit createNewSessionCubit({required GetIt locator, required String projectId}) {
+NewSessionCubit createNewSessionCubit({
+  required GetIt locator,
+  required String projectId,
+  required String? projectName,
+}) {
   return NewSessionCubit(
     connectionService: locator<ConnectionService>(),
     newSessionPluginService: locator<NewSessionPluginService>(),
@@ -107,5 +111,6 @@ NewSessionCubit createNewSessionCubit({required GetIt locator, required String p
     productAnalyticsService: locator<ProductAnalyticsService>(),
     sessionLaunchService: locator<SessionLaunchService>(),
     projectId: projectId,
+    projectName: projectName,
   );
 }

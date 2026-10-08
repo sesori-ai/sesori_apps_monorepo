@@ -252,6 +252,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           onLoadOlderMessages: state.olderMessagesCursor == null
                               ? null
                               : context.read<SessionDetailCubit>().loadOlderMessages,
+                          promptIndex: state.promptIndex,
+                          onLoadThrough: context.read<SessionDetailCubit>().loadMessagesThrough,
                           onCancelQueuedMessage: widget.readOnly
                               ? null
                               : context.read<SessionDetailCubit>().cancelQueuedMessage,
@@ -289,6 +291,18 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
               // Archiving is permanent, so this session is audit-only: say so
               // where the composer used to be.
               if (state.isArchived) const SessionDetailArchivedNotice(),
+              // The harness can no longer restore this session; its stored
+              // history stays readable beneath this floating layer, which
+              // fades rather than moving the transcript.
+              AnimatedSwitcher(
+                duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeOut,
+                child: switch (state.cannotContinueMessage) {
+                  final message? => SessionDetailCannotContinueNotice(message: message),
+                  null => const SizedBox.shrink(),
+                },
+              ),
             ],
           ),
         ),

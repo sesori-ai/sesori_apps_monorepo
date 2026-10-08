@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io" show ZLibDecoder;
+import "dart:isolate";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
@@ -695,18 +696,10 @@ class RelayClient._({
     }
 
     final decryptedBytes = await unframe(message, encryptor: encryptor);
-    final decoded = jsonDecodeMap(utf8.decode(_inflateIfDeflated(decryptedBytes)));
-    return RelayMessage.fromJson(decoded);
-  }
-
-  /// A response to a request that set `acceptsDeflatedResponse` may start
-  /// with [RelayProtocol.deflatedPlaintextMarker], followed by a raw deflate
-  /// stream of the JSON. Any other plaintext is the JSON itself.
-  List<int> _inflateIfDeflated(List<int> plaintext) {
-    if (plaintext case [RelayProtocol.deflatedPlaintextMarker, ...]) {
-      return ZLibDecoder(raw: true).convert(plaintext.sublist(1));
+    if (relayPlaintextDecodesInBackground(plaintext: decryptedBytes)) {
+      return await _decodeRelayPlaintextInBackground(plaintext: decryptedBytes);
     }
-    return plaintext;
+    return _decodeRelayPlaintext(plaintext: decryptedBytes);
   }
 
   // ignore: no_slop_linter/prefer_specific_type
@@ -848,3 +841,35 @@ final class const RelayResponseLostException({required final String message}) im
   @override
   String toString() => message;
 }
+
+/// Whether decrypted relay [plaintext] decodes on a short-lived isolate:
+/// when it may hold about 256 KB of JSON or more. Measured AOT on macOS,
+/// decoding costs the calling isolate about 11 ms per MB of JSON, so 256 KB
+/// is about 3 ms, while the isolate adds about 2 ms of latency and blocks
+/// nothing. Plain plaintext is judged by its own length. Deflated plaintext
+/// uses a far smaller floor because transcript JSON compresses up to about
+/// 60x: 2 KB covers 256 KB of JSON at up to 128x.
+@visibleForTesting
+bool relayPlaintextDecodesInBackground({required List<int> plaintext}) =>
+    plaintext.length >= (_isDeflated(plaintext: plaintext) ? 2 * 1024 : 256 * 1024);
+
+RelayMessage _decodeRelayPlaintext({required List<int> plaintext}) =>
+    RelayMessage.fromJson(jsonDecodeMap(utf8.decode(_inflateIfDeflated(plaintext: plaintext))));
+
+/// Top level so the isolate's closure captures only [plaintext], never the
+/// client or its encryptor.
+Future<RelayMessage> _decodeRelayPlaintextInBackground({required List<int> plaintext}) =>
+    Isolate.run(() => _decodeRelayPlaintext(plaintext: plaintext));
+
+/// A response to a request that set `acceptsDeflatedResponse` may start
+/// with [RelayProtocol.deflatedPlaintextMarker], followed by a raw deflate
+/// stream of the JSON. Any other plaintext is the JSON itself.
+List<int> _inflateIfDeflated({required List<int> plaintext}) {
+  if (_isDeflated(plaintext: plaintext)) {
+    return ZLibDecoder(raw: true).convert(plaintext.sublist(1));
+  }
+  return plaintext;
+}
+
+bool _isDeflated({required List<int> plaintext}) =>
+    plaintext.isNotEmpty && plaintext.first == RelayProtocol.deflatedPlaintextMarker;

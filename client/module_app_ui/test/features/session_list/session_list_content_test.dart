@@ -59,6 +59,7 @@ void main() {
                     quickFilter: quickFilter,
                     query: "",
                     hiddenSessionIds: const {},
+                    launchRows: LaunchRows.none,
                   ),
                 ],
               ),

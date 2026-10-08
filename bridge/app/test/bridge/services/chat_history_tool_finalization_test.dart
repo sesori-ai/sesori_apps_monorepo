@@ -66,7 +66,7 @@ void main() {
       final stored = await _storedParts(history: history, sessionId: "ses_a");
       final swept = stored["s1"]! as MessagePartSubtask;
       expect(swept.taskState?.status, ToolStatus.cancelled);
-      expect(swept.taskState?.error, isNull);
+      expect((swept.taskState! as ToolStateFull).error, isNull);
       expect(swept.childSessionID, "child-1");
       expect((stored["s2"]! as MessagePartSubtask).taskState?.status, ToolStatus.completed);
       expect((stored["s3"]! as MessagePartSubtask).taskState, isNull, reason: "OpenCode shape is untouched");
@@ -446,7 +446,7 @@ MessagePart _textPart({required String id, required String messageId, required S
 MessagePart _compactionPart({required String id, required String messageId, required CompactionState state}) =>
     MessagePart.compaction(id: id, sessionID: "ses_a", messageID: messageId, state: state);
 
-ToolState _stateOf(MessagePart part) => (part as MessagePartTool).state;
+ToolStateFull _stateOf(MessagePart part) => (part as MessagePartTool).state as ToolStateFull;
 
 class _FakeSessionRepository({
   required final List<MessageWithParts> transcript,

@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:injectable/injectable.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -11,6 +12,7 @@ import "../foundation/models/composer/prompt_send_failure.dart";
 import "../foundation/models/composer/queued_session_submission.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../foundation/models/session_launch/launch_follow_up.dart";
+import "../foundation/models/session_launch/session_launch.dart";
 import "../foundation/models/session_launch/session_launch_composer.dart";
 import "../foundation/models/session_launch/session_launch_handoff.dart";
 import "../foundation/models/session_launch/session_launch_outcome.dart";
@@ -33,8 +35,29 @@ class SessionLaunchService({
   required final FeedbackPromptService _feedbackPromptService,
   required final ProductAnalyticsService _productAnalyticsService,
   required final NewSessionSelectionTracker _selectionTracker,
+  required final AuthSession _authSession,
 }) {
+  late final StreamSubscription<AuthState> _authStates;
+  final StreamController<void> _discarded = StreamController<void>.broadcast();
+
+  this {
+    // Launches belong to the account that started them: signing out drops
+    // them, so no launching row or failure alert reaches the login screen or
+    // the next account.
+    _authStates = _authSession.authStateStream.listen((state) {
+      if (state is! AuthUnauthenticated) return;
+      _launchRepository.clearAll();
+      _discarded.add(null);
+    });
+  }
+
+  /// Fires when signing out dropped every launch, so whatever was about to be
+  /// said about them goes too.
+  Stream<void> get discarded => _discarded.stream;
+
   Stream<SessionLaunchOutcome> get outcomes => _launchRepository.outcomes;
+
+  ValueStream<List<SessionLaunch>> get launches => _launchRepository.launches;
 
   void releaseHandoff({required String launchId}) => _launchRepository.releaseHandoff(launchId: launchId);
 
@@ -86,6 +109,7 @@ class SessionLaunchService({
     required String projectId,
     required String pluginId,
     required DateTime startedAt,
+    required String? projectName,
     required NewSessionSubmissionSnapshot submission,
     required String? agent,
     required PromptModel? model,
@@ -99,6 +123,7 @@ class SessionLaunchService({
       projectId: projectId,
       pluginId: pluginId,
       startedAt: startedAt,
+      projectName: projectName,
       submission: submission,
     );
     final response = await _sessionRepository.createSessionWithMessage(
@@ -246,5 +271,11 @@ class SessionLaunchService({
             logw("Failed to report new-session outcome analytics event", error, stackTrace);
           }),
     );
+  }
+
+  @disposeMethod
+  Future<void> dispose() async {
+    await _authStates.cancel();
+    await _discarded.close();
   }
 }

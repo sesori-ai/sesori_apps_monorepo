@@ -9,7 +9,7 @@ void main() {
         parts: [_tool(title: "git status", shellCommand: "git status")],
       );
 
-      final state = (message.withoutDuplicatedShellTitles().parts.single as MessagePartTool).state;
+      final state = (message.withoutDuplicatedShellTitles().parts.single as MessagePartTool).state as ToolStateFull;
 
       expect(state.title, isNull);
       expect(state.shellCommand, "git status");

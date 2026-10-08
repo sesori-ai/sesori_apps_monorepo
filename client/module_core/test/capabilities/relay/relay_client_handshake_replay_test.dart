@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io";
+import "dart:math";
 import "dart:typed_data";
 
 import "package:cryptography/cryptography.dart";
@@ -181,7 +182,7 @@ void main() {
     await responseFuture;
   });
 
-  test("decodes deflated and plain responses", () async {
+  test("decodes deflated and plain responses, small inline and large in the background", () async {
     final roomKey = Uint8List.fromList(List<int>.generate(32, (index) => index));
     final roomKeyStorage = _MockRoomKeyStorage();
     when(roomKeyStorage.getRoomKey).thenAnswer((_) async => roomKey);
@@ -210,32 +211,43 @@ void main() {
     );
     await connectFuture.timeout(const Duration(seconds: 1));
 
-    for (final deflated in [true, false]) {
-      final request = RelayRequest(
-        id: "request-$deflated",
-        method: "GET",
-        path: "/sessions",
-        headers: const {},
-        body: null,
-        acceptsDeflatedResponse: deflated,
-      );
-      final response = RelayResponse(
-        id: request.id,
-        status: 200,
-        headers: const {},
-        body: '{"messages":["${"repeated transcript text " * 50}"]}',
-      );
-      final json = utf8.encode(jsonEncode(response.toJson()));
-      final plaintext = deflated
-          ? [RelayProtocol.deflatedPlaintextMarker, ...ZLibEncoder(raw: true).convert(json)]
-          : json;
+    final random = Random(7);
+    for (final (:text, :large) in [
+      (text: "repeated transcript text " * 50, large: false),
+      // Random letters barely compress.
+      (text: String.fromCharCodes(List<int>.generate(300 * 1024, (_) => 0x61 + random.nextInt(26))), large: true),
+      // 2 MB of one repeated phrase deflates to a few KB.
+      (text: "repeated transcript text " * 80000, large: true),
+    ]) {
+      for (final deflated in [true, false]) {
+        final request = RelayRequest(
+          id: "request-$deflated-${text.length}",
+          method: "GET",
+          path: "/sessions",
+          headers: const {},
+          body: null,
+          acceptsDeflatedResponse: deflated,
+        );
+        final response = RelayResponse(
+          id: request.id,
+          status: 200,
+          headers: const {},
+          body: '{"messages":["$text"]}',
+        );
+        final json = utf8.encode(jsonEncode(response.toJson()));
+        final plaintext = deflated
+            ? [RelayProtocol.deflatedPlaintextMarker, ...ZLibEncoder(raw: true).convert(json)]
+            : json;
+        final reason = "deflated=$deflated plaintext=${plaintext.length} bytes";
+        expect(relayPlaintextDecodesInBackground(plaintext: plaintext), large, reason: reason);
 
-      final requestSent = outgoing.moveNext();
-      final responseFuture = client.sendRequest(request: request, timeout: const Duration(seconds: 1));
-      expect(await requestSent.timeout(const Duration(seconds: 1)), isTrue);
-      socket.serverSink.add(await frame(plaintext, encryptor: encryptor));
+        final requestSent = outgoing.moveNext();
+        final responseFuture = client.sendRequest(request: request, timeout: const Duration(seconds: 1));
+        expect(await requestSent.timeout(const Duration(seconds: 1)), isTrue);
+        socket.serverSink.add(await frame(plaintext, encryptor: encryptor));
 
-      expect(await responseFuture, response, reason: "deflated=$deflated");
+        expect(await responseFuture, response, reason: reason);
+      }
     }
   });
 

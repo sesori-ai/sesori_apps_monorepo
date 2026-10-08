@@ -42,6 +42,9 @@ void main() {
     );
     // Register only owned fake-backed factories, never production DI/bootstrap.
     getIt.registerFactory<SessionCleanupService>(() => SessionCleanupService(repository: MockSessionRepository()));
+    getIt.registerFactory<SessionLaunchService>(
+      () => inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
+    );
     getIt.registerFactory<RecentSessionInventoryService>(() {
       final inventory = RecentSessionInventoryService(
         sessionListService: SessionListService(
@@ -86,6 +89,7 @@ void main() {
     addTearDown(() async {
       await getIt.unregister<DesktopSidebarRefreshService>();
       await getIt.unregister<SessionCleanupService>();
+      await getIt.unregister<SessionLaunchService>();
       await getIt.unregister<ProjectInventoryService>();
       await getIt.unregister<RecentSessionInventoryService>();
       await projects.dispose();

@@ -89,8 +89,12 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(
-      BlocProvider<ConnectionOverlayCubit>.value(
-        value: overlayCubit,
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<ConnectionOverlayCubit>.value(value: overlayCubit),
+          BlocProvider(create: (_) => idleSessionLaunchCubit()),
+          RepositoryProvider(create: (_) => idleSessionLaunchService()),
+        ],
         child: MaterialApp(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,

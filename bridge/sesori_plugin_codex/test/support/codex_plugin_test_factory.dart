@@ -65,6 +65,7 @@ CodexPlugin createInjectedCodexPlugin({
       imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
       userContentMapper: userContentMapper,
+      clock: const ServerClock(),
       config: configReader.readDefaults(),
     ),
     rolloutTailer: CodexRolloutTailer(

@@ -25,6 +25,7 @@ const _loaded = SessionDetailState.loaded(
   launchHandoff: null,
   olderMessagesCursor: null,
   userMessagesBeforeOldest: null,
+  promptIndex: null,
   streamingText: {},
   sessionStatus: SessionStatus.idle(),
   pendingQuestions: [],
@@ -50,6 +51,7 @@ const _loaded = SessionDetailState.loaded(
   fastMode: false,
   stagedCommand: null,
   isRefreshing: false,
+  cannotContinueMessage: null,
 );
 
 void main() {

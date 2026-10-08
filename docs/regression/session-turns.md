@@ -310,12 +310,15 @@ defaults and queued client sends coherent.
   current run settles. Pi may run model-backed automatic compaction before it
   acknowledges a prompt, so that preflight uses a turn-scale deadline instead
   of the shorter history/control RPC deadline. The prompt remains visibly
-  queued alongside a running `compact` tool card while compaction
-  runs, including in snapshots loaded by later viewers. Pi and Codex compaction
-  cards show the action once, without a redundant title; status conveys progress
-  in live updates and loaded history. The card updates in
-  place to completed when Pi persists the result; aborting or losing
-  the Pi process removes it. An accepted prompt remains bridge-queued
+  queued alongside the live compaction row while compaction
+  runs, including in snapshots loaded by later viewers, which get the same
+  start stamp. On success, Pi and Codex compaction rows keep one part id from
+  start to finish, so the row settles in place to completed. A Pi compaction
+  that fails or is aborted is re-keyed off its reserved id and becomes a
+  failure note, without a session error (a failure whose start was missed
+  reports the session error instead); aborting or losing the Pi process moves the
+  running row off its reserved id for the bridge's idle sweep to end. DeepSeek
+  shows the same live row from its compaction statuses. An accepted prompt remains bridge-queued
   through startup and selection until Pi echoes its correlated user message,
   including an attachment-only echo; it can be
   cancelled before dispatch, and a later send reusing the cancelled prompt id
@@ -374,9 +377,9 @@ defaults and queued client sends coherent.
   extension dialog and remain in the request's sending state until then rather
   than exposing a cancellable bridge-queue entry. The bridge-synthesized
   `compact` command instead publishes its visible command marker before the
-  running compaction card, accepts on Pi's `compaction_start`, then keeps the
-  resident busy until the native RPC finishes. A rejected native compaction clears
-  its running card. Commands reject while that session is busy, and a successful
+  running compaction row, accepts on Pi's `compaction_start`, then keeps the
+  resident busy until the native RPC finishes. A rejected native compaction moves
+  its running row off the reserved id for the idle sweep. Commands reject while that session is busy, and a successful
   ordinary command with no agent run crosses `get_state` before emitting prompt
   settlement and returning the lane idle. A notification alone does not prove
   acceptance. Post-acceptance failure, process exit, and abort also settle a
@@ -495,12 +498,15 @@ defaults and queued client sends coherent.
   remain absent. OMP runs different sessions concurrently because its permission
   and form requests carry explicit session IDs.
 - DeepSeek maps text, reasoning, tools, plans, title/config updates, compaction
-  completion, and bounded warning errors through standard ACP plus its narrow
+  start and completion, and bounded warning errors through standard ACP plus its narrow
   status and sub-agent extensions. Lifecycle frames arriving while the accepted
   prompt is still writing stay buffered behind its user-message publication.
-  Retry and compaction-start notifications are validated but
-  intentionally emit no shared event because DeepSeek does not supply the timing
-  required by the shared retry state and the active turn is already busy.
+  A compaction start adds a live-only compaction row stamped by the bridge, and
+  its completion settles that row in place; a completion without a recorded
+  start, or after the next turn began, reports only the session compaction.
+  Retry notifications are validated but intentionally emit no shared event
+  because DeepSeek does not supply the timing required by the shared retry
+  state and the active turn is already busy.
 - Normalized user-message events feed the durable user-side activity marker used
   to order running roots. Known event times are applied monotonically. Backend
   input represented as a user message, including automatic compaction or other
@@ -590,7 +596,12 @@ defaults and queued client sends coherent.
   message is visible. OpenCode v1 also correlates slash commands; v2 custom
   commands have the native limitation recorded below. V2 compaction settles
   only from a completed or failed native snapshot, never its running row or
-  enqueue acknowledgement. Native commands take precedence over the fallback.
+  enqueue acknowledgement. A v1 manual compaction's prompt settles from its
+  marker echo, not from the summary message's running row; a v1 summary message
+  that errors after writing text settles as a failed compaction note instead of
+  a turn error, because OpenCode sends that text before the message's final
+  error update, while one that errors without text keeps its error message.
+  Native commands take precedence over the fallback.
   Compaction renders only the user-entered command arguments; bridge-authored
   guidance remains backend-only. A message authored in the backend's own UI
   carries no prompt id and renders as an ordinary transcript message. A harness
@@ -832,9 +843,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   extensions instead of the pending turn's selection, or a cold follow-up wakes
   the process but times out in pre-prompt automatic compaction before reaching
   the agent; an initial or later viewer exposes only
-  the queued prompt while compaction is underway; the running card is replaced
-  instead of updated when compaction ends, or survives an abort or process
-  exit.
+  the queued prompt while compaction is underway; the running row is replaced
+  instead of updated when compaction ends, restarts its timer when Pi retries,
+  keeps running on its reserved id after an abort or process exit, or a failed
+  compaction shows a session error instead of the failure note.
 - An abort, permission reply, or question reply stalls behind a send to a
   busy session on the same session lane; concurrent NDJSON dispatch binds stdin,
   reorders control frames and prompts, or loses an asynchronous sink failure; or

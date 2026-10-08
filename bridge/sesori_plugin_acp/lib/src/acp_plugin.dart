@@ -386,6 +386,13 @@ abstract class AcpPlugin({
   /// Bounded cold-connection recovery before the live process is advertised.
   Future<void> recoverSessionDirectories() => Future<void>.value();
 
+  /// User-facing reason when [error], a rejected `session/load` or
+  /// `session/resume` that re-activates a prior-run session before a turn,
+  /// means the agent cannot reopen that session as stored. The turn then fails
+  /// with this message instead of prompting a session the agent never loaded;
+  /// the next turn still retries the re-activation. Base recognizes nothing.
+  String? unrestorableSessionMessage({required AcpRpcException error}) => null;
+
   /// Additional privacy-safe events for a prompt failure. The generic session
   /// error is always emitted separately.
   Iterable<BridgeSseEvent> mapPromptFailure({
@@ -1299,10 +1306,11 @@ abstract class AcpPlugin({
   /// so it does not re-stream into the live conversation). Called only from
   /// inside a session's serialized turn, so per-session loads never overlap —
   /// each load owns its whole suppression window. Never throws for load
-  /// failures — the turn proceeds and surfaces any error itself.
-  Future<void> _ensureResident(AcpStdioClient client, String sessionId) async {
-    if (_residentSessions.contains(sessionId)) return;
-    await _loadResident(client, sessionId);
+  /// failures — the turn proceeds and surfaces any error itself, except that
+  /// an [unrestorableSessionMessage] is returned for the turn to fail with.
+  Future<String?> _ensureResident(AcpStdioClient client, String sessionId) async {
+    if (_residentSessions.contains(sessionId)) return null;
+    return await _loadResident(client, sessionId);
   }
 
   /// Performs the resume `session/load` for [_ensureResident]. Marks the
@@ -1310,14 +1318,14 @@ abstract class AcpPlugin({
   /// load (the no-reload-loop guarantee) — so a transiently failed load
   /// (timeout, RPC hiccup) is retried on the next turn instead of leaving the
   /// conversation unrecoverable until the agent respawns.
-  Future<void> _loadResident(AcpStdioClient client, String sessionId) async {
+  Future<String?> _loadResident(AcpStdioClient client, String sessionId) async {
     final loadSupported = _initResult?.agentCapabilities.loadSession ?? false;
     final resumeSupported = _initResult?.agentCapabilities.resumeSession ?? false;
     if (!loadSupported && !resumeSupported) {
       // No way to re-activate a prior-run session — memoize residency so
       // turns proceed without re-checking.
       _residentSessions.add(sessionId);
-      return;
+      return null;
     }
     // A prior-run session may not have been enumerated yet this run (e.g. a
     // prompt issued straight from a push notification), so its directory is
@@ -1332,8 +1340,7 @@ abstract class AcpPlugin({
     if (resumeSupported && (!loadSupported || residencyPreference == AcpResidencyPreference.resumeFirst)) {
       // Preferred/only available resume re-activates the session with NO
       // history replay, so no suppression window is needed.
-      await _resumeResident(client, sessionId);
-      return;
+      return await _resumeResident(client, sessionId);
     }
     _suppressedSessions.add(sessionId);
     _suppressedReplayCounts.remove(sessionId);
@@ -1360,6 +1367,7 @@ abstract class AcpPlugin({
         // Transient agent error: stay non-resident so the next turn retries
         // the load instead of prompting a session the agent never loaded.
         Log.w("[$id] resume-load of $sessionId failed; will retry on next turn", error, stack);
+        return unrestorableSessionMessage(error: error);
       }
     } on Object catch (error, stack) {
       // Timeout / process blip: same retry-on-next-turn policy as above.
@@ -1368,6 +1376,7 @@ abstract class AcpPlugin({
       _suppressedSessions.remove(sessionId);
       _suppressedReplayCounts.remove(sessionId);
     }
+    return null;
   }
 
   /// Re-activates [sessionId] via `session/resume` for an agent that
@@ -1377,7 +1386,7 @@ abstract class AcpPlugin({
   /// fresh agent process never loaded. Same residency policy as the load
   /// path: resident on success or on a permanently unsupported RPC; transient
   /// failures retry on the next turn.
-  Future<void> _resumeResident(AcpStdioClient client, String sessionId) async {
+  Future<String?> _resumeResident(AcpStdioClient client, String sessionId) async {
     try {
       final result = await AcpAgentApi(client: client).resumeSession(
         sessionId: sessionId,
@@ -1395,10 +1404,12 @@ abstract class AcpPlugin({
         _residentSessions.add(sessionId);
       } else {
         Log.w("[$id] session/resume of $sessionId failed; will retry on next turn", error, stack);
+        return unrestorableSessionMessage(error: error);
       }
     } on Object catch (error, stack) {
       Log.w("[$id] session/resume of $sessionId failed; will retry on next turn", error, stack);
     }
+    return null;
   }
 
   /// Queues a prompt turn on [sessionId]'s serialization chain. Accepted
@@ -1512,9 +1523,19 @@ abstract class AcpPlugin({
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
       return;
     }
-    await _ensureResident(client, sessionId);
+    final unrestorableMessage = await _ensureResident(client, sessionId);
     if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
+      return;
+    }
+    if (unrestorableMessage != null) {
+      // The agent would reject this prompt for a session it never loaded, so
+      // fail the turn with the explanation instead: the prompt stays visible,
+      // followed by the same inline error card as a rejected prompt.
+      eventMapper.beginTurn(sessionId: sessionId, messageId: turn.messageId);
+      _markTurnDispatched(sessionId: sessionId, state: state, turn: turn);
+      _eventBuffer.add(eventMapper.mapPromptError(sessionId: sessionId, message: unrestorableMessage));
+      _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
       return;
     }
     final pendingSelection = _pendingSelections[sessionId];
@@ -2341,6 +2362,21 @@ abstract class AcpPlugin({
       rethrow;
     } on Object catch (error, stackTrace) {
       flushDeferredCommandRefresh();
+      if (error is AcpRpcException) {
+        final unrestorableMessage = unrestorableSessionMessage(error: error);
+        if (unrestorableMessage != null) {
+          // The agent refuses to reopen this session as stored; the typed
+          // failure lets the bridge serve the history it already holds.
+          Error.throwWithStackTrace(
+            PluginSessionUnrestorableException(
+              "session/load history replay",
+              message: unrestorableMessage,
+              cause: error,
+            ),
+            stackTrace,
+          );
+        }
+      }
       // A broken replay (connect/init/auth/load failure) must stay
       // distinguishable from a genuinely empty thread: surface it as a typed
       // failure (the bridge router maps it to a 502 and the phone renders a

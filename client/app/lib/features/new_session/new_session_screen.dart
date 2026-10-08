@@ -22,7 +22,7 @@ class const NewSessionScreen({
       key: ValueKey(projectId),
       providers: [
         BlocProvider(
-          create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId),
+          create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
         ),
         BlocProvider(create: (_) => NewSessionProjectsCubit(projectListService: getIt<ProjectListService>())),
       ],

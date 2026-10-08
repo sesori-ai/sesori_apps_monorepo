@@ -66,8 +66,9 @@ sub-agent parts, plus the signal that a tool changed files.
   shared `TranscriptBuilder`, so phone and desktop match.
 - The client never classifies a raw tool name or parses tool input.
 - A finished context compaction renders as one quiet "Context compacted" row in
-  the step style; like visible text it ends a group. While it runs, Pi and Codex
-  show a running `compact` tool that the finished row replaces in place. When the
+  the step style; like visible text it ends a group. While it runs, Pi, Codex
+  and DeepSeek show the live row below from the start, OpenCode v1 from its
+  summary's first text, and OpenCode v2 once its running snapshot loads. When the
   harness exposes the carried-forward summary, tapping the row opens a
   reading-width modal at once. A long summary shows a spinner that the Markdown
   replaces once the modal's entry transition ends (at once under reduced
@@ -95,7 +96,33 @@ sub-agent parts, plus the signal that a tool changed files.
   the harness reports, and a manual trigger is never named. A failure stays in
   the transcript as a quiet "Compaction failed" note in secondary text, with
   its error ellipsized on the one line and read whole by screen readers; it
-  is inert and has no retry.
+  is inert and has no retry. On OpenCode v2 the words stream from the native
+  compaction deltas once the bridge has loaded the running snapshot, at the
+  start or, after a bridge reconnect mid-compaction, at the next delta. After
+  a reload or reconnect mid-compaction they resume with the next words,
+  because OpenCode stores no partial summary. When that snapshot cannot load,
+  the deltas are dropped and the row appears when the compaction settles. On
+  OpenCode v1 the row starts with the summary's first text, its words stream
+  from that text's own deltas, and it settles when the summary message
+  finishes, as a failure when the message carries an error; OpenCode sends the
+  final text before that update. A summary message that errors before writing
+  any text stays an ordinary error message. A v1 compaction that starts while
+  the bridge's OpenCode stream is down shows its summary as plain text on the
+  live stream; a later read that reloads the transcript from OpenCode maps it
+  to the compaction row in its stored state, a row still running there
+  settling through the idle sweep below. On either version, if that stream is
+  down when the compaction ends, the row stays running, like any live part
+  stranded by the outage, until a later ordinary transcript read once the
+  session is idle; stored-only reads and reads while the session is busy or
+  retrying leave it running. On Pi, Codex and DeepSeek the time counts from the
+  bridge's stamp of the start when the harness sends none, and a Pi attempt
+  that Pi retries keeps its first stamp. A Pi compaction that fails or is
+  aborted becomes the failure note at the row's place, under its own id so the
+  next attempt gets a new row. An unfinished compaction elsewhere (Stop or a
+  lost process on Pi, any Codex or DeepSeek compaction without a completion)
+  stays running until the turn goes idle, when the bridge's sweep ends it
+  with the "turn ended" failure note. DeepSeek's history has no compaction
+  record, so its row survives one history re-import and then disappears.
 - A running tool or sub-agent is a live row: the turning outline sparkle leads
   it and a primary-text band sweeps across its dimmed label, visible in both
   themes. Reduced motion keeps the sparkle and label still while screen readers
@@ -141,7 +168,7 @@ sub-agent parts, plus the signal that a tool changed files.
   transcript the tapped header stays still while the panel opens and closes
   below it; only when no room is left above the composer (the newest row)
   does the row grow upward. A later resize of an open panel never scrolls
-  the transcript. Screen safe-area insets do not displace its scrollbars.
+  the transcript, except the eased resize when a fetched output arrives. Screen safe-area insets do not displace its scrollbars.
   Reduced motion opens and closes it at once.
   Tool attachments remain visible when details are collapsed.
   A tool with output or an error but no shell command opens the same panel,
@@ -162,6 +189,34 @@ sub-agent parts, plus the signal that a tool changed files.
   `shellCommand`. Old title-only payloads still decode. Apps at v1.8.3 and
   older read the command only from the title, so their reloaded shell rows show
   the tool name without the command; the user accepted that on 2026-10-07.
+- A transcript page or load-through that asks for `toolOutputDelivery:
+  onExpand` carries each completed, error or cancelled tool that has output or
+  error as a `summary` tool state: status, title, command and attachments, no
+  output or error. Running and pending tools, tools with neither, and subtask
+  task states stay full, and live events always carry full parts. A request that
+  omits the field (v1.9.0 apps) gets full parts. `POST /session/tool-output`
+  answers a summarized part's output and error from the store, or from the
+  audit file for an archived session, outside the session queue and without a
+  backfill; it answers 404 when the part is missing or is not a tool. Tool
+  state JSON without a `form` key (stored rows, v1.9.0 bridges) decodes as
+  full.
+- The app asks for `onExpand` on every page read and load-through, so a
+  finished tool's row opens its panel at once and fetches the output then. A
+  v1.9.0 bridge ignores the field and sends full parts, which render as
+  before. Until the output arrives the panel shows its title and any command
+  over a fixed-height row; a spinner fades in there only after 150 ms, so a
+  quick fetch never flashes one, and Copy keeps its place but is hidden. When
+  the output arrives the panel eases over 200 ms from that height to its own,
+  taller or shorter, the tapped header stays still as when opening, and a
+  command scrolled sideways keeps its offset. A failed fetch shows “Could not
+  load the output.” with Retry in the same row, so the panel does not change
+  height unless large text needs more room, and then eases to it; Retry, or
+  closing and reopening, fetches again with a fresh 150 ms spinner delay. The
+  header is held still only while the reader is not scrolling: an output that
+  lands during a drag or fling never stops it. A tool that finished live
+  keeps its output, so a later page that summarizes it still shows it. A fetched output survives a silent
+  refresh and reopens at once; a full reload fetches it again on the next
+  expand. A full part always wins over it.
 - Subtasks retain a prompt bounded to 500 runes, bounded title/outcome/error
   summaries, status, attachments and child-session IDs; ordinary non-shell tool
   stripping never applies to them. The description stays complete because
@@ -276,7 +331,7 @@ sub-agent parts, plus the signal that a tool changed files.
 |---|---|
 | L1 Smoke | Automated presentation only: command disclosure/two-axis scrolling, exact command/output copy, six statuses, streaming updates, keyboard activation, eased and reduced-motion disclosure, enlarged text and both themes; attachment visibility and title-only older-peer rendering; every step kind lining up in one row layout with a bold, capitalised label at phone and desktop density; the sparkle leading a live row, and the “Working…” row showing while busy with no live step or streaming text and leaving when a step starts, text streams, the session idles or a retry row shows, ticking “Working… · time” on each whole second from the prompt's sent time or reading plain “Working…” without one, and durations reading “42s”, “1m 02s” and “1h 05m 12s”; the sub-agent row easing in for “Working…” while only sub-agents run, with a spinner, two lines, a time from the earliest start or none when no start is known, a steady height, the screen-reader label read once, and giving way to the main agent's own step, a main agent mid-turn, streaming text, a retry row, idle and a waiting question; a finished live row folding into its group while its count rolls, including one that finishes before it has eased in, a group reading “N steps” with no kind list or failed count and a lone finished step reading “1 step”, a failed step still red in the opened group, a group opening in a desktop popover (Esc and outside-click dismissal, capped height) or a phone sheet without changing the transcript height, instant changes under reduced motion, and a pinned reader staying pinned through the fold. Authoritative tool execution still requires a live turn. |
 | L2 Routine | Live plugin, representative: a file-editing tool produces a lightweight tool part with name and terminal status, while a shell tool preserves its command and bounded result. |
-| L3 Release | Client end to end (phone), every supporting production plugin: status normalizes consistently, non-shell tool snippets are absent, and shell commands/results/errors render; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. On Claude, Codex, OpenCode (background children), DeepSeek and Grok the sub-agent row takes over from “Working…” once the main agent goes quiet, and a prompt sent while it shows is answered before the sub-agents finish; a Claude foreground `Agent` call shows its running tile and no sub-agent row. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok target coverage: a complete lightweight tool lifecycle, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. Grok owned-phone coverage passed completed-tile rendering, exact read-only child navigation, and genuine permission Once. File diff/invalidation, mutating-tool permission linkage, failing-tool presentation, and permission denial remain unexecuted. |
+| L3 Release | Client end to end (phone), every supporting production plugin: status normalizes consistently, non-shell tool snippets are absent, and shell commands/results/errors render; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. On Claude, Codex, OpenCode (background children), DeepSeek and Grok the sub-agent row takes over from “Working…” once the main agent goes quiet, and a prompt sent while it shows is answered before the sub-agents finish; a Claude foreground `Agent` call shows its running tile and no sub-agent row. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok target coverage: a complete lightweight tool lifecycle, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. Grok owned-phone coverage passed completed-tile rendering, exact read-only child navigation, and genuine permission Once. File diff/invalidation, mutating-tool permission linkage, failing-tool presentation, and permission denial remain unexecuted. On iOS and macOS, representative plugin with shell commands (for example Claude): a reloaded finished tool, also after a far-prompt load-through and on an archived session, opens at once and loads its output with no jump; against a v1.9.0 bridge the new app renders full parts as before, and a v1.9.0 app against the new bridge receives full parts. |
 | L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity and status intact, shell commands retain their results, and non-shell snippets remain absent; a failing shell command surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, a resumed terminal agent returns to running in both its tile and child status, and a failed sub-agent renders `error` with the notification summary. |
 | L5 Full | Client end to end, every supporting production plugin: rune-boundary truncation is exact for multi-byte shell output; attachments render where emitted and unsafe or malformed sources degrade to metadata; unknown status from a newer peer degrades gracefully. |
 
@@ -305,6 +360,13 @@ guarantee.
   pattern, or skill, or only the path without the tool name.
 - A tool stays running after the backend finished, or an error renders as a
   completion.
+- A v1.9.0 app, or a request without `toolOutputDelivery`, receives a summary
+  tool part; a summary reaches a live event; or `POST /session/tool-output`
+  answers a part that a page summarized with 404.
+- Expanding a summarized tool flashes a spinner on a quick fetch, jumps the
+  header or the content around it when the output arrives, leaves an empty or
+  endless loading panel after a failure, offers Copy without the output, or
+  fetches the same output twice at once.
 - Shell details grow without bound, pad a short transcript to full height, lose
   long command/output text, copy a truncated preview, let a sideways swipe on
   the panel reveal message timestamps, close during updates, or hide tool
@@ -420,8 +482,12 @@ guarantee.
 - Attachment presentation is being reworked toward referenced images; only the
   shipped build counts.
 - An older client decodes the compaction part but ignores its state, summary
-  included, and renders nothing, so Pi and Codex compactions lose their
-  finished `compact` tool card there.
+  included, and renders nothing, so during a Pi, Codex or DeepSeek compaction
+  it shows only “Working…”, without the running `compact` card older bridges
+  sent (accepted). While an OpenCode summary streams, an
+  older client buffers the words for a part it never shows, so it shows neither
+  “Working…” nor a row until the compaction ends and the turn goes on
+  (accepted; no old-client code).
 - An older client does not tolerate an unknown message-part `type` from a newer
   bridge: history decoding fails and the corresponding SSE event is dropped as
   malformed. Unknown tool status remains forward-compatible.
@@ -462,6 +528,23 @@ guarantee.
 - `bridge/app/test/bridge/repositories/mappers/duplicated_shell_title_mapper_test.dart`
   and the shell-title case in `bridge/app/test/bridge/services/chat_history_archive_test.dart`
   prove that database and archived pages omit only a title equal to `shellCommand`.
+- `bridge/app/test/bridge/repositories/mappers/summarized_tool_output_mapper_test.dart`
+  summarizes every finished status and keeps every other one,
+  `bridge/app/test/bridge/services/chat_history_tool_output_test.dart` covers
+  the store and archived pages and output lookups,
+  `bridge/app/test/bridge/routing/get_session_tool_output_handler_test.dart`
+  covers the route's 404 and 400, and
+  `shared/sesori_shared/test/models/tool_state_test.dart` decodes keyless tool
+  state as full and a request without the field as inline.
+- `client/module_app_ui/test/features/session_detail/widgets/tool_part_widget_test.dart`
+  ("a summary part") fetches on opening, holds the spinner back for 150 ms
+  (also on a retry), eases to a taller or shorter output with the header and
+  title still, keeps the command's sideways scroll, grows and eases the
+  failure for large text, lets a fling run on while the output lands, retries
+  from the panel and opens a fetched output at once. `client/module_core/test/cubits/session_detail/session_detail_paging_test.dart`
+  ("summary tool output") fetches once while a fetch is in flight, retries
+  after a failure, keeps the output across a silent refresh and keeps a tool's
+  output once it finished live.
 - `client/module_app_ui/test/features/session_detail/widgets/transcript_step_row_test.dart`
   measures every step kind's icon, label inset, height and label weight at
   phone and desktop density.
@@ -482,8 +565,11 @@ guarantee.
   and `session_detail_event_buffer_test.dart` streams a running compaction's
   summary across a silent refresh like text and reasoning.
 - Owning Claude content/history/tracker, Pi history/dispatcher, OpenCode part
-  mapper, Codex rollout/tracker/history, ACP replay/content, Grok adapter,
-  Antigravity normalizer and DeepSeek replay/time tests guard backend semantics.
+  mapper, v1 summary mapping (REST, SSE mapper and plugin stream) and v2
+  compaction mapping, delta and service tests, Codex
+  rollout/tracker/history/event-mapper, ACP replay/content, Grok adapter,
+  Antigravity normalizer and DeepSeek replay/time/compaction tests guard
+  backend semantics.
 - `bridge/app/tool/benchmarks/tool_projection_payload_size.dart` reproducibly
   reports synthetic serialized UTF-8 bytes before/after projection. It states
   source/starting-HEAD baselines, separates typical already-bounded text from

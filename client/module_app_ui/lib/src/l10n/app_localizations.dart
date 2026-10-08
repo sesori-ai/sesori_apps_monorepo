@@ -2605,6 +2605,24 @@ abstract class AppLocalizations {
   /// **'Ran'**
   String get sessionDetailCommandRan;
 
+  /// No description provided for @sessionDetailToolOutputLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading output'**
+  String get sessionDetailToolOutputLoading;
+
+  /// No description provided for @sessionDetailToolOutputFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the output.'**
+  String get sessionDetailToolOutputFailed;
+
+  /// No description provided for @sessionDetailToolOutputRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get sessionDetailToolOutputRetry;
+
   /// No description provided for @sessionDetailFollowOutput.
   ///
   /// In en, this message translates to:
@@ -2694,6 +2712,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 prompt loaded} other{{count} prompts loaded}}'**
   String transcriptPromptsLoaded(int count);
+
+  /// Last row of the Prompts screen when it lists every prompt in the session, loaded or not: how many there are.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 prompt} other{{count} prompts}}'**
+  String transcriptPromptsCount(int count);
+
+  /// Notice over the Prompts screen when loading the transcript up to a tapped earlier prompt failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open this prompt. Check your connection and try again.'**
+  String get transcriptPromptsOpenFailed;
+
+  /// Notice over the Prompts screen when a tapped earlier prompt was not found in the loaded transcript, for example because the session's history was rewritten.
+  ///
+  /// In en, this message translates to:
+  /// **'This prompt is no longer in the session'**
+  String get transcriptPromptsGone;
+
+  /// Notice over the Prompts screen when the session refreshed while a tapped earlier prompt was loading, so the load was dropped.
+  ///
+  /// In en, this message translates to:
+  /// **'The session just refreshed. Tap the prompt again.'**
+  String get transcriptPromptsRefreshed;
+
+  /// What screen readers say about a Prompts row while the transcript loads up to its earlier prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading'**
+  String get transcriptPromptsLoading;
+
+  /// Last row of the Prompts screen while searching once it lists every prompt of the session: how many prompts match.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No matches} =1{1 match} other{{count} matches}}'**
+  String transcriptPromptsAllMatches(int count);
+
+  /// Last row of the Prompts screen while the bridge searches the whole text of every prompt and has not answered yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching earlier prompts…'**
+  String get transcriptPromptsSearchingEarlier;
+
+  /// Last row of the Prompts screen when the bridge's search of every prompt failed; the matches already shown stay.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t search earlier prompts'**
+  String get transcriptPromptsSearchEarlierFailed;
+
+  /// Button under the failed search row of the Prompts screen that asks the bridge to search every prompt again.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get transcriptPromptsSearchRetry;
 
   /// Day header of the Prompts screen over prompts whose send time is unknown.
   ///
@@ -3505,6 +3577,18 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get sessionListRunning;
 
+  /// Leads the meta line of a launching row, before the harness name: the bridge is still creating this new session.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating…'**
+  String get sessionListCreating;
+
+  /// Alert shown when the user taps a launching row, a new session the bridge has not created yet.
+  ///
+  /// In en, this message translates to:
+  /// **'This session is still being created. You can open it once it\'s ready.'**
+  String get sessionListLaunchingAlert;
+
   /// Shown on a session row, in place of its last-activity time, while the bridge has scheduled an automatic continuation after a quota reset. The time is local, with the date only when it is not today.
   ///
   /// In en, this message translates to:
@@ -4027,6 +4111,12 @@ abstract class AppLocalizations {
   /// **'This session is archived and read-only.'**
   String get sessionDetailArchivedNotice;
 
+  /// No description provided for @sessionDetailCannotContinueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t continue this session'**
+  String get sessionDetailCannotContinueTitle;
+
   /// No description provided for @sessionDetailHarnessFallbackName.
   ///
   /// In en, this message translates to:
@@ -4320,6 +4410,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your new session will appear in the list once it\'s launched'**
   String get newSessionLaunchingInBackground;
+
+  /// Alert title when creating new sessions fails after the user left their composers; their launching rows are gone from the lists. projects lists the projects' names.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Couldn\'t create your new session in {projects}} other{Couldn\'t create {count} new sessions in {projects}}}'**
+  String newSessionFailedAfterLeaving(int count, String projects);
+
+  /// Alert title when creating new sessions fails after the user left their composers and a project's name is unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Couldn\'t create your new session} other{Couldn\'t create {count} new sessions}}'**
+  String newSessionFailedAfterLeavingUnnamed(int count);
 
   /// No description provided for @commandSourceCommand.
   ///

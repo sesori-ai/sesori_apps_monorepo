@@ -10,7 +10,11 @@ import "models/session_abort_not_accepted_exception.dart";
 import "models/session_abort_rejected_exception.dart";
 import "models/session_cleanup_rejection.dart";
 import "models/session_diff_summary_result.dart";
+import "models/session_messages_through_result.dart";
 import "models/session_options_repository_result.dart";
+import "models/session_prompt_index_result.dart";
+import "models/session_prompt_search_result.dart";
+import "models/tool_output_result.dart";
 
 @lazySingleton
 class SessionRepository({
@@ -122,6 +126,68 @@ class SessionRepository({
   }) {
     return _api.getMessages(sessionId: sessionId, limit: limit, before: before, storedOnly: storedOnly);
   }
+
+  Future<SessionMessagesThroughResult> getMessagesThrough({
+    required String sessionId,
+    required int throughSeq,
+    required int before,
+    required bool storedOnly,
+  }) async {
+    final response = await _api.getMessagesThrough(
+      sessionId: sessionId,
+      throughSeq: throughSeq,
+      before: before,
+      storedOnly: storedOnly,
+    );
+    return switch (response) {
+      SuccessResponse(:final data) => SessionMessagesThroughAvailable(
+        messages: data.messages,
+        olderMessagesCursor: data.nextCursor,
+        userMessagesBefore: data.userMessagesBefore,
+      ),
+      ErrorResponse(:final error) => SessionMessagesThroughFailure(error: error),
+    };
+  }
+
+  Future<SessionPromptIndexResult> getPromptIndex({required String sessionId}) async {
+    final response = await _api.getPromptIndex(sessionId: sessionId);
+    return switch (response) {
+      SuccessResponse(:final data) => SessionPromptIndexAvailable(entries: data.entries),
+      // COMPATIBILITY 2026-10-07 (v1.9.1): a bridge without the
+      // /session/prompts route answers with the router's route-not-found 404.
+      // A 404 from the route itself stays a failure. Remove once no supported
+      // bridge predates the route.
+      ErrorResponse(:final error) when _isMissingRoute(error: error) => const SessionPromptIndexUnsupported(),
+      ErrorResponse(:final error) => SessionPromptIndexFailure(error: error),
+    };
+  }
+
+  Future<SessionPromptSearchResult> searchPrompts({required String sessionId, required String query}) async {
+    final response = await _api.searchPrompts(sessionId: sessionId, query: query);
+    return switch (response) {
+      SuccessResponse(:final data) => SessionPromptSearchAvailable(matches: data.matches),
+      ErrorResponse(:final error) => SessionPromptSearchFailure(error: error),
+    };
+  }
+
+  Future<ToolOutputResult> getToolOutput({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) async {
+    final response = await _api.getToolOutput(sessionId: sessionId, messageId: messageId, partId: partId);
+    return switch (response) {
+      SuccessResponse(:final data) => ToolOutputAvailable(output: data.output, error: data.error),
+      ErrorResponse(:final error) => ToolOutputFailure(error: error),
+    };
+  }
+
+  /// Whether [error] is the bridge router's own 404 for a route it does not
+  /// have, as opposed to a 404 a route returned.
+  static bool _isMissingRoute({required ApiError error}) =>
+      error is NonSuccessCodeError &&
+      error.errorCode == 404 &&
+      (error.rawErrorString?.startsWith("no handler found for ") ?? false);
 
   Future<ApiResponse<PendingQuestionResponse>> getPendingQuestions({required String sessionId}) {
     return _api.getPendingQuestions(sessionId: sessionId);

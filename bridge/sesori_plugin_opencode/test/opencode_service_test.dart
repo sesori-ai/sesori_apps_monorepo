@@ -2041,14 +2041,11 @@ class FakeOpenCodeRepository._({
       sessionId: sessionId,
       directory: directory,
     );
-    return messages
-        .map(
-          const PluginModelMapper(
-            messagePartMapper: MessagePartMapper(),
-            maxTranscriptAttachmentBytes: maxInlineMessageAttachmentBytes,
-          ).mapMessageWithParts,
-        )
-        .toList();
+    const mapper = PluginModelMapper(
+      messagePartMapper: MessagePartMapper(),
+      maxTranscriptAttachmentBytes: maxInlineMessageAttachmentBytes,
+    );
+    return [for (final message in messages) mapper.mapMessageWithParts(message, compactionAuto: null)];
   }
 
   @override

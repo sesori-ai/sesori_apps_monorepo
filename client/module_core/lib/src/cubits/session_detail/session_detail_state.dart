@@ -13,6 +13,7 @@ import "../../services/session_approval_calculator.dart";
 import "../../services/session_selection_calculator.dart";
 import "local_send_phase.dart";
 import "seeded_composer.dart";
+import "tool_output_fetch.dart";
 
 part "session_detail_state.freezed.dart";
 
@@ -55,6 +56,17 @@ sealed class SessionDetailState with _$SessionDetailState {
     /// re-issued while it runs.
     @Default(false) bool isLoadingOlderMessages,
 
+    /// Every prompt in the session's history, oldest first, so the Prompts
+    /// screen can list the ones not loaded yet. Null until it arrives, when
+    /// the bridge predates it or its fetch failed, and when the transcript
+    /// already loaded the whole history.
+    required List<SessionPromptIndexEntry>? promptIndex,
+
+    /// The fetched output of summary tool parts the user expanded. It
+    /// outlives a refresh, which brings the summaries back, so an expanded
+    /// row keeps its output. A full part for the same key wins over it.
+    @Default({}) Map<ToolOutputKey, ToolOutputFetch> toolOutputs,
+
     required Map<String, String> streamingText,
     required SessionStatus sessionStatus,
     required List<SesoriQuestionAsked> pendingQuestions,
@@ -78,6 +90,10 @@ sealed class SessionDetailState with _$SessionDetailState {
     // `false` = child, `null` = unknown (metadata lookup failed).
     required bool? isRootSession,
     required bool isArchived,
+
+    /// The harness's explanation of why this session can no longer be
+    /// continued, shown above the transcript; null when nothing restricts it.
+    required String? cannotContinueMessage,
     // Queued messages (waiting to be sent when connection is restored).
     required List<QueuedSessionSubmission> queuedMessages,
     // The head submission awaiting bridge acceptance, or failed; later

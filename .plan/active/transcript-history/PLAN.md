@@ -598,12 +598,9 @@ including archived sessions.
   lower boundary (null, the start of history, is lowest). An older page that
   lands after a farther load-through therefore cannot restore its newer
   cursor or count.
-- A 404 here comes from a bridge released between steps 7 and 8, which has
-  the index but not this route. The repository maps it to a typed
-  unsupported result ([step 9](#the-index-in-the-app-step-9)), and the cubit
-  returns `Unsupported`. The screen then says the bridge must be updated to
-  open earlier prompts (a new string), instead of offering a retry that
-  cannot succeed.
+- The app far-taps only on a bridge that served the index, and no public
+  release has the index without this route, so any error here, a 404
+  included, is an ordinary failure (step 14b).
 
 **Measure:** step 8 records, for the whole largest session in one response,
 the bridge's deflate time and the app's decode time on the UI isolate. The
@@ -615,14 +612,25 @@ the app's decode, added only if the measurement shows a visible stall.
 **Repository:** `SessionRepository.getPromptIndex` returns a sealed result:
 
 - `SessionPromptIndexAvailable(entries)`;
-- `SessionPromptIndexUnsupported`: any 404, with a dated COMPATIBILITY
-  marker whose retiring condition is that no supported bridge predates the
-  route;
-- `SessionPromptIndexFailure`.
+- `SessionPromptIndexUnsupported`: only the router's 404 for a route it
+  lacks (body `no handler found for …`), with a dated COMPATIBILITY marker
+  whose retiring condition is that no supported bridge predates the route;
+- `SessionPromptIndexFailure`, including a 404 the route itself returns.
 
-The same rule covers every route this phase adds: the repository maps a 404
-from the index, load-through or search route to that route's own
-`Unsupported` variant, with the marker. The cubits never see a status code.
+The load-through and search routes have no `Unsupported`: the app asks them
+only of a bridge that served the index, and no public release has the index
+without them, so a 404 there is an ordinary failure. The cubits never see a
+status code.
+
+**Decode:** the load-through response decodes via `Isolate.run` (measured
+264–268 ms on the UI thread on a Mac for the worst-case session).
+Step 9b moves only the relay envelope's inflate and JSON decode onto a
+short-lived isolate, for decrypted plaintext that may hold about 256 KB of
+JSON or more: 2 KB when deflated, 256 KB when plain. This removes the
+remaining ~170 ms UI-thread stall for the load-through response, whose body
+already decodes in the background. Decryption stays on the calling isolate,
+and every other route still parses its response body into its DTO
+synchronously in `RelayHttpApiClient`.
 The tool-output route needs none, because only a bridge that has it sends
 summary parts.
 
@@ -660,14 +668,13 @@ summary parts.
   - the tapped row shows a spinner after about 150 ms;
   - when the load lands, `_returnToPrompt` jumps and closes the screen as it
     does today;
-  - `TargetMissing` or `Failed` shows an inline error on the screen, and
-    `Unsupported` shows the bridge-update message;
+  - `TargetMissing` or `Failed` shows an inline error on the screen;
   - a second tap replaces the target;
   - closing the screen cancels the jump, not the load.
 - The pending target and its timer are UI-local state in the screen.
 
 **Docs:** `docs/regression/transcript-turn-navigation.md` covers the full
-list, the far tap and the older-bridge fallback.
+list and the far tap.
 
 ### Pin Above Unloaded Turns (Step 10)
 
@@ -690,6 +697,9 @@ list, the far tap and the older-bridge fallback.
   Prompts that pin their start, most of them, swap invisibly.
 
 ### Search Every Prompt (Step 11)
+
+Step 11 lands as two PRs: 11a carries the shared helpers, the wire contract
+and the bridge route; 11b carries the app. See `steps/step-11.md`.
 
 **Shared:** `promptSearchPattern` and `promptExcerpt` move from
 `client/module_app_ui/lib/src/features/session_prompts/prompt_search.dart`
@@ -719,11 +729,13 @@ layout.
 
 **App:**
 
-- `SessionRepository.searchPrompts` returns `Available(matches)`,
-  `Unsupported` (a bridge between steps 7 and 11) or `Failure`.
-- `Unsupported` keeps loaded-range search with today's "in the prompts
-  loaded so far" wording and no Retry, and the cubit stops asking the bridge
-  for the rest of that screen. `Failure` follows O3.
+- `SessionRepository.searchPrompts` returns `Available(matches)` or
+  `Failure`; `Failure` follows O3.
+- The cubit asks the bridge only once the prompt index has arrived. A bridge
+  without the index (every public release through v1.9.0) never reaches the
+  route and keeps loaded-range search with today's "in the prompts loaded so
+  far" wording (Q6). The index and search ship together, so an indexed bridge
+  without search exists only in internal builds and gets no fallback.
 - A `module_core` `PromptSearchCubit` owns the query, the loaded-range
   matches and the bridge matches. It debounces the bridge query by 250 ms,
   and the latest query wins.
@@ -844,6 +856,7 @@ added plus deleted lines against the merge base, including generated code.
 | 12 | W3 `ToolState` union, opt-in, summary mapper, tool-output route | ≤ 900, including generated | 🚧 wire opt-in, compatibility |
 | 13 | W3 app opt-in, output map, expand loading | ≤ 700 | ⚙️ motion and state merge |
 | 14 | Reconcile regression docs | ≤ 300 | 🌱 |
+| 14b | Remove the load-through's unreachable `Unsupported` variants, the "Update the bridge" notice, their tests and docs | ≤ 150 | 🌱 deletion only |
 | 15 | Run the L3 matrix and retire | ≤ 250 | 🌱 |
 
 Steps 3 and 4 are split on purpose. Each is a transport and security change
@@ -864,7 +877,8 @@ far tap splits out as its own PR.
 - Steps 10 and 11 depend on step 9.
 - Step 12 depends on step 8, because both change the page path and the
   through request gains W3's field. Step 13 depends on step 12.
-- Step 14 depends on steps 2–13. Step 15 depends on step 14.
+- Step 14 depends on steps 2–13. Step 14b depends on step 14. Step 15
+  depends on steps 14 and 14b.
 
 ## Verification
 
@@ -981,9 +995,8 @@ Deliberately not added:
 | A stale index entry after a background history rewrite that has not yet triggered a refetch (P8). | Theoretical interleaving. | One tap shows an inline error. The next list replacement refetches. |
 | CRIME/BREACH-style length inference on deflated transcript pages. | Theoretical. Needs adaptive injection, length observation and repeated user re-fetches. | Not mitigated. See [Security And Privacy Of W1](#security-and-privacy-of-w1). |
 | Bridge CPU spent deflating a very large load-through response. | Measured sizes: up to 17.4 MB for the largest session. | Measured in step 8. Isolate offload only if the bridge stalls visibly. Attachment responses are never deflated (P4). |
-| The app decodes a whole-session load-through on the UI isolate. | Same 17.4 MB worst case; decode runs on the calling isolate today. | Measured in step 8. `Isolate.run` only if a frame stall is visible. |
+| The app decodes a whole-session load-through on the UI isolate. | Same 17.4 MB worst case; decode runs on the calling isolate today. | Step 9 decodes it via `Isolate.run`. |
 | The index takes too long for the largest session. | About 20 ms for the review page's query; the fold over every part is new. | Measured in step 7 against a 300 ms budget. A narrower projection only if it misses. |
-| A bridge released between steps 7 and 8 (or 7 and 11) has the index but not the load-through (or search) route. | Release timing. | Typed `Unsupported`: a far tap says the bridge needs an update; search stays loaded-only without Retry. |
 | A long prompt's unloaded pin shows its start, but once loaded it pins its end. | Layout rule of the sticky overlay. | The pin crossfades when the opener loads. |
 | The loaded-range fold and the index disagree on a prompt's kind. | Known limitation at the loaded edge. | The index wins (P15). |
 

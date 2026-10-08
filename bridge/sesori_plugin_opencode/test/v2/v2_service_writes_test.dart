@@ -8,6 +8,7 @@ import "package:opencode_plugin/src/v2/models/openapi/permission_request.g.dart"
 import "package:opencode_plugin/src/v2/models/openapi/session_info.g.dart";
 import "package:opencode_plugin/src/v2/models/v2_event.g.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_activity_tracker.dart";
+import "package:opencode_plugin/src/v2/repositories/opencode_v2_compaction_tracker.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_repository.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_message_mapper.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_model_mapper.dart";
@@ -53,6 +54,7 @@ void main() {
     service = OpenCodeV2Service(
       repository: repository,
       tracker: tracker,
+      compactions: OpenCodeV2CompactionTracker(),
       mapper: const V2EventMapper(modelMapper: models, messageMapper: V2MessageMapper()),
       modelMapper: models,
       formAnswerMapper: const V2FormAnswerMapper(),

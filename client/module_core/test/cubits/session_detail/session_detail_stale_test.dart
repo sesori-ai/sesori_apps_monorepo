@@ -175,6 +175,7 @@ void main() {
               nextCursor: null,
               userMessagesBefore: null,
               replayedPromptDefaults: null,
+              cannotContinueMessage: null,
             ),
           ),
         );
@@ -245,6 +246,7 @@ void main() {
             nextCursor: null,
             userMessagesBefore: null,
             replayedPromptDefaults: null,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -286,6 +288,55 @@ void main() {
         isA<SessionDetailLoaded>()
             .having((s) => s.isRefreshing, "isRefreshing", isFalse)
             .having((s) => s.messages.first.info.id, "updated message id", "msg-immediate"),
+      );
+    });
+
+    test("carries a can't-continue message and clears it once a refresh succeeds", () async {
+      void stubMessages({required String? cannotContinueMessage}) {
+        when(
+          () => mockSessionService.getMessages(
+            sessionId: sessionId,
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
+          ),
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            MessageWithPartsResponse(
+              messages: [_messageWithParts()],
+              nextCursor: null,
+              awaitingHarnessSync: cannotContinueMessage != null,
+              userMessagesBefore: null,
+              replayedPromptDefaults: null,
+              cannotContinueMessage: cannotContinueMessage,
+            ),
+          ),
+        );
+      }
+
+      stubMessages(cannotContinueMessage: "This session can't be continued.");
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+
+      await _awaitLoaded(cubit);
+      expect(
+        cubit.state,
+        isA<SessionDetailLoaded>().having(
+          (s) => s.cannotContinueMessage,
+          "cannotContinueMessage",
+          "This session can't be continued.",
+        ),
+      );
+
+      stubMessages(cannotContinueMessage: null);
+      mockConnectionService.emitDataMayBeStale();
+      await pumpEventQueue();
+
+      expect(
+        cubit.state,
+        isA<SessionDetailLoaded>()
+            .having((s) => s.isRefreshing, "isRefreshing", isFalse)
+            .having((s) => s.cannotContinueMessage, "cannotContinueMessage", isNull),
       );
     });
 
@@ -441,6 +492,7 @@ void main() {
             nextCursor: null,
             userMessagesBefore: null,
             replayedPromptDefaults: null,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -554,6 +606,7 @@ void main() {
             nextCursor: null,
             userMessagesBefore: null,
             replayedPromptDefaults: null,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -596,6 +649,7 @@ void main() {
             nextCursor: null,
             userMessagesBefore: null,
             replayedPromptDefaults: null,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -627,6 +681,7 @@ void main() {
             nextCursor: null,
             userMessagesBefore: null,
             replayedPromptDefaults: null,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -694,6 +749,7 @@ void main() {
             nextCursor: null,
             userMessagesBefore: null,
             replayedPromptDefaults: null,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -823,6 +879,7 @@ void main() {
               nextCursor: null,
               userMessagesBefore: null,
               replayedPromptDefaults: null,
+              cannotContinueMessage: null,
             ),
           );
         });
@@ -920,6 +977,7 @@ void main() {
                 nextCursor: null,
                 userMessagesBefore: null,
                 replayedPromptDefaults: null,
+                cannotContinueMessage: null,
               ),
             ),
           );
@@ -1011,6 +1069,7 @@ void main() {
             nextCursor: null,
             userMessagesBefore: null,
             replayedPromptDefaults: null,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -1158,6 +1217,7 @@ void main() {
               nextCursor: null,
               userMessagesBefore: null,
               replayedPromptDefaults: null,
+              cannotContinueMessage: null,
             ),
           ),
         );
@@ -1168,6 +1228,7 @@ void main() {
               nextCursor: null,
               userMessagesBefore: null,
               replayedPromptDefaults: null,
+              cannotContinueMessage: null,
             ),
           ),
         );
@@ -1245,6 +1306,7 @@ void main() {
               nextCursor: null,
               userMessagesBefore: null,
               replayedPromptDefaults: null,
+              cannotContinueMessage: null,
             ),
           ),
         );
@@ -1255,6 +1317,7 @@ void main() {
               nextCursor: null,
               userMessagesBefore: null,
               replayedPromptDefaults: null,
+              cannotContinueMessage: null,
             ),
           ),
         );
@@ -1376,6 +1439,7 @@ void main() {
               nextCursor: null,
               userMessagesBefore: null,
               replayedPromptDefaults: null,
+              cannotContinueMessage: null,
             ),
           );
         });
@@ -1463,6 +1527,7 @@ void main() {
               nextCursor: null,
               userMessagesBefore: null,
               replayedPromptDefaults: null,
+              cannotContinueMessage: null,
             ),
           ),
         );
@@ -1473,6 +1538,7 @@ void main() {
               nextCursor: null,
               userMessagesBefore: null,
               replayedPromptDefaults: null,
+              cannotContinueMessage: null,
             ),
           ),
         );
@@ -1508,6 +1574,7 @@ void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
           nextCursor: null,
           userMessagesBefore: null,
           replayedPromptDefaults: null,
+          cannotContinueMessage: null,
         ),
       ),
     ),

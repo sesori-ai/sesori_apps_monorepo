@@ -28,6 +28,8 @@ class _MockImageSharer() extends Mock implements ImageSharer;
 
 class _MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
+class _MockSessionRepository() extends Mock implements SessionRepository;
+
 const _actions = SessionListActionDispatcher(
   deleteConfirmation: SessionDeleteConfirmation.sheet,
   onSessionArchived: null,
@@ -121,6 +123,7 @@ SessionDetailLoaded _loadedState({required Session session}) {
     launchHandoff: null,
     olderMessagesCursor: null,
     userMessagesBeforeOldest: null,
+    promptIndex: null,
     streamingText: const {},
     sessionStatus: const SessionStatus.idle(),
     pendingQuestions: const [_question],
@@ -146,6 +149,7 @@ SessionDetailLoaded _loadedState({required Session session}) {
     fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
+    cannotContinueMessage: null,
   );
 }
 
@@ -240,6 +244,7 @@ void main() {
                 imageSharerResolutions++;
                 return _MockImageSharer();
               },
+              sessionRepository: _MockSessionRepository.new,
               canShareImages: true,
             ),
           ),
@@ -352,6 +357,7 @@ void main() {
                 imageSaver: _MockImageSaver.new,
                 imageClipboard: _MockImageClipboard.new,
                 imageSharer: _MockImageSharer.new,
+                sessionRepository: _MockSessionRepository.new,
                 canShareImages: true,
               ),
             ),
@@ -459,6 +465,7 @@ void main() {
                   imageSaver: _MockImageSaver.new,
                   imageClipboard: _MockImageClipboard.new,
                   imageSharer: _MockImageSharer.new,
+                  sessionRepository: _MockSessionRepository.new,
                   canShareImages: true,
                 ),
               ),

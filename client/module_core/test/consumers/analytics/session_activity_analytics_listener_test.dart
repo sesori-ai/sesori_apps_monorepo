@@ -54,6 +54,7 @@ const _emptyState = SessionDetailState.loaded(
   ],
   olderMessagesCursor: null,
   userMessagesBeforeOldest: null,
+  promptIndex: null,
   streamingText: {},
   sessionStatus: SessionStatus.idle(),
   pendingQuestions: [],
@@ -78,6 +79,7 @@ const _emptyState = SessionDetailState.loaded(
   fastMode: false,
   stagedCommand: null,
   isRefreshing: false,
+  cannotContinueMessage: null,
 );
 
 const _nonEmptyState = SessionDetailState.loaded(
@@ -87,6 +89,7 @@ const _nonEmptyState = SessionDetailState.loaded(
   messages: [],
   olderMessagesCursor: null,
   userMessagesBeforeOldest: null,
+  promptIndex: null,
   streamingText: {},
   sessionStatus: SessionStatus.busy(),
   pendingQuestions: [],
@@ -111,6 +114,7 @@ const _nonEmptyState = SessionDetailState.loaded(
   fastMode: false,
   stagedCommand: null,
   isRefreshing: false,
+  cannotContinueMessage: null,
 );
 
 void main() {

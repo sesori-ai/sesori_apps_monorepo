@@ -32,6 +32,7 @@ void main() {
     markedUnread.clear();
     cubit = _MockSessionListCubit();
     when(() => cubit.retainActionScope()).thenReturn(() {});
+    when(() => cubit.projectId).thenReturn("project-1");
   });
 
   /// Renders the real panel. [SessionListContent] wires the swipe actions to
@@ -76,9 +77,15 @@ void main() {
     await tester.pumpWidget(
       BlocProvider<ConnectionOverlayCubit>(
         create: (_) => StubConnectionOverlayCubit(),
-        child: BlocProvider(
-          create: (_) =>
-              PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (_) => PendingSessionArchiveCubit(
+                cleanupService: SessionCleanupService(repository: MockSessionRepository()),
+              ),
+            ),
+            RepositoryProvider(create: (_) => idleSessionLaunchService()),
+          ],
           child: MaterialApp.router(
             routerConfig: router,
             theme: ThemeData(extensions: [PregoDesignSystem.light]),

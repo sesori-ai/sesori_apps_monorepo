@@ -1,6 +1,6 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io" show FileSystemEntity, FileSystemEntityType;
+import "dart:io" show FileSystemEntity, FileSystemEntityType, Platform;
 import "dart:math";
 import "dart:typed_data";
 
@@ -20,6 +20,7 @@ import "api/database/daos/session_continuation_dao.dart";
 import "api/database/daos/session_options_cache_dao.dart";
 import "api/database/database.dart";
 import "api/database/history/chat_history_database.dart";
+import "api/drive_roots_api.dart";
 import "api/filesystem_api.dart";
 import "api/gh_cli_api.dart";
 import "api/git_cli_api.dart";
@@ -120,9 +121,12 @@ import "routing/get_session_diff_summary_handler.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/get_session_handler.dart";
 import "routing/get_session_messages_handler.dart";
+import "routing/get_session_messages_through_handler.dart";
 import "routing/get_session_permissions_handler.dart";
+import "routing/get_session_prompt_index_handler.dart";
 import "routing/get_session_questions_handler.dart";
 import "routing/get_session_statuses_handler.dart";
+import "routing/get_session_tool_output_handler.dart";
 import "routing/get_sessions_handler.dart";
 import "routing/health_check_handler.dart";
 import "routing/hide_project_handler.dart";
@@ -143,6 +147,7 @@ import "routing/request_router.dart";
 import "routing/restart_bridge_handler.dart";
 import "routing/routed_request.dart";
 import "routing/routed_request_dispatcher.dart";
+import "routing/search_session_prompts_handler.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/set_session_approval_override_handler.dart";
@@ -317,6 +322,10 @@ class Orchestrator({
     final filesystemRepository = FilesystemRepository(
       filesystemApi: const FilesystemApi(),
       permissionValidator: const FilesystemPermissionValidator(),
+      driveRootsApi: DriveRootsApi.forPlatform(
+        platform: PlatformOs.fromOperatingSystem(operatingSystem: Platform.operatingSystem),
+        processRunner: _processRunner,
+      ),
     );
     final worktreeRepository = WorktreeRepository(
       projectsDao: _database.projectsDao,
@@ -694,6 +703,10 @@ class Orchestrator({
         ),
         GetSessionAttachmentHandler(chatHistoryService: chatHistoryService),
         GetSessionMessagesHandler(chatHistoryService: chatHistoryService),
+        GetSessionMessagesThroughHandler(chatHistoryService: chatHistoryService),
+        GetSessionPromptIndexHandler(chatHistoryService: chatHistoryService),
+        SearchSessionPromptsHandler(chatHistoryService: chatHistoryService),
+        GetSessionToolOutputHandler(chatHistoryService: chatHistoryService),
         GetSessionsHandler(
           sessionViews: sessionViews,
           sessionRepository: sessionRepository,

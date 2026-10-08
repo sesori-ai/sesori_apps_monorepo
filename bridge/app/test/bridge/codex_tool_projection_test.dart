@@ -19,8 +19,9 @@ CodexRolloutLineDto _line({required Map<String, dynamic> payload}) => CodexRollo
   "timestamp": "2026-09-08T10:00:00Z",
   "payload": payload,
 });
-ToolState _project({required CodexProjectedTool tool}) =>
-    (const CodexToolPartMapper().map(sessionId: "s", tool: tool).toShared(sessionId: "s") as MessagePartTool).state;
+ToolStateFull _project({required CodexProjectedTool tool}) =>
+    (const CodexToolPartMapper().map(sessionId: "s", tool: tool).toShared(sessionId: "s") as MessagePartTool).state
+        as ToolStateFull;
 
 void main() {
   final cases = [

@@ -245,8 +245,9 @@ void main() {
         expect(part.agent, "agent");
         expect(part.taskState!.status, status.toShared());
         expect(part.taskState!.title, "😀" * maxToolOutputLength);
-        expect(part.taskState!.output, "😀" * maxToolOutputLength);
-        expect(part.taskState!.error, status == PluginToolStatus.error ? "😀" * maxToolOutputLength : null);
+        final taskState = part.taskState! as ToolStateFull;
+        expect(taskState.output, "😀" * maxToolOutputLength);
+        expect(taskState.error, status == PluginToolStatus.error ? "😀" * maxToolOutputLength : null);
         expect(part.taskState!.attachments, hasLength(1));
       });
     }
@@ -266,8 +267,8 @@ void main() {
           attachments: const [],
         ),
       ).toShared(sessionId: "s") as MessagePartTool;
-      expect(state.state.output, "😀" * maxToolOutputLength);
-      expect(state.state.error, "😀" * maxToolOutputLength);
+      expect((state.state as ToolStateFull).output, "😀" * maxToolOutputLength);
+      expect((state.state as ToolStateFull).error, "😀" * maxToolOutputLength);
       expect(state.state.shellCommand, "😀" * maxToolOutputLength);
       final legacy = state.state.toJson()..remove("shellCommand");
       expect(ToolState.fromJson(legacy).title, state.state.shellCommand);

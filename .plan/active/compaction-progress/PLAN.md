@@ -8,19 +8,19 @@
   questions C1–C7, the per-harness "today vs after" table, the Claude event
   timeline and the mockups). The page stays local. Every C decision is final
   and recorded under [Decisions](#decisions).
-- **Series:** nine PRs with fixed titles in
+- **Series:** nine steps with fixed titles in
   [TRACKER](TRACKER.md#fixed-pr-titles). Phase 1 (steps 2–5: the sweep-rule
-  refactor, wire and bridge, app, Claude) is detailed below. Phase 2 (steps
-  6–7: OpenCode, then Pi, Codex and DeepSeek) is rough intent. The step-6 PR
-  details steps 6–7 in this file before it changes code. Steps 8–9 reconcile
-  the docs and retire the plan.
+  refactor, wire and bridge, app, Claude) and phase 2 (steps 6–7: OpenCode,
+  then Pi, Codex and DeepSeek) are detailed below. Step 6 ships as two PRs,
+  6a (OpenCode v2) and 6b (OpenCode v1); see
+  [Phase 2](#5-phase-2-steps-67-detailed-by-the-step-6a-pr-on-2026-10-07).
+  Steps 8–9 reconcile the docs and retire the plan.
 - **Renumbered 2026-10-07:** the user approved the sweep-rule refactor (Q4) as
   its own PR before the wire contract, so it became step 2 and every later
   step moved up by one.
-- **Approval scope:** this plan PR approves the phase-1 architecture only.
-  Phase 2 is approved as intent. Its file and class ownership, lifecycle and
-  data flow are designed in the step-6 PR, which runs
-  `architecture-plan-review` on that section before any phase-2 code.
+- **Approval scope:** this plan PR approved the phase-1 architecture. The
+  step-6a PR designed phase 2 and ran `architecture-plan-review` on it before
+  any phase-2 code; see [Plan Review Record](#plan-review-record).
 - **Supersedes** the "Compaction running row" bullet under step-timers'
   later phases (`.plan/active/step-timers/PLAN.md`). That plan's retirement
   must not reopen it.
@@ -501,42 +501,175 @@ Layers (all under `bridge/sesori_plugin_claude/lib/src/`):
   timestamp equals the transcript record's, and which start-time uuid, if
   any, the transcript persists (P10 option 1).
 
-### 5. Phase 2 (steps 6–7, rough; detailed by the step-6 PR)
+### 5. Phase 2 (steps 6–7, detailed by the step-6a PR on 2026-10-07)
 
-- **OpenCode v1.** The summary message's compaction part becomes running
-  until the message completes, then completed. This fixes the #1700 early
-  row, and "Working…" returns after the settle. Deltas already reach the
-  client (P5), and the summary tracker already knows the summary message
-  ids. A summary message with an error becomes `failed`. The user marker's
-  `CompactionPart.auto` maps to the trigger (C7); step 6 picks the smallest
-  plugin-owned link from marker to summary message.
-- **OpenCode v2.** Running snapshots map to a running part with
-  `partId(messageId, 0)` and the partial summary.
-  `session.compaction.delta` becomes a part delta on that part, which needs
-  one per-session map of the running part id. The map goes in a dedicated
-  `Tracker`, following the `ActiveSessionTracker` and Claude `trackers/`
-  pattern, not in the service. Failed snapshots become a
-  `failed` part instead of today's error message. `reason` maps to the
-  trigger.
-- **Pi.** `compaction_start` emits a running compaction part instead of the
-  `compact` tool part, on the same reserved message. `compaction_end`
-  success emits `completed` with the trigger from `reason`. Failure emits
-  `failed(errorMessage)` and no longer removes the row or raises a session
-  error (C5). `willRetry` keeps the row running. Per Q2, an abort or a
-  process exit no longer removes the row: it ends as the quiet failed note.
-  Parse `tokensBefore` only if a freed count becomes
-  derivable. Today it is not, because Pi reports no after-count.
-- **Codex.** `item/started` emits a running compaction part instead of the
-  `compact` tool part, with the same ids. `item/completed` emits
-  `completed`. A missing completion is finalized by the P6 sweep.
-- **DeepSeek.** Map `compaction_started` to a running part on a synthetic
-  message. One per-session map holds the running id, in a dedicated
-  `Tracker` beside `DeepSeekDelegationTracker`, not in the mapper. Map `compaction_completed`
-  to `completed`. A warning or turn end mid-compaction is left to the P6
-  sweep. The rows are live-only (C6), and a history re-import drops them
-  after one more import.
-- **Cleanup** in these steps: Pi's `mapRunningCompaction` tool mapping and
-  its failure-path session error, and Codex's running `compact` tool part.
+Step 6 ships as two PRs, because the two OpenCode adapters share no
+compaction code and together exceed the step's line target: **6a** for the
+v2 adapter (the managed runtime and any 2.x on `PATH`) with this detail, and
+**6b** for the v1 adapter (1.x on `PATH`). Neither needs the other.
+
+**OpenCode v2 (step 6a).** Facts from the OpenCode 2.0.16 projector
+(`packages/core/src/session/message-updater.ts`) and event schema:
+
+- `session.compaction.started` appends a running compaction message whose id
+  is the caller's `inputID` or the event-derived id, with `time.created` from
+  the event. `ended` and `failed` update that same message in place, so its
+  id is stable from start to finish.
+- `session.compaction.delta` is ephemeral: `{sessionID, text}`, where `text`
+  is the next fragment (OpenCode's own app concatenates them). The projector
+  never writes it, so a stored running message keeps `summary: ""`.
+- The completed message's `tokens` are the summary call's own usage, not the
+  context before and after, so no freed count is derivable. `reason` is
+  `auto` or `manual`.
+
+Design:
+
+- `V2MessageMapper` (the one builder of v2 compaction parts) maps every
+  status onto one system message with one compaction part,
+  `partId(messageId, 0)`:
+  - running: `running(summary)`, null when empty, with `time.completed` null;
+  - completed: `completed(summary, freedTokens: null, trigger)`, with
+    `reason` mapped to the trigger (unknown → null);
+  - failed: `failed(error.message)`, replacing today's error message.
+    `time.completed` stays the creation time, so a named compaction still
+    settles its prompt.
+- `V2EventMapper.mapMessageSnapshot` reports `BridgeSseSessionCompacted` only
+  for a completed part, so a running or failed snapshot no longer reads as a
+  finished compaction. `mapCompactionDelta` turns a delta into a part delta
+  (`field: "text"`) on the session's running part, or into nothing.
+- New `OpenCodeV2CompactionTracker` in `v2/repositories/`, beside
+  `OpenCodeV2ActivityTracker`: one map from session id to its running
+  compaction part. The service records each compaction snapshot it fetches
+  (running stores, any other status removes) and clears the map in
+  `reset()`. The SSE consumer awaits each event, so the `started` snapshot is
+  recorded before the first delta is handled.
+- `OpenCodeV2Service` routes the delta through the tracker and the mapper,
+  and `OpenCodeV2Plugin.create` injects the tracker. A delta with no recorded
+  running part (after a bridge reconnect mid-compaction) first loads the
+  running snapshot the same way the start does.
+- Accepted: after a reload or reconnect mid-compaction the strip starts from
+  the next delta, because the stored summary is empty. A delta whose running
+  snapshot cannot load is dropped, and the row still settles at `ended`.
+
+**OpenCode v1 (step 6b).** Today `SummaryMessageTracker` (owned by
+`OpenCodePlugin`) remembers up to 16 summary message ids, and
+`MessagePartMapper.mapSummaryPart` maps their text parts to completed parts
+with the text part's own id. The summary message's `parentID` is the
+compaction marker user message, whose `CompactionPart` carries `auto`.
+
+- `SummaryMessageTracker` records raw facts only, from the raw events it
+  already observes. Per summary message (still bounded to 16) it keeps the
+  marker's `auto` flag and its text part ids with their latest text. It also
+  remembers up to 16 marker message ids with their `auto` flag, taken from
+  `message.part.updated` events that carry a `CompactionPart`. It never
+  stores mapper output.
+- `MessagePartMapper` is the only builder of v1 compaction states (running,
+  completed with its trigger, failed with its error), used by the live path
+  and REST alike.
+- Live: `SseEventMapper.map` returns `List<BridgeSseEvent>` instead of one
+  nullable event, and `OpenCodePlugin` keeps its job (observe, map, add each
+  event). A summary text part maps to `running(summary: text)` while its
+  message is unfinished. When `message.updated` reports the summary message
+  finished, `map` returns the message update and then one part update per
+  recorded text part: `completed(summary: its text, trigger)`, or
+  `failed(error)` when the message carries an error. A part that arrives
+  after the finish maps straight to the final state.
+- REST (`PluginModelMapper.mapMessageWithParts`): the state follows the
+  message. With an error the parts are failed, without `time.completed` they
+  are running, and otherwise completed. `OpenCodeRepository.getMessages`
+  makes one pre-pass over the message list to build marker id → `auto`, and
+  `mapMessageWithParts` takes the summary message's flag as a required
+  parameter.
+- An errored summary message that has compaction parts maps as an assistant
+  message, so the failed note shows instead of an error card.
+  `AssistantMessageMapper.map` stays the one owner of that choice and gains
+  `required bool keepsCompactionParts`. REST computes it from the raw parts;
+  live, `SseEventMapper._mapMessageInfo` passes whether the tracker recorded
+  text parts for that summary message. Without any part (a failure before the
+  first summary word) it stays today's error message.
+- Deltas already target the text part id, so the strip works unchanged.
+
+**Pi (step 7).** Today:
+
+- `PiHistoryMapper.mapRunningCompaction` builds a running `compact` tool
+  part (`"$messageId-tool"`) with no message time. The message id is
+  reserved by `PiMessageIdentityBuilder.reserveCompaction`.
+- `PiEventDispatcher._compactionEnd` commits the id on success. On a terminal
+  failure it releases the id and emits `BridgeSseMessageRemoved` and
+  `BridgeSseSessionError`.
+- `_SessionState.compactionMessageId` holds the live id, which
+  `activeCompactionMessage` replays to late viewers.
+
+Design:
+
+- `_SessionState.compactionMessageId` becomes a record of the message id
+  and the start stamp. Pi sends no time, so the dispatcher stamps
+  `compaction_start` (P4), and late viewers get the same stamp.
+- `PiHistoryMapper` stays the one builder.
+  - `mapRunningCompaction` returns a `running(summary: null)` compaction
+    part with the same part id and the stamped message time.
+  - `mapCompaction` gains the trigger: `manual` → manual, and `threshold`
+    or `overflow` → auto. History entries carry no reason, so history rows
+    have no trigger.
+  - A new `mapFailedCompaction` builds the failed note.
+- `willRetry` emits nothing, as today, so the row stays running.
+- A terminal failure or abort shows `failed(errorMessage)` and no longer
+  raises a session error.
+  - The note must leave the reserved id. Pi numbers compaction ids by its
+    persisted entries, so the next attempt reserves the same id. Reusing it
+    would move that attempt's running row up to the old note's position.
+  - `PiMessageIdentityBuilder`, the owner of Pi message ids, gains
+    `abandonCompaction({required int stamp})`, which releases the reservation
+    and returns the note id `"$messageId-failed-$stamp"`. The dispatcher
+    emits `BridgeSseMessageRemoved` for the running row and adds the note
+    under that id with the same creation time. The bridge appends it, so it lands where the
+    running row was, normally the last row.
+  - This is the one settle without a cross-fade (an accepted exception to
+    P9).
+  - An abort or a process exit (today's `_clearCompaction`, which removes
+    the row) moves the still running row to the id from
+    `abandonCompaction` the same way. The P6
+    sweep then ends it with Q2's note.
+
+**Codex (step 7).**
+
+- `CodexEventMapper` handles `item/started` and `item/completed` for
+  `contextCompaction` (`codex_event_mapper.dart:555-584`).
+- `item/started` emits the item message and a `running(summary: null)`
+  compaction part with today's id `"$itemId-tool"`, instead of the running
+  `compact` tool part. The message time is `startedAtMs` when present. When
+  it is absent, the mapper stamps the start and writes it into `_itemTimes`
+  (`_recordAppServerItemTime`), so start and settle share one
+  `time.created`.
+- `item/completed` settles the part as today: `completed`, with no summary
+  or trigger, because Codex reports neither.
+- No failure signal exists, so a missing completion is left to the P6 sweep.
+  History (`codex-compaction-N`) is unchanged.
+
+**DeepSeek (step 7).**
+
+- Status frames carry only `sessionId`. Today `compaction_started` maps to
+  nothing, and `compaction_completed` maps only to
+  `BridgeSseSessionCompacted` (`deepseek_event_mapper.dart:135-153`).
+- New `DeepSeekCompactionTracker` in `repositories/trackers/`, beside
+  `DeepSeekDelegationTracker`. It holds one map from session id to the
+  running message id and its start stamp, using an injected clock. It is
+  built in `deepseek_plugin_descriptor.dart` and injected into the mapper.
+  The mapper clears it in `resetLiveState`, `beginTurn` and `forgetSession`.
+- `compaction_started` adds a system message `"$sessionId-compaction-$stamp"`
+  with a running part. `compaction_completed` settles it as `completed` and
+  keeps `BridgeSseSessionCompacted`. A completion without a recorded start
+  keeps today's event only.
+- A warning or turn end mid-compaction is left to the P6 sweep. The rows are
+  live only (C6), and a history re-import drops them after one more import.
+
+**Cleanup in steps 6–7:**
+
+- Pi: the running `compact` tool mapping and the failure-path session error.
+- Codex: the running `compact` tool part.
+- OpenCode v2: the failed-compaction error message.
+
+The tests that pinned those behaviors are updated with them.
 
 ## Approved Copy
 
@@ -584,11 +717,15 @@ New mutable parts, each justified:
 | Part | Where | Why |
 |---|---|---|
 | `Map<String, _ClaudeCompaction>` (a) | Claude dispatcher | Running id and outcome until `result` |
-| Per-session running-part-id map | OpenCode v2 tracker (step 6) | Deltas carry only `sessionID` |
+| Per-session running-part map | OpenCode v2 tracker (step 6a) | Deltas carry only `sessionID` |
+| Summary text parts, marker flags (b) | OpenCode v1 `SummaryMessageTracker` (step 6b) | Settle parts when the message ends |
+| Start stamp beside the reserved id (c) | Pi `_SessionState` (step 7) | Pi sends no compaction time |
 | Per-session running-message-id map | DeepSeek tracker (step 7) | No ids on status notifications |
 | One `Timer` per visible live row | `TranscriptElapsedTime` | Reused, not new |
 
 (a) It replaces the existing `Set<String>`, so the map count is unchanged.
+(b) It replaces the existing bounded `Set<String>` and stays bounded.
+(c) It widens the existing `compactionMessageId` field into a record.
 
 Not added: a session status, a part type, a client clock, a bridge-side
 correlation of compaction across messages, Codex token diffing, an old-app
@@ -658,9 +795,12 @@ Each implementation step updates the documents for the behavior it ships.
     row, Failure note, Details (freed tokens, trigger) and Summary columns,
     and fill in Claude with the probe version;
   - `session-turns.md`: Claude's compaction lines.
-- **Step 6:** the capability rows for OpenCode v1 and v2 (strip, trigger),
-  the OpenCode lines in `session-turns.md`, and the OpenCode old-app line
-  in `tools-and-file-changes.md` (Q5).
+- **Step 6a:** the OpenCode v2 capability row (live row, strip, failure
+  note, trigger, no freed count), the OpenCode v2 compaction lines in
+  `session-turns.md`, and the OpenCode old-app line in
+  `tools-and-file-changes.md` (Q5).
+- **Step 6b:** the OpenCode v1 capability row and its `session-turns.md`
+  lines.
 - **Step 7:**
   - the capability rows for Pi, Codex and DeepSeek;
   - the Pi and Codex running-`compact`-card lines in `session-turns.md` and
@@ -723,9 +863,9 @@ Automated coverage in the steps:
 - **Order.** 2 → 3 → 4 → 5. Steps 6 and 7 need 4 and may run beside 5. Each
   needs only step 3's contract and step 4's rendering. Step 8 needs 2–7, and
   step 9 needs 8.
-- **The step-6 PR first details steps 6–7 in this file** (code-informed, like
-  phase 1), runs `architecture-plan-review` on that section, then implements
-  step 6.
+- **The step-6a PR first detailed steps 6–7 in this file** (code-informed,
+  like phase 1) and ran `architecture-plan-review` on that section before it
+  implemented step 6a.
 - **Questions:** all answered by the user on 2026-10-07; see
   [Answered Questions](#answered-questions).
 - **Coordination:** the `step-timers` plan also edits `transcript_activity.dart`
@@ -737,7 +877,8 @@ Automated coverage in the steps:
   settle. Steps 5–7 add a recording on one live harness each.
 - **Architecture implementation review:** steps 2 (the sweep rule's owner),
   3 (wire contract, plugin interface, sweep), 5 (Claude dispatcher state and
-  id scheme), 6 (the OpenCode v2 tracker) and 7 (the DeepSeek tracker).
+  id scheme), 6a (the OpenCode v2 tracker), 6b (the v1 tracker's new role)
+  and 7 (the DeepSeek tracker and the Pi re-key).
 - **Checks:**
   - `dart analyze --fatal-infos` per touched package, with the pinned
     toolchain first on `PATH`;
@@ -828,9 +969,43 @@ Target ≤ 800 changed lines.
 
 Target ≤ 700 changed lines.
 
-**Step 6 — OpenCode v1 and v2** (rough, detailed by its PR). Target ≤ 800.
+**Step 6a — OpenCode v2 and the phase-2 detail.**
+[Phase 2](#5-phase-2-steps-67-detailed-by-the-step-6a-pr-on-2026-10-07).
+Verify:
 
-**Step 7 — Pi, Codex and DeepSeek** (rough, detailed by the step-6 PR).
+- mapper tests: each status maps to one system message and one part with a
+  stable id, the trigger table, and the failed note in place of the error
+  message;
+- event-mapper tests: only a completed snapshot reports the session
+  compacted, and a delta reaches only a known running part;
+- a service test: start, delta, end, then a late delta, with one part id
+  throughout; and one where the first delta after a reconnect loads the
+  running row;
+- `dart analyze --fatal-infos` and `dart test` for `sesori_plugin_opencode`.
+
+Target ≤ 800 changed lines, about 300 of them this plan detail.
+
+**Step 6b — OpenCode v1.** Verify:
+
+- live mapping: a summary part runs, then settles completed or failed when
+  its message finishes, with the trigger from its marker;
+- REST mapping for running, completed and failed summary messages;
+- an errored summary message without parts keeps its error message;
+- `dart analyze --fatal-infos` and `dart test` for `sesori_plugin_opencode`.
+
+Target ≤ 700.
+
+**Step 7 — Pi, Codex and DeepSeek.** Verify:
+
+- Pi: the running part with its stamp (and the same stamp for a late
+  viewer), completion with the trigger, `willRetry` staying running, and a
+  terminal failure and an abort moving the row off the reserved id with no
+  session error;
+- Codex: the running part with and without `startedAtMs`, and its settle;
+- DeepSeek: tracker tests, the running row and its settle, a completion
+  without a start, and clearing on the next turn;
+- `dart analyze --fatal-infos` and `dart test` for each plugin.
+
 Target ≤ 900, mostly mapper and test changes.
 
 **Step 8 — reconcile the documents.** Bring `tools-and-file-changes.md`,
@@ -866,10 +1041,27 @@ numbers them Q1–Q6. These answers are final; do not reopen them.
 
 ## Plan Review Record
 
-The records below keep the numbering of their date: they predate step 2's
+The 2026-10-06 records below keep the numbering of their date: they predate step 2's
 insertion, so their step numbers are one lower than today's and their Q3 is
 today's Q5. The sweep relocation they declined is today's step 2, approved by
 the user on 2026-10-07 (Q4).
+
+**`architecture-plan-review` of phase 2, 2026-10-07 (step-6a PR):
+rejected** with two blocking findings in step 6b and two non-blocking
+findings in step 7; steps 6a and 7 needed no structural change. All were
+applied directly:
+
+1. Blocking: the v1 live settle sat in `OpenCodePlugin` and fed mapper
+   output back into the tracker. The tracker now records raw facts only,
+   `SseEventMapper.map` returns a list and owns the settle, and
+   `MessagePartMapper` is the only state builder.
+2. Blocking: the input of the assistant-versus-error choice was unnamed.
+   `AssistantMessageMapper.map` gains `required bool keepsCompactionParts`,
+   computed per path, and the repository pre-pass for the trigger is named.
+3. Pi note ids come from a new `PiMessageIdentityBuilder.abandonCompaction`.
+4. Codex writes its stamped start into `_itemTimes`.
+
+These fixes need no re-review.
 
 **`architecture-plan-review`, 2026-10-06: rejected** with one blocking and
 five non-blocking findings. C1–C7, the design point and Q1–Q2 were not

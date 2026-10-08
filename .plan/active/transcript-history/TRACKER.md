@@ -48,7 +48,10 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 - Prompt numbers come from the bridge or not at all.
 - The index, search and tool-output routes read the store or the audit file
   alone, outside the session queue, and never backfill (P10). The index and
-  search handlers never answer 404, so a 404 there means an older bridge.
+  search handlers never answer 404, so a 404 from the index route means an
+  older bridge. The app searches and far-taps only on a bridge that sent the
+  index, so any search or load-through error, a 404 included, is an ordinary
+  failure (search offers Retry).
 - A slim tool part is its own `ToolState` variant, never nullable fields plus
   a flag. Keyless `ToolState` JSON decodes as full.
 - Choosing index entries for the list, the pin and search matches is
@@ -67,12 +70,14 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | 7 | `transcript-history/prompt-index` | [7](#fixed-pr-titles) | ≤ 900 | 6 |
 | 8 | `transcript-history/load-through` | [8](#fixed-pr-titles) | ≤ 600 | 5 |
 | 9 | `transcript-history/prompts-list` | [9](#fixed-pr-titles) | ≤ 1,300 | 7, 8 |
+| 9b | `transcript-history/relay-decode-isolate` | [9b](#fixed-pr-titles) | ≤ 200 | 4 |
 | 10 | `transcript-history/unloaded-pin` | [10](#fixed-pr-titles) | ≤ 500 | 9 |
 | 11 | `transcript-history/prompt-search` | [11](#fixed-pr-titles) | ≤ 800 | 9 |
 | 12 | `transcript-history/slim-tools-bridge` | [12](#fixed-pr-titles) | ≤ 900 | 8 |
 | 13 | `transcript-history/slim-tools-app` | [13](#fixed-pr-titles) | ≤ 700 | 12 |
 | 14 | `transcript-history/regression-docs` | [14](#fixed-pr-titles) | ≤ 300 | 2–13 |
-| 15 | `transcript-history/retire` | [15](#fixed-pr-titles) | ≤ 250 | 14 |
+| 14b | `transcript-history/remove-load-through-unsupported` | [14b](#fixed-pr-titles) | ≤ 150 | 14 |
+| 15 | `transcript-history/retire` | [15](#fixed-pr-titles) | ≤ 250 | 14, 14b |
 
 Rows 6–13 are detailed in [PLAN](PLAN.md#phases-2-and-3-architecture) and
 start once step 5 merges. Step 9 may split its far tap into its own PR if it
@@ -89,9 +94,11 @@ outgrows its target; that split renumbers this table and the titles together.
 7. `🚧 [transcript-history] Serve a session prompt index from the bridge [step 7/15]`
 8. `🚧 [transcript-history] Load every message down to a chosen prompt [step 8/15]`
 9. `🚧 [transcript-history] List every prompt and jump to unloaded ones [step 9/15]`
+9b. `🌿 [transcript-history] Decode large relay responses off the UI isolate [step 9b]`
 10. `⚙️ [transcript-history] Pin the prompt above an unloaded range [step 10/15]`
 11. `⚙️ [transcript-history] Search every prompt through the bridge [step 11/15]`
 12. `🚧 [transcript-history] Serve slim tool parts and a tool detail route [step 12/15]`
 13. `⚙️ [transcript-history] Fetch tool output when a row expands [step 13/15]`
 14. `🌱 [transcript-history] Reconcile the regression docs [step 14/15]`
+14b. `🌱 [transcript-history] Remove the unreachable far-tap older-bridge path [step 14b/15]`
 15. `🌱 [transcript-history] Run the L3 matrix and retire the plan [step 15/15]`

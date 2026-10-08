@@ -85,8 +85,12 @@ residue is cosmetic and is not migrated.
 
 The client groups a transcript into turns from its messages alone, so a
 follow-up sent while a turn runs stays inside that turn only where the harness
-delivers it into the running turn. See
-`docs/regression/transcript-turn-navigation.md`.
+delivers it into the running turn. The bridge's prompt index
+(`POST /session/prompts`) kinds every stored prompt with the same shared rule
+(`splitPromptTurns` in `sesori_shared`) over normalized history, so every
+harness gets the index. The client applies the same rule to the range it has
+loaded, so a prompt at the start of a partial range can lack the earlier
+context the full-history index sees. See `docs/regression/transcript-turn-navigation.md`.
 
 | Harness | Follow-up sent while a turn runs | Stays in the running turn |
 |---|---|---|
@@ -197,7 +201,12 @@ adapter-verified shell commands retain command/output/error. Subtask outcome/err
 summaries are separate and remain available. All retained tool text is
 rune-bounded at live/history wire projection. Live events keep the released
 title alias for older clients; transcript pages omit a shell tool's title when
-it equals its `shellCommand`.
+it equals its `shellCommand`. A page request that asks for `onExpand` tool
+output gets each finished tool that has output or error as a summary, and the
+bridge serves that detail through `POST /session/tool-output`, which the app
+fetches when the tool's row is expanded. The bridge applies
+this after the plugin boundary, so it covers every harness below that retains
+output; it adds no gap beyond the command sources listed here.
 
 | Harness | Status and established command source |
 |---|---|
@@ -347,6 +356,14 @@ They do not claim that a harness's native CLI could never implement an equivalen
 | Enabled preference when runtime is unknown | 🚫 Not supported: unknown does not prove disabled; clients omit the switch. |
 | Overall installation percentage or active-session count | 🚫 Not supported: only optional download percentage and idle/busy/unknown work state are reported. |
 | Replay a failed installation observed by this client within the connection | ✅ Implemented for every harness advertising installation; memory only, not cross-device history. |
+
+## Reopening a session whose model is gone
+
+Only OMP is assessed here. Other harnesses are not assessed.
+
+| Harness | Status |
+|---|---|
+| OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.8.0` source, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale serves the history the bridge already stores, with a persistent banner saying the session can't be continued. A session the bridge holds no record of still fails to open. Its persisted cleanup is retried at bridge startup. Upstream: https://github.com/can1357/oh-my-pi/issues/14806. |
 
 ## External Codex session activity
 
@@ -627,23 +644,18 @@ reports a start, the row appears live with a timer and settles in place as
 freed tokens and what triggered it when the harness reports them, and opens the
 carried-forward summary when the harness exposes it.
 
-| Harness | Live row | Failure note | Details (freed tokens, trigger) | Summary |
-|---|---|---|---|---|
-| Claude | ✅ From the first `system/status` `compacting` frame, settled by the closing status's `compact_result` (verified on 2.1.291). | ✅ Live only: the closing status's `compact_error`. A failure writes no transcript record, so the note is gone after a history re-import (verified on 2.1.291). | ✅ `compact_boundary` `compact_metadata` live and the boundary record's `compactMetadata` in history: freed tokens are `pre − post` when both are reported. | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.291). |
-| OpenCode v1 | ⬜ | ⬜ | ⬜ | ✅ The text of the `summary: true` assistant message. |
-| OpenCode v2 | ⬜ | ⬜ | ⬜ | ✅ The completed native compaction message's `summary`; a running snapshot is not a completed marker. |
-| Pi | ⬜ | ⬜ | ⬜ | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |
-| Codex | ⬜ | ⬜ | ⬜ | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
-| DeepSeek | ⬜ | ⬜ | ⬜ | ⬜ The runtime reports a live `compaction_completed` status without message identity or a replayable history record, so Sesori maps it only to a session-compacted event; a live-only row would vanish on reload. |
-| Antigravity, Copilot, Cursor, Hermes, OMP, Grok | ⬜ | ⬜ | ⬜ | ⬜ The ACP session updates Sesori consumes (message, thought and user chunks, tool calls, plan, commands, session info) have no compaction variant, so a compaction, such as Cursor's `/summarize` behind Sesori's `compact` command, arrives as ordinary agent text. A row needs a harness extension signal; none was probed live. |
+| Harness | Compaction row | Summary |
+|---|---|---|
+| Claude | ✅ Live from the first `system/status` `compacting` frame, timed from the bridge's stamp of it, settling in place at the closing status's `compact_result`; the summary frame then fills in the details under the same row. A `failed` result becomes a failure note with `compact_error`; a failure writes no transcript record, so the note is gone after a history re-import. Freed tokens are `pre − post` from `compact_boundary` `compact_metadata` live and the boundary record's `compactMetadata` in history, with the trigger. The transcript keeps no start-time id, so a later re-import re-keys a live row to the summary record's id at the same place, once (verified on 2.1.291). | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.291). |
+| OpenCode v1 | ✅ Live from the first text of the `summary: true` assistant message, with the newest summary words streamed from its text deltas, settling in place when the message finishes, as completed or as a failure note with OpenCode's error (a summary that errors before writing text stays an error message). An automatic trigger (from the compaction marker's `auto`) is shown as "· auto" (a manual one is not named); the freed count is not reported. A compaction that starts during a bridge stream outage shows plain text live until a read reloads the transcript from OpenCode, which maps it to the row in its stored state. | ✅ The text of the `summary: true` assistant message. |
+| OpenCode v2 | ✅ Live from `session.compaction.started` once its running snapshot loads (or from the next delta after a bridge reconnect), with the newest summary words streamed from its deltas, settling in place as completed or as a failure note with OpenCode's error. An automatic trigger is shown as "· auto" (a manual one is not named); the freed count is not reported, because the reported tokens are the summary call's usage. | ✅ The completed native compaction message's `summary`. |
+| Pi | ✅ Live from `compaction_start`, timed from the bridge's stamp of it (Pi sends no time), staying live while Pi retries and settling in place on success. A terminal failure or abort becomes a failure note, moved off the reserved compaction id, with Pi's error when it sends one (an abort may carry none); Stop or a process exit leaves the running row to the bridge sweep's note. A `threshold` or `overflow` trigger is shown as "· auto" once a live compaction completes; history entries carry no reason. No freed count: Pi reports only the tokens before compaction. | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |
+| Codex | ✅ Live from `item/started`, timed from `startedAtMs` or the bridge's stamp, settling in place at `item/completed`. Codex reports no failure, tokens or trigger, so a missing completion is left to the bridge sweep's note and the row has no details. | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
+| DeepSeek | ✅ Live only, from `compaction_started`, timed from the bridge's stamp and settling at `compaction_completed`. The statuses carry no ids, tokens, trigger or failure kind, and DeepSeek's history has no compaction record, so the row has no details, a warning or turn end leaves it to the bridge sweep's note, and it survives one history re-import, then disappears. | ⬜ The runtime reports no summary. |
+| Antigravity, Copilot, Cursor, Hermes, OMP, Grok | ⬜ | ⬜ The ACP session updates Sesori consumes (message, thought and user chunks, tool calls, plan, commands, session info) have no compaction variant, so a compaction, such as Cursor's `/summarize` behind Sesori's `compact` command, arrives as ordinary agent text. A row needs a harness extension signal; none was probed live. |
 
 A row without a summary is inert. Older clients ignore the summary field and
 show no row.
-
-Claude's transcript keeps no id the live start also sees, so a live row is
-keyed by the first `compacting` frame and history keys it by the summary
-record. A later history re-import replaces the live row with the history row
-at the same place, once.
 
 ## Command limitations
 

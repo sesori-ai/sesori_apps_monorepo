@@ -231,7 +231,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   void _openPromptsFromPinch({required Offset focalPoint}) =>
       _openPrompts(origin: focalPoint, entry: AnalyticsPromptsEntry.pinch);
 
-  /// The prompts the transcript renders from [state]'s messages.
+  /// The prompts the transcript renders from [state]'s messages, and those it
+  /// has not loaded yet once the prompt index has arrived.
   static TranscriptPromptList _promptListOf({required SessionDetailLoaded state}) {
     final messages = state.messages;
     final turns = const TranscriptTurnBuilder().build(
@@ -242,12 +243,28 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       messages: messages,
       turns: turns,
       userMessagesBefore: state.userMessagesBeforeOldest,
+      index: state.promptIndex,
+      olderMessagesCursor: state.olderMessagesCursor,
     );
   }
 
-  /// Lists the prompts afresh once an older page has landed, whether the
-  /// screen asked for it or the transcript already had it loading as the
-  /// screen opened, so the page's prompts join the screen.
+  /// Loads the transcript up to an unloaded prompt for the Prompts screen.
+  /// The range's prompts join the open screen, and a landed target is in the
+  /// transcript's rows before the screen asks to move to it.
+  Future<LoadThroughOutcome> _loadThrough({required String messageId, required int seq}) async {
+    final cubit = context.read<SessionDetailCubit>();
+    final outcome = await cubit.loadMessagesThrough(messageId: messageId, seq: seq);
+    if (!mounted) return outcome;
+    if (outcome case LoadThroughLoaded() || LoadThroughTargetMissing()) {
+      if (cubit.state case final SessionDetailLoaded state) _relistPrompts(state: state);
+      await WidgetsBinding.instance.endOfFrame;
+    }
+    return outcome;
+  }
+
+  /// Lists the prompts afresh once an older page or the prompt index has
+  /// landed, whether the screen asked for the page or the transcript already
+  /// had it loading as the screen opened, so the new prompts join the screen.
   void _relistPrompts({required SessionDetailLoaded state}) {
     final prompts = _prompts;
     if (prompts == null) return;
@@ -270,6 +287,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// Moves the transcript to [messageId], then closes the Prompts screen once
   /// the move has landed beneath it, so none of its jumps show.
   void _returnToPrompt({required String messageId}) {
+    // A far tap's load can land while the screen is already leaving; closing
+    // it cancelled the move.
+    if (_transition.status == AnimationStatus.reverse) return;
     unawaited(_jumpNotifier.jumpTo(messageId: messageId).then((_) => _closePrompts()));
   }
 
@@ -473,16 +493,19 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                           onRelease: _releasePinchOut,
                         ),
                         child: SessionPromptsView(
+                          sessionId: widget.sessionId,
                           prompts: prompts.list,
                           anchorMessageId: prompts.anchorMessageId,
                           maxWidth: pageChrome?.columnWidths.transcript,
-                          onLoadEarlier: promptsState.olderMessagesCursor == null
+                          // A list from the prompt index already holds every prompt.
+                          onLoadEarlier: promptsState.olderMessagesCursor == null || prompts.list.isIndexed
                               ? null
                               : () => unawaited(context.read<SessionDetailCubit>().loadOlderMessages()),
                           // The cubit ignores an older-page load while a refresh runs.
                           isLoadEarlierBusy: promptsState.isLoadingOlderMessages || promptsState.isRefreshing,
                           autofocusSearch: pageChrome != null,
                           onPromptTap: _returnToPrompt,
+                          onLoadThrough: _loadThrough,
                           onClose: _closePrompts,
                         ),
                       ),
@@ -511,13 +534,16 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       ),
     );
     // Any older page landing while the screen is up joins it, also one the
-    // transcript was already loading when the screen opened.
+    // transcript was already loading when the screen opened, and so does the
+    // prompt index once it arrives. A load and a refresh both drop the index
+    // before fetching it, so it only ever arrives onto none. Dropping it
+    // leaves the open list as it was, like any other transcript change.
     return BlocListener<SessionDetailCubit, SessionDetailState>(
       listenWhen: (previous, current) =>
           previous is SessionDetailLoaded &&
-          previous.isLoadingOlderMessages &&
           current is SessionDetailLoaded &&
-          !current.isLoadingOlderMessages,
+          ((previous.isLoadingOlderMessages && !current.isLoadingOlderMessages) ||
+              (previous.promptIndex == null && current.promptIndex != null)),
       listener: (context, state) {
         if (state is SessionDetailLoaded) _relistPrompts(state: state);
       },

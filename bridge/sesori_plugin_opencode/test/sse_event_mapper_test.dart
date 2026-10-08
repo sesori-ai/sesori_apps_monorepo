@@ -1,14 +1,16 @@
 import "package:opencode_plugin/src/models/openapi/assistant_message.g.dart";
+import "package:opencode_plugin/src/models/openapi/text_part.g.dart";
 import "package:opencode_plugin/src/models/openapi/user_message.g.dart";
 import "package:opencode_plugin/src/models/sse_event_data.g.dart";
 import "package:opencode_plugin/src/sse_event_mapper.dart";
+import "package:opencode_plugin/src/summary_message_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 import "package:test/test.dart";
 
 import "support/open_code_fixtures.dart";
 
-AssistantMessage _assistantMessage({required Object? error}) {
+AssistantMessage _assistantMessage({required Object? error, bool? summary}) {
   return AssistantMessage(
     id: "msg-1",
     sessionID: "session-1",
@@ -20,7 +22,7 @@ AssistantMessage _assistantMessage({required Object? error}) {
     mode: "build",
     agent: "general",
     path: const AssistantMessagePath(cwd: "/repo", root: "/repo"),
-    summary: null,
+    summary: summary,
     cost: 0,
     tokens: const AssistantMessageTokens(
       total: 0,
@@ -54,19 +56,22 @@ void main() {
     final mapper = SseEventMapper();
 
     test("maps a live errored assistant message.updated to the error role", () {
-      final result = mapper.map(
-        SseEventData.messageUpdated(
-          info: _assistantMessage(
-            error: <String, dynamic>{
-              "name": "ProviderAuthError",
-              "data": <String, dynamic>{"message": "invalid api key"},
-            },
-          ),
-        ),
-      );
+      final result = mapper
+          .map(
+            SseEventData.messageUpdated(
+              info: _assistantMessage(
+                error: <String, dynamic>{
+                  "name": "ProviderAuthError",
+                  "data": <String, dynamic>{"message": "invalid api key"},
+                },
+              ),
+            ),
+            summary: null,
+          )
+          .single;
 
       expect(result, isA<BridgeSseMessageUpdated>());
-      final event = result! as BridgeSseMessageUpdated;
+      final event = result as BridgeSseMessageUpdated;
       // The phone parses this via the shared `Message.fromJson` `role`
       // discriminator, so a live error must arrive as `role: "error"` with
       // flat error fields — not as `role: "assistant"` with the error dropped.
@@ -76,10 +81,12 @@ void main() {
     });
 
     test("maps a live non-errored assistant message.updated to the assistant role", () {
-      final result = mapper.map(SseEventData.messageUpdated(info: _assistantMessage(error: null)));
+      final result = mapper
+          .map(SseEventData.messageUpdated(info: _assistantMessage(error: null)), summary: null)
+          .single;
 
       expect(result, isA<BridgeSseMessageUpdated>());
-      final event = result! as BridgeSseMessageUpdated;
+      final event = result as BridgeSseMessageUpdated;
       expect(event.info, isA<PluginMessageAssistant>());
     });
 
@@ -90,10 +97,10 @@ void main() {
         directory: "/repo/packages/foo",
       );
 
-      final result = mapper.map(SseEventData.sessionCreated(info: session));
+      final result = mapper.map(SseEventData.sessionCreated(info: session), summary: null).single;
 
       expect(result, isNotNull);
-      final event = result! as BridgeSseSessionCreated;
+      final event = result as BridgeSseSessionCreated;
       expect(event.info["projectID"], equals("/repo"));
       expect(event.info["directory"], equals("/repo/packages/foo"));
       expect(shared.Session.fromJson(event.info).pluginId, shared.legacyMissingPluginId);
@@ -106,10 +113,10 @@ void main() {
         directory: "/repo/packages/foo",
       );
 
-      final result = mapper.map(SseEventData.sessionUpdated(info: session));
+      final result = mapper.map(SseEventData.sessionUpdated(info: session), summary: null).single;
 
       expect(result, isNotNull);
-      final event = result! as BridgeSseSessionUpdated;
+      final event = result as BridgeSseSessionUpdated;
       expect(event.info["projectID"], equals("/repo"));
       expect(event.info["directory"], equals("/repo/packages/foo"));
     });
@@ -121,27 +128,87 @@ void main() {
         directory: "/repo/packages/foo",
       );
 
-      final result = mapper.map(SseEventData.sessionDeleted(info: session));
+      final result = mapper.map(SseEventData.sessionDeleted(info: session), summary: null).single;
 
       expect(result, isNotNull);
-      final event = result! as BridgeSseSessionDeleted;
+      final event = result as BridgeSseSessionDeleted;
       expect(event.info["projectID"], equals("/repo"));
       expect(event.info["directory"], equals("/repo/packages/foo"));
     });
 
     test("stamps the resolved prompt id on a user message", () {
-      final result = mapper.map(
-        SseEventData.messageUpdated(info: _userMessage(id: "msg-sent")),
-        promptId: "prm_1",
-      );
+      final result = mapper
+          .map(
+            SseEventData.messageUpdated(info: _userMessage(id: "msg-sent")),
+            promptId: "prm_1",
+            summary: null,
+          )
+          .single;
 
-      expect(((result! as BridgeSseMessageUpdated).info as PluginMessageUser).promptId, equals("prm_1"));
+      expect(((result as BridgeSseMessageUpdated).info as PluginMessageUser).promptId, equals("prm_1"));
     });
 
     test("leaves a user message with no resolved prompt unattributed", () {
-      final result = mapper.map(SseEventData.messageUpdated(info: _userMessage(id: "msg-from-tui")));
+      final result = mapper
+          .map(
+            SseEventData.messageUpdated(info: _userMessage(id: "msg-from-tui")),
+            summary: null,
+          )
+          .single;
 
-      expect(((result! as BridgeSseMessageUpdated).info as PluginMessageUser).promptId, isNull);
+      expect(((result as BridgeSseMessageUpdated).info as PluginMessageUser).promptId, isNull);
     });
+
+    for (final (text, info, part) in [
+      (
+        "## Goal",
+        isA<PluginMessageAssistant>(),
+        isA<PluginMessagePartCompaction>().having(
+          (part) => part.compactionState,
+          "state",
+          const PluginCompactionState.failed(error: "Fixture failure"),
+        ),
+      ),
+      // Nothing written: the ordinary error message, with the empty text hidden.
+      ("", isA<PluginMessageError>(), isA<PluginMessagePartText>()),
+    ]) {
+      test("a failed summary message with text '$text' settles as its failure", () {
+        final tracker = SummaryMessageTracker();
+        List<BridgeSseEvent> handle(SseEventData event) {
+          tracker.observe(event);
+          return mapper.map(event, summary: tracker.summaryFor(event));
+        }
+
+        handle(SseEventData.messageUpdated(info: _assistantMessage(error: null, summary: true)));
+        handle(
+          SseEventData.messagePartUpdated(
+            part: TextPart(
+              id: "part-1",
+              sessionID: "session-1",
+              messageID: "msg-1",
+              text: text,
+              synthetic: null,
+              ignored: null,
+              time: null,
+              metadata: null,
+            ),
+          ),
+        );
+        final settled = handle(
+          SseEventData.messageUpdated(
+            info: _assistantMessage(
+              error: <String, dynamic>{
+                "name": "MessageAbortedError",
+                "data": <String, dynamic>{"message": "Fixture failure"},
+              },
+              summary: true,
+            ),
+          ),
+        );
+
+        expect((settled.first as BridgeSseMessageUpdated).info, info);
+        expect((settled.last as BridgeSseMessagePartUpdated).part, part);
+      });
+    }
   });
 }

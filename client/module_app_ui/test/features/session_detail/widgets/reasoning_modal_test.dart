@@ -40,6 +40,7 @@ SessionDetailState _loadedState({
     launchHandoff: null,
     olderMessagesCursor: null,
     userMessagesBeforeOldest: null,
+    promptIndex: null,
     streamingText: streamingText,
     sessionStatus: const SessionStatus.idle(),
     pendingQuestions: const [],
@@ -69,6 +70,7 @@ SessionDetailState _loadedState({
     fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
+    cannotContinueMessage: null,
   );
 }
 
@@ -214,6 +216,7 @@ void main() {
               imageSaver: () => throw UnimplementedError(),
               imageClipboard: () => throw UnimplementedError(),
               imageSharer: () => throw UnimplementedError(),
+              sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
               canShareImages: false,
               openExternalLink: ({required url, required mode}) async => true,
               openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},

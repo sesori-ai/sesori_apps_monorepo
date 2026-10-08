@@ -66,8 +66,12 @@ void main() {
     await getIt.reset();
   });
 
-  Widget buildApp() => BlocProvider<ConnectionOverlayCubit>.value(
-    value: overlayCubit,
+  Widget buildApp() => MultiBlocProvider(
+    providers: [
+      BlocProvider<ConnectionOverlayCubit>.value(value: overlayCubit),
+      BlocProvider(create: (_) => idleSessionLaunchCubit()),
+      RepositoryProvider(create: (_) => idleSessionLaunchService()),
+    ],
     child: MaterialApp(
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,

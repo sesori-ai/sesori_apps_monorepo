@@ -332,7 +332,17 @@ variant, and worktree mode, and creating the session with its first input.
   cannot prove the bridge did not commit. It never auto-resends. Queued
   follow-ups and whatever was still in the composer are appended to that draft
   in the order typed, each after a blank line, with their images re-staged.
-  Failure after leaving the route does not repopulate shared composer state.
+  Failure after leaving the route does not repopulate shared composer state;
+  it removes the launch's launching row and shows an error alert, on phone and
+  desktop alike, naming the project ("Couldn't create your new session in
+  `<project>`", or without a project when its name was never loaded) with the
+  same duplicate warning. Failures that land together, such as every creation
+  in flight when the bridge drops, share one alert ("Couldn't create 2 new
+  sessions in `<projects>`") rather than replacing each other. Signing
+  out drops every launch and takes away a failure alert that is still showing
+  or about to show, so no launching row or failure alert reaches the login
+  screen or the next account. A failure on the still-current route shows no
+  such alert.
 - Attachment-bearing creation yields incrementally while encoding attachment
   base64, inner request JSON, and outer relay-envelope JSON/UTF-8. Maximum-size
   input preserves the exact wire payload without copying attachment buffers to

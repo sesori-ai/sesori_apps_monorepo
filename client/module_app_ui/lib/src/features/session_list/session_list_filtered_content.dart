@@ -21,6 +21,10 @@ import "session_tile.dart";
 ///
 /// A session inside the shell's archive Undo window is hidden at once, and a
 /// committed archive refreshes the list.
+///
+/// The project's launches lead the active list as launching rows, resolved by
+/// the list's own [SessionListLaunchRowsCubit], so the rows and the chips'
+/// counts agree on which sessions launches hold back.
 class const SessionListFilteredContent({
   super.key,
   required final String? projectName,
@@ -29,6 +33,11 @@ class const SessionListFilteredContent({
   required final SessionListActionDispatcher actionDispatcher,
   required final Widget archivedEmptyState,
   required final bool searchable,
+
+  /// Told whether the list has launching rows, drawn or kept while it loads,
+  /// each time that changes, for a page that would otherwise replace an empty
+  /// list.
+  required final ValueChanged<bool>? onShowsLaunchRowsChanged,
 }) extends StatefulWidget {
   @override
   State<SessionListFilteredContent> createState() => _SessionListFilteredContentState();
@@ -42,9 +51,9 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
   @override
   void initState() {
     super.initState();
+    final sessions = context.read<SessionListCubit>();
     // The bridge publishes no session event on archive, so a committed archive
     // refreshes the list for the Archived view to show the session at once.
-    final sessions = context.read<SessionListCubit>();
     _archiveOutcomes = context.read<PendingSessionArchiveCubit>().outcomes.listen((outcome) {
       if (outcome case PendingSessionArchiveCommitted() || PendingSessionArchiveWorktreeKept()
           when outcome.session.projectID == sessions.projectId) {
@@ -60,14 +69,55 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => BlocProvider(
+    create: (context) {
+      final sessions = context.read<SessionListCubit>();
+      final launchRows = SessionListLaunchRowsCubit(
+        launchService: context.read<SessionLaunchService>(),
+        projectId: sessions.projectId,
+        activeSessions: _activeSessions(state: sessions.state),
+      );
+      if (launchRows.state.placeholders.isNotEmpty) {
+        // Not during the build that mounts this list.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) widget.onShowsLaunchRowsChanged?.call(launchRows.state.placeholders.isNotEmpty);
+        });
+      }
+      return launchRows;
+    },
+    child: MultiBlocListener(
+      listeners: [
+        BlocListener<SessionListCubit, SessionListState>(
+          listener: (context, state) =>
+              context.read<SessionListLaunchRowsCubit>().updateList(activeSessions: _activeSessions(state: state)),
+        ),
+        BlocListener<SessionListLaunchRowsCubit, LaunchRows>(
+          listenWhen: (previous, current) => previous.placeholders.isNotEmpty != current.placeholders.isNotEmpty,
+          listener: (_, launchRows) => widget.onShowsLaunchRowsChanged?.call(launchRows.placeholders.isNotEmpty),
+        ),
+      ],
+      child: Builder(builder: _buildContent),
+    ),
+  );
+
+  /// The sessions the active list shows, or null while it shows none.
+  static List<Session>? _activeSessions({required SessionListState state}) =>
+      state is SessionListLoaded && state.filter == SessionListFilter.active ? state.sessions : null;
+
+  Widget _buildContent(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<SessionListCubit>().state;
     final loaded = state is SessionListLoaded ? state : null;
     final showArchived = loaded != null && loaded.filter != SessionListFilter.active;
     // The chips narrow the active list only; Archived shows everything it has.
     final filter = showArchived ? SessionListQuickFilter.all : _filter;
-    final hidden = context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds);
+    // Only the active list draws launching rows and holds their sessions.
+    final activeRows = context.watch<SessionListLaunchRowsCubit>().state;
+    final launchRows = loaded?.filter == SessionListFilter.active ? activeRows : LaunchRows.none;
+    final hidden = {
+      ...context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
+      ...launchRows.heldSessionIds,
+    };
     // The same rule the list applies: only a still-unarchived session hides,
     // so a session being archived leaves the list and the counts at once.
     final counted = matchTitles(
@@ -85,11 +135,14 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
           .length,
     };
     final hasSessions = loaded != null && loaded.sessions.isNotEmpty;
+    // A launching row counts, so the search field and chips are already in
+    // place when the project's first session takes its row.
+    final hasRows = hasSessions || launchRows.placeholders.isNotEmpty;
     final searching = _query.trim().isNotEmpty;
 
     return SliverMainAxisGroup(
       slivers: [
-        if (widget.searchable && hasSessions)
+        if (widget.searchable && hasRows)
           SliverToBoxAdapter(
             child: ListSearchField(
               query: _query,
@@ -99,7 +152,7 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
               onChanged: (query) => setState(() => _query = query),
             ),
           ),
-        if (hasSessions && !showArchived)
+        if (hasRows && !showArchived)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
@@ -134,12 +187,13 @@ class _SessionListFilteredContentState() extends State<SessionListFilteredConten
           quickFilter: filter,
           query: _query,
           hiddenSessionIds: hidden,
+          launchRows: launchRows,
           onSessionTap: widget.onSessionTap,
           actionDispatcher: widget.actionDispatcher,
           archivedEmptyState: widget.archivedEmptyState,
         ),
         // Unsearched, All can only be empty while its last session is being archived.
-        if ((searching || filter != SessionListQuickFilter.all) && counts[filter] == 0 && hasSessions)
+        if ((searching || filter != SessionListQuickFilter.all) && counts[filter] == 0 && hasRows)
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(PregoSpacing.x3l),
