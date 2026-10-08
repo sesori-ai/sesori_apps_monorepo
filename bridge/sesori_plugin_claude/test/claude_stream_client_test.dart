@@ -292,10 +292,12 @@ void main() {
         content: [
           {"type": "text", "text": "hello"},
         ],
+        uuid: "prompt-uuid-1",
       );
       final frame = await waitForFrame(connected.fake, "user");
 
       expect(frame["session_id"], otherTestSessionId);
+      expect(frame["uuid"], "prompt-uuid-1");
       expect(frame["priority"], "next");
       final message = frame["message"]! as Map;
       expect(message["role"], "user");
@@ -309,7 +311,7 @@ void main() {
       await pump(10);
 
       expect(
-        () => connected.client.sendUserMessage(content: const []),
+        () => connected.client.sendUserMessage(content: const [], uuid: "prompt-uuid-2"),
         throwsA(isA<ClaudeControlException>()),
       );
     });
@@ -369,6 +371,7 @@ void main() {
         content: [
           {"type": "text", "text": "late"},
         ],
+        uuid: "prompt-uuid-3",
       );
       connected.client.sendControlResponse(requestId: "ask-3", payload: const {});
       await pump();
