@@ -180,7 +180,11 @@ defaults and queued client sends coherent.
   (`task_started`) is still running, even after the launching turn's result,
   and returns to idle only after the last task notification and the wake-up
   turn it triggers settle, so one continuous busy span covers launch →
-  background work → wake-up and the completion push fires once. The CLI's
+  background work → wake-up and the completion push fires once. The activity
+  summary agrees: a background shell or workflow is the main agent's own work
+  and keeps `mainAgentRunning` true, so session lists show the session running
+  while the transcript shows Working; background sub-agents alone report as
+  running child sessions with the main agent stopped. The CLI's
   `<task-notification>` delivery records are internal: they finalize the
   matching subtask and are never rendered as user messages, while user text
   that merely discusses the envelope stays visible. Forwarded sub-agent frames
@@ -873,7 +877,9 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 - Recovery or interruption artifacts from an aborted turn appear in the next
   user turn.
 - A Claude session reports idle while a background sub-agent still runs, or
-  shows a transient idle between the task notification and its wake-up turn; a
+  shows a transient idle between the task notification and its wake-up turn;
+  the session list shows a Claude session idle while its transcript shows
+  Working on a background shell; a
   `<task-notification>` envelope renders as a user bubble, or a prompt that
   quotes the envelope disappears; sub-agent text appears in the root transcript.
 - A Codex spawn is absent from the parent chat, appears twice as both a tool

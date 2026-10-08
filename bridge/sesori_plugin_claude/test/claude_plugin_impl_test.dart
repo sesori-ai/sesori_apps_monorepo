@@ -1157,6 +1157,38 @@ void main() {
       await subscription.cancel();
     });
 
+    test("keeps the main agent running in the summary while a turn ends on a background shell", () async {
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+
+      process.emit({
+        "type": "system",
+        "subtype": "task_started",
+        "session_id": testSessionId,
+        "task_id": "shell-task-1",
+        "tool_use_id": "toolu-shell",
+        "description": "Build",
+        "task_type": "local_bash",
+      });
+      await pump();
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      process.emit({"type": "result", "subtype": "success", "session_id": testSessionId, "is_error": false});
+      await pump();
+
+      // The session status stays busy, so the summary must say running too:
+      // a background shell is no child session the client could count. The
+      // turn's end still republishes it, since sub-agents it launched would
+      // now count as running children.
+      expect(events.whereType<BridgeSseProjectUpdated>(), isNotEmpty);
+      expect((await harness.plugin.getSessionStatuses())[testSessionId], isA<PluginSessionStatusBusy>());
+      final session = harness.plugin.getActiveSessionsSummary().single.activeSessions.single;
+      expect(session.mainAgentRunning, isTrue);
+      expect(session.childSessionIds, isEmpty);
+      await subscription.cancel();
+    });
+
     test("persisted cleanup is idempotent for an absent transcript", () async {
       await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);
       await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);

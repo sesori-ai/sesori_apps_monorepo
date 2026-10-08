@@ -124,10 +124,14 @@ final class ClaudeSessionService({
           (entry.value.hasWork ? const PluginSessionStatus.busy() : const PluginSessionStatus.idle()),
   });
 
-  /// Whether the main agent itself is mid-turn — a queued or self-started turn —
-  /// as opposed to the session being busy only because background tasks run.
-  bool isTurnRunning({required String sessionId}) => switch (_turns[sessionId]) {
-    final state? => state.pending > 0 || state.selfStartedTurn != null,
+  /// Whether the main agent itself works: a queued or self-started turn, or a
+  /// background shell or workflow it launched. Only background sub-agents keep
+  /// the session busy without it; they report as child sessions instead.
+  bool isMainAgentRunning({required String sessionId}) => switch (_turns[sessionId]) {
+    final state? =>
+      state.pending > 0 ||
+          state.selfStartedTurn != null ||
+          state.runningTaskIds.values.any((type) => type != ClaudeTaskType.subAgent),
     null => false,
   };
 
@@ -649,9 +653,10 @@ final class ClaudeSessionService({
   /// no queued turn, no self-started turn, no running task.
   void _settleIdle({required String sessionId, required _SessionTurnState state}) {
     if (state.hasWork) {
-      // Only background tasks remain: the session stays busy, but the
-      // summary's main agent stopped running.
-      if (!isTurnRunning(sessionId: sessionId)) _emit(const BridgeSseProjectUpdated());
+      // Background work remains, so the session stays busy, but the summary
+      // may have changed: the main agent may have stopped, and sub-agents the
+      // ended turn launched now count as running children.
+      _emit(const BridgeSseProjectUpdated());
       return;
     }
     _emit(BridgeSseSessionIdle(sessionID: sessionId));
