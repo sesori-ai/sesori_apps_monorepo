@@ -642,7 +642,14 @@ class const OpenCodePluginDescriptor({
     // starts for us from the provisioned binary. Using it keeps the bridge, the
     // TUI and the desktop app on one server instead of two servers colliding on
     // one database.
-    final sharedEndpoint = _sharesServer(config)
+    final sharesServer = _sharesServer(config);
+    if (sharesServer) {
+      // Reclaim a private server a replaced or crashed bridge left behind, as
+      // the managed start does, before acquisition can start a service on the
+      // same database.
+      await service.cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: host.bridge.terminatedBridgeIdentities);
+    }
+    final sharedEndpoint = sharesServer
         ? await OpenCodeSharedServerService(
             repository: OpenCodeSharedServerRepository(
               registrationApi: const OpenCodeServiceRegistrationApi(),
@@ -720,9 +727,6 @@ class const OpenCodePluginDescriptor({
         bindHost: sharedEndpoint.host,
         connectHost: sharedEndpoint.host,
       );
-      // Reclaim a private server a replaced or crashed bridge left behind, as
-      // the managed start does, so it cannot keep running on the same database.
-      await service.cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: host.bridge.terminatedBridgeIdentities);
       try {
         handle = await service.attach(spec: spec, port: port, startAborted: host.startAborted);
         Log.i("[opencode] using the shared OpenCode ${sharedEndpoint.version} service at $serverUrl");

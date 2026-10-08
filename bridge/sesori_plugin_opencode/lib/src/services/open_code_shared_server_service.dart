@@ -41,10 +41,11 @@ class const OpenCodeSharedServerService({required final OpenCodeSharedServerRepo
       }
       Log.i("[opencode] starting the shared OpenCode $version service");
       await repository.startService(binary: binary, environment: environment, startAborted: startAborted);
-    } on OpenCodeServiceCommandException catch (error) {
+    } on OpenCodeServiceCommandException catch (error, stackTrace) {
       Log.w(
         "[opencode] could not start the shared OpenCode service; using a private server: ${error.message}",
         error.cause,
+        stackTrace,
       );
       return null;
     }

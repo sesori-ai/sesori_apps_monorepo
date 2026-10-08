@@ -1205,18 +1205,25 @@ void main() {
       host.processes.onServiceStart = registerService;
     }
 
-    test("starts the shared service when none is registered and attaches without owning it", () async {
+    test("reclaims an orphan, starts the shared service and attaches without owning it", () async {
       final host = sharedHost();
+      _seedStaleRecord(host);
       scriptCli(host: host, version: "opencode v2.0.25", startSucceeds: true);
+      List<String>? signalsAtStart;
+      host.processes.onServiceStart = () {
+        signalsAtStart = List.of(host.processes.signals);
+        registerService();
+      };
 
       final plugin = await descriptor().start(host);
 
       expect(plugin.describe().details["mode"], equals("shared"));
       expect(host.processes.commands, equals(["--version", "service get disabled", "service start"]));
+      expect(signalsAtStart, equals(<String>["graceful:7777"]), reason: "the orphan must stop before the start");
       expect(host.processes.spawnedProcesses, isEmpty);
       expect(host.ownershipRecord("owner-current"), isNull);
       await plugin.shutdown(budget: null);
-      expect(host.processes.signals, isEmpty);
+      expect(host.processes.signals, equals(<String>["graceful:7777"]));
     });
 
     test("spawns a private server when OpenCode cannot start the shared service", () async {

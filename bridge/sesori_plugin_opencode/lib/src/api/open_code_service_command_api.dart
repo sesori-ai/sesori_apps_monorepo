@@ -99,8 +99,12 @@ class const OpenCodeServiceCommandApi({required final HostProcessCommandExecutor
       );
     } on PluginStartAbortedException {
       rethrow;
-    } on Exception catch (error) {
-      throw OpenCodeServiceCommandException(message: "$command did not finish", cause: error);
+    } on Exception catch (error, stackTrace) {
+      // Keep the launch or timeout call site for the caller's log.
+      Error.throwWithStackTrace(
+        OpenCodeServiceCommandException(message: "$command did not finish", cause: error),
+        stackTrace,
+      );
     }
     if (result.exitCode != 0) {
       final stderrText = result.stderr.trim();
