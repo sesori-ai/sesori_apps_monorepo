@@ -99,24 +99,52 @@ const double _kEdgeSwipeFlingVelocity = 1;
 /// The shadow the Prompts screen casts while an edge swipe moves it.
 const _kEdgeSwipeShadow = [BoxShadow(color: Color(0x40000000), blurRadius: 18)];
 
-/// The settling speed, in screen widths a second, of a swipe released at rest:
-/// enough to give it a direction and too little to see.
-const double _kEdgeSwipeRestVelocity = 0.001;
+/// The settling speed, in transitions a second, of a swipe or pinch released
+/// at rest: enough to give it a direction and too little to see.
+const double _kReleaseRestVelocity = 0.001;
 
-/// The least a pinch out leaves of the Prompts screen while the fingers are
-/// down: invisible, but short of gone, since a gone screen is removed and
-/// could no longer follow the fingers back.
-const double _kPinchOutLeastShown = 0.001;
+/// How close a pinch out held by the fingers takes the transition to either
+/// end. Never all the way out, since a gone screen is removed and could no
+/// longer follow the fingers back; and never quite all the way in, so a
+/// release that eases back always has a way to run, taking the screen's drift
+/// home with it.
+const double _kPinchOutMargin = 0.001;
+
+/// How much a pinch out swells the Prompts screen at full spread.
+const double _kPinchOutSwell = 0.06;
+
+/// A pinch out leaves the Prompts screen readable for the first third of a
+/// full spread, then dissolves it into the transcript over the rest.
+const _kPinchOutDissolve = Interval(1 / 3, 1);
 
 /// What moves the Prompts screen in place of the transition's own timing: a
 /// finger is on it, or its release is still settling.
-enum _PromptsGesture() {
-  /// The iOS edge swipe slides the screen out under the finger.
-  edgeSwipe,
+sealed class const _PromptsGesture();
 
-  /// A pinch out runs the closing transition as far as the fingers spread.
-  pinchOut,
-}
+/// The iOS edge swipe slides the screen out under the finger.
+final class const _EdgeSwipe() extends _PromptsGesture;
+
+/// A pinch out swells the screen around [focus], where the fingers began, and
+/// dissolves it as they spread, drifting it as far as their midpoint has
+/// [moved]. Let go short of closing, it eases back from [easesBackFrom], the
+/// transition's value then, and takes the drift back in step.
+final class const _PinchOut({
+  required final Alignment focus,
+  required final Offset moved,
+  required final double? easesBackFrom,
+}) extends _PromptsGesture;
+
+/// How the Prompts screen sits at one instant: how dark the dim beneath it is
+/// (0 to 1), how opaque it is, how far it is slid right in screen widths and
+/// drifted in pixels, and how much it is scaled around which point.
+typedef _PromptsPose = ({
+  double dim,
+  double opacity,
+  double slide,
+  Offset drift,
+  double scale,
+  Alignment alignment,
+});
 
 class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTickerProviderStateMixin {
   StreamSubscription<SesoriQuestionAsked>? _questionSub;
@@ -162,10 +190,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// The gesture moving the Prompts screen, if any. The transition's value is
   /// then how much of the page the screen still covers.
   _PromptsGesture? _gesture;
-
-  /// Where the current pinch out's fingers began; the screen shrinks toward
-  /// it only while that pinch moves it.
-  Alignment _pinchFocus = Alignment.center;
 
   @override
   void initState() {
@@ -296,15 +320,15 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// An edge swipe takes the open screen, or one still settling from the last
   /// swipe, but never one midway through opening or closing.
   void _startEdgeSwipe(DragStartDetails _) {
-    if (!_transition.isCompleted && _gesture != _PromptsGesture.edgeSwipe) return;
+    if (!_transition.isCompleted && _gesture is! _EdgeSwipe) return;
     _transition.stop();
-    _gesture = _PromptsGesture.edgeSwipe;
+    _gesture = const _EdgeSwipe();
   }
 
   /// Moves the screen with the finger, pixel for pixel.
   void _updateEdgeSwipe(DragUpdateDetails details) {
     final width = context.size?.width ?? 0;
-    if (_gesture != _PromptsGesture.edgeSwipe || width <= 0) return;
+    if (_gesture is! _EdgeSwipe || width <= 0) return;
     _transition.value -= details.delta.dx / width;
   }
 
@@ -312,43 +336,51 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// it back otherwise, carrying the finger's [pixelsPerSecond] into either.
   void _settleEdgeSwipe({required double pixelsPerSecond}) {
     final width = context.size?.width ?? 0;
-    if (_gesture != _PromptsGesture.edgeSwipe || width <= 0) return;
+    if (_gesture is! _EdgeSwipe || width <= 0) return;
     final velocity = -pixelsPerSecond / width;
     final closes = velocity.abs() >= _kEdgeSwipeFlingVelocity ? velocity < 0 : _transition.value < 0.5;
     // A release at rest still needs a direction, so it leaves from rest.
     if (closes) {
-      _transition.fling(velocity: math.min(velocity, -_kEdgeSwipeRestVelocity));
+      _transition.fling(velocity: math.min(velocity, -_kReleaseRestVelocity));
     } else {
-      final settled = _transition.fling(velocity: math.max(velocity, _kEdgeSwipeRestVelocity));
+      final settled = _transition.fling(velocity: math.max(velocity, _kReleaseRestVelocity));
       // Left to close later by the way it came; a new swipe cancels this.
       unawaited(settled.then((_) => _gesture = null));
     }
   }
 
-  /// A pinch out takes the open screen, never one still moving, and closes
-  /// it toward the fingers. At rest the screen is unscaled, so switching its
-  /// origin to the fingers, and back to the opening one after a spring-back,
-  /// shows nothing.
+  /// A pinch out takes the open screen, never one still moving. At rest the
+  /// screen sits the same whether a pinch holds it or not, so taking it over
+  /// needs no rebuild; the fingers' first move brings one.
   bool _startPinchOut({required Offset focalPoint}) {
     if (_prompts == null || !_transition.isCompleted) return false;
-    setState(() {
-      _gesture = _PromptsGesture.pinchOut;
-      _pinchFocus = _alignmentOf(globalPoint: focalPoint);
-    });
+    _gesture = _PinchOut(
+      focus: _alignmentOf(globalPoint: focalPoint),
+      moved: Offset.zero,
+      easesBackFrom: null,
+    );
     return true;
   }
 
-  /// Runs the closing transition as far as the fingers have spread. Only a
-  /// pinch [_startPinchOut] took reports here.
-  void _followPinchOut({required double progress}) => _transition.value = math.max(1 - progress, _kPinchOutLeastShown);
+  /// Runs the transition as far as the fingers have spread, drifting the
+  /// screen with them; the transition's change rebuilds it. Only a pinch
+  /// [_startPinchOut] took reports here.
+  void _followPinchOut({required double progress, required Offset moved}) {
+    if (_gesture case _PinchOut(:final focus)) {
+      _gesture = _PinchOut(focus: focus, moved: moved, easesBackFrom: null);
+      _transition.value = (1 - progress).clamp(_kPinchOutMargin, 1 - _kPinchOutMargin);
+    }
+  }
 
-  /// Finishes closing from where the fingers let go, or springs back open,
-  /// in what is left of the transition's time.
-  void _releasePinchOut({required bool closes}) {
+  /// Finishes closing from where the fingers let go, carrying their
+  /// [velocity] in, or eases back open.
+  void _releasePinchOut({required bool closes, required double velocity}) {
     if (closes) {
-      _transition.animateBack(0, curve: Curves.easeOutCubic);
-    } else {
-      final settled = _transition.animateTo(1, curve: Curves.easeOutCubic);
+      // A release at rest still needs a direction, so it leaves from rest.
+      _transition.fling(velocity: math.min(-velocity, -_kReleaseRestVelocity));
+    } else if (_gesture case _PinchOut(:final focus, :final moved)) {
+      _gesture = _PinchOut(focus: focus, moved: moved, easesBackFrom: _transition.value);
+      final settled = _transition.animateTo(1, duration: _kPromptsTransition, curve: Curves.easeOutCubic);
       unawaited(settled.then((_) => _gesture = null));
     }
   }
@@ -553,54 +585,82 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
 
   /// The Prompts [layer] over a dimmed page: it fades in while growing from
   /// [origin] and reverses on the way out, a plain fade under reduced motion.
-  /// It follows the finger while an edge swipe moves it, and a pinch out
-  /// draws the same way out in step with the fingers. Only the layer and the
-  /// dim are rebuilt per frame; the page beneath is never touched.
+  /// It follows the finger while an edge swipe moves it. A pinch out instead
+  /// swells it around the fingers and drifts it with them, readable for the
+  /// first third of the spread and dissolving into the transcript over the
+  /// rest, so nothing moves against the fingers. Only the dim and the layer's
+  /// placement change per frame; the layer is recomposited, not repainted,
+  /// and the page beneath is never touched.
   Widget _buildPromptsTransition({required BuildContext context, required Alignment origin, required Widget layer}) {
     final reducedMotion = context.isReducedMotion;
-    return AnimatedBuilder(
-      animation: _transition,
-      child: layer,
-      builder: (context, layer) {
-        final value = _transition.value;
-        final swiping = _gesture == _PromptsGesture.edgeSwipe;
-        final (shown, opacity) = switch (_gesture) {
-          null => (_shown.value, _fade.value),
-          _PromptsGesture.edgeSwipe => (value, 1.0),
-          // Linear, so the screen answers the fingers evenly; the release's
-          // own curve eases the rest of the way.
-          _PromptsGesture.pinchOut => (value, value),
-        };
-        // One tree shape in every mode, so the layer keeps its state and scroll
-        // when a gesture takes it over.
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            ColoredBox(color: Colors.black.withValues(alpha: _kPromptsDim * shown)),
-            // A leaving screen takes no more taps, so a second row tap cannot
-            // move the transcript again while it fades.
-            IgnorePointer(
-              ignoring: _transition.status == AnimationStatus.reverse,
-              child: Opacity(
-                opacity: opacity,
-                child: FractionalTranslation(
-                  translation: Offset(swiping ? 1 - value : 0, 0),
-                  child: Transform.scale(
-                    scale: swiping || reducedMotion ? 1 : _kPromptsGrowFrom + (1 - _kPromptsGrowFrom) * shown,
-                    alignment: _gesture == _PromptsGesture.pinchOut ? _pinchFocus : origin,
-                    // The swiped screen casts a shadow on the page it uncovers. It
-                    // lies beyond the screen's edge whenever the swipe starts or ends.
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(boxShadow: swiping ? _kEdgeSwipeShadow : null),
-                      child: layer,
+    // The transition repaints only itself each frame, never the page beneath
+    // with its transcript, composer and blurred halos, and only places the
+    // screen, which it never repaints.
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _transition,
+        child: RepaintBoundary(child: layer),
+        builder: (context, layer) {
+          final value = _transition.value;
+          final gesture = _gesture;
+          // How far a pinch out has taken the screen, and how much of it shows.
+          final pinched = 1 - value;
+          final pinchShown = 1 - _kPinchOutDissolve.transform(pinched);
+          final _PromptsPose pose = switch (gesture) {
+            null => (
+              dim: _shown.value,
+              opacity: _fade.value,
+              slide: 0,
+              drift: Offset.zero,
+              scale: reducedMotion ? 1 : _kPromptsGrowFrom + (1 - _kPromptsGrowFrom) * _shown.value,
+              alignment: origin,
+            ),
+            _EdgeSwipe() => (dim: value, opacity: 1, slide: 1 - value, drift: Offset.zero, scale: 1, alignment: origin),
+            // Linear in the spread, so the screen answers the fingers evenly; a
+            // release's own curve or speed takes the rest of the way.
+            _PinchOut(:final focus, :final moved, :final easesBackFrom) => (
+              dim: pinchShown,
+              opacity: pinchShown,
+              slide: 0,
+              drift: easesBackFrom == null ? moved : moved * (pinched / (1 - easesBackFrom)),
+              scale: reducedMotion ? 1 : 1 + _kPinchOutSwell * pinched,
+              alignment: focus,
+            ),
+          };
+          // One tree shape in every mode, so the layer keeps its state and scroll
+          // when a gesture takes it over.
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              ColoredBox(color: Colors.black.withValues(alpha: _kPromptsDim * pose.dim)),
+              // A leaving screen takes no more taps, so a second row tap cannot
+              // move the transcript again while it fades.
+              IgnorePointer(
+                ignoring: _transition.status == AnimationStatus.reverse,
+                child: Opacity(
+                  opacity: pose.opacity,
+                  child: FractionalTranslation(
+                    translation: Offset(pose.slide, 0),
+                    child: Transform.translate(
+                      offset: pose.drift,
+                      child: Transform.scale(
+                        scale: pose.scale,
+                        alignment: pose.alignment,
+                        // The swiped screen casts a shadow on the page it uncovers. It
+                        // lies beyond the screen's edge whenever the swipe starts or ends.
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(boxShadow: gesture is _EdgeSwipe ? _kEdgeSwipeShadow : null),
+                          child: layer,
+                        ),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 
