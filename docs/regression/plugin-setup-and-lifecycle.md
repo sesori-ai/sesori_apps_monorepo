@@ -204,8 +204,15 @@ credentials; a completed helper must not hide failed load, replay or teardown.
     start fails, times out or still leaves no usable service. Known limitation: a
     service started later on the same database can resume that private server's
     in-flight turns.
-  - **Answer lost after discovery:** the plugin starts degraded on the v2 adapter
-    and keeps retrying the same URL.
+  - **Service drops or moves:** when the shared service stops answering, the
+    plugin fails unless the service answers again within the 5-second debounce. At
+    start after discovery it shows degraded during that debounce; after a lasting
+    event-stream disconnect it goes from ready straight to failed. The bridge retires that generation, and the next request
+    starts a fresh one that runs discovery and, if needed, `service start` again,
+    so it re-attaches wherever the service now listens. In-flight requests during
+    that window fail once. A failed or over-budget cold start on the shared
+    service ends the same way. Attach and private servers keep degrading and
+    retrying the same address.
   - **Sharing off:** with `--opencode-no-shared-service`, an explicit
     `--opencode-bin` or attach mode. None of these runs an OpenCode `service`
     command. `--opencode-port`, `--opencode-host` and
@@ -490,7 +497,9 @@ pid, health and version gates, and routing:
   `disabled` setting is `true` or unreadable, or the started service is still not
   discoverable; an aborted bridge start aborts instead of falling back;
 - the opt-out flag and an explicit binary, which run no CLI command;
-- degraded v2 after a lost answer;
+- failure after the debounce when the service stops answering after discovery,
+  and the reporter's fail outcome (a lasting disconnect fails, a reconnect inside
+  the debounce does not) while attach and private servers still degrade;
 - orphan reclaim before attach.
 
 The live-plugin check runs an isolated `opencode serve --service` with its own
@@ -500,7 +509,10 @@ prompt and Stop work through it. With no service registered, the same isolated b
 runs `opencode service start` with the PATH CLI, attaches to the started service, a
 prompt answers through it, and the service keeps running after the bridge stops. With
 OpenCode's `disabled` setting `true`, or with the service port held by another
-process, the bridge starts a private server instead. OpenCode 2 on macOS is live.
+process, the bridge starts a private server instead. After `opencode service stop`
+and a port change, the plugin fails after the debounce, and the next request starts
+the service again on the new port, re-attaches and answers a prompt, with no bridge
+restart. OpenCode 2 on macOS is live.
 Starting the service from the bundled runtime, and Linux and Windows path resolution,
 are automated only.
 

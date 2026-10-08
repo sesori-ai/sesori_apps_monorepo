@@ -14,6 +14,7 @@ void main() {
       status: status,
       clock: _FixedClock(),
       degradedDebounce: const Duration(seconds: 5),
+      disconnectOutcome: ManagedRuntimeDisconnectOutcome.degrade,
     );
   });
 
