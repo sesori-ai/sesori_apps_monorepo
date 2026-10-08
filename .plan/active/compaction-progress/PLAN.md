@@ -311,7 +311,7 @@ the consumed ACP seam. "Working…" only.
   Outcome (step 5b): step 9's live run still left two rows. The live row
   follows the bridge's own `/compact` bubble, which the transcript never has,
   so the neighbour match failed. `replaceSessionMessages` now matches a
-  compaction row by its creation time without neighbours.
+  compaction row by its content and creation time, without neighbours.
 - **P11 — A failure note keeps one line.** The error is a single ellipsized
   line in the row's detail. The full error is in the row's semantics label.
   There is no modal and no Retry (C5 declined Retry).

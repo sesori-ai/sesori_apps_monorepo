@@ -154,7 +154,8 @@ followed a prompt that history also has.
 `replaceSessionMessages` marks a row with only compaction parts and keys it by
 its content alone, not its neighbours. The existing time rules still apply: a
 lone pair matches at an equal (or unknown) time, and a group matches only at
-equal times. Distinct compactions never share a time, so they never merge, and
+equal times. Distinct compactions in one session run seconds apart, so they
+never share a millisecond creation time and never merge, and
 a live failure note, stamped at its start, keeps its row. A first attempt made
 every live-only row transparent to its neighbours instead; it changed an
 unrelated, deliberately conservative tool-window test, so it was dropped for
