@@ -577,7 +577,7 @@ startup-extension file failure, retry once the filesystem is usable.
 - The sending bubble waits for network metadata, appears after a spinner or
   empty page, omits the submitted text, command or images, gives up on a healthy
   create before 180 s, changes the route before a durable
-  response, permits duplicate Send, hijacks a later route, loses background work,
+  response, lets a second Send start a second session, hijacks a later route, loses background work,
   auto-resends, or restores an incomplete/abandoned draft without the
   duplicate-risk warning.
 - Desktop cannot open the typed new-session route, constructs voice capture,
