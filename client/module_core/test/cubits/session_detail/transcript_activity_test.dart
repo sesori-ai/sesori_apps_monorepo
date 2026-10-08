@@ -61,7 +61,6 @@ MessagePart _tool({required ToolStatus status}) => MessagePart.tool(
 TranscriptActivity _activity({
   required List<MessageWithParts> messages,
   required bool isBusy,
-  bool hasOlderMessages = false,
   bool mainAgentRunning = false,
   String? retryErrorMessage,
   Map<String, String> streamingText = const {},
@@ -76,7 +75,6 @@ TranscriptActivity _activity({
   );
   return const TranscriptActivityBuilder().build(
     transcript: transcript,
-    turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: hasOlderMessages),
     messages: messages,
     isBusy: isBusy,
     mainAgentRunning: mainAgentRunning,
@@ -178,7 +176,7 @@ void main() {
       expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 1000));
     });
 
-    test("works since a loaded follow-up while the turn's prompt has not loaded", () {
+    test("works since a follow-up sent before any loaded prompt", () {
       final activity = _activity(
         messages: [
           _agent(
@@ -192,7 +190,6 @@ void main() {
           ),
         ],
         isBusy: true,
-        hasOlderMessages: true,
       );
 
       expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 4000));
