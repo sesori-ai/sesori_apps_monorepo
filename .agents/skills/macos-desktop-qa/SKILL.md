@@ -23,8 +23,8 @@ Combine semantic app automation with visual/native-system inspection:
   clearer and more reliable.
 
 Both automation servers are declared in `.mcp.json`. Their shared launcher
-refuses to start versions other than Peekaboo 4.2.2 and agent-device 0.20.10.
-Pi accesses them lazily through `pi-mcp-adapter`; use its `mcp` proxy to
+starts whatever versions are installed; both tools are used at their latest
+release. Pi accesses them lazily through `pi-mcp-adapter`; use its `mcp` proxy to
 search/describe a tool before calling it. The shared `.mcp.json` command is
 repository-relative, so other hosts must launch it with the repository root as
 their working directory. If a host does not guarantee that working directory,
@@ -36,19 +36,14 @@ The reviewed host setup for this workflow is:
 brew tap steipete/tap
 brew trust --formula steipete/tap/peekaboo
 brew install steipete/tap/peekaboo
-brew pin peekaboo
-npm install --global --ignore-scripts agent-device@0.20.10
+npm install --global --ignore-scripts agent-device@latest
 pi install npm:pi-mcp-adapter@2.31.0
 ./.agents/skills/macos-desktop-qa/scripts/mcp-server.sh check
 ```
 
-The Homebrew tap may advance before a fresh install. The final check must report
-exactly Peekaboo 4.2.2 and agent-device 0.20.10; if it does not, stop and install
-the reviewed formula/package revision rather than changing the expected
-version. Restart Pi after installing the adapter. Treat version changes as
-executable third-party dependency updates: inspect their source/release
-integrity and repeat the MCP handshake plus host preflight before adopting
-them.
+Update both with `brew upgrade peekaboo` and the same `npm install` command.
+Restart Pi after installing the adapter, and restart or reconnect the MCP
+servers in any host after an update.
 
 ## Safety first
 
