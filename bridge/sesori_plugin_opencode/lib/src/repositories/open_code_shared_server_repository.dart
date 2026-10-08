@@ -59,8 +59,8 @@ class const OpenCodeSharedServerRepository({
         password: registration.password,
         clientFactory: probeClientFactory,
       );
-    } on Object catch (error) {
-      _logUnusable(reason: "$address did not answer ($error)");
+    } on Object catch (error, stackTrace) {
+      Log.w("[opencode] not using the shared OpenCode service: $address did not answer", error, stackTrace);
       return null;
     }
     if (response.statusCode != 200) {

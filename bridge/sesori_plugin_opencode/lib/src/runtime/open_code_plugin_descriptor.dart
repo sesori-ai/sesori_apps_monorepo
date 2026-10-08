@@ -26,6 +26,13 @@ import "open_code_shared_server_endpoint.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
 
+/// How the plugin reached its server; `name` is the diagnostics `mode` value.
+enum _OpenCodeServerMode() {
+  attached,
+  shared,
+  managed,
+}
+
 abstract final class _OpenCodeConfigKey() {
   static const String port = "port";
   static const String host = "host";
@@ -647,10 +654,10 @@ class const OpenCodePluginDescriptor({
     final int port;
     final String serverUrl;
     final String? apiPassword;
-    final String mode;
+    final _OpenCodeServerMode mode;
 
     if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
-      mode = "attached";
+      mode = _OpenCodeServerMode.attached;
       // Attach mode: probe an existing server, never own or kill it.
       final attachPort = requestedPort!;
       port = attachPort;
@@ -681,7 +688,7 @@ class const OpenCodePluginDescriptor({
         handle = null;
       }
     } else if (sharedEndpoint != null) {
-      mode = "shared";
+      mode = _OpenCodeServerMode.shared;
       // Shared mode: attach to OpenCode's own background server, never own,
       // kill or restart it. Everything comes from its registration, not config.
       port = sharedEndpoint.port;
@@ -712,7 +719,7 @@ class const OpenCodePluginDescriptor({
         handle = null;
       }
     } else {
-      mode = "managed";
+      mode = _OpenCodeServerMode.managed;
       // Managed mode: spawn and own a new server.
       final serverPassword = noPassword ? null : (providedPassword ?? generateOpenCodePassword(random: _random));
       apiPassword = serverPassword;
@@ -870,7 +877,7 @@ class const OpenCodePluginDescriptor({
       diagnostics: PluginDiagnostics(
         pluginId: Harness.opencode.name,
         endpoint: serverUrl,
-        details: <String, String>{"port": "$port", "mode": mode},
+        details: <String, String>{"port": "$port", "mode": mode.name},
       ),
       displayName: "OpenCode",
       logContext: "opencode",

@@ -101,6 +101,8 @@ void main() {
       register(stateRoot: root.path, registration: corrupt);
       expect(await repository(handler: info).discover(environment: {"XDG_STATE_HOME": root.path}), isNull);
     }
+    File(p.join(root.path, "opencode", "service.json")).writeAsBytesSync([0xff, 0xfe, 0x7b]);
+    expect(await repository(handler: info).discover(environment: {"XDG_STATE_HOME": root.path}), isNull);
     expect(requests, isEmpty);
   });
 

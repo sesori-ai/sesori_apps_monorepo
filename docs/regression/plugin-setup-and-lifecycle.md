@@ -183,14 +183,16 @@ credentials; a completed helper must not hide failed load, replay or teardown.
 - A managed OpenCode start first looks for OpenCode 2's shared background server:
   `<XDG_STATE_HOME or home/.local/state>/opencode/service.json`. It uses that server
   when `/api/info` answers `200` for the registered pid at 2.0.11 or newer. Like
-  OpenCode's own client, it connects to whatever URL the file lists, using the
-  file's password, with no loopback or tunnel check.
+  OpenCode's own client, it connects to whatever host the file lists, using the
+  file's password, with no loopback or tunnel check. The URL must be `http` with
+  an explicit port and no path beyond `/`; a wildcard host is dialled over loopback.
   - **Attached:** the server is never owned, signalled, restarted or interrupted,
     and diagnostics report `mode: shared` without the password. A private server
     orphaned by a replaced bridge is still reclaimed first.
   - **Not usable:** a missing, corrupt or non-`http` registration, or a booting,
     failed, foreign, unreachable or too-old server, logs the reason and spawns a
-    private server as before.
+    private server as before. Known phase-1 limitation: a service started later
+    on the same database can resume that private server's in-flight turns.
   - **Answer lost after discovery:** the plugin starts degraded on the v2 adapter
     and keeps retrying the same URL.
   - **Sharing off:** with `--opencode-no-shared-service`, an explicit

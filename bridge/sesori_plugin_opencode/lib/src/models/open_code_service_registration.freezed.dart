@@ -38,11 +38,6 @@ int get hashCode {
   return Object.hash(runtimeType,_this.url,_this.pid,_this.password);
 }
 
-@override
-String toString() {
-  final _this = this as OpenCodeServiceRegistration;
-  return 'OpenCodeServiceRegistration(url: ${_this.url}, pid: ${_this.pid}, password: ${_this.password})';
-}
 
 
 }
@@ -112,10 +107,6 @@ int get hashCode {
     return Object.hash(runtimeType,url,pid,password);
 }
 
-@override
-String toString() {
-    return 'OpenCodeServiceRegistration(url: $url, pid: $pid, password: $password)';
-}
 
 
 }

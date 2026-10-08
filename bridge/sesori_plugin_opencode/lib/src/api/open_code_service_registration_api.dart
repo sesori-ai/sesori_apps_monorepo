@@ -19,9 +19,9 @@ class const OpenCodeServiceRegistrationException({required final String message,
 /// throws [OpenCodeServiceRegistrationException].
 class const OpenCodeServiceRegistrationApi() {
   Future<OpenCodeServiceRegistration?> read({required String filePath}) async {
-    final String text;
     try {
-      text = await io.File(filePath).readAsString();
+      final text = await io.File(filePath).readAsString();
+      return OpenCodeServiceRegistration.fromJson(jsonDecodeMap(text));
     } on io.PathNotFoundException {
       return null;
     } on io.FileSystemException catch (error) {
@@ -29,11 +29,9 @@ class const OpenCodeServiceRegistrationApi() {
         message: "cannot read $filePath (${error.osError?.message ?? error.message})",
         cause: error,
       );
-    }
-    try {
-      return OpenCodeServiceRegistration.fromJson(jsonDecodeMap(text));
     } on FormatException catch (error) {
-      throw OpenCodeServiceRegistrationException(message: "$filePath is not a JSON object", cause: error);
+      // Invalid UTF-8 from readAsString or invalid JSON from the decode.
+      throw OpenCodeServiceRegistrationException(message: "$filePath is not a UTF-8 JSON object", cause: error);
     } on CheckedFromJsonException catch (error) {
       throw OpenCodeServiceRegistrationException(
         message: "$filePath has an invalid '${error.key}' field",
