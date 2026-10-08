@@ -2182,29 +2182,35 @@ void main() {
     // reply's group.
     harness.appendNewestMessage(assistant(id: "assistant-2", parts: const []));
     await expectStill(frames: 3);
+    MessageWithParts reading({required String id, required String file, required ToolStatus status}) => assistant(
+      id: id,
+      parts: [
+        MessagePart.tool(
+          id: "read-$id",
+          sessionID: "session-1",
+          messageID: id,
+          tool: "read",
+          state: ToolState(status: status, title: file, shellCommand: null, output: null, error: null),
+        ),
+      ],
+    );
     harness.replaceMessages([
       ..._userMessages(count: 2),
       thoughtDone,
-      assistant(
-        id: "assistant-2",
-        parts: const [
-          MessagePart.tool(
-            id: "read",
-            sessionID: "session-1",
-            messageID: "assistant-2",
-            tool: "read",
-            state: ToolState(
-              status: ToolStatus.running,
-              title: "notes.md",
-              shellCommand: null,
-              output: null,
-              error: null,
-            ),
-          ),
-        ],
-      ),
+      reading(id: "assistant-2", file: "notes.md", status: ToolStatus.running),
     ]);
     await expectStillThrough(step: "Read notes.md");
+
+    // A user message that shows nothing still closes the group, so the next
+    // step opens a card of its own.
+    final readDone = reading(id: "assistant-2", file: "notes.md", status: ToolStatus.completed);
+    final hiddenUser = _message(messageId: "user-hidden", role: "user", text: "");
+    harness.replaceMessages([..._userMessages(count: 2), thoughtDone, readDone, hiddenUser]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("Working…"), findsOneWidget);
+    harness.appendNewestMessage(reading(id: "assistant-3", file: "plan.md", status: ToolStatus.running));
+    await expectStillThrough(step: "Read plan.md");
   });
 
   testWidgets("a step that opens a new card after the reply's text takes over from Working… without moving", (

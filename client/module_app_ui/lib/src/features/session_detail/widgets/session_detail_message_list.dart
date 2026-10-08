@@ -1357,25 +1357,15 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       );
 
   /// Whether the next step lands in an agent reply card that already shows,
-  /// and so already carries the reply padding. A newer reply that shows
-  /// nothing yet takes that step, which joins the shown reply only when that
-  /// reply ends in a group; otherwise it opens a card of its own.
-  static bool _stepJoinsShownCard({required List<MessageWithParts> messages, required Transcript transcript}) {
-    var newerReplyWaits = false;
-    for (final message in messages.reversed) {
-      switch (message.info) {
-        case MessageAssistant(sender: MessageSender.agent, :final id):
-          final blocks = transcript.blocksFor(messageId: id);
-          if (blocks.isNotEmpty) return !newerReplyWaits || blocks.last is TranscriptGroupBlock;
-          newerReplyWaits = true;
-        case MessageUser() when !message.hasRenderableUserContent:
-          break;
-        case MessageUser() || MessageAssistant() || MessageError():
-          return false;
-      }
-    }
-    return false;
-  }
+  /// and so already carries the reply padding: it joins the open group, or
+  /// follows the newest message when that is a shown agent reply. Otherwise
+  /// it opens a card of its own.
+  static bool _stepJoinsShownCard({required List<MessageWithParts> messages, required Transcript transcript}) =>
+      transcript.endsInOpenGroup ||
+      switch (messages.lastOrNull?.info) {
+        MessageAssistant(sender: MessageSender.agent, :final id) => transcript.blocksFor(messageId: id).isNotEmpty,
+        MessageUser() || MessageAssistant() || MessageError() || null => false,
+      };
 
   /// Wraps a row so the shared horizontal drag reveals its timestamp.
   Widget _revealable({required int? createdAtMs, required Widget child}) {
