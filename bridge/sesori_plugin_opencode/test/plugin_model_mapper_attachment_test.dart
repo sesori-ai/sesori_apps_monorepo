@@ -130,7 +130,7 @@ void main() {
       );
     }
     final failed = summary(completed: 200, error: fixtureError, auto: true, parts: const [text]);
-    expect(state(failed), const PluginCompactionState.failed(error: "Fixture failure"));
+    expect(state(failed), const PluginCompactionState.failed(reason: PluginCompactionFailureReason.cancelled));
     expect(failed.info, isA<PluginMessageAssistant>());
     expect(
       summary(completed: 200, error: fixtureError, auto: true, parts: const []).info,

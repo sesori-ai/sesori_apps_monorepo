@@ -79,27 +79,34 @@ sub-agent parts, plus the signal that a tool changed files.
   `docs/HARNESS_CAPABILITIES.md` for which harnesses mark compaction.
 - The compaction part carries its state: running (with any summary written so
   far), completed (with the summary, freed tokens and an `auto` or `manual`
-  trigger when the harness reports them) or failed (with the error when there
-  is one). A part from a released bridge carries no state and reads as
-  completed with no details; a state status this client does not know reads as
-  completed with whichever completed fields it carries, and an unknown trigger
-  reads as absent, so the transcript still decodes.
+  trigger when the harness reports them) or failed (with a typed reason when
+  the plugin recognizes the harness's error: nothing to compact, already
+  compacted, stopped, or the turn ended first). The raw harness error never
+  reaches the client; the plugin logs it locally. A part from a released bridge
+  carries no state and reads as completed with no details; a state status this
+  client does not know reads as completed with whichever completed fields it
+  carries, and an unknown trigger or failure reason reads as absent, so the
+  transcript still decodes.
+- A compaction is the agent's own work on every harness, so its message comes
+  from the agent and the row renders like any agent row, never inside an
+  "Automation" card.
 - A running compaction is a live row on phone and desktop: the sparkle, a
   shimmering "Compacting context" and, when its message carries a creation
   time, " · 1m 42s" ticking from that time, so it reads the same after a reopen;
   without one the row shows no time. Screen readers hear the row with the time
   of its last build, not every second. When the harness streams the summary,
-  its newest words fade in on one line under the row, as under Thinking. While
+  its newest words fade in on the label's line, after the label, so the row
+  keeps its one-line height and nothing above or below it moves. While
   a compaction runs, “Working…” and the sub-agents row give way to it; once it
   settles and the turn goes on, “Working…” returns. The row settles in place,
   keyed by its part: the sparkle cross-fades to the fold icon (or an alert),
-  the label stops shimmering and the words fold away, so the row keeps its
-  one-line height; reduced motion makes the settle instant. A completed row
+  the label stops shimmering and the words fade out in place, so the row keeps
+  its one-line height; reduced motion makes the settle instant. A completed row
   reads "Context compacted · freed 142k tokens · auto" with only the details
   the harness reports, and a manual trigger is never named. A failure stays in
-  the transcript as a quiet "Compaction failed" note in secondary text, with
-  its error ellipsized on the one line and read whole by screen readers; it
-  is inert and has no retry. On OpenCode v2 the words stream from the native
+  the transcript as a quiet "Compaction failed" note in secondary text, with a
+  short human reason when one is known ("Compaction failed · already
+  compacted") and no detail otherwise; it is inert and has no retry. On OpenCode v2 the words stream from the native
   compaction deltas once the bridge has loaded the running snapshot, at the
   start or, after a bridge reconnect mid-compaction, at the next delta. After
   a reload or reconnect mid-compaction they resume with the next words,
@@ -125,7 +132,7 @@ sub-agent parts, plus the signal that a tool changed files.
   lost process on Claude or Pi, any Codex or DeepSeek compaction without a
   completion)
   stays running until the turn goes idle, when the bridge's sweep ends it
-  with the "turn ended" failure note. DeepSeek's history has no compaction
+  with the "the turn ended first" failure note. DeepSeek's history has no compaction
   record, so its row survives one history re-import and then disappears.
 - A running tool or sub-agent is a live row: the turning outline sparkle leads
   it and a primary-text band sweeps across its dimmed label, visible in both
@@ -412,10 +419,11 @@ guarantee.
 - A running compaction shows no timer although its message has a creation
   time, its timer restarts on reopen or is announced every second, “Working…”
   or the sub-agents row shows beside it, or “Working…” stays away after it
-  settles while the turn goes on; the row jumps, flashes, changes height apart
-  from the words folding, or is re-inserted when it settles; a failure shows
-  no note, a red alert, a retry or a tappable row; a manual compaction says
-  “manual”.
+  settles while the turn goes on; the row jumps, flashes, changes height, moves
+  the transcript when the words appear or fade, or is re-inserted when it
+  settles; a compaction row renders inside an “Automation” card; a failure
+  shows no note, raw harness wording such as `too_few_groups`, a red alert, a
+  retry or a tappable row; a manual compaction says “manual”.
 - A live row spins or shimmers under reduced motion, a thinking tail hides the
   newest words or wraps past one line, or the jump button names a step, shimmers
   or changes width instead of reading “Jump to latest”.
@@ -563,8 +571,9 @@ guarantee.
   opens a long compaction summary behind a spinner at both densities and shows
   it at once under reduced motion or when it is short; it also covers the
   running row's timer with a fake clock and its read-once semantics, the
-  streamed words, the in-place settle (cross-fade, held height, words folding,
-  instant under reduced motion), the details, the failed note and the token
+  streamed words on the label's line at a held height, the in-place settle
+  (cross-fade, held height, words fading, instant under reduced motion), the
+  details, every failure reason's note and the token
   count formatter. `transcript_step_row_test.dart` measures the running and
   failed rows with the other step kinds, and `session_detail_message_list_test.dart`
   checks the row replaces “Working…” and settles without a re-insert.

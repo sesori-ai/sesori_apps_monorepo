@@ -91,11 +91,11 @@ const _steps = <(Widget, String)>[
   ),
   (
     CompactionPartWidget(
-      state: CompactionState.failed(error: "Context limit reached"),
+      state: CompactionState.failed(reason: CompactionFailureReason.alreadyCompacted),
       sinceMs: null,
       streamingText: null,
     ),
-    "Compaction failed · Context limit reached",
+    "Compaction failed · already compacted",
   ),
 ];
 

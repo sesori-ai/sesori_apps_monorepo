@@ -277,8 +277,10 @@ void main() {
         .completed(summary: null, freedTokens: null, trigger: null),
         .completed(summary: null, freedTokens: null, trigger: null),
       ),
-      (.failed(error: "Not enough messages."), .failed(error: "Not enough messages.")),
-      (.failed(error: null), .failed(error: null)),
+      (.failed(reason: .nothingToCompact), .failed(reason: .nothingToCompact)),
+      (.failed(reason: .alreadyCompacted), .failed(reason: .alreadyCompacted)),
+      (.failed(reason: .cancelled), .failed(reason: .cancelled)),
+      (.failed(reason: null), .failed(reason: null)),
     ];
     for (final (pluginState, sharedState) in compactionStates) {
       test("passes a compaction part update with its state: $pluginState", () async {

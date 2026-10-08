@@ -209,7 +209,16 @@ const _$PluginCompactionTriggerEnumMap = {
 
 Map<String, dynamic> _$PluginCompactionStateFailedToJson(
   PluginCompactionStateFailed instance,
-) => <String, dynamic>{'error': ?instance.error, 'status': instance.$type};
+) => <String, dynamic>{
+  'reason': ?_$PluginCompactionFailureReasonEnumMap[instance.reason],
+  'status': instance.$type,
+};
+
+const _$PluginCompactionFailureReasonEnumMap = {
+  PluginCompactionFailureReason.nothingToCompact: 'nothingToCompact',
+  PluginCompactionFailureReason.alreadyCompacted: 'alreadyCompacted',
+  PluginCompactionFailureReason.cancelled: 'cancelled',
+};
 
 Map<String, dynamic> _$PluginMessageUserToJson(PluginMessageUser instance) =>
     <String, dynamic>{

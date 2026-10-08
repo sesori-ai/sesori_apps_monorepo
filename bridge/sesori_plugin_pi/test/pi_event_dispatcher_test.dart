@@ -928,12 +928,22 @@ void main() {
     (
       "a terminal failure",
       {"reason": "threshold", "errorMessage": "provider detail", "aborted": false, "willRetry": false},
-      const PluginCompactionState.failed(error: "provider detail"),
+      const PluginCompactionState.failed(reason: null),
+    ),
+    (
+      "a compaction right after another",
+      {
+        "reason": "manual",
+        "errorMessage": "Compaction failed: Already compacted",
+        "aborted": false,
+        "willRetry": false,
+      },
+      const PluginCompactionState.failed(reason: PluginCompactionFailureReason.alreadyCompacted),
     ),
     (
       "an abort",
       {"reason": "manual", "aborted": true, "willRetry": false},
-      const PluginCompactionState.failed(error: null),
+      const PluginCompactionState.failed(reason: PluginCompactionFailureReason.cancelled),
     ),
   ]) {
     test("$name moves the row off the reserved id as a failure note, with no session error", () {

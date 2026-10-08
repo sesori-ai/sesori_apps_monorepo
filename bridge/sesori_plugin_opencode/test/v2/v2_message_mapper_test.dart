@@ -211,7 +211,7 @@ void main() {
     for (final status in ["running", "completed", "failed"]) {
       final message = compact(status: status, reason: "manual", summary: "Fixture");
       expect(message.parts.single.id, "compaction:0");
-      expect((message.info as PluginMessageAssistant).sender, PluginMessageSender.system);
+      expect((message.info as PluginMessageAssistant).sender, PluginMessageSender.agent);
       expect(message.info.time?.created, 7);
       expect(message.info.time?.completed, status == "running" ? isNull : 7);
     }
@@ -225,7 +225,7 @@ void main() {
     );
     expect(
       state(compact(status: "failed", reason: "auto", summary: "Fixture")),
-      const PluginCompactionState.failed(error: "Fixture failure"),
+      const PluginCompactionState.failed(reason: null),
     );
     for (final (reason, trigger) in [
       ("auto", PluginCompactionTrigger.auto),

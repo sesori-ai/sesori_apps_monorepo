@@ -477,6 +477,7 @@ final class ClaudeEventDispatcher({
         ];
       case ClaudeCompactResult.failed:
         _compactions[sessionId] = const _FailedCompaction();
+        Log.w("[claude] compaction failed: ${message.compactError}");
         return [
           BridgeSseMessagePartUpdated(
             part: _content.compactionFailedPart(

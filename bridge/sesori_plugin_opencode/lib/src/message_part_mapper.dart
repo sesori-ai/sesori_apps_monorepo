@@ -72,7 +72,12 @@ class const MessagePartMapper() {
       sessionID: sessionID,
       messageID: messageID,
       compactionState: switch (message) {
-        AssistantMessage(:final error?) => .failed(error: openCodeError(error: error).errorMessage),
+        AssistantMessage(:final error?) => .failed(
+          reason: switch (openCodeError(error: error).name) {
+            "MessageAbortedError" => PluginCompactionFailureReason.cancelled,
+            _ => null,
+          },
+        ),
         AssistantMessage(time: AssistantMessageTime(completed: null)) => .running(summary: text.isEmpty ? null : text),
         _ => .completed(
           summary: text.isEmpty ? null : text,

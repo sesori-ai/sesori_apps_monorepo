@@ -256,12 +256,31 @@ sealed class CompactionState with _$CompactionState {
     @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) required CompactionTrigger? trigger,
   }) = CompactionStateCompleted;
 
-  /// The compaction ended without compacting. [error] is the harness's or the
-  /// bridge's explanation, when there is one.
+  /// The compaction ended without compacting. [reason] is why, when the cause
+  /// is one the bridge recognizes; the raw error stays in the bridge's log.
   @FreezedUnionValue("failed")
-  const factory failed({required String? error}) = CompactionStateFailed;
+  const factory failed({
+    @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) required CompactionFailureReason? reason,
+  }) = CompactionStateFailed;
 
   factory fromJson(Map<String, dynamic> json) => _$CompactionStateFromJson(json);
+}
+
+/// Why a context compaction failed, for the causes a harness reports in a
+/// recognizable form. Any other cause is null.
+@JsonEnum()
+enum CompactionFailureReason() {
+  /// The conversation is too short to summarize.
+  nothingToCompact,
+
+  /// Nothing new has happened since the last compaction.
+  alreadyCompacted,
+
+  /// The user or the harness stopped it.
+  cancelled,
+
+  /// The turn ended, or the harness exited, before it finished.
+  turnEnded,
 }
 
 /// A client-safe attachment source normalized by the owning backend plugin.

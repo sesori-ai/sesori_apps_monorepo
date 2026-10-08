@@ -8,6 +8,7 @@ import "models/openapi/part.g.dart";
 import "models/openapi/user_message.g.dart";
 import "models/sse_event_data.g.dart";
 import "models/summary_message.dart";
+import "open_code_error_mapper.dart";
 import "plugin_model_mapper.dart";
 import "question_info_mapper.dart";
 
@@ -36,12 +37,20 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
 
   /// Once a summary message finishes, its compaction rows settle in its final
   /// state; their last text arrived before the message finished.
-  List<BridgeSseEvent> _settledSummaryParts({required SummaryMessage? summary}) => switch (summary) {
-    (:final message, :final textParts, auto: _) when message.error != null || message.time.completed != null => [
-      for (final part in textParts) BridgeSseMessagePartUpdated(part: _mapLivePart(part, summary: summary)),
-    ],
-    _ => const [],
-  };
+  /// A failed row shows only a recognized reason, so the raw error is logged.
+  List<BridgeSseEvent> _settledSummaryParts({required SummaryMessage? summary}) {
+    switch (summary) {
+      case (:final message, :final textParts, auto: _) when message.error != null || message.time.completed != null:
+        if (message.error case final error? when textParts.isNotEmpty) {
+          Log.w("[opencode] compaction failed in ${message.sessionID}: ${openCodeError(error: error)}");
+        }
+        return [
+          for (final part in textParts) BridgeSseMessagePartUpdated(part: _mapLivePart(part, summary: summary)),
+        ];
+      case _:
+        return const [];
+    }
+  }
 
   /// Maps a `message.updated` payload to its plugin envelope, mirroring the
   /// REST load path ([PluginModelMapper.mapMessageWithParts]). Crucially this

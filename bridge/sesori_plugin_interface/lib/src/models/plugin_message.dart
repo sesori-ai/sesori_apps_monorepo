@@ -351,10 +351,25 @@ sealed class PluginCompactionState with _$PluginCompactionState {
     required PluginCompactionTrigger? trigger,
   }) = PluginCompactionStateCompleted;
 
-  /// The compaction ended without compacting, with the harness's error when
-  /// it reports one.
+  /// The compaction ended without compacting. Plugins parse the harness's
+  /// error into [reason], null for any cause they do not recognize, and log
+  /// the raw error themselves.
   @FreezedUnionValue("failed")
-  const factory failed({required String? error}) = PluginCompactionStateFailed;
+  const factory failed({required PluginCompactionFailureReason? reason}) = PluginCompactionStateFailed;
+}
+
+/// Why a context compaction failed, for the causes a plugin recognizes in its
+/// harness's error.
+@JsonEnum()
+enum PluginCompactionFailureReason() {
+  /// The conversation is too short to summarize.
+  nothingToCompact,
+
+  /// Nothing new has happened since the last compaction.
+  alreadyCompacted,
+
+  /// The user or the harness stopped it.
+  cancelled,
 }
 
 /// Identifies who authored a plugin's non-user message envelope.

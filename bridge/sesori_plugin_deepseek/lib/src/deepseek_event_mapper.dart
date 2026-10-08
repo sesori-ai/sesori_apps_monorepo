@@ -288,7 +288,8 @@ class DeepSeekEventMapper({
         modelID: null,
         providerID: null,
         variant: null,
-        sender: PluginMessageSender.system,
+        // The agent's own work, so the row shows as it does on every harness.
+        sender: PluginMessageSender.agent,
         time: PluginMessageTime(created: compaction.startedAtMs, completed: null),
       ),
     ),

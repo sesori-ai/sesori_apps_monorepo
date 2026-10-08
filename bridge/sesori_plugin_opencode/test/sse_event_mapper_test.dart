@@ -166,7 +166,7 @@ void main() {
         isA<PluginMessagePartCompaction>().having(
           (part) => part.compactionState,
           "state",
-          const PluginCompactionState.failed(error: "Fixture failure"),
+          const PluginCompactionState.failed(reason: PluginCompactionFailureReason.cancelled),
         ),
       ),
       // Nothing written: the ordinary error message, with the empty text hidden.
