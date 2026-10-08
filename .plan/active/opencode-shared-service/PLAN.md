@@ -3,7 +3,8 @@
 ## Status
 
 - **Plan slug:** `opencode-shared-service`
-- **Status:** Active; Step 1 merged in #1923; Step 2 merged in #1924; Step 3 in review.
+- **Status:** Active. Phase 1 shipped: Step 1 merged in #1923, Step 2 in #1924, Step 3 in #1925. Step 4 (phase-1
+  verification and the phase-2 plan) is in review. Phase 2 is next; phase 3 is still rough.
 - **Plan date:** 2026-10-08
 - **Implementation base:** `main` at `2ad69c9545`
 - **Scope:** OpenCode 2 only. OpenCode 1 has no background service, so it needs no work. No other harness has a
@@ -14,6 +15,14 @@
     precedent, and the v2 minimum becomes a shared public constant;
   - the three-way `start()` routing is spelled out: v2 protocol and `mode: shared` for the shared branch;
   - stale owned-runtime cleanup runs before the shared attach.
+
+  Per the review rules, the fixes are not re-reviewed.
+- **Architecture review of phase 2 (2026-10-08):** the first pass rejected five points, all applied as written:
+  - every degraded path in shared mode (attach failure and cold start, not only SSE) reports failure in step 6;
+  - the acquisition workflow moves to a Layer 3 `OpenCodeSharedServerService`, leaving the repository thin;
+  - the command Api returns typed, boundary-parsed results;
+  - the version-probe owner and the step-5 constructors and composition are named;
+  - the step-6 enum, its payload and its consumers are named.
 
   Per the review rules, the fixes are not re-reviewed.
 - **Related work:** #1920 (merged) caps OpenCode sockets. #1922 (open) narrows the v2 cold start to
@@ -203,33 +212,235 @@ the same XDG state directory. Confirm the bridge log selects the shared service,
 Stop interrupts it through the shared server. Then stop everything. Never touch the user's real OpenCode service,
 their running bridge, or any other process.
 
-## Steps
+## Phase 1 Verification
 
-The series total grows when phases 2 and 3 are detailed. Their steps go before the documentation reconciliation
-step, and every open title is updated then.
+- **Automated (#1924):**
+  - the full `sesori_plugin_opencode` suite (629 tests), including 6 descriptor routing tests and 10 discovery
+    tests;
+  - `dart analyze --fatal-infos` clean;
+  - the app tests that cover OpenCode options;
+  - CI 19/19 green on the merged head.
+- **Isolated live check (2026-10-08, OpenCode 2.0.25, macOS): passed.**
+  - Setup: `opencode serve --service --port 47901` ran with its own `HOME` and XDG directories, and a
+    source-run bridge ran on a free dev slot with `XDG_STATE_HOME` pointed at the same state directory.
+  - The bridge logged `using the shared OpenCode 2.0.25 service at http://127.0.0.1:47901`, spawned no private
+    server, and held one SSE connection to the service.
+  - Session create and two prompts ran through the bridge debug routes. The free model streamed `pong` back as a
+    `message.part.delta`, then a final text part.
+  - Stop moved a busy (retrying) turn to `idle`, twice.
+  - On bridge shutdown the log showed `server is not bridge-owned; skipping active-work interruption`, and the
+    service still answered `/api/info` afterwards.
+  - Everything was then stopped. The user's own OpenCode service and bridge were not touched.
+- **Observed, unrelated to sharing:** the v2 SSE parser logs "dropping malformed or unsupported SSE event" for
+  event types it does not model, including `server.connected`, which has no `created` field. This is noise only;
+  nothing failed.
+- **Pending (the user, after merge):** the user's real-setup check. With their own `opencode serve --service`
+  running, they run a bridge built from `main` and confirm the log line, one shared turn visible in both the TUI
+  and the phone, and Stop from the phone. Record the result here when it arrives. It does not block phase 2.
 
-| Step | Title | Contents |
-|---|---|---|
-| 1 | `🌱 [opencode-shared-service] Plan sharing OpenCode 2's background server [step 1/4]` | This plan. |
-| 2 | `🚧 [opencode-shared-service] Attach to OpenCode 2's shared background server [step 2/4]` | Phase 1 as designed above: discovery, flag, attach routing, tests, regression doc and `HARNESS_CAPABILITIES.md` updates, isolated live check. Estimated about 600 to 800 changed lines, half of them tests, plus a few hundred generated lines. |
-| 3 | `🌱 [opencode-shared-service] Reconcile the regression docs [step 3/4]` | Reconcile `plugin-setup-and-lifecycle.md` and `HARNESS_CAPABILITIES.md` with everything shipped. |
-| 4 | `🌱 [opencode-shared-service] Record verification and retire the plan [step 4/4]` | Run the recorded coverage and move the plan to `.plan/completed/`. |
+## Phase 2 Design: the bridge starts the shared service
 
-Step 2's PR body states complexity `🚧` (start-path lifecycle and a local credential), no database change, and the
-user-visible effect: with OpenCode's service running, phone and TUI see the same live turns, Stop and prompts.
+### Why
 
-### Later phases (rough)
+Phase 1 still spawns a private server whenever no usable service is registered when the plugin starts. If a TUI
+then starts the service on the same database, the service resumes the bridge server's in-flight turns, so they run
+twice (collision 1). A booting service (`503`) also leads to a private spawn. And a service that drops after attach
+leaves the plugin degraded until its next start. Phase 2 removes the private server from the sharing path: the
+bridge asks OpenCode to start its own service, then attaches to it.
 
-- **Phase 2: the bridge starts and keeps the shared service.**
-  - What: when no usable service is registered, run `opencode serve --service` with the user's CLI if it meets our
-    minimum, else the bundled runtime (S4). Never replace an existing service. After a drop, re-discover and
-    re-attach instead of falling back to a private server.
-  - Why: phase 1 still spawns a private server when the bridge starts first. A TUI opened later then starts the
-    service on the same database, which resumes the bridge server's turns twice (collision 1). Owning the service
-    start removes the second server entirely.
+### Evidence (OpenCode v2.0.25)
+
+- `opencode service start` (`cli/src/commands/handlers/service/start.ts`) calls `Service.ensure` without a version
+  requirement (`ServiceConfig.options()` leaves `version` undefined). `ensure`
+  (`client/src/effect/service.ts:49`):
+  - reuses a ready, compatible service;
+  - waits while one is booting;
+  - otherwise spawns a detached, unref'd `<self> serve --service` contender
+    (`client/src/service-contender.ts`: `detached: true`, stdio ignored);
+  - then prints the service URL.
+
+  It never replaces a running service of another version. It does stop a registered service that timed out three
+  probes in a row, which is OpenCode's own recovery, the same thing its TUI does.
+- `ensure` gives up after 120 s (`client/src/service-timing.ts`).
+- `opencode service start` does not read the user's `disabled` setting; only the TUI does
+  (`cli/src/services/server-connection.ts:41`). `opencode service get disabled` prints `true` or `false`, which was
+  verified on 2.0.25 in an isolated environment.
+- The TUI's default `mismatch` is `ignore` (`server-connection.ts`), so a TUI of another version reuses a service the
+  bridge started instead of replacing it.
+- In the bridge:
+  - `host.provisionedRuntimePath` is already the S4 choice: the PATH install when it meets the policy, otherwise the
+    managed (bundled) runtime.
+  - `HostProcessCommandExecutor` already runs bounded commands with capped output for setup probes.
+  - `PluginRuntime._ensureStarted` starts a fresh generation on the next request after a generation fails.
+
+### Behavior
+
+In managed mode with sharing on (phase-1 rules unchanged), when discovery finds no usable service:
+
+1. **Pick the binary (S4).** Use `host.provisionedRuntimePath`; an explicit `--opencode-bin` still turns sharing off.
+   Read its version with the existing bounded `--version` probe.
+   - Below 2.0.11 (OpenCode 1 has no service), or no binary: spawn a private server as today. Never start a v2
+     service from the bundled runtime over a user whose PATH install is v1. The v2 first launch migrates the
+     database one way, so the bridge's v1 support stays as it is.
+2. **Respect OpenCode's opt-out.** Run `<binary> service get disabled`, bounded. If it prints `true`, spawn a private
+   server as today and log one info line. Any failure of this probe also falls back to a private server, with a
+   warning.
+3. **Start the service.** Run `<binary> service start`, bounded at 60 s and honouring `host.startAborted`; on abort
+   or timeout, kill the CLI process. The environment is the parent environment, as the setup probes use. No Sesori
+   password or port is passed: the service uses OpenCode's own service configuration.
+4. **Attach.** Run phase-1 discovery again. When it returns an endpoint, take the phase-1 shared branch unchanged:
+   cleanup of stale owned runtimes, `attach`, the v2 adapter, and `mode: shared`. Log one info line saying the bridge
+   started the service.
+5. **Fallback.** If the start fails, times out, or is still not discoverable, log one warning and spawn a private
+   server as today.
+
+**After a drop (step 6).** In shared mode, every path that would leave the plugin degraded reports `PluginFailed`
+instead, after the existing 5-second debounce, unless `markConnected` arrives first. That covers three paths:
+
+- a lasting SSE disconnect (`markDisconnected`);
+- a failed attach health check at start (`markDegradedNow` at descriptor line 895);
+- a failed or over-budget cold start (`markDegradedNow` in `ManagedRuntimeColdStartService`).
+
+The runtime retires that generation, and the next request starts a fresh one. That start runs discovery and, if
+needed, `service start` again, so the bridge re-attaches to the service wherever it now listens. Attach mode and
+managed mode keep today's degrade-and-retry, because the plugin cannot re-discover their servers. The phase-1 test
+"a shared attach that fails after discovery starts degraded with `mode: shared`" changes to expect `PluginFailed`
+after the debounce.
+
+### Lifecycle consequence (pending user confirmation)
+
+**P1:** a service started by the bridge is OpenCode's own detached process. It outlives the bridge exactly as one
+started by the TUI does, keeps running after the bridge stops, and is stopped with `opencode service stop`. This is
+the behaviour S1 asked for ("the bridge starts `opencode serve --service` itself"). However, a headless bridge now
+leaves a background OpenCode process behind where today its private server dies with it.
+
+The opt-outs are `--opencode-no-shared-service` and OpenCode's own `opencode service set disabled true`. Under a
+systemd unit with the default `KillMode=control-group`, stopping the unit still stops the detached service.
+
+The user confirms P1 before step 5 is implemented. If the user rejects P1, step 5 is re-planned and re-reviewed: the
+bridge would then have to own and stop the service, which contradicts the "never owns, kills or restarts" rule and
+the "no bridge ownership or supervision" line in the budget below.
+
+### Ownership and files
+
+All code stays inside `sesori_plugin_opencode`, except one runtime-package parameter in step 6.
+
+- **Step 5:**
+  - **Layer 1:** `lib/src/api/open_code_service_command_api.dart` (new), class `OpenCodeServiceCommandApi`.
+    - Constructor: `({required HostProcessCommandExecutor executor})`.
+    - It owns every OpenCode CLI command phase 2 needs, each with a bounded timeout, capped output and
+      `startAborted` through the executor's abortable run. Each method parses its own output at the boundary:
+      - `Future<SemanticRuntimeVersion> readVersion({binary, environment, startAborted})` runs `--version`, with the
+        same parsing as the setup probe.
+      - `Future<bool> readDisabled({binary, environment, startAborted})` runs `service get disabled`. It accepts
+        exactly `true` or `false`.
+      - `Future<void> startService({binary, environment, startAborted})` runs `service start`, bounded at 60 s.
+    - A non-zero exit, a timeout or unparseable output throws `OpenCodeServiceCommandException(message, cause)`.
+      An abort throws `PluginStartAbortedException`. The Api makes no decisions.
+  - **Layer 2:** `OpenCodeSharedServerRepository` gains a required `commandApi` constructor parameter and three thin
+    delegating methods: `readBinaryVersion`, `isServiceDisabled` and `startService`. `discover` is unchanged.
+  - **Layer 3:** `lib/src/services/open_code_shared_server_service.dart` (new), class
+    `OpenCodeSharedServerService`.
+    - Constructor: `({required OpenCodeSharedServerRepository repository})`.
+    - It has one method:
+      `Future<OpenCodeSharedServerEndpoint?> acquire({required String? binary, required Map<String, String> environment, required StartAbortSignal startAborted})`.
+    - `acquire` returns `discover()` when that finds a service. Otherwise it applies the version, disabled and start
+      rules above, calls `discover()` again, and logs each fallback reason once. An abort is rethrown.
+    - It owns the shared-server acquisition policy.
+  - **Composition:** `start()` in the descriptor builds the executor from `host.processes`, then the Api, then the
+    repository (with `_probeClientFactory`), then the service. There is no new descriptor constructor seam. The
+    descriptor calls `acquire(binary: host.provisionedRuntimePath, ...)` instead of `discover(...)` when sharing
+    applies. The routing is otherwise unchanged.
+- **Step 6:**
+  - `enum ManagedRuntimeDisconnectOutcome() { degrade, fail }` goes in
+    `sesori_plugin_runtime/lib/src/managed_runtime_status_reporter.dart` and is exported from
+    `sesori_plugin_runtime`.
+  - `ManagedRuntimeStatusReporter` gains the required constructor parameter
+    `ManagedRuntimeDisconnectOutcome disconnectOutcome`. Under `fail`, both `markDisconnected` and `markDegradedNow`
+    set `PluginFailed(reason: "the server stopped answering", cause: null)` after the debounce, unless
+    `markConnected` arrives first.
+  - Consumers updated in lockstep:
+    - `codex_plugin_descriptor.dart` passes `degrade`;
+    - `open_code_plugin_descriptor.dart` passes `fail` in shared mode and `degrade` otherwise;
+    - the reporter, cold-start and bridge-plugin tests in `sesori_plugin_runtime/test/`.
+
+### Tests that matter
+
+- **Step 5, command Api:** `readDisabled` parses `true`, `false` and garbage; a timeout or non-zero exit throws.
+- **Step 5, service (`acquire`):**
+  - A service that is already discoverable never runs a command.
+  - A version below 2.0.11, or no binary, never runs `service`.
+  - `disabled` = `true`, or a failing `get`, returns `null` without a start.
+  - A successful start followed by discovery returns the endpoint.
+  - A start that fails, times out or aborts returns `null`, and an abort is rethrown.
+  - The service is still undiscoverable after a successful start: returns `null`.
+- **Step 5, descriptor:**
+  - The service started by the bridge is attached with `mode: shared` and nothing spawned or owned.
+  - A start fallback spawns the private server.
+  - The opt-out flag and an explicit binary never run `service`.
+- **Step 6:**
+  - A shared-mode disconnect past the debounce reports `PluginFailed`; a reconnect inside it does not.
+  - A shared start whose attach health check fails ends in `PluginFailed`. This replaces the phase-1 degraded
+    expectation.
+  - Attach and managed modes still degrade.
+  - The reporter's existing tests stay green for Codex.
+
+### Live check (isolated, step 5 and step 6)
+
+Use the phase-1 setup: a separate `HOME` and XDG directories, a free dev slot, and `ulimit -n 8192`. Never touch the
+user's own processes.
+
+- **With no service registered:** the bridge runs `service start` with the PATH CLI, attaches, and a prompt and
+  Stop work.
+- **Repeat with PATH hiding the CLI:** the bundled runtime starts the service.
+- **`opencode service set disabled true`:** a private server is spawned.
+- **Step 6:** `opencode service stop`, then a request. The plugin reports failed, then re-attaches to a fresh
+  service and a prompt runs.
+- Stop the isolated service at the end with `opencode service stop`.
+
+### Phase 2 complexity budget
+
+- **New persistent state:** none. OpenCode owns the service process, its registration and its configuration.
+- **New in-memory mutable state:** none. The additions are one stateless command Api, three thin repository
+  methods, one stateless service built per start, and one closed enum parameter on the reporter.
+- **Deliberately not added:**
+  - bridge ownership or supervision of the service process;
+  - a bridge-side restart monitor, re-discovery timer or file watcher;
+  - re-implementing `Service.ensure`'s contender logic;
+  - version-skew negotiation;
+  - reading OpenCode's service configuration file directly (the CLI owns it).
+
+### Phase 2 accepted risks
+
+- **`service start` fails or exceeds 60 s:** a private server is spawned, and a service started later can still
+  resume its turns twice. This is rare: it needs a broken or very slow first boot.
+- **A shared-mode generation fails on any lasting disconnect,** including a TUI-triggered `service restart`. The
+  next request re-attaches. In-flight relay requests during that window fail once.
+- **The bundled runtime binary starts the service:** a later bridge runtime upgrade or cleanup may delete that
+  binary while the service runs. The running process is unaffected, and the next `service start` uses the current
+  binary.
+
+### Later phase (rough)
+
 - **Phase 3: surface a Stop that did not interrupt.**
   - What: when OpenCode answers Stop with `interrupted:false`, tell the user instead of silently succeeding.
   - Why: with two processes, or a turn owned elsewhere, Stop can be a no-op that the user cannot see.
+
+## Steps
+
+Merged PRs keep their original `/4` titles. From step 4 on, the series total is 8. Phase 3's steps go before step 7
+when phase 3 is detailed, and every open title is updated then.
+
+| Step | Title | Contents |
+|---|---|---|
+| 1 | `🌱 [opencode-shared-service] Plan sharing OpenCode 2's background server [step 1/4]` | Merged in #1923. |
+| 2 | `🚧 [opencode-shared-service] Attach to OpenCode 2's shared background server [step 2/4]` | Merged in #1924. Phase 1. |
+| 3 | `🌱 [opencode-shared-service] Reconcile the regression docs [step 3/4]` | Merged in #1925. Phase-1 docs. |
+| 4 | `🌱 [opencode-shared-service] Record phase-1 verification and plan phase 2 [step 4/8]` | This update: the phase-1 verification record and the phase-2 design and steps. Docs only. |
+| 5 | `🚧 [opencode-shared-service] Start OpenCode's shared service instead of a private server [step 5/8]` | Phase 2 start path: the command Api, the repository delegates, `OpenCodeSharedServerService.acquire`, descriptor routing, tests, the isolated live check (PATH CLI, bundled runtime, disabled), and the regression bullets for the new behavior. Waits for P1. About 500 to 700 changed lines, half of them tests. Complexity `🚧`: start-path lifecycle and an external process that outlives the bridge. No database change. User-visible: with sharing on, the phone and the TUI always share one server, even when the bridge starts first. |
+| 6 | `⚙️ [opencode-shared-service] Re-attach after the shared service drops [step 6/8]` | `ManagedRuntimeDisconnectOutcome` on the reporter (covering both `markDisconnected` and `markDegradedNow`), shared mode reporting failure, the Codex and OpenCode consumers updated in lockstep, tests, and the live stop-then-request check. About 200 to 300 changed lines. No database change. User-visible: after the service restarts or moves, the next request reconnects without a bridge restart. |
+| 7 | `🌱 [opencode-shared-service] Reconcile the regression docs [step 7/8]` | Reconcile `plugin-setup-and-lifecycle.md`, `HARNESS_CAPABILITIES.md` and the `bridge/app/README.md` flag notes with everything shipped. |
+| 8 | `🌱 [opencode-shared-service] Record verification and retire the plan [step 8/8]` | Run the recorded coverage, record it, and move the plan to `.plan/completed/`. |
 
 ## Regression Coverage
 
@@ -238,11 +449,15 @@ user-visible effect: with OpenCode's service running, phone and TUI see the same
 - **Highest level:** L2 Routine.
   - Automated descriptor and discovery fixtures cover the selection rules.
   - A live-plugin check covers a real OpenCode 2 service: attach, events, a prompt and Stop through the shared server.
+  - Phase 2 adds live coverage for:
+    - the bridge starting the service from the PATH CLI and from the bundled runtime;
+    - the `disabled` opt-out;
+    - re-attach after `opencode service stop`.
 - **Matrix:** OpenCode 2 on macOS (live). Linux and Windows path resolution is covered only by automated tests:
   the code is the same, with Windows reading `USERPROFILE`. Client end to end is not required, because no client
   code changes and the wire contract is unchanged.
 
-## Complexity Budget
+## Complexity Budget (phase 1)
 
 - **New persistent state:** none. The bridge reads OpenCode's file and never writes it.
 - **New in-memory mutable state:** none. The additions are one immutable endpoint value, a stateless Api and
@@ -262,9 +477,13 @@ user-visible effect: with OpenCode's service running, phone and TUI see the same
   (manual restart or idle suspension then on-demand start). The same port and password, which is OpenCode's default
   behavior, recover through the existing SSE retry.
 - **OpenCode Desktop without a CLI on PATH:** setup inspection still needs a PATH or managed runtime even when a
-  shared service is running. This is unchanged from today; revisit it in phase 2.
+  shared service is running. Phase 2 keeps this, because starting the service needs a binary (S4), and the bundled
+  runtime covers it.
+
+Phase 2 removes the first three risks above, except when `service start` itself fails (see the phase-2 accepted
+risks).
 
 ## Cleanup Assessment
 
 No obsolete code was found. `--opencode-no-auto-start` stays, because it attaches to a server the user names, not to
-the discovered service.
+the discovered service. Phase 2 keeps the private-server spawn as the fallback, so nothing in it becomes obsolete.
