@@ -7,7 +7,6 @@ import "../session_detail_presentation_scope.dart";
 import "reasoning_modal.dart";
 import "transcript_latest_words.dart";
 import "transcript_live_row.dart";
-import "transcript_motion.dart";
 
 class const ReasoningPartCard({
   super.key,
@@ -70,18 +69,10 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
                 detail: widget.isStreaming || widget.text.isEmpty ? null : TextSpan(text: _previewText),
                 live: widget.isStreaming,
                 color: null,
-                // The tail eases in with the first streamed words.
-                below: TranscriptPresenceColumn(
-                  children: [
-                    if (widget.isStreaming && widget.text.isNotEmpty)
-                      TranscriptLatestWords(
-                        key: const ValueKey("reasoning.latestWords"),
-                        text: widget.text,
-                        style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
-                      ),
-                  ],
+                trailing: TranscriptTrailingLatestWords(
+                  text: widget.isStreaming ? widget.text : null,
+                  style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
                 ),
-                trailing: null,
               ),
             ),
           ),

@@ -229,6 +229,46 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("streamed words stay on the label's line, so the row never changes height", (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures();
+    // In a scrolling list, as in the transcript, the row takes its own height.
+    Widget inList({required String text, required bool isStreaming}) => MaterialApp(
+      theme: buildPregoThemeData(brightness: Brightness.light),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: ListView(
+          children: [ReasoningPartCard(text: text, isStreaming: isStreaming, partId: "part-1", messageId: "msg-1")],
+        ),
+      ),
+    );
+    double height() => tester.getSize(find.byType(InkWell)).height;
+    await tester.pumpWidget(inList(text: "", isStreaming: true));
+    final oneLine = height();
+    expect(oneLine, 44);
+
+    for (final text in ["First", "First words", "${"older words " * 40}newest words"]) {
+      await tester.pumpWidget(inList(text: text, isStreaming: true));
+      // Mid fade-in and settled alike.
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(height(), oneLine);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(height(), oneLine);
+    }
+    final label = tester.getRect(find.text("Thinking..."));
+    final words = tester.getRect(find.textContaining("newest words"));
+    expect(words.center.dy, closeTo(label.center.dy, 1));
+
+    // The words fade out as the thought settles, still at one line.
+    await tester.pumpWidget(inList(text: "Settled thought", isStreaming: false));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(TranscriptLatestWords), findsOneWidget);
+    expect(height(), oneLine);
+    await tester.pumpAndSettle();
+    expect(find.byType(TranscriptLatestWords), findsNothing);
+    expect(height(), oneLine);
+  });
+
   for (final brightness in Brightness.values) {
     testWidgets("${brightness.name} a finished thought is one unboxed row", (tester) async {
       tester.platformDispatcher.platformBrightnessTestValue = brightness;

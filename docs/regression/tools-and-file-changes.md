@@ -174,10 +174,12 @@ sub-agent parts, plus the signal that a tool changed files.
   time changes. It hides while a question or permission waits. Which harnesses
   show it, with a time, is under “Live timers” in
   `docs/HARNESS_CAPABILITIES.md`. A retry row replaces it, with the same
-  sparkle and band, and folds away when the retry error clears. Streaming thinking shows a shimmering “Thinking...” with one
-  line of its
-  latest words below, the older start fading out; a finished thought is one row,
-  “Thought” and its first line, that opens the full text. While the reader is
+  sparkle and band, and folds away when the retry error clears. Streaming
+  thinking shows a shimmering “Thinking...” with its latest words fading in
+  after it on the same line, anchored at the line's end, the older start fading
+  out; the row keeps its one-line height as the words come and go, so nothing
+  below it moves. A finished thought is one row, “Thought” and its first line,
+  that opens the full text. While the reader is
   scrolled away, the jump button reads “Jump to latest”, whatever the session
   is doing.
 - Tapping or keyboard-activating a command opens a Shell panel, on the same

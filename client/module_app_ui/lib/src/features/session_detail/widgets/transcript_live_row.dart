@@ -51,11 +51,8 @@ class const TranscriptStepRow({
   /// Replaces the secondary text colour, such as a failed shell's red line.
   required final Color? color,
 
-  /// Under the label, such as a streaming thought's latest words.
-  required final Widget? below,
-
   /// After the label, filling the rest of its line, such as a streaming
-  /// summary's latest words. One line tall at most, so the row keeps its
+  /// thought's latest words. One line tall at most, so the row keeps its
   /// height whatever it shows.
   required final Widget? trailing,
 }) extends StatelessWidget {
@@ -69,7 +66,6 @@ class const TranscriptStepRow({
     final prego = context.prego;
     final color = this.color ?? prego.colors.textSecondary;
     final detail = this.detail;
-    final below = this.below;
     final trailing = this.trailing;
     final span = TextSpan(
       children: [
@@ -98,46 +94,35 @@ class const TranscriptStepRow({
     final height = 44 + Theme.of(context).visualDensity.baseSizeAdjustment.dy;
     return Padding(
       padding: EdgeInsets.symmetric(vertical: (height - TranscriptLiveSparkle.size) / 2),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              SizedBox.square(
-                dimension: TranscriptLiveSparkle.size,
-                child: Center(child: leading),
-              ),
-              SizedBox(width: prego.spacing.md),
-              Expanded(
-                child: trailing == null
-                    ? labelLine
-                    // The label keeps its own width, up to the whole line, and
-                    // the trailing widget takes what is left.
-                    : LayoutBuilder(
-                        builder: (context, constraints) => Row(
-                          children: [
-                            ConstrainedBox(
-                              constraints: BoxConstraints(maxWidth: constraints.maxWidth),
-                              child: IntrinsicWidth(child: labelLine),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: EdgeInsetsDirectional.only(start: prego.spacing.sm),
-                                child: trailing,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-              ),
-            ],
+          SizedBox.square(
+            dimension: TranscriptLiveSparkle.size,
+            child: Center(child: leading),
           ),
-          if (below != null)
-            Padding(
-              padding: EdgeInsetsDirectional.only(start: TranscriptLiveSparkle.size + prego.spacing.md),
-              child: below,
-            ),
+          SizedBox(width: prego.spacing.md),
+          Expanded(
+            child: trailing == null
+                ? labelLine
+                // The label keeps its own width, up to the whole line, and
+                // the trailing widget takes what is left.
+                : LayoutBuilder(
+                    builder: (context, constraints) => Row(
+                      children: [
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                          child: IntrinsicWidth(child: labelLine),
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: EdgeInsetsDirectional.only(start: prego.spacing.sm),
+                            child: trailing,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
         ],
       ),
     );
