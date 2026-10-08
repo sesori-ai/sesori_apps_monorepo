@@ -96,7 +96,8 @@ sub-agent parts, plus the signal that a tool changed files.
   time, " · 1m 42s" ticking from that time, so it reads the same after a reopen;
   without one the row shows no time. Screen readers hear the row with the time
   of its last build, not every second. When the harness streams the summary,
-  its newest words fade in on the label's line, after the label, so the row
+  its newest words fade in at the end of the label's line, where the newest
+  word stays as the timer before it changes width, so the row
   keeps its one-line height and nothing above or below it moves. While
   a compaction runs, “Working…” and the sub-agents row give way to it; once it
   settles and the turn goes on, “Working…” returns. The row settles in place,

@@ -137,9 +137,10 @@ class const CompactionPartWidget({
             // the row or the transcript around it.
             trailing: AnimatedSwitcher(
               duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
-              // A few words start right after the label.
+              // Anchored at the line's end from the first word, so the newest
+              // words stay put while the timer before them changes width.
               layoutBuilder: (current, previous) =>
-                  Stack(alignment: AlignmentDirectional.centerStart, children: [...previous, ?current]),
+                  Stack(alignment: AlignmentDirectional.centerEnd, children: [...previous, ?current]),
               child: words == null || words.isEmpty
                   ? const SizedBox.shrink()
                   : TranscriptLatestWords(key: const ValueKey("compaction.latestWords"), text: words, style: style),

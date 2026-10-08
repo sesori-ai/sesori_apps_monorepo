@@ -178,6 +178,23 @@ void main() {
       await tester.pumpWidget(_row(state: const CompactionState.running(summary: "Carried forward")));
       expect(find.text("Carried forward"), findsOneWidget);
     });
+
+    testWidgets("the newest words keep their place while the timer before them grows", (tester) async {
+      await withClock(Clock(() => tester.binding.clock.now()), () async {
+        const text = "Carried forward";
+        final nowMs = tester.binding.clock.now().millisecondsSinceEpoch;
+        Future<Offset> wordsEnd({required int? sinceMs}) async {
+          await tester.pumpWidget(
+            _app(mode: PregoInteractionMode.pointer, state: _running, sinceMs: sinceMs, streamingText: text),
+          );
+          await tester.pump(const Duration(milliseconds: 300));
+          return tester.getTopRight(find.text(text));
+        }
+
+        final withoutTimer = await wordsEnd(sinceMs: null);
+        expect(await wordsEnd(sinceMs: nowMs - 101000), withoutTimer);
+      });
+    });
   });
 
   group("settle", () {
