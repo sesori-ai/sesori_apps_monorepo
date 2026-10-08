@@ -413,8 +413,8 @@ user's own processes.
 
 ### Phase 2 accepted risks
 
-- **`service start` fails within OpenCode's own 120 s wait:** a private server is spawned, and a service started
-  later can still resume its turns twice. This is rare: it needs a broken first boot. The bridge waits as long as
+- **`service start` fails, or the CLI hangs past the 130 s backstop:** a private server is spawned, and a service
+  started later can still resume its turns twice. This is rare: it needs a broken first boot or a hung CLI. The bridge waits as long as
   OpenCode does (review on #1927), because a shorter bound would fall back while the detached service is still
   booting on the same database.
 - **A shared-mode generation fails on any lasting disconnect,** including a TUI-triggered `service restart`. The

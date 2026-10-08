@@ -630,9 +630,9 @@ owned-process exit; and restart.
 - With sharing on and no service, the bridge spawns a private server instead of
   running `opencode service start` on OpenCode 2 whose `disabled` setting reads
   `false`, starts a service while OpenCode's
-  `disabled` setting is `true` or the selected runtime is OpenCode 1, falls back
-  before OpenCode's own 120-second start wait ends, hangs well past it, or stops the
-  service it started when the bridge stops.
+  `disabled` setting is `true` or the selected runtime is OpenCode 1, times out
+  `service start` while OpenCode's own 120-second start wait is still running,
+  hangs well past it, or stops the service it started when the bridge stops.
 - A stalled first handshake holds bridge startup past the cold-start budget, a
   budget-exceeded harness reports connected instead of degraded, or its late
   cold-start failure surfaces as an unhandled error rather than a log line.
