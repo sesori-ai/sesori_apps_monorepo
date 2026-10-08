@@ -3,9 +3,12 @@ import "dart:io";
 
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
+import "package:opencode_plugin/src/api/open_code_service_command_api.dart";
 import "package:opencode_plugin/src/api/open_code_service_registration_api.dart";
 import "package:opencode_plugin/src/repositories/open_code_shared_server_repository.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show HostProcessCommandExecutor;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show HostProcessService;
 import "package:test/test.dart";
 
 const String _password = "service-secret";
@@ -37,6 +40,15 @@ void main() {
   OpenCodeSharedServerRepository repository({required Future<http.Response> Function(http.Request) handler}) {
     return OpenCodeSharedServerRepository(
       registrationApi: const OpenCodeServiceRegistrationApi(),
+      // Discovery never runs the CLI.
+      commandApi: OpenCodeServiceCommandApi(
+        executor: HostProcessCommandExecutor(
+          processes: const _NoProcesses(),
+          runInShell: false,
+          includeParentEnvironment: true,
+          maxCapturedOutputCharactersPerStream: null,
+        ),
+      ),
       probeClientFactory: () => MockClient((request) {
         requests.add(request);
         return handler(request);
@@ -181,4 +193,9 @@ void main() {
     expect(endpoint?.password, isNull);
     expect(requests.single.headers.containsKey("Authorization"), isFalse);
   });
+}
+
+class const _NoProcesses() implements HostProcessService {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnsupportedError("discovery must not run a process");
 }

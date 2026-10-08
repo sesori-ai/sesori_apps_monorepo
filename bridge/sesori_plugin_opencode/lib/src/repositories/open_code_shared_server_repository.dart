@@ -1,9 +1,10 @@
 import "package:http/http.dart" as http;
 import "package:path/path.dart" as path;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, StartAbortSignal;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show SemanticRuntimeVersion;
 
+import "../api/open_code_service_command_api.dart";
 import "../api/open_code_service_registration_api.dart";
 import "../models/open_code_probe_response.dart";
 import "../models/open_code_service_registration.dart";
@@ -16,11 +17,30 @@ import "../runtime/open_code_shared_server_endpoint.dart";
 /// server only when `GET /api/info` answers `200` for the registered pid. Like
 /// OpenCode's client it connects to whatever URL the file lists. Anything
 /// unusable is logged once and reported as `null`, so the caller spawns its
-/// own server instead.
+/// own server instead. The command methods delegate to the OpenCode CLI.
 class const OpenCodeSharedServerRepository({
   required final OpenCodeServiceRegistrationApi registrationApi,
+  required final OpenCodeServiceCommandApi commandApi,
   required final http.Client Function() probeClientFactory,
 }) {
+  Future<SemanticRuntimeVersion> readBinaryVersion({
+    required String binary,
+    required Map<String, String> environment,
+    required StartAbortSignal startAborted,
+  }) => commandApi.readVersion(binary: binary, environment: environment, startAborted: startAborted);
+
+  Future<bool> isServiceDisabled({
+    required String binary,
+    required Map<String, String> environment,
+    required StartAbortSignal startAborted,
+  }) => commandApi.readDisabled(binary: binary, environment: environment, startAborted: startAborted);
+
+  Future<void> startService({
+    required String binary,
+    required Map<String, String> environment,
+    required StartAbortSignal startAborted,
+  }) => commandApi.startService(binary: binary, environment: environment, startAborted: startAborted);
+
   Future<OpenCodeSharedServerEndpoint?> discover({required Map<String, String> environment}) async {
     final filePath = _registrationPath(environment: environment);
     if (filePath == null) {
