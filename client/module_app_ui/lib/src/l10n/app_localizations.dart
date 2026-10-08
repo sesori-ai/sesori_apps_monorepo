@@ -4561,11 +4561,35 @@ abstract class AppLocalizations {
   /// **'Compacting context'**
   String get sessionDetailCompactingContext;
 
-  /// Quiet transcript note when the coding agent could not summarize its earlier conversation. The harness's error may follow, e.g. 'Compaction failed · The turn ended before compaction finished.'
+  /// Quiet transcript note when the coding agent could not summarize its earlier conversation. A known reason may follow, e.g. 'Compaction failed · already compacted'.
   ///
   /// In en, this message translates to:
   /// **'Compaction failed'**
   String get sessionDetailCompactionFailed;
+
+  /// Reason after 'Compaction failed' when the conversation is still too short to summarize, e.g. 'Compaction failed · nothing to compact yet'. Lowercase because it follows a separator.
+  ///
+  /// In en, this message translates to:
+  /// **'nothing to compact yet'**
+  String get sessionDetailCompactionNothingToCompact;
+
+  /// Reason after 'Compaction failed' when nothing has happened since the last compaction, e.g. 'Compaction failed · already compacted'. Lowercase because it follows a separator.
+  ///
+  /// In en, this message translates to:
+  /// **'already compacted'**
+  String get sessionDetailCompactionAlreadyCompacted;
+
+  /// Reason after 'Compaction failed' when the user or the coding agent stopped the compaction, e.g. 'Compaction failed · stopped'. Lowercase because it follows a separator.
+  ///
+  /// In en, this message translates to:
+  /// **'stopped'**
+  String get sessionDetailCompactionCancelled;
+
+  /// Reason after 'Compaction failed' when the agent's turn ended, or the agent exited, before the compaction finished, e.g. 'Compaction failed · the turn ended first'. Lowercase because it follows a separator.
+  ///
+  /// In en, this message translates to:
+  /// **'the turn ended first'**
+  String get sessionDetailCompactionTurnEnded;
 
   /// Detail after 'Context compacted' saying how much context space the compaction freed, e.g. 'Context compacted · freed 142k tokens'. Starts lowercase because it follows a separator.
   ///

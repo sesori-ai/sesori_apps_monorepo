@@ -748,7 +748,7 @@ class ChatHistoryService({
     MessagePartSubtask(:final taskState?) && final subtask when _unfinishedStatuses.contains(taskState.status) =>
       subtask.copyWith(taskState: taskState.copyWith(status: ToolStatus.cancelled)),
     MessagePartCompaction(state: CompactionStateRunning()) && final compaction => compaction.copyWith(
-      state: const CompactionState.failed(error: "The turn ended before compaction finished."),
+      state: const CompactionState.failed(reason: CompactionFailureReason.turnEnded),
     ),
     _ => null,
   };

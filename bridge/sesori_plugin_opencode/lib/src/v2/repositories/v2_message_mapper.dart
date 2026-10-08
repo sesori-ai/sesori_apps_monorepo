@@ -134,7 +134,8 @@ class const V2MessageMapper() {
             ),
         ];
       case SessionMessageAgentSelected():
-        info = _systemMessage(
+        info = _ownMessage(
+          sender: .system,
           sessionId: sessionId,
           id: message.id,
           created: message.time.created,
@@ -149,7 +150,8 @@ class const V2MessageMapper() {
           ),
         ];
       case SessionMessageSynthetic():
-        info = _systemMessage(
+        info = _ownMessage(
+          sender: .system,
           sessionId: sessionId,
           id: message.id,
           created: message.time.created,
@@ -164,7 +166,8 @@ class const V2MessageMapper() {
           ),
         ];
       case SessionMessageCompactionCompleted():
-        info = _systemMessage(
+        info = _ownMessage(
+          sender: .agent,
           sessionId: sessionId,
           id: message.id,
           created: message.time.created,
@@ -189,7 +192,13 @@ class const V2MessageMapper() {
         ];
       case SessionMessageCompactionRunning():
         // The timer counts from `time.created`, stamped by the start event.
-        info = _systemMessage(sessionId: sessionId, id: message.id, created: message.time.created, completed: null);
+        info = _ownMessage(
+          sender: .agent,
+          sessionId: sessionId,
+          id: message.id,
+          created: message.time.created,
+          completed: null,
+        );
         // OpenCode keeps the stored summary empty while it streams, so the
         // words arrive only as compaction deltas.
         parts = [
@@ -201,21 +210,26 @@ class const V2MessageMapper() {
         ];
       case SessionMessageCompactionFailed():
         // Completed at creation, so a named compaction still settles its prompt.
-        info = _systemMessage(
+        info = _ownMessage(
+          sender: .agent,
           sessionId: sessionId,
           id: message.id,
           created: message.time.created,
           completed: message.time.created,
         );
+        // The row shows no error, so the raw one is logged on every path
+        // that maps it: live, reconnect and reload.
+        Log.w("OpenCode v2 compaction failed in $sessionId: ${message.error.type}: ${message.error.message}");
         parts = [
           _compaction(
             sessionId: sessionId,
             messageId: message.id,
-            state: .failed(error: message.error.message),
+            state: const .failed(reason: null),
           ),
         ];
       case SessionMessageShell():
-        info = _systemMessage(
+        info = _ownMessage(
+          sender: .system,
           sessionId: sessionId,
           id: message.id,
           created: message.time.created,
@@ -340,7 +354,11 @@ class const V2MessageMapper() {
     compactionState: state,
   );
 
-  PluginMessage _systemMessage({
+  /// A message with no model of its own. [sender] is the agent for a
+  /// compaction, which is the agent's own work on every harness, and the
+  /// system for automation.
+  PluginMessage _ownMessage({
+    required PluginMessageSender sender,
     required String sessionId,
     required String id,
     required double created,
@@ -352,7 +370,7 @@ class const V2MessageMapper() {
     modelID: null,
     providerID: null,
     variant: null,
-    sender: PluginMessageSender.system,
+    sender: sender,
     time: PluginMessageTime(created: created.toInt(), completed: completed?.toInt()),
   );
 

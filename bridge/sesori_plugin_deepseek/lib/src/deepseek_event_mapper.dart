@@ -272,7 +272,7 @@ class DeepSeekEventMapper({
     );
   }
 
-  /// The live compaction row: one system message stamped at the start, with
+  /// The live compaction row: one agent message stamped at the start, with
   /// one part that settles in place. DeepSeek's history has no compaction
   /// record, so the row is live only.
   List<BridgeSseEvent> _compactionRow({
@@ -288,7 +288,8 @@ class DeepSeekEventMapper({
         modelID: null,
         providerID: null,
         variant: null,
-        sender: PluginMessageSender.system,
+        // The agent's own work, so the row shows as it does on every harness.
+        sender: PluginMessageSender.agent,
         time: PluginMessageTime(created: compaction.startedAtMs, completed: null),
       ),
     ),

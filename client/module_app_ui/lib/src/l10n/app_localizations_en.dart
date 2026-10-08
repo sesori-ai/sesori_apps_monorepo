@@ -2569,6 +2569,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailCompactionFailed => 'Compaction failed';
 
   @override
+  String get sessionDetailCompactionNothingToCompact => 'nothing to compact yet';
+
+  @override
+  String get sessionDetailCompactionAlreadyCompacted => 'already compacted';
+
+  @override
+  String get sessionDetailCompactionCancelled => 'stopped';
+
+  @override
+  String get sessionDetailCompactionTurnEnded => 'the turn ended first';
+
+  @override
   String sessionDetailCompactionFreedTokens(String tokens) {
     return 'freed $tokens tokens';
   }

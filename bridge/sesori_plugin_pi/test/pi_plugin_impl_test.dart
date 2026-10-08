@@ -584,7 +584,7 @@ void main() {
       ];
       expect(compactionParts.map((part) => part.compactionState), [
         const PluginCompactionState.running(summary: null),
-        const PluginCompactionState.failed(error: "Compaction failed: Nothing to compact (session too small)"),
+        const PluginCompactionState.failed(reason: PluginCompactionFailureReason.nothingToCompact),
       ]);
       expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, compactionParts.first.messageID);
       expect(events.whereType<BridgeSseSessionError>(), isEmpty);

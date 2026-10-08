@@ -303,12 +303,12 @@ final class PiHistoryMapper({
     required String sessionId,
     required String messageId,
     required int startedAtMs,
-    required String? error,
+    required PluginCompactionFailureReason? reason,
   }) => _compactionMessage(
     sessionId: sessionId,
     messageId: messageId,
     timestamp: startedAtMs,
-    state: .failed(error: error),
+    state: .failed(reason: reason),
   );
 
   PluginMessageWithParts mapBashExecution({

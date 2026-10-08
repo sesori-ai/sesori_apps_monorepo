@@ -81,6 +81,7 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
                       ),
                   ],
                 ),
+                trailing: null,
               ),
             ),
           ),

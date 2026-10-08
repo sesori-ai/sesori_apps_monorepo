@@ -107,7 +107,14 @@ extension PluginCompactionStateMapping on PluginCompactionState {
         PluginCompactionTrigger.auto => CompactionTrigger.auto,
       },
     ),
-    PluginCompactionStateFailed(:final error) => CompactionState.failed(error: error),
+    PluginCompactionStateFailed(:final reason) => CompactionState.failed(
+      reason: switch (reason) {
+        null => null,
+        PluginCompactionFailureReason.nothingToCompact => CompactionFailureReason.nothingToCompact,
+        PluginCompactionFailureReason.alreadyCompacted => CompactionFailureReason.alreadyCompacted,
+        PluginCompactionFailureReason.cancelled => CompactionFailureReason.cancelled,
+      },
+    ),
   };
 }
 

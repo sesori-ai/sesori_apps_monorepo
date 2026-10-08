@@ -21,7 +21,7 @@ const _running = CompactionState.running(summary: null);
 CompactionState _compacted({required String? summary, int? freedTokens, CompactionTrigger? trigger}) =>
     CompactionState.completed(summary: summary, freedTokens: freedTokens, trigger: trigger);
 
-const _failed = CompactionState.failed(error: "Context limit reached");
+const _failed = CompactionState.failed(reason: CompactionFailureReason.alreadyCompacted);
 
 Widget _app({
   required PregoInteractionMode mode,
@@ -158,18 +158,42 @@ void main() {
       expect(find.byType(TranscriptElapsedTime), findsNothing);
     });
 
-    testWidgets("shows the newest streamed words under the row, else the summary so far", (tester) async {
+    testWidgets("shows the newest streamed words after the label, else the summary so far", (tester) async {
       await tester.pumpWidget(_row(state: _running));
       final oneLine = _height(tester: tester);
       expect(find.byType(TranscriptLatestWords), findsNothing);
 
       await tester.pumpWidget(_row(state: _running, streamingText: "Carried forward: the relay"));
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(find.text("Carried forward: the relay"), findsOneWidget);
-      expect(_height(tester: tester), greaterThan(oneLine));
+      // The words fade in on the label's line, so the row never grows.
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_height(tester: tester), oneLine);
+      await tester.pump(const Duration(milliseconds: 200));
+      final words = find.text("Carried forward: the relay");
+      expect(words, findsOneWidget);
+      expect(_height(tester: tester), oneLine);
+      final label = find.text("Compacting context");
+      expect(tester.getCenter(words).dy, tester.getCenter(label).dy);
+      expect(tester.getTopLeft(words).dx, greaterThan(tester.getTopRight(label).dx));
 
       await tester.pumpWidget(_row(state: const CompactionState.running(summary: "Carried forward")));
       expect(find.text("Carried forward"), findsOneWidget);
+    });
+
+    testWidgets("the newest words keep their place while the timer before them grows", (tester) async {
+      await withClock(Clock(() => tester.binding.clock.now()), () async {
+        const text = "Carried forward";
+        final nowMs = tester.binding.clock.now().millisecondsSinceEpoch;
+        Future<Offset> wordsEnd({required int? sinceMs}) async {
+          await tester.pumpWidget(
+            _app(mode: PregoInteractionMode.pointer, state: _running, sinceMs: sinceMs, streamingText: text),
+          );
+          await tester.pump(const Duration(milliseconds: 300));
+          return tester.getTopRight(find.text(text));
+        }
+
+        final withoutTimer = await wordsEnd(sinceMs: null);
+        expect(await wordsEnd(sinceMs: nowMs - 101000), withoutTimer);
+      });
     });
   });
 
@@ -177,7 +201,7 @@ void main() {
     testWidgets("settles in place: the icon cross-fades and the height holds", (tester) async {
       await tester.pumpWidget(_row(state: _running));
       final height = _height(tester: tester);
-      final switcher = tester.state(find.byType(AnimatedSwitcher));
+      final switcher = tester.state(find.byType(AnimatedSwitcher).first);
 
       await tester.pumpWidget(
         _row(state: _compacted(summary: null, freedTokens: 142000, trigger: CompactionTrigger.auto)),
@@ -185,7 +209,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // The same row, mid cross-fade, at the same height.
-      expect(tester.state(find.byType(AnimatedSwitcher)), same(switcher));
+      expect(tester.state(find.byType(AnimatedSwitcher).first), same(switcher));
       expect(find.byType(TranscriptLiveSparkle), findsOneWidget);
       expect(find.byIcon(TablerRegular.fold), findsOneWidget);
       expect(_height(tester: tester), height);
@@ -197,16 +221,16 @@ void main() {
       expect(_height(tester: tester), height);
     });
 
-    testWidgets("the streamed words fold away as the row settles", (tester) async {
+    testWidgets("the streamed words fade out as the row settles, at the same height", (tester) async {
       await tester.pumpWidget(_row(state: _running));
       final oneLine = _height(tester: tester);
       await tester.pumpWidget(_row(state: _running, streamingText: "Carried forward"));
       await tester.pump(const Duration(milliseconds: 300));
-      final withWords = _height(tester: tester);
 
       await tester.pumpWidget(_row(state: _failed));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(_height(tester: tester), inExclusiveRange(oneLine, withWords));
+      expect(find.byType(TranscriptLatestWords), findsOneWidget);
+      expect(_height(tester: tester), oneLine);
 
       await tester.pump(const Duration(milliseconds: 150));
       expect(find.byType(TranscriptLatestWords), findsNothing);
@@ -218,7 +242,8 @@ void main() {
       await tester.pumpWidget(_row(state: _running));
       final oneLine = _height(tester: tester);
       await tester.pumpWidget(_row(state: _running, streamingText: "Carried forward"));
-      expect(_height(tester: tester), greaterThan(oneLine));
+      expect(find.byType(TranscriptLatestWords), findsOneWidget);
+      expect(_height(tester: tester), oneLine);
 
       await tester.pumpWidget(_row(state: _compacted(summary: null)));
 
@@ -243,19 +268,25 @@ void main() {
       expect(find.text("Context compacted"), findsOneWidget);
     });
 
-    testWidgets("a failure is a quiet note that reads its whole error", (tester) async {
+    testWidgets("a failure is a quiet note that names a known reason", (tester) async {
       final semantics = tester.ensureSemantics();
-      const error = "The turn ended before compaction finished, because the harness process exited unexpectedly.";
-      await tester.pumpWidget(_row(state: const CompactionState.failed(error: error)));
+      await tester.pumpWidget(_row(state: _failed));
 
-      expect(find.text("Compaction failed · $error"), findsOneWidget);
+      expect(find.text("Compaction failed · already compacted"), findsOneWidget);
       final icon = tester.widget<Icon>(find.byIcon(TablerRegular.alert_circle));
       expect(icon.color, PregoDesignSystem.light.colors.textSecondary);
-      expect(find.bySemanticsLabel("Compaction failed · $error"), findsOneWidget);
+      expect(find.bySemanticsLabel("Compaction failed · already compacted"), findsOneWidget);
       semantics.dispose();
 
-      await tester.pumpWidget(_row(state: const CompactionState.failed(error: null)));
-      expect(find.text("Compaction failed"), findsOneWidget);
+      for (final (reason, text) in [
+        (CompactionFailureReason.nothingToCompact, "Compaction failed · nothing to compact yet"),
+        (CompactionFailureReason.cancelled, "Compaction failed · stopped"),
+        (CompactionFailureReason.turnEnded, "Compaction failed · the turn ended first"),
+        (null, "Compaction failed"),
+      ]) {
+        await tester.pumpWidget(_row(state: CompactionState.failed(reason: reason)));
+        expect(find.text(text), findsOneWidget);
+      }
     });
   });
 

@@ -18,10 +18,11 @@ import "transcript_token_count_formatter.dart";
 
 /// The transcript row of one context compaction. While it runs it is a live
 /// "Compacting context" row ticking the time since [sinceMs], with the newest
-/// streamed summary words under it. It then settles in place, keyed by its
-/// part, into the quiet "Context compacted" row with any reported details, or
-/// a quiet "Compaction failed" note with the error. Only the icon cross-fades
-/// and the words fold away, so the row keeps its one-line height.
+/// streamed summary words fading in after it on the same line. It then
+/// settles in place, keyed by its part, into the quiet "Context compacted" row
+/// with any reported details, or a quiet "Compaction failed" note with any
+/// known reason. Only the icon cross-fades and the words fade out, so the row
+/// keeps its one-line height and nothing around it moves.
 ///
 /// Tapping a compacted row opens its carried-forward summary; without one,
 /// and while running or failed, the row is inert.
@@ -79,9 +80,17 @@ class const CompactionPartWidget({
         ],
         icon: TablerRegular.fold,
       ),
-      CompactionStateFailed(:final error) => _settled(
+      CompactionStateFailed(:final reason) => _settled(
         label: loc.sessionDetailCompactionFailed,
-        details: [?error],
+        details: [
+          ?switch (reason) {
+            CompactionFailureReason.nothingToCompact => loc.sessionDetailCompactionNothingToCompact,
+            CompactionFailureReason.alreadyCompacted => loc.sessionDetailCompactionAlreadyCompacted,
+            CompactionFailureReason.cancelled => loc.sessionDetailCompactionCancelled,
+            CompactionFailureReason.turnEnded => loc.sessionDetailCompactionTurnEnded,
+            null => null,
+          },
+        ],
         icon: TablerRegular.alert_circle,
       ),
     };
@@ -109,7 +118,7 @@ class const CompactionPartWidget({
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.xs)),
         ),
         child: Semantics(
-          // The whole error, which the line may ellipsize.
+          // The whole detail, which the line may ellipsize.
           label: [label, ?spokenDetail].join(" · "),
           excludeSemantics: true,
           child: TranscriptStepRow(
@@ -123,11 +132,18 @@ class const CompactionPartWidget({
             detail: detail,
             live: icon == null,
             color: null,
-            below: TranscriptPresenceColumn(
-              children: [
-                if (words != null && words.isNotEmpty)
-                  TranscriptLatestWords(key: const ValueKey("compaction.latestWords"), text: words, style: style),
-              ],
+            below: null,
+            // On the label's line, so the words come and go without moving
+            // the row or the transcript around it.
+            trailing: AnimatedSwitcher(
+              duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+              // Anchored at the line's end from the first word, so the newest
+              // words stay put while the timer before them changes width.
+              layoutBuilder: (current, previous) =>
+                  Stack(alignment: AlignmentDirectional.centerEnd, children: [...previous, ?current]),
+              child: words == null || words.isEmpty
+                  ? const SizedBox.shrink()
+                  : TranscriptLatestWords(key: const ValueKey("compaction.latestWords"), text: words, style: style),
             ),
           ),
         ),

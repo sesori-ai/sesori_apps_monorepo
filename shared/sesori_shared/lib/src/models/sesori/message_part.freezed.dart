@@ -1379,10 +1379,10 @@ as CompactionTrigger?,
 @JsonSerializable()
 
 class CompactionStateFailed implements CompactionState {
-  const CompactionStateFailed({required this.error,  String? $type}): $type = $type ?? 'failed';
+  const CompactionStateFailed({@JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) required this.reason,  String? $type}): $type = $type ?? 'failed';
   factory CompactionStateFailed.fromJson(Map<String, dynamic> json) => _$CompactionStateFailedFromJson(json);
 
- final  String? error;
+@JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) final  CompactionFailureReason? reason;
 
 @JsonKey(name: 'status')
 final String $type;
@@ -1401,18 +1401,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CompactionStateFailed&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CompactionStateFailed&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,error);
+    return Object.hash(runtimeType,reason);
 }
 
 @override
 String toString() {
-    return 'CompactionState.failed(error: $error)';
+    return 'CompactionState.failed(reason: $reason)';
 }
 
 
@@ -1423,7 +1423,7 @@ abstract mixin class $CompactionStateFailedCopyWith<$Res> implements $Compaction
   factory $CompactionStateFailedCopyWith(CompactionStateFailed value, $Res Function(CompactionStateFailed) _then) = _$CompactionStateFailedCopyWithImpl;
 @useResult
 $Res call({
- String? error
+@JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) CompactionFailureReason? reason
 });
 
 
@@ -1440,10 +1440,10 @@ class _$CompactionStateFailedCopyWithImpl<$Res>
 
 /// Create a copy of CompactionState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? error = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? reason = freezed,}) {
   return _then(CompactionStateFailed(
-error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
-as String?,
+reason: freezed == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as CompactionFailureReason?,
   ));
 }
 

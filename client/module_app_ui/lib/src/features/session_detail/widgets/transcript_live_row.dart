@@ -53,6 +53,11 @@ class const TranscriptStepRow({
 
   /// Under the label, such as a streaming thought's latest words.
   required final Widget? below,
+
+  /// After the label, filling the rest of its line, such as a streaming
+  /// summary's latest words. One line tall at most, so the row keeps its
+  /// height whatever it shows.
+  required final Widget? trailing,
 }) extends StatelessWidget {
   /// Every label starts with a capital, a raw tool name too. Only the label:
   /// the detail keeps its own case.
@@ -65,6 +70,7 @@ class const TranscriptStepRow({
     final color = this.color ?? prego.colors.textSecondary;
     final detail = this.detail;
     final below = this.below;
+    final trailing = this.trailing;
     final span = TextSpan(
       children: [
         TextSpan(
@@ -80,6 +86,14 @@ class const TranscriptStepRow({
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
+    // The text reads in place, as a settled row's does, so a row that merges
+    // its semantics announces the label first.
+    final labelLine = live
+        ? Semantics(
+            label: span.toPlainText(),
+            child: TranscriptLiveLabel(label: text, semanticLabel: null),
+          )
+        : text;
     // A button's 44 px minimum, adjusted for density as the button adjusts it.
     final height = 44 + Theme.of(context).visualDensity.baseSizeAdjustment.dy;
     return Padding(
@@ -96,14 +110,26 @@ class const TranscriptStepRow({
               ),
               SizedBox(width: prego.spacing.md),
               Expanded(
-                // The text reads in place, as a settled row's does, so a row
-                // that merges its semantics announces the label first.
-                child: live
-                    ? Semantics(
-                        label: span.toPlainText(),
-                        child: TranscriptLiveLabel(label: text, semanticLabel: null),
-                      )
-                    : text,
+                child: trailing == null
+                    ? labelLine
+                    // The label keeps its own width, up to the whole line, and
+                    // the trailing widget takes what is left.
+                    : LayoutBuilder(
+                        builder: (context, constraints) => Row(
+                          children: [
+                            ConstrainedBox(
+                              constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                              child: IntrinsicWidth(child: labelLine),
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding: EdgeInsetsDirectional.only(start: prego.spacing.sm),
+                                child: trailing,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
               ),
             ],
           ),

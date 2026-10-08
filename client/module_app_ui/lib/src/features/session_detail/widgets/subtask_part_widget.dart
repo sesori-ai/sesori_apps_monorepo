@@ -68,6 +68,7 @@ class const SubtaskPartWidget({
                   live: status == TranscriptStepStatus.running,
                   color: null,
                   below: null,
+                  trailing: null,
                 ),
               ),
               if (targetSessionId != null && targetProjectId != null)

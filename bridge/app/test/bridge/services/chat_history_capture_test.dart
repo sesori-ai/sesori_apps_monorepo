@@ -559,7 +559,7 @@ void main() {
         message: compaction(
           id: "live-failure",
           createdAt: 300,
-          state: const CompactionState.failed(error: "Compaction failed."),
+          state: const CompactionState.failed(reason: null),
         ),
       );
 

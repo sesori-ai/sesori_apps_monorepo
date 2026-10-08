@@ -79,7 +79,7 @@ void main() {
         message: _message(id: "m1"),
       );
       const completed = CompactionState.completed(summary: "## Goal", freedTokens: 142000, trigger: null);
-      const failed = CompactionState.failed(error: "Not enough messages.");
+      const failed = CompactionState.failed(reason: CompactionFailureReason.nothingToCompact);
       await history.service.capturePart(
         sessionId: "ses_a",
         part: _compactionPart(
@@ -103,7 +103,7 @@ void main() {
       final stored = await _storedParts(history: history, sessionId: "ses_a");
       expect(
         (stored["c1"]! as MessagePartCompaction).state,
-        const CompactionState.failed(error: "The turn ended before compaction finished."),
+        const CompactionState.failed(reason: CompactionFailureReason.turnEnded),
       );
       expect((stored["c2"]! as MessagePartCompaction).state, completed);
       expect((stored["c3"]! as MessagePartCompaction).state, failed);
@@ -319,7 +319,7 @@ void main() {
 
       expect(
         (served.single.parts.single as MessagePartCompaction).state,
-        const CompactionState.failed(error: "The turn ended before compaction finished."),
+        const CompactionState.failed(reason: CompactionFailureReason.turnEnded),
       );
     });
 

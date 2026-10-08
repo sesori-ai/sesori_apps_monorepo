@@ -358,7 +358,7 @@ void main() {
       );
       for (final settled in [
         const CompactionState.completed(summary: null, freedTokens: null, trigger: null),
-        const CompactionState.failed(error: null),
+        const CompactionState.failed(reason: null),
       ]) {
         expect(
           _activity(

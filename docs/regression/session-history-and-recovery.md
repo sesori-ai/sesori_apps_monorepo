@@ -298,8 +298,9 @@ reconnect or restart.
   part is swept the same way but to `cancelled` with no error text; because a
   root stays busy while any of its sub-agents runs, a live background
   sub-agent is never swept, only one whose bridge died. A compaction part still
-  running is swept the same way to a failed compaction with the error "The
-  turn ended before compaction finished.", also when it is the page's only
+  running is swept the same way to a failed compaction with the `turnEnded`
+  reason, shown as "Compaction failed · the turn ended first", also when it is
+  the page's only
   unfinished part; completed and failed compactions are left alone.
 - Codex parent history joins a `spawn_agent` only to the exact nested
   `item_completed/SubAgentActivity` id and replaces that generic card with one

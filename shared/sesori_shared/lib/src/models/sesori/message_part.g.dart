@@ -282,13 +282,27 @@ const _$CompactionTriggerEnumMap = {
 
 CompactionStateFailed _$CompactionStateFailedFromJson(Map json) =>
     CompactionStateFailed(
-      error: json['error'] as String?,
+      reason: $enumDecodeNullable(
+        _$CompactionFailureReasonEnumMap,
+        json['reason'],
+        unknownValue: JsonKey.nullForUndefinedEnumValue,
+      ),
       $type: json['status'] as String?,
     );
 
 Map<String, dynamic> _$CompactionStateFailedToJson(
   CompactionStateFailed instance,
-) => <String, dynamic>{'error': ?instance.error, 'status': instance.$type};
+) => <String, dynamic>{
+  'reason': ?_$CompactionFailureReasonEnumMap[instance.reason],
+  'status': instance.$type,
+};
+
+const _$CompactionFailureReasonEnumMap = {
+  CompactionFailureReason.nothingToCompact: 'nothingToCompact',
+  CompactionFailureReason.alreadyCompacted: 'alreadyCompacted',
+  CompactionFailureReason.cancelled: 'cancelled',
+  CompactionFailureReason.turnEnded: 'turnEnded',
+};
 
 MessageAttachmentInlineImage _$MessageAttachmentInlineImageFromJson(Map json) =>
     MessageAttachmentInlineImage(

@@ -284,7 +284,8 @@ final class const ClaudeContentMapper() {
     state: const .completed(summary: null, freedTokens: null, trigger: null),
   );
 
-  /// Settles a running compaction row as failed, with the CLI's [error].
+  /// Settles a running compaction row as failed, with the reason the CLI's
+  /// [error] names. The CLI words it either as a sentence or as a reason code.
   PluginMessagePart compactionFailedPart({
     required String sessionId,
     required String messageId,
@@ -292,7 +293,15 @@ final class const ClaudeContentMapper() {
   }) => _compactionPart(
     sessionId: sessionId,
     messageId: messageId,
-    state: .failed(error: error),
+    state: .failed(
+      reason: switch (error) {
+        "too_few_groups" || "Not enough messages to compact." => PluginCompactionFailureReason.nothingToCompact,
+        "aborted" ||
+        "Compaction canceled." ||
+        "API Error: Request was aborted." => PluginCompactionFailureReason.cancelled,
+        _ => null,
+      },
+    ),
   );
 
   /// The compaction row for the continuation summary [content] the CLI

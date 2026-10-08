@@ -720,12 +720,26 @@ void main() {
 
       expect(
         _compactionState(failure, partId: "start-compaction"),
-        const PluginCompactionState.failed(error: "Not enough messages to compact."),
+        const PluginCompactionState.failed(reason: PluginCompactionFailureReason.nothingToCompact),
       );
       expect(echo, isEmpty);
       expect(boundary, isEmpty);
       expect(summary, isEmpty);
     });
+
+    for (final (error, reason) in [
+      ("too_few_groups", PluginCompactionFailureReason.nothingToCompact),
+      ("Compaction canceled.", PluginCompactionFailureReason.cancelled),
+      ("exhausted", null),
+      (null, null),
+    ]) {
+      test("reads the failure '$error' as reason $reason", () {
+        _map(mapper, _status(uuid: "start", status: "compacting"));
+        final failure = _map(mapper, _status(uuid: "end", status: null, result: "failed", error: error));
+
+        expect(_compactionState(failure, partId: "start-compaction"), PluginCompactionState.failed(reason: reason));
+      });
+    }
 
     test("a new turn drops a compaction left running", () {
       _map(mapper, _status(uuid: "start", status: "compacting"));

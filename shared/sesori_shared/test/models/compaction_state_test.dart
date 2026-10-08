@@ -20,8 +20,8 @@ void main() {
       freedTokens: 142000,
       trigger: CompactionTrigger.auto,
     ),
-    "failed without an error": const CompactionState.failed(error: null),
-    "failed with an error": const CompactionState.failed(error: "Not enough messages to compact."),
+    "failed without a reason": const CompactionState.failed(reason: null),
+    "failed with a reason": const CompactionState.failed(reason: CompactionFailureReason.alreadyCompacted),
   };
   for (final MapEntry(key: name, value: state) in states.entries) {
     test("round-trips $name through the part", () {
@@ -60,5 +60,11 @@ void main() {
     });
 
     expect(state, const CompactionState.completed(summary: "## Goal", freedTokens: 142000, trigger: null));
+  });
+
+  test("an unknown failure reason from a newer bridge reads as null", () {
+    final state = CompactionState.fromJson(const {"status": "failed", "reason": "quotaExceeded"});
+
+    expect(state, const CompactionState.failed(reason: null));
   });
 }

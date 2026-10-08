@@ -698,7 +698,7 @@ final class PiEventDispatcher({
           sessionId: sessionId,
           messageId: messageId,
           startedAtMs: startedAtMs,
-          error: errorMessage,
+          reason: _compactionFailureReason(aborted: aborted, errorMessage: errorMessage),
         ),
       );
       // With no live row to carry the note (its start was missed), the
@@ -836,6 +836,18 @@ PluginMessagePart _toolPart({required String sessionId, required PiTrackedTool t
 );
 
 String _blockId({required String messageId, required int contentIndex}) => "$messageId-block-${contentIndex + 1}";
+
+/// The reason Pi's compaction [errorMessage] names. Pi prefixes the cause with
+/// how the compaction started, such as "Compaction failed: Already compacted".
+PluginCompactionFailureReason? _compactionFailureReason({required bool aborted, required String? errorMessage}) {
+  if (aborted) return PluginCompactionFailureReason.cancelled;
+  if (errorMessage == null) return null;
+  if (errorMessage.endsWith(": Already compacted")) return PluginCompactionFailureReason.alreadyCompacted;
+  if (errorMessage.endsWith(": Nothing to compact (session too small)")) {
+    return PluginCompactionFailureReason.nothingToCompact;
+  }
+  return null;
+}
 
 final class const _PiCompactionFailureDiagnostic({
   required final Object? reason,

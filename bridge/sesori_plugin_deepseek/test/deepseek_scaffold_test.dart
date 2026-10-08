@@ -77,7 +77,7 @@ void main() {
         "info",
         isA<PluginMessageAssistant>()
             .having((info) => info.id, "id", "session-1-compaction-5000")
-            .having((info) => info.sender, "sender", PluginMessageSender.system)
+            .having((info) => info.sender, "sender", PluginMessageSender.agent)
             .having((info) => info.time, "time", const PluginMessageTime(created: 5000, completed: null)),
       ),
       isA<BridgeSseMessagePartUpdated>().having(

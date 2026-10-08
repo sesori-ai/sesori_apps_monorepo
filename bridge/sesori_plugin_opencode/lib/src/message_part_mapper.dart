@@ -72,7 +72,7 @@ class const MessagePartMapper() {
       sessionID: sessionID,
       messageID: messageID,
       compactionState: switch (message) {
-        AssistantMessage(:final error?) => .failed(error: openCodeError(error: error).errorMessage),
+        AssistantMessage(:final error?) => _failedCompaction(sessionId: sessionID, error: error),
         AssistantMessage(time: AssistantMessageTime(completed: null)) => .running(summary: text.isEmpty ? null : text),
         _ => .completed(
           summary: text.isEmpty ? null : text,
@@ -87,6 +87,18 @@ class const MessagePartMapper() {
     ),
     _ => part,
   };
+
+  /// The row shows only a recognized reason, so the raw [error] is logged on
+  /// every path that maps it: live, reload and backfill.
+  PluginCompactionState _failedCompaction({required String sessionId, required Object error}) {
+    Log.w("[opencode] compaction failed in $sessionId: $error");
+    return .failed(
+      reason: switch (openCodeError(error: error).name) {
+        "MessageAbortedError" => PluginCompactionFailureReason.cancelled,
+        _ => null,
+      },
+    );
+  }
 
   PluginMessagePart _mapPart(Part raw) => switch (raw) {
     TextPart(synthetic: true) => _unknownPart(raw),

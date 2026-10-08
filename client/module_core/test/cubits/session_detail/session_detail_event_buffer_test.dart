@@ -1750,7 +1750,7 @@ void main() {
                   id: _streamedPartId,
                   sessionID: _sessionId,
                   messageID: _streamedMessageId,
-                  state: CompactionState.failed(error: null),
+                  state: CompactionState.failed(reason: null),
                 ),
               ],
             );
