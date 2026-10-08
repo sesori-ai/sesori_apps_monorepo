@@ -1,5 +1,6 @@
 import "package:mocktail/mocktail.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
+
+import "../services/voice_transcription_service.dart";
 
 class MockVoiceTranscriptionService() extends Mock implements VoiceTranscriptionService;
 

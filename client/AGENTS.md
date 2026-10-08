@@ -62,7 +62,11 @@ apply after login; there is no separate recovery-consent state.
 `module_app_ui` owns shared Flutter localization, context, route-presentation,
 settings/harness-management screens, and adaptive-screen foundations above
 `module_core`. Product shells own DI, platform adapters, navigation callbacks,
-and surface-specific composition.
+and surface-specific composition. The one exception: a Flutter implementation
+of a `module_core` platform interface that both shells use unchanged may live in
+`module_app_ui/lib/src/platform/` with the platform plugins it needs, exported
+only as a composition entry point (for example `createFlutterVoiceCapture`).
+Shells still register it in DI and own any shell-specific native code.
 
 NEVER reverse this. NEVER skip layers. `client/app` and `client/desktop` may
 have `module_auth` as a pubspec dependency solely for the
@@ -71,7 +75,8 @@ types in source code outside that DI call. All auth functionality is accessed
 through `module_core` interfaces. `module_core` MUST NOT depend on
 `module_desktop_core`. Product shells may import `module_prego` directly for
 shell-owned presentation. `module_app_ui` may depend on `module_core`,
-`module_prego`, `sesori_shared`, and direct Flutter UI dependencies; it must not
+`module_prego`, `sesori_shared`, direct Flutter UI dependencies, and the
+platform plugins of shared platform implementations; it must not
 import product shells or `module_desktop_core`.
 
 Reusable visual primitives belong in `module_prego`, including any native
@@ -197,7 +202,8 @@ If a mobile feature needs a platform capability not already abstracted:
 
 There is ONE production implementation per interface **per product/platform**.
 Mobile adapters live in `client/app`; desktop adapters for shared `module_core`
-interfaces live in `client/desktop`. Do not add factories, alternatives, or
+interfaces live in `client/desktop`. An adapter both shells use unchanged lives
+once in `module_app_ui/lib/src/platform/` (see above). Do not add factories, alternatives, or
 abstract factories unless there is a real second production implementor for the
 same product/platform (e.g., a test fake is NOT a second implementor — see "No
 Pointless Interfaces" philosophy in the bridge AGENTS.md; `implements` works on

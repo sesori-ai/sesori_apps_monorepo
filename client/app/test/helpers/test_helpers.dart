@@ -5,17 +5,12 @@ import "package:flutter_svg/flutter_svg.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:http/http.dart" as http;
 import "package:mocktail/mocktail.dart";
-import "package:record/record.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/testing.dart";
 
-import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
-import "package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart";
-import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
-import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
 import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_shared/sesori_shared.dart" show FailureReporter;
 export "package:sesori_dart_core/testing.dart";
@@ -65,16 +60,6 @@ class StubDiffSummaryCubit({DiffSummaryState initialState = const DiffSummarySta
   @override
   Duration get refreshInterval => Duration.zero;
 }
-
-class MockAudioRecorder() extends Mock implements AudioRecorder;
-
-class MockRecorderPrewarmClient() extends Mock implements RecorderPrewarmClient;
-
-class MockRecordingFileProvider() extends Mock implements RecordingFileProvider;
-
-class MockWakeLockService() extends Mock implements WakeLockService;
-
-class MockAudioFormatConfig() extends Mock implements AudioFormatConfig;
 
 void stubProductAnalyticsService({required MockProductAnalyticsService service}) {
   final states = BehaviorSubject<ProductAnalyticsState>.seeded(ProductAnalyticsState.initial);
@@ -203,7 +188,6 @@ class MockFirebaseAnalytics() extends Mock implements FirebaseAnalytics;
 /// [captureAny()] for [ServerConnectionConfig] or [Uri] parameters.
 void registerAllFallbackValues() {
   registerCoreFallbackValues();
-  registerFallbackValue(const RecordConfig());
   registerFallbackValue(http.MultipartFile.fromString("audio", ""));
   registerFallbackValue(AuthProvider.github);
 }

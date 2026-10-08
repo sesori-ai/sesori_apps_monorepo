@@ -1,5 +1,4 @@
 import "package:flutter/foundation.dart" show visibleForTesting;
-import "package:injectable/injectable.dart";
 import "package:record/record.dart";
 import "package:universal_platform/universal_platform.dart";
 
@@ -12,7 +11,6 @@ import "package:universal_platform/universal_platform.dart";
 /// Sample rate is 16 kHz on Android (Whisper's native rate — smaller files,
 /// zero quality loss) and the default 44.1 kHz elsewhere (iOS requires it
 /// to avoid a hardware sample-rate mismatch that produces silent recordings).
-@lazySingleton
 class AudioFormatConfig.forPlatform({required bool isWeb, bool isAndroid = false}) {
   final AudioEncoder encoder = isWeb ? AudioEncoder.wav : AudioEncoder.aacLc;
   final String mimeType = isWeb ? "audio/wav" : "audio/mp4";

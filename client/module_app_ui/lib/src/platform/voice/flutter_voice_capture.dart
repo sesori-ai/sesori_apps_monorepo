@@ -2,52 +2,68 @@ import "dart:async";
 import "dart:io";
 
 import "package:flutter/foundation.dart" show visibleForTesting;
-import "package:injectable/injectable.dart";
 import "package:record/record.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
-import "../../capabilities/voice/audio_format_config.dart";
-import "../../capabilities/voice/recorder_prewarm_client.dart";
-import "../../capabilities/voice/recording_file_provider.dart";
-import "../../capabilities/voice/wake_lock_service.dart";
+import "audio_format_config.dart";
+import "recording_file_provider.dart";
+import "wake_lock_service.dart";
 
 const _amplitudeInterval = Duration(milliseconds: 100);
 const _sharedPrewarmWaitTimeout = Duration(seconds: 2);
 const double _amplitudeFloor = -60;
 
-@LazySingleton(as: VoiceCapture)
+/// Warms the native audio session ahead of the first recording. Only a shell
+/// with a native prewarm channel supplies one.
+typedef RecorderPrewarm = Future<void> Function({required int sampleRate, required int bitRate, required int numChannels});
+
+/// Builds the shared `record`-backed [VoiceCapture] for a product shell's DI.
+VoiceCapture createFlutterVoiceCapture({
+  required TemporaryDirectoryClient temporaryDirectoryClient,
+  required RecorderPrewarm? recorderPrewarm,
+}) {
+  final audioFormat = AudioFormatConfig();
+  return FlutterVoiceCapture(
+    recorderPrewarm: recorderPrewarm,
+    fileProvider: RecordingFileProvider(audioFormat: audioFormat, temporaryDirectoryClient: temporaryDirectoryClient),
+    wakeLockService: WakeLockService(),
+    audioFormat: audioFormat,
+  );
+}
+
 class FlutterVoiceCapture({
-  required final RecorderPrewarmClient _recorderPrewarmClient,
+  required final RecorderPrewarm? _recorderPrewarm,
   required final RecordingFileProvider _fileProvider,
   required final WakeLockService _wakeLockService,
   required final AudioFormatConfig _audioFormat,
-  @ignoreParam @visibleForTesting final AudioRecorder Function() _recorderFactory = AudioRecorder.new,
-  @ignoreParam @visibleForTesting final Duration _prewarmWaitTimeout = _sharedPrewarmWaitTimeout,
+  @visibleForTesting final AudioRecorder Function() _recorderFactory = AudioRecorder.new,
+  @visibleForTesting final Duration _prewarmWaitTimeout = _sharedPrewarmWaitTimeout,
 }) implements VoiceCapture {
   Future<void>? _prewarmFuture;
   int _activeCaptures = 0;
 
   @override
   Future<void> prewarm() {
-    if (_activeCaptures > 0) return Future<void>.value();
+    final recorderPrewarm = _recorderPrewarm;
+    if (recorderPrewarm == null || _activeCaptures > 0) return Future<void>.value();
     final existing = _prewarmFuture;
     if (existing != null) return existing;
 
     late final Future<void> trackedFuture;
-    trackedFuture = _performPrewarm().whenComplete(() {
+    trackedFuture = _performPrewarm(recorderPrewarm: recorderPrewarm).whenComplete(() {
       if (identical(_prewarmFuture, trackedFuture)) _prewarmFuture = null;
     });
     _prewarmFuture = trackedFuture;
     return trackedFuture;
   }
 
-  Future<void> _performPrewarm() async {
+  Future<void> _performPrewarm({required RecorderPrewarm recorderPrewarm}) async {
     final recorder = _recorderFactory();
     try {
       final hasPermission = await recorder.hasPermission(request: false);
       if (!hasPermission) return;
 
-      await _recorderPrewarmClient.prewarm(
+      await recorderPrewarm(
         sampleRate: _audioFormat.sampleRate,
         bitRate: _audioFormat.bitRate,
         numChannels: _audioFormat.numChannels,

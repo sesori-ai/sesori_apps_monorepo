@@ -5,11 +5,13 @@ import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:http/http.dart" as http;
 import "package:image_picker/image_picker.dart";
 import "package:injectable/injectable.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart" show createFlutterVoiceCapture;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:universal_platform/universal_platform.dart";
 
+import "../../capabilities/voice/recorder_prewarm_client.dart";
 import "../platform/deprecated_native_storage_v1/flutter_legacy_native_storage_adapter.dart";
 import "../platform/desktop_file_image_saver.dart";
 import "../platform/file_save_client.dart";
@@ -65,5 +67,14 @@ abstract class RegisterModule() {
       iOptions: IOSOptions(accessibility: null),
       mOptions: MacOsOptions(accountName: "Sesori"),
     ),
+  );
+
+  @lazySingleton
+  VoiceCapture voiceCapture({
+    required TemporaryDirectoryClient temporaryDirectoryClient,
+    required RecorderPrewarmClient recorderPrewarmClient,
+  }) => createFlutterVoiceCapture(
+    temporaryDirectoryClient: temporaryDirectoryClient,
+    recorderPrewarm: recorderPrewarmClient.prewarm,
   );
 }

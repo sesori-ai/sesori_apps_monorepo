@@ -1,11 +1,9 @@
 import "dart:async";
 
-import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "audio_format_config.dart";
 
-@lazySingleton
 class RecordingFileProvider({
   required final AudioFormatConfig _audioFormat,
   required final TemporaryDirectoryClient _temporaryDirectoryClient,

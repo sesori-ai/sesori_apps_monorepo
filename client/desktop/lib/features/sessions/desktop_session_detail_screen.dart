@@ -71,6 +71,7 @@ class const DesktopSessionDetailScreen({
         ),
       ],
       child: DesktopComposerPresentationScope(
+        projectId: projectId,
         child: SessionDetailActivityOwner(
           routeSource: getIt<RouteSource>(),
           lifecycleSource: getIt<LifecycleSource>(),

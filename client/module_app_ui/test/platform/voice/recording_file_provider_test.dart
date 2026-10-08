@@ -2,9 +2,9 @@ import "dart:async";
 import "dart:io";
 
 import "package:flutter_test/flutter_test.dart";
+import "package:sesori_app_ui/src/platform/voice/audio_format_config.dart";
+import "package:sesori_app_ui/src/platform/voice/recording_file_provider.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
-import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
 
 void main() {
   test("reuses the app-wide cached temporary directory", () async {

@@ -184,6 +184,11 @@ extension GetItInjectableX on _i174.GetIt {
         directories: gh<_i316.DesktopApplicationSupportDirectory>(),
       ),
     );
+    gh.lazySingleton<_i948.VoiceCapture>(
+      () => registerModule.voiceCapture(
+        temporaryDirectoryClient: gh<_i948.TemporaryDirectoryClient>(),
+      ),
+    );
     gh.lazySingleton<_i948.ImageSharer>(
       () =>
           _i501.DesktopImageSharer(shareClient: gh<_i692.DesktopShareClient>()),

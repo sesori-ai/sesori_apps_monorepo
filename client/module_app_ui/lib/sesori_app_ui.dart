@@ -90,6 +90,7 @@ export "src/l10n/app_localizations.dart";
 export "src/l10n/app_localizations_en.dart";
 export "src/platform/external_link_opener.dart";
 export "src/platform/go_router_route_source.dart";
+export "src/platform/voice/flutter_voice_capture.dart" show RecorderPrewarm, createFlutterVoiceCapture;
 export "src/support/legal_links.dart";
 export "src/support/support_links.dart";
 export "src/utils/bridge_install.dart";

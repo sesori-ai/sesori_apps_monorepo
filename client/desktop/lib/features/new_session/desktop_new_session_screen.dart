@@ -78,7 +78,7 @@ class const DesktopNewSessionView({
       onBack: onBack,
       onOpenHarnessSettings: onOpenHarnessSettings,
       onSessionCreated: onSessionCreated,
-      composerScopeBuilder: ({required child}) => DesktopComposerPresentationScope(child: child),
+      composerScopeBuilder: ({required child}) => DesktopComposerPresentationScope(projectId: projectId, child: child),
       // The desktop root owns its single connection banner.
       banner: null,
       pageChrome: NewSessionPageChrome(

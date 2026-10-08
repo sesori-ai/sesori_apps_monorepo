@@ -17,7 +17,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
-import "../../helpers/voice_test_helpers.dart";
 
 /// An [AuthSession] with valid local tokens but no cached [AuthUser]: the
 /// state splash leaves behind when `restoreLocalSession()` finds no stored

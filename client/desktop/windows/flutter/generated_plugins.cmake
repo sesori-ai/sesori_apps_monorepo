@@ -6,6 +6,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_windows
   flutter_secure_storage_windows
   pasteboard
+  record_windows
   screen_retriever_windows
   share_plus
   url_launcher_windows

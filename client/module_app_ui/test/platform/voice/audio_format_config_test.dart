@@ -1,6 +1,6 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:record/record.dart";
-import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
+import "package:sesori_app_ui/src/platform/voice/audio_format_config.dart";
 
 void main() {
   group("AudioFormatConfig", () {

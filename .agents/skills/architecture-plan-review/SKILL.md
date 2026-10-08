@@ -344,6 +344,7 @@ client/desktop ───────────→ module_app_ui ─┐
 - `module_core` MUST NOT depend on `module_desktop_core`; mobile must not inherit desktop tray/process/bundled-helper concerns.
 - Product shells may import `module_prego` directly for shell-owned presentation.
 - `module_app_ui` may depend on `module_core`, `module_prego`, `sesori_shared`, and direct Flutter UI dependencies. It MUST NOT import `client/app`, `client/desktop`, or `module_desktop_core`.
+- A Flutter implementation of a `module_core` platform interface that both shells use unchanged may live in `module_app_ui/lib/src/platform/` with the platform plugins it needs, exported only as a composition entry point. Shells still own its DI registration and any shell-specific native code.
 
 **Hard constraints:**
 
@@ -595,7 +596,9 @@ depend only on lower-layer collaborators.
 `module_prego`, `sesori_shared`, and direct Flutter UI dependencies. It must not import
 `client/app`, `client/desktop`, or `module_desktop_core`; product-specific
 behavior enters through constructor parameters/callback strategies composed by
-the product shell.
+the product shell. The one exception is a platform implementation both shells
+use unchanged (see B-C1), which lives in `module_app_ui/lib/src/platform/` and
+is still registered in DI by each shell.
 
 ---
 

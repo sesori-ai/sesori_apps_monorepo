@@ -3655,6 +3655,18 @@ abstract class AppLocalizations {
   /// **'Release to transcribe'**
   String get voiceReleaseToTranscribe;
 
+  /// Floating helper above the desktop composer while a click-started recording is running.
+  ///
+  /// In en, this message translates to:
+  /// **'Click the mic to transcribe · Esc to cancel'**
+  String get voiceClickToTranscribe;
+
+  /// Tooltip of the desktop mic button while it is recording; clicking it stops and transcribes.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop and transcribe'**
+  String get voiceStopAndTranscribe;
+
   /// Floating helper above the composer while the recording hold hovers over the cancel button; releasing there discards the recording.
   ///
   /// In en, this message translates to:
