@@ -60,8 +60,9 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   Desktop's composer always leads with text, so General does not expose this ineffective preference.
 - Desktop click-to-talk: the mic click starts listening without moving keyboard focus out of the composer; while
   listening the mic pulses softly (static under reduced motion), its tooltip reads "Stop and transcribe", the hint
-  names click-to-transcribe and Esc-to-cancel, and the layout does not shift. Clicking elsewhere never stops or
-  discards the recording; only the mic click, Escape, the maximum duration, or leaving the composer ends it. No
+  names click-to-transcribe and Esc-to-cancel, the options give way to the shared X cancel target, and the composer
+  does not resize. Clicking elsewhere never stops or discards the recording; only the mic click, the X, Escape, the
+  maximum duration, or leaving the composer ends it. No
   sound plays. macOS asks for microphone access once through the system prompt.
 - The Default input page has an inline title, explanatory subtitle, and two mutually exclusive Voice/Text previews.
   Selection updates the existing app-root preference and persists immediately; external preference changes update

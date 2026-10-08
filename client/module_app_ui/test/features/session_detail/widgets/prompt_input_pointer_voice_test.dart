@@ -59,6 +59,25 @@ void main() {
     verify(voiceCubit.cancel).called(1);
     verifyNever(() => voiceCubit.stopAndTranscribe(limitReached: false));
   });
+
+  testWidgets("a visible X discards a click-started recording without resizing the composer", (tester) async {
+    await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit);
+    expect(find.byType(PregoVoiceCancelButton), findsNothing);
+    final composerRect = tester.getRect(find.byType(PromptInput));
+
+    await tester.tap(find.byTooltip("Record voice"));
+    // The pulse repeats, so settle the morph by time rather than pumpAndSettle.
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
+    expect(tester.getRect(find.byType(PromptInput)), composerRect);
+
+    await tester.tap(find.byType(PregoVoiceCancelButton));
+    await tester.pump();
+
+    verify(voiceCubit.cancel).called(1);
+    verifyNever(() => voiceCubit.stopAndTranscribe(limitReached: false));
+  });
 }
 
 Future<void> _pumpPointerComposer({required WidgetTester tester, required VoiceInputCubit voiceCubit}) async {

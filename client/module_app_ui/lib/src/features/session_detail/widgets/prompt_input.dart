@@ -2050,7 +2050,18 @@ class _PromptInputState() extends State<PromptInput> {
       ),
     };
 
-    return AnimatedSwitcher(duration: _morphDuration, child: child);
+    final switcher = AnimatedSwitcher(duration: _morphDuration, child: child);
+    if (prefersReducedMotion(context)) return switcher;
+    // The pointer accordion is wider than the 44pt cancel target; glide the
+    // width change so the waveform beside it does not snap at the fade's end.
+    return AnimatedSize(
+      duration: _morphDuration,
+      curve: _morphCurve,
+      alignment: AlignmentDirectional.centerStart,
+      // The accordion's focus ring and glass may paint past its box at rest.
+      clipBehavior: Clip.none,
+      child: switcher,
+    );
   }
 
   /// Wraps a resting pill's centre in the press-and-hold recording gesture.
