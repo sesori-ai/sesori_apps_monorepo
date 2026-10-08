@@ -381,8 +381,12 @@ defaults and queued client sends coherent.
   than exposing a cancellable bridge-queue entry. The bridge-synthesized
   `compact` command instead publishes its visible command marker before the
   running compaction row, accepts on Pi's `compaction_start`, then keeps the
-  resident busy until the native RPC finishes. A rejected native compaction moves
-  its running row off the reserved id for the idle sweep. Commands reject while that session is busy, and a successful
+  resident busy until the native RPC finishes. Pi's `compaction_end` is handled
+  before that reply, even when both arrive in one read, so the row settles
+  before the session goes idle. A native compaction that Pi rejects after
+  `compaction_start` (for example "Nothing to compact") reports only its
+  failure note: the send stays accepted and no session error is raised.
+  Commands reject while that session is busy, and a successful
   ordinary command with no agent run crosses `get_state` before emitting prompt
   settlement and returning the lane idle. A notification alone does not prove
   acceptance. Post-acceptance failure, process exit, and abort also settle a
@@ -849,7 +853,9 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   the queued prompt while compaction is underway; the running row is replaced
   instead of updated when compaction ends, restarts its timer when Pi retries,
   keeps running on its reserved id after an abort or process exit, or a failed
-  compaction shows a session error instead of the failure note.
+  compaction shows a session error instead of the failure note; a successful
+  manual `/compact` flashes "Compaction failed" before it completes, or a
+  rejected one also fails the send.
 - An abort, permission reply, or question reply stalls behind a send to a
   busy session on the same session lane; concurrent NDJSON dispatch binds stdin,
   reorders control frames and prompts, or loses an asynchronous sink failure; or
