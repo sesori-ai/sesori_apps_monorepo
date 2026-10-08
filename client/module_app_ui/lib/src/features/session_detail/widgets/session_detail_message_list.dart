@@ -1135,7 +1135,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: null,
         child: _workingRow(
           activity: activity,
-          replyShows: _replyShows(messages: messages, transcript: transcript),
+          stepJoinsShownCard: _stepJoinsShownCard(messages: messages, transcript: transcript),
         ),
       );
     }
@@ -1336,32 +1336,38 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// The working row eases in when work starts or a step ends, and away when
   /// a step starts or work ends. The sub-agent row takes over, easing, while
   /// only sub-agents work.
-  Widget _workingRow({required TranscriptActivity activity, required bool replyShows}) => TranscriptPresenceColumn(
-    children: [
-      ?switch (activity) {
-        TranscriptActivityWorking(:final sinceMs) => TranscriptWorkingRow(
-          key: const ValueKey("session-detail-working"),
-          sinceMs: sinceMs,
-          // A step mostly joins the reply that shows; otherwise it opens a
-          // reply, whose card brings its padding.
-          padding: replyShows ? _kReplyPadding.copyWith(top: 0, bottom: 0) : _kReplyPadding,
-        ),
-        TranscriptActivitySubAgents(:final count, :final sinceMs) => TranscriptSubAgentsRow(
-          key: const ValueKey("session-detail-sub-agents"),
-          count: count,
-          sinceMs: sinceMs,
-        ),
-        TranscriptActivityIdle() => null,
-      },
-    ],
-  );
+  Widget _workingRow({required TranscriptActivity activity, required bool stepJoinsShownCard}) =>
+      TranscriptPresenceColumn(
+        children: [
+          ?switch (activity) {
+            TranscriptActivityWorking(:final sinceMs) => TranscriptWorkingRow(
+              key: const ValueKey("session-detail-working"),
+              sinceMs: sinceMs,
+              // A step that opens a card of its own brings the card's padding.
+              padding: stepJoinsShownCard ? _kReplyPadding.copyWith(top: 0, bottom: 0) : _kReplyPadding,
+            ),
+            TranscriptActivitySubAgents(:final count, :final sinceMs) => TranscriptSubAgentsRow(
+              key: const ValueKey("session-detail-sub-agents"),
+              count: count,
+              sinceMs: sinceMs,
+            ),
+            TranscriptActivityIdle() => null,
+          },
+        ],
+      );
 
-  /// Whether the newest message that shows anything is the agent's reply.
-  static bool _replyShows({required List<MessageWithParts> messages, required Transcript transcript}) {
+  /// Whether the next step lands in an agent reply card that already shows,
+  /// and so already carries the reply padding. A newer reply that shows
+  /// nothing yet takes that step, which joins the shown reply only when that
+  /// reply ends in a group; otherwise it opens a card of its own.
+  static bool _stepJoinsShownCard({required List<MessageWithParts> messages, required Transcript transcript}) {
+    var newerReplyWaits = false;
     for (final message in messages.reversed) {
       switch (message.info) {
         case MessageAssistant(sender: MessageSender.agent, :final id):
-          if (transcript.blocksFor(messageId: id).isNotEmpty) return true;
+          final blocks = transcript.blocksFor(messageId: id);
+          if (blocks.isNotEmpty) return !newerReplyWaits || blocks.last is TranscriptGroupBlock;
+          newerReplyWaits = true;
         case MessageUser() when !message.hasRenderableUserContent:
           break;
         case MessageUser() || MessageAssistant() || MessageError():

@@ -2207,6 +2207,72 @@ void main() {
     await expectStillThrough(step: "Read notes.md");
   });
 
+  testWidgets("a step that opens a new card after the reply's text takes over from Working… without moving", (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    MessageWithParts assistant({required String id, required List<MessagePart> parts}) => MessageWithParts(
+      info: Message.assistant(id: id, sessionID: "session-1", agent: null, modelID: null, providerID: null, time: null),
+      parts: parts,
+    );
+    final said = assistant(
+      id: "assistant-1",
+      parts: const [MessagePart.text(id: "said", sessionID: "session-1", messageID: "assistant-1", text: "Read it.")],
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [..._userMessages(count: 2), said],
+        initialStreamingText: const {},
+        platform: TargetPlatform.iOS,
+      ),
+    );
+    final harness = harnessKey.currentState!;
+    harness.setBusy(true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("Working…"), findsOneWidget);
+
+    // The next reply's envelope lands first; its step will open a card of its
+    // own, so Working makes room for that card's padding now.
+    harness.appendNewestMessage(assistant(id: "assistant-2", parts: const []));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("Working…"), findsOneWidget);
+
+    final top = tester.getTopLeft(_messageKey("user-1")).dy;
+    harness.replaceMessages([
+      ..._userMessages(count: 2),
+      said,
+      assistant(
+        id: "assistant-2",
+        parts: const [
+          MessagePart.tool(
+            id: "read",
+            sessionID: "session-1",
+            messageID: "assistant-2",
+            tool: "read",
+            state: ToolState(
+              status: ToolStatus.running,
+              title: "notes.md",
+              shellCommand: null,
+              output: null,
+              error: null,
+            ),
+          ),
+        ],
+      ),
+    ]);
+    for (var frame = 0; frame < 12; frame++) {
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(tester.getTopLeft(_messageKey("user-1")).dy, moreOrLessEquals(top, epsilon: 0.5), reason: "frame $frame");
+    }
+    expect(find.text("Working…"), findsNothing);
+    expect(find.text("Read notes.md"), findsOneWidget);
+  });
+
   testWidgets("following mode stays pinned to latest", (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 700));
     addTearDown(() => tester.binding.setSurfaceSize(null));
