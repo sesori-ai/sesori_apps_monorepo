@@ -109,3 +109,126 @@ Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
 888 changed lines against the merge base (709 added, 179 deleted): 89 of
 this file, about 340 of production code, about 385 of tests and 73 of docs.
 Nothing is generated.
+
+## Step 7b — One Codex Row After A Reload
+
+Branch `compaction-progress/codex-reimport-dedup`. Step 9's live run on Codex
+found two "Context compacted" rows after a manual compact and a reload: the
+live row under the item id, and the history row `codex-compaction-N`, about
+11 s apart and with no summary.
+
+### Root Cause
+
+The live row is keyed by the `contextCompaction` item id and created at
+`startedAtMs`. The history mapper built its row from the rollout's
+`compacted` line alone, under a replay-counter id and that line's timestamp,
+which Codex writes when compaction ends. So neither the id nor the time
+agreed, and 5b's replay rule (content plus an equal known time) could not
+pair the rows.
+
+The rollout also stores the live item. After the `compacted` line, Codex
+writes an `item_completed` event with `item: {type: ContextCompaction, id}`
+and `started_at_ms`/`completed_at_ms`, the same values the live notification
+carried. Every local rollout with a compaction has one, except a forked
+session's inherited compaction, which has no live row.
+
+### Fix
+
+Codex plugin only. The rollout DTO reads the `ContextCompaction` completed
+item and the event's two times. The history mapper re-keys the last
+`compacted` row with that item's id and part id `<id>-tool`. It takes the
+item's start, else its end (as the live mapper does for a completion with no
+known start), as the creation time, and keeps the line's time when the item
+has neither. So a reload replaces the live row by exact identity, and the
+bridge's replay rule is unchanged. A `compacted` line with no item keeps
+`codex-compaction-N` and its own timestamp.
+
+### Evidence
+
+Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
+
+- `sesori_plugin_codex`: `dart analyze --fatal-infos` no issues; all 481
+  tests pass.
+- New test: a rollout in Codex's record order (`compacted`, another event,
+  then the `ContextCompaction` item), three times: with both times, with only
+  the end, and with none. Every row takes the item id and part id; the first
+  takes the start and end, the second the end for both, and the third keeps
+  the `compacted` time. Without the fix it fails with `codex-compaction-1`
+  instead of the item id.
+- Live rerun, source-run bridge on slot 1 through the debug port: a new
+  one-prompt Codex session, manual compact, then a forced stale re-read (the
+  sync state's backend activity bumped past its watermark). The re-import
+  rewrote every row and left one compaction row under the live item id, with
+  the live creation and completion times.
+
+No wire or database change.
+
+### PR Review
+
+- **Wave 1 (`0286fc1d82`):** Codex was clean. cubic had four findings, and
+  three were fixed: an item with only its end now takes that end as both
+  times, and PLAN and this section say so. Declined: making 7b a prerequisite
+  of step 9's row. Step 9's own live run found this fix, so the retirement
+  waits for it already, and the parallel Pi fix keeps edits off that row.
+
+## 7c — Settle Pi Compaction Without A Failed Flash
+
+Branch `compaction-progress/pi-compaction-settle`, a fix found by step 9's
+live run on Pi 1.1.0. Only `sesori_plugin_pi` changes. There is no client,
+wire or database change.
+
+### Root Cause
+
+- Pi writes `compaction_end` to stdout just before its reply to the `compact`
+  RPC (`agent-session.js` `compact()`, then `rpc-mode.js`), so a single pipe
+  read usually carries both lines.
+- In the bridge, an event frame reaches `PiSessionService._handleFrame`
+  through two asynchronous broadcast streams (`PiRpcClient.frames`, then
+  `PiSessionProcessRepository.frames`). The reply completes its request
+  future, which resumes `_runTurn` within one microtask.
+- So the reply overtook the event: `_runTurn` finished the compaction turn and
+  reported the session idle while the row was still running. The bridge's
+  idle sweep failed the row ("The turn ended before compaction finished."),
+  and the late `compaction_end` then flipped the same part to completed.
+- The same race caused the rejected-compaction symptoms. Pi writes
+  `compaction_start`, `compaction_end` (with the error) and the failure reply
+  together. The reply was handled before `compaction_start` accepted the
+  command, so the send failed with HTTP 502, and `_finish(failed: true)`
+  raised an empty session error beside the failure note. The app ignores a
+  session error in the transcript; it only resets the feedback prompt's
+  progress.
+
+### Fix
+
+- `_runTurn` yields one event-loop turn after the `compact` RPC returns or
+  fails, so the frames read with the reply are handled first. This is the
+  same `Future.delayed(Duration.zero)` barrier the other turn kinds already
+  use.
+- A compaction that Pi rejects after `compaction_start` finishes the turn
+  without the session error, because its `compaction_end` already showed the
+  failure note. Other command failures are unchanged.
+
+### Evidence
+
+Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
+
+- Two `pi_plugin_impl_test.dart` tests write Pi's real frames as one stdout
+  chunk. Both failed before the fix: the success test saw idle before the
+  completed part, and the rejection test's send failed. Both pass after it.
+  The rejection test replaces the old synthetic one, which sent a failure
+  reply with no `compaction_end`, an order Pi never writes.
+- `sesori_plugin_pi`: `dart analyze --fatal-infos` is clean, and 350 tests
+  pass.
+- Live, a source bridge on a dev slot with Pi 1.1.0 and a scratch-only
+  `keepRecentTokens: 10` setting (removed afterwards):
+  - two manual compactions each went running → `session.compacted` →
+    completed → idle, with HTTP 200 and no failed state;
+  - an immediate third `/compact` ("Already compacted") showed one failure
+    note, then idle, with HTTP 200 and no `session.error`;
+  - a reload returned the two completed rows and the failure note.
+
+### Size
+
+About 225 changed lines against the merge base: 21 of production code, 123
+of tests, 12 of regression docs and the rest plan records. Nothing is
+generated.

@@ -462,8 +462,7 @@ void main() {
       expect(visibleText, everyElement(isNot(contains("secret-instructions"))));
     });
 
-    test("native compaction failure removes its running card", () async {
-      await harness.plugin.getCommands(projectId: harness.project.path);
+    test("native compaction settles before the session goes idle", () async {
       final session = await harness.plugin.createSession(
         fastMode: false,
         directory: harness.project.path,
@@ -474,6 +473,72 @@ void main() {
         agent: null,
         model: null,
       );
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+      final accepted = harness.plugin.sendCommand(
+        fastMode: false,
+        sessionId: session.id,
+        promptId: "prompt-compact",
+        command: PiCatalogService.compactionCommandName,
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        agent: "pi",
+        model: null,
+      );
+      final process = await harness.nextSessionProcess();
+      final request = await waitForCommand(process: process, type: "compact");
+      process.emit(frame: {"type": "compaction_start", "reason": "manual"});
+      await accepted;
+
+      final idle = harness.plugin.events.firstWhere((event) => event is BridgeSseSessionIdle);
+      // Pi writes compaction_end just before its reply, so both usually arrive
+      // in one stdout read.
+      _emitTogether(
+        process: process,
+        frames: [
+          {
+            "type": "compaction_end",
+            "reason": "manual",
+            "result": {"summary": "Summary", "tokensBefore": 1000},
+            "aborted": false,
+            "willRetry": false,
+          },
+          {"id": request["id"], "type": "response", "command": "compact", "success": true, "data": const {}},
+        ],
+      );
+      await idle;
+
+      final idleIndex = events.indexWhere((event) => event is BridgeSseSessionIdle);
+      final settledIndex = events.indexWhere(
+        (event) => switch (event) {
+          BridgeSseMessagePartUpdated(
+            part: PluginMessagePartCompaction(compactionState: PluginCompactionStateCompleted()),
+          ) =>
+            true,
+          _ => false,
+        },
+      );
+      expect(settledIndex, isNot(-1));
+      expect(settledIndex, lessThan(idleIndex));
+      expect(events.indexWhere((event) => event is BridgeSseSessionCompacted), lessThan(idleIndex));
+    });
+
+    test("a rejected native compaction reports only its failure note", () async {
+      final session = await harness.plugin.createSession(
+        fastMode: false,
+        directory: harness.project.path,
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
       final accepted = harness.plugin.sendCommand(
         fastMode: false,
         sessionId: session.id,
@@ -487,26 +552,42 @@ void main() {
       );
       final process = await harness.nextSessionProcess();
       final request = await waitForCommand(process: process, type: "compact");
-      final runningUpdate = harness.plugin.events.firstWhere(
-        (event) =>
-            event is BridgeSseMessageUpdated &&
-            switch (event.info) {
-              PluginMessageUser(promptId: final id) => id == null,
-              PluginMessageAssistant() || PluginMessageError() => true,
-            },
-      );
-      process.emit(frame: {"type": "compaction_start", "reason": "manual"});
-      await accepted;
-      final runningEvent = await runningUpdate;
-      final running = runningEvent as BridgeSseMessageUpdated;
-      final removed = harness.plugin.events.firstWhere((event) => event is BridgeSseMessageRemoved);
-      final failed = harness.plugin.events.firstWhere((event) => event is BridgeSseSessionError);
       final idle = harness.plugin.events.firstWhere((event) => event is BridgeSseSessionIdle);
-      process.emitFailure(id: request["id"]! as String, command: "compact", error: "compaction failed");
+      // Pi rejects a too-small session at once, in this order and one write.
+      _emitTogether(
+        process: process,
+        frames: [
+          {"type": "compaction_start", "reason": "manual"},
+          {
+            "type": "compaction_end",
+            "reason": "manual",
+            "aborted": false,
+            "willRetry": false,
+            "errorMessage": "Compaction failed: Nothing to compact (session too small)",
+          },
+          {
+            "id": request["id"],
+            "type": "response",
+            "command": "compact",
+            "success": false,
+            "error": "Nothing to compact (session too small)",
+          },
+        ],
+      );
 
-      final removedEvent = await removed;
-      expect((removedEvent as BridgeSseMessageRemoved).messageID, running.info.id);
-      await Future.wait([failed, idle]);
+      await accepted;
+      await idle;
+
+      final compactionParts = [
+        for (final event in events.whereType<BridgeSseMessagePartUpdated>())
+          if (event.part case final PluginMessagePartCompaction part) part,
+      ];
+      expect(compactionParts.map((part) => part.compactionState), [
+        const PluginCompactionState.running(summary: null),
+        const PluginCompactionState.failed(error: "Compaction failed: Nothing to compact (session too small)"),
+      ]);
+      expect(events.whereType<BridgeSseMessageRemoved>().single.messageID, compactionParts.first.messageID);
+      expect(events.whereType<BridgeSseSessionError>(), isEmpty);
       expect(harness.plugin.getActiveSessionsSummary(), isEmpty);
     });
 
@@ -882,6 +963,10 @@ final class _Harness({
     if (root.existsSync()) root.deleteSync(recursive: true);
   }
 }
+
+/// Writes [frames] as one stdout chunk, as a single pipe read delivers them.
+void _emitTogether({required FakePiProcess process, required List<Map<String, Object?>> frames}) =>
+    process.emitRaw(bytes: utf8.encode(frames.map((frame) => "${jsonEncode(frame)}\n").join()));
 
 Future<void> _answerProcess({
   required FakePiProcess process,

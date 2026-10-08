@@ -544,10 +544,18 @@ final class PiSessionService({
         ..agentStarted = state.agentRunning;
       if (turn is _PiQueuedPromptTurn) _emitQueueUpdate(sessionId: sessionId, state: state);
       if (turn case _PiCompactionTurn(:final customInstructions)) {
-        await _processes.dispatchCompaction(
-          connection: connection,
-          customInstructions: customInstructions,
-        );
+        try {
+          await _processes.dispatchCompaction(
+            connection: connection,
+            customInstructions: customInstructions,
+          );
+        } finally {
+          // Pi writes compaction_end just before its reply, but the reply
+          // resumes this await a stream hop ahead of the frames read with it.
+          // Let them land first, so the compaction settles before the turn
+          // ends and reports the session idle.
+          await Future<void>.delayed(Duration.zero);
+        }
       } else {
         await _processes.dispatchPrompt(connection: connection, payload: turn.payload);
       }
@@ -693,7 +701,10 @@ final class PiSessionService({
           failure: error,
         );
       } else {
-        _finish(sessionId: sessionId, state: state, turn: turn, failed: true, failure: error);
+        // Pi rejects a started compaction only after its compaction_end, which
+        // already shows the failure note.
+        final reported = turn is _PiCompactionTurn && turn.accepted;
+        _finish(sessionId: sessionId, state: state, turn: turn, failed: !reported, failure: reported ? null : error);
       }
     }
   }

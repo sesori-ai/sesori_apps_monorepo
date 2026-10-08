@@ -491,7 +491,11 @@ V2 activity/service coverage seeds global session metadata and active IDs,
 with pending inputs read once per observed directory. Root/direct-child summaries
 include input-only work and retain canonical project identity across worktrees.
 Failed refreshes preserve useful state but report unknown work state until a complete
-baseline succeeds. Deletion uses retained metadata without reading a deleted row.
+baseline succeeds. A known directory that no longer exists on disk (OpenCode answers
+its pending-input reads with 404) is logged and read as holding no pending input, so
+the refresh still succeeds and live events keep flowing for every other session; the
+plugin's loopback-server coverage proves this. Other pending-input failures still fail
+the refresh. Deletion uses retained metadata without reading a deleted row.
 Metadata/snapshot failures remain logged and do not suppress native status/input
 signals or later events. Native creation retains a project-activity refresh signal
 when its full session metadata cannot be read; it does not fabricate a session row.

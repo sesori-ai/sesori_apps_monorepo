@@ -969,12 +969,14 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class CodexRolloutItemCompletedEventDto implements CodexRolloutEventDto {
-  const CodexRolloutItemCompletedEventDto({@JsonKey(name: "thread_id") required this.threadId, @JsonKey(name: "turn_id") required this.turnId, required this.item,  String? $type}): $type = $type ?? 'item_completed';
+  const CodexRolloutItemCompletedEventDto({@JsonKey(name: "thread_id") required this.threadId, @JsonKey(name: "turn_id") required this.turnId, required this.item, @JsonKey(name: "started_at_ms") required this.startedAtMs, @JsonKey(name: "completed_at_ms") required this.completedAtMs,  String? $type}): $type = $type ?? 'item_completed';
   factory CodexRolloutItemCompletedEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutItemCompletedEventDtoFromJson(json);
 
 @JsonKey(name: "thread_id") final  String threadId;
 @JsonKey(name: "turn_id") final  String turnId;
  final  CodexRolloutCompletedItemDto item;
+@JsonKey(name: "started_at_ms") final  int? startedAtMs;
+@JsonKey(name: "completed_at_ms") final  int? completedAtMs;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -990,18 +992,18 @@ $CodexRolloutItemCompletedEventDtoCopyWith<CodexRolloutItemCompletedEventDto> ge
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutItemCompletedEventDto&&(identical(other.threadId, threadId) || other.threadId == threadId)&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.item, item) || other.item == item));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutItemCompletedEventDto&&(identical(other.threadId, threadId) || other.threadId == threadId)&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.item, item) || other.item == item)&&(identical(other.startedAtMs, startedAtMs) || other.startedAtMs == startedAtMs)&&(identical(other.completedAtMs, completedAtMs) || other.completedAtMs == completedAtMs));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,threadId,turnId,item);
+    return Object.hash(runtimeType,threadId,turnId,item,startedAtMs,completedAtMs);
 }
 
 @override
 String toString() {
-    return 'CodexRolloutEventDto.itemCompleted(threadId: $threadId, turnId: $turnId, item: $item)';
+    return 'CodexRolloutEventDto.itemCompleted(threadId: $threadId, turnId: $turnId, item: $item, startedAtMs: $startedAtMs, completedAtMs: $completedAtMs)';
 }
 
 
@@ -1012,7 +1014,7 @@ abstract mixin class $CodexRolloutItemCompletedEventDtoCopyWith<$Res> implements
   factory $CodexRolloutItemCompletedEventDtoCopyWith(CodexRolloutItemCompletedEventDto value, $Res Function(CodexRolloutItemCompletedEventDto) _then) = _$CodexRolloutItemCompletedEventDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: "thread_id") String threadId,@JsonKey(name: "turn_id") String turnId, CodexRolloutCompletedItemDto item
+@JsonKey(name: "thread_id") String threadId,@JsonKey(name: "turn_id") String turnId, CodexRolloutCompletedItemDto item,@JsonKey(name: "started_at_ms") int? startedAtMs,@JsonKey(name: "completed_at_ms") int? completedAtMs
 });
 
 
@@ -1029,12 +1031,14 @@ class _$CodexRolloutItemCompletedEventDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexRolloutEventDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? threadId = null,Object? turnId = null,Object? item = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? threadId = null,Object? turnId = null,Object? item = null,Object? startedAtMs = freezed,Object? completedAtMs = freezed,}) {
   return _then(CodexRolloutItemCompletedEventDto(
 threadId: null == threadId ? _self.threadId : threadId // ignore: cast_nullable_to_non_nullable
 as String,turnId: null == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
 as String,item: null == item ? _self.item : item // ignore: cast_nullable_to_non_nullable
-as CodexRolloutCompletedItemDto,
+as CodexRolloutCompletedItemDto,startedAtMs: freezed == startedAtMs ? _self.startedAtMs : startedAtMs // ignore: cast_nullable_to_non_nullable
+as int?,completedAtMs: freezed == completedAtMs ? _self.completedAtMs : completedAtMs // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
@@ -1612,6 +1616,10 @@ CodexRolloutCompletedItemDto _$CodexRolloutCompletedItemDtoFromJson(
           return CodexRolloutCompletedSubAgentActivityDto.fromJson(
             json
           );
+                case 'ContextCompaction':
+          return CodexRolloutCompletedContextCompactionDto.fromJson(
+            json
+          );
         
           default:
             return CodexRolloutUnknownCompletedItemDto.fromJson(
@@ -1723,6 +1731,78 @@ id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as CodexSubAgentActivityKind,agentThreadId: null == agentThreadId ? _self.agentThreadId : agentThreadId // ignore: cast_nullable_to_non_nullable
 as String,agentPath: null == agentPath ? _self.agentPath : agentPath // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutCompletedContextCompactionDto implements CodexRolloutCompletedItemDto {
+  const CodexRolloutCompletedContextCompactionDto({required this.id,  String? $type}): $type = $type ?? 'ContextCompaction';
+  factory CodexRolloutCompletedContextCompactionDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutCompletedContextCompactionDtoFromJson(json);
+
+ final  String id;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutCompletedItemDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutCompletedContextCompactionDtoCopyWith<CodexRolloutCompletedContextCompactionDto> get copyWith => _$CodexRolloutCompletedContextCompactionDtoCopyWithImpl<CodexRolloutCompletedContextCompactionDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompletedContextCompactionDto&&(identical(other.id, id) || other.id == id));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,id);
+}
+
+@override
+String toString() {
+    return 'CodexRolloutCompletedItemDto.contextCompaction(id: $id)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutCompletedContextCompactionDtoCopyWith<$Res> implements $CodexRolloutCompletedItemDtoCopyWith<$Res> {
+  factory $CodexRolloutCompletedContextCompactionDtoCopyWith(CodexRolloutCompletedContextCompactionDto value, $Res Function(CodexRolloutCompletedContextCompactionDto) _then) = _$CodexRolloutCompletedContextCompactionDtoCopyWithImpl;
+@useResult
+$Res call({
+ String id
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutCompletedContextCompactionDtoCopyWithImpl<$Res>
+    implements $CodexRolloutCompletedContextCompactionDtoCopyWith<$Res> {
+  _$CodexRolloutCompletedContextCompactionDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutCompletedContextCompactionDto _self;
+  final $Res Function(CodexRolloutCompletedContextCompactionDto) _then;
+
+/// Create a copy of CodexRolloutCompletedItemDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? id = null,}) {
+  return _then(CodexRolloutCompletedContextCompactionDto(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

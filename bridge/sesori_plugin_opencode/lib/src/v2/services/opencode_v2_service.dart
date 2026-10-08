@@ -3,7 +3,9 @@ import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "../mappers/v2_form_answer_mapper.dart";
 import "../mappers/v2_form_answer_validator.dart";
+import "../models/openapi/form_info.g.dart";
 import "../models/openapi/form_reply.g.dart";
+import "../models/openapi/permission_request.g.dart";
 import "../models/v2_agent_names.dart";
 import "../models/v2_event.g.dart";
 import "../models/v2_message_filter.dart";
@@ -32,19 +34,32 @@ class OpenCodeV2Service({
     _tracker.invalidateBaseline();
     final sessions = await _repository.getSessionMetadata();
     final directories = sessions.map((session) => session.directory).toSet();
-    final (active, (permissionLists, formLists)) = await shared.wait2(
+    final (active, pending) = await shared.wait2(
       _repository.getActiveSessionIds(),
-      shared.wait2(
-        Future.wait(directories.map((directory) => _repository.getPendingPermissions(directory: directory))),
-        Future.wait(directories.map((directory) => _repository.getPendingForms(directory: directory))),
-      ),
+      Future.wait(directories.map((directory) => _pendingInput(directory: directory))),
     );
     _tracker.seed(
       sessions: sessions,
       activeSessionIds: active,
-      permissions: permissionLists.expand((requests) => requests).toList(),
-      forms: formLists.expand((forms) => forms).toList(),
+      permissions: [for (final (permissions, _) in pending) ...permissions],
+      forms: [for (final (_, forms) in pending) ...forms],
     );
+  }
+
+  Future<(List<PermissionRequest>, List<FormInfo>)> _pendingInput({required String directory}) async {
+    try {
+      return await shared.wait2(
+        _repository.getPendingPermissions(directory: directory),
+        _repository.getPendingForms(directory: directory),
+      );
+    } on PluginOperationException catch (error) {
+      // OpenCode keeps sessions whose folder was deleted and answers 404 for that
+      // folder. It can hold no pending input, so it must not fail the baseline
+      // and with it the event stream for every other session.
+      if (error.statusCode != 404) rethrow;
+      Log.w("OpenCode v2 skipped pending input for missing directory $directory", error);
+      return (const <PermissionRequest>[], const <FormInfo>[]);
+    }
   }
 
   void reset() {

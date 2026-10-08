@@ -351,6 +351,9 @@ class CodexMessageRepository({
     final toolMessageIndexById = <String, int>{};
     final pendingUserMessages = <_PendingUserMessage>[];
     var messageCounter = 0;
+    // The last compaction row still under its replay-counter id. The
+    // `ContextCompaction` item written after its `compacted` line re-keys it.
+    ({int slot, String? summary, PluginMessageTime? time})? unkeyedCompaction;
     String? sessionProvider;
     String? currentModel;
     String? currentVariant;
@@ -367,6 +370,22 @@ class CodexMessageRepository({
       variant: currentVariant,
       sender: PluginMessageSender.agent,
       time: time,
+    );
+
+    PluginMessageWithParts compactionMessage({
+      required String id,
+      required PluginMessageTime? time,
+      required String? summary,
+    }) => PluginMessageWithParts(
+      info: assistantInfo(id: id, time: time),
+      parts: [
+        PluginMessagePart.compaction(
+          id: "$id-tool",
+          sessionID: sessionId,
+          messageID: id,
+          compactionState: .completed(summary: summary, freedTokens: null, trigger: null),
+        ),
+      ],
     );
 
     void upsertTool({
@@ -571,20 +590,28 @@ class CodexMessageRepository({
           continue;
         case CodexRolloutCompactedLineDto(:final timestamp, :final summary):
           messageCounter += 1;
-          final messageId = "codex-compaction-$messageCounter";
-          messages.add(
-            PluginMessageWithParts(
-              info: assistantInfo(id: messageId, time: _messageTimeFrom(timestamp)),
-              parts: [
-                PluginMessagePart.compaction(
-                  id: "$messageId-tool",
-                  sessionID: sessionId,
-                  messageID: messageId,
-                  compactionState: .completed(summary: summary, freedTokens: null, trigger: null),
-                ),
-              ],
-            ),
-          );
+          final time = _messageTimeFrom(timestamp);
+          unkeyedCompaction = (slot: messages.length, summary: summary, time: time);
+          messages.add(compactionMessage(id: "codex-compaction-$messageCounter", time: time, summary: summary));
+          continue;
+        case CodexRolloutEventMessageLineDto(
+          payload: CodexRolloutItemCompletedEventDto(
+            item: CodexRolloutCompletedContextCompactionDto(:final id),
+            :final startedAtMs,
+            :final completedAtMs,
+          ),
+        ):
+          // Key the row as the live mapper does, by the item id and its times,
+          // so a reload replaces the live row instead of adding a second one.
+          if (unkeyedCompaction case (:final slot, :final summary, :final time)) {
+            final created = startedAtMs ?? completedAtMs;
+            messages[slot] = compactionMessage(
+              id: id,
+              time: created == null ? time : PluginMessageTime(created: created, completed: completedAtMs),
+              summary: summary,
+            );
+            unkeyedCompaction = null;
+          }
           continue;
         case CodexRolloutEventMessageLineDto():
           continue;
