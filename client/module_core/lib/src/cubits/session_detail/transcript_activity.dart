@@ -57,15 +57,13 @@ class const TranscriptActivityBuilder() {
     required List<Session> children,
     required Map<String, SessionStatus> childStatuses,
 
-    /// This surface's prompts still on their way to the bridge.
-    required List<String> sendingPromptIds,
+    /// The sent prompts shown below the messages, oldest first, each with when
+    /// the bridge accepted it, or null while it is still on its way there.
+    required List<({String promptId, int? acceptedAt})> pendingPrompts,
 
-    /// The prompts the bridge accepted and holds until their message shows.
-    required List<QueuedSessionPrompt> queuedPrompts,
-
-    /// When the bridge accepted each prompt it was seen holding, by prompt
-    /// id, so a delivered prompt keeps counting from there.
-    required Map<String, int> promptAcceptedAt,
+    /// The newest prompt the bridge was seen holding. Its delivered message
+    /// keeps counting from the acceptance, which the message itself lacks.
+    required ({String promptId, int acceptedAt})? lastHeldPrompt,
   }) {
     if (!isBusy || retryErrorMessage != null || hasStreamingText) return const TranscriptActivityIdle();
     final running = runningChildren(children: children, childStatuses: childStatuses);
@@ -78,17 +76,15 @@ class const TranscriptActivityBuilder() {
       );
     }
     if (transcript.liveStep != null || compacting) return const TranscriptActivityIdle();
-    // A prompt still sending or held by the bridge shows below every message,
-    // so it is the newest one: never count from an older prompt's start.
+    // A sent prompt still waiting for its message shows below every message,
+    // so the newest of them is the newest prompt: never count from an older
+    // prompt's start.
     final deliveredPromptIds = {
       for (final message in messages)
         if (message.info case MessageUser(:final promptId?) when message.hasRenderableUserContent) promptId,
     };
-    if (sendingPromptIds.any((promptId) => !deliveredPromptIds.contains(promptId))) {
-      return const TranscriptActivityWorking(sinceMs: null);
-    }
-    final waiting = queuedPrompts.where((prompt) => !deliveredPromptIds.contains(prompt.id)).lastOrNull;
-    if (waiting != null) return TranscriptActivityWorking(sinceMs: waiting.createdAt);
+    final pending = pendingPrompts.where((prompt) => !deliveredPromptIds.contains(prompt.promptId)).lastOrNull;
+    if (pending != null) return TranscriptActivityWorking(sinceMs: pending.acceptedAt);
     // While busy, the last turn is the running one, and it runs to the newest
     // message. So whatever the turn's shape, its latest user message is the
     // newest shown one: a message sent mid-turn, else the opener. One the
@@ -99,9 +95,11 @@ class const TranscriptActivityBuilder() {
         .lastOrNull;
     final created = latestUser?.info.time?.created;
     int? acceptedAt;
-    if (latestUser?.info case MessageUser(:final promptId?)) acceptedAt = promptAcceptedAt[promptId];
+    if (latestUser?.info case MessageUser(:final promptId?) when promptId == lastHeldPrompt?.promptId) {
+      acceptedAt = lastHeldPrompt?.acceptedAt;
+    }
     return TranscriptActivityWorking(
-      sinceMs: created != null && acceptedAt != null && acceptedAt < created ? acceptedAt : created,
+      sinceMs: acceptedAt != null && (created == null || acceptedAt < created) ? acceptedAt : created,
     );
   }
 

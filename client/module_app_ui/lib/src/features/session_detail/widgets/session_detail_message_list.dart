@@ -305,10 +305,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// it again so the unloaded prompt's pin stays put meanwhile.
   List<SessionPromptIndexEntry>? _promptIndex;
 
-  /// When the bridge accepted each prompt this list has seen it hold, by
-  /// prompt id. The Working timer keeps counting from there once the prompt's
-  /// message arrives, instead of stepping back to the later delivery time.
-  final Map<String, int> _promptAcceptedAt = {};
+  /// The newest prompt this list saw the bridge hold, with when it was
+  /// accepted. Its delivered message carries only the later delivery time, so
+  /// the Working timer keeps this start instead of stepping back. A reopened
+  /// list never saw it and counts from the delivery time.
+  ({String promptId, int acceptedAt})? _lastHeldPrompt;
 
   /// The last build's unloaded prompt pinned above the rendered messages.
   SessionPromptIndexEntry? _unloadedPin;
@@ -889,8 +890,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // An index that arrives while detached still pins above the frozen messages.
     final promptIndex = snap?.promptIndex ?? _promptIndex;
     final unloadedPin = _unloadedPin = const TranscriptPromptListBuilder().pinAbove(turns: turns, index: promptIndex);
-    for (final prompt in widget.bridgeQueuedPrompts) {
-      _promptAcceptedAt[prompt.id] = prompt.createdAt;
+    if (widget.bridgeQueuedPrompts.lastOrNull case final held?) {
+      _lastHeldPrompt = (promptId: held.id, acceptedAt: held.createdAt);
     }
     final activity = const TranscriptActivityBuilder().build(
       transcript: transcript,
@@ -901,12 +902,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       hasStreamingText: streamingText.isNotEmpty,
       children: children,
       childStatuses: childStatuses,
-      sendingPromptIds: [
-        if (localSendRow case (:final submission, stage: _TransientStage.sending)) submission.promptId,
-        for (final submission in widget.awaitingBridgeSubmissions) submission.promptId,
+      // In the order their rows show.
+      pendingPrompts: [
+        for (final prompt in widget.bridgeQueuedPrompts) (promptId: prompt.id, acceptedAt: prompt.createdAt),
+        for (final submission in widget.awaitingBridgeSubmissions) (promptId: submission.promptId, acceptedAt: null),
+        for (final followUp in widget.launchFollowUps)
+          if (followUp case SendingLaunchFollowUp(:final submission) || AcceptedLaunchFollowUp(:final submission))
+            (promptId: submission.promptId, acceptedAt: null),
+        if (localSendRow case (:final submission, stage: _TransientStage.sending))
+          (promptId: submission.promptId, acceptedAt: null),
       ],
-      queuedPrompts: widget.bridgeQueuedPrompts,
-      promptAcceptedAt: _promptAcceptedAt,
+      lastHeldPrompt: _lastHeldPrompt,
     );
     final transientSubmissions = <String, _TransientSubmission>{
       for (final submission in widget.awaitingBridgeSubmissions)

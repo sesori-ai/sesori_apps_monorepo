@@ -66,9 +66,8 @@ TranscriptActivity _activity({
   Map<String, String> streamingText = const {},
   List<Session> children = const [],
   Map<String, SessionStatus> childStatuses = const {},
-  List<String> sendingPromptIds = const [],
-  List<QueuedSessionPrompt> queuedPrompts = const [],
-  Map<String, int> promptAcceptedAt = const {},
+  List<({String promptId, int? acceptedAt})> pendingPrompts = const [],
+  ({String promptId, int acceptedAt})? lastHeldPrompt,
 }) {
   final transcript = const TranscriptBuilder().build(
     messages: messages,
@@ -85,20 +84,10 @@ TranscriptActivity _activity({
     hasStreamingText: streamingText.isNotEmpty,
     children: children,
     childStatuses: childStatuses,
-    sendingPromptIds: sendingPromptIds,
-    queuedPrompts: queuedPrompts,
-    promptAcceptedAt: promptAcceptedAt,
+    pendingPrompts: pendingPrompts,
+    lastHeldPrompt: lastHeldPrompt,
   );
 }
-
-QueuedSessionPrompt _held({required String id, required int acceptedAt}) => QueuedSessionPrompt(
-  id: id,
-  dispatchState: QueuedPromptDispatchState.dispatched,
-  text: "Next",
-  command: null,
-  attachmentCount: 0,
-  createdAt: acceptedAt,
-);
 
 /// A finished earlier turn: its prompt at 1000 and the agent's answer.
 final List<MessageWithParts> _finishedTurn = [
@@ -113,7 +102,11 @@ void main() {
   group("TranscriptActivityBuilder", () {
     group("a new prompt that has not shown its message", () {
       test("shows no time while this surface still sends it", () {
-        final activity = _activity(messages: _finishedTurn, isBusy: true, sendingPromptIds: ["p2"]);
+        final activity = _activity(
+          messages: _finishedTurn,
+          isBusy: true,
+          pendingPrompts: [(promptId: "p2", acceptedAt: null)],
+        );
 
         expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", isNull));
       });
@@ -122,10 +115,26 @@ void main() {
         final activity = _activity(
           messages: _finishedTurn,
           isBusy: true,
-          queuedPrompts: [_held(id: "p2", acceptedAt: 9000)],
+          pendingPrompts: [(promptId: "p2", acceptedAt: 9000)],
         );
 
         expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 9000));
+      });
+
+      test("the newest one decides, so an older send never hides a newer held prompt's time", () {
+        final held = _activity(
+          messages: _finishedTurn,
+          isBusy: true,
+          pendingPrompts: [(promptId: "p2", acceptedAt: null), (promptId: "p3", acceptedAt: 9000)],
+        );
+        final sending = _activity(
+          messages: _finishedTurn,
+          isBusy: true,
+          pendingPrompts: [(promptId: "p2", acceptedAt: 9000), (promptId: "p3", acceptedAt: null)],
+        );
+
+        expect(held, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 9000));
+        expect(sending, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", isNull));
       });
 
       test("keeps its acceptance time once its later message arrives", () {
@@ -135,11 +144,22 @@ void main() {
             _prompt(id: "u2", at: 12000, promptId: "p2"),
           ],
           isBusy: true,
-          // The bridge may still list it, and the send may still be pending,
-          // for a moment after the message lands.
-          queuedPrompts: [_held(id: "p2", acceptedAt: 9000)],
-          sendingPromptIds: ["p2"],
-          promptAcceptedAt: {"p2": 9000},
+          // The bridge may still list it for a moment after the message lands.
+          pendingPrompts: [(promptId: "p2", acceptedAt: 9000)],
+          lastHeldPrompt: (promptId: "p2", acceptedAt: 9000),
+        );
+
+        expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 9000));
+      });
+
+      test("keeps its acceptance time when its message carries none", () {
+        final activity = _activity(
+          messages: [
+            ..._finishedTurn,
+            _prompt(id: "u2", at: null, promptId: "p2"),
+          ],
+          isBusy: true,
+          lastHeldPrompt: (promptId: "p2", acceptedAt: 9000),
         );
 
         expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 9000));
