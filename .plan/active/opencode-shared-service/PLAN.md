@@ -286,7 +286,8 @@ In managed mode with sharing on (phase-1 rules unchanged), when discovery finds 
 2. **Respect OpenCode's opt-out.** Run `<binary> service get disabled`, bounded. If it prints `true`, spawn a private
    server as today and log one info line. Any failure of this probe also falls back to a private server, with a
    warning.
-3. **Start the service.** Run `<binary> service start`, bounded at 60 s and honouring `host.startAborted`; on abort
+3. **Start the service.** Run `<binary> service start`, waiting as long as OpenCode's own 120 s start wait (a 130 s
+   backstop for a hung CLI) and honouring `host.startAborted`; on abort
    or timeout, kill the CLI process. The environment is the parent environment, as the setup probes use. No Sesori
    password or port is passed: the service uses OpenCode's own service configuration.
 4. **Attach.** Run phase-1 discovery again. When it returns an endpoint, take the phase-1 shared branch unchanged:
@@ -334,7 +335,7 @@ All code stays inside `sesori_plugin_opencode`, except one runtime-package param
         same parsing as the setup probe.
       - `Future<bool> readDisabled({binary, environment, startAborted})` runs `service get disabled`. It accepts
         exactly `true` or `false`.
-      - `Future<void> startService({binary, environment, startAborted})` runs `service start`, bounded at 60 s.
+      - `Future<void> startService({binary, environment, startAborted})` runs `service start`, with a 130 s backstop just past OpenCode's own 120 s wait.
     - A non-zero exit, a timeout or unparseable output throws `OpenCodeServiceCommandException(message, cause)`.
       An abort throws `PluginStartAbortedException`. The Api makes no decisions.
   - **Layer 2:** `OpenCodeSharedServerRepository` gains a required `commandApi` constructor parameter and three thin
@@ -412,8 +413,10 @@ user's own processes.
 
 ### Phase 2 accepted risks
 
-- **`service start` fails or exceeds 60 s:** a private server is spawned, and a service started later can still
-  resume its turns twice. This is rare: it needs a broken or very slow first boot.
+- **`service start` fails within OpenCode's own 120 s wait:** a private server is spawned, and a service started
+  later can still resume its turns twice. This is rare: it needs a broken first boot. The bridge waits as long as
+  OpenCode does (review on #1927), because a shorter bound would fall back while the detached service is still
+  booting on the same database.
 - **A shared-mode generation fails on any lasting disconnect,** including a TUI-triggered `service restart`. The
   next request re-attaches. In-flight relay requests during that window fail once.
 - **The bundled runtime binary starts the service:** a later bridge runtime upgrade or cleanup may delete that

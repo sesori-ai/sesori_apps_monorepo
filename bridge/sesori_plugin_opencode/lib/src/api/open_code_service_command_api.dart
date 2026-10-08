@@ -11,9 +11,12 @@ import "../models/open_code_service_command_exception.dart";
 class const OpenCodeServiceCommandApi({required final HostProcessCommandExecutor executor}) {
   static const Duration _probeTimeout = Duration(seconds: 10);
 
-  /// `service start` waits for the service to be discoverable; OpenCode itself
-  /// gives up after 120 s, the bridge after this.
-  static const Duration _startTimeout = Duration(seconds: 60);
+  /// `service start` waits up to 120 s for the service to be discoverable, and
+  /// the bridge waits as long as OpenCode does. A shorter bound would fall back
+  /// to a private server while the detached service is still booting on the
+  /// same database. This is only a backstop for a hung CLI, just past
+  /// OpenCode's own limit, so OpenCode reports its own timeout first.
+  static const Duration _startTimeout = Duration(seconds: 130);
 
   Future<SemanticRuntimeVersion> readVersion({
     required String binary,

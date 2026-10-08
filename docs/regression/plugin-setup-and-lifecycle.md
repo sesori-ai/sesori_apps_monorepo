@@ -192,8 +192,9 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   - **Not usable:** a missing, corrupt or non-`http` registration, or a booting,
     failed, foreign, unreachable or too-old server, logs the reason. The bridge
     then runs `<binary> service start` with the selected runtime (the PATH CLI
-    when it meets the minimum, otherwise the bundled runtime), bounded at 60
-    seconds and stopped by a bridge shutdown, and attaches to the service it
+    when it meets the minimum, otherwise the bundled runtime). It waits as long
+    as OpenCode's own 120-second start wait, a bridge shutdown stops the
+    command, and the bridge attaches to the service it
     registers exactly as above. The service is OpenCode's own detached process:
     it keeps running after the bridge stops, as one started by the TUI does, and
     `opencode service stop` stops it.
@@ -629,8 +630,9 @@ owned-process exit; and restart.
 - With sharing on and no service, the bridge spawns a private server instead of
   running `opencode service start` on OpenCode 2 whose `disabled` setting reads
   `false`, starts a service while OpenCode's
-  `disabled` setting is `true` or the selected runtime is OpenCode 1, hangs past the
-  60-second start bound, or stops the service it started when the bridge stops.
+  `disabled` setting is `true` or the selected runtime is OpenCode 1, falls back
+  before OpenCode's own 120-second start wait ends, hangs well past it, or stops the
+  service it started when the bridge stops.
 - A stalled first handshake holds bridge startup past the cold-start budget, a
   budget-exceeded harness reports connected instead of degraded, or its late
   cold-start failure surfaces as an unhandled error rather than a log line.
