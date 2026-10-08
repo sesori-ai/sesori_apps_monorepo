@@ -2117,13 +2117,15 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(400, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    MessageWithParts assistant({required String id, required MessagePart part}) => MessageWithParts(
+    MessageWithParts assistant({required String id, required List<MessagePart> parts}) => MessageWithParts(
       info: Message.assistant(id: id, sessionID: "session-1", agent: null, modelID: null, providerID: null, time: null),
-      parts: [part],
+      parts: parts,
     );
+    MessagePart thought({required String text}) =>
+        MessagePart.reasoning(id: "thought", sessionID: "session-1", messageID: "assistant-1", text: text);
     final reply = assistant(
       id: "assistant-1",
-      part: const MessagePart.reasoning(id: "thought", sessionID: "session-1", messageID: "assistant-1", text: ""),
+      parts: [thought(text: "")],
     );
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -2165,43 +2167,43 @@ void main() {
     harness.appendNewestMessage(reply);
     await expectStillThrough(step: "Thinking...");
 
+    final thoughtDone = assistant(
+      id: "assistant-1",
+      parts: [thought(text: "Weighing")],
+    );
     harness
-      ..replaceMessages([
-        ..._userMessages(count: 2),
-        assistant(
-          id: "assistant-1",
-          part: const MessagePart.reasoning(
-            id: "thought",
-            sessionID: "session-1",
-            messageID: "assistant-1",
-            text: "Weighing",
-          ),
-        ),
-      ])
+      ..replaceMessages([..._userMessages(count: 2), thoughtDone])
       ..clearStreamingText();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text("Working…"), findsOneWidget);
 
-    // The next step joins the reply's group.
-    harness.appendNewestMessage(
+    // The next reply's envelope shows nothing; its first step joins the shown
+    // reply's group.
+    harness.appendNewestMessage(assistant(id: "assistant-2", parts: const []));
+    await expectStill(frames: 3);
+    harness.replaceMessages([
+      ..._userMessages(count: 2),
+      thoughtDone,
       assistant(
         id: "assistant-2",
-        part: const MessagePart.tool(
-          id: "read",
-          sessionID: "session-1",
-          messageID: "assistant-2",
-          tool: "read",
-          state: ToolState(
-            status: ToolStatus.running,
-            title: "notes.md",
-            shellCommand: null,
-            output: null,
-            error: null,
+        parts: const [
+          MessagePart.tool(
+            id: "read",
+            sessionID: "session-1",
+            messageID: "assistant-2",
+            tool: "read",
+            state: ToolState(
+              status: ToolStatus.running,
+              title: "notes.md",
+              shellCommand: null,
+              output: null,
+              error: null,
+            ),
           ),
-        ),
+        ],
       ),
-    );
+    ]);
     await expectStillThrough(step: "Read notes.md");
   });
 
