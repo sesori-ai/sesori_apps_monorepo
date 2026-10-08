@@ -217,6 +217,9 @@ class const V2MessageMapper() {
           created: message.time.created,
           completed: message.time.created,
         );
+        // The row shows no error, so the raw one is logged on every path
+        // that maps it: live, reconnect and reload.
+        Log.w("OpenCode v2 compaction failed in $sessionId: ${message.error.type}: ${message.error.message}");
         parts = [
           _compaction(
             sessionId: sessionId,

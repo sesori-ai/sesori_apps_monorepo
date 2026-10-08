@@ -36,20 +36,12 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
 
   /// Once a summary message finishes, its compaction rows settle in its final
   /// state; their last text arrived before the message finished.
-  /// A failed row shows only a recognized reason, so the raw error is logged.
-  List<BridgeSseEvent> _settledSummaryParts({required SummaryMessage? summary}) {
-    switch (summary) {
-      case (:final message, :final textParts, auto: _) when message.error != null || message.time.completed != null:
-        if (message.error case final error? when textParts.isNotEmpty) {
-          Log.w("[opencode] compaction failed in ${message.sessionID}: $error");
-        }
-        return [
-          for (final part in textParts) BridgeSseMessagePartUpdated(part: _mapLivePart(part, summary: summary)),
-        ];
-      case _:
-        return const [];
-    }
-  }
+  List<BridgeSseEvent> _settledSummaryParts({required SummaryMessage? summary}) => switch (summary) {
+    (:final message, :final textParts, auto: _) when message.error != null || message.time.completed != null => [
+      for (final part in textParts) BridgeSseMessagePartUpdated(part: _mapLivePart(part, summary: summary)),
+    ],
+    _ => const [],
+  };
 
   /// Maps a `message.updated` payload to its plugin envelope, mirroring the
   /// REST load path ([PluginModelMapper.mapMessageWithParts]). Crucially this
