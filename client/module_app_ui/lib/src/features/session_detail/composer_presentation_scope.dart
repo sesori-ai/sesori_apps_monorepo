@@ -24,7 +24,8 @@ enum ComposerPresentation() {
   touch,
 
   /// Pointer-sized: selectors hug their labels at the leading edge, `+` and
-  /// `/` are always visible, and the box itself grows for long prompts.
+  /// `/` are always visible, the box itself grows for long prompts, and the
+  /// mic records on click until clicked again or Escape cancels it.
   pointer,
 }
 
@@ -32,9 +33,9 @@ typedef ComposerCapabilityProvider<T> = T Function();
 
 /// Product-owned platform and presentation capabilities for shared composers.
 ///
-/// Mobile supplies live keyboard visibility and voice capture. Desktop
-/// explicitly selects text-first input with voice unsupported. Both products
-/// provide real image picking and clipboard implementations lazily.
+/// Mobile supplies live keyboard visibility and its chosen input mode. Desktop
+/// always leads with text. Both products supply voice capture and provide real
+/// image picking and clipboard implementations lazily.
 class const ComposerPresentationScope({
   super.key,
   required final ComposerVoiceSupport voiceSupport,

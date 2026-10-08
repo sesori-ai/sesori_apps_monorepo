@@ -138,8 +138,7 @@ and keep native close/quit behavior safe.
   navigation, links, and image actions. Root active sessions open the shared
   diff view, and the session list opens shared session creation with plugin,
   model, command, attachment, and dedicated-workspace options. Desktop supplies
-  text-first composition and omits voice rather than constructing a dead voice
-  capability. The sidebar supplies recent-session navigation at every width;
+  text-first composition with a click-to-talk mic (see `voice-input.md`). The sidebar supplies recent-session navigation at every width;
   only All sessions owns the full list cubit. New-session, transcript and diff
   pages each occupy the full main pane. Desktop Enter
   sends from the inline composer, Shift+Enter inserts a newline, and active IME
@@ -312,7 +311,7 @@ verify the actual relocated helper, not merely the presence of its binary.
   when token clearing fails. A desktop session row cannot reach its typed detail
   route, Back cannot return to the session list, a child-session link loses its
   typed route data, New session or file changes cannot reach their typed routes, or
-  desktop renders unsupported voice/attachment controls, Enter inserts a newline
+  desktop renders undeclared attachment controls, Enter inserts a newline
   instead of sending, Shift+Enter sends, an IME candidate-confirmation Enter
   submits the draft, Escape pops an ordinary cockpit page or steals a closer
   modal/editor handler, source text cannot be selected, copied source includes

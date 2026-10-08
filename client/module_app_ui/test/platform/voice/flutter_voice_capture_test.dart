@@ -4,16 +4,20 @@ import "dart:io";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:record/record.dart";
+import "package:sesori_app_ui/src/platform/voice/audio_format_config.dart";
+import "package:sesori_app_ui/src/platform/voice/flutter_voice_capture.dart";
+import "package:sesori_app_ui/src/platform/voice/recording_file_provider.dart";
+import "package:sesori_app_ui/src/platform/voice/wake_lock_service.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
-import "package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart";
-import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
-import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
-import "package:sesori_mobile/core/platform/flutter_voice_capture.dart";
 
 class MockAudioRecorder() extends Mock implements AudioRecorder;
 
-class MockRecorderPrewarmClient() extends Mock implements RecorderPrewarmClient;
+/// Stands in for the shell's native prewarm channel behind [RecorderPrewarm].
+abstract interface class _RecorderPrewarmTarget() {
+  Future<void> prewarm({required int sampleRate, required int bitRate, required int numChannels});
+}
+
+class MockRecorderPrewarm() extends Mock implements _RecorderPrewarmTarget;
 
 class MockRecordingFileProvider() extends Mock implements RecordingFileProvider;
 
@@ -23,7 +27,7 @@ class MockWakeLockLease() extends Mock implements WakeLockLease;
 
 void main() {
   late MockAudioRecorder recorder;
-  late MockRecorderPrewarmClient prewarmClient;
+  late MockRecorderPrewarm prewarmClient;
   late MockRecordingFileProvider fileProvider;
   late MockWakeLockService wakeLockService;
   late MockWakeLockLease wakeLockLease;
@@ -40,7 +44,7 @@ void main() {
 
   setUp(() async {
     recorder = MockAudioRecorder();
-    prewarmClient = MockRecorderPrewarmClient();
+    prewarmClient = MockRecorderPrewarm();
     fileProvider = MockRecordingFileProvider();
     wakeLockService = MockWakeLockService();
     wakeLockLease = MockWakeLockLease();
@@ -67,7 +71,7 @@ void main() {
     when(wakeLockLease.release).thenAnswer((_) async {});
 
     capture = FlutterVoiceCapture(
-      recorderPrewarmClient: prewarmClient,
+      recorderPrewarm: prewarmClient.prewarm,
       fileProvider: fileProvider,
       wakeLockService: wakeLockService,
       audioFormat: audioFormat,
@@ -92,6 +96,25 @@ void main() {
       ),
     ).called(1);
     verify(recorder.dispose).called(1);
+  });
+
+  test("skips prewarm without touching the recorder when the shell has no prewarm channel", () async {
+    var recordersCreated = 0;
+    final unwarmedCapture = FlutterVoiceCapture(
+      recorderPrewarm: null,
+      fileProvider: fileProvider,
+      wakeLockService: wakeLockService,
+      audioFormat: audioFormat,
+      recorderFactory: () {
+        recordersCreated++;
+        return recorder;
+      },
+    );
+
+    await unwarmedCapture.prewarm();
+
+    expect(recordersCreated, 0);
+    verifyNever(() => recorder.hasPermission(request: false));
   });
 
   test("shares one in-flight native prewarm across composer sessions", () async {
@@ -145,7 +168,7 @@ void main() {
 
   test("bounds a later shared prewarm wait without cancelling its native operation", () async {
     final boundedCapture = FlutterVoiceCapture(
-      recorderPrewarmClient: prewarmClient,
+      recorderPrewarm: prewarmClient.prewarm,
       fileProvider: fileProvider,
       wakeLockService: wakeLockService,
       audioFormat: audioFormat,
@@ -329,7 +352,7 @@ void main() {
     );
     var index = 0;
     final multiCapture = FlutterVoiceCapture(
-      recorderPrewarmClient: prewarmClient,
+      recorderPrewarm: prewarmClient.prewarm,
       fileProvider: fileProvider,
       wakeLockService: leaseCoordinator,
       audioFormat: audioFormat,
@@ -356,7 +379,7 @@ void main() {
     final recorders = [MockAudioRecorder(), MockAudioRecorder()];
     var index = 0;
     final multiCapture = FlutterVoiceCapture(
-      recorderPrewarmClient: prewarmClient,
+      recorderPrewarm: prewarmClient.prewarm,
       fileProvider: fileProvider,
       wakeLockService: wakeLockService,
       audioFormat: audioFormat,

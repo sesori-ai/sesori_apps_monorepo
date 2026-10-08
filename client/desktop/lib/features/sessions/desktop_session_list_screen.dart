@@ -211,7 +211,10 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                         onBack: () {},
                         onOpenHarnessSettings: widget.onOpenHarnessSettings,
                         onSessionCreated: onSessionTap,
-                        composerScopeBuilder: ({required child}) => DesktopComposerPresentationScope(child: child),
+                        composerScopeBuilder: ({required child}) =>
+                            DesktopComposerPresentationScope(
+                              child: DesktopVoiceInputScope(projectId: cubit.projectId, child: child),
+                            ),
                         // The desktop root owns its single connection banner.
                         banner: null,
                         pageChrome: NewSessionPageChrome(

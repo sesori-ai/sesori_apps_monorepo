@@ -8,6 +8,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
+import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
 import "package:sesori_desktop/features/sessions/desktop_session_list_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -58,6 +59,10 @@ void main() {
     newSessionStates = const Stream<NewSessionState>.empty();
     newSessionTaps = 0;
     launches = inMemorySessionLaunchRepository();
+    final voice = MockVoiceTranscriptionService();
+    stubVoiceTranscriptionService(service: voice);
+    getIt.registerSingleton<VoiceTranscriptionService>(voice);
+    addTearDown(getIt.reset);
   });
 
   NewSessionCubit newSessionCubit({required String projectId, required String? projectName}) {

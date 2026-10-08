@@ -25,11 +25,11 @@ See [`../AGENTS.md`](../AGENTS.md) for shared conventions (architecture layering
 
 ```
 lib/
-├── capabilities/     Voice platform helpers (format, prewarm, recording path, session-safe wake-lock leases)
+├── capabilities/     Native recorder prewarm channel (the shared voice capture lives in module_app_ui)
 ├── core/
 │   ├── di/           Flutter DI — registers platform adapters, then calls core init
 │   ├── extensions/   Mobile-only Flutter mappings
-│   ├── platform/     FlutterMasterKeyStore, FlutterVoiceCapture, FlutterUrlLauncher, AppLifecycleObserver
+│   ├── platform/     FlutterMasterKeyStore, FlutterUrlLauncher, AppLifecycleObserver
 │   ├── routing/      GoRouter routes, deep link handling (AppLinksDeepLinkSource)
 │   └── widgets/      Connection overlay, modal bottom sheets
 ├── features/         Screen widgets (login, project_list, session_list, session_detail)
