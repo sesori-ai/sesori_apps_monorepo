@@ -1856,6 +1856,8 @@ void main() {
           tool: "read",
           state: ToolState(status: status, title: "notes.md", shellCommand: null, output: null, error: null),
         ),
+        // Shows only once it streams.
+        const MessagePart.text(id: "assistant-1-text", sessionID: "session-1", messageID: "assistant-1", text: ""),
       ],
     );
     // The first frame starts the row's ease in or out; the second ends it.
@@ -2108,6 +2110,99 @@ void main() {
     expect(find.text("Read second"), findsNothing);
     expect(find.text("2 steps"), findsOneWidget);
     expect(find.text("Working…"), findsOneWidget);
+  });
+
+  testWidgets("a step that takes over from Working… moves nothing above it, opening a reply or joining one", (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    MessageWithParts assistant({required String id, required MessagePart part}) => MessageWithParts(
+      info: Message.assistant(id: id, sessionID: "session-1", agent: null, modelID: null, providerID: null, time: null),
+      parts: [part],
+    );
+    final reply = assistant(
+      id: "assistant-1",
+      part: const MessagePart.reasoning(id: "thought", sessionID: "session-1", messageID: "assistant-1", text: ""),
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 2),
+        initialStreamingText: const {},
+        platform: TargetPlatform.iOS,
+      ),
+    );
+    final harness = harnessKey.currentState!;
+    harness.setBusy(true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("Working…"), findsOneWidget);
+
+    // Every frame keeps the prompt above where it was.
+    Future<void> expectStill({required int frames}) async {
+      final top = tester.getTopLeft(_messageKey("user-1")).dy;
+      for (var frame = 0; frame < frames; frame++) {
+        await tester.pump(const Duration(milliseconds: 20));
+        expect(tester.getTopLeft(_messageKey("user-1")).dy, moreOrLessEquals(top, epsilon: 0.5));
+      }
+    }
+
+    Future<void> expectStillThrough({required String step}) async {
+      await expectStill(frames: 12);
+      expect(find.text("Working…"), findsNothing);
+      expect(find.text(step), findsOneWidget);
+    }
+
+    // A thought's first words can land before the thought; nothing shows them
+    // yet, so Working stays.
+    harness.updateStreamingText(partId: "thought", text: "Weighing");
+    await expectStill(frames: 3);
+    expect(find.text("Working…"), findsOneWidget);
+
+    // The thought opens the reply, its card's padding and all.
+    harness.appendNewestMessage(reply);
+    await expectStillThrough(step: "Thinking...");
+
+    harness
+      ..replaceMessages([
+        ..._userMessages(count: 2),
+        assistant(
+          id: "assistant-1",
+          part: const MessagePart.reasoning(
+            id: "thought",
+            sessionID: "session-1",
+            messageID: "assistant-1",
+            text: "Weighing",
+          ),
+        ),
+      ])
+      ..clearStreamingText();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("Working…"), findsOneWidget);
+
+    // The next step joins the reply's group.
+    harness.appendNewestMessage(
+      assistant(
+        id: "assistant-2",
+        part: const MessagePart.tool(
+          id: "read",
+          sessionID: "session-1",
+          messageID: "assistant-2",
+          tool: "read",
+          state: ToolState(
+            status: ToolStatus.running,
+            title: "notes.md",
+            shellCommand: null,
+            output: null,
+            error: null,
+          ),
+        ),
+      ),
+    );
+    await expectStillThrough(step: "Read notes.md");
   });
 
   testWidgets("following mode stays pinned to latest", (tester) async {

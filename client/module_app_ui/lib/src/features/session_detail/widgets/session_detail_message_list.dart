@@ -205,6 +205,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// in and out as work starts and ends.
   static const _kWorkingRowId = "session-detail-working-row";
 
+  /// Around the agent's reply, and the working row that stands in for it.
+  static const _kReplyPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 4);
+
   /// Synthetic id for the launch's first message, the oldest transient row. A
   /// session has at most one, so it is never matched against echoes.
   static const _kLaunchRowId = "session-detail-launch-row";
@@ -899,7 +902,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       isBusy: isBusy,
       mainAgentRunning: mainAgentRunning,
       retryErrorMessage: retryErrorMessage,
-      hasStreamingText: streamingText.isNotEmpty,
+      streamingText: streamingText,
       children: children,
       childStatuses: childStatuses,
       // In the order their rows show.
@@ -1128,7 +1131,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       );
     }
     if (entryId == _kWorkingRowId) {
-      return _revealable(createdAtMs: null, child: _workingRow(activity: activity));
+      return _revealable(
+        createdAtMs: null,
+        child: _workingRow(
+          activity: activity,
+          replyShows: _replyShows(messages: messages, transcript: transcript),
+        ),
+      );
     }
     if (widget.launchHandoff
         case SessionLaunchHandoff(
@@ -1280,7 +1289,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
         createdAtMs: createdAtMs,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding: _kReplyPadding,
       ),
       MessageAssistant(:final id) => SystemMessageCard(
         projectId: widget.projectId,
@@ -1327,12 +1336,15 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// The working row eases in when work starts or a step ends, and away when
   /// a step starts or work ends. The sub-agent row takes over, easing, while
   /// only sub-agents work.
-  Widget _workingRow({required TranscriptActivity activity}) => TranscriptPresenceColumn(
+  Widget _workingRow({required TranscriptActivity activity, required bool replyShows}) => TranscriptPresenceColumn(
     children: [
       ?switch (activity) {
         TranscriptActivityWorking(:final sinceMs) => TranscriptWorkingRow(
           key: const ValueKey("session-detail-working"),
           sinceMs: sinceMs,
+          // A step mostly joins the reply that shows; otherwise it opens a
+          // reply, whose card brings its padding.
+          padding: replyShows ? _kReplyPadding.copyWith(top: 0, bottom: 0) : _kReplyPadding,
         ),
         TranscriptActivitySubAgents(:final count, :final sinceMs) => TranscriptSubAgentsRow(
           key: const ValueKey("session-detail-sub-agents"),
@@ -1343,6 +1355,21 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       },
     ],
   );
+
+  /// Whether the newest message that shows anything is the agent's reply.
+  static bool _replyShows({required List<MessageWithParts> messages, required Transcript transcript}) {
+    for (final message in messages.reversed) {
+      switch (message.info) {
+        case MessageAssistant(sender: MessageSender.agent, :final id):
+          if (transcript.blocksFor(messageId: id).isNotEmpty) return true;
+        case MessageUser() when !message.hasRenderableUserContent:
+          break;
+        case MessageUser() || MessageAssistant() || MessageError():
+          return false;
+      }
+    }
+    return false;
+  }
 
   /// Wraps a row so the shared horizontal drag reveals its timestamp.
   Widget _revealable({required int? createdAtMs, required Widget child}) {

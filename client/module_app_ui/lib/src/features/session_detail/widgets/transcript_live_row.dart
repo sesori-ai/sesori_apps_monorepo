@@ -6,6 +6,7 @@ import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
 import "transcript_duration_formatter.dart";
 import "transcript_elapsed_time.dart";
+import "transcript_motion.dart";
 
 /// The turning sparkle that leads every live row of the transcript. Reduced
 /// motion keeps it still.
@@ -61,6 +62,15 @@ class const TranscriptStepRow({
   static String capitalize({required String label}) =>
       label.characters.take(1).toUpperCase().string + label.characters.skip(1).string;
 
+  /// Above and below the sparkle-sized line, so a one-line row stands as tall
+  /// as a button: its 44 px minimum, adjusted for density as the button
+  /// adjusts it.
+  static double verticalInset({required BuildContext context}) =>
+      (44 + Theme.of(context).visualDensity.baseSizeAdjustment.dy - TranscriptLiveSparkle.size) / 2;
+
+  /// The gap every step widget leaves above and below its row.
+  static const double stepGap = 4;
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -90,10 +100,8 @@ class const TranscriptStepRow({
             child: TranscriptLiveLabel(label: text, semanticLabel: null),
           )
         : text;
-    // A button's 44 px minimum, adjusted for density as the button adjusts it.
-    final height = 44 + Theme.of(context).visualDensity.baseSizeAdjustment.dy;
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: (height - TranscriptLiveSparkle.size) / 2),
+      padding: EdgeInsets.symmetric(vertical: verticalInset(context: context)),
       child: Row(
         children: [
           SizedBox.square(
@@ -132,7 +140,18 @@ class const TranscriptStepRow({
 /// The live row at the newest end of the transcript while the session works
 /// and no step is live: before the first token and between steps. With a
 /// known [sinceMs], the prompt's sent time, it ticks the time since.
-class const TranscriptWorkingRow({super.key, required final int? sinceMs}) extends StatelessWidget {
+///
+/// It stands as tall as a step widget, gaps included, so a step that takes
+/// over grows in exactly as fast as this row folds away and the transcript
+/// holds still.
+class const TranscriptWorkingRow({
+  super.key,
+  required final int? sinceMs,
+
+  /// Around the row, as the reply's card pads its content: with its vertical
+  /// part while no reply shows, since the first step's card brings that too.
+  required final EdgeInsets padding,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -140,8 +159,14 @@ class const TranscriptWorkingRow({super.key, required final int? sinceMs}) exten
     final working = loc.sessionDetailWorking;
     final style = prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary);
     final sinceMs = this.sinceMs;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    // Eases when a reply starts showing beside the row, as the reply's card
+    // eases in.
+    return AnimatedPadding(
+      duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+      curve: transcriptMotionCurve,
+      padding:
+          padding +
+          EdgeInsets.symmetric(vertical: TranscriptStepRow.stepGap + TranscriptStepRow.verticalInset(context: context)),
       child: Row(
         children: [
           const TranscriptLiveSparkle(),
