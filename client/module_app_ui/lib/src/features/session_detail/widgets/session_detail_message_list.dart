@@ -886,7 +886,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final unloadedPin = _unloadedPin = const TranscriptPromptListBuilder().pinAbove(turns: turns, index: promptIndex);
     final activity = const TranscriptActivityBuilder().build(
       transcript: transcript,
-      turns: turns,
       messages: messages,
       isBusy: isBusy,
       mainAgentRunning: mainAgentRunning,
