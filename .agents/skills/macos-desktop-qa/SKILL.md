@@ -23,8 +23,8 @@ Combine semantic app automation with visual/native-system inspection:
   clearer and more reliable.
 
 Both automation servers are declared in `.mcp.json`. Their shared launcher
-starts whatever versions are installed; both tools are used at their latest
-release. Pi accesses them lazily through `pi-mcp-adapter`; use its `mcp` proxy to
+starts whatever versions are installed; the setup below installs the latest
+releases. Pi accesses them lazily through `pi-mcp-adapter`; use its `mcp` proxy to
 search/describe a tool before calling it. The shared `.mcp.json` command is
 repository-relative, so other hosts must launch it with the repository root as
 their working directory. If a host does not guarantee that working directory,
@@ -42,6 +42,8 @@ pi install npm:pi-mcp-adapter@2.31.0
 ```
 
 Update both with `brew upgrade peekaboo` and the same `npm install` command.
+Hosts set up when this skill pinned Peekaboo must run `brew unpin peekaboo`
+once first; Homebrew skips pinned formulae.
 Restart Pi after installing the adapter, and restart or reconnect the MCP
 servers in any host after an update.
 

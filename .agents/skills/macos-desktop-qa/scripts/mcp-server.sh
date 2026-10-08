@@ -16,11 +16,13 @@ case "${1:-}" in
     require_command peekaboo
     require_command agent-device
     peekaboo --version
-    printf 'agent-device %s\n' "$(agent-device --version)"
+    agent_device_version="$(agent-device --version)"
+    printf 'agent-device %s\n' "$agent_device_version"
     ;;
   peekaboo)
     require_command peekaboo
-    exec peekaboo mcp --no-remote
+    # Peekaboo 4.3+ refuses tray, Dock, dialog and menu actions without this flag.
+    exec peekaboo mcp --no-remote --allow-foreground
     ;;
   agent-device)
     require_command agent-device
