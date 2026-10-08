@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$OpenCodeProbeResponse {
 
- String? get version;
+ String? get version; int? get pid;
 /// Create a copy of OpenCodeProbeResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,20 +28,20 @@ $OpenCodeProbeResponseCopyWith<OpenCodeProbeResponse> get copyWith => _$OpenCode
 @override
 bool operator ==(Object other) {
   final _this = this as OpenCodeProbeResponse;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is OpenCodeProbeResponse&&(identical(other.version, _this.version) || other.version == _this.version));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is OpenCodeProbeResponse&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.pid, _this.pid) || other.pid == _this.pid));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as OpenCodeProbeResponse;
-  return Object.hash(runtimeType,_this.version);
+  return Object.hash(runtimeType,_this.version,_this.pid);
 }
 
 @override
 String toString() {
   final _this = this as OpenCodeProbeResponse;
-  return 'OpenCodeProbeResponse(version: ${_this.version})';
+  return 'OpenCodeProbeResponse(version: ${_this.version}, pid: ${_this.pid})';
 }
 
 
@@ -52,7 +52,7 @@ abstract mixin class $OpenCodeProbeResponseCopyWith<$Res>  {
   factory $OpenCodeProbeResponseCopyWith(OpenCodeProbeResponse value, $Res Function(OpenCodeProbeResponse) _then) = _$OpenCodeProbeResponseCopyWithImpl;
 @useResult
 $Res call({
- String? version
+ String? version, int? pid
 });
 
 
@@ -69,10 +69,11 @@ class _$OpenCodeProbeResponseCopyWithImpl<$Res>
 
 /// Create a copy of OpenCodeProbeResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? version = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? version = freezed,Object? pid = freezed,}) {
   return _then(OpenCodeProbeResponse(
 version: freezed == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,pid: freezed == pid ? _self.pid : pid // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 
@@ -84,10 +85,11 @@ as String?,
 
 @JsonSerializable(checked: true)
 class _OpenCodeProbeResponse implements OpenCodeProbeResponse {
-  const _OpenCodeProbeResponse({required this.version});
+  const _OpenCodeProbeResponse({required this.version, required this.pid});
   factory _OpenCodeProbeResponse.fromJson(Map<String, dynamic> json) => _$OpenCodeProbeResponseFromJson(json);
 
 @override final  String? version;
+@override final  int? pid;
 
 /// Create a copy of OpenCodeProbeResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -99,18 +101,18 @@ _$OpenCodeProbeResponseCopyWith<_OpenCodeProbeResponse> get copyWith => __$OpenC
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _OpenCodeProbeResponse&&(identical(other.version, version) || other.version == version));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _OpenCodeProbeResponse&&(identical(other.version, version) || other.version == version)&&(identical(other.pid, pid) || other.pid == pid));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,version);
+    return Object.hash(runtimeType,version,pid);
 }
 
 @override
 String toString() {
-    return 'OpenCodeProbeResponse(version: $version)';
+    return 'OpenCodeProbeResponse(version: $version, pid: $pid)';
 }
 
 
@@ -121,7 +123,7 @@ abstract mixin class _$OpenCodeProbeResponseCopyWith<$Res> implements $OpenCodeP
   factory _$OpenCodeProbeResponseCopyWith(_OpenCodeProbeResponse value, $Res Function(_OpenCodeProbeResponse) _then) = __$OpenCodeProbeResponseCopyWithImpl;
 @override @useResult
 $Res call({
- String? version
+ String? version, int? pid
 });
 
 
@@ -138,10 +140,11 @@ class __$OpenCodeProbeResponseCopyWithImpl<$Res>
 
 /// Create a copy of OpenCodeProbeResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? version = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? version = freezed,Object? pid = freezed,}) {
   return _then(_OpenCodeProbeResponse(
 version: freezed == version ? _self.version : version // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,pid: freezed == pid ? _self.pid : pid // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 

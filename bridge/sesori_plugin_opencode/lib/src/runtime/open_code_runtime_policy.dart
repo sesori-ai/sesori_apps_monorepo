@@ -6,6 +6,7 @@ import "dart:typed_data";
 
 import "package:freezed_annotation/freezed_annotation.dart" show CheckedFromJsonException;
 import "package:http/http.dart" as http;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show SemanticVersion;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show HostPortService, Log, PluginHost, SpawnedProcess;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
@@ -17,6 +18,10 @@ import "open_code_protocol.dart";
 
 /// OpenCode-specific launch, health-probe, and ownership-record policy over
 /// services exposed by [PluginHost].
+
+/// The oldest OpenCode 2.x the v2 adapter supports. Older 2.x releases have
+/// already migrated the database, so they are refused rather than downgraded.
+final openCodeMinimumV2Version = SemanticVersion.parse(value: "2.0.11");
 
 /// The reserved default port OpenCode listens on, excluded from dynamic
 /// discovery.
@@ -299,6 +304,30 @@ Future<OpenCodeProtocol> probeOpenCodeProtocol({
   } on Object catch (error, stackTrace) {
     Log.w("[opencode] protocol probe failed; assuming OpenCode 1.x", error, stackTrace);
     return const OpenCodeProtocolV1();
+  } finally {
+    client.close();
+  }
+}
+
+/// Sends an authenticated `GET /api/info` to an OpenCode 2.x server with the
+/// same bounds as the health probe. Throws on a transport error or timeout.
+Future<({int statusCode, OpenCodeProbeResponse? body})> probeOpenCodeInfo({
+  required String host,
+  required int port,
+  required String? password,
+  required http.Client Function() clientFactory,
+  Duration timeout = const Duration(seconds: 5),
+}) async {
+  final client = clientFactory();
+  try {
+    return await _getOpenCodeJson(
+      client: client,
+      host: host,
+      port: port,
+      path: "/api/info",
+      password: password,
+      timeout: timeout,
+    );
   } finally {
     client.close();
   }

@@ -9,10 +9,12 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness, StringExtensions, maxTranscriptImageCollectionBytes;
 
 import "../api/open_code_catalog_database_api.dart";
+import "../api/open_code_service_registration_api.dart";
 import "../message_part_mapper.dart";
 import "../opencode_plugin_impl.dart";
 import "../plugin_model_mapper.dart";
 import "../repositories/open_code_catalog_repository.dart";
+import "../repositories/open_code_shared_server_repository.dart";
 import "../v2/opencode_v2_plugin.dart";
 import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
@@ -20,9 +22,9 @@ import "open_code_protocol.dart";
 import "open_code_record_mapper.dart";
 import "open_code_runtime_manifest.dart";
 import "open_code_runtime_policy.dart";
+import "open_code_shared_server_endpoint.dart";
 
 const int _setupProbeOutputLimit = 64 * 1024;
-final _minimumV2Version = SemanticVersion.parse(value: "2.0.11");
 
 abstract final class _OpenCodeConfigKey() {
   static const String port = "port";
@@ -31,6 +33,7 @@ abstract final class _OpenCodeConfigKey() {
   static const String password = "password";
   static const String noPassword = "no-password";
   static const String binary = "bin";
+  static const String noSharedService = "no-shared-service";
 }
 
 /// Builds the [OpenCodeManagedApi] for a resolved server. The descriptor awaits
@@ -180,6 +183,14 @@ class const OpenCodePluginDescriptor({
       valueHelp: null,
       validate: null,
     ),
+    PluginFlagOption(
+      name: _OpenCodeConfigKey.noSharedService,
+      help:
+          "Always start a private opencode server instead of using OpenCode 2's shared background "
+          "service when it is running",
+      defaultsTo: false,
+      negatable: false,
+    ),
   ];
 
   /// Static counterpart of [validateConfig] for argument-parse-time callers.
@@ -305,6 +316,15 @@ class const OpenCodePluginDescriptor({
       arguments: ["upgrade"],
       timeout: Duration(minutes: 10),
     );
+  }
+
+  /// Whether a managed start first looks for OpenCode 2's shared background
+  /// server. Attach mode already names its server, and an explicit binary may
+  /// belong to another OpenCode channel whose service file has another name.
+  bool _sharesServer(PluginConfig config) {
+    return !config.flag(_OpenCodeConfigKey.noAutoStart) &&
+        !config.flag(_OpenCodeConfigKey.noSharedService) &&
+        _explicitBin(config) == null;
   }
 
   String? _explicitBin(PluginConfig config) {
@@ -609,13 +629,28 @@ class const OpenCodePluginDescriptor({
       gracefulShutdownWait: openCodeGracefulShutdownWait,
     );
 
+    // OpenCode 2's shared background server, when one is running, healthy and
+    // compatible. Using it keeps the bridge, the TUI and the desktop app on one
+    // server instead of two servers colliding on one database.
+    final sharedEndpoint = _sharesServer(config)
+        ? await OpenCodeSharedServerRepository(
+            registrationApi: const OpenCodeServiceRegistrationApi(),
+            probeClientFactory: probeClientFactory,
+          ).discover(environment: host.environment)
+        : null;
+    if (host.startAborted.isAborted) {
+      throw const PluginStartAbortedException();
+    }
+
     late final ManagedRuntimeSpec<OpenCodeOwnershipRecord> spec;
     ManagedRuntimeHandle<OpenCodeOwnershipRecord>? handle;
     final int port;
     final String serverUrl;
     final String? apiPassword;
+    final String mode;
 
     if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
+      mode = "attached";
       // Attach mode: probe an existing server, never own or kill it.
       final attachPort = requestedPort!;
       port = attachPort;
@@ -645,7 +680,39 @@ class const OpenCodePluginDescriptor({
         );
         handle = null;
       }
+    } else if (sharedEndpoint != null) {
+      mode = "shared";
+      // Shared mode: attach to OpenCode's own background server, never own,
+      // kill or restart it. Everything comes from its registration, not config.
+      port = sharedEndpoint.port;
+      serverUrl = sharedEndpoint.url;
+      apiPassword = sharedEndpoint.password;
+      spec = buildOpenCodeManagedRuntimeSpec(
+        host: host,
+        executablePath: "",
+        password: sharedEndpoint.password,
+        portPolicy: ExplicitPortPolicy(port: port),
+        probeClientFactory: probeClientFactory,
+        bindHost: sharedEndpoint.host,
+        connectHost: sharedEndpoint.host,
+      );
+      // Reclaim a private server a replaced or crashed bridge left behind, as
+      // the managed start does, so it cannot keep running on the same database.
+      await service.cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: host.bridge.terminatedBridgeIdentities);
+      try {
+        handle = await service.attach(spec: spec, port: port, startAborted: host.startAborted);
+        Log.i("[opencode] using the shared OpenCode ${sharedEndpoint.version} service at $serverUrl");
+      } on PluginStartAbortedException {
+        rethrow;
+      } on PluginStartException catch (error) {
+        Log.w(
+          "[opencode] the shared OpenCode service at $serverUrl stopped answering: ${error.message}. "
+          "Starting degraded; the bridge keeps retrying it.",
+        );
+        handle = null;
+      }
     } else {
+      mode = "managed";
       // Managed mode: spawn and own a new server.
       final serverPassword = noPassword ? null : (providedPassword ?? generateOpenCodePassword(random: _random));
       apiPassword = serverPassword;
@@ -727,14 +794,17 @@ class const OpenCodePluginDescriptor({
 
     // Probe before the late-abort check so an abort during the probe is honored.
     // With no server yet, keep v1 recovery; a late v2 attach requires restart.
-    final protocol = handle == null
-        ? const OpenCodeProtocolV1()
-        : await probeOpenCodeProtocol(
-            port: port,
-            password: apiPassword,
-            clientFactory: probeClientFactory,
-            host: connectHost,
-          );
+    // The shared server's discovery already established its v2 version.
+    final OpenCodeProtocol protocol = switch (sharedEndpoint) {
+      OpenCodeSharedServerEndpoint(:final version) => OpenCodeProtocolV2(version: version),
+      null when handle == null => const OpenCodeProtocolV1(),
+      null => await probeOpenCodeProtocol(
+        port: port,
+        password: apiPassword,
+        clientFactory: probeClientFactory,
+        host: connectHost,
+      ),
+    };
 
     // Honor a late abort: a managed start the supervisor returned just as the
     // bridge aborted must release the owned child before we surface it.
@@ -747,12 +817,12 @@ class const OpenCodePluginDescriptor({
     }
 
     // Older v2 releases have already migrated the database: never suggest v1.
-    if (protocol case OpenCodeProtocolV2(:final version) when version.version.compareTo(_minimumV2Version) < 0) {
+    if (protocol case OpenCodeProtocolV2(:final version) when version.version.compareTo(openCodeMinimumV2Version) < 0) {
       if (handle case ManagedRuntimeHandle(isOwned: true, :final record?)) {
         await service.stopOwnedRuntime(record: record);
       }
       throw PluginStartException(
-        "OpenCode ${version.raw} requires an update to $_minimumV2Version or newer; "
+        "OpenCode ${version.raw} requires an update to $openCodeMinimumV2Version or newer; "
         "do not downgrade OpenCode because its database has already migrated",
         cause: null,
       );
@@ -800,7 +870,7 @@ class const OpenCodePluginDescriptor({
       diagnostics: PluginDiagnostics(
         pluginId: Harness.opencode.name,
         endpoint: serverUrl,
-        details: <String, String>{"port": "$port", "mode": ownedRecord == null ? "attached" : "managed"},
+        details: <String, String>{"port": "$port", "mode": mode},
       ),
       displayName: "OpenCode",
       logContext: "opencode",

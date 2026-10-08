@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `opencode-shared-service`
-- **Status:** Active; Step 1 (this plan) in review.
+- **Status:** Active; Step 1 merged in #1923; Step 2 in review.
 - **Plan date:** 2026-10-08
 - **Implementation base:** `main` at `2ad69c9545`
 - **Scope:** OpenCode 2 only. OpenCode 1 has no background service, so it needs no work. No other harness has a

@@ -101,7 +101,7 @@ void main() {
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(
         descriptor.options.map((o) => o.name).toList(),
-        equals(<String>["port", "host", "no-auto-start", "password", "no-password", "bin"]),
+        equals(<String>["port", "host", "no-auto-start", "password", "no-password", "bin", "no-shared-service"]),
       );
     });
 
@@ -222,6 +222,7 @@ void main() {
           const PluginConfig(
             values: {
               "no-auto-start": false,
+              "no-shared-service": false,
               "port": null,
               "host": "127.0.0.1",
               "password": "",
@@ -288,6 +289,7 @@ void main() {
           const PluginConfig(
             values: {
               "no-auto-start": false,
+              "no-shared-service": false,
               "port": null,
               "host": "",
               "password": "",
@@ -303,6 +305,7 @@ void main() {
           const PluginConfig(
             values: {
               "no-auto-start": false,
+              "no-shared-service": false,
               "port": null,
               "host": "   ",
               "password": "",
@@ -328,6 +331,7 @@ void main() {
             PluginConfig(
               values: {
                 "no-auto-start": false,
+                "no-shared-service": false,
                 "port": null,
                 "host": badHost,
                 "password": "",
@@ -349,6 +353,7 @@ void main() {
           const PluginConfig(
             values: {
               "no-auto-start": false,
+              "no-shared-service": false,
               "port": null,
               "host": "0.0.0.0",
               "password": "",
@@ -365,6 +370,7 @@ void main() {
           const PluginConfig(
             values: {
               "no-auto-start": false,
+              "no-shared-service": false,
               "port": null,
               "host": "127.0.0.1",
               "password": "",
@@ -381,6 +387,7 @@ void main() {
           const PluginConfig(
             values: {
               "no-auto-start": false,
+              "no-shared-service": false,
               "port": null,
               "host": "0.0.0.0",
               "password": "",
@@ -414,6 +421,7 @@ void main() {
           const PluginConfig(
             values: {
               "no-auto-start": false,
+              "no-shared-service": false,
               "port": null,
               "host": "127.evil.com",
               "password": "",
@@ -430,6 +438,7 @@ void main() {
           const PluginConfig(
             values: {
               "no-auto-start": false,
+              "no-shared-service": false,
               "port": null,
               "host": "127.0.0.2",
               "password": "",
@@ -454,6 +463,7 @@ void main() {
             "port": null,
             "host": "127.0.0.1",
             "no-auto-start": false,
+            "no-shared-service": false,
             "password": "",
             "bin": "/bin/opencode",
             "no-password": false,
@@ -502,6 +512,7 @@ void main() {
             "port": null,
             "host": "0.0.0.0",
             "no-auto-start": false,
+            "no-shared-service": false,
             "password": "",
             "bin": "/bin/opencode",
             "no-password": false,
@@ -531,6 +542,7 @@ void main() {
             "port": null,
             "host": "10.0.0.5",
             "no-auto-start": false,
+            "no-shared-service": false,
             "password": "",
             "bin": "/bin/opencode",
             "no-password": false,
@@ -553,6 +565,7 @@ void main() {
             "port": null,
             "host": "::",
             "no-auto-start": false,
+            "no-shared-service": false,
             "password": "",
             "bin": "/bin/opencode",
             "no-password": false,
@@ -581,6 +594,7 @@ void main() {
             "port": null,
             "host": "::1",
             "no-auto-start": false,
+            "no-shared-service": false,
             "password": "",
             "bin": "/bin/opencode",
             "no-password": false,
@@ -603,6 +617,7 @@ void main() {
             "port": null,
             "host": "  0.0.0.0  ",
             "no-auto-start": false,
+            "no-shared-service": false,
             "password": "",
             "bin": "/bin/opencode",
             "no-password": false,
@@ -631,6 +646,7 @@ void main() {
             "port": null,
             "host": "127.0.0.1",
             "no-auto-start": false,
+            "no-shared-service": false,
             "password": "",
             "bin": "/bin/opencode",
             "no-password": true,
@@ -1096,6 +1112,152 @@ void main() {
       await plugin.shutdown(budget: null);
     });
   });
+  group("OpenCodePluginDescriptor.start (shared background service)", () {
+    const sharedPassword = "service-secret";
+    const sharedPid = 321;
+    late Directory stateRoot;
+    late _FakeApiRecorder apiRecorder;
+    late List<http.Request> requests;
+
+    setUp(() {
+      stateRoot = Directory.systemTemp.createTempSync("opencode-shared-state-");
+      apiRecorder = _FakeApiRecorder();
+      requests = <http.Request>[];
+    });
+
+    tearDown(() => stateRoot.deleteSync(recursive: true));
+
+    void registerService() {
+      File(p.join(stateRoot.path, "opencode", "service.json"))
+        ..createSync(recursive: true)
+        ..writeAsStringSync(
+          jsonEncode({"url": "http://127.0.0.1:49374", "pid": sharedPid, "password": sharedPassword}),
+        );
+    }
+
+    _FakeHost sharedHost({bool noSharedService = false, String? bin}) {
+      final host = _FakeHost(
+        config: PluginConfig(
+          values: {
+            "port": null,
+            "host": "127.0.0.1",
+            "no-auto-start": false,
+            "password": "",
+            "bin": bin,
+            "no-password": false,
+            "no-shared-service": noSharedService,
+          },
+        ),
+      )..environment = {"XDG_STATE_HOME": stateRoot.path};
+      host.provisionedRuntimePath = "/bin/opencode";
+      return host;
+    }
+
+    /// A v2 service: HTML on `/global/health`, JSON `/api/info` for
+    /// [sharedPid]. [infoStatus] can turn later `/api/info` answers unhealthy.
+    OpenCodePluginDescriptor descriptor({int Function(int infoCall)? infoStatus}) {
+      var infoCalls = 0;
+      return OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
+        buildApi: apiRecorder.build,
+        probeClientFactory: () => MockClient((request) async {
+          requests.add(request);
+          if (request.url.path != "/api/info") return http.Response("<!doctype html>", 200);
+          final status = infoStatus?.call(infoCalls++) ?? 200;
+          return http.Response(jsonEncode({"version": "2.0.25", "pid": sharedPid}), status);
+        }),
+        candidatePorts: const <int>[51000],
+        random: Random(1),
+      );
+    }
+
+    test("attaches to a running service without owning, spawning or interrupting it", () async {
+      registerService();
+      final host = sharedHost();
+
+      final plugin = await descriptor().start(host);
+
+      expect(plugin.currentStatus, isA<PluginReady>());
+      expect(plugin.describe().details["mode"], equals("shared"));
+      expect(plugin.describe().endpoint, equals("http://127.0.0.1:49374"));
+      expect(plugin.describe().details.values, isNot(contains(sharedPassword)));
+      expect(apiRecorder.protocol, isA<OpenCodeProtocolV2>());
+      expect((apiRecorder.protocol! as OpenCodeProtocolV2).version.raw, equals("2.0.25"));
+      expect(apiRecorder.last!.password, equals(sharedPassword));
+      expect(
+        requests.map((request) => request.headers["Authorization"]).toSet(),
+        equals({"Basic ${base64Encode(utf8.encode("opencode:$sharedPassword"))}"}),
+      );
+      expect(host.processes.spawnedProcesses, isEmpty);
+      expect(host.ownershipRecord("owner-current"), isNull);
+
+      expect(await plugin.interruptActiveWork(budget: const Duration(seconds: 1)), isEmpty);
+      await plugin.shutdown(budget: null);
+      expect(host.processes.signals, isEmpty);
+    });
+
+    test("spawns a private server when no service is registered", () async {
+      final host = sharedHost();
+
+      final plugin = await descriptor().start(host);
+
+      expect(plugin.describe().details["mode"], equals("managed"));
+      expect(host.processes.spawnedProcesses, hasLength(1));
+      await plugin.shutdown(budget: null);
+    });
+
+    test("spawns a private server when the registered service is not healthy", () async {
+      registerService();
+      final host = sharedHost();
+
+      final plugin = await descriptor(infoStatus: (call) => call == 0 ? 503 : 200).start(host);
+
+      expect(plugin.describe().details["mode"], equals("managed"));
+      expect(host.processes.spawnedProcesses, hasLength(1));
+      await plugin.shutdown(budget: null);
+    });
+
+    test("the opt-out flag and an explicit binary never read the registration", () async {
+      registerService();
+      for (final host in [sharedHost(noSharedService: true), sharedHost(bin: "/custom/opencode")]) {
+        requests.clear();
+        final plugin = await descriptor().start(host);
+
+        expect(plugin.describe().details["mode"], equals("managed"));
+        expect(host.processes.spawnedProcesses, hasLength(1));
+        expect(requests.map((request) => request.url.port), isNot(contains(49374)));
+        await plugin.shutdown(budget: null);
+      }
+    });
+
+    test("starts degraded on the v2 adapter when the service stops answering after discovery", () async {
+      registerService();
+      final host = sharedHost();
+
+      final plugin = await descriptor(infoStatus: (call) => call == 0 ? 200 : 503).start(host);
+
+      expect(plugin.currentStatus, isA<PluginDegraded>());
+      expect(plugin.describe().details["mode"], equals("shared"));
+      expect(apiRecorder.protocol, isA<OpenCodeProtocolV2>());
+      expect(host.processes.spawnedProcesses, isEmpty);
+      await plugin.shutdown(budget: null);
+      expect(host.processes.signals, isEmpty);
+    });
+
+    test("reclaims a private server orphaned by a terminated bridge before attaching", () async {
+      registerService();
+      final host = sharedHost();
+      _seedStaleRecord(host);
+
+      final plugin = await descriptor().start(host);
+
+      expect(plugin.describe().details["mode"], equals("shared"));
+      expect(host.processes.signals, equals(<String>["graceful:7777"]));
+      expect(host.ownershipRecord("owner-old"), isNull);
+      await plugin.shutdown(budget: null);
+      expect(host.processes.signals, equals(<String>["graceful:7777"]));
+    });
+  });
 }
 
 /// Seeds the ownership file with a ready record owned by a *previous* bridge
@@ -1228,7 +1390,7 @@ class _FakeHost({@override required final PluginConfig config}) implements Plugi
   String? provisionedRuntimePath;
 
   @override
-  final Map<String, String> environment = const <String, String>{"PATH": "/usr/bin"};
+  Map<String, String> environment = const <String, String>{"PATH": "/usr/bin"};
 
   @override
   final ServerClock clock = const _ImmediateClock();
