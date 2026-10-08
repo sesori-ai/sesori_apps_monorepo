@@ -204,10 +204,10 @@ credentials; a completed helper must not hide failed load, replay or teardown.
     start fails, times out or still leaves no usable service. Known limitation: a
     service started later on the same database can resume that private server's
     in-flight turns.
-  - **Service drops or moves:** when the shared service stops answering, at start
-    after discovery or later through a lasting event-stream disconnect, the plugin
-    shows degraded and, unless the service answers again within the 5-second
-    debounce, fails. The bridge retires that generation, and the next request
+  - **Service drops or moves:** when the shared service stops answering, the
+    plugin fails unless the service answers again within the 5-second debounce. At
+    start after discovery it shows degraded during that debounce; after a lasting
+    event-stream disconnect it goes from ready straight to failed. The bridge retires that generation, and the next request
     starts a fresh one that runs discovery and, if needed, `service start` again,
     so it re-attaches wherever the service now listens. In-flight requests during
     that window fail once. A failed or over-budget cold start on the shared

@@ -415,7 +415,7 @@ user's own processes.
 
 - **`service start` fails, or the CLI hangs past the 130 s backstop:** a private server is spawned, and a service
   started later can still resume its turns twice. This is rare: it needs a broken first boot or a hung CLI. The bridge waits as long as
-  OpenCode does (review on #1927), because a shorter bound would fall back while the detached service is still
+  OpenCode does (decided in #1927), because a shorter bound would fall back while the detached service is still
   booting on the same database.
 - **A shared-mode generation fails on any lasting disconnect,** including a TUI-triggered `service restart`. The
   next request re-attaches. In-flight relay requests during that window fail once.
