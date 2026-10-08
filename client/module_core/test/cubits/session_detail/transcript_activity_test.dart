@@ -104,6 +104,58 @@ void main() {
       expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 5000));
     });
 
+    test("works since the latest message sent mid-turn", () {
+      final activity = _activity(
+        messages: [
+          _prompt(id: "u1", at: 1000),
+          _agent(
+            id: "a1",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+          _prompt(id: "u2", at: 4000),
+          _agent(
+            id: "a2",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+          _prompt(id: "u3", at: 7000),
+        ],
+        isBusy: true,
+      );
+
+      expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 7000));
+    });
+
+    test("keeps the opener's time while no message joins the turn", () {
+      final activity = _activity(
+        messages: [
+          _prompt(id: "u1", at: 1000),
+          _agent(
+            id: "a1",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+        ],
+        isBusy: true,
+      );
+
+      expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 1000));
+    });
+
+    test("works without a time when the latest mid-turn message carries none", () {
+      final activity = _activity(
+        messages: [
+          _prompt(id: "u1", at: 1000),
+          _agent(
+            id: "a1",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+          _prompt(id: "u2", at: null),
+        ],
+        isBusy: true,
+      );
+
+      expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", isNull));
+    });
+
     test("works without a time when the prompt carries none", () {
       final activity = _activity(messages: [_prompt(id: "u1", at: null)], isBusy: true);
 
