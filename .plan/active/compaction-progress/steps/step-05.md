@@ -99,3 +99,29 @@ Dart from Flutter 3.47.5-stable first on `PATH`.
   replacing row stays put).
 - Architecture implementation review (one pass, `origin/main...HEAD`):
   approved, no findings.
+
+## PR Reviews And Outcome
+
+PR #1911 merged as `f4700fdc71` on 2026-10-08. It merged `origin/main` once
+(`6c9e65ef2d`) before the R1 fix.
+
+- **Wave 1 (`e3db6407f4`), Codex and cubic:** seven findings.
+  - Fixed in `0431b8b0e0`:
+    - `ClaudeCompactMetadata` is a Freezed model with a generated `fromJson`
+      that reads both casings through `readValue`, replacing the two manual
+      extractors (Codex P1 and cubic P3);
+    - the capability intro names only the displayed trigger;
+    - the Claude failure signal covers only successful-compaction details;
+    - L2 Routine lists the Claude compaction coverage;
+    - the known limitation says "no dedicated compaction record".
+  - Declined: cubic P2 on the message list pairing any removal with a new
+    row in the same gap. No current flow drops an unrelated row and appends
+    a new one in the same gap, and the damage would be one row that does not
+    ease in.
+- **Wave 2 (`0431b8b0e0`):** clean.
+
+## Size
+
+1,054 changed lines against the merge base (982 added, 72 deleted): 230
+generated Freezed and JSON output, about 414 of production code, 267 of
+tests, 33 of docs and 110 of plan.

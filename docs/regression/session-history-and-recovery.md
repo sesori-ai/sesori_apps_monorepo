@@ -283,7 +283,8 @@ reconnect or restart.
   to a terminal error, for every backend. The sweep runs when the session goes
   idle (finalized parts are also delivered live as part updates) and on a
   history read whose page still holds an open tool part while the session is
-  not currently busy — whether the page came from a backfill or from a store
+  neither busy nor retrying (a stored-only read never sweeps) — whether the
+  page came from a backfill or from a store
   kept fresh across an abrupt bridge death — including when the status is
   unobservable, since a stopped backend hosts no live tool. Finalization never
   advances the session's freshness marks, and a genuinely running tool swept by
@@ -343,7 +344,8 @@ reconnect or restart.
   failure, applies v1-v3 migration in memory, and never exposes persisted paths
   or execution-only prompt context to remote clients.
 - Pi live assistant finals use the same message identities, parts, bounded tool
-  results, terminal failures, and visible compaction card as cold replay.
+  results, terminal failures, and settled compaction row as cold replay; only
+  the live row carries Pi's trigger, because history entries record no reason.
   Streaming text and reasoning follow their content indices, tool progress
   replaces cumulative output, and `toolcall_start` metadata
   announces a pending tool before execution begins without duplicating it at

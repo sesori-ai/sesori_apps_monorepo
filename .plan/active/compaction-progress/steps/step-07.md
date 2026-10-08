@@ -52,7 +52,8 @@ already renders each state.
 - **Pi failure note.** It settles without a cross-fade because the row moves
   to a new id. This is the plan's accepted exception to P9.
 - **Outage.** A row whose end is missed while the stream is down stays running
-  until the idle sweep fails it, or until the next transcript read.
+  until a later ordinary read once the session is idle (a general reconnect
+  gap); stored-only reads and busy or retrying sessions skip that sweep.
 - **Older apps (Q5).** They show only "Working…" while compaction runs. There
   is no old-client code.
 
@@ -77,13 +78,34 @@ Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
 
 - **`architecture-implementation-review` of `bcf2dc88bf`:** approved, with no
   findings.
+- **PR #1908, five review waves.** It merged `origin/main` once
+  (`1836e166d7`), after wave 2, and merged as `5dd2d6be85` on 2026-10-08.
+  - **Wave 1 (`deb8e0ee73`):** Codex was clean. cubic had six findings, and
+    five were fixed in `341baeefad`:
+    - a Codex completion with no known start keeps `completedAtMs`;
+    - a Pi failure with no recorded start reports the session error again;
+    - three doc fixes (a line wrap, Pi's "· auto" only after completion with
+      an optional error, and Pi id continuity only on success).
+
+    Declined: two abandoned Pi compactions sharing one millisecond stamp.
+    Each attempt needs a model round-trip, and a `willRetry` retry keeps its
+    row, so no flow produces it.
+  - **Wave 2 (`341baeefad`, Codex):** both findings fixed in `dee052f4ae`.
+    Codex and DeepSeek stamp compactions through `PluginHost.clock`.
+  - **Wave 3 (`1836e166d7`, Codex):** fixed in `01211e533b`. DeepSeek status
+    frames are held while the prompt is written, so a compaction that starts
+    with the prompt lands after the user message.
+  - **Wave 4 (`01211e533b`, Codex):** fixed in `a196db2b8d`. The Pi
+    compaction mapper callback takes required named parameters.
+  - **Wave 5 (`a196db2b8d`, Codex):** declined. A Pi process exit
+    mid-compaction while a selection-changing prompt waits keeps the moved
+    row running through that queued turn, until its idle sweep writes the
+    failure note. The damage is cosmetic and heals itself, and settling it in
+    `clearCompaction` would replace the sweep's explanatory note in the
+    common Stop case.
 
 ## Size
 
-About 830 changed lines against the merge base:
-- about 90 lines of this file;
-- about 325 lines of production code;
-- about 350 lines of tests;
-- about 70 lines of docs.
-
+888 changed lines against the merge base (709 added, 179 deleted): 89 of
+this file, about 340 of production code, about 385 of tests and 73 of docs.
 Nothing is generated.

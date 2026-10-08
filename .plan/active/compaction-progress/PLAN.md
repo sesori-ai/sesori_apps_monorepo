@@ -811,7 +811,10 @@ Each implementation step updates the documents for the behavior it ships.
   - the Pi and Codex running-`compact`-card lines in `session-turns.md` and
     `tools-and-file-changes.md`;
   - the DeepSeek compaction line in `session-turns.md`.
-- **Step 8:** reconcile every document with what shipped.
+- **Step 8:** reconcile every document with what shipped. Step 8 kept the
+  capability doc's two-column table (Compaction row, Summary) instead of
+  step 5's planned split, because each harness's row already reads as one
+  sentence per fact; see `steps/step-08.md`.
 
 Failure signals, added by the step that ships the behavior:
 
