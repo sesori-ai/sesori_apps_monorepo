@@ -436,9 +436,9 @@ final class ClaudePlugin({
       (byProject[directory] ??= []).add(
         PluginActiveSession(
           id: entry.key,
-          // Busy also covers background-only activity; the main agent runs only
-          // while a turn does.
-          mainAgentRunning: _sessions.isTurnRunning(sessionId: entry.key),
+          // Busy also covers background sub-agents alone, which report as
+          // children; a background shell is the main agent's own work.
+          mainAgentRunning: _sessions.isMainAgentRunning(sessionId: entry.key),
           awaitingInput: awaitingInput,
           isRetrying: entry.value is PluginSessionStatusRetry,
           childSessionIds: _eventDispatcher.busyChildSessionIds(sessionId: entry.key),
