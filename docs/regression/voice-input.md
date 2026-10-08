@@ -126,7 +126,8 @@ interruptions such as a call.
   without L5.
 - Transcription is unavailable while unauthenticated or offline, which is expected degraded behavior. The bridge has
   no voice capability beyond the glossary.
-- Desktop capture has been tried by hand on a macOS Release build only. Windows records through Media Foundation and is unverified. Linux needs
+- Desktop capture is unverified on device: the macOS feel check has not been run yet and is pending a check on a
+  build from `main` after merge. Windows records through Media Foundation and is unverified. Linux needs
   `parecord` and `ffmpeg` on the PATH; without them the composer shows the recording-failed notice. Leaving a
   desktop session while recording discards the recording, as on the phone.
 - Retained recordings are composer-local and memory-owned. They do not survive composer disposal, route replacement,
