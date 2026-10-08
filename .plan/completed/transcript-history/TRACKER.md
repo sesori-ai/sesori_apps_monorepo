@@ -25,6 +25,9 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 - O1 answered by the user on 2026-10-07: accept. v1.8.3 and older apps show
   reloaded shell rows without the command label; that is cosmetic. See
   [PLAN](PLAN.md#answered-questions).
+- L2 answered by the user on 2026-10-08: accept the unexecuted L3 cells and
+  the recordings for steps 9, 9b, 10, 11b and 13, and retire. See
+  [PLAN](PLAN.md#regression-coverage).
 
 ## Guardrails
 
@@ -72,7 +75,8 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | 9 | `transcript-history/prompts-list` | [9](#fixed-pr-titles) | ≤ 1,300 | 7, 8 |
 | 9b | `transcript-history/relay-decode-isolate` | [9b](#fixed-pr-titles) | ≤ 200 | 4 |
 | 10 | `transcript-history/unloaded-pin` | [10](#fixed-pr-titles) | ≤ 500 | 9 |
-| 11 | `transcript-history/prompt-search` | [11](#fixed-pr-titles) | ≤ 800 | 9 |
+| 11a | `transcript-history/prompt-search` | [11a](#fixed-pr-titles) | ≤ 800 for all of 11; landed at about 800 | 9 |
+| 11b | `transcript-history/prompt-search-app` | [11b](#fixed-pr-titles) | split from 11; landed at about 950 | 11a |
 | 12 | `transcript-history/slim-tools-bridge` | [12](#fixed-pr-titles) | ≤ 900 | 8 |
 | 13 | `transcript-history/slim-tools-app` | [13](#fixed-pr-titles) | ≤ 700 | 12 |
 | 14 | `transcript-history/regression-docs` | [14](#fixed-pr-titles) | ≤ 300 | 2–13 |
@@ -82,6 +86,8 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 Rows 6–13 are detailed in [PLAN](PLAN.md#phases-2-and-3-architecture) and
 start once step 5 merges. Step 9 may split its far tap into its own PR if it
 outgrows its target; that split renumbers this table and the titles together.
+Step 11 split into 11a (#1900) and 11b (#1903); see `steps/step-11.md`. The
+titles of 11a, 11b and 14 below are the merged ones.
 
 ## Fixed PR Titles
 
@@ -96,9 +102,10 @@ outgrows its target; that split renumbers this table and the titles together.
 9. `🚧 [transcript-history] List every prompt and jump to unloaded ones [step 9/15]`
 9b. `🌿 [transcript-history] Decode large relay responses off the UI isolate [step 9b]`
 10. `⚙️ [transcript-history] Pin the prompt above an unloaded range [step 10/15]`
-11. `⚙️ [transcript-history] Search every prompt through the bridge [step 11/15]`
+11a. `⚙️ [transcript-history] Serve prompt search from the bridge [step 11a/15]`
+11b. `⚙️ [transcript-history] Search every prompt from the Prompts screen [step 11b/15]`
 12. `🚧 [transcript-history] Serve slim tool parts and a tool detail route [step 12/15]`
 13. `⚙️ [transcript-history] Fetch tool output when a row expands [step 13/15]`
-14. `🌱 [transcript-history] Reconcile the regression docs [step 14/15]`
+14. `🌱 [transcript-history] Reconcile regression docs [step 14/15]`
 14b. `🌱 [transcript-history] Remove the unreachable far-tap older-bridge path [step 14b/15]`
 15. `🌱 [transcript-history] Run the L3 matrix and retire the plan [step 15/15]`

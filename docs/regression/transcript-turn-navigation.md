@@ -547,4 +547,4 @@ answer, and on a trackpad while text streams.
   and `client/module_core/test/cubits/session_prompts/prompt_search_cubit_test.dart`;
   the route is in `docs/regression/session-history-and-recovery.md`
 - `.plan/active/turn-navigation/PLAN.md` and
-  `.plan/active/transcript-history/PLAN.md`
+  `.plan/completed/transcript-history/PLAN.md`
