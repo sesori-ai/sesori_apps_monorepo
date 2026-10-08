@@ -68,8 +68,15 @@ final class PiMessageIdentityBuilder({
     return _compactionId(ordinal: ordinal);
   }
 
-  void releaseCompaction() {
+  /// Releases the reserved compaction ID and returns the ID for the row the
+  /// abandoned attempt leaves behind. The next attempt reserves the same
+  /// compaction ID, so that row must not keep it, or the next attempt's row
+  /// would update it at the old position. [stamp] keeps the IDs of repeated
+  /// abandoned attempts apart.
+  String abandonCompaction({required int stamp}) {
+    final abandoned = reserveCompaction();
     _reservedCompactionOrdinal = null;
+    return "$abandoned-failed-$stamp";
   }
 
   String nextTopLevelCustomMessage() {

@@ -356,6 +356,7 @@ DeepSeekHistoryRepository _repository({
       childSessions: childSessions,
       api: api,
       delegationTracker: DeepSeekDelegationTracker(),
+      compactionTracker: DeepSeekCompactionTracker(clock: const ServerClock()),
     ),
     pluginId: DeepSeekIdentity.id,
   );

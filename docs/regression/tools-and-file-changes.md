@@ -66,10 +66,9 @@ sub-agent parts, plus the signal that a tool changed files.
   shared `TranscriptBuilder`, so phone and desktop match.
 - The client never classifies a raw tool name or parses tool input.
 - A finished context compaction renders as one quiet "Context compacted" row in
-  the step style; like visible text it ends a group. While it runs, Pi and Codex
-  show a running `compact` tool that the finished row replaces in place,
-  OpenCode v1 shows the live row below from its summary's first text, and OpenCode
-  v2 shows it once its running snapshot loads. When the
+  the step style; like visible text it ends a group. While it runs, Pi, Codex
+  and DeepSeek show the live row below from the start, OpenCode v1 from its
+  summary's first text, and OpenCode v2 once its running snapshot loads. When the
   harness exposes the carried-forward summary, tapping the row opens a
   reading-width modal at once. A long summary shows a spinner that the Markdown
   replaces once the modal's entry transition ends (at once under reduced
@@ -115,7 +114,15 @@ sub-agent parts, plus the signal that a tool changed files.
   down when the compaction ends, the row stays running, like any live part
   stranded by the outage, until a later ordinary transcript read once the
   session is idle; stored-only reads and reads while the session is busy or
-  retrying leave it running.
+  retrying leave it running. On Pi, Codex and DeepSeek the time counts from the
+  bridge's stamp of the start when the harness sends none, and a Pi attempt
+  that Pi retries keeps its first stamp. A Pi compaction that fails or is
+  aborted becomes the failure note at the row's place, under its own id so the
+  next attempt gets a new row. An unfinished compaction elsewhere (Stop or a
+  lost process on Pi, any Codex or DeepSeek compaction without a completion)
+  stays running until the turn goes idle, when the bridge's sweep ends it
+  with the "turn ended" failure note. DeepSeek's history has no compaction
+  record, so its row survives one history re-import and then disappears.
 - A running tool or sub-agent is a live row: the turning outline sparkle leads
   it and a primary-text band sweeps across its dimmed label, visible in both
   themes. Reduced motion keeps the sparkle and label still while screen readers
@@ -475,8 +482,9 @@ guarantee.
 - Attachment presentation is being reworked toward referenced images; only the
   shipped build counts.
 - An older client decodes the compaction part but ignores its state, summary
-  included, and renders nothing, so Pi and Codex compactions lose their
-  finished `compact` tool card there. While an OpenCode summary streams, an
+  included, and renders nothing, so during a Pi, Codex or DeepSeek compaction
+  it shows only “Working…”, without the running `compact` card older bridges
+  sent (accepted). While an OpenCode summary streams, an
   older client buffers the words for a part it never shows, so it shows neither
   “Working…” nor a row until the compaction ends and the turn goes on
   (accepted; no old-client code).
@@ -558,8 +566,10 @@ guarantee.
   summary across a silent refresh like text and reasoning.
 - Owning Claude content/history/tracker, Pi history/dispatcher, OpenCode part
   mapper, v1 summary mapping (REST, SSE mapper and plugin stream) and v2
-  compaction mapping, delta and service tests, Codex rollout/tracker/history, ACP replay/content, Grok adapter,
-  Antigravity normalizer and DeepSeek replay/time tests guard backend semantics.
+  compaction mapping, delta and service tests, Codex
+  rollout/tracker/history/event-mapper, ACP replay/content, Grok adapter,
+  Antigravity normalizer and DeepSeek replay/time/compaction tests guard
+  backend semantics.
 - `bridge/app/tool/benchmarks/tool_projection_payload_size.dart` reproducibly
   reports synthetic serialized UTF-8 bytes before/after projection. It states
   source/starting-HEAD baselines, separates typical already-bounded text from
