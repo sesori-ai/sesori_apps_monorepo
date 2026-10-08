@@ -80,7 +80,13 @@ to see their combined options. The OpenCode plugin adds:
 | `--opencode-no-auto-start` | `false` | Skip spawning OpenCode; attach to an existing server on `--opencode-port` |
 | `--opencode-password` | *(auto-generated)* | Override the OpenCode server password |
 | `--opencode-no-password` | `false` | Disable OpenCode server authentication. Rejected when combined with a non-loopback `--opencode-host` in managed mode (it would expose an unauthenticated server). |
-| `--opencode-bin` | `opencode` | Path to the OpenCode binary |
+| `--opencode-bin` | `opencode` | Path to the OpenCode binary. Setting it also turns off the shared background server. |
+| `--opencode-no-shared-service` | `false` | Do not use OpenCode 2's shared background server (`opencode serve --service`); always spawn the bridge's own server. |
+
+When OpenCode 2's shared background server is running, healthy and 2.0.11 or newer,
+the bridge uses it instead of spawning its own. `--opencode-port`, `--opencode-host`
+and the password flags then apply only to the bridge's own server, which it spawns
+when no usable shared server is found.
 
 ## Commands
 

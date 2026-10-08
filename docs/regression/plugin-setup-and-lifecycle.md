@@ -196,7 +196,9 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   - **Answer lost after discovery:** the plugin starts degraded on the v2 adapter
     and keeps retrying the same URL.
   - **Sharing off:** with `--opencode-no-shared-service`, an explicit
-    `--opencode-bin` or attach mode.
+    `--opencode-bin` or attach mode. `--opencode-port`, `--opencode-host` and
+    the password flags do not turn sharing off; they shape only the private
+    fallback server, and a degraded private start reports `mode: managed`.
   - **Rediscovery:** the next plugin start looks for the service again.
 - A managed harness whose first handshake stalls does not hang bridge startup.
   Codex and OpenCode wait a bounded 15 seconds for that cold start: succeeding
