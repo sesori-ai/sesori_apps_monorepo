@@ -12,9 +12,11 @@ sealed class const TranscriptActivity();
 /// The session works and nothing else shows it: before the first token and
 /// between steps.
 final class const TranscriptActivityWorking({
-  /// When the running turn's latest user message was sent, in epoch ms: a
-  /// message sent mid-turn, else the prompt that opened it. Null when the
-  /// harness reports no time for it, or no user message has loaded.
+  /// When the newest prompt was sent, in epoch ms: one still waiting for its
+  /// message from when the bridge accepted it, else the running turn's latest
+  /// user message (a message sent mid-turn, else the prompt that opened it).
+  /// Null while this surface's prompt is still on its way to the bridge, when
+  /// the harness reports no time, or when no user message has loaded.
   required final int? sinceMs,
 }) extends TranscriptActivity;
 
@@ -54,6 +56,14 @@ class const TranscriptActivityBuilder() {
     required bool hasStreamingText,
     required List<Session> children,
     required Map<String, SessionStatus> childStatuses,
+
+    /// The sent prompts shown below the messages, oldest first, each with when
+    /// the bridge accepted it, or null while it is still on its way there.
+    required List<({String promptId, int? acceptedAt})> pendingPrompts,
+
+    /// The newest prompt the bridge was seen holding. Its delivered message
+    /// keeps counting from the acceptance, which the message itself lacks.
+    required ({String promptId, int acceptedAt})? lastHeldPrompt,
   }) {
     if (!isBusy || retryErrorMessage != null || hasStreamingText) return const TranscriptActivityIdle();
     final running = runningChildren(children: children, childStatuses: childStatuses);
@@ -66,13 +76,31 @@ class const TranscriptActivityBuilder() {
       );
     }
     if (transcript.liveStep != null || compacting) return const TranscriptActivityIdle();
+    // A sent prompt still waiting for its message shows below every message,
+    // so the newest of them is the newest prompt: never count from an older
+    // prompt's start.
+    final deliveredPromptIds = {
+      for (final message in messages)
+        if (message.info case MessageUser(:final promptId?) when message.hasRenderableUserContent) promptId,
+    };
+    final pending = pendingPrompts.where((prompt) => !deliveredPromptIds.contains(prompt.promptId)).lastOrNull;
+    if (pending != null) return TranscriptActivityWorking(sinceMs: pending.acceptedAt);
     // While busy, the last turn is the running one, and it runs to the newest
     // message. So whatever the turn's shape, its latest user message is the
-    // newest shown one: a message sent mid-turn, else the opener.
+    // newest shown one: a message sent mid-turn, else the opener. One the
+    // bridge held first keeps its acceptance time, which is earlier, so the
+    // count never steps back when the harness takes it.
     final latestUser = messages
         .where((message) => message.info is MessageUser && message.hasRenderableUserContent)
         .lastOrNull;
-    return TranscriptActivityWorking(sinceMs: latestUser?.info.time?.created);
+    final created = latestUser?.info.time?.created;
+    int? acceptedAt;
+    if (latestUser?.info case MessageUser(:final promptId?) when promptId == lastHeldPrompt?.promptId) {
+      acceptedAt = lastHeldPrompt?.acceptedAt;
+    }
+    return TranscriptActivityWorking(
+      sinceMs: acceptedAt != null && (created == null || acceptedAt < created) ? acceptedAt : created,
+    );
   }
 
   static bool _isCompacting({required List<MessageWithParts> messages}) => messages.any(
