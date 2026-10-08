@@ -5,7 +5,15 @@ import "dart:typed_data";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:claude_plugin/claude_plugin.dart"
-    show ClaudeCompactMetadata, ClaudeContentMapper, ClaudeEventDispatcher, ClaudeStreamMessage, ClaudeToolTracker;
+    show
+        ClaudeCompactMetadata,
+        ClaudeContentMapper,
+        ClaudeEventDispatcher,
+        ClaudeHistoryMapper,
+        ClaudeStreamMessage,
+        ClaudeToolTracker,
+        ClaudeTranscriptApi,
+        ClaudeTranscriptCatalogRepository;
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/listeners/chat_history_listener.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_message_mapper.dart";
@@ -513,6 +521,261 @@ void main() {
       expect(
         stored.last.parts.single,
         isA<MessagePartCompaction>().having((part) => part.state, "state", isA<CompactionStateCompleted>()),
+      );
+    });
+
+    test("a first replay keeps a live failure note beside an untimed history compaction", () async {
+      MessageWithParts compaction({required String id, required int? createdAt, required CompactionState state}) =>
+          MessageWithParts(
+            info: Message.assistant(
+              id: id,
+              sessionID: "ses_a",
+              agent: null,
+              modelID: null,
+              providerID: null,
+              sender: MessageSender.agent,
+              time: createdAt == null ? null : MessageTime(created: createdAt, completed: createdAt),
+            ),
+            parts: [MessagePart.compaction(id: "$id-compaction", sessionID: "ses_a", messageID: id, state: state)],
+          );
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "prompt", text: "Keep going", createdAt: 100, promptId: null),
+            compaction(
+              id: "history-compaction",
+              createdAt: null,
+              state: const CompactionState.completed(summary: "Earlier work.", freedTokens: null, trigger: null),
+            ),
+          ],
+        ),
+      );
+      await _captureMessageWithParts(
+        history: history,
+        message: _messageWithText(id: "prompt", text: "Keep going", createdAt: 100, promptId: null),
+      );
+      await _captureMessageWithParts(
+        history: history,
+        message: compaction(
+          id: "live-failure",
+          createdAt: 300,
+          state: const CompactionState.failed(error: "Compaction failed."),
+        ),
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["prompt", "history-compaction", "live-failure"],
+      );
+    });
+
+    test("a replay keeps one row per Claude compaction behind the bridge's own /compact bubbles", () async {
+      const claudeSessionId = "11111111-2222-4333-8444-555555555555";
+      final temp = Directory.systemTemp.createTempSync("claude-compaction-replay-");
+      addTearDown(() => temp.deleteSync(recursive: true));
+      Map<String, Object?> record({
+        required String type,
+        required String uuid,
+        required String timestamp,
+        required Object? content,
+        String? messageId,
+        bool isMeta = false,
+      }) => {
+        "type": type,
+        "sessionId": claudeSessionId,
+        "uuid": uuid,
+        "timestamp": timestamp,
+        "isMeta": isMeta,
+        "message": {"id": ?messageId, "role": type, "content": content},
+      };
+      // The order Claude Code writes for one `/compact`: boundary and summary
+      // first, then the caveat, the `<command-name>` record and its stdout. The
+      // history drops all three, and it never has the bridge's own bubble.
+      List<Map<String, Object?>> compactRecords({required int round, required String summaryAt}) => [
+        {
+          "type": "system",
+          "subtype": "compact_boundary",
+          "sessionId": claudeSessionId,
+          "uuid": "boundary-$round",
+          "timestamp": summaryAt,
+          "compactMetadata": {"trigger": "manual", "preTokens": 24835, "postTokens": 6505},
+        },
+        {
+          ...record(type: "user", uuid: "summary-$round", timestamp: summaryAt, content: "Summary $round."),
+          "isVisibleInTranscriptOnly": true,
+          "isCompactSummary": true,
+        },
+        record(
+          type: "user",
+          uuid: "caveat-$round",
+          timestamp: summaryAt,
+          content: "<local-command-caveat>Caveat.</local-command-caveat>",
+          isMeta: true,
+        ),
+        record(
+          type: "user",
+          uuid: "command-$round",
+          timestamp: summaryAt,
+          content: "<command-name>/compact</command-name>",
+        ),
+        record(
+          type: "user",
+          uuid: "stdout-$round",
+          timestamp: summaryAt,
+          content: "<local-command-stdout>Compacted.</local-command-stdout>",
+        ),
+      ];
+      const firstSummaryAt = "2026-10-07T12:24:44.708Z";
+      const secondSummaryAt = "2026-10-07T12:26:10.215Z";
+      Directory("${temp.path}/projects/-workspace").createSync(recursive: true);
+      File("${temp.path}/projects/-workspace/$claudeSessionId.jsonl").writeAsStringSync(
+        [
+          record(
+            type: "user",
+            uuid: "prompt",
+            timestamp: "2026-10-07T12:20:00.000Z",
+            content: [
+              {"type": "text", "text": "Say hi"},
+            ],
+          ),
+          record(
+            type: "assistant",
+            uuid: "reply-record",
+            timestamp: "2026-10-07T12:20:01.000Z",
+            messageId: "msg_reply",
+            content: [
+              {"type": "text", "text": "Hi"},
+            ],
+          ),
+          ...compactRecords(round: 1, summaryAt: firstSummaryAt),
+          ...compactRecords(round: 2, summaryAt: secondSummaryAt),
+        ].map(jsonEncode).join("\n"),
+      );
+      const content = ClaudeContentMapper();
+      final transcripts = ClaudeTranscriptCatalogRepository(
+        transcriptApi: ClaudeTranscriptApi(environment: {"CLAUDE_CONFIG_DIR": temp.path}),
+      );
+      final imported = [
+        for (final message in const ClaudeHistoryMapper(content: content).map(
+          sessionId: claudeSessionId,
+          agentId: null,
+          records: transcripts.readTranscriptRecords(sessionId: claudeSessionId),
+          residentTaskToolUseIds: const {},
+          catalogModelId: null,
+        ))
+          MessageWithParts(
+            info: message.info.toSharedMessage(sessionId: "ses_a"),
+            parts: [for (final part in message.parts) part.toShared(sessionId: "ses_a")],
+          ),
+      ];
+      expect(imported.map((message) => message.info.id), const ["prompt", "msg_reply", "summary-1", "summary-2"]);
+      final history = createTestChatHistory(sessionRepository: _FakeSessionRepository(transcript: imported));
+      // Live, the prompt echo and the reply carry their transcript ids.
+      for (final message in imported.take(2)) {
+        await _captureMessageWithParts(history: history, message: message);
+      }
+      final dispatcher = ClaudeEventDispatcher(
+        content: content,
+        tools: ClaudeToolTracker(),
+        catalogModelId: ({required apiModel}) => null,
+      );
+      // Round 0 fails, so its note has no transcript record; rounds 1 and 2
+      // succeed back to back.
+      for (final (round, at, succeeded) in [
+        (0, "2026-10-07T12:22:00.000Z", false),
+        (1, firstSummaryAt, true),
+        (2, secondSummaryAt, true),
+      ]) {
+        dispatcher.beginTurn(sessionId: "ses_a", directory: "/workspace", model: null, variant: null);
+        await _captureMessageWithParts(
+          history: history,
+          message: _messageWithText(
+            id: "sesori-user-$round",
+            text: "/compact",
+            createdAt: DateTime.parse(at).millisecondsSinceEpoch - 7000,
+            promptId: "prompt-compact-$round",
+          ),
+        );
+        final frames = <Map<String, Object?>>[
+          {
+            "type": "system",
+            "subtype": "status",
+            "session_id": "ses_a",
+            "uuid": "start-$round",
+            "status": "compacting",
+          },
+          if (!succeeded)
+            {
+              "type": "system",
+              "subtype": "status",
+              "session_id": "ses_a",
+              "uuid": "end-$round",
+              "status": null,
+              "compact_result": "failed",
+              "compact_error": "Not enough messages to compact.",
+            }
+          else ...[
+            {
+              "type": "system",
+              "subtype": "status",
+              "session_id": "ses_a",
+              "uuid": "end-$round",
+              "status": null,
+              "compact_result": "success",
+            },
+            {
+              "type": "system",
+              "subtype": "compact_boundary",
+              "session_id": "ses_a",
+              "uuid": "boundary-$round",
+              "compact_metadata": {"trigger": "manual", "pre_tokens": 24835, "post_tokens": 6505},
+            },
+            {
+              "type": "user",
+              "session_id": "ses_a",
+              "uuid": "summary-$round",
+              "timestamp": at,
+              "isSynthetic": true,
+              "message": {"role": "user", "content": "Summary $round."},
+            },
+          ],
+        ];
+        for (final frame in frames) {
+          await _captureAcpEvents(
+            history: history,
+            sessionId: "ses_a",
+            events: dispatcher.map(
+              message: ClaudeStreamMessage.parse(frame),
+              now: DateTime.parse(at).subtract(const Duration(seconds: 6)),
+            ),
+          );
+        }
+      }
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const [
+          "prompt",
+          "msg_reply",
+          ...["sesori-user-0", "start-0"],
+          ...["sesori-user-1", "start-1"],
+          ...["sesori-user-2", "start-2"],
+        ],
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const [
+          "prompt",
+          "msg_reply",
+          ...["sesori-user-0", "start-0"],
+          ...["sesori-user-1", "summary-1"],
+          ...["sesori-user-2", "summary-2"],
+        ],
+        reason: "each live compaction row gives way to its own history row; the failure note has none and stays",
       );
     });
 

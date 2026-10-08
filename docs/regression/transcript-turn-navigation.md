@@ -191,16 +191,26 @@ stored or sent to the bridge.
   shrinks back into the same place when it closes, by every way out except the
   iOS edge swipe: the close button, Escape, back, predictive back, ⌘[ or
   Ctrl+[, and a row tap, where it leaves only once the transcript has landed.
-  A pinch out shrinks it toward the fingers instead. None of them pops the
-  screen away. With reduced motion it only fades. The transcript under it
-  never moves, scrolls or rebuilds.
+  A pinch out grows and dissolves it instead. None of them pops the screen
+  away. With reduced motion it only fades. The transcript under it never
+  moves, scrolls or rebuilds. The transition repaints apart from the page and
+  only recomposites the screen's own content, so the transcript, composer and
+  blurred halos are not repainted each frame.
 - A pinch out on the Prompts screen, by touch or trackpad, closes it in step
-  with the fingers: the screen shrinks toward them and fades as they spread.
-  On release the spread is carried 0.1 s ahead at its current speed: past a
-  scale of 1.25 it finishes closing, short of it it springs back open. The
-  slight slide of fingers lifting off a phone's glass only nudges that
-  projection, so a wide spread still closes. One-finger scrolling, row taps, a
-  pinch in and the search field, including its text selection, are unaffected.
+  with the fingers: the screen swells from 1.0 to 1.06 around the fingers'
+  focal point and drifts with them, stays fully readable for the first third
+  of the travel, then thins and fades into the transcript. Nothing moves
+  against the fingers. By touch the travel is the fingers' spread in pixels:
+  +200 px is fully closed and a release past +100 px closes, carrying the
+  fingers' speed into the finish; short of it, however fast, the screen eases
+  back open, its drift returning with it. The decision uses the fingers' last
+  movement, so the slight slide of fingers lifting off a phone's glass cannot
+  flip it. The second finger takes the gesture even when the list has already
+  started scrolling under the first, and the list holds still from that moment.
+  A trackpad pinch keeps its scale mapping: past a scale of 1.25, carried 0.1 s
+  ahead at its current speed, it finishes closing; short of it it springs back.
+  One-finger scrolling, row taps, a pinch in and the search field, including
+  its text selection, are unaffected.
 - On iOS a drag from the screen's left edge moves the Prompts screen with the
   finger, lightening the dim as it goes. Let go past halfway or with a flick
   and it slides off and closes; let go earlier and it springs back. Elsewhere
@@ -309,14 +319,20 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
   motion, and the transcript unmoved through it.
 - The iOS edge swipe: following the finger, springing back from a short
   release, closing from a long one and from a flick, and doing nothing off iOS.
-- Pinch out on the screen: following the fingers, closing past halfway,
-  springing back short of it, closing on a quick short spread and by trackpad,
-  and closing for realistic touch (fingers landing close together and 64 ms
-  apart over a row, drifting, then sliding back a pixel as they lift);
-  a second pinch during a spring-back moving nothing; one-finger scroll, a
-  pinch in and the search field's selection unaffected.
-- Every way out: the close button, Escape, back, predictive back, a row tap and
-  the pinch out each run the transition backwards; the desktop's back shortcut
+- Pinch out on the screen: swelling around the fingers, drifting with them,
+  readable through the first third and dissolving past it; easing back from a
+  release short of 100 px with its drift, and from a full spread brought back;
+  a quick short spread easing back while a quick wide one finishes faster than
+  a slow one; closing by trackpad and springing back short of it; closing for
+  realistic touch (fingers landing close together and 64 ms apart over a row,
+  drifting, then sliding back a pixel as they lift); a second finger landing
+  after the first has scrolled the list 20 px still pinching, with the list
+  held still; a second pinch during a spring-back moving nothing; one-finger
+  scroll, a pinch in and the search field's selection unaffected.
+- The transition sits in its own repaint boundary apart from the transcript,
+  with the screen's content in another inside its placement.
+- Every way out: the close button, Escape, back, predictive back and a row tap
+  each run the transition backwards; the desktop's back shortcut
   (Ctrl+[ in the routine test, ⌘[ on macOS) closes what a page has open before
   leaving it.
 - The analytics event per opening, with its entry.
@@ -329,7 +345,9 @@ On the release-target phone and on macOS, on a session of three or more pages:
   Prompts screen growing from the fingers, while following (following
   continues) and while reading history (it stays detached), with the transcript
   where it was on the way back. A pinch out on the transcript does nothing; a
-  pinch out on the screen closes it in step with the fingers or springs back.
+  pinch out on the screen catches every time, also with the list already
+  scrolling, and grows and dissolves with the fingers or eases back. On macOS
+  the pinch out runs smoothly on a long session.
   One-finger scroll, the peek and a code block's horizontal scroll are
   unaffected.
 - The pinned message through short and long prompts and steers, both ways, with
@@ -369,6 +387,16 @@ Live plugin plus client, every supporting production plugin:
 - Claude and Pi automation stays inside its turn and is never pinned.
 - A forced Claude re-import keeps follow-ups, peers and task outcomes in their
   turns.
+
+Last recorded run, 2026-10-06 to 2026-10-08, `Partial`: the user confirmed the pinch in on
+their real devices, the iPhone and the macOS trackpad (`Pass`). On 2026-10-08
+they confirmed the reworked pinch out in a macOS release build (`Pass`); on
+Android it is checked in the next internal build. Every other check above,
+including the pinch out on the iPhone and Android, is `Not run`. Automated
+tests cover related behavior but do not satisfy these device, platform or live
+checks, and some, such as the real-iPhone scroll for visible lag and the
+analytics event's arrival, have no automated stand-in. The plan's step 18
+lists each cell and its coverage.
 
 ## Exploration Guidance
 
@@ -447,9 +475,12 @@ answer, and on a trackpad while text streams.
   reduced motion, or the transcript moves or reflows behind it. The iOS edge
   swipe does not track the finger, the screen snaps instead of following or
   springing back, or the session underneath moves. A pinch out on the screen
-  lags the fingers, snaps instead of finishing or springing back, springs back
-  from a wide spread on a phone (the lift-off slide read as a flick), or takes a
-  one-finger scroll, a row tap or a selection in the search field; a way out
+  is missed because the list took the first finger, lets the list drift under
+  it, lags the fingers or moves against them, fades before a third of its
+  travel, snaps instead of finishing or easing back, flips its result as the
+  fingers lift, or takes a one-finger scroll, a row tap or a selection in the
+  search field; the transcript, composer or halos repaint each frame of the
+  transition; a way out
   other than the iOS edge swipe removes the screen without shrinking it back.
 - A Prompts row tap closes the screen with the transcript elsewhere, or does
   nothing; back or ⌘[ leaves the page instead of closing the screen; closing moves
@@ -546,5 +577,5 @@ answer, and on a trackpad while text streams.
 - The bridge's prompt search: `client/module_core/lib/src/cubits/session_prompts/`
   and `client/module_core/test/cubits/session_prompts/prompt_search_cubit_test.dart`;
   the route is in `docs/regression/session-history-and-recovery.md`
-- `.plan/active/turn-navigation/PLAN.md` and
+- `.plan/completed/turn-navigation/PLAN.md` and
   `.plan/completed/transcript-history/PLAN.md`
