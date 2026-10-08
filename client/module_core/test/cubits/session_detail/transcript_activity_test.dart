@@ -61,6 +61,7 @@ MessagePart _tool({required ToolStatus status}) => MessagePart.tool(
 TranscriptActivity _activity({
   required List<MessageWithParts> messages,
   required bool isBusy,
+  bool hasOlderMessages = false,
   bool mainAgentRunning = false,
   String? retryErrorMessage,
   Map<String, String> streamingText = const {},
@@ -75,7 +76,7 @@ TranscriptActivity _activity({
   );
   return const TranscriptActivityBuilder().build(
     transcript: transcript,
-    turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: false),
+    turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: hasOlderMessages),
     messages: messages,
     isBusy: isBusy,
     mainAgentRunning: mainAgentRunning,
@@ -175,6 +176,26 @@ void main() {
       );
 
       expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 1000));
+    });
+
+    test("works since a loaded follow-up while the turn's prompt has not loaded", () {
+      final activity = _activity(
+        messages: [
+          _agent(
+            id: "a1",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+          _prompt(id: "u2", at: 4000),
+          _agent(
+            id: "a2",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+        ],
+        isBusy: true,
+        hasOlderMessages: true,
+      );
+
+      expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 4000));
     });
 
     test("works without a time when the latest mid-turn message carries none", () {

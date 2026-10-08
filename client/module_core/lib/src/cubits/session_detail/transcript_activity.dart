@@ -14,7 +14,8 @@ sealed class const TranscriptActivity();
 final class const TranscriptActivityWorking({
   /// When the running turn's latest user message was sent, in epoch ms: a
   /// message sent mid-turn, else the prompt that opened it. Null when the
-  /// harness reports no time for it or no prompt opened the turn.
+  /// harness reports no time for it, or no loaded user message belongs to the
+  /// turn.
   required final int? sinceMs,
 }) extends TranscriptActivity;
 
@@ -68,19 +69,16 @@ class const TranscriptActivityBuilder() {
     }
     if (transcript.liveStep != null || compacting) return const TranscriptActivityIdle();
     // While busy, the last turn is the running one. It runs to the newest
-    // message, so its latest user message is the newest shown one.
+    // message, so its latest user message is the newest shown one: a message
+    // sent mid-turn, else the opener. A partial turn's opener has not loaded,
+    // but a loaded follow-up still dates it.
+    final latestUser = messages
+        .where((message) => message.info is MessageUser && message.hasRenderableUserContent)
+        .lastOrNull;
     return TranscriptActivityWorking(
       sinceMs: switch (turns.turns.lastOrNull) {
-        TranscriptPromptTurn(:final opener) =>
-          messages
-              .lastWhere(
-                (message) => message.info is MessageUser && message.hasRenderableUserContent,
-                orElse: () => opener,
-              )
-              .info
-              .time
-              ?.created,
-        TranscriptPartialTurn() || TranscriptPreamble() || null => null,
+        TranscriptPromptTurn() || TranscriptPartialTurn() => latestUser?.info.time?.created,
+        TranscriptPreamble() || null => null,
       },
     );
   }
