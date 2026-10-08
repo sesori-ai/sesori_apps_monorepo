@@ -12,6 +12,302 @@ part of 'codex_account_dto.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
+
+/// @nodoc
+mixin _$CodexAccountKindDto {
+
+@JsonKey(unknownEnumValue: CodexAccountKind.unknown) CodexAccountKind get type;
+/// Create a copy of CodexAccountKindDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexAccountKindDtoCopyWith<CodexAccountKindDto> get copyWith => _$CodexAccountKindDtoCopyWithImpl<CodexAccountKindDto>(this as CodexAccountKindDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as CodexAccountKindDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAccountKindDto&&(identical(other.type, _this.type) || other.type == _this.type));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as CodexAccountKindDto;
+  return Object.hash(runtimeType,_this.type);
+}
+
+@override
+String toString() {
+  final _this = this as CodexAccountKindDto;
+  return 'CodexAccountKindDto(type: ${_this.type})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexAccountKindDtoCopyWith<$Res>  {
+  factory $CodexAccountKindDtoCopyWith(CodexAccountKindDto value, $Res Function(CodexAccountKindDto) _then) = _$CodexAccountKindDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(unknownEnumValue: CodexAccountKind.unknown) CodexAccountKind type
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexAccountKindDtoCopyWithImpl<$Res>
+    implements $CodexAccountKindDtoCopyWith<$Res> {
+  _$CodexAccountKindDtoCopyWithImpl(this._self, this._then);
+
+  final CodexAccountKindDto _self;
+  final $Res Function(CodexAccountKindDto) _then;
+
+/// Create a copy of CodexAccountKindDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? type = null,}) {
+  return _then(CodexAccountKindDto(
+type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as CodexAccountKind,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _CodexAccountKindDto implements CodexAccountKindDto {
+  const _CodexAccountKindDto({@JsonKey(unknownEnumValue: CodexAccountKind.unknown) required this.type});
+  factory _CodexAccountKindDto.fromJson(Map<String, dynamic> json) => _$CodexAccountKindDtoFromJson(json);
+
+@override@JsonKey(unknownEnumValue: CodexAccountKind.unknown) final  CodexAccountKind type;
+
+/// Create a copy of CodexAccountKindDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CodexAccountKindDtoCopyWith<_CodexAccountKindDto> get copyWith => __$CodexAccountKindDtoCopyWithImpl<_CodexAccountKindDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexAccountKindDto&&(identical(other.type, type) || other.type == type));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,type);
+}
+
+@override
+String toString() {
+    return 'CodexAccountKindDto(type: $type)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CodexAccountKindDtoCopyWith<$Res> implements $CodexAccountKindDtoCopyWith<$Res> {
+  factory _$CodexAccountKindDtoCopyWith(_CodexAccountKindDto value, $Res Function(_CodexAccountKindDto) _then) = __$CodexAccountKindDtoCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(unknownEnumValue: CodexAccountKind.unknown) CodexAccountKind type
+});
+
+
+
+
+}
+/// @nodoc
+class __$CodexAccountKindDtoCopyWithImpl<$Res>
+    implements _$CodexAccountKindDtoCopyWith<$Res> {
+  __$CodexAccountKindDtoCopyWithImpl(this._self, this._then);
+
+  final _CodexAccountKindDto _self;
+  final $Res Function(_CodexAccountKindDto) _then;
+
+/// Create a copy of CodexAccountKindDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? type = null,}) {
+  return _then(_CodexAccountKindDto(
+type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as CodexAccountKind,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$CodexAccountReadResponseDto {
+
+ CodexAccountKindDto? get account;
+/// Create a copy of CodexAccountReadResponseDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexAccountReadResponseDtoCopyWith<CodexAccountReadResponseDto> get copyWith => _$CodexAccountReadResponseDtoCopyWithImpl<CodexAccountReadResponseDto>(this as CodexAccountReadResponseDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as CodexAccountReadResponseDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAccountReadResponseDto&&(identical(other.account, _this.account) || other.account == _this.account));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as CodexAccountReadResponseDto;
+  return Object.hash(runtimeType,_this.account);
+}
+
+@override
+String toString() {
+  final _this = this as CodexAccountReadResponseDto;
+  return 'CodexAccountReadResponseDto(account: ${_this.account})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexAccountReadResponseDtoCopyWith<$Res>  {
+  factory $CodexAccountReadResponseDtoCopyWith(CodexAccountReadResponseDto value, $Res Function(CodexAccountReadResponseDto) _then) = _$CodexAccountReadResponseDtoCopyWithImpl;
+@useResult
+$Res call({
+ CodexAccountKindDto? account
+});
+
+
+$CodexAccountKindDtoCopyWith<$Res>? get account;
+
+}
+/// @nodoc
+class _$CodexAccountReadResponseDtoCopyWithImpl<$Res>
+    implements $CodexAccountReadResponseDtoCopyWith<$Res> {
+  _$CodexAccountReadResponseDtoCopyWithImpl(this._self, this._then);
+
+  final CodexAccountReadResponseDto _self;
+  final $Res Function(CodexAccountReadResponseDto) _then;
+
+/// Create a copy of CodexAccountReadResponseDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? account = freezed,}) {
+  return _then(CodexAccountReadResponseDto(
+account: freezed == account ? _self.account : account // ignore: cast_nullable_to_non_nullable
+as CodexAccountKindDto?,
+  ));
+}
+/// Create a copy of CodexAccountReadResponseDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CodexAccountKindDtoCopyWith<$Res>? get account {
+    if (_self.account == null) {
+    return null;
+  }
+
+  return $CodexAccountKindDtoCopyWith<$Res>(_self.account!, (value) {
+    return _then(_self.copyWith(account: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _CodexAccountReadResponseDto implements CodexAccountReadResponseDto {
+  const _CodexAccountReadResponseDto({required this.account});
+  factory _CodexAccountReadResponseDto.fromJson(Map<String, dynamic> json) => _$CodexAccountReadResponseDtoFromJson(json);
+
+@override final  CodexAccountKindDto? account;
+
+/// Create a copy of CodexAccountReadResponseDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CodexAccountReadResponseDtoCopyWith<_CodexAccountReadResponseDto> get copyWith => __$CodexAccountReadResponseDtoCopyWithImpl<_CodexAccountReadResponseDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexAccountReadResponseDto&&(identical(other.account, account) || other.account == account));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,account);
+}
+
+@override
+String toString() {
+    return 'CodexAccountReadResponseDto(account: $account)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CodexAccountReadResponseDtoCopyWith<$Res> implements $CodexAccountReadResponseDtoCopyWith<$Res> {
+  factory _$CodexAccountReadResponseDtoCopyWith(_CodexAccountReadResponseDto value, $Res Function(_CodexAccountReadResponseDto) _then) = __$CodexAccountReadResponseDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ CodexAccountKindDto? account
+});
+
+
+@override $CodexAccountKindDtoCopyWith<$Res>? get account;
+
+}
+/// @nodoc
+class __$CodexAccountReadResponseDtoCopyWithImpl<$Res>
+    implements _$CodexAccountReadResponseDtoCopyWith<$Res> {
+  __$CodexAccountReadResponseDtoCopyWithImpl(this._self, this._then);
+
+  final _CodexAccountReadResponseDto _self;
+  final $Res Function(_CodexAccountReadResponseDto) _then;
+
+/// Create a copy of CodexAccountReadResponseDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? account = freezed,}) {
+  return _then(_CodexAccountReadResponseDto(
+account: freezed == account ? _self.account : account // ignore: cast_nullable_to_non_nullable
+as CodexAccountKindDto?,
+  ));
+}
+
+/// Create a copy of CodexAccountReadResponseDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CodexAccountKindDtoCopyWith<$Res>? get account {
+    if (_self.account == null) {
+    return null;
+  }
+
+  return $CodexAccountKindDtoCopyWith<$Res>(_self.account!, (value) {
+    return _then(_self.copyWith(account: value));
+  });
+}
+}
+
 /// @nodoc
 mixin _$CodexDeviceLoginStartParamsDto {
 

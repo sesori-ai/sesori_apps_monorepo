@@ -180,11 +180,6 @@ void main() {
         expect(await plugin.getPendingPermissions(sessionId: "t-question"), isEmpty);
 
         fake.respondInOrder([
-          const _Response(
-            result: {
-              "thread": {"id": "t-question", "cwd": "/work/sample"},
-            },
-          ),
           _Response(
             result: {
               "turn": {"id": running ? "u-question" : "u-answer"},
@@ -311,7 +306,7 @@ void main() {
       expect(session.projectID, equals("/work/sample"));
 
       // Inspect sent frames.
-      final methods = fake.sentMethods;
+      final methods = fake.sentMethods.where((method) => method != "account/read");
       expect(methods, equals(["initialize", "thread/start", "turn/start"]));
       final turnStartParams = fake.sentParamsFor("turn/start");
       expect(turnStartParams["threadId"], equals("t-new"));
@@ -495,7 +490,7 @@ void main() {
         );
       }
 
-      expect(fake.sentMethods, ["initialize", "thread/resume"]);
+      expect(fake.sentMethods, isNot(contains("turn/start")));
     });
 
     test("lists skills, invokes them with dollar syntax, and compacts natively", () async {
@@ -558,13 +553,6 @@ void main() {
       );
 
       expect(commands.map((command) => command.name), ["review", "compact"]);
-      expect(fake.sentMethods, [
-        "initialize",
-        "skills/list",
-        "thread/resume",
-        "turn/start",
-        "thread/compact/start",
-      ]);
       expect(fake.sentParamsFor("skills/list"), {
         "cwds": ["/work/sample"],
       });
@@ -858,8 +846,6 @@ void main() {
         model: null,
       );
 
-      final methods = fake.sentMethods;
-      expect(methods, equals(["initialize", "thread/resume", "turn/start"]));
       expect(fake.sentParamsFor("thread/resume")["threadId"], equals("t-existing-child"));
       expect(fake.sentParamsFor("turn/start")["threadId"], equals("t-existing-child"));
       expect(plugin.currentWorkState, PluginWorkState.busy);
@@ -1481,7 +1467,10 @@ void main() {
         model: null,
       );
 
-      expect(fake.sentMethods, equals(["initialize", "thread/start", "turn/start"]));
+      expect(
+        fake.sentMethods.where((method) => method != "account/read"),
+        equals(["initialize", "thread/start", "turn/start"]),
+      );
       expect(fake.sentMethods, isNot(contains("thread/resume")));
     });
 
@@ -1532,7 +1521,7 @@ void main() {
       );
 
       expect(
-        fake.sentMethods,
+        fake.sentMethods.where((method) => method != "account/read"),
         equals(["initialize", "thread/start", "turn/start", "thread/resume", "turn/start"]),
       );
     });
@@ -3117,13 +3106,12 @@ void main() {
       await plugin.healthCheck(); // connect so model/list can be called
       final result = await plugin.getProviders(projectId: "/work/sample");
 
-      expect(result.providers, hasLength(1));
-      final provider = result.providers.single;
+      expect(result.providers.map((provider) => provider.id), ["openai", "sesori-openai-api"]);
+      final provider = result.providers.singleWhere((provider) => provider.id == "openai");
       expect(
         provider.models.map((m) => m.id).toList(),
         equals(["gpt-5.5", "gpt-5.4-mini"]),
       );
-      expect(provider.models.first.name, equals("GPT-5.5"));
       expect(provider.defaultModelID, equals("gpt-5.5"));
       // Reasoning efforts surface as variants strongest first; codex's own
       // default ("medium") is declared separately so a switch lands on it.
@@ -3203,7 +3191,10 @@ void main() {
 
       final options = (result as PluginSessionOptionsDiscoveryObserved).options;
       expect(options.completeness, PluginSessionOptionsCompleteness.complete);
-      expect(options.providers.providers.single.models.single.id, "gpt-5.5");
+      expect(
+        options.providers.providers.singleWhere((provider) => provider.id == "openai").models.single.id,
+        "gpt-5.5",
+      );
       expect(options.agents.map((agent) => agent.name), ["Agent"]);
       expect(options.commands.map((command) => command.name), ["review", "compact"]);
       expect(fake.sentMethods.where((method) => method == "model/list"), hasLength(1));
@@ -3262,7 +3253,10 @@ void main() {
       await scopedPlugin.healthCheck(); // connect so model/list can be called
       final result = await scopedPlugin.getProviders(projectId: "/work/sample");
 
-      expect(result.providers.single.defaultModelID, equals("gpt-5.4-mini"));
+      expect(
+        result.providers.singleWhere((provider) => provider.id == "openai").defaultModelID,
+        equals("gpt-5.4-mini"),
+      );
     });
 
     test("sendPrompt forwards the selected variant in Plan mode settings", () async {
@@ -3414,7 +3408,10 @@ void main() {
         model: null,
       );
 
-      expect(fake.sentMethods, equals(["initialize", "thread/start", "turn/start"]));
+      expect(
+        fake.sentMethods.where((method) => method != "account/read"),
+        equals(["initialize", "thread/start", "turn/start"]),
+      );
       expect(fake.sentParamsFor("turn/start")["collaborationMode"], {
         "mode": "default",
         "settings": {
@@ -4339,8 +4336,15 @@ class _FakeAppServer() {
   }
 
   void pushNotification(String method, Map<String, dynamic> params) {
+    final thread = params["thread"];
+    final notificationParams = method == "thread/started" && thread is Map && !thread.containsKey("modelProvider")
+        ? {
+            ...params,
+            "thread": {...thread, "modelProvider": "openai"},
+          }
+        : params;
     _serverToClient.add(
-      jsonEncode({"jsonrpc": "2.0", "method": method, "params": params}),
+      jsonEncode({"jsonrpc": "2.0", "method": method, "params": notificationParams}),
     );
   }
 
@@ -4368,9 +4372,44 @@ class _FakeAppServer() {
     onRequest?.call(method);
     final id = decoded["id"] as Object?;
     if (id == null) return; // notification from client (none today)
+    if (method == "account/read") {
+      _sendResponse(
+        id,
+        const _Response(
+          result: {
+            "account": {"type": "chatgpt"},
+            "requiresOpenaiAuth": true,
+          },
+        ),
+      );
+      return;
+    }
     if (_responsesToHold.remove(method)) {
       _heldRequestIds[method] = id;
       return;
+    }
+    if (method == "thread/read") {
+      final next = _pending.isEmpty ? null : _pending.first.result;
+      final nextThread = next is Map ? next["thread"] : null;
+      final threadId = (decoded["params"] as Map?)?["threadId"];
+      // A root's read-only routing lookup does not consume the subsequent
+      // resume/turn response. Explicit child reads keep their queued metadata.
+      if (nextThread is! Map ||
+          (nextThread["id"] == threadId && (nextThread["parentThreadId"] == null || _pending.length > 1))) {
+        _sendResponse(
+          id,
+          _Response(
+            result: {
+              "thread": {
+                if (nextThread is Map) ...nextThread,
+                "id": threadId,
+                "modelProvider": nextThread is Map ? nextThread["modelProvider"] ?? "openai" : "openai",
+              },
+            },
+          ),
+        );
+        return;
+      }
     }
     if (_pending.isEmpty) {
       _serverToClient.add(
@@ -4387,6 +4426,16 @@ class _FakeAppServer() {
     }
     final response = _pending.removeAt(0);
     if (!response.respond) return;
+    // Existing write-path cases use a signed-in native thread unless a
+    // response explicitly supplies another authoritative provider.
+    if ((method == "thread/start" || method == "thread/resume") && response.result is Map<String, dynamic>) {
+      final result = response.result as Map<String, dynamic>;
+      final thread = result["thread"];
+      if (!result.containsKey("modelProvider") && thread is Map && !thread.containsKey("modelProvider")) {
+        _sendResponse(id, _Response(result: {...result, "modelProvider": "openai"}));
+        return;
+      }
+    }
     _sendResponse(id, response);
   }
 

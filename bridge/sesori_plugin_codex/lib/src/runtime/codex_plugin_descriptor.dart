@@ -47,6 +47,7 @@ const int _setupProbeOutputLimit = 64 * 1024;
 /// inject a fake.
 typedef CodexManagedApiFactory = CodexManagedApi Function({
   required String serverUrl,
+  required bool apiKeyConfigured,
   required void Function() onConnected,
   required void Function() onDisconnected,
 });
@@ -54,6 +55,7 @@ typedef CodexManagedApiFactory = CodexManagedApi Function({
 CodexManagedApi _defaultBuildApi({
   required PluginHost host,
   required String serverUrl,
+  required bool apiKeyConfigured,
   required void Function() onConnected,
   required void Function() onDisconnected,
 }) {
@@ -92,6 +94,7 @@ CodexManagedApi _defaultBuildApi({
       subAgentTracker: CodexSubAgentTracker(),
       sessionMapper: const CodexSessionMapper(),
       launchDirectory: launchDirectory,
+      apiKeyConfigured: apiKeyConfigured,
     ),
     messageRepository: messageRepository,
     eventMapper: CodexEventMapper(
@@ -433,6 +436,9 @@ class const CodexPluginDescriptor({
     final selectedRuntime = selection as ManagedRuntimeSelected;
     final executable = selectedRuntime.binaryPath;
     final runtimeVersion = selectedRuntime.version.raw;
+    if (_apiKeyConfigured(environment: environment)) {
+      return PluginSetupReady.versioned(runtimeVersion: runtimeVersion);
+    }
     final executor = HostProcessCommandExecutor(
       includeParentEnvironment: true,
       processes: processes,
@@ -457,7 +463,7 @@ class const CodexPluginDescriptor({
     final statusOutput = _normalizedStatusOutput(loginResult);
     if (statusOutput.contains("not logged in") || statusOutput.contains("logged out")) {
       return PluginSetupAuthenticationRequired.versioned(
-        actionHint: "Sign in to Codex, then retry setup detection.",
+        actionHint: "Sign in to Codex with ChatGPT, or set OPENAI_API_KEY in the bridge environment, then retry setup detection.",
         runtimeVersion: runtimeVersion,
       );
     }
@@ -574,6 +580,9 @@ class const CodexPluginDescriptor({
     return stripAnsi(value: combined).trim().toLowerCase();
   }
 
+  bool _apiKeyConfigured({required Map<String, String> environment}) =>
+      environment["OPENAI_API_KEY"]?.trim().isNotEmpty ?? false;
+
   @override
   Future<ManagedRuntimeBridgePlugin<CodexOwnershipRecord, CodexManagedApi>> start(PluginHost host) async {
     if (host.startAborted.isAborted) {
@@ -684,11 +693,13 @@ class const CodexPluginDescriptor({
         ? _defaultBuildApi(
             host: host,
             serverUrl: serverUrl,
+            apiKeyConfigured: _apiKeyConfigured(environment: host.environment),
             onConnected: reporter.markConnected,
             onDisconnected: reporter.markDisconnected,
           )
         : _buildApi(
             serverUrl: serverUrl,
+            apiKeyConfigured: _apiKeyConfigured(environment: host.environment),
             onConnected: reporter.markConnected,
             onDisconnected: reporter.markDisconnected,
           );

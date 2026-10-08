@@ -47,6 +47,7 @@ void main() {
       return (
         metadata: metadata,
         sessions: CodexSessionService(
+          apiKeyConfigured: false,
           catalogRepository: CodexCatalogRepository(rolloutApi: rolloutApi),
           messageRepository: CodexMessageRepository(
             rolloutApi: rolloutApi,

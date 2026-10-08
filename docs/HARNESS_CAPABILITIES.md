@@ -552,6 +552,35 @@ does not answer the question. Async message metadata was verified against Codex
 `isSecret` question receive an explicit unsupported-input error before any
 question card is shown; secret prompts are never downgraded to plain text.
 
+## Codex session billing choice
+
+**Implemented:** New Codex sessions offer **ChatGPT subscription** and
+**OpenAI API** as separate groups in the existing model picker. Model labels
+retain a short billing suffix after selection. Subscription requires a
+ChatGPT Codex login; API requires `OPENAI_API_KEY` in the bridge process
+environment and uses the official OpenAI Responses endpoint. An environment
+key makes API setup ready without a ChatGPT login. Missing keys, incompatible
+account kinds and malformed subscription account responses fail before generation.
+API-key validity and authorization are checked by OpenAI, not inferred from a
+local format check. Invalid or revoked keys surface an API authentication failure;
+neither route falls back to the other. Keys stay on the host and never enter
+the client catalog, process arguments, ownership records, or session history.
+Normal configured custom providers remain separate and keep their configured
+model/default.
+
+**Not supported by this selector:** Changing the provider of an existing
+Codex conversation. A different-provider prompt or command is rejected with
+guidance to start a new session; omission, reload and retry retain the recorded
+provider rather than selecting the bridge's current default. A native
+codex-cli 0.159.2 probe confirmed that `thread/resume` ignores a different
+provider for an already-loaded thread. This does not change any other harness.
+
+**Verification:** API generation and rejection of an existing-session billing
+change were exercised through the real Sesori plugin and native app-server on
+Linux. Positive ChatGPT admission and missing/API-only account rejection have
+deterministic regression coverage; a real ChatGPT subscription generation was
+not exercised. The standard model picker was exercised with fixture data.
+
 ## Setup detection
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |

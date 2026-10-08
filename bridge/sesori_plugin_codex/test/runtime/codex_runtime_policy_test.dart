@@ -1,3 +1,5 @@
+import "dart:async";
+import "dart:convert";
 import "dart:io";
 import "dart:math";
 
@@ -21,8 +23,30 @@ ProcessIdentity _identity({required int pid, required String? executablePath, re
 
 void main() {
   group("codexAppServerArgs / codexServerUrl", () {
-    test("spawn args pin the loopback WebSocket on the chosen port", () {
-      expect(codexAppServerArgs(port: 51000), equals(<String>["app-server", "--listen", "ws://127.0.0.1:51000"]));
+    test("launch keeps credentials in environment and ownership matches actual argv", () async {
+      const dummyKey = "dummy-openai-key-not-a-secret";
+      final processes = _RecordingProcesses();
+      final host = _RuntimeHost(
+        processes: processes,
+        environment: const {"OPENAI_API_KEY": dummyKey},
+      );
+
+      final process = await spawnCodexProcess(host: host, executablePath: "/bin/codex", port: 51000);
+      final record = buildCodexOwnershipRecord(
+        RuntimeRecordDraft(
+          ownerSessionId: "owner-fixture",
+          runtimeIdentity: process.identity,
+          port: 51000,
+          bridgeIdentity: _identity(pid: 900, executablePath: "/bin/bridge", startMarker: "bridge-marker"),
+          startedAt: DateTime.utc(2026, 6, 1),
+        ),
+      );
+
+      expect(processes.environment?["OPENAI_API_KEY"], dummyKey);
+      expect(processes.arguments, contains("ws://127.0.0.1:51000"));
+      expect(record.codexArgs, processes.arguments);
+      expect(jsonEncode(processes.arguments), isNot(contains(dummyKey)));
+      expect(jsonEncode(record.toJson()), isNot(contains(dummyKey)));
     });
 
     test("the server url matches the spawn listen address", () {
@@ -82,7 +106,7 @@ void main() {
       expect(record.codexStartMarker, equals("marker"));
       expect(record.codexExecutablePath, equals("/bin/codex"));
       expect(record.codexCommand, equals("/bin/codex"));
-      expect(record.codexArgs, equals(<String>["app-server", "--listen", "ws://127.0.0.1:51000"]));
+      expect(record.codexArgs, codexAppServerArgs(port: 51000));
       expect(record.port, equals(51000));
       expect(record.bridgePid, equals(900));
       expect(record.bridgeStartMarker, equals("bridge-marker"));
@@ -133,4 +157,54 @@ void main() {
       expect(buildCodexRestartPolicy(), isA<DisabledRestartPolicy>());
     });
   });
+}
+
+class _RuntimeHost({
+  @override required final HostProcessService processes,
+  @override required final Map<String, String> environment,
+}) implements PluginHost {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _RecordingProcesses() implements HostProcessService {
+  List<String>? arguments;
+  Map<String, String>? environment;
+
+  @override
+  Future<SpawnedProcess> spawn({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
+    required bool runInShell,
+    required bool includeParentEnvironment,
+  }) async {
+    this.arguments = List<String>.of(arguments);
+    this.environment = environment == null ? null : Map<String, String>.of(environment);
+    return _RuntimeProcess();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _RuntimeProcess() implements SpawnedProcess {
+  @override
+  int get pid => 4242;
+
+  @override
+  ProcessIdentity get identity => _identity(pid: pid, executablePath: "/bin/codex", startMarker: "fixture-marker");
+
+  @override
+  Stream<List<int>> get stdout => const Stream<List<int>>.empty();
+
+  @override
+  Stream<List<int>> get stderr => const Stream<List<int>>.empty();
+
+  @override
+  Future<int> get exitCode => Future<int>.value(0);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

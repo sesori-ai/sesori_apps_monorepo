@@ -4,6 +4,7 @@ import "dart:math";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginHost, SpawnedProcess;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
+import "../models/codex_authentication_mode.dart";
 import "codex_ownership_record.dart";
 
 /// Codex runtime policy: everything that decides *how* `codex app-server` is
@@ -80,6 +81,13 @@ List<String> codexAppServerArgs({required int port}) => <String>[
   "app-server",
   "--listen",
   "ws://$codexLoopbackHost:$port",
+  // account/read omits account kind for a no-auth default provider. Keep its
+  // native account boundary active; thread/start/resume select each billing route.
+  "-c",
+  'model_provider="openai"',
+  // Credentials stay in the subprocess environment, never in argv or records.
+  "-c",
+  'model_providers.${CodexAuthenticationMode.apiKey.providerID}={name="OpenAI API",base_url="https://api.openai.com/v1",wire_api="responses",env_key="OPENAI_API_KEY",requires_openai_auth=false}',
 ];
 
 /// The `ws://` URL the [CodexAppServerClient] connects to for a chosen [port].

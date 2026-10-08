@@ -20,6 +20,7 @@ import "approval_registry.dart";
 import "codex_app_server_client.dart";
 import "codex_event_mapper.dart";
 import "models/codex_collaboration_mode.dart";
+import "repositories/codex_authentication_repository.dart";
 import "repositories/codex_message_repository.dart";
 import "repositories/codex_model_repository.dart";
 import "repositories/codex_skill_repository.dart";
@@ -218,6 +219,10 @@ class CodexPlugin._({
         await client.connect();
         final appServerApi = CodexAppServerApi(client: client);
         _sessionService.attachAppServerRepositories(
+          authenticationRepository: CodexAuthenticationRepository(
+            appServerApi: appServerApi,
+            requestTimeout: const Duration(seconds: 30),
+          ),
           threadRepository: CodexThreadRepository(appServerApi: appServerApi),
           modelRepository: CodexModelRepository(appServerApi: appServerApi),
           skillRepository: CodexSkillRepository(appServerApi: appServerApi),
@@ -340,6 +345,10 @@ class CodexPlugin._({
         threadId: threadId,
       );
       return;
+    }
+    if (threadId != null && (notification.method == "turn/started" || notification.method == "item/started")) {
+      final thread = _sessionService.loadedThread(threadId: threadId);
+      if (thread != null) _eventMapper.setThreadProvider(threadId, thread.modelProvider);
     }
     if (_isSupersededTurnLifecycleNotification(notification)) return;
     _approvalRegistry?.handleRequest(CodexPendingNotification(notification: notification));
@@ -899,6 +908,7 @@ class CodexPlugin._({
       fastMode: fastMode,
     );
     _eventMapper.setThreadTime(thread);
+    _eventMapper.setThreadProvider(thread.id, thread.modelProvider);
     final threadId = thread.id;
     _recordAuthoritativeThreadCreation(threadId);
     // codex's ThreadStartResponse carries the resolved model alongside the
@@ -925,6 +935,7 @@ class CodexPlugin._({
         // stays unattributed, exactly as before.
         promptId: null,
         parts: parts,
+        model: model,
         variant: variant,
         fastMode: fastMode,
         collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
@@ -978,9 +989,6 @@ class CodexPlugin._({
     required ({String providerID, String modelID})? model,
   }) async {
     await _connectedClient();
-    if (model != null) {
-      _eventMapper.setThreadModel(sessionId, model.modelID);
-    }
     _rolloutTailer.start(sessionId: sessionId);
     final evidenceRevision = _recordPendingTurnRequest(sessionId);
     try {
@@ -991,6 +999,7 @@ class CodexPlugin._({
         // See _startTurn: Codex echoes this on the command's user item.
         clientUserMessageId: promptId,
         model: model?.modelID,
+        modelProvider: model?.providerID,
         effort: variant?.id,
         collaborationMode: CodexCollaborationMode.fromAgent(agent: agent),
         fastMode: fastMode,
@@ -1253,11 +1262,6 @@ class CodexPlugin._({
     required CodexCollaborationMode? collaborationMode,
     required bool? fastMode,
   }) async {
-    if (model != null) {
-      // A turn/start model override applies to this turn and subsequent ones,
-      // so update the per-thread model used to stamp live assistant messages.
-      _eventMapper.setThreadModel(threadId, model.modelID);
-    }
     // The bridge carries codex's reasoning effort as the session "variant": the
     // id is a codex ReasoningEffort token (low/medium/high/xhigh) that maps
     // straight onto turn/start's `effort` override (applies to this turn and
@@ -1277,6 +1281,7 @@ class CodexPlugin._({
         // carry the prompt id back to clients.
         clientUserMessageId: promptId,
         model: model?.modelID,
+        modelProvider: model?.providerID,
         effort: effort == null || effort.isEmpty ? null : effort,
         collaborationMode: collaborationMode,
         fastMode: fastMode,

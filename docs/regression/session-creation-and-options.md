@@ -50,6 +50,22 @@ variant, and worktree mode, and creating the session with its first input.
   screen-reader label read "N sub-agents, M working", and a screen reader can open the list from it.
 - Options are discovered per plugin and cached under the plugin's declared
   coherence scope; retention and replacement are bridge-owned.
+- New Codex sessions distinguish ChatGPT subscription from OpenAI API in the
+  provider-grouped model picker, including a billing suffix on the selected
+  model. API needs `OPENAI_API_KEY` on the bridge; subscription needs a ChatGPT
+  Codex login. Missing credentials, wrong account kinds and malformed
+  subscription account responses reject creation before a generation request,
+  without changing authentication files or falling back to the other billing
+  route. A configured API key is checked for presence locally; OpenAI validates
+  its validity and authorization. Invalid or revoked API keys must surface an
+  API authentication failure, never retry through the subscription provider.
+  Keys never enter catalogs, prompt payloads, process arguments, ownership
+  records or history.
+- A Codex session keeps its original provider. Selecting a different provider
+  for a prompt, skill or compaction rejects that operation before resume or
+  generation and tells the user to start a new session. Omitted selections,
+  imports, reloads and not-loaded retries resolve the recorded provider, not
+  current global configuration. Configured custom providers remain available.
 - Claude's plugin-scoped discovery runs in its host-created state directory,
   never a selected project or the bridge process's launch directory. This keeps
   its global option probe on a valid, stable path when projects move or disappear.

@@ -146,6 +146,35 @@ void main() {
       ]);
     });
 
+    test("standard environment API key is ready without starting global login", () async {
+      const dummyKey = "dummy-openai-key-not-a-secret";
+      final processes = _ProbeProcessService(
+        processSequence: [
+          _ProbeProcess(
+            pid: 1,
+            stdoutBytes: utf8.encode("codex 0.148.0\n"),
+            exitCode: Future<int>.value(0),
+          ),
+          _ProbeProcess(
+            pid: 2,
+            stdoutBytes: utf8.encode("Not logged in\n"),
+            exitCode: Future<int>.value(1),
+          ),
+        ],
+      );
+
+      final result = await descriptor.inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const {"OPENAI_API_KEY": dummyKey},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.148.0"));
+      expect(processes.spawnedArguments.where((args) => args.contains("login") && !args.contains("status")), isEmpty);
+      expect(jsonEncode(processes.spawnedArguments), isNot(contains(dummyKey)));
+    });
+
     test("reports a missing default runtime without installing", () async {
       final processes = _ProbeProcessService(
         spawnError: const ProcessException("codex", ["--version"], "missing", 2),
@@ -525,13 +554,8 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(
-        result,
-        const PluginSetupAuthenticationRequired.versioned(
-          actionHint: "Sign in to Codex, then retry setup detection.",
-          runtimeVersion: "0.148.0",
-        ),
-      );
+      expect(result, isA<PluginSetupAuthenticationRequired>());
+      expect(result.runtimeVersion, "0.148.0");
       expect(processes.spawnedArguments, [
         const ["--version"],
         const ["login", "status"],

@@ -7,6 +7,38 @@ import "package:test/test.dart";
 
 void main() {
   group("CodexAppServerApi account operations", () {
+    test("account kind distinguishes subscription, API-only, absent and future accounts", () async {
+      final transport = _FakeTransport(
+        responses: [
+          {
+            "account": {"type": "chatgpt", "email": "dummy@example.invalid", "accessToken": "dummy-not-a-secret"},
+            "requiresOpenaiAuth": true,
+          },
+          {
+            "account": {"type": "apiKey", "apiKey": "dummy-not-a-secret"},
+            "requiresOpenaiAuth": true,
+          },
+          {
+            "account": {"type": "futureAccount"},
+            "requiresOpenaiAuth": false,
+          },
+          {"account": null, "requiresOpenaiAuth": true},
+        ],
+      );
+      addTearDown(transport.dispose);
+      final api = CodexAppServerApi(client: transport);
+
+      expect(await api.readAccountKind(), CodexAccountKind.chatgpt);
+      expect(await api.readAccountKind(), CodexAccountKind.apiKey);
+      expect(await api.readAccountKind(), CodexAccountKind.unknown);
+      expect(await api.readAccountKind(), isNull);
+      expect(transport.calls.map((call) => call.method), everyElement("account/read"));
+      expect(
+        transport.calls.map((call) => call.params),
+        everyElement(<String, dynamic>{"refreshToken": false}),
+      );
+    });
+
     test("starts device login with a typed response", () async {
       final transport = _FakeTransport(
         responses: [

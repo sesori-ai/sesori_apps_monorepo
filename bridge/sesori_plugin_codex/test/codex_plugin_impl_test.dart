@@ -69,10 +69,6 @@ void main() {
         final agents = await plugin.getAgents(projectId: "/repo/example");
         expect(agents.map((agent) => agent.name), equals(["Agent"]));
         expect(agents.every((agent) => agent.model == null), isTrue);
-        expect(
-          (await plugin.getProviders(projectId: "/repo/example")).providers,
-          isEmpty,
-        );
         await plugin.dispose();
       } finally {
         try {
@@ -150,8 +146,11 @@ void main() {
         expect(agents.last.model, equals(agent.model));
 
         final providers = (await plugin.getProviders(projectId: "/repo/example")).providers;
-        expect(providers.single.id, equals("openai"));
-        expect(providers.single.defaultModelID, equals("gpt-5.4-codex"));
+        expect(providers.map((provider) => provider.id), ["openai", "sesori-openai-api"]);
+        expect(
+          providers.singleWhere((provider) => provider.id == "openai").defaultModelID,
+          equals("gpt-5.4-codex"),
+        );
 
         // The other derived project resolves its own rollout's defaults.
         final otherAgent = (await plugin.getAgents(projectId: "/repo/other")).first;
@@ -445,7 +444,11 @@ void main() {
           final decoded = jsonDecode(frame as String) as Map<String, dynamic>;
           final result = switch (decoded["method"]) {
             "initialize" => _initOk,
-            "thread/resume" => const {
+            "account/read" => const {
+              "account": {"type": "chatgpt"},
+              "requiresOpenaiAuth": true,
+            },
+            "thread/read" || "thread/resume" => const {
               "model": "gpt-5.4-mini",
               "modelProvider": "openai",
               "thread": {

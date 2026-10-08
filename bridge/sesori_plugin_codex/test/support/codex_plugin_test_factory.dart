@@ -23,6 +23,7 @@ CodexPlugin createInjectedCodexPlugin({
   required String projectCwd,
   required CodexAppServerClient Function()? clientFactory,
   required Duration keepaliveInterval,
+  bool? apiKeyConfigured,
   CodexToolOutcomeRepository? toolOutcomeRepository,
   Duration rolloutPollInterval = const Duration(milliseconds: 10),
 }) {
@@ -49,6 +50,7 @@ CodexPlugin createInjectedCodexPlugin({
     capabilityToken: null,
     clientFactory: clientFactory,
     sessionService: CodexSessionService(
+      apiKeyConfigured: apiKeyConfigured ?? (environment["OPENAI_API_KEY"]?.trim().isNotEmpty ?? false),
       catalogRepository: catalogRepository,
       messageRepository: messageRepository,
       metadataRepository: metadataRepository,

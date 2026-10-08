@@ -21,6 +21,19 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
         ),
       );
 
+  Future<CodexAccountKind?> readAccountKind() async {
+    final result = await _client.request(
+      method: "account/read",
+      params: const {"refreshToken": false},
+    );
+    final response = _decodeAccountResponse(
+      result: result,
+      operation: "account/read",
+      decode: CodexAccountReadResponseDto.fromJson,
+    );
+    return response.account?.type;
+  }
+
   Future<CodexDeviceLoginStartResponseDto> startDeviceLogin({
     Duration timeout = const Duration(seconds: 30),
   }) async {
@@ -62,10 +75,8 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     required bool fastMode,
   }) async {
     final params = <String, dynamic>{"cwd": cwd};
-    if (model != null) {
-      params["model"] = model;
-      params["modelProvider"] = modelProvider;
-    }
+    if (model != null) params["model"] = model;
+    if (modelProvider != null) params["modelProvider"] = modelProvider;
     // Only set when true: an unset thread tier lets Codex apply the model's
     // own default rather than forcing standard speed on every new thread.
     // The first turn/start (below) always carries an explicit tier, so this
@@ -77,10 +88,11 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
 
   Future<CodexThreadEnvelopeDto> resumeThread({
     required String threadId,
+    required String? modelProvider,
   }) async {
     final result = await _client.request(
       method: "thread/resume",
-      params: {"threadId": threadId},
+      params: {"threadId": threadId, "modelProvider": ?modelProvider},
     );
     return _decodeResponse(result: result, operation: "thread/resume");
   }

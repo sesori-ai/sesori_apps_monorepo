@@ -6,6 +6,30 @@ part of 'codex_account_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_CodexAccountKindDto _$CodexAccountKindDtoFromJson(Map json) =>
+    _CodexAccountKindDto(
+      type: $enumDecode(
+        _$CodexAccountKindEnumMap,
+        json['type'],
+        unknownValue: CodexAccountKind.unknown,
+      ),
+    );
+
+const _$CodexAccountKindEnumMap = {
+  CodexAccountKind.chatgpt: 'chatgpt',
+  CodexAccountKind.apiKey: 'apiKey',
+  CodexAccountKind.unknown: 'unknown',
+};
+
+_CodexAccountReadResponseDto _$CodexAccountReadResponseDtoFromJson(Map json) =>
+    _CodexAccountReadResponseDto(
+      account: json['account'] == null
+          ? null
+          : CodexAccountKindDto.fromJson(
+              Map<String, dynamic>.from(json['account'] as Map),
+            ),
+    );
+
 Map<String, dynamic> _$CodexDeviceLoginStartParamsDtoToJson(
   _CodexDeviceLoginStartParamsDto instance,
 ) => <String, dynamic>{'type': _$CodexAccountLoginTypeEnumMap[instance.type]!};

@@ -8,6 +8,37 @@ enum CodexAccountLoginType() {
   chatgptDeviceCode,
 }
 
+/// Only the account kind is retained; account identity and credentials are not.
+enum CodexAccountKind() {
+  @JsonValue("chatgpt")
+  chatgpt,
+  @JsonValue("apiKey")
+  apiKey,
+  unknown,
+}
+
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexAccountKindDto with _$CodexAccountKindDto {
+  const factory({
+    @JsonKey(unknownEnumValue: CodexAccountKind.unknown) required CodexAccountKind type,
+  }) = _CodexAccountKindDto;
+
+  factory fromJson(
+    Map<String, dynamic> json,
+  ) => _$CodexAccountKindDtoFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: false)
+sealed class CodexAccountReadResponseDto with _$CodexAccountReadResponseDto {
+  const factory({
+    required CodexAccountKindDto? account,
+  }) = _CodexAccountReadResponseDto;
+
+  factory fromJson(
+    Map<String, dynamic> json,
+  ) => _$CodexAccountReadResponseDtoFromJson(json);
+}
+
 enum CodexAccountLoginCancelStatus() {
   @JsonValue("canceled")
   canceled,

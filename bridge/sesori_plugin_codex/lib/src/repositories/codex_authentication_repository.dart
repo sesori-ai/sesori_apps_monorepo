@@ -2,6 +2,7 @@ import "dart:async";
 
 import "../api/codex_app_server_api.dart";
 import "../api/models/codex_account_dto.dart";
+import "../models/codex_authentication_mode.dart";
 
 final class const CodexAuthenticationChallenge({
   required final Uri verificationUri,
@@ -24,6 +25,13 @@ class CodexAuthenticationRepository({
   StreamSubscription<CodexAccountLoginCompletedNotificationDto>? _completionSubscription;
   Completer<void>? _completion;
   String? _loginId;
+
+  /// Maps private backend account metadata to the local authentication domain.
+  Future<CodexAuthenticationMode?> readMode() async => switch (await _appServerApi.readAccountKind()) {
+    CodexAccountKind.chatgpt => CodexAuthenticationMode.chatgptSubscription,
+    CodexAccountKind.apiKey => CodexAuthenticationMode.apiKey,
+    CodexAccountKind.unknown || null => null,
+  };
 
   Future<CodexAuthenticationChallenge> start() async {
     if (_completion != null) {

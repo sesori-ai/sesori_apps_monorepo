@@ -4,8 +4,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../codex_config_reader.dart";
 import "../codex_metadata_repository.dart";
+import "../models/codex_authentication_mode.dart";
 import "../models/codex_collaboration_mode.dart";
 import "../models/codex_replay_tool_disposition.dart";
+import "../repositories/codex_authentication_repository.dart";
 import "../repositories/codex_catalog_repository.dart";
 import "../repositories/codex_message_repository.dart";
 import "../repositories/codex_model_repository.dart";
@@ -41,30 +43,35 @@ class CodexSessionService({
   required final CodexSubAgentTracker _subAgentTracker,
   required final CodexSessionMapper _sessionMapper,
   required final String _launchDirectory,
+  required final bool _apiKeyConfigured,
 }) {
   static const String compactionCommandName = "compact";
 
   static final PluginCommand _compactionCommand = PluginCommand.compaction(name: compactionCommandName);
 
   CodexThreadRepository? _threadRepository;
+  CodexAuthenticationRepository? _authenticationRepository;
   CodexModelRepository? _modelRepository;
   CodexSkillRepository? _skillRepository;
-  final Set<String> _loadedThreads = {};
+  final Map<String, CodexThreadRecord> _loadedThreads = {};
   final Map<String, String> _threadModels = {};
   final Set<String> _announcedSubAgentThreadIds = {};
   final Set<String> _deletedSubAgentThreadIds = {};
 
   void attachAppServerRepositories({
+    required CodexAuthenticationRepository authenticationRepository,
     required CodexThreadRepository threadRepository,
     required CodexModelRepository modelRepository,
     required CodexSkillRepository skillRepository,
   }) {
+    _authenticationRepository = authenticationRepository;
     _threadRepository = threadRepository;
     _modelRepository = modelRepository;
     _skillRepository = skillRepository;
   }
 
   void detachAppServerRepositories() {
+    _authenticationRepository = null;
     _threadRepository = null;
     _modelRepository = null;
     _skillRepository = null;
@@ -543,24 +550,56 @@ class CodexSessionService({
     required String? modelProvider,
     required bool fastMode,
   }) async {
+    // The managed process keeps native account discovery active. Resolve an
+    // omitted first-thread choice here so custom host defaults still apply.
+    final selectedProvider =
+        modelProvider ??
+        _metadataRepository.readConfigDefaults().modelProvider ??
+        CodexAuthenticationMode.chatgptSubscription.providerID;
+    await _validateAuthentication(modelProvider: selectedProvider);
     final thread = await _connectedThreadRepository.startThread(
       cwd: cwd,
       model: model,
-      modelProvider: modelProvider,
+      modelProvider: selectedProvider,
       fastMode: fastMode,
     );
-    _loadedThreads.add(thread.id);
+    if (thread.modelProvider != selectedProvider) {
+      throw StateError("Codex did not start the requested model provider; no request was generated.");
+    }
+    _loadedThreads[thread.id] = thread;
     _rememberThreadModel(threadId: thread.id, model: thread.model ?? model);
     return thread;
   }
 
   Future<CodexThreadRecord?> resumeThreadIfNeeded({
     required String threadId,
+    required String? modelProvider,
     required bool force,
   }) async {
-    if (!force && _loadedThreads.contains(threadId)) return null;
-    final thread = await _connectedThreadRepository.resumeThread(threadId: threadId);
-    _loadedThreads.add(threadId);
+    final loaded = _loadedThreads[threadId];
+    final storedProvider =
+        loaded?.modelProvider ?? _catalogRepository.findSessionById(sessionId: threadId)?.modelProvider;
+    final fixedProvider =
+        storedProvider ?? (await _connectedThreadRepository.readThread(threadId: threadId)).modelProvider;
+    if (fixedProvider == null) {
+      throw StateError("Codex did not report this session's model provider. Start a new Codex session.");
+    }
+    if (modelProvider != null && modelProvider != fixedProvider) {
+      throw StateError(
+        "Codex billing is chosen when a session is created. "
+        "Start a new Codex session to change its model provider.",
+      );
+    }
+    await _validateAuthentication(modelProvider: fixedProvider);
+    if (!force && loaded != null) return null;
+    final thread = await _connectedThreadRepository.resumeThread(
+      threadId: threadId,
+      modelProvider: fixedProvider,
+    );
+    if (thread.modelProvider != fixedProvider) {
+      throw StateError("Codex did not resume the session's model provider; no request was generated.");
+    }
+    _loadedThreads[threadId] = thread;
     _rememberThreadModel(threadId: threadId, model: thread.model);
     return thread;
   }
@@ -570,6 +609,7 @@ class CodexSessionService({
     required List<PluginPromptPart> parts,
     required String? clientUserMessageId,
     required String? model,
+    required String? modelProvider,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
     required bool? fastMode,
@@ -601,6 +641,7 @@ class CodexSessionService({
       threadId: threadId,
       forceResume: false,
       model: model,
+      modelProvider: modelProvider,
       effort: effort,
       collaborationMode: collaborationMode,
     );
@@ -614,6 +655,7 @@ class CodexSessionService({
           threadId: threadId,
           forceResume: true,
           model: model,
+          modelProvider: modelProvider,
           effort: effort,
           collaborationMode: collaborationMode,
         ),
@@ -627,6 +669,7 @@ class CodexSessionService({
     required String arguments,
     required String? clientUserMessageId,
     required String? model,
+    required String? modelProvider,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
     required bool fastMode,
@@ -646,6 +689,7 @@ class CodexSessionService({
       threadId: threadId,
       forceResume: false,
       model: model,
+      modelProvider: modelProvider,
       effort: effort,
       collaborationMode: collaborationMode,
     );
@@ -659,6 +703,7 @@ class CodexSessionService({
         threadId: threadId,
         forceResume: true,
         model: model,
+        modelProvider: modelProvider,
         effort: effort,
         collaborationMode: collaborationMode,
       );
@@ -680,10 +725,19 @@ class CodexSessionService({
     required String threadId,
     required bool forceResume,
     required String? model,
+    required String? modelProvider,
     required String? effort,
     required CodexCollaborationMode? collaborationMode,
   }) async {
-    final resumedThread = await resumeThreadIfNeeded(threadId: threadId, force: forceResume);
+    final resumedThread = await resumeThreadIfNeeded(
+      threadId: threadId,
+      modelProvider: modelProvider,
+      force: forceResume,
+    );
+    final resolvedProvider = _loadedThreads[threadId]!.modelProvider;
+    if (resolvedProvider == null) {
+      throw StateError("Codex did not return the thread's model provider; no request was generated.");
+    }
     final turnModel = _resolveTurnModel(
       threadId: threadId,
       requestedModel: model,
@@ -759,9 +813,41 @@ class CodexSessionService({
     }
   }
 
+  Future<void> _validateAuthentication({required String? modelProvider}) async {
+    switch (CodexAuthenticationMode.fromProviderID(providerID: modelProvider)) {
+      case CodexAuthenticationMode.chatgptSubscription:
+        if (await _connectedAuthenticationRepository.readMode() != CodexAuthenticationMode.chatgptSubscription) {
+          throw StateError(
+            "ChatGPT subscription requires a ChatGPT sign-in. Sign in to Codex with ChatGPT, "
+            "or select OpenAI API to use OPENAI_API_KEY.",
+          );
+        }
+      case CodexAuthenticationMode.apiKey:
+        if (!_apiKeyConfigured) {
+          throw StateError(
+            "OpenAI API requires OPENAI_API_KEY in the bridge environment. "
+            "Set it before starting the bridge, then retry.",
+          );
+        }
+      case null:
+        // User-defined providers keep their existing authentication behavior.
+        break;
+    }
+  }
+
+  /// Server-returned routing metadata; event mappers use it only for display.
+  CodexThreadRecord? loadedThread({required String threadId}) => _loadedThreads[threadId];
+
   CodexThreadRecord? decodeStartedNotificationParams({
     required Map<String, dynamic> params,
-  }) => _threadRepository?.decodeStartedNotificationParams(params: params);
+  }) {
+    final thread = _threadRepository?.decodeStartedNotificationParams(params: params);
+    if (thread != null) {
+      _loadedThreads[thread.id] = thread;
+      _rememberThreadModel(threadId: thread.id, model: thread.model);
+    }
+    return thread;
+  }
 
   PluginSession toPluginSession({
     required CodexThreadRecord thread,
@@ -878,6 +964,16 @@ class CodexSessionService({
     final records = await _catalogRepository.listSessionRecords();
     final config = _metadataRepository.readConfigDefaults();
     final target = normalizeProjectDirectory(directory: projectId);
+    for (final thread in _loadedThreads.values) {
+      final directory = normalizeProjectDirectory(directory: thread.directory ?? _launchDirectory);
+      if (directory == target || p.isWithin(target, directory)) {
+        return (
+          modelID: _threadModels[thread.id] ?? thread.model ?? config.model,
+          providerID:
+              thread.modelProvider ?? config.modelProvider ?? CodexAuthenticationMode.chatgptSubscription.providerID,
+        );
+      }
+    }
     for (final record in records) {
       final directory = normalizeProjectDirectory(
         directory: record.cwd ?? _launchDirectory,
@@ -885,13 +981,14 @@ class CodexSessionService({
       if (directory == target || p.isWithin(target, directory)) {
         return (
           modelID: record.model ?? config.model,
-          providerID: record.modelProvider ?? config.modelProvider ?? "openai",
+          providerID:
+              record.modelProvider ?? config.modelProvider ?? CodexAuthenticationMode.chatgptSubscription.providerID,
         );
       }
     }
     return (
       modelID: config.model,
-      providerID: config.modelProvider ?? "openai",
+      providerID: config.modelProvider ?? CodexAuthenticationMode.chatgptSubscription.providerID,
     );
   }
 
@@ -922,25 +1019,64 @@ class CodexSessionService({
     );
     final catalogResult = await catalogFuture;
     final catalog = catalogResult.catalog;
-    final models = catalog.models.isEmpty
-        ? [
-            if (modelID != null)
-              PluginModel(
-                fastMode: null,
-                id: modelID,
-                name: modelID,
-                variants: const [],
-                family: null,
-                isAvailable: true,
-                releaseDate: null,
-              ),
-          ]
-        : catalog.models;
-    final selectedModelID = selectCatalogDefaultModel(
-      scopedModelID: modelID,
-      catalogModelIds: [for (final model in models) model.id],
-      catalogDefaultId: catalog.defaultModelID,
+    final catalogModelIds = [for (final model in catalog.models) model.id];
+    final scopedMode = CodexAuthenticationMode.fromProviderID(providerID: providerID);
+    PluginModel fallbackModel({required String id}) => PluginModel(
+      fastMode: null,
+      id: id,
+      name: id,
+      variants: const [],
+      family: null,
+      isAvailable: true,
+      releaseDate: null,
     );
+    final providers = <PluginProvider>[
+      for (final mode in CodexAuthenticationMode.values)
+        PluginProvider(
+          id: mode.providerID,
+          name: switch (mode) {
+            CodexAuthenticationMode.chatgptSubscription => "ChatGPT subscription",
+            CodexAuthenticationMode.apiKey => "OpenAI API",
+          },
+          authType: switch (mode) {
+            CodexAuthenticationMode.chatgptSubscription => PluginProviderAuthType.oauth,
+            CodexAuthenticationMode.apiKey => PluginProviderAuthType.apiKey,
+          },
+          models: [
+            for (final model
+                in catalog.models.isEmpty && scopedMode == mode && modelID != null
+                    ? [fallbackModel(id: modelID)]
+                    : catalog.models)
+              model.copyWith(
+                name: "${model.name} · ${mode == CodexAuthenticationMode.chatgptSubscription ? "ChatGPT" : "API"}",
+              ),
+          ],
+          defaultModelID: selectCatalogDefaultModel(
+            scopedModelID: scopedMode == mode ? modelID : null,
+            catalogModelIds: catalogModelIds,
+            catalogDefaultId: catalog.models.isEmpty && scopedMode == mode ? modelID : catalog.defaultModelID,
+          ),
+        ),
+    ];
+    final config = _metadataRepository.readConfigDefaults();
+    final customDefaults = <String, String?>{
+      if (config.modelProvider case final configuredProvider?
+          when CodexAuthenticationMode.fromProviderID(providerID: configuredProvider) == null)
+        configuredProvider: config.model,
+      if (scopedMode == null) providerID: modelID,
+    };
+    for (final entry in customDefaults.entries) {
+      providers.add(
+        PluginProvider(
+          id: entry.key,
+          name: _providerDisplayName(providerID: entry.key),
+          authType: PluginProviderAuthType.unknown,
+          models: [if (entry.value case final configuredModel?) fallbackModel(id: configuredModel)],
+          defaultModelID: entry.value,
+        ),
+      );
+    }
+    final selectedModelID = providers.firstWhere((provider) => provider.id == providerID).defaultModelID;
     final agentModel = selectedModelID == null
         ? null
         : PluginAgentModel(
@@ -959,19 +1095,7 @@ class CodexSessionService({
           hidden: false,
         ),
       ],
-      providers: PluginProvidersResult(
-        providers: selectedModelID == null
-            ? const []
-            : [
-                PluginProvider(
-                  id: providerID,
-                  name: _providerDisplayName(providerID: providerID),
-                  authType: PluginProviderAuthType.unknown,
-                  models: models,
-                  defaultModelID: selectedModelID,
-                ),
-              ],
-      ),
+      providers: PluginProvidersResult(providers: providers),
       usedFallback: catalogResult.usedFallback || (catalog.models.isEmpty && modelID != null),
     );
   }
@@ -1012,6 +1136,14 @@ class CodexSessionService({
       "amazon-bedrock" || "bedrock" => "Amazon Bedrock",
       _ => providerID,
     };
+  }
+
+  CodexAuthenticationRepository get _connectedAuthenticationRepository {
+    final repository = _authenticationRepository;
+    if (repository == null) {
+      throw StateError("codex app-server API is not connected");
+    }
+    return repository;
   }
 
   CodexThreadRepository get _connectedThreadRepository {

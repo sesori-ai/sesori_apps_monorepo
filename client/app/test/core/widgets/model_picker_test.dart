@@ -205,6 +205,87 @@ void main() {
     expect(find.byType(ModelPicker), findsNothing);
   });
 
+  testWidgets("the same model under another provider changes the billing route and selection", (tester) async {
+    const apiProvider = "sesori-openai-api";
+    const subscriptionProvider = "openai";
+    const modelId = "gpt-5.4";
+    var selection = const AgentModel(providerID: subscriptionProvider, modelID: modelId, variant: null);
+    final providers = [
+      for (final (providerId, providerName, suffix) in [
+        (subscriptionProvider, "ChatGPT subscription", "ChatGPT"),
+        (apiProvider, "OpenAI API", "API"),
+      ])
+        ProviderInfo(
+          id: providerId,
+          name: providerName,
+          defaultModelID: modelId,
+          models: {
+            modelId: ProviderModel(
+              id: modelId,
+              providerID: providerId,
+              name: "GPT-5.4 · $suffix",
+              variants: const [],
+              defaultVariant: null,
+              family: null,
+              releaseDate: null,
+              fastMode: null,
+            ),
+          },
+        ),
+    ];
+    await tester.pumpWidget(
+      PregoInteractionScope(
+        mode: PregoInteractionMode.touch,
+        child: MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) => Align(
+                alignment: Alignment.bottomCenter,
+                child: AgentModelButtons(
+                  surfaceStyle: PregoComposerSurfaceStyle.subtle,
+                  agents: const [],
+                  selectedAgent: null,
+                  onAgentSelected: (_) {},
+                  providers: providers,
+                  selectedAgentModel: selection,
+                  onModelSelected: ({required providerID, required modelID}) => setState(() {
+                    selection = AgentModel(providerID: providerID, modelID: modelID, variant: null);
+                  }),
+                  availableVariants: const [],
+                  onVariantSelected: (_) {},
+                  fastModeControl: FastModeControl.hidden,
+                  decideFastModeToggle: () => null,
+                  onFastModeChanged: (_) {},
+                  compact: false,
+                  trailing: const [],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await _openPicker(tester: tester);
+    await tester.tap(find.text("GPT-5.4 · API"));
+    await tester.pumpAndSettle();
+    expect(selection.providerID, apiProvider);
+    expect(selection.modelID, modelId);
+    expect(find.byType(ModelPicker), findsNothing);
+
+    await _openPicker(tester: tester);
+    expect(
+      find.descendant(of: find.widgetWithText(InkWell, "GPT-5.4 · API"), matching: find.byIcon(TablerRegular.check)),
+      findsOneWidget,
+    );
+    await tester.tap(find.text("GPT-5.4 · ChatGPT"));
+    await tester.pumpAndSettle();
+    expect(selection.providerID, subscriptionProvider);
+    expect(selection.modelID, modelId);
+  });
+
   testWidgets("under a pointer, the keyboard and mouse move one highlight and Enter picks it", (tester) async {
     final selected = <(String, String)>[];
     await tester.pumpWidget(
