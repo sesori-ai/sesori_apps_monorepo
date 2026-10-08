@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:math";
 
 import "package:bloc/bloc.dart";
 import "package:collection/collection.dart";
@@ -11,13 +10,16 @@ import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../errors/api_error_remote_failure_x.dart";
+import "../../foundation/identity/prompt_id.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/composer/prompt_send_failure.dart";
 import "../../foundation/models/composer/queued_session_submission.dart";
+import "../../foundation/models/composer/unsent_composer.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../foundation/models/session_interaction_state.dart";
 import "../../foundation/models/session_launch/launch_follow_up.dart";
+import "../../foundation/models/session_launch/session_launch_composer.dart";
 import "../../foundation/models/session_launch/session_launch_handoff.dart";
 import "../../foundation/models/session_options/session_options_request_mode.dart";
 import "../../logging/logging.dart";
@@ -28,7 +30,10 @@ import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/models/plugin_management_result.dart";
 import "../../repositories/models/session_abort_not_accepted_exception.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
+import "../../repositories/models/session_messages_through_result.dart";
 import "../../repositories/models/session_options_repository_result.dart";
+import "../../repositories/models/session_prompt_index_result.dart";
+import "../../repositories/models/tool_output_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
 import "../../services/bridge_settings_service.dart";
@@ -50,13 +55,16 @@ import "../../services/session_viewing_service.dart";
 import "../../services/sse_event_tracker.dart";
 import "../../services/transcript_snapshot_calculator.dart";
 import "deferred_part_event_buffer.dart";
+import "load_through_outcome.dart";
 import "local_send_phase.dart";
 import "prompt_send_queue.dart";
+import "seeded_composer.dart";
 import "session_abort_outcome.dart";
 import "session_detail_notice.dart";
 import "session_detail_resolvers.dart";
 import "session_detail_state.dart";
 import "streaming_text_buffer.dart";
+import "tool_output_fetch.dart";
 
 enum _SessionRefreshTrigger(final String logValue) {
   commandExecuted("command_executed"),
@@ -157,6 +165,10 @@ class SessionDetailCubit(
   /// queued, so this screen's queue waits until none is left.
   List<LaunchFollowUp> _unsentLaunchFollowUps = const [];
 
+  /// Images the launch's composer held unsent, until this screen's composer
+  /// stages them.
+  List<ComposerAttachment> _launchAttachments = const [];
+
   /// Delivered user messages already accounted for. A message becomes
   /// renderable through its envelope and then each of its parts, so without
   /// this every update would settle another prompt.
@@ -235,11 +247,20 @@ class SessionDetailCubit(
   // The launch's first message is taken before the first frame, so a session
   // screen replacing the composer shows it where the composer left it.
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
-  this : super(SessionDetailState.loading(launchHandoff: _sessionLaunchService.takeHandoff(sessionId: _sessionId))) {
-    if (state case SessionDetailLoading(launchHandoff: SessionLaunchHandoff(:final acceptedFollowUps))) {
+  this : super(_launchState(launchHandoff: _sessionLaunchService.takeHandoff(sessionId: _sessionId))) {
+    if (state case SessionDetailLoading(
+      launchHandoff: SessionLaunchHandoff(:final acceptedFollowUps, :final composer),
+    )) {
       for (final submission in acceptedFollowUps) {
         _promptQueue.adoptAccepted(submission: submission, epoch: ++_parkEpoch);
       }
+      // What the launch's composer held unsent becomes this composer's, before
+      // the composer first reads it.
+      if (composer?.unsent case UnsentComposer(:final draft, :final attachments)) {
+        if (draft.text.isNotEmpty) saveComposerDraft(draft: draft);
+        _launchAttachments = attachments;
+      }
+      _emitQueueUpdate();
     }
     _streamingBuffer = StreamingTextBuffer(onFlush: _emitStreamingSnapshot);
     // Seed the connection state so the BehaviorSubject's immediate replay isn't
@@ -262,6 +283,14 @@ class SessionDetailCubit(
     unawaited(_pluginManagementService.refresh());
     unawaited(_loadMessages(isReload: false));
   }
+
+  static SessionDetailState _launchState({required SessionLaunchHandoff? launchHandoff}) => SessionDetailState.loading(
+    launchHandoff: launchHandoff,
+    seededComposer: switch (launchHandoff?.composer) {
+      final composer? => SeededComposer(composer: composer, stagedCommand: composer.unsent?.command),
+      null => null,
+    },
+  );
 
   /// The one funnel every state passes through. A loaded state that already
   /// shows what replaces the launch's first message drops its bubble here, so
@@ -293,9 +322,10 @@ class SessionDetailCubit(
     }
     final released = _unsentLaunchFollowUps.isNotEmpty && unsent.isEmpty;
     _unsentLaunchFollowUps = unsent;
-    if (state case final SessionDetailLoaded current) {
-      _emitQueueUpdate(current.copyWith(launchFollowUps: unsent));
-    }
+    _emitQueueUpdate(switch (state) {
+      final SessionDetailLoaded current => current.copyWith(launchFollowUps: unsent),
+      final other => other,
+    });
     if (released) _tryDrainQueue();
   }
 
@@ -370,13 +400,7 @@ class SessionDetailCubit(
         if (next.canInteract) {
           unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.queuedEvent));
         } else {
-          emit(
-            SessionDetailState.harnessUnavailable(
-              isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
-              session: session,
-              interaction: next,
-            ),
-          );
+          emit(_harnessUnavailable(session: session, interaction: next));
         }
       case SessionDetailLoading() || SessionDetailFailed():
         break;
@@ -410,7 +434,14 @@ class SessionDetailCubit(
     _activeLoadingRefreshes.update(connectionGeneration, (count) => count + 1, ifAbsent: () => 1);
     final previous = state;
     final launchHandoff = previous.pendingLaunchHandoff;
-    emit(SessionDetailState.loading(launchHandoff: launchHandoff));
+    emit(
+      _withQueue(
+        loading: SessionDetailLoading(
+          launchHandoff: launchHandoff,
+          seededComposer: previous is SessionDetailLoading ? previous.seededComposer : null,
+        ),
+      ),
+    );
     final parkEpochAtFetch = _parkEpoch;
     late final SessionDetailMetadataLoadResult metadataResult;
     SessionDetailLoadResult? result;
@@ -482,6 +513,9 @@ class SessionDetailCubit(
           emit(
             SessionDetailState.failed(
               reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
+              awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
+              launchFollowUps: _unsentLaunchFollowUps,
+              queuedMessages: _promptQueue.items,
             ),
           );
         }
@@ -505,13 +539,7 @@ class SessionDetailCubit(
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
               }
-              emit(
-                SessionDetailState.harnessUnavailable(
-                  isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
-                  session: session,
-                  interaction: _interaction,
-                ),
-              );
+              emit(_harnessUnavailable(session: session, interaction: _interaction));
               _drainPendingEvents();
               return _SessionRefreshResult.applied;
             }
@@ -529,9 +557,9 @@ class SessionDetailCubit(
                 session: session,
                 parkEpochAtFetch: parkEpochAtFetch,
                 interaction: becameAvailable ? interactionAtLoad : _interaction,
-                launchHandoff: launchHandoff,
               ),
             );
+            unawaited(_fetchPromptIndex());
             if (becameAvailable) {
               _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
             } else if (_interaction.canInteract) {
@@ -599,13 +627,7 @@ class SessionDetailCubit(
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
               }
-              emit(
-                SessionDetailState.harnessUnavailable(
-                  isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
-                  session: session,
-                  interaction: _interaction,
-                ),
-              );
+              emit(_harnessUnavailable(session: session, interaction: _interaction));
               _drainPendingEvents();
               return _SessionRefreshResult.applied;
             }
@@ -615,6 +637,9 @@ class SessionDetailCubit(
             emit(
               SessionDetailState.failed(
                 reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
+                awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
+                launchFollowUps: _unsentLaunchFollowUps,
+                queuedMessages: _promptQueue.items,
               ),
             );
             return _SessionRefreshResult.failed;
@@ -670,6 +695,137 @@ class SessionDetailCubit(
       return;
     }
 
+    _prependOlderPage(
+      latest: latest,
+      page: page,
+      deferredPartEventSequence: deferredPartEventSequence,
+      isLoadingOlderMessages: false,
+    );
+  }
+
+  /// Loads every message from [seq] down to the loaded range in one request,
+  /// so the prompt [messageId] at [seq] can be shown.
+  ///
+  /// Runs beside [loadOlderMessages] rather than waiting for it: both only
+  /// prepend, and the farther of the two keeps the cursor.
+  Future<LoadThroughOutcome> loadMessagesThrough({required String messageId, required int seq}) async {
+    final current = state;
+    // As in [loadOlderMessages]: a refresh has already bumped the generation
+    // but not yet replaced the transcript, so this cursor is about to go stale.
+    if (current is! SessionDetailLoaded || current.isRefreshing) return const LoadThroughSuperseded();
+    if (current.messages.any((message) => message.info.id == messageId)) return const LoadThroughLoaded();
+    final cursor = current.olderMessagesCursor;
+    // Everything from the cursor on is loaded, so a target there is gone.
+    if (cursor == null || seq >= cursor) return const LoadThroughTargetMissing();
+
+    final generation = _transcriptGeneration;
+    final deferredPartEventSequence = _deferredPartEvents.latestSequence;
+    final result = await _loadService.loadMessagesThrough(
+      sessionId: _sessionId,
+      throughSeq: seq,
+      before: cursor,
+      storedOnly: !_interaction.canInteract,
+    );
+    if (isClosed) return const LoadThroughSuperseded();
+    final latest = state;
+    // As in [loadOlderMessages]: a range read against a replaced transcript
+    // would splice unrelated history onto it.
+    if (latest is! SessionDetailLoaded || _transcriptGeneration != generation) return const LoadThroughSuperseded();
+
+    switch (result) {
+      case SessionMessagesThroughFailure():
+        return const LoadThroughFailed();
+      case SessionMessagesThroughAvailable(:final messages, :final olderMessagesCursor, :final userMessagesBefore):
+        _prependOlderPage(
+          latest: latest,
+          page: (
+            messages: messages,
+            olderMessagesCursor: olderMessagesCursor,
+            userMessagesBefore: userMessagesBefore,
+          ),
+          deferredPartEventSequence: deferredPartEventSequence,
+          isLoadingOlderMessages: latest.isLoadingOlderMessages,
+        );
+        // The merged transcript decides, since a live update may have
+        // delivered the target while the range was in flight.
+        final merged = state;
+        return merged is SessionDetailLoaded && merged.messages.any((message) => message.info.id == messageId)
+            ? const LoadThroughLoaded()
+            : const LoadThroughTargetMissing();
+    }
+  }
+
+  /// Fetches the prompt index for the transcript just emitted, when it lacks
+  /// older history the Prompts screen should still list.
+  ///
+  /// The index is applied only to the transcript it was asked for; a
+  /// replacement meanwhile asks again itself.
+  Future<void> _fetchPromptIndex() async {
+    final current = state;
+    if (current is! SessionDetailLoaded || current.olderMessagesCursor == null) return;
+    final generation = _transcriptGeneration;
+    final result = await _loadService.loadPromptIndex(sessionId: _sessionId);
+    if (isClosed || _transcriptGeneration != generation) return;
+    final latest = state;
+    // Unsupported and failed fetches leave the list built from what is
+    // loaded; the load service logs a failure.
+    if (latest is SessionDetailLoaded && result is SessionPromptIndexAvailable) {
+      emit(latest.copyWith(promptIndex: result.entries));
+    }
+  }
+
+  /// Fetches the output of an expanded summary tool part, unless it is
+  /// already loaded or on its way. A failed fetch tries again.
+  Future<void> fetchToolOutput({required String messageId, required String partId}) async {
+    final key = (messageId: messageId, partId: partId);
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
+    if (current.toolOutputs[key] case ToolOutputLoading() || ToolOutputLoaded()) return;
+    emit(current.copyWith(toolOutputs: {...current.toolOutputs, key: const ToolOutputLoading()}));
+    final result = await _loadService.loadToolOutput(sessionId: _sessionId, messageId: messageId, partId: partId);
+    if (isClosed) return;
+    final latest = state;
+    if (latest is! SessionDetailLoaded) return;
+    final fetch = switch (result) {
+      ToolOutputAvailable(:final output, :final error) => ToolOutputLoaded(output: output, error: error),
+      ToolOutputFailure() => const ToolOutputFailed(),
+    };
+    emit(latest.copyWith(toolOutputs: {...latest.toolOutputs, key: fetch}));
+  }
+
+  /// Keeps the output of a finished tool that arrived live, so a later page
+  /// that summarizes the same part shows it without a fetch (P14).
+  static Map<ToolOutputKey, ToolOutputFetch> _withFinishedToolOutput({
+    required Map<ToolOutputKey, ToolOutputFetch> toolOutputs,
+    required MessagePart part,
+  }) {
+    if (part
+        case MessagePartTool(
+          :final messageID,
+          :final id,
+          state: ToolStateFull(
+            status: ToolStatus.completed || ToolStatus.error || ToolStatus.cancelled,
+            :final output,
+            :final error,
+          ),
+        )
+        when output != null || error != null) {
+      return {...toolOutputs, (messageId: messageID, partId: id): ToolOutputLoaded(output: output, error: error)};
+    }
+    return toolOutputs;
+  }
+
+  /// Prepends [page] to [latest]'s messages.
+  ///
+  /// The cursor and the user count move as one pair, and only toward older
+  /// history: a page that lands after a farther one keeps the farther pair,
+  /// whose cursor is lower (null, the start of history, is lowest).
+  void _prependOlderPage({
+    required SessionDetailLoaded latest,
+    required SessionMessagePage page,
+    required int deferredPartEventSequence,
+    required bool isLoadingOlderMessages,
+  }) {
     // Merge by id rather than concatenating. Live events can append a message
     // while the page is in flight, and an older page must never duplicate or
     // reorder what is already shown.
@@ -682,12 +838,17 @@ class SessionDetailCubit(
       messageIds: page.messages.map((message) => message.info.id),
       sequence: deferredPartEventSequence,
     );
+    final pageIsFarther = switch ((page.olderMessagesCursor, latest.olderMessagesCursor)) {
+      (null, _) => true,
+      (_, null) => false,
+      (final int pageCursor, final int loadedCursor) => pageCursor < loadedCursor,
+    };
     emit(
       latest.copyWith(
         messages: [...older, ...latest.messages],
-        olderMessagesCursor: page.olderMessagesCursor,
-        userMessagesBeforeOldest: page.userMessagesBefore,
-        isLoadingOlderMessages: false,
+        olderMessagesCursor: pageIsFarther ? page.olderMessagesCursor : latest.olderMessagesCursor,
+        userMessagesBeforeOldest: pageIsFarther ? page.userMessagesBefore : latest.userMessagesBeforeOldest,
+        isLoadingOlderMessages: isLoadingOlderMessages,
       ),
     );
     _drainDeferredPartsForLoadedMessages();
@@ -1017,6 +1178,8 @@ class SessionDetailCubit(
               olderMessagesCursor: snapshot.olderMessagesCursor,
               userMessagesBeforeOldest: snapshot.userMessagesBefore,
               isLoadingOlderMessages: false,
+              // Refetched below for the replaced transcript.
+              promptIndex: null,
               streamingText: _streamingBuffer.snapshot(),
               sessionStatus: refreshedSessionStatus,
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
@@ -1027,6 +1190,7 @@ class SessionDetailCubit(
               children: refreshedChildSessions,
               childStatuses: derived.childStatuses,
               isArchived: snapshot.isArchived,
+              cannotContinueMessage: snapshot.cannotContinueMessage,
               availableAgents: availableAgents,
               availableProviders: availableProviders,
               availableCommands: availableCommands,
@@ -1048,6 +1212,7 @@ class SessionDetailCubit(
             ),
           );
           if (!optionsSuperseded) _refreshStaleOptions(snapshot: snapshot);
+          unawaited(_fetchPromptIndex());
           _tryDrainQueue();
           // The refreshed transcript has rendered, so it is safe to re-declare
           // the view (which marks the session seen on the bridge).
@@ -1816,12 +1981,13 @@ class SessionDetailCubit(
   ///
   /// History carries no universal completion signal (several backends load
   /// messages with a null completion time), so coverage is decided by content:
-  /// only a same-ID text/reasoning part that starts or ends with the entire
-  /// buffered value retires it. The suffix case is a reconnect outside the
+  /// only a same-ID streaming part (see [_streamedText]) that starts or ends
+  /// with the entire buffered value retires it. The suffix case is a reconnect outside the
   /// replay window, where the accumulator holds only the tail of a part and
   /// the snapshot is the sole source of its prefix. An absent, shorter or
   /// divergent part keeps the buffer, which still holds live content the
-  /// transcript has not shown it can replace.
+  /// transcript has not shown it can replace. A same-ID compaction that has
+  /// settled retires it too, since it will stream no more.
   void _retireStreamingPartsCoveredBy({required List<MessageWithParts> messages}) {
     final buffered = _streamingBuffer.snapshot();
     if (buffered.isEmpty) return;
@@ -1829,17 +1995,24 @@ class SessionDetailCubit(
       for (final part in message.parts) {
         final live = buffered[part.id];
         if (live == null) continue;
-        final installed = _streamedText(part);
-        if (installed == null) continue;
-        if (installed.startsWith(live) || installed.endsWith(live)) _streamingBuffer.removePart(part.id);
+        final covered = switch ((part, _streamedText(part))) {
+          // A settled compaction streams no more, so the snapshot settling it
+          // retires its buffer, as its own part update would.
+          (MessagePartCompaction(state: CompactionStateCompleted() || CompactionStateFailed()), _) => true,
+          (_, final installed?) => installed.startsWith(live) || installed.endsWith(live),
+          (_, null) => false,
+        };
+        if (covered) _streamingBuffer.removePart(part.id);
       }
     }
   }
 
   /// The content a streaming delta accumulates for [part], or null for part
-  /// kinds that never stream text.
+  /// kinds that never stream text, or a running compaction with no summary
+  /// yet. A compaction streams its summary only while it runs.
   static String? _streamedText(MessagePart part) => switch (part) {
     MessagePartText(:final text) || MessagePartReasoning(:final text) => text,
+    MessagePartCompaction(state: CompactionStateRunning(:final summary)) => summary,
     MessagePartTool() ||
     MessagePartSubtask() ||
     MessagePartStepStart() ||
@@ -1885,6 +2058,7 @@ class SessionDetailCubit(
       current.copyWith(
         messages: messages,
         streamingText: _streamingBuffer.snapshot(),
+        toolOutputs: _withFinishedToolOutput(toolOutputs: current.toolOutputs, part: part),
       ),
     );
     // The part may be what makes a delivered user prompt renderable.
@@ -2069,8 +2243,9 @@ class SessionDetailCubit(
     required ComposerInputMode inputMode,
     required List<ComposerAttachment> attachments,
   }) async {
-    if (_refuseWhenInteractionBlocked(action: "send a prompt")) return;
+    if (_refuseComposerInput(action: "send a prompt")) return;
     final current = state;
+    final seeded = _seededComposer;
     final trimmed = text.trim();
     final normalizedCommand = command?.normalize();
     if (trimmed.isEmpty && normalizedCommand == null && attachments.isEmpty) return;
@@ -2087,18 +2262,34 @@ class SessionDetailCubit(
 
     // Hold the declared capability line at the wire seam too. An unresolved
     // capability refuses as well, so unsupported images never enter the queue.
-    final supportsPromptAttachments = current is SessionDetailLoaded ? current.supportsPromptAttachments : null;
-    if (attachments.isNotEmpty && supportsPromptAttachments != true) {
+    // Before the first load, the launch's composer supplies what the loaded
+    // state would.
+    final options = switch ((current, seeded?.composer)) {
+      (final SessionDetailLoaded loaded, _) => (
+        supportsPromptAttachments: loaded.supportsPromptAttachments,
+        agent: loaded.selectedAgent,
+        agentModel: loaded.selectedAgentModel,
+        fastMode: loaded.runsFastMode,
+      ),
+      (_, final SessionLaunchComposer seed) => (
+        supportsPromptAttachments: seed.supportsPromptAttachments,
+        agent: seed.agent,
+        agentModel: seed.agentModel,
+        fastMode: seed.fastMode,
+      ),
+      (_, null) => (supportsPromptAttachments: null, agent: null, agentModel: null, fastMode: false),
+    };
+    if (attachments.isNotEmpty && options.supportsPromptAttachments != true) {
       logw("Refused ${attachments.length} attachment(s) because plugin support is unavailable");
       return;
     }
 
-    final selectedAgent = current is SessionDetailLoaded ? current.selectedAgent : null;
-    final selectedAgentModel = current is SessionDetailLoaded ? current.selectedAgentModel : null;
-    final fastMode = current is SessionDetailLoaded && current.runsFastMode;
+    final selectedAgent = options.agent;
+    final selectedAgentModel = options.agentModel;
+    final fastMode = options.fastMode;
     // The id survives retries of the same submission, so a send whose
     // response was lost re-lands on the bridge as an idempotent no-op.
-    final promptId = _generatePromptId();
+    final promptId = generatePromptId();
     final submission = normalizedCommand == null
         ? QueuedSessionSubmission.text(
             promptId: promptId,
@@ -2124,39 +2315,79 @@ class SessionDetailCubit(
       SessionDetailLoaded(launchHandoff: final handoff?) => current.copyWith(
         launchHandoff: handoff.copyWith(followUpIds: {...handoff.followUpIds, promptId}),
       ),
-      SessionDetailLoaded() => current,
-      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => null,
+      SessionDetailLoading(launchHandoff: final handoff?) => current.copyWith(
+        launchHandoff: handoff.copyWith(followUpIds: {...handoff.followUpIds, promptId}),
+      ),
+      SessionDetailLoaded() || SessionDetailLoading() => current,
+      SessionDetailHarnessUnavailable() || SessionDetailFailed() => null,
     });
     if (_isConnected && current is SessionDetailLoaded) await _drainQueuedMessages();
   }
 
+  /// Also before the first load, where the launch-seeded composer queues.
   void cancelQueuedMessage(int index) {
-    final current = state;
-    if (current is! SessionDetailLoaded) return;
-
     final removed = _promptQueue.cancel(index);
     if (removed != null) {
       _staleOptionsRecoveryAttemptedPromptIds.remove(removed.promptId);
-      _emitQueueUpdate(current);
+      _emitQueueUpdate();
       _tryDrainQueue();
     }
   }
 
   /// Syncs queued prompt items into the cubit state.
-  void _emitQueueUpdate([SessionDetailLoaded? known]) {
+  void _emitQueueUpdate([SessionDetailState? known]) {
     if (isClosed) return;
-    final current = known ?? state;
-    if (current is! SessionDetailLoaded) return;
-    final queue = _queueView(bridgePrompts: current.bridgeQueuedPrompts);
-    emit(
-      current.copyWith(
-        bridgePromptAttachments: queue.bridgePromptAttachments,
-        queuedMessages: queue.queuedMessages,
-        awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-        localSend: queue.localSend,
-      ),
-    );
+    switch (known ?? state) {
+      case final SessionDetailLoaded current:
+        final queue = _queueView(bridgePrompts: current.bridgeQueuedPrompts);
+        emit(
+          current.copyWith(
+            bridgePromptAttachments: queue.bridgePromptAttachments,
+            queuedMessages: queue.queuedMessages,
+            awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
+            localSend: queue.localSend,
+          ),
+        );
+      case final SessionDetailLoading current:
+        emit(_withQueue(loading: current));
+      case final SessionDetailFailed current:
+        emit(
+          current.copyWith(
+            awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
+            launchFollowUps: _unsentLaunchFollowUps,
+            queuedMessages: _promptQueue.items,
+          ),
+        );
+      case final SessionDetailHarnessUnavailable current:
+        emit(
+          current.copyWith(
+            awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
+            launchFollowUps: _unsentLaunchFollowUps,
+            queuedMessages: _promptQueue.items,
+          ),
+        );
+    }
   }
+
+  /// The blocked shell with what this screen still owes to send.
+  SessionDetailState _harnessUnavailable({
+    required Session session,
+    required SessionInteractionState interaction,
+  }) => SessionDetailState.harnessUnavailable(
+    isUpdatingAutoContinuation: _autoContinuationUpdateInFlight,
+    session: session,
+    interaction: interaction,
+    awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
+    launchFollowUps: _unsentLaunchFollowUps,
+    queuedMessages: _promptQueue.items,
+  );
+
+  /// [loading] showing what this screen holds to send.
+  SessionDetailLoading _withQueue({required SessionDetailLoading loading}) => loading.copyWith(
+    launchFollowUps: _unsentLaunchFollowUps,
+    awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
+    queuedMessages: _promptQueue.items,
+  );
 
   /// Drops staged copies a fresh snapshot proves the bridge already owns —
   /// listed in its queue or landed as a user message with the same prompt id.
@@ -2563,6 +2794,12 @@ class SessionDetailCubit(
 
   ComposerDraft get composerDraft => _composerDraft;
 
+  /// Images the launch's composer held unsent, for this screen's composer to
+  /// stage once; see [acknowledgeLaunchAttachments].
+  List<ComposerAttachment> get launchAttachments => _launchAttachments;
+
+  void acknowledgeLaunchAttachments() => _launchAttachments = const [];
+
   void saveComposerDraft({required ComposerDraft draft}) {
     _composerDraft = draft;
     _composerDraftRepository.saveForSession(sessionId: _sessionId, draft: draft);
@@ -2593,17 +2830,6 @@ class SessionDetailCubit(
     ComposerInputMode.typed => AnalyticsInputMode.typed,
     ComposerInputMode.voiceAssisted => AnalyticsInputMode.voiceAssisted,
   };
-
-  static final Random _promptIdRandom = Random.secure();
-
-  /// Client-generated prompt identity, mirroring the bridge's `prm_` shape.
-  static String _generatePromptId() {
-    final buffer = StringBuffer("prm_");
-    for (var index = 0; index < 16; index++) {
-      buffer.write(_promptIdRandom.nextInt(256).toRadixString(16).padLeft(2, "0"));
-    }
-    return buffer.toString();
-  }
 
   void _reportProductEvent({required ProductAnalyticsEvent event}) {
     unawaited(
@@ -2756,6 +2982,18 @@ class SessionDetailCubit(
     logw("Refused to $action while the session harness is unavailable");
     return true;
   }
+
+  /// The launch's composer while this screen's first load builds it, so what
+  /// the user sends or stages before the transcript arrives is kept for it.
+  SeededComposer? get _seededComposer => switch (state) {
+    SessionDetailLoading(:final seededComposer) => seededComposer,
+    SessionDetailLoaded() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => null,
+  };
+
+  /// [_refuseWhenInteractionBlocked], except that the launch's composer takes
+  /// input before the first load.
+  bool _refuseComposerInput({required String action}) =>
+      _seededComposer == null && _refuseWhenInteractionBlocked(action: action);
 
   bool _refuseWhenArchived({required String action}) {
     final current = state;
@@ -2948,22 +3186,26 @@ class SessionDetailCubit(
     emit(current.copyWith(fastMode: fastMode));
   }
 
-  void stageCommand(CommandInfo command) {
-    if (_refuseWhenInteractionBlocked(action: "stage a command")) return;
-    final current = state;
-    if (current is! SessionDetailLoaded) return;
+  void stageCommand(CommandInfo command) => _setStagedCommand(command: command, action: "stage a command");
 
-    if (isClosed) return;
-    emit(current.copyWith(stagedCommand: command));
-  }
+  void clearStagedCommand() => _setStagedCommand(command: null, action: "clear a staged command");
 
-  void clearStagedCommand() {
-    if (_refuseWhenInteractionBlocked(action: "clear a staged command")) return;
-    final current = state;
-    if (current is! SessionDetailLoaded) return;
-
-    if (isClosed) return;
-    emit(current.copyWith(stagedCommand: null));
+  void _setStagedCommand({required CommandInfo? command, required String action}) {
+    if (_refuseComposerInput(action: action) || isClosed) return;
+    switch (state) {
+      case final SessionDetailLoaded current:
+        emit(current.copyWith(stagedCommand: command));
+      case final SessionDetailLoading current:
+        if (current.seededComposer case final seeded?) {
+          emit(
+            current.copyWith(
+              seededComposer: SeededComposer(composer: seeded.composer, stagedCommand: command),
+            ),
+          );
+        }
+      case SessionDetailHarnessUnavailable() || SessionDetailFailed():
+        break;
+    }
   }
 
   /// Stops the session with the given sub-agent scope.
@@ -3043,8 +3285,10 @@ class SessionDetailCubit(
     required Session session,
     required int parkEpochAtFetch,
     required SessionInteractionState interaction,
-    required SessionLaunchHandoff? launchHandoff,
   }) {
+    // The load replaces the loading state, keeping what was sent or staged
+    // meanwhile: the launch bubble with its follow-up ids, and the command.
+    final loading = state;
     _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
     final derived = _deriveSnapshot(snapshot);
     final childSessions = derived.children;
@@ -3073,6 +3317,7 @@ class SessionDetailCubit(
       messages: snapshot.messages,
       olderMessagesCursor: snapshot.olderMessagesCursor,
       userMessagesBeforeOldest: snapshot.userMessagesBefore,
+      promptIndex: null,
       streamingText: const {},
       sessionStatus: initialSessionStatus,
       pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
@@ -3088,6 +3333,7 @@ class SessionDetailCubit(
       childStatuses: derived.childStatuses,
       isRootSession: snapshot.isRootSession,
       isArchived: snapshot.isArchived,
+      cannotContinueMessage: snapshot.cannotContinueMessage,
       queuedMessages: queue.queuedMessages,
       awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
       localSend: queue.localSend,
@@ -3099,13 +3345,13 @@ class SessionDetailCubit(
       selectedAgentModel: reconciled.model,
       promptDefaults: snapshot.promptDefaults,
       fastMode: snapshot.promptDefaults?.fastMode ?? false,
-      stagedCommand: null,
+      stagedCommand: loading is SessionDetailLoading ? loading.seededComposer?.stagedCommand : null,
       isRefreshing: false,
       availableVariants: reconciled.availableVariants,
       bridgeYolo: _bridgeSettingsService.yoloSettings.value,
       mainAgentRunning: _mainAgentRunning,
       isUpdatingApproval: _approvalUpdateInFlight,
-      launchHandoff: launchHandoff,
+      launchHandoff: loading.pendingLaunchHandoff,
     );
   }
 

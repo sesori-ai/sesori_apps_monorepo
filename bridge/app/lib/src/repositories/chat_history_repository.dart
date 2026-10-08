@@ -9,7 +9,13 @@ import "../api/attachment_spill_storage.dart";
 import "../api/database/history/chat_history_dao.dart";
 import "../api/database/history/chat_history_database.dart";
 import "../api/models/archived_session_file_dto.dart";
+import "mappers/duplicated_shell_title_mapper.dart";
+import "mappers/prompt_index_mapper.dart";
+import "mappers/prompt_search_mapper.dart";
+import "mappers/summarized_tool_output_mapper.dart";
+import "models/history_window.dart";
 import "models/stored_session.dart";
+import "models/tool_output_lookup.dart";
 
 final class _HistoryReplayComparisonError({required final Object innerError}) implements Exception {
   @override
@@ -78,6 +84,8 @@ class ChatHistoryRepository({
 }) {
   static const _archiveSchemaVersion = 1;
   static const _semanticMatchBridgeId = "history-semantic-match";
+  static const _promptIndexMapper = PromptIndexMapper();
+  static const _promptSearchMapper = PromptSearchMapper();
 
   Future<Uint8List?> readStoredAttachment({
     required AttachmentStorageScope storageScope,
@@ -121,39 +129,27 @@ class ChatHistoryRepository({
         : (watermark: row.watermark, backendActivityAt: row.backendActivityAt, syncedAt: row.syncedAt);
   }
 
-  /// The session's stored transcript, oldest first, with attachments
-  /// rehydrated from their spill files.
+  /// The [window] of the session's stored transcript, oldest first, with
+  /// attachments rehydrated from their spill files.
   Future<ChatHistoryPage> getSessionMessages({
     required String sessionId,
     required AttachmentStorageScope storageScope,
-    int? limit,
-    int? before,
+    required HistoryWindow window,
     required MessageAttachmentProjection attachmentProjection,
+    required ToolOutputDelivery toolOutputDelivery,
   }) async {
-    final messageRows = await _chatHistoryDao.getMessages(
+    final read = await getSessionMessagesWithSyncState(
       sessionId: sessionId,
-      limit: limit,
-      before: before,
-    );
-    final partRows = await _chatHistoryDao.getParts(
-      sessionId: sessionId,
-      messageIds: limit == null ? null : [for (final row in messageRows) row.messageId],
-    );
-    // An unlimited or empty page has nothing before it to count.
-    final userMessagesBefore = limit == null || messageRows.isEmpty
-        ? 0
-        : await _chatHistoryDao.countUserMessagesBefore(sessionId: sessionId, seq: messageRows.first.seq);
-    return await _assemblePage(
-      messageRows: messageRows,
-      partRows: partRows,
       storageScope: storageScope,
-      limit: limit,
-      userMessagesBefore: userMessagesBefore,
+      window: window,
       attachmentProjection: attachmentProjection,
+      toolOutputDelivery: toolOutputDelivery,
     );
+    return read.page;
   }
 
-  /// The session's freshness and one page of its transcript, read together.
+  /// The session's freshness and the [window] of its transcript, read
+  /// together.
   ///
   /// For a caller that must read outside the history service's per-session
   /// queue: the rows and the sync marker come from one database snapshot, so
@@ -162,15 +158,32 @@ class ChatHistoryRepository({
   Future<({ChatHistorySyncState? syncState, ChatHistoryPage page})> getSessionMessagesWithSyncState({
     required String sessionId,
     required AttachmentStorageScope storageScope,
-    int? limit,
-    int? before,
+    required HistoryWindow window,
     required MessageAttachmentProjection attachmentProjection,
+    required ToolOutputDelivery toolOutputDelivery,
   }) async {
-    final rows = await _chatHistoryDao.getPageRowsWithSyncState(
-      sessionId: sessionId,
-      limit: limit,
-      before: before,
-    );
+    final PagedHistoryRows rows;
+    final int? nextCursor;
+    switch (window) {
+      case HistoryWindowAll():
+        rows = await _chatHistoryDao.getPageRowsWithSyncState(sessionId: sessionId, limit: null, before: null);
+        nextCursor = null;
+      case HistoryWindowNewest(:final limit, :final before):
+        rows = await _chatHistoryDao.getPageRowsWithSyncState(sessionId: sessionId, limit: limit, before: before);
+        // A full page implies there may be more; a short one proves there is
+        // not, which avoids an extra count query on every read. An empty page
+        // is never "full": there is nothing older to point a cursor at.
+        final full = rows.messages.isNotEmpty && rows.messages.length == limit;
+        nextCursor = full ? rows.messages.first.seq : null;
+      case HistoryWindowThrough(:final throughSeq, :final before):
+        final read = await _chatHistoryDao.getRowsThroughWithSyncState(
+          sessionId: sessionId,
+          throughSeq: throughSeq,
+          before: before,
+        );
+        rows = read.rows;
+        nextCursor = read.hasOlder ? throughSeq : null;
+    }
     final syncState = rows.syncState;
     return (
       syncState: syncState == null
@@ -184,9 +197,10 @@ class ChatHistoryRepository({
         messageRows: rows.messages,
         partRows: rows.parts,
         storageScope: storageScope,
-        limit: limit,
+        nextCursor: nextCursor,
         userMessagesBefore: rows.userMessagesBefore,
         attachmentProjection: attachmentProjection,
+        toolOutputDelivery: toolOutputDelivery,
       ),
     );
   }
@@ -195,9 +209,10 @@ class ChatHistoryRepository({
     required List<HistoryMessagesTableData> messageRows,
     required List<HistoryPartsTableData> partRows,
     required AttachmentStorageScope storageScope,
-    required int? limit,
+    required int? nextCursor,
     required int userMessagesBefore,
     required MessageAttachmentProjection attachmentProjection,
+    required ToolOutputDelivery toolOutputDelivery,
   }) async {
     final partJsonByMessage = <String, List<String>>{};
     for (final row in partRows) {
@@ -205,24 +220,31 @@ class ChatHistoryRepository({
     }
     final messages = [
       for (final row in messageRows)
-        MessageWithParts(
-          info: Message.fromJson(jsonDecodeMap(row.infoJson)),
-          parts: await _rehydrateParts(
-            storageScope: storageScope,
-            partJsons: partJsonByMessage[row.messageId] ?? const [],
-            attachmentProjection: attachmentProjection,
+        _pageMessage(
+          message: MessageWithParts(
+            info: Message.fromJson(jsonDecodeMap(row.infoJson)),
+            parts: await _rehydrateParts(
+              storageScope: storageScope,
+              partJsons: partJsonByMessage[row.messageId] ?? const [],
+              attachmentProjection: attachmentProjection,
+            ),
           ),
+          toolOutputDelivery: toolOutputDelivery,
         ),
     ];
-    // A full page implies there may be more; a short one proves there is not,
-    // which avoids an extra count query on every read. An empty page is never
-    // "full": there is nothing older to point a cursor at.
-    final hasOlder = limit != null && messageRows.isNotEmpty && messageRows.length == limit;
-    return (
-      messages: messages,
-      nextCursor: hasOlder ? messageRows.first.seq : null,
-      userMessagesBefore: userMessagesBefore,
-    );
+    return (messages: messages, nextCursor: nextCursor, userMessagesBefore: userMessagesBefore);
+  }
+
+  /// A rehydrated message as every transcript page delivers it.
+  MessageWithParts _pageMessage({
+    required MessageWithParts message,
+    required ToolOutputDelivery toolOutputDelivery,
+  }) {
+    final projected = message.withoutDuplicatedShellTitles();
+    return switch (toolOutputDelivery) {
+      ToolOutputDelivery.inline => projected,
+      ToolOutputDelivery.onExpand => projected.withSummarizedToolOutput(),
+    };
   }
 
   /// Stores one message, appending it after the current maximum when new.
@@ -371,59 +393,68 @@ class ChatHistoryRepository({
     return null;
   }
 
-  /// Rewrites every stored tool part still in a non-terminal state to a
-  /// terminal error, and returns the identity of each rewritten row.
+  /// Replaces each stored part that [rewrite] returns a replacement for, in
+  /// place, and returns the identity of each rewritten row.
   ///
-  /// A tool part left `pending`/`running` after its turn ended can never
-  /// receive a result — the backend reports tool completion only within the
-  /// turn that ran it — so keeping the stored snapshot open would render an
-  /// eternal spinner on every later read.
-  Future<List<StoredPartRef>> finalizeOpenToolParts({
+  /// Only rows whose JSON holds a `status` of one of [statuses] are decoded
+  /// and offered to [rewrite], so a sweep does not decode a whole transcript.
+  /// Spilled attachments do not survive a decode, so a replacement keeps the
+  /// row's stored attachments: a rewrite may change a part's state, never its
+  /// attachments.
+  Future<List<StoredPartRef>> rewriteStoredParts({
     required String sessionId,
+    required Set<ToolStatus> statuses,
     required int updatedAt,
+    required MessagePart? Function({required MessagePart part}) rewrite,
   }) async {
+    // Every ToolStatus wire value equals its enum name.
+    final statusMarkers = [for (final status in statuses) '"status":"${status.name}"'];
     final rows = await _chatHistoryDao.getParts(sessionId: sessionId);
-    final finalized = <StoredPartRef>[];
+    final rewritten = <StoredPartRef>[];
     for (final row in rows) {
-      // Cheap prefilter so an idle sweep does not decode a whole transcript;
-      // the decoded check below remains the only authority.
-      if (!row.partJson.contains('"status":"pending"') && !row.partJson.contains('"status":"running"')) {
-        continue;
-      }
-      final Map<String, dynamic> json;
+      if (!statusMarkers.any(row.partJson.contains)) continue;
+      final Map<String, dynamic> storedJson;
+      final MessagePart part;
       try {
-        json = jsonDecodeMap(row.partJson);
+        storedJson = jsonDecodeMap(row.partJson);
+        part = MessagePart.fromJson(storedJson);
       } on Object catch (error, stackTrace) {
         Log.w(
-          "Skipping an undecodable stored part ${row.partId} of session $sessionId during tool finalization",
+          "Skipping an undecodable stored part ${row.partId} of session $sessionId during a rewrite",
           error,
           stackTrace,
         );
         continue;
       }
-      // A subtask's lifecycle lives in `taskState`; its sub-agent died with the
-      // process, which is a cancellation, not a tool error.
-      final Object? rawState = switch (json["type"]) {
-        "tool" => json["state"],
-        "subtask" => json["taskState"],
-        _ => null,
-      };
-      if (rawState is! Map<String, dynamic>) continue;
-      final status = rawState["status"];
-      if (status != "pending" && status != "running") continue;
-
-      if (json["type"] == "subtask") {
-        rawState["status"] = "cancelled";
-      } else {
-        rawState["status"] = "error";
-        rawState["error"] = "The turn ended before this tool reported a result.";
-      }
+      final replacement = rewrite(part: part);
+      if (replacement == null) continue;
       await _chatHistoryDao.upsertPart(
-        row: row.copyWith(partJson: jsonEncode(json), updatedAt: updatedAt),
+        row: row.copyWith(
+          partJson: jsonEncode(_withStoredAttachments(json: replacement.toJson(), storedJson: storedJson)),
+          updatedAt: updatedAt,
+        ),
       );
-      finalized.add((messageId: row.messageId, partId: row.partId));
+      rewritten.add((messageId: row.messageId, partId: row.partId));
     }
-    return finalized;
+    return rewritten;
+  }
+
+  /// [json] with the attachments of [storedJson], at the places
+  /// [_encodePart] spills them.
+  Map<String, dynamic> _withStoredAttachments({
+    required Map<String, dynamic> json,
+    required Map<String, dynamic> storedJson,
+  }) {
+    if (storedJson.containsKey("attachment")) json["attachment"] = storedJson["attachment"];
+    if ((storedJson["state"], json["state"])
+        case (
+          final Map<String, dynamic> storedState,
+          final Map<String, dynamic> state,
+        )
+        when storedState.containsKey("attachments")) {
+      state["attachments"] = storedState["attachments"];
+    }
+    return json;
   }
 
   Future<void> deleteMessage({required String sessionId, required String messageId}) {
@@ -751,15 +782,10 @@ class ChatHistoryRepository({
     await _archivedSessionStorage.write(sessionId: session.id, contents: jsonEncode(file.toJson()));
   }
 
-  /// The archived transcript for [sessionId], or null when no audit file
-  /// exists. Attachments are rehydrated from the shared backend-session scope.
-  Future<ChatHistoryPage?> getArchivedSessionMessages({
-    required String sessionId,
-    required AttachmentStorageScope storageScope,
-    int? limit,
-    int? before,
-    required MessageAttachmentProjection attachmentProjection,
-  }) async {
+  /// The audit file's messages in `seq` order, or null when there is no
+  /// readable audit file. Quarantines an unreadable file and refuses a schema
+  /// version this bridge does not implement.
+  Future<List<ArchivedMessageDto>?> _readArchivedMessages({required String sessionId}) async {
     final contents = await _archivedSessionStorage.read(sessionId: sessionId);
     if (contents == null) return null;
 
@@ -800,39 +826,212 @@ class ChatHistoryRepository({
         "so its audit file may be missing the most recent messages",
       );
     }
+    return file.messages.toList(growable: false)..sort((left, right) => left.seq.compareTo(right.seq));
+  }
+
+  /// The archived transcript for [sessionId], or null when no audit file
+  /// exists. Attachments are rehydrated from the shared backend-session scope.
+  Future<ChatHistoryPage?> getArchivedSessionMessages({
+    required String sessionId,
+    required AttachmentStorageScope storageScope,
+    required HistoryWindow window,
+    required MessageAttachmentProjection attachmentProjection,
+    required ToolOutputDelivery toolOutputDelivery,
+  }) async {
+    final ordered = await _readArchivedMessages(sessionId: sessionId);
+    if (ordered == null) return null;
 
     // Archived reads are rare audit views, so the page is sliced in memory
-    // rather than earning an index.
-    final ordered = file.messages.toList(growable: false)..sort((left, right) => left.seq.compareTo(right.seq));
-    final eligible = before == null
-        ? ordered
-        : [
-            for (final entry in ordered)
-              if (entry.seq < before) entry,
-          ];
-    final page = limit == null || eligible.length <= limit ? eligible : eligible.sublist(eligible.length - limit);
+    // rather than earning an index. The count is too.
+    int userMessagesBelow({required int seq}) =>
+        ordered.where((entry) => entry.seq < seq && entry.info is MessageUser).length;
+    final List<ArchivedMessageDto> page;
+    final int? nextCursor;
+    final int userMessagesBefore;
+    switch (window) {
+      case HistoryWindowAll():
+        page = ordered;
+        nextCursor = null;
+        userMessagesBefore = 0;
+      case HistoryWindowNewest(:final limit, :final before):
+        final eligible = [
+          for (final entry in ordered)
+            if (before == null || entry.seq < before) entry,
+        ];
+        page = eligible.length <= limit ? eligible : eligible.sublist(eligible.length - limit);
+        nextCursor = eligible.length > limit ? page.firstOrNull?.seq : null;
+        userMessagesBefore = switch (page.firstOrNull) {
+          null => 0,
+          final first => userMessagesBelow(seq: first.seq),
+        };
+      case HistoryWindowThrough(:final throughSeq, :final before):
+        page = [
+          for (final entry in ordered)
+            if (entry.seq >= throughSeq && entry.seq < before) entry,
+        ];
+        nextCursor = ordered.any((entry) => entry.seq < throughSeq) ? throughSeq : null;
+        userMessagesBefore = userMessagesBelow(seq: throughSeq);
+    }
     return (
       messages: [
         for (final entry in page)
-          MessageWithParts(
-            info: entry.info,
-            parts: await _rehydrateParts(
-              storageScope: storageScope,
-              partJsons: [for (final part in entry.parts) jsonEncode(part)],
-              attachmentProjection: attachmentProjection,
+          _pageMessage(
+            message: MessageWithParts(
+              info: entry.info,
+              parts: await _rehydrateParts(
+                storageScope: storageScope,
+                partJsons: [for (final part in entry.parts) jsonEncode(part)],
+                attachmentProjection: attachmentProjection,
+              ),
+            ),
+            toolOutputDelivery: toolOutputDelivery,
+          ),
+      ],
+      nextCursor: nextCursor,
+      userMessagesBefore: userMessagesBefore,
+    );
+  }
+
+  /// Every prompt in the session's stored transcript, oldest first.
+  ///
+  /// The rows come from one database snapshot. Attachments decode as metadata
+  /// and never touch spill files: the index needs only their names.
+  Future<List<SessionPromptIndexEntry>> getPromptIndex({required String sessionId}) async {
+    final rows = await _chatHistoryDao.getPageRowsWithSyncState(sessionId: sessionId, limit: null, before: null);
+    final partJsonByMessage = <String, List<String>>{};
+    for (final row in rows.parts) {
+      partJsonByMessage.putIfAbsent(row.messageId, () => []).add(row.partJson);
+    }
+    return _promptIndexMapper.indexOf(
+      messages: [
+        for (final row in rows.messages)
+          (
+            seq: row.seq,
+            message: MessageWithParts(
+              info: Message.fromJson(jsonDecodeMap(row.infoJson)),
+              parts: [
+                for (final partJson in partJsonByMessage[row.messageId] ?? const <String>[])
+                  _indexPart(json: jsonDecodeMap(partJson)),
+              ],
             ),
           ),
       ],
-      nextCursor: limit != null && page.isNotEmpty && page.length == limit && eligible.length > limit
-          ? page.first.seq
-          : null,
-      // Audit files are sliced in memory, so the count is too.
-      userMessagesBefore: switch (page.firstOrNull) {
-        null => 0,
-        final first => ordered.where((entry) => entry.seq < first.seq && entry.info is MessageUser).length,
-      },
     );
   }
+
+  /// Every prompt in the session's audit file, oldest first, or null when no
+  /// audit file exists. Attachments decode as in [getPromptIndex].
+  Future<List<SessionPromptIndexEntry>?> getArchivedPromptIndex({required String sessionId}) async {
+    final ordered = await _readArchivedMessages(sessionId: sessionId);
+    if (ordered == null) return null;
+    return _promptIndexMapper.indexOf(
+      messages: [
+        for (final entry in ordered)
+          (
+            seq: entry.seq,
+            message: MessageWithParts(
+              info: entry.info,
+              parts: [for (final part in entry.parts) _indexPart(json: part)],
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// The prompts in the session's stored transcript that hold [pattern],
+  /// oldest first. Only user rows are read, from one database snapshot, and
+  /// attachments decode as in [getPromptIndex].
+  Future<List<SessionPromptSearchMatch>> searchPrompts({required String sessionId, required RegExp pattern}) async {
+    final rows = await _chatHistoryDao.getUserMessageRows(sessionId: sessionId);
+    final partJsonByMessage = <String, List<String>>{};
+    for (final row in rows.parts) {
+      partJsonByMessage.putIfAbsent(row.messageId, () => []).add(row.partJson);
+    }
+    return _promptSearchMapper.matchesOf(
+      messages: [
+        for (final row in rows.messages)
+          MessageWithParts(
+            info: Message.fromJson(jsonDecodeMap(row.infoJson)),
+            parts: [
+              for (final partJson in partJsonByMessage[row.messageId] ?? const <String>[])
+                _indexPart(json: jsonDecodeMap(partJson)),
+            ],
+          ),
+      ],
+      pattern: pattern,
+    );
+  }
+
+  /// The prompts in the session's audit file that hold [pattern], oldest
+  /// first, or null when no audit file exists.
+  Future<List<SessionPromptSearchMatch>?> searchArchivedPrompts({
+    required String sessionId,
+    required RegExp pattern,
+  }) async {
+    final ordered = await _readArchivedMessages(sessionId: sessionId);
+    if (ordered == null) return null;
+    return _promptSearchMapper.matchesOf(
+      messages: [
+        // Only user messages decode their parts, as the store reads only user
+        // rows, so an assistant part never costs time or aborts the search.
+        for (final entry in ordered)
+          if (entry.info is MessageUser)
+            MessageWithParts(
+              info: entry.info,
+              parts: [for (final part in entry.parts) _indexPart(json: part)],
+            ),
+      ],
+      pattern: pattern,
+    );
+  }
+
+  /// A stored part for the prompt index and search. A `stored_file`
+  /// attachment, which the shared union would read as unknown, becomes its
+  /// metadata, as a page shows it when its spill file is gone, so an
+  /// image-only prompt stays listed.
+  MessagePart _indexPart({required Map<String, dynamic> json}) => MessagePart.fromJson(switch (json["attachment"]) {
+    final Map<String, dynamic> attachment when attachment["source"] == "stored_file" => {
+      ...json,
+      "attachment": _metadataAttachment(attachment: attachment),
+    },
+    _ => json,
+  });
+
+  /// The output and error of the stored tool part [partId] of message
+  /// [messageId], read by its primary key.
+  Future<ToolOutputLookup> getToolOutput({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) async {
+    final row = await _chatHistoryDao.getPart(sessionId: sessionId, messageId: messageId, partId: partId);
+    return row == null ? const ToolOutputMissing() : _toolOutputOf(json: jsonDecodeMap(row.partJson));
+  }
+
+  /// The output and error of tool part [partId] of message [messageId] in the
+  /// session's audit file, or null when no audit file exists.
+  Future<ToolOutputLookup?> getArchivedToolOutput({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) async {
+    final ordered = await _readArchivedMessages(sessionId: sessionId);
+    if (ordered == null) return null;
+    for (final entry in ordered) {
+      if (entry.info.id != messageId) continue;
+      for (final part in entry.parts) {
+        if (part["id"] == partId) return _toolOutputOf(json: part);
+      }
+    }
+    return const ToolOutputMissing();
+  }
+
+  /// A stored tool part decodes directly: output and error never hold
+  /// attachments, so a `stored_file` attachment reading as unknown is unused.
+  ToolOutputLookup _toolOutputOf({required Map<String, dynamic> json}) => switch (MessagePart.fromJson(json)) {
+    MessagePartTool(state: ToolStateFull(:final output, :final error)) => ToolOutputFound(output: output, error: error),
+    _ => const ToolOutputMissing(),
+  };
 
   Future<bool> hasArchive({required String sessionId}) => _archivedSessionStorage.exists(sessionId: sessionId);
 

@@ -111,8 +111,11 @@ Widget _app({String initialLocation = "/settings/harnesses"}) {
       ),
     ],
   );
-  return BlocProvider<ConnectionOverlayCubit>.value(
-    value: StubConnectionOverlayCubit(),
+  return MultiBlocProvider(
+    providers: [
+      BlocProvider<ConnectionOverlayCubit>.value(value: StubConnectionOverlayCubit()),
+      BlocProvider(create: (_) => testBridgeKindCubit(kind: null)),
+    ],
     child: MaterialApp.router(
       routerConfig: router,
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -167,8 +170,11 @@ Widget _appPushedFromOpener({
     ],
   );
 
-  return BlocProvider<ConnectionOverlayCubit>.value(
-    value: StubConnectionOverlayCubit(),
+  return MultiBlocProvider(
+    providers: [
+      BlocProvider<ConnectionOverlayCubit>.value(value: StubConnectionOverlayCubit()),
+      BlocProvider(create: (_) => testBridgeKindCubit(kind: null)),
+    ],
     child: MaterialApp.router(
       routerConfig: router,
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -360,8 +366,14 @@ void main() {
 
     snapshots.add(const PluginManagementLoadResult.unsupported());
     await tester.pumpAndSettle();
-    expect(find.text("Harnesses aren't supported"), findsOneWidget);
+    expect(find.text("Your bridge needs an update"), findsOneWidget);
     expect(find.text("Update the connected bridge to view and manage its harnesses."), findsOneWidget);
+    await tester.tap(find.byKey(const Key("harnesses_bridge_update")));
+    await tester.pumpAndSettle();
+    expect(find.text("Update Sesori Bridge"), findsOneWidget);
+    expect(find.text("sesori-bridge update"), findsOneWidget);
+    await tester.tapAt(const Offset(4, 4));
+    await tester.pumpAndSettle();
 
     snapshots.add(PluginManagementLoadResult.failure(error: ApiError.dartHttpClient(Exception("offline"))));
     await tester.pumpAndSettle();
@@ -754,6 +766,32 @@ void main() {
     expect(find.byKey(const Key("harness_authentication_retry")), findsNothing);
     expect(find.byKey(const Key("harness_authentication_close")), findsOneWidget);
     verify(() => service.startAuthentication(pluginId: "codex")).called(1);
+  });
+
+  testWidgets("an old bridge's login failure closes the login sheet and shows the update steps", (tester) async {
+    _useTallSurface(tester);
+    when(() => service.startAuthentication(pluginId: "codex")).thenAnswer(
+      (_) async => const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.unsupported()),
+    );
+    await tester.pumpWidget(_app());
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [_authenticationRequired]),
+        refreshError: null,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("harness_authentication_retry")), findsNothing);
+    await tester.tap(find.byKey(const Key("harness_authentication_bridge_update")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Log in to harness"), findsNothing);
+    expect(find.text("Update Sesori Bridge"), findsOneWidget);
   });
 
   testWidgets("cancel waits and terminal cancellation remains explicit until Close", (tester) async {

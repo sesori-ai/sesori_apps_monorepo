@@ -51,7 +51,7 @@ enum AcpScopedStopCapability() {
 ///
 /// Every policy and behavior hook has a bridge-safe default, so a compliant agent
 /// needs only identity, launch spec, and trackers. A harness overrides what
-/// differs: protocol policies ([authMethodId], [authMethodAllowlist], [initializeCapabilityMeta],
+/// differs: protocol policies ([authMethodId], [authMethodAllowlist], [initializeClientIdentity], [initializeCapabilityMeta],
 /// [supportsFormElicitation], [serializesPromptsProcessWide],
 /// [cancelsActiveTurnForQueuedInput], [failsTurnOnSelectionError],
 /// [sessionCloseSettlementTimeout], [rootSessionCancelSettlementTimeout]) and behavior hooks ([buildApprovalRegistry],
@@ -105,7 +105,6 @@ abstract class AcpPlugin({
 
   final BufferedUntilFirstListener<BridgeSseEvent> _eventBuffer;
   StreamSubscription<AcpChildSessionTrackerChange>? _childSessionChanges;
-  StreamSubscription<void>? _processResidencyChanges;
 
   AcpCommandListener? _commandListener;
 
@@ -236,6 +235,9 @@ abstract class AcpPlugin({
   /// Optional allowlist applied when [authMethodId] is `null`. The stock
   /// behavior accepts every advertised non-terminal method.
   Set<String>? get authMethodAllowlist => null;
+
+  /// Standard client identity used consistently by live and replay connections.
+  AcpClientIdentity get initializeClientIdentity => acpDefaultClientIdentity;
 
   /// Non-standard capability hints sent under `clientCapabilities._meta`
   /// (e.g. Cursor's `parameterizedModelPicker`).
@@ -383,6 +385,13 @@ abstract class AcpPlugin({
 
   /// Bounded cold-connection recovery before the live process is advertised.
   Future<void> recoverSessionDirectories() => Future<void>.value();
+
+  /// User-facing reason when [error], a rejected `session/load` or
+  /// `session/resume` that re-activates a prior-run session before a turn,
+  /// means the agent cannot reopen that session as stored. The turn then fails
+  /// with this message instead of prompting a session the agent never loaded;
+  /// the next turn still retries the re-activation. Base recognizes nothing.
+  String? unrestorableSessionMessage({required AcpRpcException error}) => null;
 
   /// Additional privacy-safe events for a prompt failure. The generic session
   /// error is always emitted separately.
@@ -649,6 +658,7 @@ abstract class AcpPlugin({
   Future<AcpInitializeResult> _initialize(AcpStdioClient client) async {
     try {
       final result = await AcpAgentApi(client: client).initialize(
+        clientIdentity: initializeClientIdentity,
         formElicitation: supportsFormElicitation,
         capabilityMeta: initializeCapabilityMeta,
         authMethodId: authMethodId,
@@ -1296,10 +1306,11 @@ abstract class AcpPlugin({
   /// so it does not re-stream into the live conversation). Called only from
   /// inside a session's serialized turn, so per-session loads never overlap —
   /// each load owns its whole suppression window. Never throws for load
-  /// failures — the turn proceeds and surfaces any error itself.
-  Future<void> _ensureResident(AcpStdioClient client, String sessionId) async {
-    if (_residentSessions.contains(sessionId)) return;
-    await _loadResident(client, sessionId);
+  /// failures — the turn proceeds and surfaces any error itself, except that
+  /// an [unrestorableSessionMessage] is returned for the turn to fail with.
+  Future<String?> _ensureResident(AcpStdioClient client, String sessionId) async {
+    if (_residentSessions.contains(sessionId)) return null;
+    return await _loadResident(client, sessionId);
   }
 
   /// Performs the resume `session/load` for [_ensureResident]. Marks the
@@ -1307,14 +1318,14 @@ abstract class AcpPlugin({
   /// load (the no-reload-loop guarantee) — so a transiently failed load
   /// (timeout, RPC hiccup) is retried on the next turn instead of leaving the
   /// conversation unrecoverable until the agent respawns.
-  Future<void> _loadResident(AcpStdioClient client, String sessionId) async {
+  Future<String?> _loadResident(AcpStdioClient client, String sessionId) async {
     final loadSupported = _initResult?.agentCapabilities.loadSession ?? false;
     final resumeSupported = _initResult?.agentCapabilities.resumeSession ?? false;
     if (!loadSupported && !resumeSupported) {
       // No way to re-activate a prior-run session — memoize residency so
       // turns proceed without re-checking.
       _residentSessions.add(sessionId);
-      return;
+      return null;
     }
     // A prior-run session may not have been enumerated yet this run (e.g. a
     // prompt issued straight from a push notification), so its directory is
@@ -1329,8 +1340,7 @@ abstract class AcpPlugin({
     if (resumeSupported && (!loadSupported || residencyPreference == AcpResidencyPreference.resumeFirst)) {
       // Preferred/only available resume re-activates the session with NO
       // history replay, so no suppression window is needed.
-      await _resumeResident(client, sessionId);
-      return;
+      return await _resumeResident(client, sessionId);
     }
     _suppressedSessions.add(sessionId);
     _suppressedReplayCounts.remove(sessionId);
@@ -1357,6 +1367,7 @@ abstract class AcpPlugin({
         // Transient agent error: stay non-resident so the next turn retries
         // the load instead of prompting a session the agent never loaded.
         Log.w("[$id] resume-load of $sessionId failed; will retry on next turn", error, stack);
+        return unrestorableSessionMessage(error: error);
       }
     } on Object catch (error, stack) {
       // Timeout / process blip: same retry-on-next-turn policy as above.
@@ -1365,6 +1376,7 @@ abstract class AcpPlugin({
       _suppressedSessions.remove(sessionId);
       _suppressedReplayCounts.remove(sessionId);
     }
+    return null;
   }
 
   /// Re-activates [sessionId] via `session/resume` for an agent that
@@ -1374,7 +1386,7 @@ abstract class AcpPlugin({
   /// fresh agent process never loaded. Same residency policy as the load
   /// path: resident on success or on a permanently unsupported RPC; transient
   /// failures retry on the next turn.
-  Future<void> _resumeResident(AcpStdioClient client, String sessionId) async {
+  Future<String?> _resumeResident(AcpStdioClient client, String sessionId) async {
     try {
       final result = await AcpAgentApi(client: client).resumeSession(
         sessionId: sessionId,
@@ -1392,10 +1404,12 @@ abstract class AcpPlugin({
         _residentSessions.add(sessionId);
       } else {
         Log.w("[$id] session/resume of $sessionId failed; will retry on next turn", error, stack);
+        return unrestorableSessionMessage(error: error);
       }
     } on Object catch (error, stack) {
       Log.w("[$id] session/resume of $sessionId failed; will retry on next turn", error, stack);
     }
+    return null;
   }
 
   /// Queues a prompt turn on [sessionId]'s serialization chain. Accepted
@@ -1509,9 +1523,19 @@ abstract class AcpPlugin({
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
       return;
     }
-    await _ensureResident(client, sessionId);
+    final unrestorableMessage = await _ensureResident(client, sessionId);
     if (_turnWasCancelled(state: state, expectedGeneration: expectedGeneration, turn: turn)) {
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: false, refused: false);
+      return;
+    }
+    if (unrestorableMessage != null) {
+      // The agent would reject this prompt for a session it never loaded, so
+      // fail the turn with the explanation instead: the prompt stays visible,
+      // followed by the same inline error card as a rejected prompt.
+      eventMapper.beginTurn(sessionId: sessionId, messageId: turn.messageId);
+      _markTurnDispatched(sessionId: sessionId, state: state, turn: turn);
+      _eventBuffer.add(eventMapper.mapPromptError(sessionId: sessionId, message: unrestorableMessage));
+      _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
       return;
     }
     final pendingSelection = _pendingSelections[sessionId];
@@ -1578,9 +1602,6 @@ abstract class AcpPlugin({
       final result = AcpPromptResult.fromJson(
         (raw as Map?)?.cast<String, dynamic>() ?? const {},
       );
-      if (identical(_turnStates[sessionId], state)) {
-        eventMapper.mapPromptResult(sessionId: sessionId, stopReason: result.stopReason).forEach(_eventBuffer.add);
-      }
       _finishTurn(
         sessionId: sessionId,
         state: state,
@@ -1601,14 +1622,6 @@ abstract class AcpPlugin({
           message: failureMessage,
         ),
       );
-      if (identical(_turnStates[sessionId], state)) {
-        eventMapper
-            .mapPromptLifecycleFailure(
-              sessionId: sessionId,
-              failureMessage: failureMessage,
-            )
-            .forEach(_eventBuffer.add);
-      }
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
       mapPromptFailure(sessionId: sessionId, error: error).forEach(_eventBuffer.add);
     }
@@ -1777,27 +1790,6 @@ abstract class AcpPlugin({
 
   /// Standard ACP alone cannot promise scoped child stops.
   AcpScopedStopCapability get scopedStopCapability => AcpScopedStopCapability.unsupported;
-
-  /// Whether backend-owned work with no root/session activity representation
-  /// still requires the ACP process to remain resident.
-  bool get requiresProcessResidency => false;
-
-  /// Whether [sessionId] has resident work whose completion is not observable.
-  bool hasUnresolvedResidentWork({required String sessionId}) => false;
-
-  /// Exact pre-terminal work count used only by [rootSessionCancel].
-  int activeScopedStopWorkCount({required String sessionId}) => 0;
-
-  /// Registers one harness-owned residency signal. It only re-derives process
-  /// work state; root status, summaries, children, and stop targets are intact.
-  void registerProcessResidencyChanges({required Stream<void> changes}) {
-    if (_processResidencyChanges != null) {
-      throw StateError("$id process-residency changes were already registered");
-    }
-    _processResidencyChanges = changes.listen((_) {
-      if (_client != null) _syncWorkState();
-    });
-  }
 
   Future<AcpChildCancelResult> cancelChild({
     required AcpStdioClient client,
@@ -1972,18 +1964,17 @@ abstract class AcpPlugin({
     required PluginAbortSubAgentPolicy subAgents,
   }) async {
     // Must remain first: this refusal promises that no local or native
-    // cancellation side effect occurred.
-    if (hasUnresolvedResidentWork(sessionId: sessionId)) {
-      return const PluginAbortNotPerformed(
-        reason: PluginAbortRefusalReason.residentWorkCompletionUnknown,
-      );
+    // cancellation side effect occurred. Only the root accepts a native
+    // cancel; a sub-agent session stops with its root.
+    if (childSessionTracker.isChild(sessionId: sessionId)) {
+      return const PluginAbortNotPerformed(reason: PluginAbortRefusalReason.subAgentStopUnsupported);
     }
 
-    final activeTaskCount = activeScopedStopWorkCount(sessionId: sessionId);
+    final runningChildCount = childSessionTracker.runningChildren(sessionId: sessionId).length;
     final state = _turnStates[sessionId];
-    if (activeTaskCount > 0 && subAgents != PluginAbortSubAgentPolicy.stop) {
+    if (runningChildCount > 0 && subAgents != PluginAbortSubAgentPolicy.stop) {
       return PluginAbortRejectedSubAgentsRunning(
-        runningSubAgentCount: activeTaskCount,
+        runningSubAgentCount: runningChildCount,
         mainAgentRunning: (state?.pending ?? 0) > 0,
         mainAgentOnlySupported: false,
       );
@@ -1994,8 +1985,13 @@ abstract class AcpPlugin({
     final client = _client;
     client?.notify(method: AcpMethods.sessionCancel, params: {"sessionId": sessionId});
     // Match _abortSession: native cancellation precedes input resolution so
-    // unblocking a permission/question cannot start more work first.
+    // unblocking a permission/question cannot start more work first. The root
+    // cancel cascades to every descendant, so their pending input goes too;
+    // a child blocked on a permission would otherwise stall the cascade.
     _approvalRegistry?.cancelForSession(sessionId: sessionId);
+    for (final childSessionId in childSessionTracker.childSessionIds(sessionId: sessionId)) {
+      _approvalRegistry?.cancelForSession(sessionId: childSessionId);
+    }
     if (activeSettlement != null && client != null) {
       try {
         await activeSettlement.timeout(rootSessionCancelSettlementTimeout);
@@ -2009,24 +2005,18 @@ abstract class AcpPlugin({
       }
     }
 
-    if (hasUnresolvedResidentWork(sessionId: sessionId)) {
-      throw const PluginOperationException(
-        "abortSession",
-        statusCode: 502,
-        message: "Root cancellation completed, but resident work completion became unknown",
-      );
-    }
-    final survivingWorkCount = activeScopedStopWorkCount(sessionId: sessionId);
-    if (survivingWorkCount > 0) {
-      final cause = StateError("$survivingWorkCount active scoped-stop work item(s) survived root cancellation");
+    final survivingChildCount = childSessionTracker.runningChildren(sessionId: sessionId).length;
+    if (survivingChildCount > 0) {
+      final cause = StateError("$survivingChildCount sub-agent(s) survived root cancellation");
       throw PluginOperationException(
         "abortSession",
         statusCode: 502,
-        message: "Root cancellation settled without retiring all active scoped-stop work",
+        message: "Root cancellation settled without stopping every sub-agent",
         cause: cause,
       );
     }
-    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+    // The confirmed cascade stopped every child that was running.
+    return PluginAbortAccepted(workKept: false, subAgentsHandled: runningChildCount > 0);
   }
 
   Future<AcpChildCancelResult> _cancelScopedSession({
@@ -2372,6 +2362,21 @@ abstract class AcpPlugin({
       rethrow;
     } on Object catch (error, stackTrace) {
       flushDeferredCommandRefresh();
+      if (error is AcpRpcException) {
+        final unrestorableMessage = unrestorableSessionMessage(error: error);
+        if (unrestorableMessage != null) {
+          // The agent refuses to reopen this session as stored; the typed
+          // failure lets the bridge serve the history it already holds.
+          Error.throwWithStackTrace(
+            PluginSessionUnrestorableException(
+              "session/load history replay",
+              message: unrestorableMessage,
+              cause: error,
+            ),
+            stackTrace,
+          );
+        }
+      }
       // A broken replay (connect/init/auth/load failure) must stay
       // distinguishable from a genuinely empty thread: surface it as a typed
       // failure (the bridge router maps it to a 502 and the phone renders a
@@ -2537,12 +2542,6 @@ abstract class AcpPlugin({
     }
     _childSessionChanges = null;
     try {
-      await _processResidencyChanges?.cancel();
-    } on Object catch (e, st) {
-      Log.w("[$id] failed to cancel process-residency subscription", e, st);
-    }
-    _processResidencyChanges = null;
-    try {
       await childSessionTracker.dispose();
     } on Object catch (e, st) {
       Log.w("[$id] failed to close child-session tracker", e, st);
@@ -2575,8 +2574,7 @@ abstract class AcpPlugin({
         (_approvalRegistry?.hasAnyPendingInput ?? false) ||
         // A sub-agent and its autonomous root settlement live only inside the
         // resident process: no safe stop or suspension while either runs.
-        childSessionTracker.hasActiveWork ||
-        requiresProcessResidency;
+        childSessionTracker.hasActiveWork;
     _workState.set(busy ? PluginWorkState.busy : PluginWorkState.idle);
   }
 }

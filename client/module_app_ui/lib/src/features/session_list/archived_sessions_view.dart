@@ -39,6 +39,7 @@ class const ArchivedSessionsView({
           quickFilter: SessionListQuickFilter.all,
           query: "",
           hiddenSessionIds: const {},
+          launchRows: LaunchRows.none,
           projectName: null,
           onSessionTap: onSessionTap,
           actionDispatcher: actionDispatcher,

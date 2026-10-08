@@ -160,9 +160,10 @@ as String?,
 /// @nodoc
 mixin _$FilesystemSuggestions {
 
- List<FilesystemSuggestion> get data; String? get path;/// The host's mounted drive roots, such as `C:\`, which the browser lists
-/// beside Home. Filled only on a Windows host and only for a request
-/// without a prefix; empty otherwise.
+ List<FilesystemSuggestion> get data; String? get path;/// The host's drives, which the browser lists beside Home: a Windows
+/// host's drive roots such as `C:\`, or the writable disks and partitions
+/// mounted on a macOS or Linux host, such as `/Volumes/Work SSD`. Filled
+/// only for a request without a prefix; empty otherwise.
  List<String> get driveRoots;
 /// Create a copy of FilesystemSuggestions
 /// with the given fields replaced by the non-null parameter values.
@@ -246,13 +247,15 @@ class _FilesystemSuggestions implements FilesystemSuggestions {
 }
 
 @override final  String? path;
-/// The host's mounted drive roots, such as `C:\`, which the browser lists
-/// beside Home. Filled only on a Windows host and only for a request
-/// without a prefix; empty otherwise.
+/// The host's drives, which the browser lists beside Home: a Windows
+/// host's drive roots such as `C:\`, or the writable disks and partitions
+/// mounted on a macOS or Linux host, such as `/Volumes/Work SSD`. Filled
+/// only for a request without a prefix; empty otherwise.
  final  List<String> _driveRoots;
-/// The host's mounted drive roots, such as `C:\`, which the browser lists
-/// beside Home. Filled only on a Windows host and only for a request
-/// without a prefix; empty otherwise.
+/// The host's drives, which the browser lists beside Home: a Windows
+/// host's drive roots such as `C:\`, or the writable disks and partitions
+/// mounted on a macOS or Linux host, such as `/Volumes/Work SSD`. Filled
+/// only for a request without a prefix; empty otherwise.
 @override@JsonKey() List<String> get driveRoots {
   if (_driveRoots is EqualUnmodifiableListView) return _driveRoots;
   // ignore: implicit_dynamic_type

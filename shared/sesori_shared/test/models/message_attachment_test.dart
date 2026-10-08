@@ -82,12 +82,7 @@ void main() {
         sessionID: "session-1",
         messageID: "message-1",
       ),
-      "compaction": MessagePart.compaction(
-        id: "part-1",
-        sessionID: "session-1",
-        messageID: "message-1",
-        summary: null,
-      ),
+      "compaction": MessagePart.compaction(id: "part-1", sessionID: "session-1", messageID: "message-1"),
     };
 
     for (final MapEntry(key: type, value: expected) in variants.entries) {
@@ -102,18 +97,6 @@ void main() {
         expect(MessagePart.fromJson(encoded), expected);
       });
     }
-
-    test("round-trips a compaction summary", () {
-      const part = MessagePart.compaction(
-        id: "part-1",
-        sessionID: "session-1",
-        messageID: "message-1",
-        summary: "## Goal",
-      );
-
-      expect(part.toJson()["summary"], "## Goal");
-      expect(MessagePart.fromJson(part.toJson()), part);
-    });
 
     test("decodes through the enclosing SSE wire event", () {
       final event = SesoriSseEvent.fromJson(const {

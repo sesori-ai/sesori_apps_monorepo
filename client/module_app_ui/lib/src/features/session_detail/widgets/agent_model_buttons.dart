@@ -16,7 +16,6 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "composer_surface_style.dart";
 import "model_picker.dart";
 
 /// Composer header exposing the available agent / model / variant selections
@@ -48,6 +47,10 @@ class const AgentModelButtons({
   /// Whether each selector hugs its label at the leading edge (pointer shells)
   /// instead of sharing the strip's width equally (touch shells).
   required final bool compact,
+
+  /// Shows the committed selections exactly as the live pills draw them,
+  /// without opening any picker or toggling fast mode.
+  required final bool readOnly,
 
   /// Status chips after the selectors, such as the session's YOLO chip. Keep
   /// them compact on touch, where the pickers share the remaining width.
@@ -97,7 +100,14 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     // One agent is no choice: the entry appears only when there is another.
     final hasAgentSelection = widget.agents.length > 1 && selectedAgent != null;
     final compact = widget.compact;
-    Widget slot(Widget menu) => _pickerSlot(compact: compact, child: menu);
+    // Locking leaves each pill's geometry untouched, so nothing shifts as the
+    // options turn read-only, and blocks its taps, hover cursor, keyboard focus
+    // and actions.
+    Widget lock(Widget control) => ExcludeFocus(
+      excluding: widget.readOnly,
+      child: IgnorePointer(ignoring: widget.readOnly, child: control),
+    );
+    Widget slot(Widget menu) => _pickerSlot(compact: compact, child: lock(menu));
     final selectors = [
       if (hasAgentSelection)
         slot(
@@ -130,17 +140,22 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
           ),
         ),
       if (widget.fastModeControl != FastModeControl.hidden)
-        _FastModeButton(
-          surfaceStyle: widget.surfaceStyle,
-          control: widget.fastModeControl,
-          decide: widget.decideFastModeToggle,
-          onFastModeChanged: widget.onFastModeChanged,
+        lock(
+          _FastModeButton(
+            surfaceStyle: widget.surfaceStyle,
+            control: widget.fastModeControl,
+            decide: widget.decideFastModeToggle,
+            onFastModeChanged: widget.onFastModeChanged,
+          ),
         ),
       ...widget.trailing,
     ];
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-      child: Row(spacing: 8, children: selectors),
+      child: _pillRowHalo(
+        reachesLayerBottom: false,
+        child: Row(spacing: 8, children: selectors),
+      ),
     );
   }
 }
@@ -185,15 +200,26 @@ class const ReadOnlyAgentModelPills({
       if (variant != null) pill(icon: TablerRegular.gauge, label: variant),
     ];
     if (pills.isEmpty) return const SizedBox.shrink();
-    return DecoratedBox(
-      decoration: composerScrimDecoration(prego: context.prego),
-      child: Padding(
-        padding: EdgeInsetsDirectional.fromSTEB(16, 6, 16, MediaQuery.paddingOf(context).bottom + 8),
+    return Padding(
+      padding: EdgeInsetsDirectional.fromSTEB(16, 6, 16, MediaQuery.paddingOf(context).bottom + 8),
+      // The bottom-most row: its halo runs on to the bottom edge, so nothing
+      // shows below the pills.
+      child: _pillRowHalo(
+        reachesLayerBottom: true,
         child: Row(spacing: 8, children: pills),
       ),
     );
   }
 }
+
+/// One [PregoPageHalo] across the whole pill strip, as wide as the composer,
+/// so the pills and composer read as one quiet surface and no transcript words
+/// show through the gaps between pills.
+Widget _pillRowHalo({required bool reachesLayerBottom, required Widget child}) => PregoPageHalo(
+  radius: PregoRadius.full,
+  reachesLayerBottom: reachesLayerBottom,
+  child: child,
+);
 
 /// A pill's share of the strip: a pointer (compact) pill hugs its label up to a
 /// cap, while touch pills split the width equally.

@@ -30,6 +30,7 @@ void main() {
     projectId: "project-1",
     pluginId: "claude",
     startedAt: startedAt,
+    projectName: "Sesori",
     submission: submission,
   );
 
@@ -52,6 +53,7 @@ void main() {
         startedAt: startedAt,
         followUpIds: const {},
         acceptedFollowUps: const [],
+        composer: null,
       ),
     );
     expect(repository.takeHandoff(sessionId: "session-1"), isNull);
@@ -93,6 +95,32 @@ void main() {
     expect(repository.takeHandoff(sessionId: "session-1"), isNull);
   });
 
+  test("the composer handed over travels with the handoff", () {
+    const composer = SessionLaunchComposer(
+      agents: [],
+      agent: "build",
+      providers: [],
+      agentModel: null,
+      availableVariants: [],
+      commands: [],
+      fastMode: false,
+      supportsPromptAttachments: true,
+      hadFocus: true,
+      unsent: null,
+    );
+    start();
+    repository.handOverComposer(launchId: "launch-1", composer: composer);
+    expect(storage.read(launchId: "launch-1"), isA<PendingSessionLaunch>(), reason: "only a created launch takes it");
+
+    repository.promote(
+      launchId: "launch-1",
+      session: testSession(id: "session-1"),
+    );
+    repository.handOverComposer(launchId: "launch-1", composer: composer);
+
+    expect(repository.takeHandoff(sessionId: "session-1")?.composer, same(composer));
+  });
+
   test("a failure goes to the composer while it holds the payload, and nowhere else", () async {
     start();
     repository.fail(launchId: "launch-1", reason: RemoteFailureReason.networkDown);
@@ -119,6 +147,7 @@ void main() {
       const SessionLaunchOutcome.failedAfterLeaving(
         launchId: "launch-1",
         projectId: "project-1",
+        projectName: "Sesori",
         reason: RemoteFailureReason.serverRejected,
       ),
     ]);

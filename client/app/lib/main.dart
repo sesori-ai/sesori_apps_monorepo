@@ -400,6 +400,11 @@ class const _SesoriAppShell() extends StatelessWidget {
                 navigatorKey: appRootNavigatorKey,
                 child: MultiBlocProvider(
                   providers: [
+                    // App-wide so every "how to update" action opens the steps
+                    // for the kind of bridge that is connected.
+                    BlocProvider(
+                      create: (_) => BridgeKindCubit(connectionService: getIt<ConnectionService>()),
+                    ),
                     BlocProvider(
                       create: (_) => FeedbackPromptCubit(feedbackPromptService: getIt<FeedbackPromptService>()),
                     ),
@@ -418,11 +423,23 @@ class const _SesoriAppShell() extends StatelessWidget {
                     voiceInputScopeBuilder: ({required child}) => FeedbackVoiceInputScope(child: child),
                     // Above the router, so an archive's Undo window survives
                     // leaving the project it was started in.
-                    child: BlocProvider(
-                      create: (_) => PendingSessionArchiveCubit(cleanupService: getIt<SessionCleanupService>()),
+                    child: MultiBlocProvider(
+                      providers: [
+                        BlocProvider(
+                          create: (_) => PendingSessionArchiveCubit(cleanupService: getIt<SessionCleanupService>()),
+                        ),
+                        // Above the router too: a launching row and the alert
+                        // for a failed launch outlive the composer that started it.
+                        BlocProvider(create: (_) => SessionLaunchCubit(launchService: getIt<SessionLaunchService>())),
+                        // For each list's own launching rows.
+                        RepositoryProvider<SessionLaunchService>.value(value: getIt<SessionLaunchService>()),
+                      ],
                       child: PendingArchiveAlerts(
                         navigatorKey: appRootNavigatorKey,
-                        child: child ?? const SizedBox.shrink(),
+                        child: SessionLaunchFailureAlerts(
+                          navigatorKey: appRootNavigatorKey,
+                          child: child ?? const SizedBox.shrink(),
+                        ),
                       ),
                     ),
                   ),

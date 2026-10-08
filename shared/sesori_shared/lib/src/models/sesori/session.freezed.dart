@@ -1403,7 +1403,9 @@ mixin _$SessionMessagesRequest {
 /// This is what a client asks for when it cannot afford to wake the
 /// harness — because it is disabled, needs authentication, or is simply
 /// slow right after a start.
- bool get storedOnly;
+ bool get storedOnly;/// Whether finished tools arrive with their output and error, or as
+/// summaries whose detail the app fetches when a row expands.
+ ToolOutputDelivery get toolOutputDelivery;
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1417,20 +1419,20 @@ $SessionMessagesRequestCopyWith<SessionMessagesRequest> get copyWith => _$Sessio
 @override
 bool operator ==(Object other) {
   final _this = this as SessionMessagesRequest;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionMessagesRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.limit, _this.limit) || other.limit == _this.limit)&&(identical(other.before, _this.before) || other.before == _this.before)&&(identical(other.attachmentDelivery, _this.attachmentDelivery) || other.attachmentDelivery == _this.attachmentDelivery)&&(identical(other.storedOnly, _this.storedOnly) || other.storedOnly == _this.storedOnly));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionMessagesRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.limit, _this.limit) || other.limit == _this.limit)&&(identical(other.before, _this.before) || other.before == _this.before)&&(identical(other.attachmentDelivery, _this.attachmentDelivery) || other.attachmentDelivery == _this.attachmentDelivery)&&(identical(other.storedOnly, _this.storedOnly) || other.storedOnly == _this.storedOnly)&&(identical(other.toolOutputDelivery, _this.toolOutputDelivery) || other.toolOutputDelivery == _this.toolOutputDelivery));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as SessionMessagesRequest;
-  return Object.hash(runtimeType,_this.sessionId,_this.limit,_this.before,_this.attachmentDelivery,_this.storedOnly);
+  return Object.hash(runtimeType,_this.sessionId,_this.limit,_this.before,_this.attachmentDelivery,_this.storedOnly,_this.toolOutputDelivery);
 }
 
 @override
 String toString() {
   final _this = this as SessionMessagesRequest;
-  return 'SessionMessagesRequest(sessionId: ${_this.sessionId}, limit: ${_this.limit}, before: ${_this.before}, attachmentDelivery: ${_this.attachmentDelivery}, storedOnly: ${_this.storedOnly})';
+  return 'SessionMessagesRequest(sessionId: ${_this.sessionId}, limit: ${_this.limit}, before: ${_this.before}, attachmentDelivery: ${_this.attachmentDelivery}, storedOnly: ${_this.storedOnly}, toolOutputDelivery: ${_this.toolOutputDelivery})';
 }
 
 
@@ -1441,7 +1443,7 @@ abstract mixin class $SessionMessagesRequestCopyWith<$Res>  {
   factory $SessionMessagesRequestCopyWith(SessionMessagesRequest value, $Res Function(SessionMessagesRequest) _then) = _$SessionMessagesRequestCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, int? limit, int? before, MessageAttachmentDelivery attachmentDelivery, bool storedOnly
+ String sessionId, int? limit, int? before, MessageAttachmentDelivery attachmentDelivery, bool storedOnly, ToolOutputDelivery toolOutputDelivery
 });
 
 
@@ -1458,14 +1460,15 @@ class _$SessionMessagesRequestCopyWithImpl<$Res>
 
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,Object? attachmentDelivery = null,Object? storedOnly = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,Object? attachmentDelivery = null,Object? storedOnly = null,Object? toolOutputDelivery = null,}) {
   return _then(SessionMessagesRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
 as int?,before: freezed == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
 as int?,attachmentDelivery: null == attachmentDelivery ? _self.attachmentDelivery : attachmentDelivery // ignore: cast_nullable_to_non_nullable
 as MessageAttachmentDelivery,storedOnly: null == storedOnly ? _self.storedOnly : storedOnly // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,toolOutputDelivery: null == toolOutputDelivery ? _self.toolOutputDelivery : toolOutputDelivery // ignore: cast_nullable_to_non_nullable
+as ToolOutputDelivery,
   ));
 }
 
@@ -1477,7 +1480,7 @@ as bool,
 @JsonSerializable()
 
 class _SessionMessagesRequest implements SessionMessagesRequest {
-  const _SessionMessagesRequest({required this.sessionId, required this.limit, required this.before, this.attachmentDelivery = MessageAttachmentDelivery.inline, this.storedOnly = false});
+  const _SessionMessagesRequest({required this.sessionId, required this.limit, required this.before, this.attachmentDelivery = MessageAttachmentDelivery.inline, this.storedOnly = false, this.toolOutputDelivery = ToolOutputDelivery.inline});
   factory _SessionMessagesRequest.fromJson(Map<String, dynamic> json) => _$SessionMessagesRequestFromJson(json);
 
 @override final  String sessionId;
@@ -1496,6 +1499,9 @@ class _SessionMessagesRequest implements SessionMessagesRequest {
 /// harness — because it is disabled, needs authentication, or is simply
 /// slow right after a start.
 @override@JsonKey() final  bool storedOnly;
+/// Whether finished tools arrive with their output and error, or as
+/// summaries whose detail the app fetches when a row expands.
+@override@JsonKey() final  ToolOutputDelivery toolOutputDelivery;
 
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -1510,18 +1516,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery)&&(identical(other.storedOnly, storedOnly) || other.storedOnly == storedOnly));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery)&&(identical(other.storedOnly, storedOnly) || other.storedOnly == storedOnly)&&(identical(other.toolOutputDelivery, toolOutputDelivery) || other.toolOutputDelivery == toolOutputDelivery));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,sessionId,limit,before,attachmentDelivery,storedOnly);
+    return Object.hash(runtimeType,sessionId,limit,before,attachmentDelivery,storedOnly,toolOutputDelivery);
 }
 
 @override
 String toString() {
-    return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before, attachmentDelivery: $attachmentDelivery, storedOnly: $storedOnly)';
+    return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before, attachmentDelivery: $attachmentDelivery, storedOnly: $storedOnly, toolOutputDelivery: $toolOutputDelivery)';
 }
 
 
@@ -1532,7 +1538,7 @@ abstract mixin class _$SessionMessagesRequestCopyWith<$Res> implements $SessionM
   factory _$SessionMessagesRequestCopyWith(_SessionMessagesRequest value, $Res Function(_SessionMessagesRequest) _then) = __$SessionMessagesRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String sessionId, int? limit, int? before, MessageAttachmentDelivery attachmentDelivery, bool storedOnly
+ String sessionId, int? limit, int? before, MessageAttachmentDelivery attachmentDelivery, bool storedOnly, ToolOutputDelivery toolOutputDelivery
 });
 
 
@@ -1549,14 +1555,171 @@ class __$SessionMessagesRequestCopyWithImpl<$Res>
 
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,Object? attachmentDelivery = null,Object? storedOnly = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,Object? attachmentDelivery = null,Object? storedOnly = null,Object? toolOutputDelivery = null,}) {
   return _then(_SessionMessagesRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
 as int?,before: freezed == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
 as int?,attachmentDelivery: null == attachmentDelivery ? _self.attachmentDelivery : attachmentDelivery // ignore: cast_nullable_to_non_nullable
 as MessageAttachmentDelivery,storedOnly: null == storedOnly ? _self.storedOnly : storedOnly // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,toolOutputDelivery: null == toolOutputDelivery ? _self.toolOutputDelivery : toolOutputDelivery // ignore: cast_nullable_to_non_nullable
+as ToolOutputDelivery,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$SessionMessagesThroughRequest {
+
+ String get sessionId; int get throughSeq; int get before; MessageAttachmentDelivery get attachmentDelivery; bool get storedOnly; ToolOutputDelivery get toolOutputDelivery;
+/// Create a copy of SessionMessagesThroughRequest
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionMessagesThroughRequestCopyWith<SessionMessagesThroughRequest> get copyWith => _$SessionMessagesThroughRequestCopyWithImpl<SessionMessagesThroughRequest>(this as SessionMessagesThroughRequest, _$identity);
+
+  /// Serializes this SessionMessagesThroughRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as SessionMessagesThroughRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionMessagesThroughRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.throughSeq, _this.throughSeq) || other.throughSeq == _this.throughSeq)&&(identical(other.before, _this.before) || other.before == _this.before)&&(identical(other.attachmentDelivery, _this.attachmentDelivery) || other.attachmentDelivery == _this.attachmentDelivery)&&(identical(other.storedOnly, _this.storedOnly) || other.storedOnly == _this.storedOnly)&&(identical(other.toolOutputDelivery, _this.toolOutputDelivery) || other.toolOutputDelivery == _this.toolOutputDelivery));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as SessionMessagesThroughRequest;
+  return Object.hash(runtimeType,_this.sessionId,_this.throughSeq,_this.before,_this.attachmentDelivery,_this.storedOnly,_this.toolOutputDelivery);
+}
+
+@override
+String toString() {
+  final _this = this as SessionMessagesThroughRequest;
+  return 'SessionMessagesThroughRequest(sessionId: ${_this.sessionId}, throughSeq: ${_this.throughSeq}, before: ${_this.before}, attachmentDelivery: ${_this.attachmentDelivery}, storedOnly: ${_this.storedOnly}, toolOutputDelivery: ${_this.toolOutputDelivery})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SessionMessagesThroughRequestCopyWith<$Res>  {
+  factory $SessionMessagesThroughRequestCopyWith(SessionMessagesThroughRequest value, $Res Function(SessionMessagesThroughRequest) _then) = _$SessionMessagesThroughRequestCopyWithImpl;
+@useResult
+$Res call({
+ String sessionId, int throughSeq, int before, MessageAttachmentDelivery attachmentDelivery, bool storedOnly, ToolOutputDelivery toolOutputDelivery
+});
+
+
+
+
+}
+/// @nodoc
+class _$SessionMessagesThroughRequestCopyWithImpl<$Res>
+    implements $SessionMessagesThroughRequestCopyWith<$Res> {
+  _$SessionMessagesThroughRequestCopyWithImpl(this._self, this._then);
+
+  final SessionMessagesThroughRequest _self;
+  final $Res Function(SessionMessagesThroughRequest) _then;
+
+/// Create a copy of SessionMessagesThroughRequest
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? throughSeq = null,Object? before = null,Object? attachmentDelivery = null,Object? storedOnly = null,Object? toolOutputDelivery = null,}) {
+  return _then(SessionMessagesThroughRequest(
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,throughSeq: null == throughSeq ? _self.throughSeq : throughSeq // ignore: cast_nullable_to_non_nullable
+as int,before: null == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
+as int,attachmentDelivery: null == attachmentDelivery ? _self.attachmentDelivery : attachmentDelivery // ignore: cast_nullable_to_non_nullable
+as MessageAttachmentDelivery,storedOnly: null == storedOnly ? _self.storedOnly : storedOnly // ignore: cast_nullable_to_non_nullable
+as bool,toolOutputDelivery: null == toolOutputDelivery ? _self.toolOutputDelivery : toolOutputDelivery // ignore: cast_nullable_to_non_nullable
+as ToolOutputDelivery,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _SessionMessagesThroughRequest implements SessionMessagesThroughRequest {
+  const _SessionMessagesThroughRequest({required this.sessionId, required this.throughSeq, required this.before, required this.attachmentDelivery, required this.storedOnly, required this.toolOutputDelivery});
+  factory _SessionMessagesThroughRequest.fromJson(Map<String, dynamic> json) => _$SessionMessagesThroughRequestFromJson(json);
+
+@override final  String sessionId;
+@override final  int throughSeq;
+@override final  int before;
+@override final  MessageAttachmentDelivery attachmentDelivery;
+@override final  bool storedOnly;
+@override final  ToolOutputDelivery toolOutputDelivery;
+
+/// Create a copy of SessionMessagesThroughRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SessionMessagesThroughRequestCopyWith<_SessionMessagesThroughRequest> get copyWith => __$SessionMessagesThroughRequestCopyWithImpl<_SessionMessagesThroughRequest>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionMessagesThroughRequestToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionMessagesThroughRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.throughSeq, throughSeq) || other.throughSeq == throughSeq)&&(identical(other.before, before) || other.before == before)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery)&&(identical(other.storedOnly, storedOnly) || other.storedOnly == storedOnly)&&(identical(other.toolOutputDelivery, toolOutputDelivery) || other.toolOutputDelivery == toolOutputDelivery));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,throughSeq,before,attachmentDelivery,storedOnly,toolOutputDelivery);
+}
+
+@override
+String toString() {
+    return 'SessionMessagesThroughRequest(sessionId: $sessionId, throughSeq: $throughSeq, before: $before, attachmentDelivery: $attachmentDelivery, storedOnly: $storedOnly, toolOutputDelivery: $toolOutputDelivery)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SessionMessagesThroughRequestCopyWith<$Res> implements $SessionMessagesThroughRequestCopyWith<$Res> {
+  factory _$SessionMessagesThroughRequestCopyWith(_SessionMessagesThroughRequest value, $Res Function(_SessionMessagesThroughRequest) _then) = __$SessionMessagesThroughRequestCopyWithImpl;
+@override @useResult
+$Res call({
+ String sessionId, int throughSeq, int before, MessageAttachmentDelivery attachmentDelivery, bool storedOnly, ToolOutputDelivery toolOutputDelivery
+});
+
+
+
+
+}
+/// @nodoc
+class __$SessionMessagesThroughRequestCopyWithImpl<$Res>
+    implements _$SessionMessagesThroughRequestCopyWith<$Res> {
+  __$SessionMessagesThroughRequestCopyWithImpl(this._self, this._then);
+
+  final _SessionMessagesThroughRequest _self;
+  final $Res Function(_SessionMessagesThroughRequest) _then;
+
+/// Create a copy of SessionMessagesThroughRequest
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? throughSeq = null,Object? before = null,Object? attachmentDelivery = null,Object? storedOnly = null,Object? toolOutputDelivery = null,}) {
+  return _then(_SessionMessagesThroughRequest(
+sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
+as String,throughSeq: null == throughSeq ? _self.throughSeq : throughSeq // ignore: cast_nullable_to_non_nullable
+as int,before: null == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
+as int,attachmentDelivery: null == attachmentDelivery ? _self.attachmentDelivery : attachmentDelivery // ignore: cast_nullable_to_non_nullable
+as MessageAttachmentDelivery,storedOnly: null == storedOnly ? _self.storedOnly : storedOnly // ignore: cast_nullable_to_non_nullable
+as bool,toolOutputDelivery: null == toolOutputDelivery ? _self.toolOutputDelivery : toolOutputDelivery // ignore: cast_nullable_to_non_nullable
+as ToolOutputDelivery,
   ));
 }
 

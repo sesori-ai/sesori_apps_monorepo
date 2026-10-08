@@ -1,4 +1,4 @@
-import "package:sesori_bridge/src/repositories/chat_history_repository.dart";
+import "package:sesori_bridge/src/repositories/models/history_window.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -88,30 +88,6 @@ void main() {
       );
       expect(next.messages, isEmpty);
       expect(next.nextCursor, isNull);
-    });
-
-    test("the snapshot read pages identically to the plain read", () async {
-      // Store-only reads take the snapshot variant, so the two must not drift
-      // apart — particularly the part filtering, which depends on the page's
-      // own message ids.
-      final scope = testAttachmentStorageScope(sessionId: "ses_a");
-      for (final limit in [null, 1, 3]) {
-        final plain = await history.repository.getSessionMessages(
-          sessionId: "ses_a",
-          storageScope: scope,
-          limit: limit,
-        );
-        final snapshot = await history.repository.getSessionMessagesWithSyncState(
-          sessionId: "ses_a",
-          storageScope: scope,
-          limit: limit,
-          attachmentProjection: const InlineMessageAttachmentProjection(),
-        );
-
-        expect(snapshot.page.messages, plain.messages, reason: "limit $limit");
-        expect(snapshot.page.nextCursor, plain.nextCursor, reason: "limit $limit");
-        expect(snapshot.syncState, await history.repository.getSyncState(sessionId: "ses_a"));
-      }
     });
 
     test("an empty page never claims there is more", () async {
@@ -208,25 +184,63 @@ void main() {
       expect(empty.userMessagesBefore, 0);
     });
 
-    test("the snapshot read counts like the plain read", () async {
-      final scope = testAttachmentStorageScope(sessionId: "ses_a");
-      for (final limit in [null, 1, 3]) {
-        final plain = await history.repository.getSessionMessages(
-          sessionId: "ses_a",
-          storageScope: scope,
-          limit: limit,
-        );
-        final snapshot = await history.repository.getSessionMessagesWithSyncState(
-          sessionId: "ses_a",
-          storageScope: scope,
-          limit: limit,
-          attachmentProjection: const InlineMessageAttachmentProjection(),
-        );
-
-        expect(snapshot.page.userMessagesBefore, plain.userMessagesBefore, reason: "limit $limit");
-      }
+    test("a store-only page counts the users before it", () async {
       final storedOnly = await history.service.getSessionMessages(sessionId: "ses_a", limit: 3, storedOnly: true);
       expect(storedOnly.userMessagesBefore, 4);
+    });
+
+    group("loading through a prompt", () {
+      late List<int> seqs;
+
+      setUp(() async {
+        // Index i holds m(i + 1).
+        seqs = [for (final row in await history.database.chatHistoryDao.getMessages(sessionId: "ses_a")) row.seq];
+      });
+
+      for (final storedOnly in const [false, true]) {
+        test("returns the whole range with the older pair (storedOnly: $storedOnly)", () async {
+          final page = await history.service.getSessionMessages(
+            sessionId: "ses_a",
+            window: HistoryWindowThrough(throughSeq: seqs[2], before: seqs[7]),
+            storedOnly: storedOnly,
+          );
+
+          expect(page.messages.map((message) => message.info.id), ["m3", "m4", "m5", "m6", "m7"]);
+          expect(page.nextCursor, seqs[2], reason: "m1 and m2 are older");
+          expect(page.userMessagesBefore, 1, reason: "only m1 is an older user message");
+        });
+      }
+
+      test("ends the cursor when the range reaches the first message", () async {
+        final page = await history.service.getSessionMessages(
+          sessionId: "ses_a",
+          window: HistoryWindowThrough(throughSeq: seqs[0], before: seqs[9]),
+        );
+
+        expect(page.messages.map((message) => message.info.id), [for (var index = 1; index <= 9; index++) "m$index"]);
+        expect(page.nextCursor, isNull);
+        expect(page.userMessagesBefore, 0);
+      });
+
+      test("the archived slice matches the stored one", () async {
+        final window = HistoryWindowThrough(throughSeq: seqs[2], before: seqs[7]);
+        final stored = await history.service.getSessionMessages(sessionId: "ses_a", window: window);
+        final session = await _FakeSessionRepository(transcript: transcript).getStoredSession(sessionId: "ses_a");
+        await history.service.exportSessionHistory(
+          session: session!,
+          title: null,
+          createdAt: 1,
+          updatedAt: 1,
+          archivedAt: 1,
+        );
+        await history.service.purgeSessionHistory(sessionId: "ses_a");
+
+        final archived = await history.service.getArchivedSessionMessages(sessionId: "ses_a", window: window);
+
+        expect(archived?.messages, stored.messages);
+        expect(archived?.nextCursor, stored.nextCursor);
+        expect(archived?.userMessagesBefore, stored.userMessagesBefore);
+      });
     });
 
     test("a session with only assistant messages counts no users", () async {

@@ -395,7 +395,66 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         before: before,
         attachmentDelivery: MessageAttachmentDelivery.storedReference,
         storedOnly: storedOnly,
+        // A bridge that predates the field ignores it and sends full parts.
+        toolOutputDelivery: ToolOutputDelivery.onExpand,
       ),
+    );
+  }
+
+  /// The output and error of a tool part a page sent as a summary.
+  Future<ApiResponse<SessionToolOutputResponse>> getToolOutput({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) {
+    return _client.post(
+      "/session/tool-output",
+      fromJson: SessionToolOutputResponse.fromJson,
+      body: SessionToolOutputRequest(sessionId: sessionId, messageId: messageId, partId: partId),
+    );
+  }
+
+  /// Every message from [throughSeq] up to, but not including, [before], in
+  /// one response.
+  ///
+  /// The response can carry a whole session, so it decodes off the UI isolate.
+  Future<ApiResponse<MessageWithPartsResponse>> getMessagesThrough({
+    required String sessionId,
+    required int throughSeq,
+    required int before,
+    required bool storedOnly,
+  }) {
+    return _client.postDecodedInBackground(
+      path: "/session/messages/through",
+      fromJson: MessageWithPartsResponse.fromJson,
+      body: SessionMessagesThroughRequest(
+        sessionId: sessionId,
+        throughSeq: throughSeq,
+        before: before,
+        attachmentDelivery: MessageAttachmentDelivery.storedReference,
+        storedOnly: storedOnly,
+        toolOutputDelivery: ToolOutputDelivery.onExpand,
+      ),
+    );
+  }
+
+  /// Every prompt in the session's history, oldest first. A bridge that
+  /// predates the route answers 404.
+  Future<ApiResponse<SessionPromptIndexResponse>> getPromptIndex({required String sessionId}) {
+    return _client.post(
+      "/session/prompts",
+      fromJson: SessionPromptIndexResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
+    );
+  }
+
+  /// Every prompt in the session's history that holds [query], oldest first.
+  /// A bridge that predates the route answers 404.
+  Future<ApiResponse<SessionPromptSearchResponse>> searchPrompts({required String sessionId, required String query}) {
+    return _client.postDecodedInBackground(
+      path: "/session/prompts/search",
+      fromJson: SessionPromptSearchResponse.fromJson,
+      body: SessionPromptSearchRequest(sessionId: sessionId, query: query),
     );
   }
 

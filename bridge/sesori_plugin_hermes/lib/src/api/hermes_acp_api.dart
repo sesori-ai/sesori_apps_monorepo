@@ -39,6 +39,7 @@ class HermesAcpApi({
     // first non-terminal auth method (Hermes advertises its configured provider
     // first, then an interactive terminal setup the bridge cannot complete).
     await AcpAgentApi(client: client).initialize(
+      clientIdentity: acpDefaultClientIdentity,
       formElicitation: false,
       capabilityMeta: null,
       authMethodId: null,

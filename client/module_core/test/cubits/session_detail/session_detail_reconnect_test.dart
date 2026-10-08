@@ -108,7 +108,7 @@ void main() {
     );
     addTearDown(cubit.close);
 
-    expect(cubit.state, const SessionDetailState.loading(launchHandoff: null));
+    expect(cubit.state, const SessionDetailState.loading(launchHandoff: null, seededComposer: null));
 
     connectionStatus.add(connectedStatus);
     await _awaitLoaded(cubit);
@@ -191,6 +191,7 @@ void main() {
           promptDefaults: null,
           isRootSession: true,
           isArchived: false,
+          cannotContinueMessage: null,
         ),
       ),
     );
@@ -295,6 +296,7 @@ void main() {
         promptDefaults: null,
         isRootSession: true,
         isArchived: false,
+        cannotContinueMessage: null,
       ),
     );
 
@@ -386,6 +388,7 @@ void _stubLoadApis(MockSessionRepository service) {
         nextCursor: null,
         userMessagesBefore: null,
         replayedPromptDefaults: null,
+        cannotContinueMessage: null,
       ),
     ),
   );

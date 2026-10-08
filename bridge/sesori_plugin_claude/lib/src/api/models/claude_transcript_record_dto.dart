@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "../../models/claude_compact_metadata.dart";
 import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_tool_use_result.dart";
 
@@ -49,6 +50,12 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
 
     /// The payload of an `attachment` record.
     @JsonKey(fromJson: _attachmentOrNull) required ClaudeTranscriptAttachmentDto? attachment,
+
+    /// Distinguishes `system` records, such as `compact_boundary`.
+    @JsonKey(fromJson: _stringOrNull) required String? subtype,
+
+    /// The details of a `compact_boundary` record.
+    @JsonKey(fromJson: _compactMetadataOrNull) required ClaudeCompactMetadata? compactMetadata,
   }) = _ClaudeTranscriptRecordDto;
 
   factory fromJson(Map<String, dynamic> json) => _$ClaudeTranscriptRecordDtoFromJson(json);
@@ -101,5 +108,7 @@ ClaudeTranscriptMessageDto? _messageOrNull(Object? value) =>
 
 ClaudeTranscriptAttachmentDto? _attachmentOrNull(Object? value) =>
     value is Map ? ClaudeTranscriptAttachmentDto.fromJson(value.cast<String, dynamic>()) : null;
+
+ClaudeCompactMetadata? _compactMetadataOrNull(Object? value) => ClaudeCompactMetadata.fromJsonOrNull(json: value);
 
 DateTime? _timestampOrNull(Object? value) => value is String ? DateTime.tryParse(value)?.toUtc() : null;

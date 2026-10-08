@@ -7,7 +7,9 @@ import "package:flutter/rendering.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/compaction_part_widget.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_jump_notifier.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_prompt_slot.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_layout.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_prompt_overlay.dart";
@@ -23,6 +25,8 @@ class const _SessionDetailMessageListHarness({
   final List<QueuedSessionPrompt> initialBridgeQueuedPrompts = const [],
   final String? initialRetryErrorMessage,
   final Future<void> Function()? onLoadOlderMessages,
+  final List<SessionPromptIndexEntry>? initialPromptIndex,
+  final Future<LoadThroughOutcome> Function({required String messageId, required int seq})? onLoadThrough,
   final TargetPlatform? platform,
   final EdgeInsets systemGestureInsets = EdgeInsets.zero,
   final double topInset = 0,
@@ -51,7 +55,12 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   bool _isLoadingOlderMessages = false;
   bool _hasOlderMessages = true;
   bool _isRefreshing = false;
+  late List<SessionPromptIndexEntry>? _promptIndex = widget.initialPromptIndex;
   int? lastCancelledQueuedMessageIndex;
+
+  void setPromptIndex(List<SessionPromptIndexEntry>? index) {
+    setState(() => _promptIndex = index);
+  }
 
   /// The focal points of the pinches in that asked for the Prompts screen.
   final List<Offset> pinchIns = [];
@@ -262,6 +271,9 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           },
           projectId: null,
           onLoadOlderMessages: _hasOlderMessages ? widget.onLoadOlderMessages : null,
+          promptIndex: _promptIndex,
+          onLoadThrough:
+              widget.onLoadThrough ?? ({required messageId, required seq}) async => const LoadThroughFailed(),
           messages: _messages,
           localSend: _localSend,
           harnessName: "OpenCode",
@@ -555,6 +567,34 @@ Future<void> _trackpadPinch(WidgetTester tester, {required Offset center, requir
 }
 
 void main() {
+  testWidgets("a refresh that re-keys rows keeps them in place, while a new row still eases in", (tester) async {
+    final harness = await _pumpTurns(
+      tester,
+      messages: [
+        _message(messageId: "live-prompt", role: "user", text: "Keep going", createdAtMs: 100),
+        _message(messageId: "live-reply", role: "assistant", text: "Context compacted", createdAtMs: 200),
+      ],
+    );
+    final top = tester.getTopLeft(find.text("Context compacted")).dy;
+    bool easing() =>
+        tester.stateList(find.byType(TranscriptPresence)).any((state) => "$state".contains("tracking 1 ticker"));
+
+    // The history twins replace both live rows at the same place.
+    harness.replaceMessages([
+      _message(messageId: "history-prompt", role: "user", text: "Keep going", createdAtMs: 100),
+      _message(messageId: "history-reply", role: "assistant", text: "Context compacted", createdAtMs: 200),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(easing(), isFalse);
+    expect(tester.getTopLeft(find.text("Context compacted")).dy, top);
+
+    harness.appendNewestMessage(_message(messageId: "new-reply", role: "assistant", text: "Next", createdAtMs: 300));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(easing(), isTrue);
+  });
+
   testWidgets("renders system and unknown senders as automation instead of agent output", (tester) async {
     await tester.pumpWidget(
       _SessionDetailMessageListHarness(
@@ -943,6 +983,7 @@ void main() {
           ),
           pluginId: "claude",
           startedAt: clock.now().subtract(const Duration(seconds: 3)),
+          composer: null,
           followUpIds: const {},
           acceptedFollowUps: const [],
         ),
@@ -970,6 +1011,7 @@ void main() {
           ),
           pluginId: "claude",
           startedAt: clock.now(),
+          composer: null,
           followUpIds: const {},
           acceptedFollowUps: const [],
         ),
@@ -1017,6 +1059,7 @@ void main() {
           ),
           pluginId: "claude",
           startedAt: clock.now(),
+          composer: null,
           followUpIds: const {"prm_refused", "prm_waiting"},
           acceptedFollowUps: const [],
         ),
@@ -1877,6 +1920,70 @@ void main() {
     expect(find.text("Working…"), findsNothing);
   });
 
+  testWidgets("a running compaction ticks in its own row instead of Working…, then settles in place", (tester) async {
+    await withClock(Clock(() => tester.binding.clock.now()), () async {
+      await tester.binding.setSurfaceSize(const Size(900, 700));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final startedAt = tester.binding.clock.now().millisecondsSinceEpoch - 102000;
+      MessageWithParts compaction({required CompactionState state}) => MessageWithParts(
+        info: Message.assistant(
+          id: "assistant-1",
+          sessionID: "session-1",
+          agent: null,
+          modelID: null,
+          providerID: null,
+          time: MessageTime(created: startedAt, completed: null),
+        ),
+        parts: [
+          MessagePart.compaction(
+            id: "assistant-1-compaction",
+            sessionID: "session-1",
+            messageID: "assistant-1",
+            state: state,
+          ),
+        ],
+      );
+      final prompt = _userMessages(count: 1);
+      final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          key: harnessKey,
+          initialMessages: [
+            ...prompt,
+            compaction(state: const CompactionState.running(summary: null)),
+          ],
+          initialStreamingText: const {},
+        ),
+      );
+      harnessKey.currentState?.setBusy(true);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // The row counts from its message's creation.
+      expect(find.text("Working…"), findsNothing);
+      expect(find.textContaining("Compacting context"), findsOneWidget);
+      expect(find.text("1m 42s"), findsOneWidget);
+      final row = tester.element(find.byType(CompactionPartWidget));
+      final height = tester.getSize(find.byType(CompactionPartWidget)).height;
+
+      harnessKey.currentState?.replaceMessages([
+        ...prompt,
+        compaction(
+          state: const CompactionState.completed(summary: null, freedTokens: 142000, trigger: CompactionTrigger.auto),
+        ),
+      ]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text("Context compacted · freed 142k tokens · auto"), findsOneWidget);
+      // The same row, never re-inserted, at the same height.
+      expect(tester.element(find.byType(CompactionPartWidget)), same(row));
+      expect(tester.getSize(find.byType(CompactionPartWidget)).height, height);
+      // The turn goes on, so Working… returns under the settled row.
+      expect(find.text("Working…"), findsOneWidget);
+    });
+  });
+
   testWidgets("the sub-agent row takes over from Working… with an ease while only sub-agents run", (tester) async {
     await withClock(Clock(() => tester.binding.clock.now()), () async {
       final harness = await _pumpTurns(
@@ -2284,6 +2391,7 @@ void main() {
         launchFollowUps: [
           LaunchFollowUp.sending(
             submission: _textSubmission(promptId: "prm_follow", text: "follow"),
+            since: DateTime(2026),
           ),
         ],
       ),
@@ -3295,6 +3403,161 @@ void main() {
 
       expect(ownBubble(tester, "u6").top, moreOrLessEquals(pinTop, epsilon: 0.5));
       semantics.dispose();
+    });
+
+    group("of an unloaded turn", () {
+      // The loaded range starts inside the first turn; only the prompt index
+      // knows the prompt that opened it.
+      final partialTurns = shortTurns.skip(1).toList();
+      final promptIndex = [
+        for (var turn = 0; turn < 20; turn++)
+          SessionPromptIndexEntry.opener(
+            messageId: "u$turn",
+            seq: turn * 2,
+            number: turn + 1,
+            createdAt: null,
+            preview: "Preview u$turn",
+          ),
+      ];
+
+      Future<_SessionDetailMessageListHarnessState> pumpPartial(
+        WidgetTester tester, {
+        required List<SessionPromptIndexEntry>? index,
+        Future<LoadThroughOutcome> Function({required String messageId, required int seq})? onLoadThrough,
+      }) async {
+        await tester.pumpWidget(
+          _SessionDetailMessageListHarness(
+            initialMessages: partialTurns,
+            initialStreamingText: const {},
+            topInset: _topInset,
+            onLoadOlderMessages: () async {},
+            initialPromptIndex: index,
+            onLoadThrough: onLoadThrough,
+          ),
+        );
+        await tester.pumpAndSettle();
+        await _scrollRowTo(tester, rowId: "a0-0", top: _topInset - 100);
+        return tester.state(find.byType(_SessionDetailMessageListHarness));
+      }
+
+      Finder previewOf(String openerId) => find.descendant(
+        of: find.descendant(of: overlay, matching: find.byKey(ValueKey((unloadedPrompt: openerId)))),
+        matching: find.byType(UserMessageBubbleContent),
+      );
+
+      testWidgets("pins the prompt's preview above the turn it opened", (tester) async {
+        await pumpPartial(tester, index: promptIndex);
+
+        expect(pinOf(tester, "u0"), isNotNull);
+        expect(
+          find.descendant(of: previewOf("u0"), matching: find.textContaining("Preview u0", findRichText: true)),
+          findsOneWidget,
+        );
+        expect(pins(tester).fade.value, 1, reason: "a pin there from the start shows at once");
+      });
+
+      testWidgets("fades in as the index arrives, and stays while a refresh fetches it again", (tester) async {
+        final harness = await pumpPartial(tester, index: null);
+        expect(pins(tester).stickyLayout.pinned, isEmpty);
+
+        harness.setPromptIndex(promptIndex);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(pinOf(tester, "u0"), isNotNull);
+        expect(pins(tester).fadingOpenerId, "u0");
+        expect(pins(tester).fade.value, allOf(greaterThan(0), lessThan(1)));
+
+        harness.setPromptIndex(null);
+        await tester.pumpAndSettle();
+        expect(pinOf(tester, "u0"), isNotNull);
+      });
+
+      testWidgets("a tap loads through the prompt, crossfades the pin into it and glides back to it", (tester) async {
+        final load = Completer<LoadThroughOutcome>();
+        final calls = <(String, int)>[];
+        final harness = await pumpPartial(
+          tester,
+          index: promptIndex,
+          onLoadThrough: ({required messageId, required seq}) {
+            calls.add((messageId, seq));
+            return load.future;
+          },
+        );
+
+        await tester.tapAt(tester.getCenter(previewOf("u0")));
+        double spinnerOpacity() => tester
+            .widget<AnimatedOpacity>(
+              find.ancestor(of: find.byType(PregoActivityIndicator), matching: find.byType(AnimatedOpacity)),
+            )
+            .opacity;
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(spinnerOpacity(), 0, reason: "a quick load flashes no spinner");
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(spinnerOpacity(), 1);
+        expect(calls, [("u0", 0)]);
+
+        harness.prependOlderMessages(older: [shortTurns.first], hasOlderMessages: false);
+        load.complete(const LoadThroughLoaded());
+        await tester.pump();
+        expect(pins(tester).hasLeavingCopy, isTrue, reason: "the preview crossfades into the loaded prompt");
+        // Pinned every frame of the crossfade, never blinking out as its row builds.
+        while (pins(tester).fade.value < 1) {
+          expect(pinOf(tester, "u0"), isNotNull, reason: "at ${pins(tester).fade.value}");
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+
+        await tester.pumpAndSettle();
+        expect(previewOf("u0"), findsNothing);
+        expect(find.byType(PregoActivityIndicator), findsNothing);
+        expect(ownBubble(tester, "u0").top, moreOrLessEquals(pinTop, epsilon: 0.5));
+      });
+
+      testWidgets("while reading history pins from the index as it stood, not a prompt sent since", (tester) async {
+        await tester.pumpWidget(
+          _SessionDetailMessageListHarness(
+            initialMessages: [
+              _message(
+                messageId: "a0-0",
+                role: "assistant",
+                text: List.generate(60, (index) => "Answer 0.0, paragraph $index").join("\n\n"),
+              ),
+            ],
+            initialStreamingText: const {},
+            topInset: _topInset,
+            onLoadOlderMessages: () async {},
+            initialPromptIndex: promptIndex.take(1).toList(),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await _detachViewport(tester);
+        expect(pinOf(tester, "u0"), isNotNull);
+
+        tester
+            .state<_SessionDetailMessageListHarnessState>(find.byType(_SessionDetailMessageListHarness))
+            .setPromptIndex(promptIndex.take(2).toList());
+        await tester.pumpAndSettle();
+
+        expect(pinOf(tester, "u0"), isNotNull);
+        expect(pinOf(tester, "u1"), isNull);
+      });
+
+      testWidgets("a load that fails says why and keeps the pin", (tester) async {
+        await pumpPartial(
+          tester,
+          index: promptIndex,
+          onLoadThrough: ({required messageId, required seq}) async => const LoadThroughFailed(),
+        );
+
+        await tester.tapAt(tester.getCenter(previewOf("u0")));
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text("Couldn't open this prompt. Check your connection and try again."), findsOneWidget);
+        expect(pinOf(tester, "u0"), isNotNull);
+        await tester.pump(const Duration(seconds: 4));
+        await tester.pumpAndSettle();
+      });
     });
   });
 

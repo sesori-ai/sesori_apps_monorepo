@@ -3,6 +3,7 @@ import "package:acp_plugin/acp_testing.dart";
 import "package:deepseek_plugin/deepseek_plugin.dart";
 import "package:deepseek_plugin/deepseek_testing.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 DeepSeekPlugin buildDeepSeekTestPlugin({required FakeAcpProcess fake}) {
   final configurationTracker = AcpSessionConfigurationTracker();
@@ -18,6 +19,7 @@ DeepSeekPlugin buildDeepSeekTestPlugin({required FakeAcpProcess fake}) {
     messageTimeParser: const DeepSeekMessageTimeParser(),
     subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
     delegationTracker: DeepSeekDelegationTracker(),
+    compactionTracker: DeepSeekCompactionTracker(clock: const ServerClock()),
   );
   return DeepSeekPlugin(
     launchSpec: const AcpLaunchSpec(

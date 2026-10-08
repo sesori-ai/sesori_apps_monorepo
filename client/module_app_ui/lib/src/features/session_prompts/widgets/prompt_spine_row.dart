@@ -1,9 +1,9 @@
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart" show SessionPromptExcerpt;
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "../prompt_search.dart";
 
 const double _kVerticalPadding = PregoSpacing.md;
 const double _kRailX = PregoSpacing.xl + 4;
@@ -44,11 +44,15 @@ class const PromptSpineRow({
   required final bool highlighted,
 
   /// Where the search found this prompt; null while not searching.
-  required final PromptExcerpt? excerpt,
+  required final SessionPromptExcerpt? excerpt,
 
   /// How far [excerpt] has faded in, from 0 to 1, while the row grows to
   /// show it. The list sets the row's height; whatever does not fit is cut.
   required final double grown,
+
+  /// Whether a tap is still loading the transcript up to this prompt, which
+  /// shows a spinner beside its text.
+  required final bool loading,
   required final VoidCallback onTap,
 }) extends StatelessWidget {
   @override
@@ -77,6 +81,9 @@ class const PromptSpineRow({
       container: true,
       button: true,
       label: label,
+      // Announced as the spinner shows, so a long load does not seem ignored.
+      value: loading ? loc.transcriptPromptsLoading : null,
+      liveRegion: loading,
       hint: loc.transcriptStickyPromptJumpHint,
       onTap: onTap,
       excludeSemantics: true,
@@ -138,6 +145,14 @@ class const PromptSpineRow({
                             ),
                           ),
                         ),
+                        if (loading)
+                          Padding(
+                            padding: const EdgeInsetsDirectional.only(start: PregoSpacing.lg),
+                            child: SizedBox.square(
+                              dimension: _lineExtent(textScaler: MediaQuery.textScalerOf(context)),
+                              child: const PregoActivityIndicator(color: null),
+                            ),
+                          ),
                         if (time != null)
                           Padding(
                             padding: const EdgeInsetsDirectional.only(start: PregoSpacing.lg),

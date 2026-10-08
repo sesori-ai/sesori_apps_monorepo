@@ -180,13 +180,13 @@ void main() {
     });
   }
 
-  Future<Map<String, dynamic>> waitForInitialize() async {
+  Future<Map<String, dynamic>> waitForRequest({required String method}) async {
     for (var attempt = 0; attempt < 400; attempt++) {
-      final frames = process.written.where((frame) => frame["method"] == "initialize");
+      final frames = process.written.where((frame) => frame["method"] == method);
       if (frames.isNotEmpty) return frames.last;
       await Future<void>.delayed(const Duration(milliseconds: 5));
     }
-    throw StateError("agent never received initialize");
+    throw StateError("agent never received $method");
   }
 
   Future<AntigravityInitializeDto> probe({required Duration timeout, required StartAbortSignal abortSignal}) =>
@@ -219,7 +219,12 @@ void main() {
 
   test("runs initialize-only and cleans up without authenticating", () async {
     final probing = probe(timeout: const Duration(seconds: 2), abortSignal: StartAbortSignal.never);
-    final initialize = await waitForInitialize();
+    final initialize = await waitForRequest(method: "initialize");
+    expect((initialize["params"] as Map)["clientInfo"], {
+      "name": "zed",
+      "title": "Sesori Bridge (Zed compatibility)",
+      "version": "0.0.0",
+    });
     process.emit({"jsonrpc": "2.0", "id": initialize["id"], "result": initializeResult()});
 
     final result = await probing;
@@ -229,9 +234,33 @@ void main() {
     expect(await process.exitCode, -15);
   });
 
+  test("personal authentication uses the same compatibility identity as live and probe connections", () async {
+    final authenticating = api.authenticate(
+      launchSpec: const AcpLaunchSpec(
+        command: "/runtime/agy_acp_server.par",
+        args: [],
+        includeParentEnvironment: false,
+      ),
+      stdoutInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: ({required line}) => false),
+      budget: AntigravityAuthenticationBudget(timeout: const Duration(seconds: 2), abortSignal: StartAbortSignal.never),
+    );
+    final initialize = await waitForRequest(method: "initialize");
+    expect((initialize["params"] as Map)["clientInfo"], {
+      "name": "zed",
+      "title": "Sesori Bridge (Zed compatibility)",
+      "version": "0.0.0",
+    });
+    process.emit({"jsonrpc": "2.0", "id": initialize["id"], "result": initializeResult()});
+    final authenticate = await waitForRequest(method: "authenticate");
+    expect(authenticate["params"], {"methodId": "oauth-personal"});
+    process.emit({"jsonrpc": "2.0", "id": authenticate["id"], "result": <String, dynamic>{}});
+    await authenticating;
+    expect(await process.exitCode, -15);
+  });
+
   test("surfaces malformed initialize data and cleans up", () async {
     final probing = probe(timeout: const Duration(seconds: 2), abortSignal: StartAbortSignal.never);
-    final initialize = await waitForInitialize();
+    final initialize = await waitForRequest(method: "initialize");
     process.emit({
       "jsonrpc": "2.0",
       "id": initialize["id"],
@@ -243,7 +272,7 @@ void main() {
 
   test("bounds an unresponsive initialize request", () async {
     final probing = probe(timeout: const Duration(milliseconds: 250), abortSignal: StartAbortSignal.never);
-    await waitForInitialize();
+    await waitForRequest(method: "initialize");
     await expectLater(probing, throwsA(isA<TimeoutException>()));
     expect(await process.exitCode, -15);
   });
@@ -251,7 +280,7 @@ void main() {
   test("aborts an in-flight initialize and cleans up", () async {
     final controller = StartAbortController();
     final probing = probe(timeout: const Duration(seconds: 2), abortSignal: controller.signal);
-    await waitForInitialize();
+    await waitForRequest(method: "initialize");
     controller.abort();
     await expectLater(probing, throwsA(isA<PluginStartAbortedException>()));
     expect(await process.exitCode, -15);
@@ -262,7 +291,7 @@ void main() {
       timeout: const Duration(seconds: 2),
       abortSignal: _AbortAfterInitializeSignal(),
     );
-    final initialize = await waitForInitialize();
+    final initialize = await waitForRequest(method: "initialize");
     process.emit({"jsonrpc": "2.0", "id": initialize["id"], "result": initializeResult()});
     await expectLater(probing, throwsA(isA<PluginStartAbortedException>()));
     expect(await process.exitCode, -15);
@@ -270,7 +299,7 @@ void main() {
 
   test("preserves process-exit context and cleans up", () async {
     final probing = probe(timeout: const Duration(seconds: 2), abortSignal: StartAbortSignal.never);
-    await waitForInitialize();
+    await waitForRequest(method: "initialize");
     process.exit(23);
     await expectLater(
       probing,

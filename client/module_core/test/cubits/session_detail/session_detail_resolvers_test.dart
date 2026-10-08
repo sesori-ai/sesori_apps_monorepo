@@ -79,6 +79,7 @@ SessionDetailLoaded _state({
     messages: messages,
     olderMessagesCursor: null,
     userMessagesBeforeOldest: null,
+    promptIndex: null,
     streamingText: const {},
     sessionStatus: const SessionStatus.idle(),
     pendingQuestions: const [],
@@ -104,5 +105,6 @@ SessionDetailLoaded _state({
     fastMode: false,
     stagedCommand: null,
     isRefreshing: false,
+    cannotContinueMessage: null,
   );
 }

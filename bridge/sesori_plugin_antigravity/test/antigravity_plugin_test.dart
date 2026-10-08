@@ -80,6 +80,11 @@ class _Process() implements AcpProcessHandle {
     final params = frame["params"] as Map<String, dynamic>? ?? {};
     switch (frame["method"]) {
       case "initialize":
+        expect(params["clientInfo"], {
+          "name": "zed",
+          "title": "Sesori Bridge (Zed compatibility)",
+          "version": "0.0.0",
+        });
         if (auth == _Auth.failure) {
           emit(
             frame: {

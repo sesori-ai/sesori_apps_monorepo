@@ -670,7 +670,9 @@ void main() {
       expect(tester.getSize(card), const Size(370, 69));
       expect(tester.getTopLeft(card) - tester.getTopLeft(row), const Offset(16, 16));
       expect(tester.getSize(mark), const Size.square(20));
-      expect(tester.getSize(action), const Size(76, 36));
+      // 76 wide at least; a label longer than Figma's "Dismiss" widens it instead of truncating.
+      expect(tester.getSize(action).height, 36);
+      expect(tester.getSize(action).width, greaterThanOrEqualTo(76));
 
       final container = tester.widget<Container>(card);
       final decoration = container.decoration! as ShapeDecoration;

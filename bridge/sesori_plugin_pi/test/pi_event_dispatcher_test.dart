@@ -178,7 +178,7 @@ void main() {
     expect(ended, isEmpty);
   });
 
-  test("legacy toolcall_start waits for toolcall_end metadata", () {
+  test("toolcall_start without metadata waits for toolcall_end metadata", () {
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": _assistant(content: const [], timestamp: 102)}),
@@ -200,7 +200,7 @@ void main() {
         "assistantMessageEvent": {
           "type": "toolcall_end",
           "contentIndex": 0,
-          "toolCall": {"id": "call-legacy", "name": "write", "arguments": <String, Object?>{}},
+          "toolCall": {"id": "call-late", "name": "write", "arguments": <String, Object?>{}},
         },
       }),
     );
@@ -803,14 +803,17 @@ void main() {
     final compacting = dispatcher.map(
       sessionId: sessionId,
       event: _event("compaction_start", {"reason": "threshold"}),
+      now: DateTime.fromMillisecondsSinceEpoch(5000),
     );
     final compacted = dispatcher.map(
       sessionId: sessionId,
       event: _event("compaction_end", {
+        "reason": "threshold",
         "aborted": false,
         "willRetry": false,
         "result": {"summary": "Continue the auth work.", "firstKeptEntryId": "e1", "tokensBefore": 100},
       }),
+      now: DateTime.fromMillisecondsSinceEpoch(9000),
     );
     final settled = dispatcher.map(sessionId: sessionId, event: _event("agent_settled"));
 
@@ -824,25 +827,33 @@ void main() {
     expect(compacting.whereType<BridgeSseSessionStatus>().single.status, const PluginSessionStatus.busy());
     final runningMessage = compacting.whereType<BridgeSseMessageUpdated>().single;
     expect(runningMessage.info.id, "pi:session:compaction:compaction:1");
+    expect(runningMessage.info.time, const PluginMessageTime(created: 5000, completed: null));
     final runningPart = compacting.whereType<BridgeSseMessagePartUpdated>().single.part;
-    expect(runningPart.state.status, PluginToolStatus.running);
-    expect(runningPart.tool, "compact");
-    expect(runningPart.state.title, isNull);
+    expect(runningPart, _compactionPart(const PluginCompactionState.running(summary: null)));
     expect(compacted.whereType<BridgeSseSessionCompacted>(), hasLength(1));
-    expect(compacted.whereType<BridgeSseMessageUpdated>().single.info.id, runningMessage.info.id);
+    final completedMessage = compacted.whereType<BridgeSseMessageUpdated>().single.info;
+    expect(completedMessage.id, runningMessage.info.id);
+    expect(completedMessage.time, runningMessage.info.time);
     final completedPart = compacted.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(completedPart.id, runningPart.id);
     expect(
       completedPart,
-      isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", "Continue the auth work."),
+      _compactionPart(
+        const PluginCompactionState.completed(
+          summary: "Continue the auth work.",
+          freedTokens: null,
+          trigger: PluginCompactionTrigger.auto,
+        ),
+      ),
     );
     expect(settled.whereType<BridgeSseSessionIdle>(), hasLength(1));
   });
 
-  test("recovering compaction failures keep the running card while Pi retries", () {
-    dispatcher.map(
+  test("recovering compaction failures keep the running row and its stamp while Pi retries", () {
+    final compacting = dispatcher.map(
       sessionId: sessionId,
       event: _event("compaction_start", {"reason": "overflow"}),
+      now: DateTime.fromMillisecondsSinceEpoch(5000),
     );
     final events = dispatcher.map(
       sessionId: sessionId,
@@ -853,9 +864,18 @@ void main() {
         "willRetry": true,
       }),
     );
+    final retried = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_start", {"reason": "overflow"}),
+      now: DateTime.fromMillisecondsSinceEpoch(8000),
+    );
 
-    expect(events.whereType<BridgeSseMessageRemoved>(), isEmpty);
-    expect(events.whereType<BridgeSseSessionError>(), isEmpty);
+    expect(events, isEmpty);
+    expect(
+      retried.whereType<BridgeSseMessageUpdated>().single.info,
+      compacting.whereType<BridgeSseMessageUpdated>().single.info,
+    );
+    expect(dispatcher.activeCompactionMessage(sessionId: sessionId)?.info.time?.created, 5000);
   });
 
   test("successful overflow compaction completes before Pi retries the agent", () {
@@ -879,34 +899,96 @@ void main() {
     );
     expect(
       compacted.whereType<BridgeSseMessagePartUpdated>().single.part,
-      isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", isNull),
+      _compactionPart(
+        const PluginCompactionState.completed(summary: null, freedTokens: null, trigger: PluginCompactionTrigger.auto),
+      ),
     );
   });
 
-  test("terminal compaction failures remove the running card and preserve its replay identity", () {
+  test("a manual compaction settles with the manual trigger", () {
+    dispatcher.map(sessionId: sessionId, event: _event("compaction_start", {"reason": "manual"}));
+    final compacted = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_end", {"reason": "manual", "aborted": false, "willRetry": false}),
+    );
+
+    expect(
+      compacted.whereType<BridgeSseMessagePartUpdated>().single.part,
+      _compactionPart(
+        const PluginCompactionState.completed(
+          summary: null,
+          freedTokens: null,
+          trigger: PluginCompactionTrigger.manual,
+        ),
+      ),
+    );
+  });
+
+  for (final (name, end, note) in [
+    (
+      "a terminal failure",
+      {"reason": "threshold", "errorMessage": "provider detail", "aborted": false, "willRetry": false},
+      const PluginCompactionState.failed(error: "provider detail"),
+    ),
+    (
+      "an abort",
+      {"reason": "manual", "aborted": true, "willRetry": false},
+      const PluginCompactionState.failed(error: null),
+    ),
+  ]) {
+    test("$name moves the row off the reserved id as a failure note, with no session error", () {
+      final compacting = dispatcher.map(
+        sessionId: sessionId,
+        event: _event("compaction_start", {"reason": end["reason"]}),
+        now: DateTime.fromMillisecondsSinceEpoch(5000),
+      );
+      final running = compacting.whereType<BridgeSseMessageUpdated>().single.info;
+
+      final failed = dispatcher.map(sessionId: sessionId, event: _event("compaction_end", end));
+      final restarted = dispatcher.map(
+        sessionId: sessionId,
+        event: _event("compaction_start", {"reason": "threshold"}),
+      );
+
+      expect(failed.whereType<BridgeSseSessionError>(), isEmpty);
+      expect(failed.first, isA<BridgeSseMessageRemoved>().having((event) => event.messageID, "messageID", running.id));
+      final noteMessage = failed.whereType<BridgeSseMessageUpdated>().single.info;
+      expect(noteMessage.id, "${running.id}-failed-5000");
+      expect(noteMessage.time, running.time);
+      expect(failed.whereType<BridgeSseMessagePartUpdated>().single.part, _compactionPart(note));
+      expect(restarted.whereType<BridgeSseMessageUpdated>().single.info.id, running.id);
+    });
+  }
+
+  test("a failure with no recorded start reports the session error", () {
+    final failed = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("compaction_end", {"errorMessage": "provider detail", "aborted": false, "willRetry": false}),
+    );
+
+    expect(failed, [isA<BridgeSseSessionError>()]);
+  });
+
+  test("clearing a live compaction moves the running row off the reserved id for the idle sweep", () {
     final compacting = dispatcher.map(
       sessionId: sessionId,
       event: _event("compaction_start", {"reason": "threshold"}),
+      now: DateTime.fromMillisecondsSinceEpoch(5000),
     );
-    final messageId = compacting.whereType<BridgeSseMessageUpdated>().single.info.id;
+    final running = compacting.whereType<BridgeSseMessageUpdated>().single.info;
 
-    final failed = dispatcher.map(
-      sessionId: sessionId,
-      event: _event("compaction_end", {
-        "reason": "threshold",
-        "errorMessage": "provider detail",
-        "aborted": false,
-        "willRetry": false,
-      }),
-    );
-    final restarted = dispatcher.map(
-      sessionId: sessionId,
-      event: _event("compaction_start", {"reason": "threshold"}),
-    );
+    final cleared = dispatcher.clearCompaction(sessionId: sessionId);
 
-    expect(failed.whereType<BridgeSseMessageRemoved>().single.messageID, messageId);
-    expect(failed.whereType<BridgeSseSessionError>(), hasLength(1));
-    expect(restarted.whereType<BridgeSseMessageUpdated>().single.info.id, messageId);
+    expect(cleared.first, isA<BridgeSseMessageRemoved>().having((event) => event.messageID, "messageID", running.id));
+    final moved = cleared.whereType<BridgeSseMessageUpdated>().single.info;
+    expect(moved.id, "${running.id}-failed-5000");
+    expect(moved.time, running.time);
+    expect(
+      cleared.whereType<BridgeSseMessagePartUpdated>().single.part,
+      _compactionPart(const PluginCompactionState.running(summary: null)),
+    );
+    expect(dispatcher.activeCompactionMessage(sessionId: sessionId), isNull);
+    expect(dispatcher.clearCompaction(sessionId: sessionId), isEmpty);
   });
 
   test("running compaction identity survives history hydration before completion", () {
@@ -1103,6 +1185,9 @@ PiEvent _event(String type, [Map<String, Object?> fields = const {}]) => PiEvent
   type: type,
   json: {"type": type, ...fields},
 );
+
+Matcher _compactionPart(PluginCompactionState state) =>
+    isA<PluginMessagePartCompaction>().having((part) => part.compactionState, "compactionState", state);
 
 Map<String, dynamic> _assistant({
   required List<Map<String, Object?>> content,

@@ -86,7 +86,7 @@ concrete problem can justify a documented temporary hold with a resolution path.
   on previously accepted explicit/PATH pairs in the plan. Do not manufacture
   an independent minimum or silently change this exact-pin policy.
 - **Assets:** Sesori selects all six ZIPs from the
-  [official registry](https://github.com/agentclientprotocol/registry/blob/7384f5e98d28cbbeba10035d520bdb680b19b3d8/antigravity-acp/agent.json):
+  [official registry](https://github.com/agentclientprotocol/registry/blob/f6c0f4e8357c7f28e84e3b883695c387b04ed2b9/antigravity-acp/agent.json):
   macOS arm64/x64, Linux arm64/x64 and Windows arm64/x64. Independently hash official downloads; do not portray
   locally computed checksums as Google's signed provenance. Preserve sibling
   `agy_acp_server.par` + `localharness_external` (Windows `.exe` counterparts),
@@ -106,6 +106,13 @@ concrete problem can justify a documented temporary hold with a resolution path.
   only generic parent-local subagent tool calls, not child identity/lifecycle or
   scoped-stop authority. Reassess on new evidence; do not infer support from
   native delegation or generic ACP features. Closed source limits remain explicit.
+  Inspect model selection's client-identity gates too: the official 1.3.0 package
+  keeps non-Gemini models only for recognized Zed/JetBrains/Xcode identities.
+  Account entitlement alone does not prove what ACP advertises. Any explicitly
+  approved compatibility identity stays inside the Antigravity plugin and must
+  reach live, replay, login and validation initialization consistently; preserve
+  the standard Sesori identity for other ACP harnesses. Verify this gate again
+  on future releases rather than inferring it from product model documentation.
 
 ## Codex
 
@@ -191,6 +198,8 @@ concrete problem can justify a documented temporary hold with a resolution path.
 - **Pin:** `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_runtime_manifest.dart`.
   Target is the exact `YYYY.MM.DD-<build>` string. PATH comparison uses the leading
   calendar date; preserve that separate minimum and the raw bundled build value.
+  The minimum is `2026.09.23`, the oldest build with evidence for the native
+  sub-agent child sessions Sesori always enables (`_meta.subagents`).
 - **Assets:** four self-hashed archives at
   `https://downloads.cursor.com/lab/<build>/<os>/<arch>/agent-cli-package.tar.gz`,
   for `darwin`/`linux` and `arm64`/`x64`. No Windows package. Download/hash all
@@ -202,8 +211,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   configured load/replay behavior used by the adapter. If that fixture is
   unavailable, update the target and retain load/replay/model/mode checks in
   final follow-up. Confirm download URLs resolve before consumer publication.
-- **Audit:** model switching, history/load, native Task/subagent coverage and
-  settings. Report inaccessible upstream source rather than guessing from CLI UX.
+- **Audit:** model switching, history/load, the native `subagent_spawned` /
+  `subagent_state_update` shapes and Task `rawInput`, and settings. Report
+  inaccessible upstream source rather than guessing from CLI UX.
 
 ## Claude Code
 
@@ -261,6 +271,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   must not be parsed as wire events without evidence; RPC can instead expose
   `extension_ui_request`. Inspect exact field casing, delta shape, retry/
   compaction, queue controls, models/auth, history and package changes.
+  Check `get_commands` `sourceInfo.path` for bundled extensions: since 0.99.0
+  they report `builtin:<name>` (`src/extensions/index.ts`), not `<inline:name>`,
+  and the catalog's excluded-source set must match the current form.
 - **Lifecycle:** preserve delta-only updates and `message_end` authority.
   `agent_end` is a low-level boundary that can precede retries or queued work;
   inspect `agent_settled` for user-visible completion, and distinguish per-turn/
@@ -303,6 +316,16 @@ concrete problem can justify a documented temporary hold with a resolution path.
   roots; use an allowlist, not inherited credentials, and preserve production
   approval policy. Missing fixtures become final checks while the target moves
   forward. Current-host execution is the ordinary existing-platform scope.
+  Also run the model-restore probe on a session whose saved model was removed.
+  From `18.6.3` (still in `18.8.0`), `session/load` and `session/resume` fail
+  closed with JSON-RPC `-32603` and `details: "Could not restore model
+  <provider/id>"`: ACP `#openStoredSession` calls `switchSession(path)` without
+  `allowSessionModelFallback` (upstream PR #13689). The owner accepted this
+  limitation on 2026-10-07, so it no longer holds the pin.
+  `OmpPlugin.unrestorableSessionMessage` turns it into a readable inline turn
+  error; history open and resume-then-delete cleanup still fail for such
+  sessions. Re-check each release: if the restore succeeds or the details
+  wording changes, update that mapping and the regression row.
   A new Windows ARM64 mapping needs native install/version/ACP smoke to claim
   native verification; another host is not that proof. If a runner is missing,
   retain the approved implementation and record the native check for final

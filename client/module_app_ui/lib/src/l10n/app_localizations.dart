@@ -961,12 +961,6 @@ abstract class AppLocalizations {
   /// **'The bridge setting changed while you were editing. Try again.'**
   String get settingsPullRequestRefreshStateChanged;
 
-  /// No description provided for @settingsPullRequestRefreshUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Unavailable'**
-  String get settingsPullRequestRefreshUnavailable;
-
   /// No description provided for @settingsPullRequestRefreshRetry.
   ///
   /// In en, this message translates to:
@@ -1528,7 +1522,7 @@ abstract class AppLocalizations {
   /// No description provided for @harnessesUnsupportedTitle.
   ///
   /// In en, this message translates to:
-  /// **'Harnesses aren\'t supported'**
+  /// **'Your bridge needs an update'**
   String get harnessesUnsupportedTitle;
 
   /// No description provided for @harnessesUnsupportedDescription.
@@ -2425,6 +2419,12 @@ abstract class AppLocalizations {
   /// **'Sesori couldn’t safely stop this session. Restart the harness, then try again.'**
   String get sessionDetailStopNotAcceptedGenericMessage;
 
+  /// No description provided for @sessionDetailStopNotAcceptedSubAgentMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the parent session; this harness cannot stop sub-agents individually.'**
+  String get sessionDetailStopNotAcceptedSubAgentMessage;
+
   /// No description provided for @sessionDetailStopScopeTitle.
   ///
   /// In en, this message translates to:
@@ -2605,6 +2605,24 @@ abstract class AppLocalizations {
   /// **'Ran'**
   String get sessionDetailCommandRan;
 
+  /// No description provided for @sessionDetailToolOutputLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading output'**
+  String get sessionDetailToolOutputLoading;
+
+  /// No description provided for @sessionDetailToolOutputFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the output.'**
+  String get sessionDetailToolOutputFailed;
+
+  /// No description provided for @sessionDetailToolOutputRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get sessionDetailToolOutputRetry;
+
   /// No description provided for @sessionDetailFollowOutput.
   ///
   /// In en, this message translates to:
@@ -2694,6 +2712,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 prompt loaded} other{{count} prompts loaded}}'**
   String transcriptPromptsLoaded(int count);
+
+  /// Last row of the Prompts screen when it lists every prompt in the session, loaded or not: how many there are.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 prompt} other{{count} prompts}}'**
+  String transcriptPromptsCount(int count);
+
+  /// Notice over the Prompts screen when loading the transcript up to a tapped earlier prompt failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open this prompt. Check your connection and try again.'**
+  String get transcriptPromptsOpenFailed;
+
+  /// Notice over the Prompts screen when a tapped earlier prompt was not found in the loaded transcript, for example because the session's history was rewritten.
+  ///
+  /// In en, this message translates to:
+  /// **'This prompt is no longer in the session'**
+  String get transcriptPromptsGone;
+
+  /// Notice over the Prompts screen when the session refreshed while a tapped earlier prompt was loading, so the load was dropped.
+  ///
+  /// In en, this message translates to:
+  /// **'The session just refreshed. Tap the prompt again.'**
+  String get transcriptPromptsRefreshed;
+
+  /// What screen readers say about a Prompts row while the transcript loads up to its earlier prompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading'**
+  String get transcriptPromptsLoading;
+
+  /// Last row of the Prompts screen while searching once it lists every prompt of the session: how many prompts match.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No matches} =1{1 match} other{{count} matches}}'**
+  String transcriptPromptsAllMatches(int count);
+
+  /// Last row of the Prompts screen while the bridge searches the whole text of every prompt and has not answered yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Searching earlier prompts…'**
+  String get transcriptPromptsSearchingEarlier;
+
+  /// Last row of the Prompts screen when the bridge's search of every prompt failed; the matches already shown stay.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t search earlier prompts'**
+  String get transcriptPromptsSearchEarlierFailed;
+
+  /// Button under the failed search row of the Prompts screen that asks the bridge to search every prompt again.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get transcriptPromptsSearchRetry;
 
   /// Day header of the Prompts screen over prompts whose send time is unknown.
   ///
@@ -3505,6 +3577,18 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get sessionListRunning;
 
+  /// Leads the meta line of a launching row, before the harness name: the bridge is still creating this new session.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating…'**
+  String get sessionListCreating;
+
+  /// Alert shown when the user taps a launching row, a new session the bridge has not created yet.
+  ///
+  /// In en, this message translates to:
+  /// **'This session is still being created. You can open it once it\'s ready.'**
+  String get sessionListLaunchingAlert;
+
   /// Shown on a session row, in place of its last-activity time, while the bridge has scheduled an automatic continuation after a quota reset. The time is local, with the date only when it is not today.
   ///
   /// In en, this message translates to:
@@ -4027,6 +4111,12 @@ abstract class AppLocalizations {
   /// **'This session is archived and read-only.'**
   String get sessionDetailArchivedNotice;
 
+  /// No description provided for @sessionDetailCannotContinueTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t continue this session'**
+  String get sessionDetailCannotContinueTitle;
+
   /// No description provided for @sessionDetailHarnessFallbackName.
   ///
   /// In en, this message translates to:
@@ -4321,6 +4411,18 @@ abstract class AppLocalizations {
   /// **'Your new session will appear in the list once it\'s launched'**
   String get newSessionLaunchingInBackground;
 
+  /// Alert title when creating new sessions fails after the user left their composers; their launching rows are gone from the lists. projects lists the projects' names.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Couldn\'t create your new session in {projects}} other{Couldn\'t create {count} new sessions in {projects}}}'**
+  String newSessionFailedAfterLeaving(int count, String projects);
+
+  /// Alert title when creating new sessions fails after the user left their composers and a project's name is unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Couldn\'t create your new session} other{Couldn\'t create {count} new sessions}}'**
+  String newSessionFailedAfterLeavingUnnamed(int count);
+
   /// No description provided for @commandSourceCommand.
   ///
   /// In en, this message translates to:
@@ -4440,6 +4542,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Compaction summary'**
   String get sessionDetailCompactionSummaryTitle;
+
+  /// Live transcript row while the coding agent summarizes its earlier conversation to free context space. An elapsed time may follow, e.g. 'Compacting context · 1m 42s'.
+  ///
+  /// In en, this message translates to:
+  /// **'Compacting context'**
+  String get sessionDetailCompactingContext;
+
+  /// Quiet transcript note when the coding agent could not summarize its earlier conversation. The harness's error may follow, e.g. 'Compaction failed · The turn ended before compaction finished.'
+  ///
+  /// In en, this message translates to:
+  /// **'Compaction failed'**
+  String get sessionDetailCompactionFailed;
+
+  /// Detail after 'Context compacted' saying how much context space the compaction freed, e.g. 'Context compacted · freed 142k tokens'. Starts lowercase because it follows a separator.
+  ///
+  /// In en, this message translates to:
+  /// **'freed {tokens} tokens'**
+  String sessionDetailCompactionFreedTokens(String tokens);
+
+  /// Detail after 'Context compacted' when the coding agent compacted on its own rather than on the user's request, e.g. 'Context compacted · auto'. Lowercase because it follows a separator.
+  ///
+  /// In en, this message translates to:
+  /// **'auto'**
+  String get sessionDetailCompactionAuto;
 
   /// No description provided for @sessionDetailCopy.
   ///
@@ -5094,6 +5220,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Auto continuation disabled. The previous continuation was already sent; future automatic sends are disabled.'**
   String get sessionAutoContinuationAlreadySubmitted;
+
+  /// Action beside any notice that the connected bridge is too old for a feature. Opens the sheet with the update steps.
+  ///
+  /// In en, this message translates to:
+  /// **'How to update'**
+  String get bridgeUpdateHowTo;
+
+  /// No description provided for @bridgeUpdateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Sesori Bridge'**
+  String get bridgeUpdateTitle;
+
+  /// No description provided for @bridgeUpdateIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'On the computer running the bridge:'**
+  String get bridgeUpdateIntro;
+
+  /// No description provided for @bridgeUpdateStepUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Update the bridge'**
+  String get bridgeUpdateStepUpdate;
+
+  /// Ctrl+C is the literal key combination that stops the bridge in its terminal; keep it as is.
+  ///
+  /// In en, this message translates to:
+  /// **'2. Restart it. In its terminal, press Ctrl+C, then run:'**
+  String get bridgeUpdateStepRestart;
+
+  /// No description provided for @bridgeUpdateRestartService.
+  ///
+  /// In en, this message translates to:
+  /// **'Running it as a service (launchd, systemd)? Restart the service instead.'**
+  String get bridgeUpdateRestartService;
+
+  /// Introduces the installer commands. Bridges older than the update command need a reinstall instead.
+  ///
+  /// In en, this message translates to:
+  /// **'If step 1 fails or the command isn\'t found, reinstall:'**
+  String get bridgeUpdateReinstallIntro;
+
+  /// No description provided for @bridgeUpdateMethodMacLinux.
+  ///
+  /// In en, this message translates to:
+  /// **'macOS / Linux'**
+  String get bridgeUpdateMethodMacLinux;
+
+  /// No description provided for @bridgeUpdateMethodWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows (PowerShell)'**
+  String get bridgeUpdateMethodWindows;
+
+  /// Literal tool name 'npm'; do not translate.
+  ///
+  /// In en, this message translates to:
+  /// **'npm'**
+  String get bridgeUpdateMethodNpm;
+
+  /// Literal tool name 'bun'; do not translate.
+  ///
+  /// In en, this message translates to:
+  /// **'bun'**
+  String get bridgeUpdateMethodBun;
+
+  /// No description provided for @bridgeUpdateReinstallRestart.
+  ///
+  /// In en, this message translates to:
+  /// **'Then start the bridge again.'**
+  String get bridgeUpdateReinstallRestart;
+
+  /// No description provided for @bridgeUpdateCopyCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy command'**
+  String get bridgeUpdateCopyCommand;
+
+  /// Title of the update sheet when the connected bridge runs inside the Sesori Desktop app, which is updated by installing a newer Sesori Desktop.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Sesori Desktop'**
+  String get bridgeUpdateDesktopTitle;
+
+  /// No description provided for @bridgeUpdateDesktopIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'This bridge runs inside Sesori Desktop. On that computer:'**
+  String get bridgeUpdateDesktopIntro;
+
+  /// No description provided for @bridgeUpdateDesktopStepDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Download the latest version:'**
+  String get bridgeUpdateDesktopStepDownload;
+
+  /// No description provided for @bridgeUpdateDesktopStepQuit.
+  ///
+  /// In en, this message translates to:
+  /// **'2. Quit Sesori Desktop (closing the window may not quit it).'**
+  String get bridgeUpdateDesktopStepQuit;
+
+  /// Platform-neutral: macOS replaces the app, Windows runs an installer, Linux uses the package manager.
+  ///
+  /// In en, this message translates to:
+  /// **'3. Install the new version, then open Sesori Desktop again.'**
+  String get bridgeUpdateDesktopStepInstall;
+
+  /// No description provided for @bridgeUpdateCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get bridgeUpdateCopyLink;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

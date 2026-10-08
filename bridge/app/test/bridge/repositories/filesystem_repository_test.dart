@@ -2,10 +2,15 @@ import "dart:async";
 import "dart:io";
 
 import "package:fake_async/fake_async.dart";
+import "package:sesori_bridge/src/api/drive_roots_api.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PlatformOs;
 import "package:test/test.dart";
+
+import "../../helpers/fake_process_runner.dart";
+import "../../helpers/test_drive_roots_api.dart";
 
 void main() {
   group("FilesystemRepository", () {
@@ -17,6 +22,7 @@ void main() {
       repository = FilesystemRepository(
         filesystemApi: const FilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
       );
     });
 
@@ -58,6 +64,7 @@ void main() {
       final growingRepository = FilesystemRepository(
         filesystemApi: _GrowingFilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
       );
 
       final result = growingRepository.readBoundedTextFile(
@@ -92,27 +99,19 @@ void main() {
           currentDirectory: "/fallback",
         ),
         permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
       );
 
       expect(repo.defaultBrowsePath, r"C:\Users\dev");
     });
 
-    test("listDriveRoots is empty off Windows", () async {
-      final repo = FilesystemRepository(
-        filesystemApi: _DriveFilesystemApi(isWindows: false, probes: {r"C:\": Future.value(true)}),
-        permissionValidator: const FilesystemPermissionValidator(),
-      );
-
-      expect(await repo.listDriveRoots(), isEmpty);
-    });
-
     test("listDriveRoots lists mounted Windows drives in letter order", () async {
       final repo = FilesystemRepository(
         filesystemApi: _DriveFilesystemApi(
-          isWindows: true,
           probes: {r"D:\": Future.value(true), r"C:\": Future.value(true), r"E:\": Future.value(false)},
         ),
         permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
       );
 
       expect(await repo.listDriveRoots(), [r"C:\", r"D:\"]);
@@ -121,14 +120,14 @@ void main() {
     test("listDriveRoots omits a drive whose probe fails and keeps the others", () async {
       final repo = FilesystemRepository(
         filesystemApi: _DriveFilesystemApi(
-          isWindows: true,
           probes: {
             r"C:\": Future.value(true),
-            r"E:\": Future.error(const FileSystemException("Access is denied", r"E:\")),
+            r"E:\": Future<bool>(() => throw const FileSystemException("Access is denied", r"E:\")),
             r"F:\": Future.value(true),
           },
         ),
         permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
       );
 
       expect(await repo.listDriveRoots(), [r"C:\", r"F:\"]);
@@ -137,11 +136,9 @@ void main() {
     test("listDriveRoots skips a drive whose probe stalls", () {
       fakeAsync((async) {
         final repo = FilesystemRepository(
-          filesystemApi: _DriveFilesystemApi(
-            isWindows: true,
-            probes: {r"C:\": Future.value(true), r"Z:\": Completer<bool>().future},
-          ),
+          filesystemApi: _DriveFilesystemApi(probes: {r"C:\": Future.value(true), r"Z:\": Completer<bool>().future}),
           permissionValidator: const FilesystemPermissionValidator(),
+          driveRootsApi: windowsDriveRootsApi,
         );
 
         List<String>? roots;
@@ -151,6 +148,40 @@ void main() {
         async.elapse(const Duration(seconds: 2));
         expect(roots, [r"C:\"]);
       });
+    });
+
+    test("listDriveRoots probes the volumes macOS mount lists", () async {
+      final processRunner = RecordingProcessRunner(
+        stdout: """
+/dev/disk3s3 on /Volumes/Recovery (apfs, local, journaled, nobrowse)
+/dev/disk5s1 on /Volumes/Work SSD (apfs, local, nodev, nosuid, journaled, noowners)
+//dev@nas/share on /Volumes/share (smbfs, nodev, nosuid, mounted by dev)
+""",
+      );
+      final repo = FilesystemRepository(
+        filesystemApi: _DriveFilesystemApi(probes: {"/Volumes/Work SSD": Future.value(true)}),
+        permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: DriveRootsApi.forPlatform(
+          platform: PlatformOs.macos,
+          processRunner: processRunner,
+        ),
+      );
+
+      expect(await repo.listDriveRoots(), ["/Volumes/Work SSD"]);
+      expect(processRunner.executable, "/sbin/mount");
+    });
+
+    test("listDriveRoots is empty when the mount table cannot be read", () async {
+      final repo = FilesystemRepository(
+        filesystemApi: _DriveFilesystemApi(probes: const {}),
+        permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: DriveRootsApi.forPlatform(
+          platform: PlatformOs.macos,
+          processRunner: RecordingProcessRunner(exitCode: 1, stderr: "mount: failed"),
+        ),
+      );
+
+      expect(await repo.listDriveRoots(), isEmpty);
     });
 
     for (final existingContent in ["build/", "# .worktrees/", "!.worktrees/"]) {
@@ -226,6 +257,7 @@ void main() {
       final repo = FilesystemRepository(
         filesystemApi: _PermissionDeniedFilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
       );
 
       expect(
@@ -243,6 +275,7 @@ void main() {
       final repo = FilesystemRepository(
         filesystemApi: _PermissionDeniedFilesystemApi(),
         permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
       );
 
       expect(
@@ -283,9 +316,6 @@ class _PermissionDeniedFilesystemApi() implements FilesystemApi {
 
   @override
   Map<String, String> get environment => const {};
-
-  @override
-  bool get isWindows => false;
 
   @override
   Future<bool> directoryExistsAsync(String path) async => true;
@@ -341,10 +371,7 @@ class _EnvironmentFilesystemApi({
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _DriveFilesystemApi({
-  @override required final bool isWindows,
-  required final Map<String, Future<bool>> _probes,
-}) implements FilesystemApi {
+class _DriveFilesystemApi({required final Map<String, Future<bool>> _probes}) implements FilesystemApi {
   @override
   Future<bool> directoryExistsAsync(String path) => _probes[path] ?? Future.value(false);
 

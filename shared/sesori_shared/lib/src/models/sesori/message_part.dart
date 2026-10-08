@@ -213,21 +213,55 @@ sealed class const MessagePart._() with _$MessagePart {
     @Default("") String retryError,
   }) = MessagePartRetry;
 
-  /// The harness compacted its context here.
+  /// The harness compacts its context here: running, completed or failed.
   @FreezedUnionValue("compaction")
   const factory compaction({
     required String id,
     required String sessionID,
     required String messageID,
-
-    /// The continuation summary the harness carried forward, when it exposes
-    /// one. Null when the harness keeps it private.
-    // COMPATIBILITY 2026-09-25 (v1.9.1): Released bridges omit the summary, which reads as null.
-    // Keep the field nullable; null stays the honest value for harnesses without a readable summary.
-    required String? summary,
+    // COMPATIBILITY 2026-10-07 (v1.9.1): Released bridges send compaction parts only for finished
+    // compactions and without a state. Remove @Default and require state when the minimum supported
+    // bridge always sends it.
+    @Default(CompactionState.completed(summary: null, freedTokens: null, trigger: null)) CompactionState state,
   }) = MessagePartCompaction;
 
   factory fromJson(Map<String, dynamic> json) => _$MessagePartFromJson(json);
+}
+
+/// What started a context compaction. Only reported where the harness says.
+@JsonEnum()
+enum CompactionTrigger() {
+  manual,
+  auto,
+}
+
+/// How far one context compaction got.
+///
+/// A status added by a newer bridge decodes as [CompactionState.completed],
+/// keeping any completed fields it carries, so the transcript still decodes.
+@Freezed(unionKey: "status", fallbackUnion: "completed", fromJson: true, toJson: true)
+sealed class CompactionState with _$CompactionState {
+  /// Compacting now. [summary] is the text written so far, when the harness
+  /// streams it.
+  @FreezedUnionValue("running")
+  const factory running({required String? summary}) = CompactionStateRunning;
+
+  /// Compacted. [summary] is the continuation summary the harness carried
+  /// forward, and [freedTokens] the context it released, each null when the
+  /// harness does not report it.
+  @FreezedUnionValue("completed")
+  const factory completed({
+    required String? summary,
+    required int? freedTokens,
+    @JsonKey(unknownEnumValue: JsonKey.nullForUndefinedEnumValue) required CompactionTrigger? trigger,
+  }) = CompactionStateCompleted;
+
+  /// The compaction ended without compacting. [error] is the harness's or the
+  /// bridge's explanation, when there is one.
+  @FreezedUnionValue("failed")
+  const factory failed({required String? error}) = CompactionStateFailed;
+
+  factory fromJson(Map<String, dynamic> json) => _$CompactionStateFromJson(json);
 }
 
 /// A client-safe attachment source normalized by the owning backend plugin.
@@ -318,8 +352,25 @@ enum ToolStatus() {
   unknown,
 }
 
-@Freezed(fromJson: true, toJson: true)
+/// How a page request wants finished tools' output and error delivered.
+@JsonEnum()
+enum ToolOutputDelivery() {
+  /// Every tool part carries its output and error.
+  inline,
+
+  /// Finished tool parts that have output or error arrive as
+  /// [ToolStateSummary]; the app fetches the detail through
+  /// `POST /session/tool-output` when a row expands.
+  onExpand,
+}
+
+/// A tool part's state, in full or as a summary without its output and error.
+///
+/// JSON without a `form` key, from stored rows and from bridges that predate
+/// summaries, decodes as [ToolStateFull].
+@Freezed(unionKey: "form", fallbackUnion: "default", fromJson: true, toJson: true)
 sealed class ToolState with _$ToolState {
+  @FreezedUnionValue("full")
   const factory({
     @JsonKey(unknownEnumValue: ToolStatus.unknown) required ToolStatus status,
     required String? title,
@@ -330,7 +381,17 @@ sealed class ToolState with _$ToolState {
     // which means the tool returned none. Remove @Default and require
     // attachments after the minimum supported bridge sends it.
     @JsonKey(fromJson: _messageAttachmentsFromJson) @Default(<MessageAttachment>[]) List<MessageAttachment> attachments,
-  }) = _ToolState;
+  }) = ToolStateFull;
+
+  /// A finished tool whose output or error the bridge withheld; the app
+  /// fetches them through `POST /session/tool-output`.
+  @FreezedUnionValue("summary")
+  const factory summary({
+    @JsonKey(unknownEnumValue: ToolStatus.unknown) required ToolStatus status,
+    required String? title,
+    required String? shellCommand,
+    @JsonKey(fromJson: _messageAttachmentsFromJson) required List<MessageAttachment> attachments,
+  }) = ToolStateSummary;
 
   factory fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);
 }

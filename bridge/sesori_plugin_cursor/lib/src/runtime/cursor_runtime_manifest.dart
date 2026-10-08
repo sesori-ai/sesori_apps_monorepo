@@ -33,12 +33,13 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 /// newer Cursor capability.
 class const CursorRuntimeManifest() extends RuntimeManifest {
   /// Minimum pre-installed (PATH) Cursor CLI build the bridge uses as-is.
-  /// Earlier builds advertise `acp` model switching and `session/load` but
-  /// silently no-op them, so the experience breaks invisibly.
-  static final CalendarRuntimeVersion _minPathVersion = CalendarRuntimeVersion.parse(value: "2026.07.16");
+  /// `2026.09.23` is the oldest build with evidence for the native sub-agent
+  /// child sessions the bridge always enables (`_meta.subagents`); without
+  /// them, Task calls would render no tile at all.
+  static final CalendarRuntimeVersion _minPathVersion = CalendarRuntimeVersion.parse(value: "2026.09.23");
 
   /// The latest official-installer Cursor build targeted by this plugin.
-  static const String targetVersion = "2026.09.23-86fc751";
+  static const String targetVersion = "2026.10.01-e373342";
 
   /// The exact Cursor CLI build the managed runtime installs, preserved
   /// verbatim: [CalendarRuntimeVersion] keeps the publisher's string, so the
@@ -62,7 +63,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "darwin/arm64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "fa3fe13d5589c586ff132a24c16eea96fb8efde88afdefddcd11d80fa199f3a5",
+        sha256: "629e51de43a0b7fb3b86f5ebc7e579f7df7df941b39f29e82945cde750145afc",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -70,7 +71,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "darwin/x64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "809335cd4a92f7c11a20f605213585b6136c7bfe6722069facf94e988d3ed0e7",
+        sha256: "a80db6e15626e0aa7af60fab3a95c98a243e2c1513c0c9485344a553d7b7b00e",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -80,7 +81,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "linux/arm64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "38d1482c945172926e780206fce8cc51c67dd4f96162bcec680903aa70d80417",
+        sha256: "785c5f6bf2a60eb1121e27ed8c14f5ee07ed1b5b6692324f2d9a997238245eb5",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -88,7 +89,7 @@ class const CursorRuntimeManifest() extends RuntimeManifest {
         assetName: "linux/x64/agent-cli-package.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "740dd9d6eb5aec36ca90eaedf9fd5e2c489cd674d69b5147b3c2670f02d9776d",
+        sha256: "a79726c6e644520e993970be4c45775a6889802b67abe461a677a53219ae28e8",
         archiveBinaryName: _packageBinaryName,
         layout: RuntimeArchiveLayout.packageDirectory,
       ),

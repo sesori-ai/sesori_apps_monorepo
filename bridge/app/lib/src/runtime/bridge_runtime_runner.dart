@@ -854,6 +854,7 @@ class const BridgeRuntimeRunner._() {
         failureReporter: failureReporter,
         restartService: restartService,
         filesystemAccessOk: filesystemAccessOk,
+        bridgeKind: options.bridgeKind,
         statusNotifier: controlStatusNotifier,
         reconnectBackoff: ReconnectBackoffPolicy.standard,
         startupRetryService: startupRetryService,

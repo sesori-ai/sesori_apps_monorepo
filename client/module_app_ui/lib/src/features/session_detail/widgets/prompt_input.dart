@@ -160,8 +160,30 @@ class const PromptInput({
   /// failure are coalesced before this composer can unmount.
   required final Key? restorationKey,
   required final ComposerDraft initialDraft,
+
+  /// Where the caret or selection starts in [initialDraft]; null puts the
+  /// caret at its end.
+  required final ({int base, int extent})? initialSelection,
   required final List<ComposerAttachment> initialAttachments,
   required final VoidCallback onInitialAttachmentsConsumed,
+
+  /// Told the staged images whenever they change, for an owner that hands them
+  /// on; null when nobody needs them outside this composer.
+  required final ValueChanged<List<ComposerAttachment>>? onAttachmentsChanged,
+
+  /// Told where the caret or selection moves, for an owner that hands the
+  /// composer on; null when nobody needs it outside this composer.
+  required final ValueChanged<({int base, int extent})>? onSelectionChanged,
+
+  /// Told when work starts or settles whose result lands in this composer
+  /// later — a voice recording or transcription, an image pick or paste, or a
+  /// word the keyboard is still composing — so an owner about to replace the
+  /// composer can wait for it; null when nobody replaces it.
+  required final ValueChanged<bool>? onBusyChanged,
+
+  /// Takes keyboard focus on the first frame, for a composer that continues
+  /// one which had it.
+  required final bool autofocus,
 
   /// Optional widget rendered inside the composer, above the text-field row.
   final Widget? header,
@@ -183,6 +205,11 @@ class _PromptInputState() extends State<PromptInput> {
   late TextEditingValue _previousEditingValue;
   bool _isApplyingDraft = false;
   bool _isSubmitting = false;
+
+  /// What [PromptInput.onBusyChanged] last heard, and the work behind it.
+  bool _reportedBusy = false;
+  bool _voiceBusy = false;
+  int _pendingInserts = 0;
   _VoiceGesturePresentation _voiceInteraction = const _VoiceIdle();
   VoiceInputState _renderedVoiceState = const VoiceInputState.idle();
   StreamSubscription<VoiceInputState>? _voiceStateSub;
@@ -244,11 +271,21 @@ class _PromptInputState() extends State<PromptInput> {
       controller: _controller,
     );
     _applyDraft(draft: widget.initialDraft, notify: false);
+    if (widget.initialSelection case (:final base, :final extent)) {
+      _controller.selection = TextSelection(baseOffset: base, extentOffset: extent);
+      _previousEditingValue = _controller.value;
+    }
     _restoreInitialAttachments();
     _hasText = _controller.text.trim().isNotEmpty;
     _controller.addListener(_handleTextChanged);
     _focusNode.addListener(_handleFocusChanged);
+    if (widget.autofocus) {
+      _typingRequested = true;
+      _focusComposerField();
+    }
   }
+
+  void _reportAttachments() => widget.onAttachmentsChanged?.call(List.unmodifiable(_attachments));
 
   @override
   void didChangeDependencies() {
@@ -288,6 +325,7 @@ class _PromptInputState() extends State<PromptInput> {
       }
       _attachments.add(attachment);
     }
+    _reportAttachments();
     final onConsumed = widget.onInitialAttachmentsConsumed;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -315,11 +353,30 @@ class _PromptInputState() extends State<PromptInput> {
         widget.onDraftChanged(nextDraft);
       }
     }
+    final selection = currentValue.selection;
+    if (selection.isValid && selection != _previousEditingValue.selection) {
+      widget.onSelectionChanged?.call((base: selection.baseOffset, extent: selection.extentOffset));
+    }
     _previousEditingValue = currentValue;
     final hasText = currentValue.text.trim().isNotEmpty;
     if (hasText != _hasText && mounted) {
       _updateComposerState(update: () => _hasText = hasText);
     }
+    _reportBusy();
+  }
+
+  /// Tells [PromptInput.onBusyChanged] when the composer starts or settles
+  /// work whose result lands in it later. A pick or paste that settles after
+  /// this composer is gone stays silent, as its owner may be gone too. A send
+  /// reports only once it has cleared the sent draft, so an outcome released
+  /// by that clear (a composed word committed by Send) cannot be wiped by it.
+  void _reportBusy() {
+    if (!mounted || _isSubmitting) return;
+    final composing = _controller.value.composing;
+    final busy = _voiceBusy || _pendingInserts > 0 || (composing.isValid && !composing.isCollapsed);
+    if (busy == _reportedBusy) return;
+    _reportedBusy = busy;
+    widget.onBusyChanged?.call(busy);
   }
 
   void _handleFocusChanged() {
@@ -477,6 +534,7 @@ class _PromptInputState() extends State<PromptInput> {
       _pasteGeneration++;
       if (_attachments.isNotEmpty) {
         setState(_attachments.clear);
+        _reportAttachments();
       }
       _controller.clear();
       widget.onDraftCleared();
@@ -489,6 +547,7 @@ class _PromptInputState() extends State<PromptInput> {
       }
     } finally {
       _isSubmitting = false;
+      _reportBusy();
     }
   }
 
@@ -514,6 +573,7 @@ class _PromptInputState() extends State<PromptInput> {
     // whatever was staged for the previous pick, so drop it with the action.
     if (widget.attachmentsSupported == false && _attachments.isNotEmpty) {
       setState(_attachments.clear);
+      _reportAttachments();
     }
     if (oldWidget.surfaceStyleController != widget.surfaceStyleController ||
         draftChanged ||
@@ -823,6 +883,11 @@ class _PromptInputState() extends State<PromptInput> {
 
   void _handleVoiceStateChanged(VoiceInputState state) {
     if (!mounted) return;
+    // Busy until the voice input is idle again: a failed transcription keeps
+    // its recording until Retry or Discard, and a completed one until its
+    // words are in the draft.
+    _voiceBusy = state is! VoiceInputIdle;
+    _reportBusy();
 
     switch (state) {
       case VoiceInputIdle():
@@ -1079,55 +1144,63 @@ class _PromptInputState() extends State<PromptInput> {
         ? context.watch<VoiceInputCubit>().state
         : const VoiceInputState.idle();
 
-    return DecoratedBox(
-      // Floating composer: no bar surface, no separator line.
-      decoration: composerScrimDecoration(prego: context.prego),
-      child: Column(
-        mainAxisSize: .min,
-        children: [
-          ?widget.header,
-          // A focused composer consumes the first route pop so Android back
-          // dismisses the keyboard before a later back leaves the screen.
-          Builder(
-            builder: (context) {
-              final shouldDismissKeyboardBeforePop =
-                  Theme.of(context).platform == TargetPlatform.android &&
-                  _focusNode.hasFocus &&
-                  capabilities.isKeyboardVisible;
-              return PopScope(
-                canPop: !shouldDismissKeyboardBeforePop,
-                onPopInvokedWithResult: (didPop, _) {
-                  if (!didPop && shouldDismissKeyboardBeforePop) _focusNode.unfocus();
-                },
-                child: switch (widget.composerTrailing) {
-                  null => _buildComposerTopSlot(context),
-                  final trailing => Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    spacing: 8,
-                    children: [
-                      Expanded(child: _buildComposerTopSlot(context)),
-                      Padding(padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2), child: trailing),
-                    ],
-                  ),
-                },
-              );
-            },
-          ),
+    // Floating composer: no bar surface, no separator line. Each control's
+    // [PregoPageHalo] fades the content passing under it.
+    return Column(
+      mainAxisSize: .min,
+      children: [
+        ?widget.header,
+        // A focused composer consumes the first route pop so Android back
+        // dismisses the keyboard before a later back leaves the screen.
+        Builder(
+          builder: (context) {
+            final shouldDismissKeyboardBeforePop =
+                Theme.of(context).platform == TargetPlatform.android &&
+                _focusNode.hasFocus &&
+                capabilities.isKeyboardVisible;
+            return PopScope(
+              canPop: !shouldDismissKeyboardBeforePop,
+              onPopInvokedWithResult: (didPop, _) {
+                if (!didPop && shouldDismissKeyboardBeforePop) _focusNode.unfocus();
+              },
+              child: switch (widget.composerTrailing) {
+                null => _buildComposerTopSlot(context),
+                final trailing => Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  spacing: 8,
+                  children: [
+                    Expanded(child: _buildComposerTopSlot(context)),
+                    Padding(
+                      padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
+                      child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
+                    ),
+                  ],
+                ),
+              },
+            );
+          },
+        ),
 
-          // Group only the input container with the text field via a
-          // TextFieldTapRegion. The field's default `onTapOutside` unfocuses
-          // (and dismisses the keyboard) on any pointer-down outside this
-          // region; keeping the send button inside stops the hide/re-show
-          // flicker that came from [_handleSend] re-requesting focus right
-          // after. The agent/model/variant pills in [composerHeader] are
-          // deliberately left outside the region, so tapping them dismisses the
-          // keyboard (their menus want the screen space the keyboard occupies).
-          TextFieldTapRegion(
-            child: Padding(
-              padding: EdgeInsetsDirectional.only(
-                top: widget.header != null ? 4 : 8,
-                bottom: MediaQuery.paddingOf(context).bottom + 8,
-              ),
+        // Group only the input container with the text field via a
+        // TextFieldTapRegion. The field's default `onTapOutside` unfocuses
+        // (and dismisses the keyboard) on any pointer-down outside this
+        // region; keeping the send button inside stops the hide/re-show
+        // flicker that came from [_handleSend] re-requesting focus right
+        // after. The agent/model/variant pills in [composerHeader] are
+        // deliberately left outside the region, so tapping them dismisses the
+        // keyboard (their menus want the screen space the keyboard occupies).
+        TextFieldTapRegion(
+          child: Padding(
+            padding: EdgeInsetsDirectional.only(
+              top: widget.header != null ? 4 : 8,
+              bottom: MediaQuery.paddingOf(context).bottom + 8,
+            ),
+            // The composer's halo runs on to the bottom edge, so nothing
+            // shows below it. It follows the animated size rather than one
+            // layout's surface, so it stays put while layouts cross-fade.
+            child: PregoPageHalo(
+              radius: PregoRadius.x3l,
+              reachesLayerBottom: true,
               child: AnimatedSize(
                 duration: _morphDuration,
                 curve: _morphCurve,
@@ -1174,8 +1247,8 @@ class _PromptInputState() extends State<PromptInput> {
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1202,10 +1275,14 @@ class _PromptInputState() extends State<PromptInput> {
           padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 12, 2),
           child: Align(
             alignment: AlignmentDirectional.centerStart,
-            child: GlassChip(
-              label: "/${commandInfo.name}",
-              onDeleted: widget.onCommandCleared,
-              deleteIcon: const Icon(TablerRegular.x, size: PregoIconSize.md),
+            child: PregoPageHalo(
+              radius: PregoRadius.full,
+              reachesLayerBottom: false,
+              child: GlassChip(
+                label: "/${commandInfo.name}",
+                onDeleted: widget.onCommandCleared,
+                deleteIcon: const Icon(TablerRegular.x, size: PregoIconSize.md),
+              ),
             ),
           ),
         ),
@@ -1244,31 +1321,35 @@ class _PromptInputState() extends State<PromptInput> {
 
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(12, 4, 12, 2),
-      child: Row(
-        spacing: PregoSpacing.sm,
-        children: [
-          Expanded(
-            child: Text(
-              loc.voiceRecordingSaved,
-              style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+      child: PregoPageHalo(
+        radius: PregoRadius.full,
+        reachesLayerBottom: false,
+        child: Row(
+          spacing: PregoSpacing.sm,
+          children: [
+            Expanded(
+              child: Text(
+                loc.voiceRecordingSaved,
+                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+              ),
             ),
-          ),
-          PregoButtonsSolid(
-            key: const Key("voice_saved_discard"),
-            label: loc.voiceDiscard,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.sm,
-            onPressed: _discardSavedRecording,
-          ),
-          PregoButtonsSolid(
-            key: const Key("voice_saved_retry"),
-            label: loc.voiceRetry,
-            leadingIcon: TablerRegular.refresh,
-            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-            size: PregoButtonsSolidSize.sm,
-            onPressed: _retrySavedRecording,
-          ),
-        ],
+            PregoButtonsSolid(
+              key: const Key("voice_saved_discard"),
+              label: loc.voiceDiscard,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.sm,
+              onPressed: _discardSavedRecording,
+            ),
+            PregoButtonsSolid(
+              key: const Key("voice_saved_retry"),
+              label: loc.voiceRetry,
+              leadingIcon: TablerRegular.refresh,
+              hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+              size: PregoButtonsSolidSize.sm,
+              onPressed: _retrySavedRecording,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1284,27 +1365,31 @@ class _PromptInputState() extends State<PromptInput> {
       // The design floats the helper spacing-3xl above the pill, less the
       // padding the tap-region below already contributes.
       padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs, bottom: PregoSpacing.xl),
-      child: SizedBox(
-        width: double.infinity,
-        child: ValueListenableBuilder<double>(
-          valueListenable: _cancelDragProgress,
-          builder: (context, progress, _) {
-            final cancelling = progress >= 1;
-            return Semantics(
-              liveRegion: true,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 150),
-                child: Text(
-                  cancelling ? loc.voiceReleaseToCancel : loc.voiceReleaseToTranscribe,
-                  key: ValueKey(cancelling),
-                  textAlign: TextAlign.center,
-                  style: prego.textTheme.textMd.regular.copyWith(
-                    color: cancelling ? prego.colors.textErrorPrimary : prego.colors.textPrimary,
+      child: Center(
+        // The halo hugs the label, not the full-width strip.
+        child: PregoPageHalo(
+          radius: PregoRadius.full,
+          reachesLayerBottom: false,
+          child: ValueListenableBuilder<double>(
+            valueListenable: _cancelDragProgress,
+            builder: (context, progress, _) {
+              final cancelling = progress >= 1;
+              return Semantics(
+                liveRegion: true,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 150),
+                  child: Text(
+                    cancelling ? loc.voiceReleaseToCancel : loc.voiceReleaseToTranscribe,
+                    key: ValueKey(cancelling),
+                    textAlign: TextAlign.center,
+                    style: prego.textTheme.textMd.regular.copyWith(
+                      color: cancelling ? prego.colors.textErrorPrimary : prego.colors.textPrimary,
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -1644,7 +1729,10 @@ class _PromptInputState() extends State<PromptInput> {
             imageLabel: _attachments[index].filename ?? loc.sessionDetailAttachedImage,
             onOpen: () => _openAttachment(attachment: _attachments[index]),
             removeLabel: loc.sessionDetailRemoveAttachment,
-            onRemove: () => setState(() => _attachments.removeAt(index)),
+            onRemove: () {
+              setState(() => _attachments.removeAt(index));
+              _reportAttachments();
+            },
             image: Hero(
               tag: ObjectKey(_attachments[index]),
               child: Image.memory(
@@ -1761,6 +1849,7 @@ class _PromptInputState() extends State<PromptInput> {
     // the new session's composer. It can equally settle after the harness
     // stopped supporting attachments, which the strip must not outlive.
     final draftIdentity = widget.draftIdentity;
+    _startInsert();
     try {
       final attachment = await _attachmentDispatcher.pickImage();
       if (!mounted ||
@@ -1780,7 +1869,20 @@ class _PromptInputState() extends State<PromptInput> {
       loge("Failed to attach an image", error);
       if (!mounted || draftIdentity != widget.draftIdentity) return;
       _showComposerNotice(context.loc.sessionDetailAttachmentPickFailed);
+    } finally {
+      _settleInsert();
     }
+  }
+
+  /// An image pick or a paste, whose result lands after an await.
+  void _startInsert() {
+    _pendingInserts++;
+    _reportBusy();
+  }
+
+  void _settleInsert() {
+    _pendingInserts--;
+    _reportBusy();
   }
 
   /// Reads an image before allowing Flutter's normal text paste to run. An
@@ -1831,6 +1933,9 @@ class _PromptInputState() extends State<PromptInput> {
     required FutureOr<void> Function() onTextPaste,
     required VoidCallback? onImagePasted,
   }) async {
+    // The text fallback reads the clipboard too, so the paste is busy until
+    // whichever lands has landed.
+    _startInsert();
     try {
       switch (await _handlePasteImage()) {
         case _PasteImageResult.noImage:
@@ -1849,6 +1954,8 @@ class _PromptInputState() extends State<PromptInput> {
       }
     } catch (error, stackTrace) {
       loge("Failed to handle composer paste", error, stackTrace);
+    } finally {
+      _settleInsert();
     }
   }
 
@@ -1866,6 +1973,7 @@ class _PromptInputState() extends State<PromptInput> {
       return false;
     }
     setState(() => _attachments.add(attachment));
+    _reportAttachments();
     return true;
   }
 

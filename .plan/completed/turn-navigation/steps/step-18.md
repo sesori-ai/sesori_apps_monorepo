@@ -25,7 +25,9 @@ incomplete.
 | Pinch in on a real iPhone (step 13's device check) | `Pass`, user's real devices, 2026-10-06 |
 | Pinch in on a real macOS trackpad (step 13's device check) | `Pass`, user's real devices, 2026-10-06 |
 | iOS phone, the rest of the real-device list | `Not run` |
-| Pinch out on the Prompts screen, real device | `Not run`; no device recording |
+| Pinch out on the Prompts screen, macOS release build, after #1912 | `Pass`, user's retest, 2026-10-08 |
+| Pinch out on the Prompts screen, Android | `Not run`; checked in the next internal build |
+| Pinch out on the Prompts screen, real iPhone | `Not run`; no device recording |
 | macOS desktop, the rest of its list | `Not run` |
 | Android phone smoke | `Not run` |
 | Windows and Linux smoke | `Not run`; CI builds only |
@@ -74,19 +76,38 @@ lag and the analytics event's arrival.
 
 ## Acceptance
 
-**Pending.** [README](../../../../docs/regression/README.md) and the plan's
-matrix require the user's explicit acceptance, recorded in `PLAN.md`, of every
-`Not run` cell above before the plan retires. This step does not claim that
-acceptance. Until the user gives it in this PR, or asks for the cells to run
-first, the PR must not merge.
+**Accepted by the user on 2026-10-08**, who released this retirement once
+#1912 had been retested, and recorded in
+[PLAN](../PLAN.md#regression-coverage) as
+[README](../../../../docs/regression/README.md) requires.
+
+## Pinch Out Follow-Up (#1912)
+
+The user found the pinch out unreliable and replaced its feel in the
+standalone #1912 (merged 2026-10-08, `547aee7042`). Their decisions of
+2026-10-08:
+
+- **P1:** a second finger landing always takes the pinch, even while the list
+  is already scrolling under the first.
+- **P2:** by touch, progress is the fingers' spread in pixels: +200 px is fully
+  closed and a release past +100 px closes. The trackpad keeps its scale
+  mapping.
+- **P3:** the screen grows and dissolves; a quick flick short of +100 px always
+  eases back.
+- **P4:** repaint boundaries, then one macOS release retest. The user retested
+  and confirmed the feel.
+
+Android is checked in the next internal build, not before the merge; that cell
+stays `Not run` until then.
 
 ## Handed Off, Not Decided Here
 
 - **Pagination gaps.** The Prompts screen lists only the prompts the
   transcript has loaded, and the pinned prompt does not show while its opener
-  is not loaded. A bridge prompt index that would close both is under the
-  user's review as a separate future design; the plan's later phases F1 and F2
-  are related intent. This plan takes no decision on it.
+  is not loaded. A bridge prompt index that would close both went to a
+  separate design, since built by the `transcript-history` plan (retired in
+  #1910); the plan's later phases F1 and F2 are related intent. This plan took
+  no decision on it.
 - **"Load earlier prompts" follow-up.** Disabling the control while the list
   refreshes and the wrapped-label sliver, promised in #1832's threads, ship as
   a standalone PR from `turn-navigation/load-earlier-follow-up`, outside this

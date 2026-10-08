@@ -203,12 +203,13 @@ download, verification, or placement. Use a disposable data directory.
   installation, version, ACP initialize and teardown have not been
   exercised; they remain required coverage rather than inferred from metadata,
   simulated platform tests or macOS/x64 runs.
-- Antigravity's managed manifest uses registry package version `1.2.1` for its version directory and separately
-  validates the exact ACP runtime identity `1.2.1`. The initialize-only validator uses
+- Antigravity's managed manifest uses registry package version `1.3.0` for its version directory and separately
+  validates the exact ACP runtime identity `1.3.0`. The initialize-only validator uses
   disposable managed state, a sanitized false-inheritance environment, and the shared abort signal; it neither
-  authenticates nor creates a session. This target has macOS arm64 native initialize/teardown coverage, but its complete
-  managed-pipeline run remains unverified. Linux x64, Linux arm64, Windows x64 and Windows arm64 native correctness
-  remains unverified.
+  authenticates nor creates a session. All six archive hashes, layouts and permissions are independently verified;
+  hardened macOS arm64 extraction passed. A 2026-10-06 network-denied macOS arm64 run passed the complete managed
+  pipeline (`ProvisionReady`, archive served from the verified local copy), `--version`, initialize and teardown.
+  Other native targets and authenticated behavior remain unverified. Earlier `1.2.1` native observations do not verify this pin.
 - Startup upgrade replaces only an existing Sesori-managed runtime; otherwise Install remains explicit. A PATH runtime
   preserves managed directories and suppresses automatic managed downloads.
 - There is no hot swap: a generation started on the older supported runtime keeps it until
@@ -244,5 +245,5 @@ download, verification, or placement. Use a disposable data directory.
   managed-install and version-validator suites cover cache reuse and the existing exact-version adapter. Antigravity's
   release, manifest, descriptor, runtime-service and candidate-validator suites cover all six immutable artifact
   mappings, install availability/override/failure, and isolated initialize-only environment, cwd, exact-contract,
-  timeout and abort forwarding. Package `1.2.1` macOS x64 archive integrity, hardened extraction, sibling permissions
+  timeout and abort forwarding. Earlier package `1.2.1` macOS x64 archive integrity, hardened extraction, sibling permissions
   and x86_64 headers are verified; native Intel installation and initialize validation remain unverified.

@@ -37,6 +37,7 @@ void main() {
       imageBearingItemParser: imageBearingItemParser,
       rolloutToolMapper: rolloutToolMapper,
       userContentMapper: userContentMapper,
+      clock: const ServerClock(),
     );
     final rolloutLifecycle = _ToolLifecycleHarness(
       eventMapper: mapper,
@@ -230,6 +231,7 @@ void main() {
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
+        clock: const ServerClock(),
       )..setThreadDirectory("t-9", "/repo/app/packages/ui");
 
       final events = scopedMapper.map(
@@ -251,6 +253,7 @@ void main() {
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
+        clock: const ServerClock(),
       );
       mapThreadStarted(
         activityMapper,
@@ -299,6 +302,7 @@ void main() {
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
+        clock: const ServerClock(),
       );
       mapThreadStarted(
         activityMapper,
@@ -783,45 +787,75 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
     });
 
-    test("contextCompaction runs as a tool card and finishes as a compaction row", () {
-      final started = mapper.map(
-        const CodexServerNotification(
-          method: "item/started",
-          params: {
-            "threadId": "t-1",
-            "turnId": "u-compact",
-            "item": {"type": "contextCompaction", "id": "cmp-1"},
-          },
-        ),
-      );
-      final completed = mapper.map(
-        const CodexServerNotification(
-          method: "item/completed",
-          params: {
-            "threadId": "t-1",
-            "turnId": "u-compact",
-            "item": {"type": "contextCompaction", "id": "cmp-1"},
-          },
-        ),
-      );
+    List<BridgeSseEvent> compactionItem({required String method, required Map<String, Object?> times}) => mapper.map(
+      CodexServerNotification(
+        method: method,
+        params: {
+          "threadId": "t-1",
+          "turnId": "u-compact",
+          "item": {"type": "contextCompaction", "id": "cmp-1"},
+          ...times,
+        },
+      ),
+    );
+
+    Matcher compactionPart(PluginCompactionState state) => isA<BridgeSseMessagePartUpdated>().having(
+      (event) => event.part,
+      "part",
+      isA<PluginMessagePartCompaction>()
+          .having((part) => part.id, "id", "cmp-1-tool")
+          .having((part) => part.compactionState, "compactionState", state),
+    );
+
+    test("contextCompaction runs live from startedAtMs and settles in place", () {
+      final started = compactionItem(method: "item/started", times: {"startedAtMs": 1779293103000});
+      final completed = compactionItem(method: "item/completed", times: {"completedAtMs": 1779293104000});
 
       expect(started, hasLength(2));
       expect(
         (started[0] as BridgeSseMessageUpdated).info,
-        isA<PluginMessageAssistant>(),
+        isA<PluginMessageAssistant>().having(
+          (info) => info.time,
+          "time",
+          const PluginMessageTime(created: 1779293103000, completed: null),
+        ),
       );
-      final startedPart = (started[1] as BridgeSseMessagePartUpdated).part;
-      expect(startedPart.tool, "compact");
-      expect(startedPart.state.title, isNull);
-      expect(startedPart.state.status, PluginToolStatus.running);
+      expect(started[1], compactionPart(const PluginCompactionState.running(summary: null)));
 
       expect(completed, hasLength(3));
-      final completedPart = (completed[1] as BridgeSseMessagePartUpdated).part;
-      expect(completedPart.id, startedPart.id);
-      expect(completedPart, isA<PluginMessagePartCompaction>().having((part) => part.summary, "summary", isNull));
       expect(
-        completed.whereType<BridgeSseSessionCompacted>().single.sessionID,
-        "t-1",
+        (completed[0] as BridgeSseMessageUpdated).info.time,
+        const PluginMessageTime(created: 1779293103000, completed: 1779293104000),
+      );
+      expect(
+        completed[1],
+        compactionPart(const PluginCompactionState.completed(summary: null, freedTokens: null, trigger: null)),
+      );
+      expect(completed.whereType<BridgeSseSessionCompacted>().single.sessionID, "t-1");
+    });
+
+    test("contextCompaction without startedAtMs keeps the stamped start through the settle", () {
+      final before = DateTime.now().millisecondsSinceEpoch;
+      final started = compactionItem(method: "item/started", times: const {});
+      final after = DateTime.now().millisecondsSinceEpoch;
+      final completed = compactionItem(method: "item/completed", times: const {});
+
+      final stamp = (started[0] as BridgeSseMessageUpdated).info.time?.created;
+      expect(stamp, allOf(isNotNull, greaterThanOrEqualTo(before), lessThanOrEqualTo(after)));
+      expect(started[1], compactionPart(const PluginCompactionState.running(summary: null)));
+      expect((completed[0] as BridgeSseMessageUpdated).info.time?.created, stamp);
+    });
+
+    test("a contextCompaction completion with no known start keeps completedAtMs", () {
+      final completed = compactionItem(method: "item/completed", times: {"completedAtMs": 1779293104000});
+
+      expect(
+        (completed[0] as BridgeSseMessageUpdated).info.time,
+        const PluginMessageTime(created: 1779293104000, completed: 1779293104000),
+      );
+      expect(
+        completed[1],
+        compactionPart(const PluginCompactionState.completed(summary: null, freedTokens: null, trigger: null)),
       );
     });
 
@@ -857,6 +891,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
+        clock: const ServerClock(),
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       // thread/started carries the provider; the mapper remembers it per thread.
@@ -896,6 +931,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         imageBearingItemParser: imageBearingItemParser,
         rolloutToolMapper: rolloutToolMapper,
         userContentMapper: userContentMapper,
+        clock: const ServerClock(),
         config: const CodexConfigDefaults(model: "gpt-5.5", modelProvider: "openai"),
       );
       mapThreadStarted(

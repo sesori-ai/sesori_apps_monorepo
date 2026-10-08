@@ -11,6 +11,7 @@ import "package:sesori_shared/sesori_shared.dart"
 
 import "../../api/models/pi_session_history_dto.dart";
 import "../../models/pi_assistant_stop_reason.dart";
+import "../../models/pi_compaction_reason.dart";
 import "pi_message_identity_builder.dart";
 import "pi_persisted_user_text_codec.dart";
 
@@ -260,42 +261,55 @@ final class PiHistoryMapper({
     }
   }
 
-  PluginMessageWithParts mapRunningCompaction({required String sessionId, required String messageId}) {
-    final draft = _toolMessage(
-      sessionId: sessionId,
-      messageId: messageId,
-      timestamp: null,
-      tool: "compact",
-      // Status already conveys progress; compaction has no additional detail.
-      title: null,
-      shellCommand: null,
-      output: null,
-      error: null,
-      status: PluginToolStatus.running,
-    );
-    return PluginMessageWithParts(info: draft.info, parts: draft.parts);
-  }
+  /// A live compaction. Pi sends no compaction time, so [startedAtMs] is the
+  /// bridge's stamp of `compaction_start`, which the row's timer counts from.
+  PluginMessageWithParts mapRunningCompaction({
+    required String sessionId,
+    required String messageId,
+    required int startedAtMs,
+  }) => _compactionMessage(
+    sessionId: sessionId,
+    messageId: messageId,
+    timestamp: startedAtMs,
+    state: const .running(summary: null),
+  );
 
-  /// A finished compaction. The part keeps the running card's id, so it
-  /// replaces that card in place.
+  /// A finished compaction. The part keeps the running row's id, so it
+  /// settles in place. History entries carry no reason, so their [reason] is
+  /// null. Pi reports only the tokens before compaction, so no freed count.
   PluginMessageWithParts mapCompaction({
     required String sessionId,
     required String messageId,
+    required int? startedAtMs,
     required String? summary,
-  }) {
-    final running = mapRunningCompaction(sessionId: sessionId, messageId: messageId);
-    return PluginMessageWithParts(
-      info: running.info,
-      parts: [
-        PluginMessagePart.compaction(
-          id: _toolPartId(messageId: messageId),
-          sessionID: sessionId,
-          messageID: messageId,
-          summary: summary,
-        ),
-      ],
-    );
-  }
+    required PiCompactionReason? reason,
+  }) => _compactionMessage(
+    sessionId: sessionId,
+    messageId: messageId,
+    timestamp: startedAtMs,
+    state: .completed(
+      summary: summary,
+      freedTokens: null,
+      trigger: switch (reason) {
+        PiCompactionReason.manual => PluginCompactionTrigger.manual,
+        PiCompactionReason.threshold || PiCompactionReason.overflow => PluginCompactionTrigger.auto,
+        null => null,
+      },
+    ),
+  );
+
+  /// The note a compaction leaves when Pi gives up on it or it is aborted.
+  PluginMessageWithParts mapFailedCompaction({
+    required String sessionId,
+    required String messageId,
+    required int startedAtMs,
+    required String? error,
+  }) => _compactionMessage(
+    sessionId: sessionId,
+    messageId: messageId,
+    timestamp: startedAtMs,
+    state: .failed(error: error),
+  );
 
   PluginMessageWithParts mapBashExecution({
     required String sessionId,
@@ -448,7 +462,13 @@ final class PiHistoryMapper({
           }
         case PiCompactionEntryDto(:final summary):
           final messageId = identities.nextCompaction();
-          final mapped = mapCompaction(sessionId: sessionId, messageId: messageId, summary: summary);
+          final mapped = mapCompaction(
+            sessionId: sessionId,
+            messageId: messageId,
+            startedAtMs: null,
+            summary: summary,
+            reason: null,
+          );
           messages.add(_MessageDraft(info: mapped.info, parts: mapped.parts.toList()));
         case PiCustomMessageEntryDto(:final content, :final display):
           final messageId = identities.nextTopLevelCustomMessage();
@@ -773,6 +793,32 @@ final class PiHistoryMapper({
       ],
     );
   }
+
+  PluginMessageWithParts _compactionMessage({
+    required String sessionId,
+    required String messageId,
+    required int? timestamp,
+    required PluginCompactionState state,
+  }) => PluginMessageWithParts(
+    info: PluginMessage.assistant(
+      id: messageId,
+      sessionID: sessionId,
+      agent: _pluginId,
+      modelID: null,
+      providerID: null,
+      variant: null,
+      sender: PluginMessageSender.agent,
+      time: _time(timestamp),
+    ),
+    parts: [
+      PluginMessagePart.compaction(
+        id: _toolPartId(messageId: messageId),
+        sessionID: sessionId,
+        messageID: messageId,
+        compactionState: state,
+      ),
+    ],
+  );
 
   String _toolPartId({required String messageId}) => "$messageId-tool";
 

@@ -124,6 +124,47 @@ void main() {
       expect(attachment.filename, "shot.png");
     });
 
+    test("database and archived pages drop only a shell title that repeats its command", () async {
+      for (final (id, title, command) in const [
+        ("dup", "git status", "git status"),
+        ("own", "Check the tree", "git status"),
+        ("read", "lib/main.dart", null),
+      ]) {
+        await history.service.capturePart(
+          sessionId: "ses_a",
+          part: MessagePart.tool(
+            id: id,
+            sessionID: "ses_a",
+            messageID: "m1",
+            tool: "bash",
+            state: ToolState(
+              status: ToolStatus.completed,
+              title: title,
+              shellCommand: command,
+              output: null,
+              error: null,
+            ),
+          ),
+        );
+      }
+      Map<String, String?> titles(ChatHistoryPage? page) => {
+        for (final part in page!.messages.expand((message) => message.parts))
+          if (part case MessagePartTool(:final id, :final state)) id: state.title,
+      };
+      const expected = {"dup": null, "own": "Check the tree", "read": "lib/main.dart"};
+
+      final stored = await history.repository.getSessionMessages(
+        sessionId: "ses_a",
+        storageScope: testAttachmentStorageScope(sessionId: "ses_a"),
+      );
+      expect(titles(stored), expected);
+
+      await export();
+      await history.service.purgeSessionHistory(sessionId: "ses_a");
+
+      expect(titles(await history.service.getArchivedSessionMessages(sessionId: "ses_a")), expected);
+    });
+
     test("archived pages use the same exclusive cursor as the live store", () async {
       await export();
       await history.service.purgeSessionHistory(sessionId: "ses_a");

@@ -59,14 +59,26 @@ void main() {
       );
       final process = await harness.nextSessionProcess();
       await waitForCommand(process: process, type: "prompt");
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
       process.emit(frame: {"type": "compaction_start", "reason": "threshold"});
       await pump();
 
       final messages = await harness.plugin.getSessionMessages("session");
 
       expect(messages, hasLength(1));
-      expect(messages.single.parts.single.state.status, PluginToolStatus.running);
-      expect(messages.single.parts.single.state.title, isNull);
+      final live = events.whereType<BridgeSseMessageUpdated>().single.info;
+      expect(messages.single.info.id, live.id);
+      expect(messages.single.info.time, allOf(isNotNull, live.time));
+      expect(
+        messages.single.parts.single,
+        isA<PluginMessagePartCompaction>().having(
+          (part) => part.compactionState,
+          "compactionState",
+          const PluginCompactionState.running(summary: null),
+        ),
+      );
     });
 
     test("buffers created before busy when the first turn starts", () async {
@@ -970,7 +982,7 @@ final class _CommandExecutor() implements CommandExecutor {
     Duration? timeout,
   }) async {
     calls.add((executable, arguments));
-    return const CommandResult(exitCode: 0, stdout: "pi 0.84.1", stderr: "");
+    return const CommandResult(exitCode: 0, stdout: "pi 0.99.0", stderr: "");
   }
 }
 

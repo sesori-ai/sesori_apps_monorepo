@@ -5,6 +5,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../foundation/antigravity_authentication_budget.dart";
+import "../foundation/antigravity_identity.dart";
 import "../foundation/antigravity_release.dart";
 import "models/antigravity_initialize_dto.dart";
 import "models/antigravity_version_dto.dart";
@@ -64,6 +65,7 @@ class AntigravityAcpApi({
       );
       final initialized = await _awaitPhase(
         operation: AcpAgentApi(client: client).initializeOnly(
+          clientIdentity: AntigravityIdentity.acpClientIdentity,
           formElicitation: false,
           capabilityMeta: null,
           timeout: _remaining(timeout: timeout, deadline: deadline),
@@ -100,6 +102,7 @@ class AntigravityAcpApi({
       await client.connect();
       final agent = AcpAgentApi(client: client);
       await agent.initialize(
+        clientIdentity: AntigravityIdentity.acpClientIdentity,
         formElicitation: false,
         capabilityMeta: null,
         authMethodId: null,

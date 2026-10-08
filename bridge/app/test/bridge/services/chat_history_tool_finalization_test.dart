@@ -1,3 +1,7 @@
+import "dart:convert";
+import "dart:typed_data";
+
+import "package:sesori_bridge/src/repositories/chat_history_repository.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -62,10 +66,47 @@ void main() {
       final stored = await _storedParts(history: history, sessionId: "ses_a");
       final swept = stored["s1"]! as MessagePartSubtask;
       expect(swept.taskState?.status, ToolStatus.cancelled);
-      expect(swept.taskState?.error, isNull);
+      expect((swept.taskState! as ToolStateFull).error, isNull);
       expect(swept.childSessionID, "child-1");
       expect((stored["s2"]! as MessagePartSubtask).taskState?.status, ToolStatus.completed);
       expect((stored["s3"]! as MessagePartSubtask).taskState, isNull, reason: "OpenCode shape is untouched");
+    });
+
+    test("finalizes a running compaction to failed and leaves settled ones alone", () async {
+      final history = createTestChatHistory();
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
+      const completed = CompactionState.completed(summary: "## Goal", freedTokens: 142000, trigger: null);
+      const failed = CompactionState.failed(error: "Not enough messages.");
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _compactionPart(
+          id: "c1",
+          messageId: "m1",
+          state: const CompactionState.running(summary: "## Go"),
+        ),
+      );
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _compactionPart(id: "c2", messageId: "m1", state: completed),
+      );
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _compactionPart(id: "c3", messageId: "m1", state: failed),
+      );
+
+      final finalized = await history.service.finalizeOpenToolParts(sessionId: "ses_a");
+
+      expect(finalized.map((shapes) => shapes.inlinePart.id), ["c1"]);
+      final stored = await _storedParts(history: history, sessionId: "ses_a");
+      expect(
+        (stored["c1"]! as MessagePartCompaction).state,
+        const CompactionState.failed(error: "The turn ended before compaction finished."),
+      );
+      expect((stored["c2"]! as MessagePartCompaction).state, completed);
+      expect((stored["c3"]! as MessagePartCompaction).state, failed);
     });
 
     test("keeps shell command and output of a finalized part", () async {
@@ -90,6 +131,48 @@ void main() {
       final stored = await _storedParts(history: history, sessionId: "ses_a");
       expect(_stateOf(stored["t1"]!).shellCommand, "git status");
       expect(_stateOf(stored["t1"]!).output, "partial");
+    });
+
+    test("keeps the stored attachments of a finalized part", () async {
+      final history = createTestChatHistory();
+      final imageBytes = Uint8List.fromList([1, 2, 3, 4]);
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: MessagePart.tool(
+          id: "t1",
+          sessionID: "ses_a",
+          messageID: "m1",
+          tool: "Read",
+          state: ToolState(
+            status: ToolStatus.running,
+            title: null,
+            shellCommand: null,
+            output: null,
+            error: null,
+            attachments: [
+              MessageAttachment.inlineImage(mime: "image/png", base64: base64Encode(imageBytes), filename: "a.png"),
+            ],
+          ),
+        ),
+      );
+
+      await history.service.finalizeOpenToolParts(sessionId: "ses_a");
+
+      final page = await history.repository.getSessionMessages(
+        sessionId: "ses_a",
+        storageScope: testAttachmentStorageScope(sessionId: "ses_a"),
+        attachmentProjection: const StoredReferenceMessageAttachmentProjection(bridgeId: "br_test1234"),
+      );
+      final state = _stateOf(page.messages.single.parts.single);
+      expect(state.status, ToolStatus.error);
+      expect(
+        state.attachments.single,
+        isA<MessageAttachmentStoredImage>().having((image) => image.byteLength, "byteLength", imageBytes.length),
+      );
     });
 
     test("returns both delivery shapes for each finalized part", () async {
@@ -200,6 +283,44 @@ void main() {
       final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
 
       expect(_stateOf(served.single.parts.single).status, ToolStatus.error);
+    });
+
+    test("a backfill read finalizes an imported running compaction when the session is not busy", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          MessageWithParts(
+            info: _message(id: "m1"),
+            parts: [_compactionPart(id: "c1", messageId: "m1", state: const CompactionState.running(summary: null))],
+          ),
+        ],
+        status: const SessionStatus.idle(),
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+
+      final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
+
+      expect((served.single.parts.single as MessagePartCompaction).state, isA<CompactionStateFailed>());
+    });
+
+    test("a fresh store finalizes a running compaction left by an abrupt death", () async {
+      final repository = _FakeSessionRepository(transcript: const [], status: const SessionStatus.idle());
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.backfillSession(sessionId: "ses_a");
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "m1"),
+      );
+      await history.service.capturePart(
+        sessionId: "ses_a",
+        part: _compactionPart(id: "c1", messageId: "m1", state: const CompactionState.running(summary: null)),
+      );
+
+      final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
+
+      expect(
+        (served.single.parts.single as MessagePartCompaction).state,
+        const CompactionState.failed(error: "The turn ended before compaction finished."),
+      );
     });
 
     test("a fresh store with a busy session keeps its running tool", () async {
@@ -322,7 +443,10 @@ MessagePart _textPart({required String id, required String messageId, required S
   text: text,
 );
 
-ToolState _stateOf(MessagePart part) => (part as MessagePartTool).state;
+MessagePart _compactionPart({required String id, required String messageId, required CompactionState state}) =>
+    MessagePart.compaction(id: id, sessionID: "ses_a", messageID: messageId, state: state);
+
+ToolStateFull _stateOf(MessagePart part) => (part as MessagePartTool).state as ToolStateFull;
 
 class _FakeSessionRepository({
   required final List<MessageWithParts> transcript,

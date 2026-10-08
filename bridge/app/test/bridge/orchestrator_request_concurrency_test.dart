@@ -252,6 +252,36 @@ void main() {
       }
     });
   });
+
+  group("OrchestratorSession response compression", () {
+    test("deflates a response only when its request asks", () async {
+      final harness = await _ConcurrencyHarness.start();
+      addTearDown(harness.close);
+      final phone = await harness.activatePhone(connId: 71);
+
+      for (final asks in [true, false]) {
+        await harness.sendEncrypted(
+          connId: 71,
+          encryptor: phone,
+          message: RelayMessage.request(
+            id: "health-$asks",
+            method: "GET",
+            path: "/global/health",
+            headers: const {},
+            body: null,
+            acceptsDeflatedResponse: asks,
+          ),
+        );
+        final plaintext = await harness.nextPlaintext(connId: 71, encryptor: phone);
+
+        expect(plaintext.first, asks ? RelayProtocol.deflatedPlaintextMarker : RelayProtocol.jsonStartByte);
+        final json = asks ? ZLibDecoder(raw: true).convert(plaintext.sublist(1)) : plaintext;
+        final response = RelayMessage.fromJson(jsonDecodeMap(utf8.decode(json))) as RelayResponse;
+        expect(response.id, "health-$asks");
+        expect(response.status, 200);
+      }
+    });
+  });
 }
 
 class _ConcurrencyHarness._({
@@ -309,6 +339,7 @@ class _ConcurrencyHarness._({
       failureReporter: failureReporter,
       restartService: restartService,
       filesystemAccessOk: true,
+      bridgeKind: BridgeKind.cli,
       statusNotifier: null,
       startupRetryService: BridgeStartupRetryService(),
       reconnectBackoff: ReconnectBackoffPolicy.standard,
@@ -412,6 +443,10 @@ class _ConcurrencyHarness._({
       encryptor: encryptor,
     );
     _sendPayload(connId: connId, payload: payload);
+  }
+
+  Future<List<int>> nextPlaintext({required int connId, required SessionEncryptor encryptor}) async {
+    return await unframe(await _nextPayload(connId: connId), encryptor: encryptor);
   }
 
   Future<RelayResponse> nextResponse({

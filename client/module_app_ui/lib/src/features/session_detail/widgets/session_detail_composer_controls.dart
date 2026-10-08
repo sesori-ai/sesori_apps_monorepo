@@ -3,6 +3,7 @@ import "dart:async";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../composer_presentation_scope.dart";
@@ -26,7 +27,7 @@ class const SessionDetailComposerControls({
   super.key,
   required final String projectId,
   required final String sessionId,
-  required final SessionDetailLoaded state,
+  required final SessionComposerSource source,
 }) extends StatefulWidget {
   @override
   State<SessionDetailComposerControls> createState() => _SessionDetailComposerControlsState();
@@ -42,7 +43,10 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
       resolveInitialComposerSurfaceStyle(
         inputMode: ComposerPresentationScope.read(context).inputMode,
         draft: context.read<SessionDetailCubit>().composerDraft,
-        stagedCommand: widget.state.stagedCommand,
+        stagedCommand: switch (widget.source) {
+          LoadedSessionComposerSource(:final state) => state.stagedCommand,
+          LaunchSessionComposerSource(:final stagedCommand) => stagedCommand,
+        },
       ),
     );
   }
@@ -55,8 +59,103 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
 
   @override
   Widget build(BuildContext context) {
-    final state = widget.state;
+    final cubit = context.read<SessionDetailCubit>();
+    return switch (widget.source) {
+      LoadedSessionComposerSource(:final state) => _buildLoaded(context: context, state: state),
+      // The launch's options stay read-only until the load, as they were
+      // while the session was being created: the cubit refuses to change them.
+      LaunchSessionComposerSource(:final composer, :final stagedCommand) => _buildComposer(
+        context: context,
+        // The launch's first message is already in the transcript.
+        hasMessages: true,
+        attachmentsSupported: composer.supportsPromptAttachments,
+        isBusy: false,
+        initialAttachments: cubit.launchAttachments,
+        onInitialAttachmentsConsumed: cubit.acknowledgeLaunchAttachments,
+        autofocus: composer.hadFocus,
+        initialSelection: composer.unsent?.selection,
+        // D9: the options are committed at Send.
+        optionsReadOnly: true,
+        agents: composer.agents,
+        selectedAgent: composer.agent,
+        providers: composer.providers,
+        selectedAgentModel: composer.agentModel,
+        availableVariants: composer.availableVariants,
+        fastModeControl: composer.fastModeControl,
+        statusChips: ({required surfaceStyle, required pointer}) => const [],
+        composerTrailing: null,
+        availableCommands: composer.commands,
+        stagedCommand: stagedCommand,
+      ),
+    };
+  }
+
+  Widget _buildLoaded({required BuildContext context, required SessionDetailLoaded state}) => _buildComposer(
+    context: context,
+    // Queued messages count: the user has already "sent" something, so the
+    // composer should rest as a follow-up field even before the first message
+    // lands in the list.
+    hasMessages:
+        state.hasRenderableMessages ||
+        state.launchHandoff != null ||
+        state.localSend is! LocalSendIdle ||
+        state.queuedMessages.isNotEmpty ||
+        state.awaitingBridgeSubmissions.isNotEmpty ||
+        state.bridgeQueuedPrompts.isNotEmpty,
+    attachmentsSupported: state.supportsPromptAttachments,
+    isBusy: hasActiveWork(sessionStatus: state.sessionStatus, childStatuses: state.childStatuses),
+    initialAttachments: const [],
+    onInitialAttachmentsConsumed: () {},
+    autofocus: false,
+    initialSelection: null,
+    optionsReadOnly: false,
+    agents: state.availableAgents,
+    selectedAgent: state.selectedAgent,
+    providers: state.availableProviders,
+    selectedAgentModel: state.selectedAgentModel,
+    availableVariants: state.availableVariants,
+    fastModeControl: state.fastModeControl,
+    statusChips: ({required surfaceStyle, required pointer}) =>
+        _statusChips(state: state, surfaceStyle: surfaceStyle, pointer: pointer),
+    composerTrailing: state.children.isEmpty
+        ? null
+        : ValueListenableBuilder<PregoComposerSurfaceStyle>(
+            valueListenable: _composerSurfaceStyle,
+            builder: (context, surfaceStyle, _) => BackgroundTasksBar(
+              surfaceStyle: surfaceStyle,
+              projectId: widget.projectId,
+              children: state.children,
+              childStatuses: state.childStatuses,
+            ),
+          ),
+    availableCommands: state.availableCommands,
+    stagedCommand: state.stagedCommand,
+  );
+
+  Widget _buildComposer({
+    required BuildContext context,
+    required bool hasMessages,
+    required bool? attachmentsSupported,
+    required bool isBusy,
+    required List<ComposerAttachment> initialAttachments,
+    required VoidCallback onInitialAttachmentsConsumed,
+    required bool autofocus,
+    required ({int base, int extent})? initialSelection,
+    required bool optionsReadOnly,
+    required List<AgentInfo> agents,
+    required String? selectedAgent,
+    required List<ProviderInfo> providers,
+    required AgentModel? selectedAgentModel,
+    required List<SessionVariant> availableVariants,
+    required FastModeControl fastModeControl,
+    required List<Widget> Function({required PregoComposerSurfaceStyle surfaceStyle, required bool pointer})
+    statusChips,
+    required Widget? composerTrailing,
+    required List<CommandInfo> availableCommands,
+    required CommandInfo? stagedCommand,
+  }) {
     final composerCapabilities = ComposerPresentationScope.of(context);
+    final pointer = composerCapabilities.presentation == ComposerPresentation.pointer;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -66,22 +165,16 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
             draftIdentity: widget.sessionId,
             restorationKey: null,
             initialDraft: context.read<SessionDetailCubit>().composerDraft,
-            initialAttachments: const [],
-            onInitialAttachmentsConsumed: () {},
-            // Queued messages count: the user has already "sent"
-            // something, so the composer should rest as a follow-up field
-            // even before the first message lands in the list.
-            hasMessages:
-                state.hasRenderableMessages ||
-                state.localSend is! LocalSendIdle ||
-                state.queuedMessages.isNotEmpty ||
-                state.awaitingBridgeSubmissions.isNotEmpty ||
-                state.bridgeQueuedPrompts.isNotEmpty,
-            attachmentsSupported: state.supportsPromptAttachments,
-            isBusy: hasActiveWork(
-              sessionStatus: state.sessionStatus,
-              childStatuses: state.childStatuses,
-            ),
+            initialSelection: initialSelection,
+            initialAttachments: initialAttachments,
+            onInitialAttachmentsConsumed: onInitialAttachmentsConsumed,
+            onAttachmentsChanged: null,
+            onSelectionChanged: null,
+            onBusyChanged: null,
+            autofocus: autofocus,
+            hasMessages: hasMessages,
+            attachmentsSupported: attachmentsSupported,
+            isBusy: isBusy,
             canSend: true,
             onSend: ({required draft, required command, required attachments}) =>
                 context.read<SessionDetailCubit>().sendMessage(
@@ -105,38 +198,25 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
               valueListenable: _composerSurfaceStyle,
               builder: (context, surfaceStyle, _) => AgentModelButtons(
                 surfaceStyle: surfaceStyle,
-                agents: state.availableAgents,
-                selectedAgent: state.selectedAgent,
+                agents: agents,
+                selectedAgent: selectedAgent,
                 onAgentSelected: context.read<SessionDetailCubit>().selectAgent,
-                providers: state.availableProviders,
-                selectedAgentModel: state.selectedAgentModel,
+                providers: providers,
+                selectedAgentModel: selectedAgentModel,
                 onModelSelected: context.read<SessionDetailCubit>().selectModel,
-                availableVariants: state.availableVariants,
+                availableVariants: availableVariants,
                 onVariantSelected: context.read<SessionDetailCubit>().selectVariant,
-                fastModeControl: state.fastModeControl,
+                fastModeControl: fastModeControl,
                 decideFastModeToggle: context.read<SessionDetailCubit>().fastModeToggleDecision,
                 onFastModeChanged: context.read<SessionDetailCubit>().setFastMode,
-                compact: composerCapabilities.presentation == ComposerPresentation.pointer,
-                trailing: _statusChips(
-                  state: state,
-                  surfaceStyle: surfaceStyle,
-                  pointer: composerCapabilities.presentation == ComposerPresentation.pointer,
-                ),
+                compact: pointer,
+                readOnly: optionsReadOnly,
+                trailing: statusChips(surfaceStyle: surfaceStyle, pointer: pointer),
               ),
             ),
-            composerTrailing: state.children.isEmpty
-                ? null
-                : ValueListenableBuilder<PregoComposerSurfaceStyle>(
-                    valueListenable: _composerSurfaceStyle,
-                    builder: (context, surfaceStyle, _) => BackgroundTasksBar(
-                      surfaceStyle: surfaceStyle,
-                      projectId: widget.projectId,
-                      children: state.children,
-                      childStatuses: state.childStatuses,
-                    ),
-                  ),
-            availableCommands: state.availableCommands,
-            stagedCommand: state.stagedCommand,
+            composerTrailing: composerTrailing,
+            availableCommands: availableCommands,
+            stagedCommand: stagedCommand,
             onCommandSelected: context.read<SessionDetailCubit>().stageCommand,
             onCommandCleared: context.read<SessionDetailCubit>().clearStagedCommand,
           ),

@@ -1,12 +1,10 @@
-import "dart:async";
 import "dart:io";
 import "dart:typed_data";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
 import "package:cursor_plugin/src/repositories/cursor_generated_image_reader.dart";
-import "package:cursor_plugin/src/repositories/mappers/cursor_task_mapper.dart";
-import "package:cursor_plugin/src/trackers/cursor_task_tracker.dart";
+import "package:cursor_plugin/src/repositories/mappers/cursor_subagent_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -14,16 +12,16 @@ void main() {
   group("CursorEventMapper", () {
     CursorEventMapper buildMapper({
       String? Function()? activeSessionResolver,
-      CursorTaskTracker? taskTracker,
+      AcpChildSessionTracker? childSessions,
+      AcpSessionConfigurationTracker? configurationTracker,
     }) {
       return CursorEventMapper(
         launchDirectory: "/repo",
         pluginId: CursorPlugin.pluginId,
-        configurationTracker: AcpSessionConfigurationTracker(),
-        childSessions: AcpChildSessionTracker(),
+        configurationTracker: configurationTracker ?? AcpSessionConfigurationTracker(),
+        childSessions: childSessions ?? AcpChildSessionTracker(),
         generatedImageReader: const CursorGeneratedImageReader(),
-        taskTracker: taskTracker ?? CursorTaskTracker(),
-        taskMapper: const CursorTaskMapper(),
+        subagentMapper: const CursorSubagentMapper(),
         activeSessionResolver: activeSessionResolver ?? () => null,
       );
     }
@@ -45,80 +43,6 @@ void main() {
       return file;
     }
 
-    List<BridgeSseEvent> taskUpdate({
-      required CursorEventMapper target,
-      required String sessionId,
-      required String toolCallId,
-      required String status,
-      required bool starts,
-      required Object? rawOutput,
-    }) => target.map(
-      AcpNotification(
-        method: AcpMethods.sessionUpdate,
-        params: {
-          "sessionId": sessionId,
-          "update": {
-            "sessionUpdate": starts ? "tool_call" : "tool_call_update",
-            "toolCallId": toolCallId,
-            "title": "Task: inspect",
-            "status": status,
-            "rawInput": {"_toolName": "task"},
-            "rawOutput": ?rawOutput,
-          },
-        },
-      ),
-    );
-
-    AcpNotification taskRequest({
-      required String toolCallId,
-      required String? sessionId,
-      required Object? subagentType,
-      required String prompt,
-      required String description,
-    }) => AcpNotification(
-      method: "cursor/task",
-      params: {
-        "toolCallId": toolCallId,
-        "description": description,
-        "prompt": prompt,
-        "subagentType": subagentType,
-        "sessionId": ?sessionId,
-      },
-    );
-
-    void completeForeground({
-      required CursorEventMapper target,
-      required String sessionId,
-      required String toolCallId,
-    }) {
-      taskUpdate(
-        target: target,
-        sessionId: sessionId,
-        toolCallId: toolCallId,
-        status: "pending",
-        starts: true,
-        rawOutput: null,
-      );
-      taskUpdate(
-        target: target,
-        sessionId: sessionId,
-        toolCallId: toolCallId,
-        status: "completed",
-        starts: false,
-        rawOutput: const {"durationMs": 42, "isBackground": false},
-      );
-    }
-
-    AcpNotification validTaskRequest({required String toolCallId, required String? sessionId}) => taskRequest(
-      toolCallId: toolCallId,
-      sessionId: sessionId,
-      subagentType: const {
-        "custom": {"unspecified": <String, Object?>{}},
-      },
-      prompt: "Inspect code",
-      description: "Inspect",
-    );
-
     test("cursor/update_todos maps to a todo update", () {
       final events = mapper.map(
         const AcpNotification(
@@ -128,13 +52,6 @@ void main() {
       );
       expect(events.single, isA<BridgeSseTodoUpdated>());
       expect((events.single as BridgeSseTodoUpdated).sessionID, "s1");
-    });
-
-    test("malformed cursor/task extensions are dropped", () {
-      expect(
-        mapper.map(const AcpNotification(method: "cursor/task", params: {})),
-        isEmpty,
-      );
     });
 
     test("standard session/update still works via the base mapper", () {
@@ -154,439 +71,202 @@ void main() {
       expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "hi");
     });
 
-    test("Task correlation has only activeModeUnknown and foregroundCompleted phases", () {
-      expect(CursorTaskPhase.values, [CursorTaskPhase.activeModeUnknown, CursorTaskPhase.foregroundCompleted]);
-    });
+    group("native sub-agents", () {
+      late AcpChildSessionTracker childSessions;
+      late AcpSessionConfigurationTracker configurationTracker;
+      late CursorEventMapper target;
 
-    test("foreground Task stays generic until cursor/task replaces its exact part once", () {
-      final childSessions = AcpChildSessionTracker();
-      final target = CursorEventMapper(
-        launchDirectory: "/repo",
-        pluginId: CursorPlugin.pluginId,
-        configurationTracker: AcpSessionConfigurationTracker(),
-        childSessions: childSessions,
-        generatedImageReader: const CursorGeneratedImageReader(),
-        taskTracker: CursorTaskTracker(),
-        taskMapper: const CursorTaskMapper(),
-        activeSessionResolver: () => "other-root",
+      setUp(() {
+        childSessions = AcpChildSessionTracker();
+        configurationTracker = AcpSessionConfigurationTracker();
+        target = buildMapper(childSessions: childSessions, configurationTracker: configurationTracker)
+          ..beginTurn(sessionId: "root", messageId: "turn-1");
+      });
+
+      AcpNotification update({required String sessionId, required Map<String, dynamic> update}) =>
+          AcpNotification(method: AcpMethods.sessionUpdate, params: {"sessionId": sessionId, "update": update});
+
+      AcpNotification taskCall({required String sessionId, required String toolCallId}) => update(
+        sessionId: sessionId,
+        update: {
+          "sessionUpdate": "tool_call",
+          "toolCallId": toolCallId,
+          "title": "Task",
+          "kind": "think",
+          "status": "pending",
+          "rawInput": {
+            "_toolName": "task",
+            "prompt": "Inspect the parser for edge cases",
+            "description": "Inspect parser",
+            "subagentType": {"unspecified": <String, Object?>{}},
+          },
+        },
       );
-      target.beginTurn(sessionId: "root", messageId: "turn-1");
-      final pending = taskUpdate(
-        target: target,
-        sessionId: "root",
-        toolCallId: "task-1",
-        status: "pending",
-        starts: true,
-        rawOutput: null,
-      ).whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(pending, isA<PluginMessagePartTool>());
-      final running =
-          taskUpdate(
-                target: target,
-                sessionId: "root",
-                toolCallId: "task-1",
-                status: "in_progress",
-                starts: false,
-                rawOutput: null,
-              ).whereType<BridgeSseMessagePartUpdated>().single.part
-              as PluginMessagePartTool;
-      expect(running.state.status, PluginToolStatus.running);
-      final completed = taskUpdate(
-        target: target,
-        sessionId: "root",
-        toolCallId: "task-1",
-        status: "completed",
-        starts: false,
-        rawOutput: const {"durationMs": 42, "isBackground": false},
-      ).whereType<BridgeSseMessagePartUpdated>().single.part;
-      expect(completed, isA<PluginMessagePartTool>());
 
-      final tile =
-          target
-                  .map(validTaskRequest(toolCallId: "task-1", sessionId: null))
-                  .whereType<BridgeSseMessagePartUpdated>()
-                  .single
-                  .part
-              as PluginMessagePartSubtask;
-      expect((tile.id, tile.messageID, tile.sessionID), (pending.id, pending.messageID, "root"));
-      expect((tile.prompt, tile.description, tile.agent), ("Inspect code", "Inspect", "unspecified"));
-      expect(tile.taskState?.status, PluginToolStatus.completed);
-      expect(tile.childSessionID, isNull, reason: "agentId and tool ids never become child identity");
-      expect(childSessions.childStatuses, isEmpty);
-      expect(childSessions.hasActiveWork, isFalse);
-      expect(childSessions.activeRootSessionIds, isEmpty);
-      expect(target.map(validTaskRequest(toolCallId: "task-1", sessionId: null)), isEmpty);
-    });
+      AcpNotification spawned({
+        required String sessionId,
+        required String childSessionId,
+        required String task,
+        required String? toolCallId,
+        required String? model,
+      }) => update(
+        sessionId: sessionId,
+        update: {
+          "sessionUpdate": "subagent_spawned",
+          "subagentSessionId": childSessionId,
+          "name": "explore",
+          "task": task,
+          "capabilities": <String, Object?>{},
+          "_meta": {
+            "cursor": {"toolCallId": ?toolCallId, "agentId": "agent-1", "model": ?model},
+          },
+        },
+      );
 
-    test("background, failed, cancelled, unknown, and malformed Task updates stay generic", () {
-      for (final taskCase in <({String id, String status, Object? output})>[
-        (id: "background", status: "completed", output: const {"isBackground": true}),
-        (id: "failed", status: "failed", output: null),
-        (id: "cancelled", status: "cancelled", output: null),
-        (id: "unknown", status: "future", output: null),
-        (id: "missing", status: "completed", output: const {"durationMs": 5}),
-        (id: "malformed", status: "completed", output: const {"isBackground": "false"}),
+      AcpNotification state({required String sessionId, required String childSessionId, required String state}) =>
+          update(
+            sessionId: sessionId,
+            update: {
+              "sessionUpdate": "subagent_state_update",
+              "subagentSessionId": childSessionId,
+              "state": state,
+              "_meta": {
+                "cursor": {"toolCallId": "task-1", "agentId": "agent-1"},
+              },
+            },
+          );
+
+      PluginMessagePartSubtask tile(List<BridgeSseEvent> events) => events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartSubtask>()
+          .single;
+
+      test("a Task call renders no generic card; the spawn opens one linked tile", () {
+        expect(target.map(taskCall(sessionId: "root", toolCallId: "task-1")), isEmpty);
+
+        final events = target.map(
+          spawned(
+            sessionId: "root",
+            childSessionId: "agent-1",
+            task: "Parser audit",
+            toolCallId: "task-1",
+            model: null,
+          ),
+        );
+
+        final created = events.whereType<BridgeSseSessionCreated>().single.info;
+        expect(created["id"], "agent-1");
+        expect(created["parentID"], "root");
+        final subtask = tile(events);
+        expect(subtask.childSessionID, "agent-1");
+        expect(subtask.agent, "explore");
+        expect(subtask.description, "Parser audit");
+        expect(subtask.prompt, "Inspect the parser for edge cases");
+        expect(childSessions.runningChildren(sessionId: "root").single.isBackground, isFalse);
+      });
+
+      test("a blank task falls back to the Task description; no Task input falls back to the task", () {
+        target.map(taskCall(sessionId: "root", toolCallId: "task-1"));
+        final fromInput = tile(
+          target.map(
+            spawned(sessionId: "root", childSessionId: "agent-1", task: "", toolCallId: "task-1", model: null),
+          ),
+        );
+        expect(fromInput.description, "Inspect parser");
+
+        final fromTask = tile(
+          target.map(
+            spawned(sessionId: "root", childSessionId: "agent-2", task: "Lint audit", toolCallId: null, model: null),
+          ),
+        );
+        expect(fromTask.prompt, "Lint audit");
+        expect(fromTask.description, "Lint audit");
+      });
+
+      test("a nested child resolves its root and the announced model sticks to the child", () {
+        target.map(
+          spawned(sessionId: "root", childSessionId: "agent-1", task: "Outer", toolCallId: null, model: "gpt-5"),
+        );
+        final nested = target.map(
+          spawned(sessionId: "agent-1", childSessionId: "agent-2", task: "Inner", toolCallId: null, model: null),
+        );
+
+        expect(nested.whereType<BridgeSseSessionCreated>().single.info["parentID"], "agent-1");
+        expect(childSessions.rootOf(sessionId: "agent-2"), "root");
+        expect(childSessions.runningChildren(sessionId: "root"), hasLength(2));
+        expect(configurationTracker.snapshotForSession(sessionId: "agent-1").modelId, "gpt-5");
+      });
+
+      test("a resumed run is a new .n child after the first one finished", () {
+        target
+          ..map(spawned(sessionId: "root", childSessionId: "agent-1", task: "Run", toolCallId: null, model: null))
+          ..map(state(sessionId: "root", childSessionId: "agent-1", state: "completed"));
+
+        final resumed = target.map(
+          spawned(sessionId: "root", childSessionId: "agent-1.1", task: "Run again", toolCallId: null, model: null),
+        );
+
+        expect(tile(resumed).childSessionID, "agent-1.1");
+        expect(childSessions.runningChildren(sessionId: "root").single.childSessionId, "agent-1.1");
+      });
+
+      for (final (wire, status, hasError) in const [
+        ("completed", PluginToolStatus.completed, false),
+        ("failed", PluginToolStatus.error, true),
+        ("cancelled", PluginToolStatus.cancelled, false),
+        ("disconnected", PluginToolStatus.error, true),
       ]) {
-        final target = buildMapper(activeSessionResolver: () => "root");
-        target.beginTurn(sessionId: "root", messageId: "turn");
-        taskUpdate(
-          target: target,
-          sessionId: "root",
-          toolCallId: taskCase.id,
-          status: "pending",
-          starts: true,
-          rawOutput: null,
+        test("state $wire settles the tile as ${status.name}", () {
+          target.map(spawned(sessionId: "root", childSessionId: "agent-1", task: "Run", toolCallId: null, model: null));
+
+          final settled = tile(target.map(state(sessionId: "root", childSessionId: "agent-1", state: wire)));
+
+          expect(settled.taskState?.status, status);
+          expect(settled.taskState?.error, hasError ? isNotNull : isNull);
+          expect(childSessions.runningChildren(sessionId: "root"), isEmpty);
+        });
+      }
+
+      test("an unknown state finishes nothing", () {
+        target.map(spawned(sessionId: "root", childSessionId: "agent-1", task: "Run", toolCallId: null, model: null));
+
+        expect(target.map(state(sessionId: "root", childSessionId: "agent-1", state: "paused")), isEmpty);
+        expect(childSessions.runningChildren(sessionId: "root"), hasLength(1));
+      });
+
+      test("malformed sub-agent frames are dropped", () {
+        expect(
+          target.map(update(sessionId: "root", update: {"sessionUpdate": "subagent_spawned", "name": "explore"})),
+          isEmpty,
         );
         expect(
-          taskUpdate(
-            target: target,
-            sessionId: "root",
-            toolCallId: taskCase.id,
-            status: taskCase.status,
-            starts: false,
-            rawOutput: taskCase.output,
-          ).whereType<BridgeSseMessagePartUpdated>().single.part,
-          isA<PluginMessagePartTool>(),
+          target.map(update(sessionId: "root", update: {"sessionUpdate": "subagent_state_update", "state": 7})),
+          isEmpty,
         );
-        expect(target.map(validTaskRequest(toolCallId: taskCase.id, sessionId: null)), isEmpty);
-        final settlement = target.mapPromptResult(sessionId: "root", stopReason: AcpStopReason.cancelled);
-        if (taskCase.status == "cancelled" || taskCase.status == "future") {
-          final settledPart = (settlement.single as BridgeSseMessagePartUpdated).part as PluginMessagePartTool;
-          expect(settledPart.state.status, PluginToolStatus.cancelled);
-        } else {
-          expect(settlement, isEmpty);
-        }
-      }
-    });
+        expect(childSessions.runningChildren(sessionId: "root"), isEmpty);
+      });
 
-    test("an initial Task correlates only completion and keeps unknown status settleable", () {
-      final completed = buildMapper(activeSessionResolver: () => "root")
-        ..beginTurn(sessionId: "root", messageId: "turn");
-      expect(
-        taskUpdate(
-          target: completed,
-          sessionId: "root",
-          toolCallId: "initial-completed",
-          status: "completed",
-          starts: true,
-          rawOutput: const {"isBackground": false},
-        ).whereType<BridgeSseMessagePartUpdated>().single.part,
-        isA<PluginMessagePartTool>(),
-      );
-      expect(
-        completed
-            .map(validTaskRequest(toolCallId: "initial-completed", sessionId: null))
-            .whereType<BridgeSseMessagePartUpdated>()
-            .single
-            .part,
-        isA<PluginMessagePartSubtask>(),
-      );
+      test("cursor/task is no longer mapped", () {
+        target.map(taskCall(sessionId: "root", toolCallId: "task-1"));
 
-      for (final taskCase in <({String id, String status, Object? output})>[
-        (id: "initial-background", status: "completed", output: const {"isBackground": true}),
-        (id: "initial-failed", status: "failed", output: null),
-        (id: "initial-cancelled", status: "cancelled", output: null),
-        (id: "initial-unknown", status: "future", output: null),
-        (id: "initial-missing", status: "completed", output: const {"durationMs": 5}),
-        (id: "initial-malformed-output", status: "completed", output: const {"isBackground": "false"}),
-      ]) {
-        final target = buildMapper(activeSessionResolver: () => "root")
-          ..beginTurn(sessionId: "root", messageId: "turn");
-        taskUpdate(
-          target: target,
-          sessionId: "root",
-          toolCallId: taskCase.id,
-          status: taskCase.status,
-          starts: true,
-          rawOutput: taskCase.output,
-        );
-        expect(target.map(validTaskRequest(toolCallId: taskCase.id, sessionId: null)), isEmpty);
-        final settlement = target.mapPromptResult(sessionId: "root", stopReason: AcpStopReason.cancelled);
-        if (taskCase.status == "cancelled" || taskCase.status == "future") {
-          final settledPart = (settlement.single as BridgeSseMessagePartUpdated).part as PluginMessagePartTool;
-          expect(settledPart.state.status, PluginToolStatus.cancelled);
-        } else {
-          expect(settlement, isEmpty, reason: "a known unsupported terminal must leave no active Task record");
-        }
-      }
-
-      final malformedInput = buildMapper(activeSessionResolver: () => "root")
-        ..beginTurn(sessionId: "root", messageId: "turn");
-      malformedInput.map(
-        const AcpNotification(
-          method: AcpMethods.sessionUpdate,
-          params: {
-            "sessionId": "root",
-            "update": {
-              "sessionUpdate": "tool_call",
-              "toolCallId": "initial-malformed-input",
-              "title": "Task: inspect",
-              "status": "completed",
-              "rawInput": {"_toolName": 7},
-              "rawOutput": {"isBackground": false},
-            },
-          },
-        ),
-      );
-      expect(
-        malformedInput.map(validTaskRequest(toolCallId: "initial-malformed-input", sessionId: null)),
-        isEmpty,
-      );
-      expect(
-        malformedInput.mapPromptResult(sessionId: "root", stopReason: AcpStopReason.cancelled),
-        isEmpty,
-      );
-    });
-
-    test("incomplete and unknown completed requests retain generic card and consume correlation", () {
-      for (final requestCase in <({String prompt, String description, Object type})>[
-        (
-          prompt: " ",
-          description: "Inspect",
-          type: const {
-            "custom": {"unspecified": <String, Object?>{}},
-          },
-        ),
-        (
-          prompt: "Inspect code",
-          description: "",
-          type: const {
-            "custom": {"unspecified": <String, Object?>{}},
-          },
-        ),
-        (prompt: "Inspect code", description: "Inspect", type: const <String, Object?>{}),
-        (
-          prompt: "Inspect code",
-          description: "Inspect",
-          type: const {
-            "custom": {"futureAgent": <String, Object?>{}},
-          },
-        ),
-      ]) {
-        final target = buildMapper(activeSessionResolver: () => "root")
-          ..beginTurn(sessionId: "root", messageId: "turn");
-        completeForeground(target: target, sessionId: "root", toolCallId: "task");
         expect(
           target.map(
-            taskRequest(
-              toolCallId: "task",
-              sessionId: null,
-              subagentType: requestCase.type,
-              prompt: requestCase.prompt,
-              description: requestCase.description,
+            const AcpNotification(
+              method: "cursor/task",
+              params: {
+                "toolCallId": "task-1",
+                "description": "Inspect parser",
+                "prompt": "Inspect the parser for edge cases",
+                "subagentType": {
+                  "custom": {"unspecified": <String, Object?>{}},
+                },
+              },
             ),
           ),
           isEmpty,
         );
-        expect(target.map(validTaskRequest(toolCallId: "task", sessionId: null)), isEmpty);
-      }
-
-      final malformed = buildMapper(activeSessionResolver: () => "root")
-        ..beginTurn(sessionId: "root", messageId: "turn");
-      completeForeground(target: malformed, sessionId: "root", toolCallId: "task");
-      expect(
-        malformed.map(
-          taskRequest(
-            toolCallId: "task",
-            sessionId: null,
-            subagentType: "unspecified",
-            prompt: "Inspect code",
-            description: "Inspect",
-          ),
-        ),
-        isEmpty,
-      );
-      expect(malformed.map(validTaskRequest(toolCallId: "task", sessionId: null)), hasLength(1));
-    });
-
-    test("explicit session wins, ambiguous Task ownership drops without active fallback", () {
-      var fallbackCalls = 0;
-      final target = buildMapper(
-        activeSessionResolver: () {
-          fallbackCalls++;
-          return "root-b";
-        },
-      );
-      target.beginTurn(sessionId: "root-a", messageId: "turn-a");
-      target.beginTurn(sessionId: "root-b", messageId: "turn-b");
-      completeForeground(target: target, sessionId: "root-a", toolCallId: "duplicate");
-      completeForeground(target: target, sessionId: "root-b", toolCallId: "duplicate");
-
-      expect(
-        target.map(validTaskRequest(toolCallId: "duplicate", sessionId: null)),
-        isEmpty,
-        reason: "duplicate exact tool ids are ambiguous and must not fall back",
-      );
-      expect(fallbackCalls, 0);
-      expect(
-        target.map(validTaskRequest(toolCallId: "duplicate", sessionId: "wrong-root")),
-        isEmpty,
-        reason: "a valid explicit session wins even when it does not match correlation",
-      );
-      final first = target
-          .map(validTaskRequest(toolCallId: "duplicate", sessionId: "root-a"))
-          .whereType<BridgeSseMessagePartUpdated>()
-          .single
-          .part;
-      final second = target
-          .map(validTaskRequest(toolCallId: "duplicate", sessionId: "root-b"))
-          .whereType<BridgeSseMessagePartUpdated>()
-          .single
-          .part;
-      expect((first.sessionID, second.sessionID), ("root-a", "root-b"));
-
-      expect(
-        target.map(validTaskRequest(toolCallId: "not-found", sessionId: null)),
-        isEmpty,
-      );
-      expect(fallbackCalls, 1, reason: "active-session fallback remains available only for genuine not-found");
-    });
-
-    test("next turn clears prior active and completed Tasks before current cancellation", () {
-      final target = buildMapper(activeSessionResolver: () => "root");
-      target.beginTurn(sessionId: "root", messageId: "turn-1");
-      taskUpdate(
-        target: target,
-        sessionId: "root",
-        toolCallId: "prior-active",
-        status: "pending",
-        starts: true,
-        rawOutput: null,
-      );
-      completeForeground(target: target, sessionId: "root", toolCallId: "prior-completed");
-
-      target.beginTurn(sessionId: "root", messageId: "turn-2");
-      expect(
-        target.mapPromptResult(sessionId: "root", stopReason: AcpStopReason.cancelled),
-        isEmpty,
-        reason: "prior active Task cannot be settled by the later turn",
-      );
-      expect(target.map(validTaskRequest(toolCallId: "prior-completed", sessionId: null)), isEmpty);
-      taskUpdate(
-        target: target,
-        sessionId: "root",
-        toolCallId: "prior-active",
-        status: "failed",
-        starts: false,
-        rawOutput: null,
-      );
-      expect(target.map(validTaskRequest(toolCallId: "prior-active", sessionId: null)), isEmpty);
-
-      final currentPart = taskUpdate(
-        target: target,
-        sessionId: "root",
-        toolCallId: "current-active",
-        status: "pending",
-        starts: true,
-        rawOutput: null,
-      ).whereType<BridgeSseMessagePartUpdated>().single.part;
-      final cancelled = target.mapPromptResult(
-        sessionId: "root",
-        stopReason: AcpStopReason.cancelled,
-      );
-      final cancelledPart = (cancelled.single as BridgeSseMessagePartUpdated).part as PluginMessagePartTool;
-      expect(cancelledPart.id, currentPart.id);
-      expect(cancelledPart.state.status, PluginToolStatus.cancelled);
-      expect(
-        target.mapPromptLifecycleFailure(sessionId: "root", failureMessage: "duplicate"),
-        isEmpty,
-      );
-    });
-
-    test("active count and unresolved residency stay independent through cleanup", () async {
-      final taskTracker = CursorTaskTracker();
-      final target = buildMapper(taskTracker: taskTracker);
-      final changes = <void>[];
-      final done = Completer<void>();
-      taskTracker.residencyChanges.listen(changes.add, onDone: done.complete);
-
-      target.beginTurn(sessionId: "root", messageId: "turn");
-      for (final toolCallId in const ["active", "background"]) {
-        taskUpdate(
-          target: target,
-          sessionId: "root",
-          toolCallId: toolCallId,
-          status: "pending",
-          starts: true,
-          rawOutput: null,
-        );
-      }
-      expect(taskTracker.activeTaskCount(sessionId: "root"), 2);
-      taskUpdate(
-        target: target,
-        sessionId: "root",
-        toolCallId: "background",
-        status: "completed",
-        starts: false,
-        rawOutput: {"isBackground": true},
-      );
-      expect(taskTracker.activeTaskCount(sessionId: "root"), 1);
-      expect(taskTracker.hasUnresolvedBackgroundWork(sessionId: "root"), isTrue);
-      expect(changes, hasLength(1));
-
-      target.beginTurn(sessionId: "root", messageId: "later");
-      expect(taskTracker.activeTaskCount(sessionId: "root"), 0);
-      expect(taskTracker.hasUnresolvedBackgroundWork(sessionId: "root"), isTrue);
-      taskTracker.forgetSession(sessionId: "other");
-      expect(changes, hasLength(1));
-      taskTracker.forgetSession(sessionId: "root");
-      expect(taskTracker.requiresProcessResidency, isFalse);
-      expect(changes, hasLength(2));
-
-      await taskTracker.dispose();
-      await done.future;
-    });
-
-    test("session and descendant deletion tombstones last until process reset", () async {
-      final taskTracker = CursorTaskTracker();
-      final deletedMapper = buildMapper(taskTracker: taskTracker);
-      final residencyChanges = <void>[];
-      final subscription = taskTracker.residencyChanges.listen(residencyChanges.add);
-      AcpNotification lateTask({required String sessionId}) => AcpNotification(
-        method: AcpMethods.sessionUpdate,
-        params: {
-          "sessionId": sessionId,
-          "update": {
-            "sessionUpdate": "tool_call",
-            "toolCallId": "late-$sessionId",
-            "title": "Task",
-            "status": "pending",
-            "rawInput": {"_toolName": "task"},
-          },
-        },
-      );
-      AcpNotification lateBackgroundTask({required String sessionId}) => AcpNotification(
-        method: AcpMethods.sessionUpdate,
-        params: {
-          "sessionId": sessionId,
-          "update": {
-            "sessionUpdate": "tool_call",
-            "toolCallId": "late-background-$sessionId",
-            "title": "Task",
-            "status": "completed",
-            "rawInput": {"_toolName": "task"},
-            "rawOutput": {"isBackground": true},
-          },
-        },
-      );
-
-      for (final sessionId in const ["s-deleted", "s-descendant"]) {
-        deletedMapper.beginTurn(sessionId: sessionId, messageId: "turn-$sessionId");
-        deletedMapper.forgetSession(sessionId);
-        deletedMapper
-          ..map(lateTask(sessionId: sessionId))
-          ..map(lateBackgroundTask(sessionId: sessionId));
-        expect(taskTracker.hasInvocation(sessionId: sessionId, toolCallId: "late-$sessionId"), isFalse);
-        expect(taskTracker.hasUnresolvedBackgroundWork(sessionId: sessionId), isFalse);
-      }
-      expect(residencyChanges, isEmpty);
-
-      taskTracker.clear();
-      deletedMapper.map(lateTask(sessionId: "s-deleted"));
-      expect(taskTracker.hasInvocation(sessionId: "s-deleted", toolCallId: "late-s-deleted"), isTrue);
-      taskTracker.clear();
-      await subscription.cancel();
-      await taskTracker.dispose();
+      });
     });
 
     test("cursor/generate_image maps to a standard inline file part", () async {

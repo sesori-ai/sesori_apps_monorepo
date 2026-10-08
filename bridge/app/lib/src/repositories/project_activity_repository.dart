@@ -163,7 +163,6 @@ class ProjectActivityRepository({
             final inserted = ProjectDto(
               projectId: projectId,
               path: project.directory,
-              hidden: true,
               prCacheGithubLogin: null,
               createdAt: project.activity?.createdAt ?? 0,
               updatedAt: project.activity?.updatedAt ?? 0,
@@ -184,7 +183,7 @@ class ProjectActivityRepository({
         _requireCurrentProjectActivitySource(source);
         await _projectsDao.insertProjectsWithPathsIfMissing(
           projects: missingProjects,
-          hidden: true,
+          hidden: false,
         );
         _requireCurrentProjectActivitySource(source);
         return evidence;

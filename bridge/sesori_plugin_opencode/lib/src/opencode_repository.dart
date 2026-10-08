@@ -15,6 +15,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 import "package:sesori_shared/sesori_shared.dart" show StringExtensions, maxTranscriptImageCollectionBytes, wait2;
 
 import "message_part_mapper.dart";
+import "models/openapi/assistant_message.g.dart";
 import "models/openapi/command.g.dart";
 import "models/openapi/compaction_part.g.dart";
 import "models/openapi/global_session.g.dart";
@@ -671,7 +672,21 @@ class OpenCodeRepository(final OpenCodeApi _api) {
       sessionId: sessionId,
       directory: directory,
     );
-    return messages.map(_pluginModelMapper.mapMessageWithParts).toList();
+    // A summary message answers the compaction marker that is its parent.
+    final markerAuto = {
+      for (final message in messages)
+        for (final part in message.parts.whereType<CompactionPart>()) part.messageID: part.auto,
+    };
+    return [
+      for (final message in messages)
+        _pluginModelMapper.mapMessageWithParts(
+          message,
+          compactionAuto: switch (message.info) {
+            AssistantMessage(:final parentID) => markerAuto[parentID],
+            _ => null,
+          },
+        ),
+    ];
   }
 
   PluginCommand _mapCommand(Command command) {

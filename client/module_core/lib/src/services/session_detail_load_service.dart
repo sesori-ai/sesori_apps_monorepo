@@ -6,7 +6,10 @@ import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
 import "../logging/logging.dart";
+import "../repositories/models/session_messages_through_result.dart";
 import "../repositories/models/session_options_repository_result.dart";
+import "../repositories/models/session_prompt_index_result.dart";
+import "../repositories/models/tool_output_result.dart";
 import "../repositories/plugin_repository.dart";
 import "../repositories/session_repository.dart";
 
@@ -104,6 +107,46 @@ class SessionDetailLoadService({
         return null;
       }(),
     };
+  }
+
+  /// Every message from [throughSeq] up to [before], for a jump to a prompt
+  /// older than the loaded range.
+  Future<SessionMessagesThroughResult> loadMessagesThrough({
+    required String sessionId,
+    required int throughSeq,
+    required int before,
+    required bool storedOnly,
+  }) async {
+    final result = await _repository.getMessagesThrough(
+      sessionId: sessionId,
+      throughSeq: throughSeq,
+      before: before,
+      storedOnly: storedOnly,
+    );
+    if (result case SessionMessagesThroughFailure(:final error)) {
+      logw("Failed to load messages through a prompt", error);
+    }
+    return result;
+  }
+
+  Future<SessionPromptIndexResult> loadPromptIndex({required String sessionId}) async {
+    final result = await _repository.getPromptIndex(sessionId: sessionId);
+    if (result case SessionPromptIndexFailure(:final error)) {
+      logw("Failed to load the prompt index", error);
+    }
+    return result;
+  }
+
+  Future<ToolOutputResult> loadToolOutput({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) async {
+    final result = await _repository.getToolOutput(sessionId: sessionId, messageId: messageId, partId: partId);
+    if (result case ToolOutputFailure(:final error)) {
+      logw("Failed to load tool output for part $partId of message $messageId", error);
+    }
+    return result;
   }
 
   Future<SessionDetailLoadResult> _loadSnapshot({
@@ -218,6 +261,7 @@ class SessionDetailLoadService({
           olderMessagesCursor: messagesPage.nextCursor,
           userMessagesBefore: messagesPage.userMessagesBefore,
           awaitingHarnessSync: messagesPage.awaitingHarnessSync,
+          cannotContinueMessage: messagesPage.cannotContinueMessage,
           pendingQuestions: pendingQuestions,
           pendingPermissions: pendingPermissions,
           bridgeQueuedPrompts: bridgeQueuedPrompts,
@@ -404,9 +448,14 @@ class const SessionDetailSnapshot({
   required final int? userMessagesBefore,
 
   /// Whether the bridge answered from a store it knows is behind the harness,
-  /// so [messages] may be missing the newest ones. Only a store-only read can
-  /// see this true.
+  /// so [messages] may be missing the newest ones. Only a store-only read, or
+  /// a read the harness could not backfill because it cannot restore the
+  /// session (see [cannotContinueMessage]), can see this true.
   required final bool awaitingHarnessSync,
+
+  /// The harness's explanation of why the session can no longer be
+  /// continued, or null when nothing restricts it.
+  required final String? cannotContinueMessage,
   required final List<PendingQuestion> pendingQuestions,
   required final List<QueuedSessionPrompt> bridgeQueuedPrompts,
   required final List<PendingPermission> pendingPermissions,

@@ -63,7 +63,7 @@ void main() {
   });
 
   for (final bundledName in ["llama", "llama:2"]) {
-    test("excludes bundled $bundledName by origin and preserves user commands", () async {
+    test("excludes bundled $bundledName by origin and preserves usable commands", () async {
       final harness = _ProbeHarness(
         stateModel: _model(provider: "openai", id: "gpt", reasoning: false),
         models: [_model(provider: "openai", id: "gpt", reasoning: false)],
@@ -72,7 +72,12 @@ void main() {
             "name": bundledName,
             "description": "Manage llama.cpp router models",
             "source": "extension",
-            "sourceInfo": {"path": "<inline:llama.cpp>"},
+            "sourceInfo": {"path": "builtin:llama.cpp"},
+          },
+          {
+            "name": "mcp",
+            "source": "extension",
+            "sourceInfo": {"path": "builtin:mcp"},
           },
           {
             "name": "llama:1",
@@ -91,7 +96,7 @@ void main() {
       final options = await harness.probe();
 
       expect(options.completeness, PluginSessionOptionsCompleteness.complete);
-      expect(options.commands.map((command) => command.name), ["llama:1", "llama", "review"]);
+      expect(options.commands.map((command) => command.name), ["mcp", "llama:1", "llama", "review"]);
     });
   }
 

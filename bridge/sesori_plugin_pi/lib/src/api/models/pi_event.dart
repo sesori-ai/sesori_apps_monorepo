@@ -11,7 +11,6 @@ import "pi_frame_fields.dart";
 /// Every known top-level event type is routed to a variant so no event silently
 /// becomes anonymous data; unknown types survive as [PiUnknownEvent] because Pi
 /// gains events between releases and a strict parser would drop a whole turn.
-/// The parser remains tolerant of the supported v0.84.1 PATH floor.
 ///
 /// Only Pi's own scalars are typed here. Message, entry, tool, and result
 /// payloads stay raw maps until the step that consumes them adds their DTOs.

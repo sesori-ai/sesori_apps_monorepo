@@ -1565,6 +1565,7 @@ class const _OrchestratorHarness({
       failureReporter: failureReporter,
       restartService: restartService,
       filesystemAccessOk: true,
+      bridgeKind: BridgeKind.cli,
       statusNotifier: null,
       startupRetryService: BridgeStartupRetryService(),
       reconnectBackoff: ReconnectBackoffPolicy.standard,

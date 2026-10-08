@@ -17,8 +17,21 @@ typedef SessionDetailBottomControlsBuilder = Widget Function({
   required BuildContext context,
   required String projectId,
   required String sessionId,
-  required SessionDetailLoaded state,
+  required SessionComposerSource source,
 });
+
+/// What the session composer is built from.
+sealed class const SessionComposerSource();
+
+/// The loaded session.
+final class const LoadedSessionComposerSource({required final SessionDetailLoaded state}) extends SessionComposerSource;
+
+/// The composer the session's launch handed over, while the first load runs:
+/// it shows the options the launch committed and holds what was unsent.
+final class const LaunchSessionComposerSource({
+  required final SessionLaunchComposer composer,
+  required final CommandInfo? stagedCommand,
+}) extends SessionComposerSource;
 
 /// The widths of the two centred columns a pointer surface reads a session in.
 /// They are separate design constants rather than one number: body text carries
@@ -53,6 +66,10 @@ class SessionDetailLoadedView extends StatefulWidget {
   final TranscriptJumpNotifier jumpNotifier;
   final void Function({required Offset focalPoint}) onPinchIn;
 
+  /// The bottom controls' height as last measured before this view mounted, so
+  /// its first frame insets the transcript as the controls already stand.
+  final double initialBottomControlsHeight;
+
   const new readOnly({
     super.key,
     required this.projectId,
@@ -65,6 +82,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.currentPromptId,
     required this.jumpNotifier,
     required this.onPinchIn,
+    required this.initialBottomControlsHeight,
   }) : readOnly = true;
 
   const new interactive({
@@ -79,6 +97,7 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.currentPromptId,
     required this.jumpNotifier,
     required this.onPinchIn,
+    required this.initialBottomControlsHeight,
   }) : readOnly = false;
 
   @override
@@ -96,7 +115,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
   /// height frame-by-frame, and each measurement must re-inset only the
   /// message list — not rebuild the whole view including the very composer
   /// being measured.
-  final ValueNotifier<double> _bottomControlsHeight = ValueNotifier<double>(0);
+  late final ValueNotifier<double> _bottomControlsHeight = ValueNotifier<double>(widget.initialBottomControlsHeight);
 
   @override
   void dispose() {
@@ -233,6 +252,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           onLoadOlderMessages: state.olderMessagesCursor == null
                               ? null
                               : context.read<SessionDetailCubit>().loadOlderMessages,
+                          promptIndex: state.promptIndex,
+                          onLoadThrough: context.read<SessionDetailCubit>().loadMessagesThrough,
                           onCancelQueuedMessage: widget.readOnly
                               ? null
                               : context.read<SessionDetailCubit>().cancelQueuedMessage,
@@ -270,12 +291,25 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
               // Archiving is permanent, so this session is audit-only: say so
               // where the composer used to be.
               if (state.isArchived) const SessionDetailArchivedNotice(),
+              // The harness can no longer restore this session; its stored
+              // history stays readable beneath this floating layer, which
+              // fades rather than moving the transcript.
+              AnimatedSwitcher(
+                duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeOut,
+                child: switch (state.cannotContinueMessage) {
+                  final message? => SessionDetailCannotContinueNotice(message: message),
+                  null => const SizedBox.shrink(),
+                },
+              ),
             ],
           ),
         ),
         // Floating bottom controls: the needs-you cards docked above the
         // background-tasks bar and composer. Queued submissions are regular
-        // rows in the transcript above them.
+        // rows in the transcript above them. Every control's halo paints in
+        // one layer beneath them all, fading the transcript passing under it.
         if (hasBottomControls)
           Positioned(
             bottom: 0,
@@ -286,20 +320,22 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                 if (!mounted) return;
                 _bottomControlsHeight.value = size.height;
               },
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ...needsYou,
-                  if (!widget.readOnly && !state.isArchived)
-                    SessionAutoContinuationNotice(
-                      view: state.session.autoContinuation,
-                      updating: state.isUpdatingAutoContinuation,
-                      canInteract: state.interaction.canInteract,
-                      onEnabledChanged: (enabled) =>
-                          unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
-                    ),
-                  ?widget.bottomControls,
-                ],
+              child: PregoPageHaloLayer(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ...needsYou,
+                    if (!widget.readOnly && !state.isArchived)
+                      SessionAutoContinuationNotice(
+                        view: state.session.autoContinuation,
+                        updating: state.isUpdatingAutoContinuation,
+                        canInteract: state.interaction.canInteract,
+                        onEnabledChanged: (enabled) =>
+                            unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
+                      ),
+                    ?widget.bottomControls,
+                  ],
+                ),
               ),
             ),
           ),

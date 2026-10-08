@@ -5,10 +5,11 @@
 A session transcript reads as turns: a prompt, the agent's steps and its
 answer. While reading, the latest prompt or steer above the top edge stays
 pinned there. A Prompts screen, opened by a button or a pinch, lists every
-loaded prompt in the transcript's order, opens on the one being read and
-returns to any prompt with one tap. Phone and desktop derive the same turns and
-prompt list from the loaded messages; turns and the list are never stored or
-sent to the bridge.
+prompt of the session in the transcript's order, opens on the one being read and
+returns to any prompt with one tap, loading the transcript through it when it
+is not loaded yet. Phone and desktop derive the same turns and prompt list from
+the loaded messages and the bridge's prompt index; turns and the list are never
+stored or sent to the bridge.
 
 ## Required Behavior
 
@@ -55,7 +56,7 @@ sent to the bridge.
   image stays named rather than fetched. So pinning a message neither contacts
   the host it names nor pages history the reader never asked for. Automation is
   never pinned, and nothing is pinned over the messages before the first user
-  message. A tap on
+  message, except below. A tap on
   the bubble glides back to that message, whose bubble grows back to full height
   as it lands at the top edge, which stops following like any jump; with
   reduced motion it jumps there instead. A tap on the band beside the bubble
@@ -68,6 +69,21 @@ sent to the bridge.
   attachment's name when the prompt has no text, with the hint "Jump to this
   prompt", also when the prompt's own row is far above and not built, and find no
   action on the band around it.
+- When the loaded messages start inside a turn whose prompt is not loaded, and
+  the bridge sent the prompt index, that prompt pins above them in the same
+  bubble, showing the index's preview: the start of its text, else its first
+  attachment's name, up to 300 characters (UTF-16 code units), cut at the
+  compact height. While the reader is detached, the pin comes from the index
+  as it stood when the messages froze, never from a prompt sent since. The pin
+  fades in as the index arrives, and it stays while a refresh fetches the
+  index again. A tap loads
+  the transcript through that prompt, showing a spinner beside the pin only
+  after about 150 ms, then glides back to it as for a loaded prompt. A failure
+  shows a popup naming why ("Couldn't open this prompt", no longer in the
+  session, or the transcript refreshed) and keeps the pin. Once the prompt loads, by the tap or by scrolling
+  back, its pin crossfades from the preview to its own copy, the bubble easing
+  between the two sizes, so a long prompt that pins its end changes visibly
+  but never snaps. Without an index nothing pins there.
 - The phone bar and the desktop toolbar carry a "Prompts" button, before the
   menu, on a loaded session. It covers the session page with the Prompts
   screen: a "Search prompts" field with a "Close prompts" button, then one row
@@ -80,6 +96,24 @@ sent to the bridge.
   them for undated prompts; a session with no timed prompt shows no headers and
   no times. The list ends with "{n} prompts loaded"; an empty session with no
   earlier page reads "No prompts in this session yet".
+- While the session has earlier messages, the app also asks the bridge for the
+  session's prompt index, after each load and refresh. Once it arrives the list
+  holds every prompt of the session, unloaded ones included with their number,
+  time and first line, ends with "{n} prompts" ("{n} matches" while searching)
+  and has no "Load earlier prompts". A refresh drops the index until it is fetched again: a screen
+  opened meanwhile lists the loaded prompts, and an open screen keeps its rows
+  until the new index joins them. Without one — an older bridge or a failed request — the list
+  stays the loaded prompts only, as below.
+- A tap on an unloaded row loads the transcript from that prompt to the loaded
+  part. After 150 ms its row shows a spinner; once the messages land the screen
+  closes onto the prompt exactly as for a loaded row. A tap on another row
+  meanwhile replaces the target; another tap on the same row sends no second
+  load. While the spinner shows, screen readers hear the row as "Loading". A
+  failed load shows a notice at the bottom of the list, which taps pass
+  through, and moves nothing: "Couldn't open this prompt…" for an error, "The
+  session just refreshed…" when a refresh dropped the load, and "This prompt
+  is no longer in the session" when the loaded range lacks it.
+  Closing the screen cancels the jump, not the load.
 - A prompt's number is its place among all of the session's user messages,
   loaded or not, counted by the bridge from its own history: the first prompt
   is 1, and a user message the list hides still takes a number. Loading older
@@ -100,15 +134,18 @@ sent to the bridge.
   running as it opened. That lists the transcript's prompts afresh, with the
   rows on screen kept in place. Before then, a new prompt arriving or another
   transcript change does not move or add rows.
-- While the session has earlier messages, "Load earlier prompts" heads the list.
-  It loads the transcript's next older page, is disabled while that runs, and
-  disappears once the session's start has loaded. The page's prompts arrive
-  below it, above the rows already there, and the rows on screen stay exactly
-  where they were, also when the control disappears in the same load, unless
-  the list cannot scroll that far: one shorter than the screen, or a last page
-  smaller than the control loaded from the very top.
+- While the session has earlier messages and no prompt index, "Load earlier
+  prompts" heads the list.
+  It loads the transcript's next older page, is disabled while that runs or
+  while the transcript refreshes, and disappears once the session's start has
+  loaded. At a large text size or a narrow width its label wraps and shows
+  whole, also under Bold Text and platform spacing overrides. The page's
+  prompts arrive below it, above the rows already there, and the rows on
+  screen stay exactly where they were, also when the control disappears in
+  the same load, unless the list cannot scroll that far: one shorter than the
+  screen, or a last page smaller than the control loaded from the very top.
 - Typing in the search field filters the rows as it is typed, ignoring case,
-  over each prompt's whole text. Each remaining row grows by one line showing
+  over each loaded prompt's whole text and each unloaded prompt's preview. Each remaining row grows by one line showing
   the words around its first match, the match highlighted, so a match past the
   row's first line still shows why it matched, in any script and at any text
   size; an excerpt never splits a code point (surrogate pair). Rows that no
@@ -121,9 +158,21 @@ sent to the bridge.
   only a list too short to fill the screen settles against its ends. Clearing
   the search unfolds everything the same way, also after a search that matched
   nothing, which brings the rows back around the row that was being read. The
-  list then ends with "{n}
-  matches in the prompts loaded so far" ("No matches…" when none), and earlier
-  prompts loaded during a search join the filter. The desktop focuses the field
+  list then ends with "{n} matches" over every prompt once the prompt index has
+  arrived, and without one with "{n} matches in the prompts loaded so far"
+  ("No matches…" when none, in both). Earlier prompts loaded during a search
+  join the filter.
+- Once the prompt index has arrived, the bridge also searches every prompt's
+  whole text about 250 ms after typing pauses (the latest search wins), and
+  the listed rows of the prompts it finds unfold into the search in the list's
+  order, with the reader's row held as above. A bridge answering within about
+  150 ms shows no extra word; a slower one shows "Searching earlier prompts…"
+  in place of the count until it answers, and the count then counts both. A
+  failed bridge search keeps the loaded matches, ends the list with "Couldn't
+  search earlier prompts" and a Retry button that asks again; the list's end
+  keeps Retry's room and the tallest status's for the whole search, so it
+  never jumps as they come and go, also when a status wraps at a large text
+  size. An index arriving during a search starts the bridge's search. The desktop focuses the field
   on opening; the phone waits for a tap. Escape closes the screen, also while
   typing and after a click outside the field, and the search is not kept.
 - A tap on a row closes the screen, once the transcript has landed beneath it,
@@ -142,14 +191,26 @@ sent to the bridge.
   shrinks back into the same place when it closes, by every way out except the
   iOS edge swipe: the close button, Escape, back, predictive back, ⌘[ or
   Ctrl+[, and a row tap, where it leaves only once the transcript has landed.
-  A pinch out shrinks it toward the fingers instead. None of them pops the
-  screen away. With reduced motion it only fades. The transcript under it
-  never moves, scrolls or rebuilds.
+  A pinch out grows and dissolves it instead. None of them pops the screen
+  away. With reduced motion it only fades. The transcript under it never
+  moves, scrolls or rebuilds. The transition repaints apart from the page and
+  only recomposites the screen's own content, so the transcript, composer and
+  blurred halos are not repainted each frame.
 - A pinch out on the Prompts screen, by touch or trackpad, closes it in step
-  with the fingers: the screen shrinks toward them and fades as they spread.
-  Let go past a scale of 1.25, or spread quickly, and it finishes closing; let
-  go short of it and it springs back open. One-finger scrolling, row taps, a
-  pinch in and the search field, including its text selection, are unaffected.
+  with the fingers: the screen swells from 1.0 to 1.06 around the fingers'
+  focal point and drifts with them, stays fully readable for the first third
+  of the travel, then thins and fades into the transcript. Nothing moves
+  against the fingers. By touch the travel is the fingers' spread in pixels:
+  +200 px is fully closed and a release past +100 px closes, carrying the
+  fingers' speed into the finish; short of it, however fast, the screen eases
+  back open, its drift returning with it. The decision uses the fingers' last
+  movement, so the slight slide of fingers lifting off a phone's glass cannot
+  flip it. The second finger takes the gesture even when the list has already
+  started scrolling under the first, and the list holds still from that moment.
+  A trackpad pinch keeps its scale mapping: past a scale of 1.25, carried 0.1 s
+  ahead at its current speed, it finishes closing; short of it it springs back.
+  One-finger scrolling, row taps, a pinch in and the search field, including
+  its text selection, are unaffected.
 - On iOS a drag from the screen's left edge moves the Prompts screen with the
   finger, lightening the dim as it goes. Let go past halfway or with a flick
   and it slides off and closes; let go earlier and it springs back. Elsewhere
@@ -201,6 +262,11 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
   its Markdown; an image-only prompt is spoken as the row names it, with and
   without alt text; a list, a table and a struck word are spoken as the row lays
   them out; the band carries no semantics action beside the bubble's.
+- The unloaded prompt's pin: its preview over a range that starts mid-turn; its
+  fade-in as the index arrives, kept through a refetch; a tap loading through
+  it with the spinner only after the delay, the crossfade into the loaded copy
+  and the glide back; a failed load's popup with the pin kept; the pin's entry
+  chosen from the rendered range (`TranscriptPromptListBuilder.pinAbove`).
 - A tap on the pinned bubble glides to its prompt, never turning back, and lands
   with the pin grown to full height; with reduced motion it jumps instead; its
   semantics button does the same, also when that prompt is not built; a tap
@@ -220,12 +286,27 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
     at a large text size on a narrow phone, and an excerpt never splitting a
     code point (surrogate pair);
   - day headers only for days with a match, and the match count;
+  - the bridge's search: asked only after typing pauses and only with the
+    prompt index, its matches joining in order, "Searching earlier prompts…"
+    only once it is slow, a failure keeping the loaded matches with Retry
+    asking again, a bridge without the index never asked, and an index
+    arriving mid-search starting it;
   - Escape closing, also after a click outside the field, and the desktop's
     focused field.
 - "Load earlier prompts": at the top, calling the loader, disabled while
-  loading; earlier prompts joining the filter below it with the reader's row
+  loading and while the transcript refreshes; its wrapped label shown whole
+  at a large text size and under a platform letter-spacing override; earlier
+  prompts joining the filter below it with the reader's row
   still, also when the control disappears; a page the transcript was already
   loading as the screen opened joining it.
+- The prompt index: fetched after a load and a refresh only while earlier
+  messages exist, kept null on failure, an older index dropped on refresh; the
+  merge of indexed, unloaded and unindexed loaded prompts; the full count and
+  no "Load earlier prompts" with an index.
+- A tap on an unloaded row: the spinner only after the delay, the move once
+  loaded, and a second tap replacing the first.
+- The load-through and bridge search responses decoding off the calling
+  isolate.
 - Numbers and times: prompt numbers from the bridge's count kept through three
   older pages with hidden user messages and automation; no numbers without a
   count; the bridge's count for every page read (snapshot, stored-only,
@@ -238,12 +319,20 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
   motion, and the transcript unmoved through it.
 - The iOS edge swipe: following the finger, springing back from a short
   release, closing from a long one and from a flick, and doing nothing off iOS.
-- Pinch out on the screen: following the fingers, closing past halfway,
-  springing back short of it, closing on a quick short spread and by trackpad;
-  a second pinch during a spring-back moving nothing; one-finger scroll, a
-  pinch in and the search field's selection unaffected.
-- Every way out: the close button, Escape, back, predictive back, a row tap and
-  the pinch out each run the transition backwards; the desktop's back shortcut
+- Pinch out on the screen: swelling around the fingers, drifting with them,
+  readable through the first third and dissolving past it; easing back from a
+  release short of 100 px with its drift, and from a full spread brought back;
+  a quick short spread easing back while a quick wide one finishes faster than
+  a slow one; closing by trackpad and springing back short of it; closing for
+  realistic touch (fingers landing close together and 64 ms apart over a row,
+  drifting, then sliding back a pixel as they lift); a second finger landing
+  after the first has scrolled the list 20 px still pinching, with the list
+  held still; a second pinch during a spring-back moving nothing; one-finger
+  scroll, a pinch in and the search field's selection unaffected.
+- The transition sits in its own repaint boundary apart from the transcript,
+  with the screen's content in another inside its placement.
+- Every way out: the close button, Escape, back, predictive back and a row tap
+  each run the transition backwards; the desktop's back shortcut
   (Ctrl+[ in the routine test, ⌘[ on macOS) closes what a page has open before
   leaving it.
 - The analytics event per opening, with its entry.
@@ -256,7 +345,9 @@ On the release-target phone and on macOS, on a session of three or more pages:
   Prompts screen growing from the fingers, while following (following
   continues) and while reading history (it stays detached), with the transcript
   where it was on the way back. A pinch out on the transcript does nothing; a
-  pinch out on the screen closes it in step with the fingers or springs back.
+  pinch out on the screen catches every time, also with the list already
+  scrolling, and grows and dissolves with the fingers or eases back. On macOS
+  the pinch out runs smoothly on a long session.
   One-finger scroll, the peek and a code block's horizontal scroll are
   unaffected.
 - The pinned message through short and long prompts and steers, both ways, with
@@ -268,8 +359,15 @@ On the release-target phone and on macOS, on a session of three or more pages:
   prompt being read with no visible scroll, its numbers matching the prompts'
   places in the session after paging back to the start, and a tap landing an
   opener, a follow-up and a far prompt.
+- On a session of several hundred prompts, the screen listing all of them
+  before any paging, and a tap on the oldest loading it and landing on it, with
+  the spinner only on a slow link and the screen still scrolling smoothly while
+  the response decodes. Against a bridge released before the prompt index, the
+  list showing the loaded prompts with "Load earlier prompts".
 - Typing a search, clearing it and loading earlier prompts with nothing under
-  the reader jumping.
+  the reader jumping. On the long session, a search finding a prompt that only
+  the bridge's search matches, "Searching earlier prompts…" only on a slow
+  link, and the list's end not jumping as the status changes.
 - Escape and ⌘[ closing on macOS, back and close leaving the transcript
   unmoved, and every way out but the iOS edge swipe shrinking the screen back.
 - The transition in and out, and again with Reduce Motion on, with nothing
@@ -290,9 +388,11 @@ Live plugin plus client, every supporting production plugin:
 - A forced Claude re-import keeps follow-ups, peers and task outcomes in their
   turns.
 
-Last recorded run, 2026-10-06, `Partial`: the user confirmed the pinch in on
-their real devices, the iPhone and the macOS trackpad (`Pass`). Every other
-check above, including the pinch out on a real device, is `Not run`. Automated
+Last recorded run, 2026-10-06 to 2026-10-08, `Partial`: the user confirmed the pinch in on
+their real devices, the iPhone and the macOS trackpad (`Pass`). On 2026-10-08
+they confirmed the reworked pinch out in a macOS release build (`Pass`); on
+Android it is checked in the next internal build. Every other check above,
+including the pinch out on the iPhone and Android, is `Not run`. Automated
 tests cover related behavior but do not satisfy these device, platform or live
 checks, and some, such as the real-iPhone scroll for visible lag and the
 analytics event's arrival, have no automated stand-in. The plan's step 18
@@ -344,8 +444,18 @@ answer, and on a trackpad while text streams.
 - The Prompts screen opens scrolled away from the prompt being read, visibly
   scrolls into place, tints a different prompt or loses the tint; lists prompts
   out of the transcript's order, a follow-up above or away from its opener, or
-  a prompt the transcript has not loaded; shows day headers out of order or
-  "No date" below them.
+  a prompt the transcript has not loaded while the bridge sent no index; shows
+  day headers out of order or "No date" below them.
+- With an index, a range that starts mid-turn pins nothing or a prompt other
+  than the one that opened that turn; its pin pops in, blinks out during a
+  refresh, or snaps from the preview to the loaded prompt instead of
+  crossfading; a tap on it moves the transcript after a failure, shows its
+  spinner at once on a fast load, or loads without gliding back.
+- With an index, a prompt of the session is missing or listed twice; a tap on
+  an unloaded row lands elsewhere, shows its spinner at once on a fast load,
+  moves the transcript after a failure or after the screen closed, or a
+  replaced tap still lands; an older bridge shows anything but the loaded
+  prompts.
 - A prompt's number changes when an older page loads, skips or repeats against
   the session's prompts, or starts at 1 on a page that is not the session's
   start; a prompt sent to an ACP harness shows no time.
@@ -353,15 +463,24 @@ answer, and on a trackpad while text streams.
   after the screen closes.
 - Typing, clearing or opening the search moves the row being read; rows pop
   in or out instead of folding; a filtered row shows no reason for its match;
-  a day header stays over no rows; the match count claims more than the loaded
-  range; the rows under the reader move when earlier prompts load or when
-  "Load earlier prompts" disappears; the control stays enabled while loading.
+  a day header stays over no rows; without an index, the match count claims
+  more than the loaded range; the rows under the reader move when earlier prompts load or when
+  "Load earlier prompts" disappears; the control stays enabled while loading
+  or refreshing, or its wrapped label is clipped.
+- With an index, a prompt the bridge's search finds stays folded or joins out
+  of order, "Searching earlier prompts…" flashes on a quick answer, the list's
+  end jumps as its status changes, or a failed search drops the loaded matches
+  or offers no Retry. A bridge without the index is asked to search.
 - The Prompts screen pops in or out, jumps mid-transition, scales under
   reduced motion, or the transcript moves or reflows behind it. The iOS edge
   swipe does not track the finger, the screen snaps instead of following or
   springing back, or the session underneath moves. A pinch out on the screen
-  lags the fingers, snaps instead of finishing or springing back, or takes a
-  one-finger scroll, a row tap or a selection in the search field; a way out
+  is missed because the list took the first finger, lets the list drift under
+  it, lags the fingers or moves against them, fades before a third of its
+  travel, snaps instead of finishing or easing back, flips its result as the
+  fingers lift, or takes a one-finger scroll, a row tap or a selection in the
+  search field; the transcript, composer or halos repaint each frame of the
+  transition; a way out
   other than the iOS edge swipe removes the screen without shrinking it back.
 - A Prompts row tap closes the screen with the transcript elsewhere, or does
   nothing; back or ⌘[ leaves the page instead of closing the screen; closing moves
@@ -409,14 +528,18 @@ answer, and on a trackpad while text streams.
   While pinned, the prompt covers the top of the rows beneath it. A glide to
   a prompt far above aims at an estimate that sharpens as rows are built, so
   its speed can bend on the way; it still lands exactly.
-- The Prompts screen lists and searches only what the transcript has loaded;
-  "Load earlier prompts" pages back one transcript page at a time. An older bridge sends no
-  user message count, so its rows carry no numbers. On Grok, Antigravity,
-  Copilot, Cursor, Hermes and OMP a prompt read back from the harness's own
-  history carries no time.
+- A bridge released before the prompt index is never asked to search: it
+  lists and searches only what the transcript has loaded, an unloaded prompt
+  is never listed, and "Load earlier prompts" pages back one transcript page at
+  a time. An older bridge sends no user message count, so its rows carry no
+  numbers. On Grok, Antigravity, Copilot, Cursor, Hermes and OMP a prompt read
+  back from the harness's own history carries no time.
 
 ## Sources
 
+- The turn rule shared with the bridge:
+  `shared/sesori_shared/lib/src/transcript/prompt_turns.dart` and
+  `shared/sesori_shared/test/transcript/prompt_turns_test.dart`
 - `client/module_core/lib/src/cubits/session_detail/transcript_turns.dart` and
   `client/module_core/test/cubits/session_detail/transcript_turns_test.dart`
 - `session_detail_message_list.dart`,
@@ -445,4 +568,14 @@ answer, and on a trackpad while text streams.
 - The ACP prompt stamp: `localUserMessageTime` in
   `bridge/sesori_plugin_acp/lib/src/acp_event_mapper.dart` and
   `bridge/sesori_plugin_acp/test/acp_event_mapper_test.dart`
-- `.plan/completed/turn-navigation/PLAN.md`
+- The prompt index and load-through: `transcript_prompt_list.dart` and
+  `session_detail_cubit.dart` under
+  `client/module_core/lib/src/cubits/session_detail/`,
+  `client/module_core/lib/src/repositories/session_repository.dart`,
+  `client/module_core/lib/src/api/client/relay_http_client.dart`, and their
+  tests
+- The bridge's prompt search: `client/module_core/lib/src/cubits/session_prompts/`
+  and `client/module_core/test/cubits/session_prompts/prompt_search_cubit_test.dart`;
+  the route is in `docs/regression/session-history-and-recovery.md`
+- `.plan/completed/turn-navigation/PLAN.md` and
+  `.plan/completed/transcript-history/PLAN.md`

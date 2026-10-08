@@ -1,3 +1,4 @@
+import "../../models/claude_compact_metadata.dart";
 import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_permission_mode.dart";
 import "../../models/claude_task_notification.dart";
@@ -50,7 +51,9 @@ sealed class const ClaudeStreamMessage({
           "init" => ClaudeInitMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
           "api_retry" => ClaudeApiRetryMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
           "status" => ClaudeStatusMessage(
-            status: _stringOrNull(json["status"]),
+            isCompacting: json["status"] == "compacting",
+            compactResult: ClaudeCompactResult.tryParse(raw: json["compact_result"]),
+            compactError: _stringOrNull(json["compact_error"]),
             sessionId: sessionId,
             uuid: uuid,
             raw: json,
@@ -63,7 +66,12 @@ sealed class const ClaudeStreamMessage({
             raw: json,
           ),
           "task_progress" => ClaudeTaskProgressMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
-          "compact_boundary" => ClaudeCompactBoundaryMessage(sessionId: sessionId, uuid: uuid, raw: json),
+          "compact_boundary" => ClaudeCompactBoundaryMessage(
+            metadata: ClaudeCompactMetadata.fromJsonOrNull(json: json["compact_metadata"]),
+            sessionId: sessionId,
+            uuid: uuid,
+            raw: json,
+          ),
           "task_started" => ClaudeTaskStartedMessage(
             taskId: _stringOrNull(json["task_id"]),
             toolUseId: _stringOrNull(json["tool_use_id"]),
@@ -218,18 +226,43 @@ final class const ClaudeInitMessage({
 /// `system`/`compact_boundary` — the CLI compacted the context. The next
 /// synthetic `user` frame carries the continuation summary.
 final class const ClaudeCompactBoundaryMessage({
+  /// Null when the frame carries no `compact_metadata` object.
+  required final ClaudeCompactMetadata? metadata,
   required super.sessionId,
   required super.uuid,
   required super.raw,
 }) extends ClaudeStreamMessage;
 
 /// `system`/`status` — a coarse work-state signal such as `requesting`.
+///
+/// A compaction starts with `status: "compacting"`, repeated while it runs,
+/// and ends with `status: null` carrying [compactResult] and, on a failure,
+/// [compactError]. Verified against Claude CLI 2.1.291.
 final class const ClaudeStatusMessage({
-  required final String? status,
+  required final bool isCompacting,
+
+  /// Null when the frame does not end a compaction.
+  required final ClaudeCompactResult? compactResult,
+
+  /// Why a compaction failed, as the CLI words it.
+  required final String? compactError,
   required super.sessionId,
   required super.uuid,
   required super.raw,
 }) extends ClaudeStreamMessage;
+
+/// How a compaction ended.
+enum ClaudeCompactResult() {
+  success,
+  failed;
+
+  /// Null when absent or unknown.
+  static ClaudeCompactResult? tryParse({required Object? raw}) => switch (raw) {
+    "success" => success,
+    "failed" => failed,
+    _ => null,
+  };
+}
 
 /// `system`/`thinking_tokens` — a running estimate of the current thinking
 /// block's token count, emitted alongside thinking deltas.

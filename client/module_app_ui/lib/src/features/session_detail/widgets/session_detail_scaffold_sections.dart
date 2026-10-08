@@ -26,49 +26,53 @@ class const SessionDetailNeedsYouCard({
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, PregoSpacing.md),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          // The light token reads cream; its dark twin is a heavy brown.
-          color: isDark ? prego.colors.fgWarningPrimary.withValues(alpha: 0.1) : prego.colors.bgWarningPrimary,
-          borderRadius: BorderRadius.circular(PregoRadius.x2l),
-          border: Border.all(color: prego.colors.fgWarningPrimary.withValues(alpha: 0.3)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(PregoSpacing.lg),
-          child: Row(
-            spacing: PregoSpacing.lg,
-            children: [
-              Icon(icon, size: PregoIconSize.md, color: prego.colors.fgWarningPrimary),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      // The light token is 3.3:1 on cream; one step darker clears 4.5:1.
-                      style: prego.textTheme.textXs.medium.copyWith(
-                        color: isDark ? prego.colors.textWarningPrimary : PregoColorPrimitives.warning700,
+      child: PregoPageHalo(
+        radius: PregoRadius.x2l,
+        reachesLayerBottom: false,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            // The light token reads cream; its dark twin is a heavy brown.
+            color: isDark ? prego.colors.fgWarningPrimary.withValues(alpha: 0.1) : prego.colors.bgWarningPrimary,
+            borderRadius: BorderRadius.circular(PregoRadius.x2l),
+            border: Border.all(color: prego.colors.fgWarningPrimary.withValues(alpha: 0.3)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(PregoSpacing.lg),
+            child: Row(
+              spacing: PregoSpacing.lg,
+              children: [
+                Icon(icon, size: PregoIconSize.md, color: prego.colors.fgWarningPrimary),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        // The light token is 3.3:1 on cream; one step darker clears 4.5:1.
+                        style: prego.textTheme.textXs.medium.copyWith(
+                          color: isDark ? prego.colors.textWarningPrimary : PregoColorPrimitives.warning700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      request,
-                      style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                      Text(
+                        request,
+                        style: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              PregoButtonsSolid(
-                label: action,
-                // A white pill in both themes; dark's grey secondary is lost on the tint.
-                hierarchy: isDark ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary,
-                size: PregoButtonsSolidSize.sm,
-                onPressed: onPressed,
-              ),
-            ],
+                PregoButtonsSolid(
+                  label: action,
+                  // A white pill in both themes; dark's grey secondary is lost on the tint.
+                  hierarchy: isDark ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary,
+                  size: PregoButtonsSolidSize.sm,
+                  onPressed: onPressed,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -94,6 +98,33 @@ class const SessionDetailArchivedNotice({super.key}) extends StatelessWidget {
           leading: Icon(TablerRegular.archive, size: PregoIconSize.md, color: prego.colors.textSecondary),
           title: Text(context.loc.sessionDetailArchivedNotice),
           titleStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+        ),
+      ),
+    );
+  }
+}
+
+/// Explains why the harness can no longer continue this session while its
+/// stored history stays readable. [message] is the harness's own explanation,
+/// shown as-is.
+class const SessionDetailCannotContinueNotice({super.key, required final String message}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
+      child: GlassContainer(
+        useOwnLayer: true,
+        clipBehavior: Clip.antiAlias,
+        padding: EdgeInsets.zero,
+        shape: const LiquidRoundedSuperellipse(borderRadius: 20),
+        settings: LiquidGlassSettings(glassColor: prego.colors.bgSecondary.withValues(alpha: 0.6)),
+        child: GlassListTile(
+          leading: Icon(TablerRegular.alert_triangle, size: PregoIconSize.md, color: prego.colors.textWarningPrimary),
+          title: Text(context.loc.sessionDetailCannotContinueTitle),
+          titleStyle: prego.textTheme.textSm.medium.copyWith(color: prego.colors.textPrimary),
+          subtitle: Text(message, maxLines: 3, overflow: TextOverflow.ellipsis),
+          subtitleStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
         ),
       ),
     );

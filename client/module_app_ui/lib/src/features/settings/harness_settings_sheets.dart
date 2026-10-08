@@ -287,7 +287,7 @@ Future<void> _showAuthenticationSheet({
   required BuildContext context,
   required PluginManagementCubit cubit,
 }) async {
-  await showPregoModal<void>(
+  final showBridgeUpdate = await showPregoModal<bool>(
     context: _flowPresentationContext(context: context),
     title: context.loc.harnessAuthenticationSheetTitle,
     builder: (_) => BlocProvider<PluginManagementCubit>.value(
@@ -298,6 +298,12 @@ Future<void> _showAuthenticationSheet({
   // Dismissing presentation is not cancellation. Retain the cubit's challenge
   // until terminal progress settles the upstream operation so peer harnesses
   // remain gated and the owning row can reopen this same sheet.
+  //
+  // The update steps replace the closed login sheet rather than stacking on
+  // it, so a bridge restart cannot strand a non-current login route.
+  if ((showBridgeUpdate ?? false) && context.mounted) {
+    await showBridgeUpdateSheet(context: _flowPresentationContext(context: context));
+  }
 }
 
 class const _AuthenticationSheet() extends StatefulWidget {
@@ -327,9 +333,9 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
     );
   }
 
-  void _close() {
+  void _close({required bool showBridgeUpdate}) {
     context.read<PluginManagementCubit>().dismissAuthentication();
-    context.pop();
+    context.pop(showBridgeUpdate);
   }
 
   @override
@@ -375,9 +381,12 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
           action: (key: const Key("harness_authentication_close"), label: loc.harnessAuthenticationClose),
         );
       case PluginAuthenticationPresentationFailed(:final pluginId, :final error):
+        // Retrying cannot help a bridge too old to log in from here.
+        final bridgeOutdated = error is PluginAuthenticationPresentationUnsupported;
         return _failureContent(
           context: context,
-          pluginId: error is PluginAuthenticationPresentationUncertain ? null : pluginId,
+          pluginId: error is PluginAuthenticationPresentationUncertain || bridgeOutdated ? null : pluginId,
+          bridgeOutdated: bridgeOutdated,
           message: _authenticationErrorDescription(context: context, error: error),
         );
       case PluginAuthenticationPresentationIdle():
@@ -693,52 +702,67 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
             hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
             size: PregoButtonsSolidSize.lg,
             fullWidth: true,
-            onPressed: _close,
+            onPressed: () => _close(showBridgeUpdate: false),
           ),
         ],
       ],
     ),
   );
 
-  Widget _failureContent({required BuildContext context, required String? pluginId, required String message}) =>
-      Padding(
-        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: context.prego.textTheme.textSm.medium.copyWith(color: context.prego.colors.textErrorPrimary),
-            ),
-            if (pluginId != null) ...[
-              const SizedBox(height: PregoSpacing.x2l),
-              PregoButtonsSolid(
-                key: const Key("harness_authentication_retry"),
-                label: context.loc.harnessAuthenticationRetry,
-                hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-                size: PregoButtonsSolidSize.lg,
-                fullWidth: true,
-                onPressed: () {
-                  // A new login needs a new code.
-                  _codeController.clear();
-                  unawaited(context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId));
-                },
-              ),
-            ],
-            const SizedBox(height: PregoSpacing.md),
-            PregoButtonsSolid(
-              key: const Key("harness_authentication_close"),
-              label: context.loc.harnessAuthenticationClose,
-              hierarchy: PregoButtonsSolidHierarchy.secondary,
-              size: PregoButtonsSolidSize.lg,
-              fullWidth: true,
-              onPressed: _close,
-            ),
-          ],
+  Widget _failureContent({
+    required BuildContext context,
+    required String? pluginId,
+    required bool bridgeOutdated,
+    required String message,
+  }) => Padding(
+    padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: context.prego.textTheme.textSm.medium.copyWith(color: context.prego.colors.textErrorPrimary),
         ),
-      );
+        if (pluginId != null) ...[
+          const SizedBox(height: PregoSpacing.x2l),
+          PregoButtonsSolid(
+            key: const Key("harness_authentication_retry"),
+            label: context.loc.harnessAuthenticationRetry,
+            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+            size: PregoButtonsSolidSize.lg,
+            fullWidth: true,
+            onPressed: () {
+              // A new login needs a new code.
+              _codeController.clear();
+              unawaited(context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId));
+            },
+          ),
+        ],
+        if (bridgeOutdated) ...[
+          const SizedBox(height: PregoSpacing.x2l),
+          PregoButtonsSolid(
+            key: const Key("harness_authentication_bridge_update"),
+            label: context.loc.bridgeUpdateHowTo,
+            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+            size: PregoButtonsSolidSize.lg,
+            fullWidth: true,
+            onPressed: () => _close(showBridgeUpdate: true),
+          ),
+        ],
+        const SizedBox(height: PregoSpacing.md),
+        PregoButtonsSolid(
+          key: const Key("harness_authentication_close"),
+          label: context.loc.harnessAuthenticationClose,
+          hierarchy: PregoButtonsSolidHierarchy.secondary,
+          size: PregoButtonsSolidSize.lg,
+          fullWidth: true,
+          onPressed: () => _close(showBridgeUpdate: false),
+        ),
+      ],
+    ),
+  );
 }
 
 String _authenticationErrorDescription({

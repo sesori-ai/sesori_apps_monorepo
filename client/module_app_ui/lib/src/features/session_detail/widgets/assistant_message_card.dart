@@ -20,6 +20,10 @@ class const AssistantMessageCard({
   required final String? projectId,
   required final List<TranscriptBlock> blocks,
   required final Map<String, String> streamingText,
+
+  /// When the message was created, in epoch ms; a running compaction counts
+  /// from it.
+  required final int? createdAtMs,
   required final EdgeInsetsGeometry contentPadding,
 }) extends StatelessWidget {
   @override
@@ -88,8 +92,7 @@ class const AssistantMessageCard({
     MessagePartStepStart() ||
     MessagePartStepFinish() ||
     MessagePartSnapshot() ||
-    MessagePartPatch() ||
-    MessagePartCompaction() => false,
+    MessagePartPatch() => false,
   };
 
   Widget _buildPart({required BuildContext context, required MessagePart part}) {
@@ -110,7 +113,12 @@ class const AssistantMessageCard({
         attempt: attempt,
         retryError: retryError,
       ),
-      MessagePartCompaction(:final summary) => CompactionPartWidget(key: ValueKey(part.id), summary: summary),
+      MessagePartCompaction(:final state) => CompactionPartWidget(
+        key: ValueKey(part.id),
+        state: state,
+        sinceMs: createdAtMs,
+        streamingText: streaming,
+      ),
       // Steps render in their group; the builder never puts them here.
       MessagePartReasoning() ||
       MessagePartTool() ||

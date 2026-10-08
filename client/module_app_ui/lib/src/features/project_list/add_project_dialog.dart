@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -7,6 +9,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
+import "../../widgets/bridge_update_sheet.dart";
 import "new_folder_dialog.dart";
 import "widgets/project_tile.dart";
 
@@ -64,11 +67,12 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
   String? _startingPath;
 
   /// The host filesystem root resolved from [_startingPath], listed beside
-  /// Home when the host names no drives.
+  /// Home unless it is one of the drives, as a Windows drive root is.
   String? _rootPath;
 
-  /// A Windows host's drive roots, listed beside Home instead of Root. Empty
-  /// on other hosts and from a bridge that predates drive listing.
+  /// The host's drives, listed after Home and Root: a Windows host's drive
+  /// roots, or the disks and partitions mounted on a macOS or Linux host.
+  /// Empty from a bridge that predates drive listing.
   List<String> _driveRoots = const [];
 
   /// The folder being listed. Empty until the first fetch resolves the start.
@@ -265,9 +269,19 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
           variant: PregoPopupAlertsNotificationsVariant.warning,
         );
       case CreateDirectoryUnsupported():
-        _showPopupAlert(
-          message: loc.newFolderUnsupported,
+        final presenter = PregoPopupAlertPresenter.of(context);
+        presenter.show(
+          title: loc.newFolderUnsupported,
           variant: PregoPopupAlertsNotificationsVariant.warning,
+          content: PregoPopupAlertContent(
+            primaryAction: PregoPopupAlertsNotificationsAction(
+              label: loc.bridgeUpdateHowTo,
+              onPressed: () {
+                presenter.dismiss();
+                if (mounted) unawaited(showBridgeUpdateSheet(context: context));
+              },
+            ),
+          ),
         );
       case CreateDirectoryError():
         _showPopupAlert(
@@ -399,8 +413,9 @@ class _AddProjectDialogState() extends State<AddProjectDialog> {
                   _Places(
                     places: [
                       (label: loc.folderPickerHome, path: startingPath),
-                      if (_driveRoots.isEmpty && rootPath != null) (label: loc.folderPickerRoot, path: rootPath),
-                      for (final root in _driveRoots) (label: root, path: root),
+                      if (rootPath != null && !_driveRoots.contains(rootPath))
+                        (label: loc.folderPickerRoot, path: rootPath),
+                      for (final drive in _driveRoots) (label: hostPathBasename(path: drive), path: drive),
                     ],
                     currentPath: _currentPath,
                     onNavigate: (path) => _navigateInto(path: path),
@@ -633,9 +648,10 @@ class const _Breadcrumb({
 /// A place the browser can jump to: what its button reads and the folder it opens.
 typedef _Place = ({String label, String path});
 
-/// Home plus Root, or a Windows host's drives, as a row of buttons above the
-/// breadcrumb: the breadcrumb only reaches the drive being browsed, so another
-/// drive is opened from here. The place already being browsed is disabled.
+/// Home, Root, and the host's drives as a row of buttons above the
+/// breadcrumb, Root giving way to the drives on Windows: the breadcrumb only
+/// reaches the drive being browsed, so another drive is opened from here. The
+/// place already being browsed is disabled.
 class const _Places({
   required final List<_Place> places,
   required final String currentPath,

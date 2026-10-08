@@ -1,6 +1,6 @@
 import "dart:async";
 import "dart:convert";
-import "dart:io" show FileSystemEntity, FileSystemEntityType;
+import "dart:io" show FileSystemEntity, FileSystemEntityType, Platform;
 import "dart:math";
 import "dart:typed_data";
 
@@ -20,6 +20,7 @@ import "api/database/daos/session_continuation_dao.dart";
 import "api/database/daos/session_options_cache_dao.dart";
 import "api/database/database.dart";
 import "api/database/history/chat_history_database.dart";
+import "api/drive_roots_api.dart";
 import "api/filesystem_api.dart";
 import "api/gh_cli_api.dart";
 import "api/git_cli_api.dart";
@@ -32,6 +33,7 @@ import "foundation/filesystem_permission_validator.dart";
 import "foundation/key_exchange.dart";
 import "foundation/process_runner.dart";
 import "foundation/relay_client.dart";
+import "foundation/relay_plaintext_codec.dart";
 import "foundation/streaming_process_runner.dart";
 import "listeners/chat_history_activity_listener.dart";
 import "listeners/chat_history_listener.dart";
@@ -119,9 +121,12 @@ import "routing/get_session_diff_summary_handler.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/get_session_handler.dart";
 import "routing/get_session_messages_handler.dart";
+import "routing/get_session_messages_through_handler.dart";
 import "routing/get_session_permissions_handler.dart";
+import "routing/get_session_prompt_index_handler.dart";
 import "routing/get_session_questions_handler.dart";
 import "routing/get_session_statuses_handler.dart";
+import "routing/get_session_tool_output_handler.dart";
 import "routing/get_sessions_handler.dart";
 import "routing/health_check_handler.dart";
 import "routing/hide_project_handler.dart";
@@ -142,6 +147,7 @@ import "routing/request_router.dart";
 import "routing/restart_bridge_handler.dart";
 import "routing/routed_request.dart";
 import "routing/routed_request_dispatcher.dart";
+import "routing/search_session_prompts_handler.dart";
 import "routing/send_prompt_handler.dart";
 import "routing/set_base_branch_handler.dart";
 import "routing/set_session_approval_override_handler.dart";
@@ -231,6 +237,7 @@ class Orchestrator({
   required final FailureReporter _failureReporter,
   required final BridgeRestartService _restartService,
   required final bool _filesystemAccessOk,
+  required final BridgeKind _bridgeKind,
   // Supervised mode only: owns the status-class pushes to the desktop GUI.
   // Standalone has no control channel, so this is null there.
   required final ControlStatusNotifier? _statusNotifier,
@@ -315,6 +322,10 @@ class Orchestrator({
     final filesystemRepository = FilesystemRepository(
       filesystemApi: const FilesystemApi(),
       permissionValidator: const FilesystemPermissionValidator(),
+      driveRootsApi: DriveRootsApi.forPlatform(
+        platform: PlatformOs.fromOperatingSystem(operatingSystem: Platform.operatingSystem),
+        processRunner: _processRunner,
+      ),
     );
     final worktreeRepository = WorktreeRepository(
       projectsDao: _database.projectsDao,
@@ -455,6 +466,7 @@ class Orchestrator({
     final healthRepository = HealthRepository(
       bridgeVersion: appVersion,
       filesystemAccessOk: _filesystemAccessOk,
+      bridgeKind: _bridgeKind,
     );
     final providerRepository = ProviderRepository(
       runtime: _pluginRuntime,
@@ -691,6 +703,10 @@ class Orchestrator({
         ),
         GetSessionAttachmentHandler(chatHistoryService: chatHistoryService),
         GetSessionMessagesHandler(chatHistoryService: chatHistoryService),
+        GetSessionMessagesThroughHandler(chatHistoryService: chatHistoryService),
+        GetSessionPromptIndexHandler(chatHistoryService: chatHistoryService),
+        SearchSessionPromptsHandler(chatHistoryService: chatHistoryService),
+        GetSessionToolOutputHandler(chatHistoryService: chatHistoryService),
         GetSessionsHandler(
           sessionViews: sessionViews,
           sessionRepository: sessionRepository,
@@ -2427,6 +2443,7 @@ class OrchestratorSession._({
                 connection: connection,
                 connID: connID,
                 pendingRoute: pendingRoute,
+                deflateResponse: req.acceptsDeflatedResponse,
                 phoneIncarnation: phoneIncarnation,
                 activePhoneIncarnations: activePhoneIncarnations,
               ),
@@ -2467,6 +2484,7 @@ class OrchestratorSession._({
     required RelayConnection connection,
     required int connID,
     required PendingRoutedRequest pendingRoute,
+    required bool deflateResponse,
     required Object phoneIncarnation,
     required Map<int, Object> activePhoneIncarnations,
   }) async {
@@ -2497,6 +2515,7 @@ class OrchestratorSession._({
       connection: connection,
       connID: connID,
       response: response,
+      deflate: deflateResponse,
       routeIdentity: routeIdentity,
       phoneIncarnation: phoneIncarnation,
       activePhoneIncarnations: activePhoneIncarnations,
@@ -2519,13 +2538,14 @@ class OrchestratorSession._({
     required RelayConnection connection,
     required int connID,
     required RelayResponse response,
+    required bool deflate,
     required RouteIdentity routeIdentity,
     required Object phoneIncarnation,
     required Map<int, Object> activePhoneIncarnations,
   }) async {
     final ({Uint8List payload, int cleartextLength}) encrypted;
     try {
-      encrypted = await _encryptRelayMessage(message: response, connID: connID);
+      encrypted = await _encryptRelayMessage(message: response, connID: connID, deflate: deflate);
     } on Object catch (error, stackTrace) {
       Log.e("failed to encrypt response for ${routeIdentity.diagnosticLabel} and connId $connID", error, stackTrace);
       return;
@@ -2569,7 +2589,7 @@ class OrchestratorSession._({
     required Map<int, Object> activePhoneIncarnations,
   }) async {
     try {
-      final encrypted = await _encryptRelayMessage(message: response, connID: connID);
+      final encrypted = await _encryptRelayMessage(message: response, connID: connID, deflate: false);
       if (_cancelled) return;
       _sendEncryptedResponseIfCurrent(
         connection: connection,
@@ -2648,12 +2668,14 @@ class OrchestratorSession._({
   Future<({Uint8List payload, int cleartextLength})> _encryptRelayMessage({
     required int connID,
     required RelayMessage message,
+    required bool deflate,
   }) async {
     final respJson = jsonEncode(message.toJson());
     final jsonBytes = utf8.encode(respJson);
-    Log.v("[response] encrypting ${jsonBytes.length} bytes for connID=$connID");
-    final framed = await frame(jsonBytes, encryptor: _sessionEncryptor);
-    return (payload: framed, cleartextLength: jsonBytes.length);
+    final plaintext = encodeRelayPlaintext(json: jsonBytes, deflate: deflate);
+    Log.v("[response] encrypting ${plaintext.length} bytes (json ${jsonBytes.length}) for connID=$connID");
+    final framed = await frame(plaintext, encryptor: _sessionEncryptor);
+    return (payload: framed, cleartextLength: plaintext.length);
   }
 
   RelaySendOutcome _sendEncryptedResponseIfCurrent({

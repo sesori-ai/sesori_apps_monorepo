@@ -13,7 +13,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-ToolState _state({required PluginMessagePart part}) => (part.toShared(sessionId: "s") as MessagePartTool).state;
+ToolStateFull _state({required PluginMessagePart part}) =>
+    (part.toShared(sessionId: "s") as MessagePartTool).state as ToolStateFull;
 
 void main() {
   for (final failed in [false, true]) {
@@ -111,7 +112,8 @@ void main() {
       expect(part.description, "Explore");
       expect(part.agent, "explore");
       expect(part.taskState!.status, failed ? ToolStatus.error : ToolStatus.completed);
-      expect(failed ? part.taskState!.error : part.taskState!.output, "😀" * maxToolOutputLength);
+      final taskState = part.taskState! as ToolStateFull;
+      expect(failed ? taskState.error : taskState.output, "😀" * maxToolOutputLength);
     });
     for (final shell in [false, true]) {
       test("Claude backend content live tracker/history projection shell=$shell failed=$failed", () {

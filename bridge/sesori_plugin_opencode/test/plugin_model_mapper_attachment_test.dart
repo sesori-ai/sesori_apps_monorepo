@@ -46,6 +46,7 @@ void main() {
           ),
         ],
       ),
+      compactionAuto: null,
     );
 
     expect(mapped.parts[0].attachment, isA<PluginMessageAttachmentInlineImage>());
@@ -55,27 +56,32 @@ void main() {
     );
   });
 
-  test("maps the text of a compaction summary message to a compaction part", () {
+  test("maps a compaction summary message's text in the state of its message", () {
     const mapper = PluginModelMapper(
       messagePartMapper: MessagePartMapper(),
       maxTranscriptAttachmentBytes: 5,
     );
-    final mapped = mapper.mapMessageWithParts(
-      const SessionMessagesResponseItem(
+    PluginMessageWithParts summary({
+      required int? completed,
+      required Object? error,
+      required bool? auto,
+      required List<Part> parts,
+    }) => mapper.mapMessageWithParts(
+      SessionMessagesResponseItem(
         info: AssistantMessage(
           id: "message-1",
           sessionID: "session-1",
-          time: AssistantMessageTime(created: 100, completed: 200),
-          error: null,
+          time: AssistantMessageTime(created: 100, completed: completed),
+          error: error,
           parentID: "parent-1",
           modelID: "gpt-4",
           providerID: "openai",
           mode: "compaction",
           agent: "compaction",
-          path: AssistantMessagePath(cwd: "/repo", root: "/repo"),
+          path: const AssistantMessagePath(cwd: "/repo", root: "/repo"),
           summary: true,
           cost: 0,
-          tokens: AssistantMessageTokens(
+          tokens: const AssistantMessageTokens(
             total: 0,
             input: 0,
             output: 0,
@@ -86,31 +92,68 @@ void main() {
           variant: null,
           finish: null,
         ),
-        parts: <Part>[
-          TextPart(
-            id: "part-1",
-            sessionID: "session-1",
-            messageID: "message-1",
-            text: "## Goal\nShip the row.",
-            synthetic: null,
-            ignored: null,
-            time: null,
-            metadata: null,
-          ),
-        ],
+        parts: parts,
       ),
+      compactionAuto: auto,
     );
+    const text = TextPart(
+      id: "part-1",
+      sessionID: "session-1",
+      messageID: "message-1",
+      text: "## Goal\nShip the row.",
+      synthetic: null,
+      ignored: null,
+      time: null,
+      metadata: null,
+    );
+    PluginCompactionState? state(PluginMessageWithParts message) => switch (message.parts.single) {
+      PluginMessagePartCompaction(:final compactionState) => compactionState,
+      _ => null,
+    };
+    const fixtureError = {
+      "name": "MessageAbortedError",
+      "data": {"message": "Fixture failure"},
+    };
 
     expect(
-      mapped.parts.single,
-      equals(
-        const PluginMessagePart.compaction(
+      state(summary(completed: null, error: null, auto: true, parts: const [text])),
+      const PluginCompactionState.running(summary: "## Goal\nShip the row."),
+    );
+    for (final (auto, trigger) in const [
+      (true, PluginCompactionTrigger.auto),
+      (false, PluginCompactionTrigger.manual),
+      (null, null),
+    ]) {
+      expect(
+        state(summary(completed: 200, error: null, auto: auto, parts: const [text])),
+        PluginCompactionState.completed(summary: "## Goal\nShip the row.", freedTokens: null, trigger: trigger),
+      );
+    }
+    final failed = summary(completed: 200, error: fixtureError, auto: true, parts: const [text]);
+    expect(state(failed), const PluginCompactionState.failed(error: "Fixture failure"));
+    expect(failed.info, isA<PluginMessageAssistant>());
+    expect(
+      summary(completed: 200, error: fixtureError, auto: true, parts: const []).info,
+      isA<PluginMessageError>().having((message) => message.errorMessage, "error", "Fixture failure"),
+    );
+    final empty = summary(
+      completed: 200,
+      error: fixtureError,
+      auto: true,
+      parts: const [
+        TextPart(
           id: "part-1",
           sessionID: "session-1",
           messageID: "message-1",
-          summary: "## Goal\nShip the row.",
+          text: "",
+          synthetic: null,
+          ignored: null,
+          time: null,
+          metadata: null,
         ),
-      ),
+      ],
     );
+    expect(empty.info, isA<PluginMessageError>().having((message) => message.errorMessage, "error", "Fixture failure"));
+    expect(empty.parts.single, isA<PluginMessagePartText>());
   });
 }

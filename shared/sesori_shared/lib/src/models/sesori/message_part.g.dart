@@ -222,7 +222,15 @@ MessagePartCompaction _$MessagePartCompactionFromJson(Map json) =>
       id: json['id'] as String,
       sessionID: json['sessionID'] as String,
       messageID: json['messageID'] as String,
-      summary: json['summary'] as String?,
+      state: json['state'] == null
+          ? const CompactionState.completed(
+              summary: null,
+              freedTokens: null,
+              trigger: null,
+            )
+          : CompactionState.fromJson(
+              Map<String, dynamic>.from(json['state'] as Map),
+            ),
       $type: json['type'] as String?,
     );
 
@@ -232,9 +240,55 @@ Map<String, dynamic> _$MessagePartCompactionToJson(
   'id': instance.id,
   'sessionID': instance.sessionID,
   'messageID': instance.messageID,
-  'summary': ?instance.summary,
+  'state': instance.state.toJson(),
   'type': instance.$type,
 };
+
+CompactionStateRunning _$CompactionStateRunningFromJson(Map json) =>
+    CompactionStateRunning(
+      summary: json['summary'] as String?,
+      $type: json['status'] as String?,
+    );
+
+Map<String, dynamic> _$CompactionStateRunningToJson(
+  CompactionStateRunning instance,
+) => <String, dynamic>{'summary': ?instance.summary, 'status': instance.$type};
+
+CompactionStateCompleted _$CompactionStateCompletedFromJson(Map json) =>
+    CompactionStateCompleted(
+      summary: json['summary'] as String?,
+      freedTokens: (json['freedTokens'] as num?)?.toInt(),
+      trigger: $enumDecodeNullable(
+        _$CompactionTriggerEnumMap,
+        json['trigger'],
+        unknownValue: JsonKey.nullForUndefinedEnumValue,
+      ),
+      $type: json['status'] as String?,
+    );
+
+Map<String, dynamic> _$CompactionStateCompletedToJson(
+  CompactionStateCompleted instance,
+) => <String, dynamic>{
+  'summary': ?instance.summary,
+  'freedTokens': ?instance.freedTokens,
+  'trigger': ?_$CompactionTriggerEnumMap[instance.trigger],
+  'status': instance.$type,
+};
+
+const _$CompactionTriggerEnumMap = {
+  CompactionTrigger.manual: 'manual',
+  CompactionTrigger.auto: 'auto',
+};
+
+CompactionStateFailed _$CompactionStateFailedFromJson(Map json) =>
+    CompactionStateFailed(
+      error: json['error'] as String?,
+      $type: json['status'] as String?,
+    );
+
+Map<String, dynamic> _$CompactionStateFailedToJson(
+  CompactionStateFailed instance,
+) => <String, dynamic>{'error': ?instance.error, 'status': instance.$type};
 
 MessageAttachmentInlineImage _$MessageAttachmentInlineImageFromJson(Map json) =>
     MessageAttachmentInlineImage(
@@ -313,7 +367,7 @@ Map<String, dynamic> _$MessageAttachmentUnknownToJson(
   MessageAttachmentUnknown instance,
 ) => <String, dynamic>{'source': instance.$type};
 
-_ToolState _$ToolStateFromJson(Map json) => _ToolState(
+ToolStateFull _$ToolStateFullFromJson(Map json) => ToolStateFull(
   status: $enumDecode(
     _$ToolStatusEnumMap,
     json['status'],
@@ -326,9 +380,10 @@ _ToolState _$ToolStateFromJson(Map json) => _ToolState(
   attachments: json['attachments'] == null
       ? const <MessageAttachment>[]
       : _messageAttachmentsFromJson(json['attachments']),
+  $type: json['form'] as String?,
 );
 
-Map<String, dynamic> _$ToolStateToJson(_ToolState instance) =>
+Map<String, dynamic> _$ToolStateFullToJson(ToolStateFull instance) =>
     <String, dynamic>{
       'status': _$ToolStatusEnumMap[instance.status]!,
       'title': ?instance.title,
@@ -336,6 +391,7 @@ Map<String, dynamic> _$ToolStateToJson(_ToolState instance) =>
       'output': ?instance.output,
       'error': ?instance.error,
       'attachments': instance.attachments.map((e) => e.toJson()).toList(),
+      'form': instance.$type,
     };
 
 const _$ToolStatusEnumMap = {
@@ -346,3 +402,24 @@ const _$ToolStatusEnumMap = {
   ToolStatus.cancelled: 'cancelled',
   ToolStatus.unknown: 'unknown',
 };
+
+ToolStateSummary _$ToolStateSummaryFromJson(Map json) => ToolStateSummary(
+  status: $enumDecode(
+    _$ToolStatusEnumMap,
+    json['status'],
+    unknownValue: ToolStatus.unknown,
+  ),
+  title: json['title'] as String?,
+  shellCommand: json['shellCommand'] as String?,
+  attachments: _messageAttachmentsFromJson(json['attachments']),
+  $type: json['form'] as String?,
+);
+
+Map<String, dynamic> _$ToolStateSummaryToJson(ToolStateSummary instance) =>
+    <String, dynamic>{
+      'status': _$ToolStatusEnumMap[instance.status]!,
+      'title': ?instance.title,
+      'shellCommand': ?instance.shellCommand,
+      'attachments': instance.attachments.map((e) => e.toJson()).toList(),
+      'form': instance.$type,
+    };

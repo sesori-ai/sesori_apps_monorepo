@@ -77,7 +77,26 @@ const _steps = <(Widget, String)>[
     ),
     "Explore Survey the screens",
   ),
-  (CompactionPartWidget(summary: "Carried forward"), "Context compacted"),
+  (
+    CompactionPartWidget(
+      state: CompactionState.completed(summary: "Carried forward", freedTokens: null, trigger: null),
+      sinceMs: null,
+      streamingText: null,
+    ),
+    "Context compacted",
+  ),
+  (
+    CompactionPartWidget(state: CompactionState.running(summary: null), sinceMs: null, streamingText: null),
+    "Compacting context",
+  ),
+  (
+    CompactionPartWidget(
+      state: CompactionState.failed(error: "Context limit reached"),
+      sinceMs: null,
+      streamingText: null,
+    ),
+    "Compaction failed · Context limit reached",
+  ),
 ];
 
 void main() {
@@ -124,12 +143,12 @@ void main() {
           reason: text,
         );
       }
-      // The four other rows lead with an icon; the thought and the live row
+      // The five other rows lead with an icon; the thought and the live rows
       // with the sparkle.
       final icons = tester.widgetList<Icon>(
         find.descendant(of: find.byType(TranscriptStepRow), matching: find.byType(Icon)),
       );
-      expect(icons.map((icon) => icon.size), List.filled(4, PregoIconSize.sm));
+      expect(icons.map((icon) => icon.size), List.filled(5, PregoIconSize.sm));
     });
   }
 }

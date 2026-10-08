@@ -91,6 +91,7 @@ Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputM
         BlocProvider<ChatInputModeCubit>.value(value: chatInputMode)
       else
         BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+      BlocProvider(create: (_) => testBridgeKindCubit(kind: null)),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -600,7 +601,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Update the connected bridge to configure this setting."), findsNWidgets(3));
-    expect(find.text("Unavailable"), findsNWidgets(3));
+    expect(find.text("How to update"), findsNWidgets(3));
+
+    await tester.tap(find.byKey(const Key("pull_request_refresh_interval")));
+    await tester.pumpAndSettle();
+    expect(find.text("Update Sesori Bridge"), findsOneWidget);
   });
 
   testWidgets("a failed cadence load exposes one retry that refreshes it", (tester) async {

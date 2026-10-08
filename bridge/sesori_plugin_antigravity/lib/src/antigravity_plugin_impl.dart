@@ -32,6 +32,8 @@ class AntigravityPlugin({
   @override
   Set<String> get authMethodAllowlist => const {AntigravityRelease.personalOauthMethodId};
   @override
+  AcpClientIdentity get initializeClientIdentity => AntigravityIdentity.acpClientIdentity;
+  @override
   AcpResidencyPreference get residencyPreference => AcpResidencyPreference.resumeFirst;
   @override
   String? get authenticationFailureActionHint =>

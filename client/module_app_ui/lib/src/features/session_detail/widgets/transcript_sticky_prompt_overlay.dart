@@ -4,7 +4,6 @@ import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/rendering.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -12,6 +11,7 @@ import "../../../extensions/build_context_x.dart";
 import "../../../l10n/app_localizations.dart";
 import "../../../utils/markdown_plain_text.dart";
 import "../../../widgets/markdown_styles.dart";
+import "transcript_motion.dart";
 import "transcript_sticky_layout.dart";
 import "user_message_card.dart";
 import "user_prompt_markdown_image.dart";
@@ -27,66 +27,25 @@ import "user_prompt_markdown_image.dart";
 /// runs once this has laid out the copies, and the transcript sets
 /// [RenderTranscriptStickyPrompts.stickyLayout]. A tap on a pinned bubble, or a
 /// screen reader's activation, calls [onTap] with its message.
+///
+/// The [unloaded] prompt pins its index preview in the same bubble. Its pin
+/// fades in as it first shows, and over to its message's own copy once that
+/// message loads, so the swap never snaps.
 class const TranscriptStickyPromptOverlay({
   super.key,
   required final List<MessageWithParts> messages,
+
+  /// The prompt that pins above the loaded messages without being loaded
+  /// itself; null when none does.
+  required final SessionPromptIndexEntry? unloaded,
 
   /// The side padding that centres the transcript's rows, as the list has it.
   required final double horizontalInset,
   required final VoidCallback onLayout,
   required final void Function({required String openerMessageId}) onTap,
-}) extends StatelessWidget {
+}) extends StatefulWidget {
   @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    final loc = context.loc;
-    return _StickyPrompts(
-      openerIds: [for (final message in messages) message.info.id],
-      cutOpenerIds: {
-        for (final message in messages)
-          if (_textOf(message: message)?.cut ?? false) message.info.id,
-      },
-      compactHeight: _compactHeight(
-        context: context,
-        style: buildChatMessageMarkdownStyleSheet(prego: prego).p,
-      ),
-      horizontalInset: horizontalInset,
-      bubbleColor: prego.colors.bgSurface2,
-      haloColor: Theme.of(context).scaffoldBackgroundColor,
-      onLayout: onLayout,
-      onTap: onTap,
-      children: [
-        for (final message in messages) _copy(loc: loc, opener: message),
-      ],
-    );
-  }
-
-  Widget _copy({required AppLocalizations loc, required MessageWithParts opener}) {
-    final id = opener.info.id;
-    final text = _textOf(message: opener);
-    return RepaintBoundary(
-      key: ValueKey((pinnedPrompt: id)),
-      child: Semantics(
-        container: true,
-        button: true,
-        label: text == null
-            // A prompt with no text is named by its first attachment.
-            ? opener.promptText ?? loc.transcriptStickyPromptAttachment
-            : _spokenLabelOf(loc: loc, source: text.head),
-        hint: loc.transcriptStickyPromptJumpHint,
-        onTap: () => onTap(openerMessageId: id),
-        excludeSemantics: true,
-        // Hit tests never reach the copy and focus never enters it, so nothing
-        // in it can be pressed, selected or scrolled.
-        child: ExcludeFocus(
-          child: UserMessageBubbleContent(
-            markdown: text?.end,
-            attachments: [UserMessageCard.attachmentsOf(message: opener)],
-          ),
-        ),
-      ),
-    );
-  }
+  State<TranscriptStickyPromptOverlay> createState() => _TranscriptStickyPromptOverlayState();
 
   /// As much of a message as a pin can show, and no more. A pasted document
   /// can be megabytes long, and a copy of it all would double the cost of
@@ -201,6 +160,142 @@ class const TranscriptStickyPromptOverlay({
   }
 }
 
+class _TranscriptStickyPromptOverlayState()
+    extends State<TranscriptStickyPromptOverlay>
+    with SingleTickerProviderStateMixin {
+  /// Runs the unloaded prompt's pin in, from nothing or from its preview; it
+  /// rests at 1.
+  late final AnimationController _fade = AnimationController(
+    vsync: this,
+    duration: transcriptMotionDuration,
+    value: 1,
+  )..addStatusListener(_dropLeaving);
+  late final CurvedAnimation _curvedFade = CurvedAnimation(parent: _fade, curve: Curves.easeInOut);
+
+  /// The prompt whose pin [_fade] runs in.
+  String? _fadingId;
+
+  /// The preview a just-loaded prompt's pin fades over from.
+  SessionPromptIndexEntry? _leaving;
+
+  void _dropLeaving(AnimationStatus status) {
+    if (status.isCompleted && _leaving != null) setState(() => _leaving = null);
+  }
+
+  @override
+  void didUpdateWidget(TranscriptStickyPromptOverlay oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final was = oldWidget.unloaded;
+    final now = widget.unloaded;
+    if (was?.messageId == now?.messageId || context.isReducedMotion) return;
+    if (was != null && widget.messages.any((message) => message.info.id == was.messageId)) {
+      _leaving = was;
+      _fadingId = was.messageId;
+    } else if (now != null) {
+      _leaving = null;
+      _fadingId = now.messageId;
+    } else {
+      return;
+    }
+    _fade.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _curvedFade.dispose();
+    _fade.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final loc = context.loc;
+    final messages = widget.messages;
+    final unloaded = widget.unloaded;
+    final leaving = _leaving;
+    return _StickyPrompts(
+      openerIds: [for (final message in messages) message.info.id, ?unloaded?.messageId],
+      cutOpenerIds: {
+        for (final message in messages)
+          if (TranscriptStickyPromptOverlay._textOf(message: message)?.cut ?? false) message.info.id,
+      },
+      compactHeight: TranscriptStickyPromptOverlay._compactHeight(
+        context: context,
+        style: buildChatMessageMarkdownStyleSheet(prego: prego).p,
+      ),
+      horizontalInset: widget.horizontalInset,
+      bubbleColor: prego.colors.bgSurface2,
+      haloColor: Theme.of(context).scaffoldBackgroundColor,
+      fade: _curvedFade,
+      fadingOpenerId: _fadingId,
+      hasLeavingCopy: leaving != null,
+      onLayout: widget.onLayout,
+      onTap: widget.onTap,
+      children: [
+        for (final message in messages) _copy(loc: loc, opener: message),
+        if (unloaded != null) _previewCopy(loc: loc, entry: unloaded),
+        if (leaving != null) _previewCopy(loc: loc, entry: leaving),
+      ],
+    );
+  }
+
+  Widget _copy({required AppLocalizations loc, required MessageWithParts opener}) {
+    final text = TranscriptStickyPromptOverlay._textOf(message: opener);
+    return _pinnable(
+      key: ValueKey((pinnedPrompt: opener.info.id)),
+      loc: loc,
+      id: opener.info.id,
+      label: text == null
+          // A prompt with no text is named by its first attachment.
+          ? opener.promptText ?? loc.transcriptStickyPromptAttachment
+          : TranscriptStickyPromptOverlay._spokenLabelOf(loc: loc, source: text.head),
+      content: UserMessageBubbleContent(
+        markdown: text?.end,
+        attachments: [UserMessageCard.attachmentsOf(message: opener)],
+      ),
+    );
+  }
+
+  /// An unloaded prompt's copy: the start of it the prompt index previews.
+  Widget _previewCopy({required AppLocalizations loc, required SessionPromptIndexEntry entry}) {
+    final preview = entry.preview;
+    return _pinnable(
+      key: ValueKey((unloadedPrompt: entry.messageId)),
+      loc: loc,
+      id: entry.messageId,
+      label: preview == null
+          ? loc.transcriptStickyPromptAttachment
+          : TranscriptStickyPromptOverlay._spokenLabelOf(loc: loc, source: preview),
+      content: UserMessageBubbleContent(
+        markdown: preview ?? loc.transcriptStickyPromptAttachment,
+        attachments: const [],
+      ),
+    );
+  }
+
+  Widget _pinnable({
+    required Key key,
+    required AppLocalizations loc,
+    required String id,
+    required String label,
+    required Widget content,
+  }) => RepaintBoundary(
+    key: key,
+    child: Semantics(
+      container: true,
+      button: true,
+      label: label,
+      hint: loc.transcriptStickyPromptJumpHint,
+      onTap: () => widget.onTap(openerMessageId: id),
+      excludeSemantics: true,
+      // Hit tests never reach the copy and focus never enters it, so nothing
+      // in it can be pressed, selected or scrolled.
+      child: ExcludeFocus(child: content),
+    ),
+  );
+}
+
 /// A copy's text: the [head] a screen reader hears, the [end] it shows, and
 /// whether [end] was [cut] from a longer message.
 typedef _CopyText = ({String head, String end, bool cut});
@@ -212,6 +307,9 @@ class const _StickyPrompts({
   required final double horizontalInset,
   required final Color bubbleColor,
   required final Color haloColor,
+  required final Animation<double> fade,
+  required final String? fadingOpenerId,
+  required final bool hasLeavingCopy,
   required final VoidCallback onLayout,
   required final void Function({required String openerMessageId}) onTap,
   required super.children,
@@ -227,6 +325,9 @@ class const _StickyPrompts({
     horizontalInset: horizontalInset,
     bubbleColor: bubbleColor,
     haloColor: haloColor,
+    fade: fade,
+    fadingOpenerId: fadingOpenerId,
+    hasLeavingCopy: hasLeavingCopy,
     onLayout: onLayout,
     onTap: onTap,
   );
@@ -240,6 +341,9 @@ class const _StickyPrompts({
       ..horizontalInset = horizontalInset
       ..bubbleColor = bubbleColor
       ..haloColor = haloColor
+      ..fade = fade
+      ..fadingOpenerId = fadingOpenerId
+      ..hasLeavingCopy = hasLeavingCopy
       ..onLayout = onLayout
       ..onTap = onTap;
   }
@@ -263,6 +367,10 @@ class _StickyPromptsElement(super.widget) extends MultiChildRenderObjectElement 
 /// the ones [stickyLayout] pins. Hit testing is translucent: a pinned band claims a
 /// tap, so a tap beside the bubble does nothing rather than reaching a row the
 /// pin hides, while a drag or a wheel that starts on it still scrolls the rows.
+///
+/// While [fade] runs, [fadingOpenerId]'s pin fades in: over from the copy
+/// after [openerIds]' when [hasLeavingCopy], the bubble moving between the
+/// two copies' sizes, or else from nothing.
 class RenderTranscriptStickyPrompts({
   required List<String> openerIds,
 
@@ -274,6 +382,9 @@ class RenderTranscriptStickyPrompts({
   required double horizontalInset,
   required Color bubbleColor,
   required Color haloColor,
+  required Animation<double> fade,
+  required String? fadingOpenerId,
+  required bool hasLeavingCopy,
   required var VoidCallback onLayout,
   required var void Function({required String openerMessageId}) onTap,
 }) extends RenderBox
@@ -312,6 +423,34 @@ class RenderTranscriptStickyPrompts({
     markNeedsPaint();
   }
 
+  Animation<double> _fade = fade;
+  Animation<double> get fade => _fade;
+  set fade(Animation<double> value) {
+    if (value == _fade) return;
+    if (attached) {
+      _fade.removeListener(markNeedsPaint);
+      value.addListener(markNeedsPaint);
+    }
+    _fade = value;
+    markNeedsPaint();
+  }
+
+  String? _fadingOpenerId = fadingOpenerId;
+  String? get fadingOpenerId => _fadingOpenerId;
+  set fadingOpenerId(String? value) {
+    if (value == _fadingOpenerId) return;
+    _fadingOpenerId = value;
+    markNeedsPaint();
+  }
+
+  bool _hasLeavingCopy = hasLeavingCopy;
+  bool get hasLeavingCopy => _hasLeavingCopy;
+  set hasLeavingCopy(bool value) {
+    if (value == _hasLeavingCopy) return;
+    _hasLeavingCopy = value;
+    markNeedsPaint();
+  }
+
   TranscriptStickyLayout _layout = TranscriptStickyLayout.empty;
   TranscriptStickyLayout get stickyLayout => _layout;
 
@@ -327,6 +466,24 @@ class RenderTranscriptStickyPrompts({
   late final TapGestureRecognizer _tap = TapGestureRecognizer(debugOwner: this)..onTap = _handleTap;
   String? _tapTarget;
   final List<LayerHandle<ClipRRectLayer>> _clipLayers = [];
+
+  /// The fading pin's layers: the whole pin fading in, or its two copies
+  /// crossfading.
+  final _fadeLayer = LayerHandle<OpacityLayer>();
+  final _enteringLayer = LayerHandle<OpacityLayer>();
+  final _leavingLayer = LayerHandle<OpacityLayer>();
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _fade.addListener(markNeedsPaint);
+  }
+
+  @override
+  void detach() {
+    _fade.removeListener(markNeedsPaint);
+    super.detach();
+  }
 
   /// Each copy's whole bubble height, once laid out.
   Map<String, double> get fullHeights => {
@@ -426,6 +583,8 @@ class RenderTranscriptStickyPrompts({
     while (_clipLayers.length < pinned.length) {
       _clipLayers.add(LayerHandle<ClipRRectLayer>());
     }
+    final progress = _fade.value;
+    var fading = false;
     for (final (index, handle) in _clipLayers.indexed) {
       final pin = pinned.elementAtOrNull(index);
       final child = pin == null ? null : _childFor(openerId: pin.openerId);
@@ -433,38 +592,119 @@ class RenderTranscriptStickyPrompts({
         handle.layer = null;
         continue;
       }
-      final bubble = _bubbleOf(pin: pin, child: child);
-      final shape = RRect.fromRectAndRadius(bubble, const Radius.circular(UserMessageBubble.radius));
-      if (pin.elevation > 0) {
-        // A halo of the page's own background, so the pin lifts off the rows
-        // sliding under it without the glyphs its edge cuts through crowding
-        // it. Unclipped, so above the pin line it melts into the bar's fade.
-        // Judge it with shadows enabled: `flutter_test` disables the blur.
-        final halo = BoxShadow(
-          color: _haloColor.withValues(alpha: _haloColor.a * pin.elevation),
-          blurRadius: 28,
-          spreadRadius: 14,
-        );
-        context.canvas.drawRRect(shape.shift(offset).inflate(halo.spreadRadius), halo.toPaint());
+      if (progress >= 1 || pin.openerId != _fadingOpenerId) {
+        _paintPin(context: context, offset: offset, handle: handle, pin: pin, child: child, leaving: null);
+        continue;
       }
-      context.canvas.drawRRect(shape.shift(offset), Paint()..color = _bubbleColor);
-      handle.layer = context.pushClipRRect(
-        needsCompositing,
-        offset,
-        bubble,
-        shape,
-        (context, offset) {
-          context.paintChild(child, offset + _contentOf(pin: pin, child: child, bubble: bubble));
-          final canvas = context.canvas;
-          switch (pin.view) {
-            case TranscriptPinStart():
-              _paintCut(canvas: canvas, bubble: bubble.shift(offset), pin: pin);
-            case TranscriptPinEnd(:final fade):
-              _paintTopCut(canvas: canvas, bubble: bubble.shift(offset), fade: fade);
-          }
-        },
-        oldLayer: handle.layer,
-      );
+      fading = true;
+      if (_hasLeavingCopy ? lastChild : null case final leaving? when leaving.hasSize) {
+        _paintPin(
+          context: context,
+          offset: offset,
+          handle: handle,
+          pin: pin,
+          child: child,
+          leaving: (child: leaving, progress: progress),
+        );
+      } else {
+        _fadeLayer.layer = context.pushOpacity(
+          offset,
+          (progress * 255).round(),
+          (context, offset) =>
+              _paintPin(context: context, offset: offset, handle: handle, pin: pin, child: child, leaving: null),
+          oldLayer: _fadeLayer.layer,
+        );
+      }
+    }
+    if (!fading) _fadeLayer.layer = _enteringLayer.layer = _leavingLayer.layer = null;
+  }
+
+  /// Paints [pin]'s bubble and [child] in it, crossfading from [leaving]'s
+  /// copy, shown from its start, as the bubble moves from that copy's size.
+  void _paintPin({
+    required PaintingContext context,
+    required Offset offset,
+    required LayerHandle<ClipRRectLayer> handle,
+    required TranscriptPinnedPrompt pin,
+    required RenderBox child,
+    required ({RenderBox child, double progress})? leaving,
+  }) {
+    final entering = _bubbleOf(pin: pin, child: child);
+    final from = switch (leaving) {
+      (:final child, :final progress) => (
+        child: child,
+        progress: progress,
+        pin: (
+          openerId: pin.openerId,
+          top: pin.top,
+          height: min(child.size.height + UserMessageBubble.padding * 2, compactHeight),
+          fullHeight: child.size.height + UserMessageBubble.padding * 2,
+          elevation: pin.elevation,
+          view: const TranscriptPinStart(),
+        ),
+      ),
+      null => null,
+    };
+    final fromBubble = switch (from) {
+      (:final child, progress: _, :final pin) => _bubbleOf(pin: pin, child: child),
+      null => entering,
+    };
+    final shown = switch (from) {
+      (child: _, :final progress, pin: _) => Rect.lerp(fromBubble, entering, progress) ?? entering,
+      null => entering,
+    };
+    final shape = RRect.fromRectAndRadius(shown, const Radius.circular(UserMessageBubble.radius));
+    if (pin.elevation > 0) {
+      // Unclipped, so above the pin line it melts into the bar's fade.
+      final halo = pregoPageHaloShadow(color: _haloColor.withValues(alpha: _haloColor.a * pin.elevation));
+      context.canvas.drawRRect(shape.shift(offset).inflate(halo.spreadRadius), halo.toPaint());
+    }
+    context.canvas.drawRRect(shape.shift(offset), Paint()..color = _bubbleColor);
+    handle.layer = context.pushClipRRect(
+      needsCompositing,
+      offset,
+      shown,
+      shape,
+      // Each copy stays where its own bubble holds it, so only the surface
+      // moves while the words crossfade.
+      (context, offset) {
+        if (from == null) {
+          return _paintContent(context: context, offset: offset, pin: pin, child: child, bubble: shown);
+        }
+        _leavingLayer.layer = context.pushOpacity(
+          offset,
+          ((1 - from.progress) * 255).round(),
+          (context, offset) =>
+              _paintContent(context: context, offset: offset, pin: from.pin, child: from.child, bubble: fromBubble),
+          oldLayer: _leavingLayer.layer,
+        );
+        _enteringLayer.layer = context.pushOpacity(
+          offset,
+          (from.progress * 255).round(),
+          (context, offset) =>
+              _paintContent(context: context, offset: offset, pin: pin, child: child, bubble: entering),
+          oldLayer: _enteringLayer.layer,
+        );
+      },
+      oldLayer: handle.layer,
+    );
+  }
+
+  /// Paints [child] where [pin] shows it in [bubble], with its cut edge.
+  void _paintContent({
+    required PaintingContext context,
+    required Offset offset,
+    required TranscriptPinnedPrompt pin,
+    required RenderBox child,
+    required Rect bubble,
+  }) {
+    context.paintChild(child, offset + _contentOf(pin: pin, child: child, bubble: bubble));
+    final canvas = context.canvas;
+    switch (pin.view) {
+      case TranscriptPinStart():
+        _paintCut(canvas: canvas, bubble: bubble.shift(offset), pin: pin);
+      case TranscriptPinEnd(:final fade):
+        _paintTopCut(canvas: canvas, bubble: bubble.shift(offset), fade: fade);
     }
   }
 
@@ -537,7 +777,7 @@ class RenderTranscriptStickyPrompts({
 
   @override
   void dispose() {
-    for (final handle in _clipLayers) {
+    for (final handle in [..._clipLayers, _fadeLayer, _enteringLayer, _leavingLayer]) {
       handle.layer = null;
     }
     _tap.dispose();

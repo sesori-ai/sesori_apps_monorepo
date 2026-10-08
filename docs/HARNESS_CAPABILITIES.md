@@ -85,8 +85,12 @@ residue is cosmetic and is not migrated.
 
 The client groups a transcript into turns from its messages alone, so a
 follow-up sent while a turn runs stays inside that turn only where the harness
-delivers it into the running turn. See
-`docs/regression/transcript-turn-navigation.md`.
+delivers it into the running turn. The bridge's prompt index
+(`POST /session/prompts`) kinds every stored prompt with the same shared rule
+(`splitPromptTurns` in `sesori_shared`) over normalized history, so every
+harness gets the index. The client applies the same rule to the range it has
+loaded, so a prompt at the start of a partial range can lack the earlier
+context the full-history index sees. See `docs/regression/transcript-turn-navigation.md`.
 
 | Harness | Follow-up sent while a turn runs | Stays in the running turn |
 |---|---|---|
@@ -146,8 +150,9 @@ the harness cannot support this feature; do not mark it 🚫 without verificatio
   duration; others give no reset. Other providers/formats remain unverified.
   A positive duration is anchored to the original assistant timestamp. Unknown
   or malformed resets remain unknown. Synthetic-provider RPC probes on the
-  managed target (0.85.1) and PATH floor (0.84.1) confirmed that `agent_settled`
-  follows final retry resolution. Those probes did not exhaust a real account;
+  then-current managed target (0.85.1) and PATH floor (0.84.1) confirmed that
+  `agent_settled` follows final retry resolution; they have not been re-run on
+  the current target (1.0.4) or floor (0.99.0). Those probes did not exhaust a real account;
   provider-format evidence comes from local errors and pinned upstream source.
   This evidence does not establish support for Oh My Pi's ACP seam.
 - Codex local rollouts and documented app-server account limits contain reset
@@ -194,8 +199,14 @@ reconnect snapshots keep the displayed state authoritative.
 Ordinary tools retain name, bounded title, status and attachments; only
 adapter-verified shell commands retain command/output/error. Subtask outcome/error
 summaries are separate and remain available. All retained tool text is
-rune-bounded at live/history wire projection; the released title alias remains
-available to older clients.
+rune-bounded at live/history wire projection. Live events keep the released
+title alias for older clients; transcript pages omit a shell tool's title when
+it equals its `shellCommand`. A page request that asks for `onExpand` tool
+output gets each finished tool that has output or error as a summary, and the
+bridge serves that detail through `POST /session/tool-output`, which the app
+fetches when the tool's row is expanded. The bridge applies
+this after the plugin boundary, so it covers every harness below that retains
+output; it adds no gap beyond the command sources listed here.
 
 | Harness | Status and established command source |
 |---|---|
@@ -279,16 +290,17 @@ sub-agents finish.
 | OpenCode | ✅ The child session's `time.created`. | ✅ For background children the parent is idle and `prompt_async` starts a turn. A foreground Task is the parent's own running step, so the row does not show. |
 | DeepSeek | ✅ The sub-agent step's message time. | ✅ By code, not probed live (the adapter is not installed on the probe machine): the parent idles while a background child runs, and the shared ACP path sends `session/prompt` at once. A foreground child keeps the parent's turn running, so the row does not show. A prompt that meets DeepSeek's own follow-up turn after a child settles is unconfirmed. |
 | Grok | ❌ No time: no message or child session carries one, so the row shows no timer. | ✅ `session/prompt` at once while the root is idle. A prompt sent during the wake turn that follows a finished sub-agent cancels that turn and is then answered. |
-| Cursor, Antigravity, Copilot, Hermes, OMP, Pi | Not applicable: no running sub-agent lifecycle reaches the client, so the row never shows. | Not applicable. |
+| Cursor | Not applicable: the root turn stays open while any sub-agent runs, so the row never shows. | Not applicable: a follow-up prompt is stop-and-send, and the root cancel stops every sub-agent, background ones included. |
+| Antigravity, Copilot, Hermes, OMP, Pi | Not applicable: no running sub-agent lifecycle reaches the client, so the row never shows. | Not applicable. |
 
 ## OpenCode v2 adapter
 
-Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.0.18.
+Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.0.24.
 V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the native database one-way.
 
 | Capability | Status |
 |---|---|
-| Explicit parent-linked creation | Not supported by the native create API; refused before mutation. Native forks remain standalone roots, never children of their source. |
+| Explicit parent-linked creation | Not implemented. The native create API accepts `parentID` since 2.0.23, but no Sesori flow creates parent-linked sessions and the 2.0.11 floor lacks it, so the request is refused before mutation. Native forks remain standalone roots, never children of their source. |
 | Conditional/external form rendering | Not implemented; native-only. Visible replies preserve native keys/types and numeric bounds; native validation remains authoritative. |
 | Native archival | Not supported; archival stays in the bridge database. |
 | Prompt/compaction correlation | Implemented with caller-supplied native IDs and stateless projection. |
@@ -306,14 +318,14 @@ Antigravity can explicitly download Google's proprietary official runtime pair d
 choosing Install, review [Google's terms](https://antigravity.google/terms) and
 [Antigravity documentation](https://antigravity.google/docs/). Sesori independently pins and verifies six
 archives: macOS x64/arm64, Linux x64/arm64, and Windows x64/arm64. macOS x64 support is **implemented** for
-package `1.2.1`, including managed installation and explicit/PATH pair selection. Every archive keeps the server
+package `1.3.0`, including managed installation and explicit/PATH pair selection. Every archive keeps the server
 and local harness as siblings, uses a conservative two-minute bound for each archive listing/extraction command,
 and must pass the isolated initialize-only
-identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install. Native
-managed-pipeline correctness previously ran on macOS arm64 for `1.1.1`; `1.2.1` has native initialize/teardown
-coverage but no completed managed-pipeline run. macOS x64 has verified archive integrity, hardened extraction,
-executable modes and binary architecture; native execution and installation on Intel Macs remain unverified.
-Linux and Windows native correctness remains unverified.
+identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install.
+Package `1.3.0` macOS arm64 hardened extraction passed, and a 2026-10-06 network-denied macOS arm64 run passed the
+production managed installation, `--version`, initialize and teardown. Other native targets and authenticated behavior
+remain unverified. The earlier `1.2.1` initialize/teardown and macOS x64 extraction observations are historical evidence, not
+verification of the current pin.
 Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
 The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual setup, remote personal login and
 retained-history behavior. Implemented marks here do not claim completed authenticated end-to-end verification.
@@ -345,6 +357,22 @@ They do not claim that a harness's native CLI could never implement an equivalen
 | Overall installation percentage or active-session count | 🚫 Not supported: only optional download percentage and idle/busy/unknown work state are reported. |
 | Replay a failed installation observed by this client within the connection | ✅ Implemented for every harness advertising installation; memory only, not cross-device history. |
 
+## Reopening a session whose model is gone
+
+Only OMP is assessed here. Other harnesses are not assessed.
+
+| Harness | Status |
+|---|---|
+| OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.8.0` source, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale serves the history the bridge already stores, with a persistent banner saying the session can't be continued. A session the bridge holds no record of still fails to open. Its persisted cleanup is retried at bridge startup. Upstream: https://github.com/can1357/oh-my-pi/issues/14806. |
+
+## External Codex session activity
+
+Codex catalog scans refresh existing sessions using the newest of rollout file
+modification time, session-index activity, and creation time. This includes
+terminal and desktop work whose session-index timestamp is stale or absent,
+without resuming threads or reading full transcripts for activity. The bridge
+retains its existing monotonic timestamp merge and local title overrides.
+
 ## Pre-start catalog import
 
 | Capability | OpenCode |
@@ -374,6 +402,16 @@ Exact account IDs ending in `-high`, `-medium`, or `-low` become strongest-first
 variants only when labels carry the matching suffix. Its pre-chat catalog uses
 one retained hidden no-prompt native session because the pinned runtime exposes
 models only from new/resume responses and has no deletion capability.
+
+Antigravity uses the official `1.3.0` pair and a plugin-owned Zed compatibility
+identity (`clientInfo.name: zed`, title `Sesori Bridge (Zed compatibility)`) for
+live, replay, personal-login and validation processes. Google's packaged model
+selection filters non-Gemini models in `1.2.1`; `1.3.0` retains them only for
+recognized client identities. Every account-advertised Gemini, Claude or GPT
+model is mapped under the existing Antigravity OAuth provider and dispatched
+with its exact native ID. Synthetic mixed-provider catalogs and initialize
+requests are tested; native authenticated catalog/third-party execution is
+unverified. Actual availability still depends on Google's account entitlements.
 
 ## Fast mode
 
@@ -454,9 +492,10 @@ shows (verified from plugin code on 2026-09-26):
 | Codex | ⬜ placeholder | ✅ from history | ✅ from history |
 | DeepSeek | 🚫 | ✅ live, 🚫 after a restart | 🚫 |
 | Grok | ⬜ placeholder | ✅ live, unverified from history | Unverified from history, 🚫 live |
+| Cursor | ⬜ placeholder | ✅ live when Cursor announces it, 🚫 after a restart | 🚫 |
 | Pi (forks) | 🚫 | ✅ | ✅ |
 
-Antigravity, Copilot, Cursor, Hermes and OMP produce no child sessions.
+Antigravity, Copilot, Hermes and OMP produce no child sessions.
 
 - Claude, Codex and Grok record the sub-agent's type natively, but it only
   labels the parent's subtask tile.
@@ -599,29 +638,56 @@ can initiate login, and managed installation does **not** authenticate a harness
 
 ## Context compaction row
 
-The transcript marks a finished context compaction with a "Context compacted"
-row, which opens the carried-forward summary when the harness exposes it.
+The transcript marks a context compaction with a row. Where the harness
+reports a start, the row appears live with a timer and settles in place as
+"Context compacted" or as a one-line failure note. A settled row shows the
+freed tokens when the harness reports them, marks an automatic compaction when
+the harness reports its trigger, and opens the carried-forward summary when the
+harness exposes it.
 
 | Harness | Compaction row | Summary |
 |---|---|---|
-| Claude | ✅ | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.281). |
-| OpenCode v1 | ✅ | ✅ The text of the `summary: true` assistant message. |
-| OpenCode v2 | ✅ | ✅ The completed native compaction message's `summary`; a running snapshot is not a completed marker. |
-| Pi | ✅ | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |
-| Codex | ✅ | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
-| DeepSeek | ⬜ | ⬜ The runtime reports a live `compaction_completed` status without message identity or a replayable history record, so Sesori maps it only to a session-compacted event; a live-only row would vanish on reload. |
+| Claude | ✅ Live from the first `system/status` `compacting` frame, timed from the bridge's stamp of it, settling in place at the closing status's `compact_result`; the summary frame then fills in the details under the same row. A `failed` result becomes a failure note with `compact_error`; a failure writes no dedicated compaction record, so the note is gone after a history re-import. Stop or a process exit leaves the running row to the bridge sweep's note. Freed tokens are `pre − post` from `compact_boundary` `compact_metadata` live and the boundary record's `compactMetadata` in history, with the trigger. The transcript keeps no start-time id, so a later re-import re-keys a live row to the summary record's id at the same place, once (verified on 2.1.291). | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.291). |
+| OpenCode v1 | ✅ Live from the first text of the `summary: true` assistant message, with the newest summary words streamed from its text deltas, settling in place when the message finishes, as completed or as a failure note with OpenCode's error (a summary that errors before writing text stays an error message). An automatic trigger (from the compaction marker's `auto`) is shown as "· auto" (a manual one is not named); the freed count is not reported. A compaction that starts during a bridge stream outage shows plain text live until a read reloads the transcript from OpenCode, which maps it to the row in its stored state. | ✅ The text of the `summary: true` assistant message. |
+| OpenCode v2 | ✅ Live from `session.compaction.started` once its running snapshot loads (or from the next delta after a bridge reconnect), with the newest summary words streamed from its deltas, settling in place as completed or as a failure note with OpenCode's error. An automatic trigger is shown as "· auto" (a manual one is not named); the freed count is not reported, because the reported tokens are the summary call's usage. | ✅ The completed native compaction message's `summary`. |
+| Pi | ✅ Live from `compaction_start`, timed from the bridge's stamp of it (Pi sends no time), staying live while Pi retries and settling in place on success. A terminal failure or abort becomes a failure note, moved off the reserved compaction id, with Pi's error when it sends one (an abort may carry none); Stop or a process exit leaves the running row to the bridge sweep's note. A `threshold` or `overflow` trigger is shown as "· auto" once a live compaction completes; history entries carry no reason. No freed count: Pi reports only the tokens before compaction. | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |
+| Codex | ✅ Live from `item/started`, timed from `startedAtMs` or the bridge's stamp, settling in place at `item/completed`. Codex reports no failure, tokens or trigger, so a missing completion is left to the bridge sweep's note and the row has no details. | 🚫 Mostly: live compaction items carry no summary, and remote compaction stores it encrypted, so only a plain rollout `compacted.message` is shown. |
+| DeepSeek | ✅ Live only, from `compaction_started`, timed from the bridge's stamp and settling at `compaction_completed`. The statuses carry no ids, tokens, trigger or failure kind, and DeepSeek's history has no compaction record, so the row has no details, a warning or turn end leaves it to the bridge sweep's note, and it survives one history re-import, then disappears. | ⬜ The runtime reports no summary. |
 | Antigravity, Copilot, Cursor, Hermes, OMP, Grok | ⬜ | ⬜ The ACP session updates Sesori consumes (message, thought and user chunks, tool calls, plan, commands, session info) have no compaction variant, so a compaction, such as Cursor's `/summarize` behind Sesori's `compact` command, arrives as ordinary agent text. A row needs a harness extension signal; none was probed live. |
 
-A row without a summary is inert. Older clients ignore the summary field and
-show no row.
+A row without a summary is inert. Apps at v1.9.0 or older ignore the
+compaction state and show no row.
 
 ## Command limitations
 
-Pi 0.84.4 advertises its bundled `/llama` command over RPC, but the handler
-supports only the interactive TUI. Sesori excludes this bundled command source,
-including numbered invocation aliases, while preserving user commands with the
-same name. This command is **not supported** through Pi RPC; ordinary extension,
-prompt, and skill commands remain available.
+Pi advertises its bundled `/llama` command over RPC, but the handler supports
+only the interactive TUI. Sesori excludes this bundled command source
+(`builtin:llama.cpp` since Pi 0.99.0), including numbered invocation aliases,
+while preserving user commands with the same name. This command is **not
+supported** through Pi RPC; ordinary extension, prompt, and skill commands
+remain available. The bundled `/mcp` command stays listed: over RPC it reports
+server status and handles `reconnect`, `logout` and `login` through Pi
+notifications and an input dialog, although `login` opens its browser on the
+bridge host. A sandboxed, credential-free Pi 1.0.4 RPC probe on macOS arm64
+(2026-10-06) confirmed both sources, the `/mcp` status reply and the hidden
+`/llama`; OAuth sign-in against a real MCP server was not exercised.
+
+## Pi extension startup dialogs
+
+Pi RPC supports extension select, confirm, input, and editor dialogs during
+startup through Sesori's temporary startup extension. Catalog probes cancel
+these dialogs; session launches use the existing question/reply flow and do not
+grant MCP access automatically. Commands buffered during extension startup are
+handed back to native RPC unchanged, and native Pi owns later dialogs.
+
+Startup dialog fixtures and catalog discovery were verified on macOS arm64 with
+Pi 1.0.4 (npm) and managed Pi 0.85.1 and 0.84.4. Pi 1.0.4 also passed installed
+MCP adapter approvals, new/resume/fork RPC launches, and a full Sesori plugin
+session completing an authenticated GPT-6.1 request. Pi 1.0.4 currently awaits
+extension startup before reading stdin; an unanswered startup dialog can
+otherwise exit or hang the process. Sesori forwards startup questions before
+waiting for initial history. A runtime already reading stdin uses its own
+implementation directly.
 
 ## Accepted prompts without transcript output
 
@@ -633,7 +699,7 @@ end with `session.prompt-settled` so clients can remove its optimistic row.
 | Claude | ✅ Command dispatch publishes a correlated synthetic user message. |
 | OpenCode v1 | ✅ Correlated backend user echoes cover prompts, commands and manual compaction. |
 | OpenCode v2 prompts / fallback compaction | ✅ Caller-supplied native IDs correlate prompt echoes; completed or failed compaction snapshots emit explicit prompt settlement. |
-| OpenCode v2 native commands | 🚫 The 2.0.18 command route exposes neither caller nor result message identity. There is no correlated echo or explicit settlement; an optimistic command row can remain after acceptance. |
+| OpenCode v2 native commands | 🚫 The 2.0.24 command route exposes neither caller nor result message identity. There is no correlated echo or explicit settlement; an optimistic command row can remain after acceptance. |
 | Codex | ✅ Turn-backed commands correlate their user echo; native `compact` emits explicit prompt settlement because it returns no turn identity. |
 | Pi | ✅ User echoes and agent-running fallback synthesis remain transcript-backed; an accepted slash command with no agent work emits explicit prompt settlement after its state barrier. |
 | Antigravity, Copilot, Cursor, Hermes, OMP, DeepSeek, Grok | ✅ Shared ACP dispatch publishes a correlated user message; no silent accepted-command path is exposed. |
@@ -647,8 +713,8 @@ reconciliation when connected to an older bridge.
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Sub-agents rendered as inline subtask tiles | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | ✅⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
-| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
-| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | 🚫¹⁹ | ✅ (snapshot)³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
+| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | ✅⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | 🚫¹⁹ | ✅ (snapshot)³ | 🚫⁴ | ✅ (root only)⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
 | Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | 🚫¹⁹ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
 
@@ -699,49 +765,38 @@ busy for retained descendants. Live matrix is partial: no
 pending-input request surfaced, so that case remains automated rather than
 live-plugin coverage.
 
-⁴ Copilot CLI (plugin targets 1.0.80) runs custom agents as subagents, but its
-Agent Client Protocol server exposes no subagent lifecycle, no child session,
-and only the turn-wide `session/cancel`.
+⁴ Copilot CLI (plugin targets 1.0.92) runs custom agents as subagents. When
+probed on 1.0.80, its Agent Client Protocol server exposed no subagent
+lifecycle, no child session, and only the turn-wide `session/cancel`. Copilot's
+changelog says ACP clients receive subagent IDs since 1.0.81; Sesori has not
+re-probed, so these cells stay 🚫 until a probe confirms usable sub-agent
+identity.
 
-⁵ Cursor (managed target `cursor-agent 2026.08.11-e8db854`, probed
-2026-09-11) emits a standard `Task: …` call and then one correlated
-`cursor/task` JSON-RPC request when that Task-tool invocation completes. A
-foreground invocation's completion is also sub-agent completion; a background
-invocation completes at launch and exposes `isBackground: true`, while the
-background work continues without a later terminal lifecycle or child
-transcript. `session/load` replays stable full standard Task input/result facts,
-not `cursor/task`; Sesori now replaces an exact completed foreground replay card
-with the same childless tile while preserving replay-local identity and order.
-The live request's nested tagged presentation is `custom → unspecified`; replay
-uses the distinct `unspecified` tag directly. Separate typed boundary DTOs map
-both exact shapes to one closed presentation value, while unknown or malformed
-variants stay generic. Pending/in-progress calls lack presentation facts and `isBackground`, so their
-mode is unknown and they remain generic; cancelled foreground calls also remain
-generic cancelled cards because no `cursor/task` follows cancellation. Sesori
-now replaces only an exact live standard completion with explicit
-`isBackground: false` plus a complete correlated request, producing one
-completed childless tile with stable part identity. Missing/unknown/malformed,
-unmatched, background, and failed cases with standard facts stay generic. A cancelled
-Task is absent from replay when Cursor emits no standard frame; no completed tile is synthesized. Standard `session/cancel`
-authoritatively cancels an active root prompt. Safe Task confirmation is
-side-effect-free with exact active count; named-root stop waits up to 20 seconds,
-then rechecks background and active work. Timeout or survivors yield HTTP 502
-after cancellation, never false success. A background Task survives root cancel,
-so “`stop` cancels them all” remains **not supported**. While that observation is
-unresolved, every policy returns concrete HTTP 409 `notPerformed` before input or
-cancellation. Client drain pauses; that variant retains queued prompts and shows
-restart recovery even for unknown reasons. Malformed bodies, unknown variants,
-and post-cancel failures remain ambiguous. The observation keeps only ACP process
-work state busy until session cleanup or process reset; root `end_turn` and UI
-idle never claim background completion. Bounded managed-target production-
-composition QA passed live terminal replacement, two equivalent cold loads,
-mode-unknown generic presentation, exact active-Task confirmation/keep
-rejection, named-root cancellation with a generic cancelled card, process/session
-reuse, root idle before later background permission, residency, and identical
-non-mutating post-background refusal for all three policies. One bounded race
-attempt cancelled before background resolution, so post-cancel background
-transition remains automated rather than native evidence. No phone, desktop,
-child, background completion, or full-background-stop coverage is inferred.
+⁵ Cursor (PATH minimum `2026.09.23`, managed target `2026.10.01-e373342`;
+shapes derived from the CLI bundle on 2026-10-06 and not yet confirmed on the
+wire) runs each sub-agent as a native child session once the client sends
+`clientCapabilities._meta.subagents: true`, which Sesori always does. A Task
+tool call renders no generic card: `subagent_spawned` opens one tile linked to
+the child session, and `subagent_state_update` settles it (`completed`,
+`failed` as error, `cancelled`, and `disconnected` as error because the outcome
+is unknown; an unknown state finishes nothing). The tile's prompt comes from the
+Task call's input. Nested sub-agents attach to their direct parent, and a
+resumed sub-agent run is a new `<agentId>.<n>` child. Cursor holds the root
+prompt open while any sub-agent runs, background ones included, so the root
+stays busy until they finish. `cursor/task` requests are acknowledged and
+ignored. Reloaded history (`session/load`) keeps its childless tiles for
+completed foreground Task calls; only live tiles link a child session.
+Unverified: whether loading a child id returns its transcript, whether
+`session/list` lists child sessions, and whether pre-capability transcripts
+carry `agentId`.
+Cursor can cancel only the root: `session/cancel` cascades to every
+descendant. A stop on the root while sub-agents run asks for confirmation;
+`stop` sends one root cancel, resolves pending input for the root and every
+descendant, waits up to 20 seconds, and then fails with HTTP 502 if any
+sub-agent is still running. A stop addressed to a sub-agent session is refused
+with a "stop the parent session" message before any cancel, and queued prompts
+stay. A follow-up prompt while sub-agents run uses the shared stop-and-send, so
+it cancels every running sub-agent, background ones included, as on Grok.
 
 ⁶ Hermes (hermes-agent 0.19.0) has `delegate_task`, but its ACP adapter
 flattens delegation into an ordinary tool call and maps `session/cancel` to a
@@ -757,8 +812,13 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.1.7 over dsh 0.1.5-rc.2 is the managed target;
-adapter 0.1.5 remains the minimum accepted runtime. ACP uses native subtree stop for the named scope
+⁹ DeepSeek's published adapter 0.2.0 over dsh 0.2.0-rc.2 is the managed target;
+adapter 0.1.5 remains the minimum accepted runtime. From dsh 0.2.0 a sub-agent
+may delegate only one level by default (previously three), with at most eight
+active; users raise `subagent.config.maxDepth` in their DeepSeek profile. Provider
+settings live in `$DSH_HOME/profiles/sesori/cordis.patch.yml`; `settings.yaml` is
+ignored with no automatic import, and a custom provider `baseURL` must speak the
+Anthropic Messages API. ACP uses native subtree stop for the named scope
 and every independently resident descendant root, while ordered input cancel,
 exact-child authority, lifecycle, tiles, and child catalogs remain native-backed.
 Released clients retain their own child fanout. Phone QA on unchanged published
@@ -771,12 +831,13 @@ and surviving root-owned shell jobs do not imply failed descendant cancellation 
 broader process-stop support. Cold tile/history reload, read-only child navigation,
 push delivery, restart/reconnect, multiple clients, alternate mobile platforms,
 and macOS desktop remain unexecuted in this gate; desktop was deferred by explicit
-user choice. This 0.1.4 evidence does not requalify the current 0.1.7 managed target.
-Adapter 0.1.7 loads explicitly installed local plugins from only the application-owned
+user choice. This 0.1.4 evidence does not requalify the current 0.2.0 managed target.
+The adapter loads explicitly installed local plugins from only the application-owned
 `$DSH_HOME/profiles/sesori` profile on startup, including after `dsh --profile sesori`
 rewrites the profile root, then reapplies Sesori's mandatory
-runtime constraints; profile changes require restart and profile failure falls back
-to the pinned in-memory graph. These plugins are trusted local in-process code, not a
+runtime constraints; profile changes require restart. A failing optional profile plugin is
+skipped with a stderr warning; an invalid profile or failing required row falls
+back to the pinned in-memory graph. These plugins are trusted local in-process code, not a
 trust grant for future cloud or otherwise managed-trust runtimes.
 The native model catalog includes `deepseek-flash` (DeepSeek V4.1 Flash) with
 image input and reasoning controls. Refresh rereads the installed harness's

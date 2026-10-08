@@ -14,6 +14,9 @@ class const SessionDetailPresentationScope({
   required final SessionDetailCapabilityProvider<ImageSaver> imageSaver,
   required final SessionDetailCapabilityProvider<ImageClipboard> imageClipboard,
   required final SessionDetailCapabilityProvider<ImageSharer> imageSharer,
+
+  /// Searches the session's whole history from the Prompts screen.
+  required final SessionDetailCapabilityProvider<SessionRepository> sessionRepository,
   required final bool canShareImages,
   required final ExternalLinkOpener openExternalLink,
   required final SessionDetailSessionOpener openSession,
@@ -44,6 +47,7 @@ class const SessionDetailPresentationScope({
     imageSaver: imageSaver,
     imageClipboard: imageClipboard,
     imageSharer: imageSharer,
+    sessionRepository: sessionRepository,
     canShareImages: canShareImages,
     openExternalLink: openExternalLink,
     openSession: openSession,
@@ -58,6 +62,7 @@ class const SessionDetailPresentationScope({
       imageSaver != oldWidget.imageSaver ||
       imageClipboard != oldWidget.imageClipboard ||
       imageSharer != oldWidget.imageSharer ||
+      sessionRepository != oldWidget.sessionRepository ||
       canShareImages != oldWidget.canShareImages ||
       openExternalLink != oldWidget.openExternalLink ||
       openSession != oldWidget.openSession ||

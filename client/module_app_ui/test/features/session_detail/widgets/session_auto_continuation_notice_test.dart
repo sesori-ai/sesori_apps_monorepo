@@ -189,12 +189,15 @@ void main() {
 
   testWidgets("menu waits for a loaded session and can disable after support becomes unavailable", (tester) async {
     final cubit = _Cubit();
-    when(() => cubit.state).thenReturn(const SessionDetailState.loading(launchHandoff: null));
+    when(() => cubit.state).thenReturn(const SessionDetailState.loading(launchHandoff: null, seededComposer: null));
     when(() => cubit.setAutoContinuation(enabled: any(named: "enabled"))).thenAnswer((_) async {});
     late PregoMenuItem entry;
     Future<void> pumpMenu(SessionAutoContinuationView? continuation) => tester.pumpWidget(
-      BlocProvider<SessionDetailCubit>.value(
-        value: cubit,
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<SessionDetailCubit>.value(value: cubit),
+          BlocProvider(create: (_) => testBridgeKindCubit(kind: null)),
+        ],
         child: MaterialApp(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -223,8 +226,12 @@ void main() {
     verify(() => cubit.setAutoContinuation(enabled: false)).called(1);
 
     await pumpMenu(null);
-    expect(entry.isEnabled, isFalse);
+    expect(entry.isEnabled, isTrue);
     expect(entry.subtitle, contains("Update your bridge"));
+    entry.onTap();
+    await tester.pumpAndSettle();
+    expect(find.text("Update Sesori Bridge"), findsOneWidget);
+    verifyNever(() => cubit.setAutoContinuation(enabled: true));
     await pumpMenu(view(enabled: false, status: known, availability: AutoContinuationAvailability.unknown));
     expect(entry.isEnabled, isFalse);
     expect(entry.isSelected, isFalse);

@@ -486,9 +486,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsPullRequestRefreshStateChanged => 'The bridge setting changed while you were editing. Try again.';
 
   @override
-  String get settingsPullRequestRefreshUnavailable => 'Unavailable';
-
-  @override
   String get settingsPullRequestRefreshRetry => 'Retry pull request refresh setting';
 
   @override
@@ -804,7 +801,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessesLoading => 'Loading harnesses';
 
   @override
-  String get harnessesUnsupportedTitle => 'Harnesses aren\'t supported';
+  String get harnessesUnsupportedTitle => 'Your bridge needs an update';
 
   @override
   String get harnessesUnsupportedDescription => 'Update the connected bridge to view and manage its harnesses.';
@@ -1283,6 +1280,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sesori couldn’t safely stop this session. Restart the harness, then try again.';
 
   @override
+  String get sessionDetailStopNotAcceptedSubAgentMessage =>
+      'Stop the parent session; this harness cannot stop sub-agents individually.';
+
+  @override
   String get sessionDetailStopScopeTitle => 'Sub-agents are running';
 
   @override
@@ -1405,6 +1406,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailCommandRan => 'Ran';
 
   @override
+  String get sessionDetailToolOutputLoading => 'Loading output';
+
+  @override
+  String get sessionDetailToolOutputFailed => 'Could not load the output.';
+
+  @override
+  String get sessionDetailToolOutputRetry => 'Retry';
+
+  @override
   String get sessionDetailFollowOutput => 'Follow';
 
   @override
@@ -1487,6 +1497,50 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String transcriptPromptsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count prompts',
+      one: '1 prompt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get transcriptPromptsOpenFailed => 'Couldn\'t open this prompt. Check your connection and try again.';
+
+  @override
+  String get transcriptPromptsGone => 'This prompt is no longer in the session';
+
+  @override
+  String get transcriptPromptsRefreshed => 'The session just refreshed. Tap the prompt again.';
+
+  @override
+  String get transcriptPromptsLoading => 'Loading';
+
+  @override
+  String transcriptPromptsAllMatches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count matches',
+      one: '1 match',
+      zero: 'No matches',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get transcriptPromptsSearchingEarlier => 'Searching earlier prompts…';
+
+  @override
+  String get transcriptPromptsSearchEarlierFailed => 'Couldn\'t search earlier prompts';
+
+  @override
+  String get transcriptPromptsSearchRetry => 'Retry';
 
   @override
   String get transcriptPromptsNoDate => 'No date';
@@ -1934,6 +1988,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListRunning => 'Running';
 
   @override
+  String get sessionListCreating => 'Creating…';
+
+  @override
+  String get sessionListLaunchingAlert => 'This session is still being created. You can open it once it\'s ready.';
+
+  @override
   String sessionListResumes(String time) {
     return 'Resumes $time';
   }
@@ -2221,6 +2281,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailArchivedNotice => 'This session is archived and read-only.';
 
   @override
+  String get sessionDetailCannotContinueTitle => 'Can\'t continue this session';
+
+  @override
   String get sessionDetailHarnessFallbackName => 'This harness';
 
   @override
@@ -2400,6 +2463,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionLaunchingInBackground => 'Your new session will appear in the list once it\'s launched';
 
   @override
+  String newSessionFailedAfterLeaving(int count, String projects) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Couldn\'t create $count new sessions in $projects',
+      one: 'Couldn\'t create your new session in $projects',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String newSessionFailedAfterLeavingUnnamed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Couldn\'t create $count new sessions',
+      one: 'Couldn\'t create your new session',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get commandSourceCommand => 'Command';
 
   @override
@@ -2470,6 +2555,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailCompactionSummaryTitle => 'Compaction summary';
+
+  @override
+  String get sessionDetailCompactingContext => 'Compacting context';
+
+  @override
+  String get sessionDetailCompactionFailed => 'Compaction failed';
+
+  @override
+  String sessionDetailCompactionFreedTokens(String tokens) {
+    return 'freed $tokens tokens';
+  }
+
+  @override
+  String get sessionDetailCompactionAuto => 'auto';
 
   @override
   String get sessionDetailCopy => 'Copy';
@@ -2892,4 +2991,61 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sessionAutoContinuationAlreadySubmitted =>
       'Auto continuation disabled. The previous continuation was already sent; future automatic sends are disabled.';
+
+  @override
+  String get bridgeUpdateHowTo => 'How to update';
+
+  @override
+  String get bridgeUpdateTitle => 'Update Sesori Bridge';
+
+  @override
+  String get bridgeUpdateIntro => 'On the computer running the bridge:';
+
+  @override
+  String get bridgeUpdateStepUpdate => '1. Update the bridge';
+
+  @override
+  String get bridgeUpdateStepRestart => '2. Restart it. In its terminal, press Ctrl+C, then run:';
+
+  @override
+  String get bridgeUpdateRestartService => 'Running it as a service (launchd, systemd)? Restart the service instead.';
+
+  @override
+  String get bridgeUpdateReinstallIntro => 'If step 1 fails or the command isn\'t found, reinstall:';
+
+  @override
+  String get bridgeUpdateMethodMacLinux => 'macOS / Linux';
+
+  @override
+  String get bridgeUpdateMethodWindows => 'Windows (PowerShell)';
+
+  @override
+  String get bridgeUpdateMethodNpm => 'npm';
+
+  @override
+  String get bridgeUpdateMethodBun => 'bun';
+
+  @override
+  String get bridgeUpdateReinstallRestart => 'Then start the bridge again.';
+
+  @override
+  String get bridgeUpdateCopyCommand => 'Copy command';
+
+  @override
+  String get bridgeUpdateDesktopTitle => 'Update Sesori Desktop';
+
+  @override
+  String get bridgeUpdateDesktopIntro => 'This bridge runs inside Sesori Desktop. On that computer:';
+
+  @override
+  String get bridgeUpdateDesktopStepDownload => '1. Download the latest version:';
+
+  @override
+  String get bridgeUpdateDesktopStepQuit => '2. Quit Sesori Desktop (closing the window may not quit it).';
+
+  @override
+  String get bridgeUpdateDesktopStepInstall => '3. Install the new version, then open Sesori Desktop again.';
+
+  @override
+  String get bridgeUpdateCopyLink => 'Copy link';
 }

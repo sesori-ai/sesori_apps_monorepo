@@ -17,6 +17,7 @@ import "message_timestamp_reveal.dart";
 import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
+import "session_launch_submission_view.dart";
 import "system_message_card.dart";
 import "transcript_glide_activity.dart";
 import "transcript_jump_notifier.dart";
@@ -85,6 +86,14 @@ class const SessionDetailMessageList({
   /// Requests the page of messages before the ones shown, or null when the
   /// start of the transcript is already loaded.
   required final Future<void> Function()? onLoadOlderMessages,
+
+  /// The bridge's prompt index, or null until it arrives or when the bridge
+  /// has none: it names the unloaded prompt to pin above the loaded messages.
+  required final List<SessionPromptIndexEntry>? promptIndex,
+
+  /// Loads every message from an unloaded prompt down to the loaded ones, for
+  /// a tap on its pin.
+  required final Future<LoadThroughOutcome> Function({required String messageId, required int seq}) onLoadThrough,
   required final ValueChanged<int>? onCancelQueuedMessage,
   required final bool isLoadingOlderMessages,
 
@@ -138,6 +147,10 @@ typedef _DetachedSnapshot = ({
   String? retryErrorMessage,
   bool isBusy,
   bool mainAgentRunning,
+
+  /// The prompt index as it stood, so the pin above the frozen messages never
+  /// names a prompt sent after them.
+  List<SessionPromptIndexEntry>? promptIndex,
 });
 
 enum _TransientStage() {
@@ -208,6 +221,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// Where a prompt's row rests once its pin glides back to it: with its
   /// bubble on the pin line, so the pin hands over to it unseen.
   static const double _kPinnedRowTop = _kPinGap - PregoSpacing.xs;
+
+  /// How long a tapped unloaded prompt's load runs before its spinner shows,
+  /// so a quick load never flashes one.
+  static const _kPinLoadSpinnerDelay = Duration(milliseconds: 150);
 
   late final ScrollFollowTracker _follow;
 
@@ -284,6 +301,18 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   bool _pinchStartedFollowing = false;
   bool _pinchDetachSuppressed = false;
 
+  /// The last prompt index the list was given, kept while a refresh fetches
+  /// it again so the unloaded prompt's pin stays put meanwhile.
+  List<SessionPromptIndexEntry>? _promptIndex;
+
+  /// The last build's unloaded prompt pinned above the rendered messages.
+  SessionPromptIndexEntry? _unloadedPin;
+
+  /// The unloaded prompt a tap on its pin is loading, until that load ends.
+  String? _pinLoadId;
+  bool _showsPinLoadSpinner = false;
+  Timer? _pinLoadSpinner;
+
   @override
   void initState() {
     super.initState();
@@ -303,6 +332,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     widget.jumpNotifier.removeListener(_onJumpRequested);
     _revealController.dispose();
     _stickyOpenerIds.dispose();
+    _pinLoadSpinner?.cancel();
     super.dispose();
   }
 
@@ -317,7 +347,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // keeps the oldest message, so a failing bridge is not asked again until
     // the list scrolls, its layout changes or a refresh ends.
     final refreshEnded = oldWidget.isRefreshing && !widget.isRefreshing;
-    if (refreshEnded || widget.messages.firstOrNull?.info.id != oldWidget.messages.firstOrNull?.info.id) {
+    final oldestChanged = widget.messages.firstOrNull?.info.id != oldWidget.messages.firstOrNull?.info.id;
+    if (refreshEnded || oldestChanged) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         // A discarded page can still be on its way; check once it settles.
@@ -328,15 +359,15 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         }
       });
     }
-    final olderPageRequestCompleted = oldWidget.isLoadingOlderMessages && !widget.isLoadingOlderMessages;
     // While detached the snapshot keeps the list structure from shifting
     // under the reader; `_onFollowChanged` restores live inputs on reattach.
     //
-    // Older pages are the exception: the reader is detached precisely
-    // because they scrolled back for them, and they are prepended *above*
-    // the viewport, so rendering them cannot shift what is being read.
-    // Freezing them would leave the page loaded but invisible until the
-    // user returned to the newest message.
+    // Older history is the exception, whether an older page or a load up to
+    // a tapped prompt brought it: the reader is detached precisely because
+    // they scrolled back for it, and it is prepended *above* the viewport,
+    // so rendering it cannot shift what is being read. Freezing it would
+    // leave it loaded but invisible until the user returned to the newest
+    // message.
     if (_follow.following) return;
     final frozen = _snapshot;
     final transientSubmissionsChanged = !_transientSubmissionsMatch(oldWidget: oldWidget);
@@ -348,8 +379,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         });
       }
     }
-    if (!olderPageRequestCompleted) return;
-    if (frozen == null) return;
+    if (!oldestChanged || frozen == null) return;
     final prepended = _prependedOlderMessages(frozen: frozen);
     if (prepended.isEmpty) return;
 
@@ -368,6 +398,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         retryErrorMessage: frozen.retryErrorMessage,
         isBusy: frozen.isBusy,
         mainAgentRunning: frozen.mainAgentRunning,
+        promptIndex: frozen.promptIndex,
       );
     });
     // The prepended rows render against the frozen `streamingText` and
@@ -411,6 +442,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     retryErrorMessage: widget.retryErrorMessage,
     isBusy: widget.isBusy,
     mainAgentRunning: widget.mainAgentRunning,
+    promptIndex: widget.promptIndex ?? _promptIndex,
   );
 
   void _onRowMount({required String rowId, required BuildContext context}) => _rowContexts[rowId] = context;
@@ -532,6 +564,44 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     );
   }
 
+  void _onPinTap({required String openerMessageId}) {
+    if (_unloadedPin case final pin? when pin.messageId == openerMessageId) {
+      // Another tap while it loads waits for that load.
+      if (_pinLoadId == null) unawaited(_openUnloadedPin(pin: pin));
+      return;
+    }
+    _glideToPrompt(openerMessageId: openerMessageId);
+  }
+
+  /// Loads the transcript up to the unloaded prompt [pin] names, then glides
+  /// back to it, as a tap on a loaded prompt's pin does. A slow load shows a
+  /// spinner by the pin; one that fails says why.
+  Future<void> _openUnloadedPin({required SessionPromptIndexEntry pin}) async {
+    setState(() => _pinLoadId = pin.messageId);
+    _pinLoadSpinner = Timer(_kPinLoadSpinnerDelay, () => setState(() => _showsPinLoadSpinner = true));
+    final outcome = await widget.onLoadThrough(messageId: pin.messageId, seq: pin.seq);
+    if (!mounted) return;
+    _pinLoadSpinner?.cancel();
+    setState(() {
+      _pinLoadId = null;
+      _showsPinLoadSpinner = false;
+    });
+    final loc = context.loc;
+    final error = switch (outcome) {
+      LoadThroughLoaded() => null,
+      LoadThroughTargetMissing() => loc.transcriptPromptsGone,
+      LoadThroughFailed() => loc.transcriptPromptsOpenFailed,
+      LoadThroughSuperseded() => loc.transcriptPromptsRefreshed,
+    };
+    if (error != null) {
+      return PregoPopupAlertPresenter.of(context)
+          .show(title: error, variant: PregoPopupAlertsNotificationsVariant.error);
+    }
+    // The loaded prompt is a row once the list has built it.
+    await WidgetsBinding.instance.endOfFrame;
+    if (mounted) _glideToPrompt(openerMessageId: pin.messageId);
+  }
+
   /// The offset that rests row [rowId] where a glide lands it. An unbuilt row
   /// is estimated from the built rows above it, at their mean height. Null
   /// once the row is gone, or below the built rows, where no pin leads.
@@ -599,10 +669,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// read rather than the bubble because the rows are laid out by now, while
   /// a row's own content can still be waiting for its turn.
   List<TranscriptStickyOpener> _stickyOpeners() {
+    // Only rows laid out at least once: a row just built above the others,
+    // such as a prompt that loaded, is still above them, not below.
     int? firstBuiltRow;
-    for (final rowId in _rowContexts.keys) {
+    for (final MapEntry(key: rowId, value: rowContext) in _rowContexts.entries) {
       final index = _rowIndexById[rowId];
-      if (index != null && (firstBuiltRow == null || index < firstBuiltRow)) firstBuiltRow = index;
+      final laidOut = switch (rowContext.findRenderObject()) {
+        RenderBox(:final hasSize) => hasSize,
+        _ => false,
+      };
+      if (index != null && laidOut && (firstBuiltRow == null || index < firstBuiltRow)) firstBuiltRow = index;
     }
     TranscriptStickyPlace placeOf({required String rowId, required int rowIndex}) {
       if (_spanOf(rowId: rowId) case final span?) {
@@ -615,6 +691,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     }
 
     return [
+      // Above every rendered row, as the turn it opened runs into them.
+      if (_unloadedPin case final pin?) (id: pin.messageId, place: const TranscriptStickyAbove()),
       for (final message in _userMessagesById.values)
         if (_entryIdForMessage(info: message.info) case final rowId)
           if (_rowIndexById[rowId] case final rowIndex?)
@@ -718,6 +796,36 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     ];
   }
 
+  /// The rows of [current] that are new since [previous], less those that
+  /// take the place of rows that left: between two rows both builds share, as
+  /// many new rows as left there replace them, in order.
+  static Set<String> _rowsArriving({required List<String> previous, required List<String> current}) {
+    final currentIds = current.toSet();
+    // The rows that left after each shared row, keyed null before the first.
+    final leftAfter = <String?, int>{};
+    String? shared;
+    for (final rowId in previous) {
+      if (currentIds.contains(rowId)) {
+        shared = rowId;
+      } else {
+        leftAfter[shared] = (leftAfter[shared] ?? 0) + 1;
+      }
+    }
+    final previousIds = previous.toSet();
+    final arriving = <String>{};
+    var leftHere = leftAfter[null] ?? 0;
+    for (final rowId in current) {
+      if (previousIds.contains(rowId)) {
+        leftHere = leftAfter[rowId] ?? 0;
+      } else if (leftHere > 0) {
+        leftHere--;
+      } else {
+        arriving.add(rowId);
+      }
+    }
+    return arriving;
+  }
+
   static _TransientSubmission? _localSendRow({required LocalSendPhase localSend}) => switch (localSend) {
     LocalSendIdle() => null,
     LocalSendSending(:final submission) => (submission: submission, stage: _TransientStage.sending),
@@ -772,6 +880,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       messages: messages,
       hasOlderMessages: widget.onLoadOlderMessages != null,
     );
+    _promptIndex = widget.promptIndex ?? _promptIndex;
+    // An index that arrives while detached still pins above the frozen messages.
+    final promptIndex = snap?.promptIndex ?? _promptIndex;
+    final unloadedPin = _unloadedPin = const TranscriptPromptListBuilder().pinAbove(turns: turns, index: promptIndex);
     final activity = const TranscriptActivityBuilder().build(
       transcript: transcript,
       turns: turns,
@@ -814,6 +926,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           )
           .firstOrNull;
     }
+    final previousRowIds = _rowIndexById.keys.toList();
     _knownRowIds = rowIds.toSet();
     _rowIndexById = {for (final (index, rowId) in rowIds.indexed) rowId: index};
     _userMessagesById = {
@@ -821,14 +934,15 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         if (message.info is MessageUser && message.hasRenderableUserContent) message.info.id: message,
     };
     // Rows held still while scrolled away never animate, and a prompt shows
-    // at once: only the agent's side of the transcript eases in.
+    // at once: only the agent's side of the transcript eases in. A row that
+    // takes the place of one that just left is that row re-keyed, as when a
+    // refresh swaps a live row for its history twin, so it stays put.
     final enteringRowIds = knownRowIds == null || snap != null || context.isReducedMotion
         ? const <String>{}
-        : {
+        : _rowsArriving(previous: previousRowIds, current: rowIds).difference({
             for (final rowId in rowIds)
-              if (!knownRowIds.contains(rowId) && !_isUserRow(rowId: rowId, messages: messages, indexById: indexById))
-                rowId,
-          };
+              if (_isUserRow(rowId: rowId, messages: messages, indexById: indexById)) rowId,
+          });
     // Coalesced post-frame pin-to-edge while following. The scheduler
     // collapses repeated calls within a frame and the jump is skipped
     // when `position.pixels` is already at the edge.
@@ -939,13 +1053,31 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                       builder: (context, openerIds, _) => TranscriptStickyPromptOverlay(
                         key: _stickyKey,
                         messages: [for (final openerId in openerIds) ?_userMessagesById[openerId]],
+                        unloaded: unloadedPin,
                         horizontalInset: widget.horizontalInset,
                         onLayout: _layOutSticky,
-                        onTap: _glideToPrompt,
+                        onTap: _onPinTap,
                       ),
                     ),
                   ),
                 ),
+                // Beside the pin, clear of the bubble, which keeps to the right.
+                if (_pinLoadId != null)
+                  Positioned(
+                    left: widget.horizontalInset + UserMessageBubble.margin.left,
+                    top: widget.topInset + _kPinGap + UserMessageBubble.padding,
+                    child: IgnorePointer(
+                      child: AnimatedOpacity(
+                        opacity: _showsPinLoadSpinner ? 1 : 0,
+                        duration: transcriptMotionDuration,
+                        child: Semantics(
+                          liveRegion: _showsPinLoadSpinner,
+                          label: _showsPinLoadSpinner ? loc.transcriptPromptsLoading : null,
+                          child: const SizedBox.square(dimension: 16, child: PregoActivityIndicator(color: null)),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -1063,7 +1195,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             isCommand: submission.isCommand,
             attachmentCount: submission.attachments.length,
             localAttachments: submission.attachments,
-            presentation: _launchFollowUpPresentation(followUp: launchFollowUp),
+            presentation: launchFollowUpPresentation(
+              followUp: launchFollowUp,
+              harnessName: widget.harnessName,
+              onRetry: widget.onRetryLaunchFollowUp,
+              onRemove: widget.onRemoveLaunchFollowUp,
+            ),
           ),
         ),
       );
@@ -1114,6 +1251,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     if (!message.hasRenderableUserContent) {
       return const SizedBox.shrink();
     }
+    final createdAtMs = message.info.time?.created;
     final card = switch (message.info) {
       // The launch bubble's echo keeps easing like the bubble it replaced.
       MessageUser() when entryId == _launchSlotRowId => _animatedPromptRow(child: _userMessage(message: message)),
@@ -1122,16 +1260,18 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         projectId: widget.projectId,
         blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
+        createdAtMs: createdAtMs,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
       MessageAssistant(:final id) => SystemMessageCard(
         projectId: widget.projectId,
         blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
+        createdAtMs: createdAtMs,
       ),
       final MessageError messageError => ErrorMessageCard(message: messageError),
     };
-    return _revealable(createdAtMs: message.info.time?.created, child: card);
+    return _revealable(createdAtMs: createdAtMs, child: card);
   }
 
   /// A user message's bubble, registered where it is so its pin can stand in
@@ -1141,29 +1281,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     registry: _promptSlots,
     child: UserMessageCard(message: message),
   );
-
-  QueuedMessageBubblePresentation _launchFollowUpPresentation({required LaunchFollowUp followUp}) {
-    final promptId = followUp.submission.promptId;
-    final onRetry = widget.onRetryLaunchFollowUp;
-    final onRemove = widget.onRemoveLaunchFollowUp;
-    return switch (followUp) {
-      SendingLaunchFollowUp() => QueuedMessageBubblePresentation.sending(
-        harnessName: widget.harnessName,
-        sendingSince: null,
-      ),
-      QueuedLaunchFollowUp() when onRemove != null => QueuedMessageBubblePresentation.pending(
-        onCancel: () => onRemove(promptId: promptId),
-      ),
-      QueuedLaunchFollowUp() || AcceptedLaunchFollowUp() => const QueuedMessageBubblePresentation.pendingReadOnly(),
-      // A lost response may already have reached the bridge, so only an
-      // authoritative rejection can be removed; Retry is safe either way,
-      // since the bridge drops a promptId it already took.
-      FailedLaunchFollowUp(:final failure) => QueuedMessageBubblePresentation.failed(
-        onRetry: onRetry == null ? null : () => onRetry(promptId: promptId),
-        onRemove: onRemove == null || failure != PromptSendFailure.rejected ? null : () => onRemove(promptId: promptId),
-      ),
-    };
-  }
 
   void _cancelQueuedSubmission({required QueuedSessionSubmission submission}) {
     final onCancelQueuedMessage = widget.onCancelQueuedMessage;

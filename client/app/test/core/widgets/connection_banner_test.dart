@@ -3,6 +3,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
@@ -25,9 +26,14 @@ class _MockSessionListCubit() extends MockCubit<SessionListState> implements Ses
 Widget _app({required ConnectionOverlayCubit cubit, required Widget home}) {
   return BlocProvider<ConnectionOverlayCubit>.value(
     value: cubit,
-    child: BlocProvider(
-      create: (_) =>
-          PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
+    child: MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) =>
+              PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
+        ),
+        RepositoryProvider(create: (_) => idleSessionLaunchService()),
+      ],
       child: MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -227,6 +233,7 @@ void main() {
     final overlayCubit = StubConnectionOverlayCubit(initialState: const ConnectionOverlayState.bridgeOffline());
     addTearDown(overlayCubit.close);
     final sessionListCubit = _MockSessionListCubit();
+    when(() => sessionListCubit.projectId).thenReturn("project-1");
     whenListen(
       sessionListCubit,
       const Stream<SessionListState>.empty(),

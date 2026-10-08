@@ -14,6 +14,7 @@ void main() {
   late FakeFeedbackPromptService feedbackPromptService;
   late MockProductAnalyticsService productAnalyticsService;
   late NewSessionSelectionTracker selectionTracker;
+  late FakeAuthSession authSession;
   late SessionLaunchService service;
   late Completer<ApiResponse<Session>> response;
   late List<SessionLaunchOutcome> outcomes;
@@ -31,12 +32,15 @@ void main() {
     feedbackPromptService = FakeFeedbackPromptService();
     productAnalyticsService = stubbedProductAnalyticsService();
     selectionTracker = NewSessionSelectionTracker();
+    authSession = FakeAuthSession(initialState: const AuthState.initial());
+    addTearDown(authSession.dispose);
     service = SessionLaunchService(
       sessionRepository: sessionRepository,
       launchRepository: launchRepository,
       feedbackPromptService: feedbackPromptService,
       productAnalyticsService: productAnalyticsService,
       selectionTracker: selectionTracker,
+      authSession: authSession,
     );
     response = Completer<ApiResponse<Session>>();
     when(
@@ -63,6 +67,7 @@ void main() {
     projectId: "project-1",
     pluginId: "plugin-1",
     startedAt: DateTime.utc(2026, 9, 27),
+    projectName: null,
     submission: submission,
     agent: null,
     model: null,
@@ -144,6 +149,24 @@ void main() {
     ).called(1);
     expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNotNull);
     expect(storage.readAll(), isEmpty);
+  });
+
+  test("signing out drops every launch, so a create that fails afterwards reaches no one", () async {
+    var discarded = 0;
+    final discards = service.discarded.listen((_) => discarded++);
+    addTearDown(discards.cancel);
+    final pending = launch();
+    service.releaseHandoff(launchId: "launch-1");
+
+    authSession.emit(const AuthState.unauthenticated());
+    await Future<void>.delayed(Duration.zero);
+    expect(service.launches.value, isEmpty, reason: "no launching row outlives the account");
+    expect(discarded, 1, reason: "the shell drops an alert it has not shown yet or still shows");
+
+    response.complete(ApiResponse.error(ApiError.generic()));
+    await pending;
+    await Future<void>.delayed(Duration.zero);
+    expect(outcomes, isEmpty, reason: "the old project's name never reaches the login screen or the next account");
   });
 
   group("follow-ups", () {

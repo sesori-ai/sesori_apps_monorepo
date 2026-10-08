@@ -19,6 +19,7 @@ import "package:sesori_dart_core/src/repositories/models/session_options_reposit
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
+import "package:sesori_mobile/features/session_detail/widgets/session_detail_composer_controls.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
@@ -486,6 +487,7 @@ void main() {
         feedbackPromptService: GetIt.instance<FeedbackPromptService>(),
         productAnalyticsService: productAnalyticsService,
         selectionTracker: GetIt.instance<NewSessionSelectionTracker>(),
+        authSession: FakeAuthSession(initialState: const AuthState.initial()),
       ),
     );
   });
@@ -1716,14 +1718,12 @@ void main() {
       "/projects/project-1/sessions/new",
     );
 
-    // The fading composer has already let go of the keyboard, so it closes
-    // with the fade instead of dropping the bubble after it.
-    expect(find.byType(PromptInput), findsOneWidget);
-    expect(tester.testTextInput.isVisible, isFalse);
-
-    // The composer fades out as the bubble fades in; Send stays blocked.
+    // The composer stays where it was, keeping the keyboard, for follow-ups.
+    final composerRect = tester.getRect(find.byType(PromptInput));
     await tester.pump(const Duration(milliseconds: 250));
-    expect(find.byType(PromptInput), findsNothing);
+    expect(find.byType(PromptInput), findsOneWidget);
+    expect(tester.testTextInput.isVisible, isTrue);
+    expect(tester.getRect(find.byType(PromptInput)).bottom, composerRect.bottom);
 
     // A slow creation names the harness it waits on.
     await tester.pump(const Duration(seconds: 2));
@@ -1731,7 +1731,63 @@ void main() {
     expect(find.text(loc.sessionDetailSendingToHarness(PregoBrandLogo.displayNameFor("plugin-1"))), findsOneWidget);
   });
 
-  testWidgets("removes composer and closes its voice lifecycle while a session is sending", (tester) async {
+  testWidgets("a message sent while the first one is sending queues below it in the same composer", (tester) async {
+    final createCompleter = Completer<ApiResponse<Session>>();
+    when(
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) => createCompleter.future);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    await enterTextAndSend(tester: tester, text: "first message");
+    await tester.pumpAndSettle();
+    final promptState = tester.state(find.byType(PromptInput));
+    final firstRect = tester.getRect(
+      find.ancestor(of: find.text("first message"), matching: find.byType(QueuedMessageBubble)),
+    );
+
+    await enterTextAndSend(tester: tester, text: "second message");
+    await tester.pumpAndSettle();
+
+    expect(tester.state(find.byType(PromptInput)), same(promptState));
+    final secondBubble = find.ancestor(of: find.text("second message"), matching: find.byType(QueuedMessageBubble));
+    expect(secondBubble, findsOneWidget);
+    // The new row sits below the first, which moves up to make room.
+    final first = tester.getRect(
+      find.ancestor(of: find.text("first message"), matching: find.byType(QueuedMessageBubble)),
+    );
+    expect(tester.getRect(secondBubble).top, greaterThan(first.bottom - 1));
+    expect(first.bottom, lessThan(firstRect.bottom));
+    // Only the first message created the session.
+    verify(
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).called(1);
+  });
+
+  testWidgets("keeps the composer and its voice session while a session is sending", (tester) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
       () => sessionService.createSessionWithMessage(
@@ -1753,16 +1809,11 @@ void main() {
 
     await enterTypingMode(tester);
     await enterTextAndSend(tester: tester, text: "test message");
-    await tester.pump();
-    // Let the composer finish fading out.
-    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
 
-    expect(find.byType(PromptInput), findsNothing);
-    expect(find.byIcon(TablerSolid.player_stop), findsNothing);
-    expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
+    expect(find.byType(PromptInput), findsOneWidget);
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));
-    verify(() => voiceTranscriptionService.invalidate(session: voiceSession)).called(1);
-    verify(() => voiceTranscriptionService.close(session: voiceSession)).called(1);
+    verifyNever(() => voiceTranscriptionService.close(session: voiceSession));
 
     verify(
       () => sessionService.createSessionWithMessage(
@@ -1778,6 +1829,59 @@ void main() {
         dedicatedWorktree: any(named: "dedicatedWorktree"),
       ),
     ).called(1);
+  });
+
+  testWidgets("a creation landing mid-recording waits for the transcript, then hands it over", (tester) async {
+    final createCompleter = Completer<ApiResponse<Session>>();
+    when(
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) => createCompleter.future);
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    final transcript = Completer<String>();
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) => transcript.future);
+    SessionLaunchHandoff? handoff;
+    await tester.pumpWidget(
+      _buildApp(
+        sessionDetailBuilder: (context, state) {
+          final sessionId = state.pathParameters["sessionId"] ?? "";
+          handoff ??= GetIt.instance<SessionLaunchRepository>().takeHandoff(sessionId: sessionId);
+          return Text("session-detail:$sessionId");
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await enterTypingMode(tester);
+    await enterTextAndSend(tester: tester, text: "test message");
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: null)));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(NewSessionScreen), findsOneWidget, reason: "the recording keeps the screen");
+
+    await gesture.up();
+    await tester.pump();
+    expect(find.byType(NewSessionScreen), findsOneWidget, reason: "the transcription keeps it too");
+
+    transcript.complete("spoken words");
+    await tester.pumpAndSettle();
+    expect(find.text("session-detail:session-1"), findsOneWidget);
+    expect(handoff?.composer?.unsent?.draft.text, contains("spoken words"));
   });
 
   testWidgets("shows snackbar and allows navigation when aborting while sending", (tester) async {
@@ -1934,16 +2038,24 @@ void main() {
     _MockSessionDetailCubit? detailCubit;
     _MockSessionDetailCubit detailCubitFor({required String sessionId}) {
       final cubit = _MockSessionDetailCubit();
+      final handoff = GetIt.instance<SessionLaunchRepository>().takeHandoff(sessionId: sessionId);
       whenListen(
         cubit,
         const Stream<SessionDetailState>.empty(),
         initialState: SessionDetailState.loading(
-          launchHandoff: GetIt.instance<SessionLaunchRepository>().takeHandoff(sessionId: sessionId),
+          launchHandoff: handoff,
+          seededComposer: switch (handoff?.composer) {
+            final composer? => SeededComposer(composer: composer, stagedCommand: null),
+            null => null,
+          },
         ),
       );
       when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
       when(() => cubit.permissionStream).thenAnswer((_) => const Stream.empty());
       when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
+      when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+      when(() => cubit.launchAttachments).thenReturn(const []);
+      when(cubit.acknowledgeLaunchAttachments).thenReturn(null);
       return cubit;
     }
 
@@ -1960,6 +2072,7 @@ void main() {
               imageSaver: _MockImageSaver.new,
               imageClipboard: () => GetIt.instance<ImageClipboard>(),
               imageSharer: _MockImageSharer.new,
+              sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
               canShareImages: true,
               openExternalLink: ({required url, required mode}) async => false,
               openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
@@ -1973,7 +2086,8 @@ void main() {
                 onShowDiffs: null,
                 pageChrome: null,
                 menuEntriesBuilder: null,
-                bottomControlsBuilder: null,
+                bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>
+                    MobileSessionDetailComposerControls(projectId: projectId, sessionId: sessionId, source: source),
               ),
             ),
           );
@@ -1990,6 +2104,7 @@ void main() {
     final slowSendCopy = loc.sessionDetailSendingToHarness(PregoBrandLogo.displayNameFor("plugin-1"));
     expect(find.text(slowSendCopy), findsOneWidget);
     final sendingRect = tester.getRect(find.byType(QueuedMessageBubble));
+    final composerRect = tester.getRect(find.byType(PromptInput));
 
     createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: null)));
     await tester.pump();
@@ -2001,6 +2116,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(NewSessionScreen), findsNothing);
     expect(tester.getRect(find.byType(QueuedMessageBubble)), sendingRect);
+    // The session screen's composer stands where the new-session one stood.
+    expect(tester.getRect(find.byType(PromptInput)), composerRect);
     expect(find.text(slowSendCopy), findsOneWidget);
   });
 

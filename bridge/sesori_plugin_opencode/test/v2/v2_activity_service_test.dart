@@ -8,6 +8,7 @@ import "package:opencode_plugin/src/v2/models/v2_agent_names.dart";
 import "package:opencode_plugin/src/v2/models/v2_event.g.dart";
 import "package:opencode_plugin/src/v2/models/v2_message_filter.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_activity_tracker.dart";
+import "package:opencode_plugin/src/v2/repositories/opencode_v2_compaction_tracker.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_repository.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_message_mapper.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_model_mapper.dart";
@@ -87,6 +88,7 @@ void main() {
     service = OpenCodeV2Service(
       repository: repository,
       tracker: tracker,
+      compactions: OpenCodeV2CompactionTracker(),
       mapper: const V2EventMapper(modelMapper: models, messageMapper: messages),
       modelMapper: models,
       formAnswerMapper: const V2FormAnswerMapper(),
@@ -424,6 +426,95 @@ void main() {
     expect(compacted.whereType<BridgeSseMessagePartUpdated>().single.part.id, "msg_compaction:0");
     expect(compacted.whereType<BridgeSseSessionCompacted>(), hasLength(1));
     expect(repository.calls, ["latest:assistant:$worktree", "latest:compaction:$worktree"]);
+  });
+
+  test("a compaction streams its words into the running row until it settles in place", () async {
+    void snapshot({required String status}) => repository.latest[V2MessageFilter.compaction] = messages.mapMessage(
+      sessionId: "child",
+      agentNames: names,
+      message: SessionMessageInfo.fromJson(<String, dynamic>{
+        "id": "msg_compaction",
+        "type": "compaction",
+        "status": status,
+        "reason": "auto",
+        "summary": status == "running" ? "" : "Fixture summary",
+        "recent": "",
+        "time": const <String, int>{"created": 1},
+      }),
+    )!;
+    Future<List<BridgeSseEvent>> handle({required String type, required Map<String, dynamic> data}) =>
+        service.handleEvent(
+          envelope: frame(type: type, data: {"sessionID": "child", ...data}),
+        );
+    Future<List<BridgeSseEvent>> delta() => handle(type: "session.compaction.delta", data: {"text": "Fixture"});
+
+    await service.coldStart();
+    expect(await delta(), isEmpty);
+    snapshot(status: "running");
+    final started = await handle(type: "session.compaction.started", data: {});
+    expect(
+      started.whereType<BridgeSseMessagePartUpdated>().single.part,
+      isA<PluginMessagePartCompaction>().having(
+        (part) => part.compactionState,
+        "state",
+        const PluginCompactionState.running(summary: null),
+      ),
+    );
+    expect(started.whereType<BridgeSseSessionCompacted>(), isEmpty);
+    final streamed = (await delta()).single as BridgeSseMessagePartDelta;
+    expect((streamed.messageID, streamed.partID, streamed.delta), ("msg_compaction", "msg_compaction:0", "Fixture"));
+
+    snapshot(status: "completed");
+    final ended = await handle(type: "session.compaction.ended", data: {"text": "Fixture summary", "recent": ""});
+    expect(
+      ended.whereType<BridgeSseMessagePartUpdated>().single.part,
+      isA<PluginMessagePartCompaction>()
+          .having((part) => part.id, "id", "msg_compaction:0")
+          .having(
+            (part) => part.compactionState,
+            "state",
+            const PluginCompactionState.completed(
+              summary: "Fixture summary",
+              freedTokens: null,
+              trigger: PluginCompactionTrigger.auto,
+            ),
+          ),
+    );
+    expect(await delta(), isEmpty);
+  });
+
+  test("after a reconnect mid-compaction the first delta loads the running row", () async {
+    repository.latest[V2MessageFilter.compaction] = messages.mapMessage(
+      sessionId: "child",
+      agentNames: names,
+      message: SessionMessageInfo.fromJson(const <String, dynamic>{
+        "id": "msg_compaction",
+        "type": "compaction",
+        "status": "running",
+        "reason": "auto",
+        "summary": "",
+        "recent": "",
+        "time": <String, int>{"created": 1},
+      }),
+    )!;
+    await service.coldStart();
+    Future<List<BridgeSseEvent>> delta({required String text}) => service.handleEvent(
+      envelope: frame(type: "session.compaction.delta", data: {"sessionID": "child", "text": text}),
+    );
+
+    final first = await delta(text: "Fixture");
+    expect(first.whereType<BridgeSseMessageUpdated>().single.info.id, "msg_compaction");
+    expect(
+      first.whereType<BridgeSseMessagePartUpdated>().single.part,
+      isA<PluginMessagePartCompaction>().having(
+        (part) => part.compactionState,
+        "state",
+        const PluginCompactionState.running(summary: null),
+      ),
+    );
+    expect(first.last, isA<BridgeSseMessagePartDelta>().having((delta) => delta.partID, "part", "msg_compaction:0"));
+    expect((await delta(text: " summary")).single, isA<BridgeSseMessagePartDelta>());
+    expect(repository.calls.where((call) => call.startsWith("latest:compaction")), hasLength(1));
   });
 
   test("inbox delivery uses its message identity and absent control rows remain absent", () async {

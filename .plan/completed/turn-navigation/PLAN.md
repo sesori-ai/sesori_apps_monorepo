@@ -13,11 +13,13 @@
 - **Revised:** 2026-10-06, adding step 16.b for D43 (pinch out closes the
   Prompts screen). With step 14.b the series total is now 20.
 - **Completed:** 2026-10-06, by step 18, which recorded the L3 matrix and moved
-  the plan here; see [step 18](steps/step-18.md). Most cells are `Not run`, so
-  retirement rests on the user's acceptance recorded under
-  [Regression Coverage](#regression-coverage). The pagination gaps go to a
-  separate design under the user's review; see
-  [Later Phases](#later-phases-rough-intent-only).
+  the plan here; see [step 18](steps/step-18.md). Most cells are `Not run`;
+  the user accepted them on 2026-10-08, as recorded under
+  [Regression Coverage](#regression-coverage). The pagination gaps went to a
+  separate design, since shipped by the `transcript-history` plan (retired in
+  #1910); see [Later Phases](#later-phases-rough-intent-only).
+- **Follow-up:** 2026-10-08, the standalone #1912 reworked the pinch out after
+  retirement; see [step 18](steps/step-18.md#pinch-out-follow-up-1912).
 - **Origin:** visual-hierarchy step 37 ("turn navigation: discussion and
   prototypes"). That step was left out of the series and "becomes its own plan
   once the user picks a direction" (`.plan/completed/visual-hierarchy/TRACKER.md`).
@@ -2059,8 +2061,12 @@ pinch out on a real device, which has no recording.
 [Step 18](steps/step-18.md) lists each cell and the automated tests that cover
 related behavior; they do not satisfy the device, platform or live cells.
 
-**Acceptance of the `Not run` cells: pending.** The plan retires only once the
-user accepts them here.
+On 2026-10-08, after #1912 reworked the pinch out, the user confirmed its feel
+in a macOS release build (`Pass`). Android's pinch out is checked in the next
+internal build.
+
+**Acceptance of the `Not run` cells: accepted by the user on 2026-10-08**, who
+released this plan's retirement once #1912 had been retested.
 
 Automated coverage in the steps:
 
@@ -2413,9 +2419,9 @@ Recorded 2026-10-06 as `Partial`, most cells `Not run`; see
   "in the prompts loaded so far" wording.
 - **Handed off at retirement (2026-10-06), not decided by this plan:** the
   Prompts screen lists only loaded prompts, and the pinned prompt does not show
-  while its opener is unloaded. A bridge prompt index that would close both is
-  under the user's review as a separate design; F1 and F2 above are related
-  intent, not its plan.
+  while its opener is unloaded. A bridge prompt index that would close both
+  went to a separate design, since built by the `transcript-history` plan
+  (retired in #1910); F1 and F2 above are related intent, not its plan.
 - **Deck mode.** Turn by turn, entered from an open turn.
 - **Possibly:**
   - the always-visible desktop index pane (old step 9, D6/D18), if the Prompts

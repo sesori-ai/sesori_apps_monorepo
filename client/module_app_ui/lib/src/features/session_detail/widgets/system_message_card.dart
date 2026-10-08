@@ -12,6 +12,7 @@ class const SystemMessageCard({
   required final String? projectId,
   required final List<TranscriptBlock> blocks,
   required final Map<String, String> streamingText,
+  required final int? createdAtMs,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -43,6 +44,7 @@ class const SystemMessageCard({
                 projectId: projectId,
                 blocks: blocks,
                 streamingText: streamingText,
+                createdAtMs: createdAtMs,
                 contentPadding: EdgeInsets.zero,
               ),
             ],

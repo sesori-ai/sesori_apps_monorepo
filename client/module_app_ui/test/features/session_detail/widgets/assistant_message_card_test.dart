@@ -66,6 +66,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
         imageSaver: _MockImageSaver.new,
         imageClipboard: _MockImageClipboard.new,
         imageSharer: _MockImageSharer.new,
+        sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
         canShareImages: true,
         openExternalLink: ({required url, required mode}) async => false,
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
@@ -83,6 +84,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
                   )
                   .blocksFor(messageId: widget.message.info.id),
               streamingText: _streamingText,
+              createdAtMs: widget.message.info.time?.created,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             ),
           ),
@@ -306,7 +308,7 @@ void main() {
               id: "compaction-tool",
               sessionID: "session-1",
               messageID: "assistant-1",
-              summary: "Carried-forward goal",
+              state: CompactionState.completed(summary: "Carried-forward goal", freedTokens: null, trigger: null),
             ),
           ],
         ),
@@ -329,12 +331,7 @@ void main() {
       _AssistantMessageCardHarness(
         message: _assistantMessage(
           parts: [
-            const MessagePart.compaction(
-              id: "compaction-tool",
-              sessionID: "session-1",
-              messageID: "assistant-1",
-              summary: null,
-            ),
+            const MessagePart.compaction(id: "compaction-tool", sessionID: "session-1", messageID: "assistant-1"),
           ],
         ),
         streamingText: const {},

@@ -3,6 +3,7 @@ import "dart:io" show Directory, FileSystemEntity, FileSystemEntityType, Platfor
 import "package:args/args.dart" show ArgParserException, ArgResults;
 import "package:path/path.dart" as path;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
+import "package:sesori_shared/sesori_shared.dart" show BridgeKind;
 
 import "../foundation/auth_backend_url.dart";
 
@@ -23,6 +24,10 @@ class const BridgeCliOptions({
   /// connects the loopback control channel and the GUI is its token authority
   /// and lifecycle owner. Absent ⇒ unchanged standalone CLI behaviour.
   bool get isSupervised => controlUrl != null;
+
+  /// How this bridge reports its installation to clients: only Sesori Desktop
+  /// supervises a bridge, so a supervised bridge is the one it bundles.
+  BridgeKind get bridgeKind => isSupervised ? BridgeKind.desktop : BridgeKind.cli;
 
   factory fromArgResults({
     required List<String> cliArgs,

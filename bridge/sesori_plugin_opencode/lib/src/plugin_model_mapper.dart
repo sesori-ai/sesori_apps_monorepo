@@ -123,8 +123,16 @@ class const PluginModelMapper({
     );
   }
 
-  PluginMessageWithParts mapMessageWithParts(SessionMessagesResponseItem raw) {
+  /// [compactionAuto] is the `auto` flag of the compaction marker a summary
+  /// message answers, null when it is not one or the marker is unknown.
+  PluginMessageWithParts mapMessageWithParts(SessionMessagesResponseItem raw, {required bool? compactionAuto}) {
     final info = raw.info;
+    final summary = info is AssistantMessage && (info.summary ?? false) ? info : null;
+    final mapped = [
+      for (final part in raw.parts.map(_messagePartMapper.mapPart))
+        if (part.type.isVisible)
+          summary == null ? part : _messagePartMapper.mapSummaryPart(part, message: summary, auto: compactionAuto),
+    ];
     final pluginInfo = switch (info) {
       UserMessage(:final id, :final sessionID, :final agent, :final time) => PluginMessage.user(
         id: id,
@@ -133,19 +141,17 @@ class const PluginModelMapper({
         time: _mapUserMessageTime(time),
         promptId: null,
       ),
-      AssistantMessage() => _assistantMessageMapper.map(info),
+      AssistantMessage() => _assistantMessageMapper.map(
+        info,
+        keepsCompactionParts: mapped.any((part) => part is PluginMessagePartCompaction),
+      ),
       MessageUnknown(:final raw) => throw FormatException("Unknown message role: $raw"),
       _ => throw FormatException("Unknown message role: $info"),
     };
-    final isSummary = info is AssistantMessage && (info.summary ?? false);
-    final parts = [
-      for (final part in raw.parts.map(_messagePartMapper.mapPart))
-        if (part.type.isVisible) isSummary ? _messagePartMapper.mapSummaryPart(part) : part,
-    ];
     return PluginMessageWithParts(
       info: pluginInfo,
       parts: _messagePartMapper.applyAttachmentBudget(
-        parts: parts,
+        parts: mapped,
         maxAttachmentBytes: _maxTranscriptAttachmentBytes,
       ),
     );

@@ -2,6 +2,7 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../../extensions/build_context_x.dart";
+import "../../../widgets/bridge_update_sheet.dart";
 import "../../../widgets/harness_blocked_notice.dart";
 
 class const SessionHarnessUnavailableNotice({
@@ -44,12 +45,17 @@ class const SessionHarnessUnavailableNotice({
     ].join("\n");
     final canRecheck = blocked?.reason == SessionInteractionBlockedReason.authenticationRequired;
 
+    // An old bridge is fixed on the computer running it, which harness
+    // settings cannot do, so it offers the update steps instead.
+    final bridgeOutdated = interaction is SessionInteractionLegacyUnverified;
+
     return HarnessBlockedNotice(
       title: reason,
       details: details,
-      onOpenHarnessSettings: blocked?.reason != SessionInteractionBlockedReason.contentLoadFailed
-          ? onOpenHarnessSettings
-          : null,
+      onOpenHarnessSettings: bridgeOutdated || blocked?.reason == SessionInteractionBlockedReason.contentLoadFailed
+          ? null
+          : onOpenHarnessSettings,
+      onShowBridgeUpdate: bridgeOutdated ? () => showBridgeUpdateSheet(context: context) : null,
       onRecheck: canRecheck ? onRecheck : null,
     );
   }

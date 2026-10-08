@@ -34,7 +34,7 @@ extension PluginAbortRejectionMapping on PluginAbortRejectedSubAgentsRunning {
 
 extension PluginAbortRefusalMapping on PluginAbortRefusalReason {
   SessionAbortRefusalReason toShared() => switch (this) {
-    PluginAbortRefusalReason.residentWorkCompletionUnknown => SessionAbortRefusalReason.residentWorkCompletionUnknown,
+    PluginAbortRefusalReason.subAgentStopUnsupported => SessionAbortRefusalReason.subAgentStopUnsupported,
   };
 }
 
@@ -73,14 +73,15 @@ extension PluginMessageAttachmentMapping on PluginMessageAttachment {
 
 /// Maps [PluginToolState] to the shared [ToolState].
 extension PluginToolStateMapping on PluginToolState {
-  ToolState toShared({required bool retainSummary}) {
+  ToolStateFull toShared({required bool retainSummary}) {
     final boundedShellCommand = _boundedToolText(text: shellCommand);
     final isShellCommand = boundedShellCommand != null;
-    return ToolState(
+    return ToolStateFull(
       status: status.toShared(),
-      // The command is the released title alias for older clients; ordinary
-      // tools keep their bounded title (file path, pattern, skill) so the card
-      // says what the tool touched even though its output is stripped.
+      // The command is the released title alias for older clients on live
+      // events; transcript pages drop it (withoutDuplicatedShellTitles).
+      // Ordinary tools keep their bounded title (file path, pattern, skill) so
+      // the card says what the tool touched even though its output is stripped.
       title: boundedShellCommand ?? _boundedToolText(text: title),
       shellCommand: boundedShellCommand,
       output: isShellCommand || retainSummary ? _boundedToolText(text: output) : null,
@@ -91,6 +92,23 @@ extension PluginToolStateMapping on PluginToolState {
 
   static String? _boundedToolText({required String? text}) =>
       text == null ? null : String.fromCharCodes(text.runes.take(maxToolOutputLength));
+}
+
+/// Maps [PluginCompactionState] to the shared [CompactionState].
+extension PluginCompactionStateMapping on PluginCompactionState {
+  CompactionState toShared() => switch (this) {
+    PluginCompactionStateRunning(:final summary) => CompactionState.running(summary: summary),
+    PluginCompactionStateCompleted(:final summary, :final freedTokens, :final trigger) => CompactionState.completed(
+      summary: summary,
+      freedTokens: freedTokens,
+      trigger: switch (trigger) {
+        null => null,
+        PluginCompactionTrigger.manual => CompactionTrigger.manual,
+        PluginCompactionTrigger.auto => CompactionTrigger.auto,
+      },
+    ),
+    PluginCompactionStateFailed(:final error) => CompactionState.failed(error: error),
+  };
 }
 
 /// Maps a plugin-interface [PluginQuestionInfo] to the shared [QuestionInfo]
@@ -190,11 +208,11 @@ extension PluginMessagePartMapping on PluginMessagePart {
       attempt: attempt,
       retryError: retryError,
     ),
-    PluginMessagePartCompaction(:final id, :final messageID, :final summary) => MessagePart.compaction(
+    PluginMessagePartCompaction(:final id, :final messageID, :final compactionState) => MessagePart.compaction(
       id: id,
       sessionID: sessionId,
       messageID: messageID,
-      summary: summary,
+      state: compactionState.toShared(),
     ),
     PluginMessagePartUnknown() => throw StateError(
       "PluginMessagePartUnknown must be filtered out before mapping to shared model",

@@ -145,6 +145,46 @@ void main() {
       expect(response.toJson()["userMessagesBefore"], 2);
     });
 
+    test("serves a shell tool without the title that repeats its command", () async {
+      plugin.messagesResult = [
+        const PluginMessageWithParts(
+          info: PluginMessage.user(promptId: null, id: "m1", sessionID: "s1", agent: null, time: null),
+          parts: [
+            PluginMessagePart.tool(
+              id: "p1",
+              sessionID: "s1",
+              messageID: "m1",
+              tool: "bash",
+              state: PluginToolState(
+                status: PluginToolStatus.completed,
+                title: "Check the tree",
+                shellCommand: "git status",
+                output: "clean",
+                error: null,
+                attachments: [],
+              ),
+            ),
+          ],
+        ),
+      ];
+
+      final response = await handler.handle(
+        makeRequest("POST", "/session/messages"),
+        body: const SessionMessagesRequest(sessionId: "s1", limit: null, before: null),
+      );
+
+      // The released alias sets the title to the command, so the page omits it
+      // and its wire JSON carries no title key.
+      final state = (response.messages.single.parts.single as MessagePartTool).state;
+      expect(state.toJson(), {
+        "status": "completed",
+        "shellCommand": "git status",
+        "output": "clean",
+        "attachments": <Object>[],
+        "form": "full",
+      });
+    });
+
     test("keeps default delivery inline and threads explicit stored references", () async {
       plugin.messagesResult = [
         PluginMessageWithParts(

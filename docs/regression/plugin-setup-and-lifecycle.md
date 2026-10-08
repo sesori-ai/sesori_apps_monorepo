@@ -10,26 +10,34 @@ idle suspension, the management snapshot, and lifecycle commands.
 
 Targets audited on **2026-09-24**, covering all eleven registered harnesses.
 OpenCode was refreshed on **2026-09-26** with the scoped evidence below.
+Claude, Copilot, Cursor, Grok and Codex targets were refreshed on **2026-10-06**
+(release metadata and managed-asset digests re-audited; native checks on these targets pending).
+Antigravity moved to `1.3.0` and OpenCode to `2.0.24` the same day.
+Pi was refreshed on **2026-10-06** to `1.0.4`, and its approved PATH minimum rose to
+`0.99.0`. Cursor's PATH minimum rose to `2026.09.23` on 2026-10-06 with native sub-agent
+child sessions. Older PATH installs of either get the existing update action.
+Hermes was already on its latest release.
+DeepSeek moved to adapter `0.2.0` and OMP to `18.8.0` on 2026-10-07.
 Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 6,
 Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. GitHub digests and available
 checksum lists agree; Cursor/Antigravity hashes are locally computed, not publisher
 attestations. Direct-CLI targets are recommendation metadata, not forced upgrades.
-Compatible PATH binaries remain authoritative. Independent minimums are unchanged;
-Antigravity retains its exact-pair policy rather than an independent floor.
+Compatible PATH binaries remain authoritative. Independent minimums are unchanged except
+Pi's and Cursor's; Antigravity retains its exact-pair policy rather than an independent floor.
 
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
-| OpenCode | `2.0.18` | PATH `1.14.0`; v2 `2.0.11` | Six archive hashes/layouts verified. Sandboxed macOS arm64 production install/version validation, native authenticated info/catalog/activity reads, SSE startup and teardown passed. Provider turns, history/write parity, native reconnect and upgrade from v1 remain unverified. |
-| Antigravity | package/server `1.2.1` | Exact package/server/ACP 1 | Six archive layouts/hashes and hardened extraction of both macOS archives verified. Native macOS ARM64 `--version`, ACP initialize and teardown passed; native Intel execution remains unverified. ARM64 managed-pipeline probe blocked by the test controller's nested sandbox; OAuth/session/model/delegation behavior unverified. |
-| Codex | `0.156.1` | `0.139.0` | Current-target native package/install, stdio and WebSocket app-server checks remain unverified. |
-| GitHub Copilot | `1.0.88` | `1.0.78` | Current-target native install/version, ACP initialize and configured lifecycle remain unverified. |
-| Cursor | `2026.09.23-86fc751` | date `2026.07.16` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. |
-| Claude Code | `2.1.281` | `2.1.221` | Current-target native stream-json/permissions/replay/interrupt and real authentication/provider behavior remain unverified. |
+| OpenCode | `2.0.24` | PATH `1.14.0`; v2 `2.0.11` | Six archive hashes (npm integrity agrees) and layouts verified. The provider-list decode of `chunkTimeout: false` is covered by a model test only. Current-target native install/version, authenticated provider list and reads, SSE startup and teardown remain unverified; earlier `2.0.18` sandboxed macOS arm64 install and authenticated read observations are historical. Provider turns, history/write parity, native reconnect and upgrade from v1 remain unverified. |
+| Antigravity | package/server `1.3.0` | Exact package/server/ACP 1 | Six archive hashes/layouts/permissions independently verified; macOS ARM64 hardened extraction passed. A 2026-10-06 network-denied macOS ARM64 rerun passed managed installation (archive from the verified local copy), `--version`, initialize and teardown after a first probe aborted with SIGABRT. Other native targets and authenticated behavior remain unverified; earlier `1.2.1` observations are historical. |
+| Codex | `0.160.1` | `0.139.0` | Current-target native package/install, stdio and WebSocket app-server checks remain unverified. |
+| GitHub Copilot | `1.0.92` | `1.0.78` | Current-target native install/version, ACP initialize and configured lifecycle remain unverified. |
+| Cursor | `2026.10.01-e373342` | date `2026.09.23` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. The floor is the oldest build with evidence for native sub-agent child sessions, which Sesori always enables; an older PATH build is reported outdated and asked to update. Sub-agent frame shapes come from the CLI bundle; the authenticated live checks (spawn/state pair, child streaming, nested and resumed children, root stop cascade, refused child stop, stop-and-send) and the open questions (child-id `session/load` transcript, children in `session/list`, `agentId` in pre-capability transcripts) remain pending. |
+| Claude Code | `2.1.291` | `2.1.221` | Current-target native stream-json/permissions/replay/interrupt and real authentication/provider behavior remain unverified. |
 | Hermes Agent | `0.21.5` (`v2026.9.24`) | `0.20.0` | Current-target real CLI ACP initialize/list, configured new/load/replay and persisted deletion remain unverified. |
-| Pi | `0.87.1` | `0.84.1` | Current-target native package/RPC, settlement/retry/compaction, queue and fresh-process reuse remain unverified. |
-| Oh My Pi | `18.3.0` | `17.2.13` | Eight verified direct-binary mappings. Current-target native install/version/ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
-| DeepSeek | `0.1.7` (unchanged) | `0.1.5` | Latest stable owned adapter, embedding DeepSeek Harness `0.1.5-rc.2`. Six hashes rechecked; no fresh native or authenticated run. Newer upstream RCs require separate producer work, not an invented consumer release. |
-| Grok Build | `1.0.41` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
+| Pi | `1.0.4` | `0.99.0` | Six archive hashes match the published `SHA256SUMS` and GitHub digests. A 2026-10-06 sandboxed macOS arm64 production install (digest sentinel), `--version`, inspect-setup, RPC command listing and the production catalog probe passed with no credentials and network denied after download; `/llama` is hidden. An authenticated Pi 1.0.4 session completed during the startup-dialog work (see `HARNESS_CAPABILITIES.md`). Settlement/retry/compaction, queue and fresh-process reuse on the current target remain unverified. |
+| Oh My Pi | `18.8.0` | `17.2.13` | Eight direct-binary hashes match `SHA256SUMS.txt` and the GitHub digests; the macOS arm64 binary reports `omp/18.8.0`. **Known limitation (accepted):** from `18.6.3`, `session/load` and `session/resume` fail closed with "Could not restore model `<provider/id>`" when the session's saved model is no longer usable (renamed id, removed credentials or local model). Such a session cannot be continued: a prompt fails with an inline error naming the model and stating that the session can't be continued, without dispatching the prompt. Opening its history while the bridge store is stale serves the stored history with a can't-continue banner, and resume-then-delete cleanup cannot remove it, so the bridge logs and retries that cleanup at startup. Current-target native ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
+| DeepSeek | `0.2.0` | `0.1.5` | Owned adapter release v0.2.0, embedding DeepSeek Harness `0.2.0-rc.2` (upstream `next`). Six hashes computed from downloads and matched against `checksums.txt`; the macOS arm64 asset reports `sesori-deepseek-acp/0.2.0 deepseek-harness/0.2.0-rc.2 acp/1` and `check` returns ok. The producer's packaged fake-provider smoke passed on all six platforms; no authenticated turn. |
+| Grok Build | `1.0.46` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
 
 Target/asset/descriptor unit coverage does not prove native or authenticated
 behavior. Other-platform native behavior is not inferred from macOS ARM64.
@@ -103,7 +111,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its
   descriptor honors an explicit `--deepseek-bin` path before a compatible PATH
   release (`>=0.1.5`) and then a managed release at or above that minimum,
-  preferring the pinned `0.1.7` target. An outdated explicit
+  preferring the pinned `0.2.0` target. An outdated explicit
   binary is rejected; an old or malformed PATH candidate falls through to managed
   selection. It performs bounded parseable-version and
   side-effect-free `check --state-dir` probes, advertises install only on a
@@ -117,21 +125,25 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   0.1.4 verified that the bridge and native runtime survived atomic cancellation
   of an independently resumed child and its grandchild after #1379, and accepted
   a successful follow-up turn. That evidence does not requalify current managed
-  target 0.1.7 or cover setup selection, crash reconnect, idle suspension/reap,
+  target 0.2.0 or cover setup selection, crash reconnect, idle suspension/reap,
   bridge restart, desktop, or another platform.
 - Standard ACP owns DeepSeek lifecycle, prompts, config options, and permissions;
   `deepseek/*` adds catalog, detached history, rename, questions, bounded statuses,
   and correlated sub-agent lifecycle on that same connection. Normal `DSH_HOME` remains the source
-  of settings, credentials, providers, and skills but its session root is never
-  scanned. Adapter 0.1.7 initializes and loads only the application-owned
+  of credentials (`.credentials.yaml` or the environment) and skills, but its session
+  root is never scanned. Since adapter 0.2.0 (DeepSeek Harness 0.2.0-rc.2), provider
+  settings live in `$DSH_HOME/profiles/sesori/cordis.patch.yml`; `settings.yaml` is
+  ignored with no automatic import, and a custom provider `baseURL` must speak the
+  Anthropic Messages API. The adapter initializes and loads only the application-owned
   `$DSH_HOME/profiles/sesori` profile at startup, so explicitly installed bundle and
   patch plugins run after restart, including after `dsh --profile sesori` rewrites the
   profile root; a pinned-graph fallback after that rewrite is a failure. The adapter
   resolves one immutable entry snapshot,
   then reapplies its pinned storage, telemetry, hot-reload, sandbox, approval,
-  agent/sub-agent, and transport constraints. An unavailable, invalid, or failing
-  profile falls back once to the pinned in-memory graph without changing active ACP
-  sessions. Profile plugins are trusted local in-process code with access to prompts,
+  agent/sub-agent, and transport constraints. A failing optional profile plugin is reported
+  on stderr and skipped while the rest of the profile runs; an unavailable or invalid
+  profile, or a failing required row, falls back once to the pinned in-memory graph
+  without changing active ACP sessions. Profile plugins are trusted local in-process code with access to prompts,
   files, credentials, Node APIs, and the network; this local trust grant does not
   extend to a future cloud or otherwise managed-trust runtime. Session, attachment,
   query, and spill mutations stay below plugin state, and session-local
@@ -164,7 +176,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   v2 adapter at 2.0.11 or newer; v1 retains its existing adapter. Below-minimum v2
   fails with an upgrade hint, never a downgrade recommendation. An owned runtime
   is stopped before refusal; an attached server is never stopped. Cancellation
-  during the probe wins over refusal. Managed downloads target `2.0.18` via npm;
+  during the probe wins over refusal. Managed downloads target `2.0.24` via npm;
   first v2 launch migrates the native database one-way, while PATH v1 stays supported.
   Attach mode without a server retains degraded v1 recovery; a later-started v2
   server requires a bridge restart to select its adapter.
@@ -275,14 +287,8 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   work state stays busy so a safe stop or suspension refuses, and only a forced stop, a
   full-scope session stop, delete, or process exit ends it. A main-agent-only stop
   keeps the process resident for its tasks.
-- Cursor records one root-level unresolved-background observation when a Task
-  launch explicitly reports `isBackground: true`. It keeps only process work state
-  busy, preventing safe suspension without changing UI status, summaries, child
-  counts, or idle events. It survives later turns and clears only on exact session
-  cleanup, process reset/forced teardown, or disposal because Cursor exposes no
-  terminal fact. Bounded production-composition QA observed root idle first, a
-  later background permission, busy process work state, and a new session on
-  the same resident process.
+- Cursor keeps its process resident through the held-open root prompt and its
+  running native sub-agent children, background ones included.
 - A busy harness conflicts explicitly, forcing needs confirmation and is sent once, the
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.

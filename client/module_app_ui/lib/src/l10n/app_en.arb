@@ -354,7 +354,6 @@
   "settingsPullRequestRefreshUncertain": "The update status is unknown. Refresh before trying again.",
   "settingsPullRequestRefreshUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
   "settingsPullRequestRefreshStateChanged": "The bridge setting changed while you were editing. Try again.",
-  "settingsPullRequestRefreshUnavailable": "Unavailable",
   "settingsPullRequestRefreshRetry": "Retry pull request refresh setting",
   "settingsPullRequestRefreshDialogTitle": "Pull request refresh interval",
   "settingsPullRequestRefreshSecondsLabel": "Seconds",
@@ -489,7 +488,7 @@
   "harnessesEmptyTitle": "No harnesses registered",
   "harnessesEmptyDescription": "The connected bridge hasn't registered any coding harnesses.",
   "harnessesLoading": "Loading harnesses",
-  "harnessesUnsupportedTitle": "Harnesses aren't supported",
+  "harnessesUnsupportedTitle": "Your bridge needs an update",
   "harnessesUnsupportedDescription": "Update the connected bridge to view and manage its harnesses.",
   "harnessesLoadFailedTitle": "Failed to load harnesses",
   "harnessesLoadFailedDescription": "Check your connection and try again.",
@@ -845,6 +844,7 @@
   "sessionDetailStopNotAcceptedTitle": "Session not stopped",
   "sessionDetailStopNotAcceptedBackgroundMessage": "Sesori couldn’t verify whether background work finished, so it didn’t stop this session. Restart the harness, then try again.",
   "sessionDetailStopNotAcceptedGenericMessage": "Sesori couldn’t safely stop this session. Restart the harness, then try again.",
+  "sessionDetailStopNotAcceptedSubAgentMessage": "Stop the parent session; this harness cannot stop sub-agents individually.",
   "sessionDetailStopScopeTitle": "Sub-agents are running",
   "sessionDetailStopScopeMessage": "{count, plural, =1{The main agent and 1 sub-agent are still working.} other{The main agent and {count} sub-agents are still working.}}",
   "@sessionDetailStopScopeMessage": {
@@ -909,6 +909,9 @@
   "sessionDetailToolCancelled": "Cancelled",
   "sessionDetailShell": "Shell",
   "sessionDetailCommandRan": "Ran",
+  "sessionDetailToolOutputLoading": "Loading output",
+  "sessionDetailToolOutputFailed": "Could not load the output.",
+  "sessionDetailToolOutputRetry": "Retry",
   "sessionDetailFollowOutput": "Follow",
   "transcriptSummarySteps": "{count, plural, =1{1 step} other{{count} steps}}",
   "@transcriptSummarySteps": {
@@ -1001,6 +1004,44 @@
   "@transcriptPromptsLoaded": {
     "description": "Last row of the Prompts screen: how many prompts the list holds. Older prompts may not have loaded yet.",
     "placeholders": {"count": {"type": "int"}}
+  },
+  "transcriptPromptsCount": "{count, plural, =1{1 prompt} other{{count} prompts}}",
+  "@transcriptPromptsCount": {
+    "description": "Last row of the Prompts screen when it lists every prompt in the session, loaded or not: how many there are.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "transcriptPromptsOpenFailed": "Couldn't open this prompt. Check your connection and try again.",
+  "@transcriptPromptsOpenFailed": {
+    "description": "Notice over the Prompts screen when loading the transcript up to a tapped earlier prompt failed."
+  },
+  "transcriptPromptsGone": "This prompt is no longer in the session",
+  "@transcriptPromptsGone": {
+    "description": "Notice over the Prompts screen when a tapped earlier prompt was not found in the loaded transcript, for example because the session's history was rewritten."
+  },
+  "transcriptPromptsRefreshed": "The session just refreshed. Tap the prompt again.",
+  "@transcriptPromptsRefreshed": {
+    "description": "Notice over the Prompts screen when the session refreshed while a tapped earlier prompt was loading, so the load was dropped."
+  },
+  "transcriptPromptsLoading": "Loading",
+  "@transcriptPromptsLoading": {
+    "description": "What screen readers say about a Prompts row while the transcript loads up to its earlier prompt."
+  },
+  "transcriptPromptsAllMatches": "{count, plural, =0{No matches} =1{1 match} other{{count} matches}}",
+  "@transcriptPromptsAllMatches": {
+    "description": "Last row of the Prompts screen while searching once it lists every prompt of the session: how many prompts match.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "transcriptPromptsSearchingEarlier": "Searching earlier prompts…",
+  "@transcriptPromptsSearchingEarlier": {
+    "description": "Last row of the Prompts screen while the bridge searches the whole text of every prompt and has not answered yet."
+  },
+  "transcriptPromptsSearchEarlierFailed": "Couldn't search earlier prompts",
+  "@transcriptPromptsSearchEarlierFailed": {
+    "description": "Last row of the Prompts screen when the bridge's search of every prompt failed; the matches already shown stay."
+  },
+  "transcriptPromptsSearchRetry": "Retry",
+  "@transcriptPromptsSearchRetry": {
+    "description": "Button under the failed search row of the Prompts screen that asks the bridge to search every prompt again."
   },
   "transcriptPromptsNoDate": "No date",
   "@transcriptPromptsNoDate": {
@@ -1263,6 +1304,14 @@
   "@sessionListRunning": {
     "description": "Screen-reader label for a session an agent is actively working in; the visual signal is the twinkling sparkle"
   },
+  "sessionListCreating": "Creating…",
+  "@sessionListCreating": {
+    "description": "Leads the meta line of a launching row, before the harness name: the bridge is still creating this new session."
+  },
+  "sessionListLaunchingAlert": "This session is still being created. You can open it once it's ready.",
+  "@sessionListLaunchingAlert": {
+    "description": "Alert shown when the user taps a launching row, a new session the bridge has not created yet."
+  },
   "sessionListResumes": "Resumes {time}",
   "@sessionListResumes": {
     "description": "Shown on a session row, in place of its last-activity time, while the bridge has scheduled an automatic continuation after a quota reset. The time is local, with the date only when it is not today.",
@@ -1446,6 +1495,7 @@
   },
   "newSessionProjectUnavailable": "Couldn’t verify whether this project supports worktrees. Try again before creating the session.",
   "sessionDetailArchivedNotice": "This session is archived and read-only.",
+  "sessionDetailCannotContinueTitle": "Can't continue this session",
   "sessionDetailHarnessFallbackName": "This harness",
   "sessionDetailHarnessDisabledReason": "{harnessName} is disabled.",
   "@sessionDetailHarnessDisabledReason": {"placeholders": {"harnessName": {"type": "String"}}},
@@ -1533,6 +1583,27 @@
   "newSessionLoadingMessage3": "Almost ready…",
   "newSessionCreationDuplicateWarning": "Sesori couldn't confirm whether a session was created. It may still appear in the session list, and sending again may create a duplicate.",
   "newSessionLaunchingInBackground": "Your new session will appear in the list once it's launched",
+  "newSessionFailedAfterLeaving": "{count, plural, =1{Couldn't create your new session in {projects}} other{Couldn't create {count} new sessions in {projects}}}",
+  "@newSessionFailedAfterLeaving": {
+    "description": "Alert title when creating new sessions fails after the user left their composers; their launching rows are gone from the lists. projects lists the projects' names.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "projects": {
+        "type": "String"
+      }
+    }
+  },
+  "newSessionFailedAfterLeavingUnnamed": "{count, plural, =1{Couldn't create your new session} other{Couldn't create {count} new sessions}}",
+  "@newSessionFailedAfterLeavingUnnamed": {
+    "description": "Alert title when creating new sessions fails after the user left their composers and a project's name is unknown.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "commandSourceCommand": "Command",
   "commandSourceMcp": "MCP",
   "commandSourceSkill": "Skill",
@@ -1603,6 +1674,22 @@
   "@sessionDetailContextCompacted": {"description": "Quiet transcript row marking where the coding agent summarized its earlier conversation to free context space."},
   "sessionDetailCompactionSummaryTitle": "Compaction summary",
   "@sessionDetailCompactionSummaryTitle": {"description": "Title of the modal showing the summary the coding agent carried forward when it compacted its context."},
+  "sessionDetailCompactingContext": "Compacting context",
+  "@sessionDetailCompactingContext": {"description": "Live transcript row while the coding agent summarizes its earlier conversation to free context space. An elapsed time may follow, e.g. 'Compacting context · 1m 42s'."},
+  "sessionDetailCompactionFailed": "Compaction failed",
+  "@sessionDetailCompactionFailed": {"description": "Quiet transcript note when the coding agent could not summarize its earlier conversation. The harness's error may follow, e.g. 'Compaction failed · The turn ended before compaction finished.'"},
+  "sessionDetailCompactionFreedTokens": "freed {tokens} tokens",
+  "@sessionDetailCompactionFreedTokens": {
+    "description": "Detail after 'Context compacted' saying how much context space the compaction freed, e.g. 'Context compacted · freed 142k tokens'. Starts lowercase because it follows a separator.",
+    "placeholders": {
+      "tokens": {
+        "type": "String",
+        "example": "142k"
+      }
+    }
+  },
+  "sessionDetailCompactionAuto": "auto",
+  "@sessionDetailCompactionAuto": {"description": "Detail after 'Context compacted' when the coding agent compacted on its own rather than on the user's request, e.g. 'Context compacted · auto'. Lowercase because it follows a separator."},
   "sessionDetailCopy": "Copy",
   "emptySessionDetailTitle": "Select a session",
   "emptySessionDetailSubtitle": "Choose a session from the list to view details",
@@ -2009,5 +2096,31 @@
         "type": "String"
       }
     }
-  }
+  },
+  "bridgeUpdateHowTo": "How to update",
+  "@bridgeUpdateHowTo": {"description": "Action beside any notice that the connected bridge is too old for a feature. Opens the sheet with the update steps."},
+  "bridgeUpdateTitle": "Update Sesori Bridge",
+  "bridgeUpdateIntro": "On the computer running the bridge:",
+  "bridgeUpdateStepUpdate": "1. Update the bridge",
+  "bridgeUpdateStepRestart": "2. Restart it. In its terminal, press Ctrl+C, then run:",
+  "@bridgeUpdateStepRestart": {"description": "Ctrl+C is the literal key combination that stops the bridge in its terminal; keep it as is."},
+  "bridgeUpdateRestartService": "Running it as a service (launchd, systemd)? Restart the service instead.",
+  "bridgeUpdateReinstallIntro": "If step 1 fails or the command isn't found, reinstall:",
+  "@bridgeUpdateReinstallIntro": {"description": "Introduces the installer commands. Bridges older than the update command need a reinstall instead."},
+  "bridgeUpdateMethodMacLinux": "macOS / Linux",
+  "bridgeUpdateMethodWindows": "Windows (PowerShell)",
+  "bridgeUpdateMethodNpm": "npm",
+  "@bridgeUpdateMethodNpm": {"description": "Literal tool name 'npm'; do not translate."},
+  "bridgeUpdateMethodBun": "bun",
+  "@bridgeUpdateMethodBun": {"description": "Literal tool name 'bun'; do not translate."},
+  "bridgeUpdateReinstallRestart": "Then start the bridge again.",
+  "bridgeUpdateCopyCommand": "Copy command",
+  "bridgeUpdateDesktopTitle": "Update Sesori Desktop",
+  "@bridgeUpdateDesktopTitle": {"description": "Title of the update sheet when the connected bridge runs inside the Sesori Desktop app, which is updated by installing a newer Sesori Desktop."},
+  "bridgeUpdateDesktopIntro": "This bridge runs inside Sesori Desktop. On that computer:",
+  "bridgeUpdateDesktopStepDownload": "1. Download the latest version:",
+  "bridgeUpdateDesktopStepQuit": "2. Quit Sesori Desktop (closing the window may not quit it).",
+  "bridgeUpdateDesktopStepInstall": "3. Install the new version, then open Sesori Desktop again.",
+  "@bridgeUpdateDesktopStepInstall": {"description": "Platform-neutral: macOS replaces the app, Windows runs an installer, Linux uses the package manager."},
+  "bridgeUpdateCopyLink": "Copy link"
 }

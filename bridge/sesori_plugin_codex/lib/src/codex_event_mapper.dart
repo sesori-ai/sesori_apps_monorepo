@@ -40,6 +40,7 @@ class CodexEventMapper({
   required final CodexImageBearingItemParser _imageBearingItemParser,
   required final CodexRolloutToolMapper _rolloutToolMapper,
   required final CodexUserContentMapper _userContentMapper,
+  required final ServerClock _clock,
 
   /// Global model/provider fallback from `~/.codex/config.toml`. Live
   /// `item`/`turn` notifications do not carry the model, so streaming
@@ -238,6 +239,9 @@ class CodexEventMapper({
           threadId: threadId,
           itemId: itemId,
           completed: method == "item/completed",
+          // The running compaction row's timer counts from the message's
+          // creation time, so a compaction without `startedAtMs` is stamped.
+          stampMissingStart: item["type"] == "contextCompaction",
         );
         final events = _itemToEvents(
           item: item,
@@ -553,34 +557,24 @@ class CodexEventMapper({
           attachments: const [],
         );
       case "contextCompaction":
-        if (!completed) {
-          return _toolItemEvents(
-            threadId: threadId,
-            itemId: itemId,
-            tool: "compact",
-            shellCommand: null,
-            // Status already conveys progress; compaction has no additional detail.
-            title: null,
-            status: PluginToolStatus.running,
-            time: time,
-            attachments: const [],
-          );
-        }
+        // Codex reports no failure, tokens, trigger or live summary: a missing
+        // completion is left to the bridge's idle sweep.
         return [
           BridgeSseMessageUpdated(
             info: _assistantMessage(itemId: itemId, threadId: threadId, time: time),
           ),
-          // Keeps the running card's part id, so the row replaces it in place.
-          // The live item carries no summary; a replayed rollout can.
+          // One part id from start to finish, so the row settles in place.
           BridgeSseMessagePartUpdated(
             part: PluginMessagePart.compaction(
               id: "$itemId-tool",
               sessionID: threadId,
               messageID: itemId,
-              summary: null,
+              compactionState: completed
+                  ? const .completed(summary: null, freedTokens: null, trigger: null)
+                  : const .running(summary: null),
             ),
           ),
-          BridgeSseSessionCompacted(sessionID: threadId),
+          if (completed) BridgeSseSessionCompacted(sessionID: threadId),
         ];
       default:
         // todoList, hookPrompt, … — codex item kinds with no mobile
@@ -757,16 +751,18 @@ class CodexEventMapper({
     required String threadId,
     required String? itemId,
     required bool completed,
+    required bool stampMissingStart,
   }) {
     if (itemId == null || itemId.isEmpty) return null;
     final key = (threadId: threadId, itemId: itemId);
     final previous = _itemTimes[key];
-    final created = _milliseconds(params["startedAtMs"]) ?? previous?.created;
+    final completedAt = completed ? _milliseconds(params["completedAtMs"]) : null;
+    final created =
+        _milliseconds(params["startedAtMs"]) ??
+        previous?.created ??
+        (stampMissingStart ? completedAt ?? _clock.now().millisecondsSinceEpoch : null);
     if (created == null) return previous;
-    final time = PluginMessageTime(
-      created: created,
-      completed: completed ? _milliseconds(params["completedAtMs"]) ?? previous?.completed : previous?.completed,
-    );
+    final time = PluginMessageTime(created: created, completed: completedAt ?? previous?.completed);
     _itemTimes[key] = time;
     return time;
   }

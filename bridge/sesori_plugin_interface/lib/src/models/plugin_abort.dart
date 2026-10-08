@@ -13,7 +13,9 @@ enum PluginAbortSubAgentPolicy() {
 
 /// Why a plugin could not safely perform a requested stop.
 enum PluginAbortRefusalReason() {
-  residentWorkCompletionUnknown,
+  /// The stop named a sub-agent session, but the harness can only stop its
+  /// root session, which stops every sub-agent with it.
+  subAgentStopUnsupported,
 }
 
 sealed class const PluginAbortResult();

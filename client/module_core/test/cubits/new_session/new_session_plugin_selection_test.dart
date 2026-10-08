@@ -152,8 +152,10 @@ void main() {
         feedbackPromptService: FakeFeedbackPromptService(),
         productAnalyticsService: stubbedProductAnalyticsService(),
         selectionTracker: selectionTracker,
+        authSession: FakeAuthSession(initialState: const AuthState.initial()),
       ),
       projectId: "project-1",
+      projectName: null,
     );
 
     void establishSelectionScope({required String bridgeId}) {
@@ -1486,7 +1488,7 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: true,
@@ -1540,7 +1542,7 @@ void main() {
       expect(state.config.selectedPlugin, unavailable);
       cubit.selectPlugin(pluginId: "failed");
       cubit.selectPlugin(pluginId: "unknown");
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "blocked"),
         dedicatedWorktree: true,
@@ -1574,7 +1576,7 @@ void main() {
       await _waitUntil(() => cubit.state.agentModelData?.isLoading == false);
 
       expect(cubit.state.agentModelData?.plugin, isNull);
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "blocked"),
         dedicatedWorktree: true,
@@ -1733,7 +1735,7 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: true,
@@ -1776,7 +1778,7 @@ void main() {
         ),
       );
 
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: true,
@@ -1884,7 +1886,7 @@ void main() {
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
 
-      final send = cubit.createSession(
+      final send = cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: true,
@@ -1950,7 +1952,7 @@ void main() {
         ),
       );
 
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: true,
@@ -2002,7 +2004,7 @@ void main() {
       final cubit = buildCubit();
       addTearDown(cubit.close);
       await _waitForComposer(cubit);
-      await cubit.createSession(
+      await cubit.submit(
         attachments: const [],
         draft: ComposerDraft.typed(text: "hello"),
         dedicatedWorktree: true,

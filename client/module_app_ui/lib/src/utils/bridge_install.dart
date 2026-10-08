@@ -1,5 +1,5 @@
-/// Single source of truth for the Sesori Bridge install instructions shown in
-/// the "connect your computer" onboarding.
+/// Single source of truth for the Sesori Bridge install and update commands
+/// shown in the "connect your computer" onboarding and the update sheet.
 ///
 /// Edit [_host] (or the individual commands) here if the installer hosting
 /// changes. The branded `sesori.com` URLs front the canonical scripts that
@@ -28,4 +28,12 @@ class const BridgeInstall._() {
   /// bridge-offline Projects screen, where the common recovery is to (re)start
   /// the bridge rather than reinstall it.
   static const String runCommand = "sesori-bridge";
+
+  /// Command that moves an installed bridge to the newest release. Bridges
+  /// released before 2026-06-23 lack it; the installers above replace those.
+  static const String updateCommand = "sesori-bridge update";
+
+  /// Page offering the latest Sesori Desktop, which bundles and updates its
+  /// own bridge. Shown without a scheme so it reads as typed into a browser.
+  static const String desktopDownloadPage = "sesori.com/desktop";
 }

@@ -10,7 +10,7 @@ import "../copilot_identity.dart";
 class const CopilotRuntimeManifest() extends RuntimeManifest {
   static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "1.0.78");
 
-  static const String targetVersion = "1.0.88";
+  static const String targetVersion = "1.0.92";
 
   static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
@@ -20,7 +20,7 @@ class const CopilotRuntimeManifest() extends RuntimeManifest {
         assetName: "copilot-darwin-arm64.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "55c3c6b581080cf613f0b25788d133dad4265bcb15cfb2e7acf80b2ff2ec5d67",
+        sha256: "6aa2af1d0436b23c92810f11ea35a3d1c2b36b716d3e6d7c44299d199f905c5b",
         archiveBinaryName: "copilot",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
@@ -28,7 +28,7 @@ class const CopilotRuntimeManifest() extends RuntimeManifest {
         assetName: "copilot-darwin-x64.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "114856fa48b23897e8b56431f9b1e8af31e5f0f5c19d99b02feec29a1d5b0b9d",
+        sha256: "7527cdd1c254d1daeb3e3fbd042deec3ba1f283cce86c83dced2bea8b63cc28b",
         archiveBinaryName: "copilot",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
@@ -38,7 +38,7 @@ class const CopilotRuntimeManifest() extends RuntimeManifest {
         assetName: "copilot-linux-arm64.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "e263f5f9eb0db5dddf5775ac98c437e27743857ce0ba310f08f2338aebd1107d",
+        sha256: "634d5200d96c17f01357637a166bb303744e8ca965550d6bbcb72b52b5e3c6a4",
         archiveBinaryName: "copilot",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
@@ -46,7 +46,7 @@ class const CopilotRuntimeManifest() extends RuntimeManifest {
         assetName: "copilot-linux-x64.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "42f40c08ff8a8ff78522161e4b5e2b86340ad8bb0853a5f1aa64ce65b48d007b",
+        sha256: "1d8daedb9cdb200061471cabe9f924f80293689cb9c42489344864c044f33ea9",
         archiveBinaryName: "copilot",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
@@ -56,7 +56,7 @@ class const CopilotRuntimeManifest() extends RuntimeManifest {
         assetName: "copilot-win32-arm64.zip",
         format: ArchiveFormat.zip,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "eb9a5efffb3d59406923331768d5bedf3e0c9278e3c513546aabb68889cf2938",
+        sha256: "470430bb3891f5b11e43d484b49266aae065f0eebd6a6ba2ca12102c679b07e3",
         archiveBinaryName: "copilot.exe",
         layout: RuntimeArchiveLayout.singleBinary,
       ),
@@ -64,7 +64,7 @@ class const CopilotRuntimeManifest() extends RuntimeManifest {
         assetName: "copilot-win32-x64.zip",
         format: ArchiveFormat.zip,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "59c66ccd61a7f2796d4924c4c4da3e34951bc06fdaf11642d7033296fc71da11",
+        sha256: "28d2f1b8c228c8f45b26cdf0625ddb1a1107dde5b7226546269e575ebfb21f25",
         archiveBinaryName: "copilot.exe",
         layout: RuntimeArchiveLayout.singleBinary,
       ),

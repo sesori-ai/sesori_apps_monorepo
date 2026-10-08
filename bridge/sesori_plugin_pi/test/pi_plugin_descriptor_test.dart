@@ -4,6 +4,7 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 import "package:pi_plugin/pi_plugin.dart";
+import "package:pi_plugin/src/api/pi_rpc_startup_extension.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -39,7 +40,7 @@ void main() {
     });
 
     test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
-      installedVersion("0.84.2");
+      installedVersion("0.99.2");
 
       expect(
         await PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
@@ -53,7 +54,7 @@ void main() {
     });
 
     test("declines with an explicit binary override", () async {
-      installedVersion("0.84.2");
+      installedVersion("0.99.2");
 
       expect(
         await PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
@@ -92,7 +93,7 @@ void main() {
     });
 
     test("ensureRuntime prefers a supported PATH binary", () async {
-      final processes = _Processes(outputs: const [_Output(stdout: "0.84.1\n", exitCode: 0)]);
+      final processes = _Processes(outputs: const [_Output(stdout: "0.99.0\n", exitCode: 0)]);
       final events = await PiPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
 
       expect((events.last as ProvisionReady).binaryPath, "pi");
@@ -100,7 +101,7 @@ void main() {
     });
 
     test("ensureRuntime blocks on an outdated PATH binary", () async {
-      final processes = _Processes(outputs: const [_Output(stdout: "0.84.0\n", exitCode: 0)]);
+      final processes = _Processes(outputs: const [_Output(stdout: "0.98.2\n", exitCode: 0)]);
       final events = await PiPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
 
       expect(events.last, isA<ProvisionFailed>());
@@ -110,7 +111,7 @@ void main() {
     test("inspectSetup reports a usable model listing as ready and preserves the environment", () async {
       final processes = _Processes(
         outputs: const [
-          _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+          _Output(stdout: "pi 0.99.2\n", exitCode: 0),
           _Output(stdout: "provider      model\nopenai-codex  gpt-5.4\n", exitCode: 0),
         ],
       );
@@ -121,7 +122,7 @@ void main() {
         stateDirectory: "/state",
       );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.84.2"));
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.99.2"));
       expect(processes.arguments, [
         const ["--version"],
         const ["--list-models"],
@@ -134,7 +135,7 @@ void main() {
         config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
         processes: _Processes(
           outputs: const [
-            _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+            _Output(stdout: "pi 0.99.2\n", exitCode: 0),
             _Output(stdout: "${PiRpcClient.noModelsDiagnosticPrefix}\n  docs/providers.md\n", exitCode: 0),
           ],
         ),
@@ -144,7 +145,7 @@ void main() {
 
       expect(
         result,
-        isA<PluginSetupAuthenticationRequired>().having((s) => s.runtimeVersion, "runtimeVersion", "0.84.2"),
+        isA<PluginSetupAuthenticationRequired>().having((s) => s.runtimeVersion, "runtimeVersion", "0.99.2"),
       );
     });
 
@@ -153,7 +154,7 @@ void main() {
         config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
         processes: _Processes(
           outputs: const [
-            _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+            _Output(stdout: "pi 0.99.2\n", exitCode: 0),
             _Output(stdout: "unreadable catalog\n", exitCode: 2),
           ],
         ),
@@ -169,7 +170,7 @@ void main() {
         config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
         processes: _Processes(
           outputs: const [
-            _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+            _Output(stdout: "pi 0.99.2\n", exitCode: 0),
             _Output(stdout: "${PiRpcClient.noModelsDiagnosticPrefix}\n", exitCode: 1),
           ],
         ),
@@ -184,7 +185,7 @@ void main() {
       final result = await PiPluginDescriptor.production().inspectSetup(
         config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
         processes: _Processes(
-          outputs: const [_Output(stdout: "pi 0.84.2\n", exitCode: 0)],
+          outputs: const [_Output(stdout: "pi 0.99.2\n", exitCode: 0)],
           spawnErrorAfter: 1,
         ),
         environment: const {},
@@ -196,7 +197,7 @@ void main() {
 
     test("an outdated PATH runtime blocks managed fallback", () async {
       const config = PluginConfig(values: {PiPluginDescriptor.binOption: null});
-      final processes = _Processes(outputs: const [_Output(stdout: "0.84.0\n", exitCode: 0)]);
+      final processes = _Processes(outputs: const [_Output(stdout: "0.98.2\n", exitCode: 0)]);
 
       final result = await PiPluginDescriptor.production().inspectSetup(
         config: config,
@@ -206,7 +207,7 @@ void main() {
       );
 
       expect(result, isA<PluginSetupRuntimeOutdated>());
-      expect(result.runtimeVersion, "0.84.0");
+      expect(result.runtimeVersion, "0.98.2");
       expect(processes.executables, ["pi"]);
     });
 
@@ -234,7 +235,7 @@ void main() {
       );
       final outdated = await descriptor.inspectSetup(
         config: config,
-        processes: _Processes(outputs: const [_Output(stdout: "0.84.0\n", exitCode: 0)]),
+        processes: _Processes(outputs: const [_Output(stdout: "0.98.2\n", exitCode: 0)]),
         environment: const {},
         stateDirectory: "/state",
       );
@@ -395,7 +396,10 @@ void main() {
       );
 
       expect(processes.executables, ["/managed/pi"]);
-      expect(processes.arguments.single, ["--mode", "rpc", "--no-session", "--approve"]);
+      final arguments = processes.arguments.single;
+      expect(arguments.take(5), ["--mode", "rpc", "--no-session", "--approve", "--extension"]);
+      final startupExtension = File(arguments.last);
+      expect(await startupExtension.readAsString(), piRpcStartupExtensionSource);
       expect(processes.environments.single, {
         "ANTHROPIC_API_KEY": "secret",
         "PI_SKIP_VERSION_CHECK": "1",
@@ -403,6 +407,60 @@ void main() {
       process.kill(signal: ProcessSignal.sigterm);
       expect(processes.gracefulSignals, [1]);
       await factory.dispose();
+      expect(startupExtension.parent.existsSync(), isFalse);
+    });
+
+    test("retries startup extension creation after a temporary filesystem failure", () async {
+      final directory = await Directory.systemTemp.createTemp("pi-startup-retry-");
+      addTearDown(() => directory.delete(recursive: true));
+      final blockedTemp = await File(p.join(directory.path, "not-a-directory")).writeAsString("fixture");
+      final processes = _Processes(outputs: const [_Output(stdout: "", exitCode: 0)]);
+      final factory = HostPiProcessFactory(processes: processes);
+      addTearDown(factory.dispose);
+      final spec = PiLaunchSpec(
+        binaryPath: "pi",
+        workingDirectory: "/project",
+        launch: const PiNoSession(),
+        model: null,
+        thinkingLevel: null,
+        environment: const {},
+      );
+
+      await IOOverrides.runZoned(
+        () => expectLater(factory.spawn(spec: spec), throwsA(isA<FileSystemException>())),
+        getSystemTempDirectory: () => Directory(blockedTemp.path),
+      );
+      expect(processes.executables, isEmpty);
+      await factory.spawn(spec: spec);
+      expect(processes.executables, ["pi"]);
+      expect(await File(processes.arguments.single.last).readAsString(), piRpcStartupExtensionSource);
+    });
+
+    test("concurrent Pi launches share one temporary startup extension", () async {
+      final processes = _Processes(
+        outputs: const [
+          _Output(stdout: "", exitCode: 0),
+          _Output(stdout: "", exitCode: 0),
+        ],
+      );
+      final factory = HostPiProcessFactory(processes: processes);
+      addTearDown(factory.dispose);
+      await Future.wait([
+        for (final launch in [PiNewSession(sessionId: "new-session"), const PiNoSession()])
+          factory.spawn(
+            spec: PiLaunchSpec(
+              binaryPath: "pi",
+              workingDirectory: "/project",
+              launch: launch,
+              model: null,
+              thinkingLevel: null,
+              environment: const {},
+            ),
+          ),
+      ]);
+
+      expect(processes.arguments[0].last, processes.arguments[1].last);
+      expect(File(processes.arguments[0].last).existsSync(), isTrue);
     });
   });
 }

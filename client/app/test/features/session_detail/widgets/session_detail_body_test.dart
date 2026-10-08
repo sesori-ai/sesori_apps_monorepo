@@ -1,9 +1,10 @@
 import "dart:async";
-import "dart:ui" show PointerDeviceKind;
+import "dart:ui" show GestureSettings, PointerDeviceKind;
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart" show kSecondaryButton;
+import "package:flutter/rendering.dart" show RenderRepaintBoundary;
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
@@ -38,6 +39,8 @@ class MockImageSaver() extends Mock implements ImageSaver;
 class MockImageSharer() extends Mock implements ImageSharer;
 
 class MockMessageImageRepository() extends Mock implements MessageImageRepository;
+
+class MockSessionRepository() extends Mock implements SessionRepository;
 
 /// A valid 1x1 transparent PNG so `Image.memory` thumbnails decode in tests.
 final Uint8List _tinyPng = Uint8List.fromList(const [
@@ -86,6 +89,7 @@ Widget _buildApp({
             imageSaver: MockImageSaver.new,
             imageClipboard: () => imageClipboard,
             imageSharer: MockImageSharer.new,
+            sessionRepository: MockSessionRepository.new,
             canShareImages: true,
             openExternalLink: ({required url, required mode}) async => false,
             openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
@@ -99,11 +103,11 @@ Widget _buildApp({
               onShowDiffs: () => context.push("/projects/project-1/sessions/session-1/diffs"),
               pageChrome: null,
               menuEntriesBuilder: menuEntriesBuilder,
-              bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
+              bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>
                   MobileSessionDetailComposerControls(
                     projectId: projectId,
                     sessionId: sessionId,
-                    state: state,
+                    source: source,
                   ),
             ),
           ),
@@ -152,6 +156,7 @@ SessionDetailLoaded _loadedState({
     launchHandoff: null,
     olderMessagesCursor: null,
     userMessagesBeforeOldest: userMessagesBeforeOldest,
+    promptIndex: null,
     streamingText: const {},
     sessionStatus: sessionStatus,
     pendingQuestions: pendingQuestions,
@@ -185,6 +190,7 @@ SessionDetailLoaded _loadedState({
       SessionVariant(id: "xhigh"),
       SessionVariant(id: "low"),
     ],
+    cannotContinueMessage: null,
   );
 }
 
@@ -301,7 +307,7 @@ void main() {
   });
 
   for (final auditState in [
-    const SessionDetailState.loading(launchHandoff: null),
+    const SessionDetailState.loading(launchHandoff: null, seededComposer: null),
     const SessionDetailState.failed(reason: RemoteFailureReason.unknown),
   ]) {
     testWidgets("an audit page keeps Back as its only way out in $auditState", (tester) async {
@@ -444,6 +450,9 @@ void main() {
               attachmentDispatcher: GetIt.instance.get<ComposerAttachmentDispatcher>,
               imageClipboard: GetIt.instance.get<ImageClipboard>,
               child: PromptInput(
+                initialSelection: null,
+                onBusyChanged: null,
+                onSelectionChanged: null,
                 isBusy: false,
                 hasMessages: false,
                 canSend: true,
@@ -467,6 +476,8 @@ void main() {
                 restorationKey: restorationKey,
                 initialDraft: draft,
                 initialAttachments: attachments,
+                onAttachmentsChanged: null,
+                autofocus: false,
                 onInitialAttachmentsConsumed: () => consumed++,
               ),
             ),
@@ -573,7 +584,7 @@ void main() {
     expect(find.text("No messages yet"), findsOneWidget);
   });
 
-  testWidgets("composer fade obscures transcript text behind floating controls", (tester) async {
+  testWidgets("the floating controls fade the transcript behind them with halos in one layer", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
@@ -581,24 +592,18 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    final decoratedBox = tester.widget<DecoratedBox>(
-      find
-          .descendant(
-            of: find.byType(PromptInput),
-            matching: find.byWidgetPredicate(
-              (widget) =>
-                  widget is DecoratedBox &&
-                  widget.decoration is BoxDecoration &&
-                  (widget.decoration as BoxDecoration).gradient is LinearGradient,
-            ),
-          )
-          .first,
-    );
-    final gradient = (decoratedBox.decoration as BoxDecoration).gradient! as LinearGradient;
-    final surface = PregoDesignSystem.light.colors.bgSurface1;
-    expect(gradient.colors[0], surface.withValues(alpha: 0.98));
-    expect(gradient.colors[1], surface.withValues(alpha: 0.88));
-    expect(gradient.colors[2], surface.withValues(alpha: 0));
+    final halos = find.descendant(of: find.byType(PromptInput), matching: find.byType(PregoPageHalo));
+    // The composer and each picker pill carry a halo, all painted by the one
+    // layer over the bottom controls.
+    expect(halos, findsAtLeastNWidgets(2));
+    for (final halo in halos.evaluate()) {
+      expect(
+        find.ancestor(of: find.byWidget(halo.widget), matching: find.byType(PregoPageHaloLayer)),
+        findsOneWidget,
+      );
+    }
+    // Only the composer's runs on to the bottom edge.
+    expect(tester.widgetList<PregoPageHalo>(halos).where((halo) => halo.reachesLayerBottom), hasLength(1));
   });
 
   testWidgets("an empty newest page keeps older transcript paging reachable", (tester) async {
@@ -650,6 +655,7 @@ void main() {
         startedAt: DateTime.now(),
         followUpIds: const {},
         acceptedFollowUps: const [],
+        composer: null,
       ),
     );
     when(() => cubit.state).thenReturn(state);
@@ -660,6 +666,161 @@ void main() {
 
     expect(find.text("No messages yet"), findsNothing);
     expect(find.descendant(of: find.byType(QueuedMessageBubble), matching: find.text("Launch prompt")), findsOneWidget);
+  });
+
+  testWidgets("a launch's composer is up before the first load and carries into the loaded view unmoved", (
+    tester,
+  ) async {
+    final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    final planner = testAgentInfo().copyWith(name: "planner");
+    // The launch committed a non-default agent, and its composer had focus.
+    final composer = SessionLaunchComposer(
+      agents: [testAgentInfo(), planner],
+      agent: "planner",
+      providers: loaded.availableProviders,
+      agentModel: loaded.selectedAgentModel,
+      availableVariants: loaded.availableVariants,
+      commands: const [],
+      fastMode: false,
+      supportsPromptAttachments: true,
+      hadFocus: true,
+      unsent: null,
+    );
+    final handoff = SessionLaunchHandoff(
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Launch prompt"),
+        attachments: const [],
+      ),
+      pluginId: "opencode",
+      startedAt: DateTime.now(),
+      followUpIds: const {},
+      acceptedFollowUps: const [],
+      composer: composer,
+    );
+    final queued = QueuedSessionSubmission.text(
+      promptId: "prm_follow_up",
+      text: "Sent before the load",
+      inputMode: ComposerInputMode.typed,
+      attachments: const [],
+      agent: "planner",
+      agentModel: loaded.selectedAgentModel,
+      fastMode: false,
+    );
+    final states = StreamController<SessionDetailState>();
+    addTearDown(states.close);
+    whenListen(
+      cubit,
+      states.stream,
+      initialState: SessionDetailState.loading(
+        launchHandoff: handoff,
+        seededComposer: SeededComposer(composer: composer, stagedCommand: null),
+        queuedMessages: [queued],
+      ),
+    );
+    when(() => cubit.launchAttachments).thenReturn([
+      ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "staged.png"),
+    ]);
+    when(cubit.acknowledgeLaunchAttachments).thenReturn(null);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+    await tester.pump();
+
+    // The seeded composer: focused, showing the committed agent, and holding
+    // the image staged on the new-session screen.
+    final prompt = find.byType(PromptInput);
+    expect(prompt, findsOneWidget);
+    expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus, isTrue);
+    expect(find.descendant(of: prompt, matching: find.text("planner")), findsOneWidget);
+    expect(find.descendant(of: prompt, matching: find.byType(Image)), findsOneWidget);
+    expect(find.byType(PregoLaunchStatus), findsNothing);
+    final launchBubble = find.ancestor(of: find.text("Launch prompt"), matching: find.byType(QueuedMessageBubble));
+    final queuedBubble = find.ancestor(
+      of: find.text("Sent before the load"),
+      matching: find.byType(QueuedMessageBubble),
+    );
+    final promptState = tester.state(prompt);
+    final promptRect = tester.getRect(prompt);
+    final launchRect = tester.getRect(launchBubble);
+    final queuedRect = tester.getRect(queuedBubble);
+
+    // The first load lands before the harness echoes anything.
+    states.add(loaded.copyWith(launchHandoff: handoff, queuedMessages: [queued]));
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.state(prompt), same(promptState));
+    expect(tester.getRect(prompt), promptRect);
+    expect(tester.getRect(launchBubble), launchRect);
+    expect(tester.getRect(queuedBubble), queuedRect);
+    expect(find.descendant(of: prompt, matching: find.byType(Image)), findsOneWidget);
+  });
+
+  testWidgets("messages sent before a failed first load stay in view, scrolling when many", (tester) async {
+    final state = SessionDetailState.failed(
+      reason: RemoteFailureReason.unknown,
+      queuedMessages: [
+        for (var i = 0; i < 20; i++)
+          QueuedSessionSubmission.text(
+            promptId: "prm_follow_up_$i",
+            text: "Sent before the load $i",
+            inputMode: ComposerInputMode.typed,
+            attachments: const [],
+            agent: null,
+            agentModel: null,
+            fastMode: false,
+          ),
+      ],
+    );
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+
+    // Twenty rows outgrow the screen without overflowing it; the newest shows.
+    expect(tester.takeException(), isNull);
+    expect(find.byType(SessionDetailErrorView), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(QueuedMessageBubble), matching: find.text("Sent before the load 19")),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets("a failed first load keeps the launch's follow-ups and Cancel on queued messages", (tester) async {
+    QueuedSessionSubmission submission({required String promptId, required String text}) =>
+        QueuedSessionSubmission.text(
+          promptId: promptId,
+          text: text,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+          agent: null,
+          agentModel: null,
+          fastMode: false,
+        );
+    final state = SessionDetailState.failed(
+      reason: RemoteFailureReason.unknown,
+      awaitingBridgeSubmissions: [submission(promptId: "prm_taken", text: "Taken by the bridge")],
+      launchFollowUps: [
+        LaunchFollowUp.queued(
+          submission: submission(promptId: "prm_launch", text: "Sent while creating"),
+        ),
+      ],
+      queuedMessages: [submission(promptId: "prm_early", text: "Sent before the load")],
+    );
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+
+    expect(find.text("Taken by the bridge"), findsOneWidget);
+    expect(find.text("Sent while creating"), findsOneWidget);
+    expect(find.text("Sent before the load"), findsOneWidget);
+    final cancels = find.widgetWithText(TextButton, "Cancel");
+    expect(cancels, findsNWidgets(2));
+    await tester.tap(cancels.first);
+    verify(() => cubit.removeLaunchFollowUp(promptId: "prm_launch")).called(1);
+    await tester.tap(cancels.last);
+    verify(() => cubit.cancelQueuedMessage(0)).called(1);
   });
 
   testWidgets("a busy session with no messages shows the Working row instead of the empty label", (tester) async {
@@ -947,6 +1108,7 @@ void main() {
       launchHandoff: null,
       olderMessagesCursor: null,
       userMessagesBeforeOldest: null,
+      promptIndex: null,
       streamingText: const {},
       sessionStatus: const SessionStatus.idle(),
       pendingQuestions: const [],
@@ -980,6 +1142,7 @@ void main() {
         SessionVariant(id: "xhigh"),
         SessionVariant(id: "low"),
       ],
+      cannotContinueMessage: null,
     );
 
     final controller = StreamController<SessionDetailState>.broadcast();
@@ -1264,6 +1427,183 @@ void main() {
       expect(find.text("Older 0"), findsOneWidget);
     });
 
+    testWidgets("the prompt index lists unloaded prompts, and a tap on one loads it and moves there", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final state = _loadedState(
+        pendingQuestions: const [],
+        pendingPermissions: const [],
+        messages: turns,
+      ).copyWith(olderMessagesCursor: 42);
+      when(() => cubit.state).thenReturn(state);
+      whenListen(cubit, states.stream, initialState: state);
+      final older = [
+        textMessage(id: "older-u0", user: true, text: "Older 0"),
+        textMessage(id: "older-a0", user: false, text: "Older answer 0"),
+      ];
+      final withOlder = state.copyWith(messages: [...older, ...turns], olderMessagesCursor: null);
+      when(() => cubit.loadMessagesThrough(messageId: "older-u0", seq: 1)).thenAnswer((_) async {
+        when(() => cubit.state).thenReturn(withOlder);
+        states.add(withOlder);
+        return const LoadThroughLoaded();
+      });
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      await openPrompts(tester);
+      expect(find.byKey(const Key("session-prompts-load-earlier")), findsOneWidget);
+
+      final indexed = state.copyWith(
+        promptIndex: const [
+          SessionPromptIndexEntry.opener(messageId: "older-u0", seq: 1, number: 1, createdAt: null, preview: "Older 0"),
+        ],
+      );
+      when(() => cubit.state).thenReturn(indexed);
+      states.add(indexed);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("session-prompts-load-earlier")), findsNothing);
+      await tester.drag(find.descendant(of: layer, matching: find.byType(CustomScrollView)), const Offset(0, 2000));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text("Older 0"));
+      await tester.pumpAndSettle();
+
+      verify(() => cubit.loadMessagesThrough(messageId: "older-u0", seq: 1)).called(1);
+      expect(layer, findsNothing, reason: "the screen closes once the transcript has moved to the prompt");
+    });
+
+    testWidgets("once the prompt index has joined the open list, later changes leave the list as it was", (
+      tester,
+    ) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final state = _loadedState(
+        pendingQuestions: const [],
+        pendingPermissions: const [],
+        messages: turns,
+      ).copyWith(olderMessagesCursor: 42);
+      when(() => cubit.state).thenReturn(state);
+      whenListen(cubit, states.stream, initialState: state);
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      await openPrompts(tester);
+      final indexed = state.copyWith(
+        promptIndex: const [
+          SessionPromptIndexEntry.opener(messageId: "older-u0", seq: 1, number: 1, createdAt: null, preview: "Older 0"),
+        ],
+      );
+      states.add(indexed);
+      await tester.pumpAndSettle();
+      final listed = find.descendant(of: layer, matching: find.text("Newest prompt"));
+
+      // A new prompt arriving is a change like any other.
+      final withNewest = indexed.copyWith(
+        messages: [
+          ...turns,
+          textMessage(id: "u-newest", user: true, text: "Newest prompt"),
+        ],
+      );
+      states.add(withNewest);
+      await tester.pumpAndSettle();
+      expect(listed, findsNothing);
+
+      // A refresh drops the index until it is fetched again.
+      states.add(withNewest.copyWith(promptIndex: null));
+      await tester.pumpAndSettle();
+      expect(listed, findsNothing);
+      expect(find.byKey(const Key("session-prompts-load-earlier")), findsNothing);
+    });
+
+    testWidgets("a far tap's load landing after the screen closed moves nothing", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final state =
+          _loadedState(
+            pendingQuestions: const [],
+            pendingPermissions: const [],
+            messages: turns,
+          ).copyWith(
+            olderMessagesCursor: 42,
+            promptIndex: const [
+              SessionPromptIndexEntry.opener(
+                messageId: "older-u0",
+                seq: 1,
+                number: 1,
+                createdAt: null,
+                preview: "Older 0",
+              ),
+            ],
+          );
+      when(() => cubit.state).thenReturn(state);
+      whenListen(cubit, states.stream, initialState: state);
+      final load = Completer<void>();
+      final withOlder = state.copyWith(
+        messages: [
+          textMessage(id: "older-u0", user: true, text: "Older 0"),
+          textMessage(id: "older-a0", user: false, text: "Older answer 0"),
+          ...turns,
+        ],
+        olderMessagesCursor: null,
+      );
+      when(() => cubit.loadMessagesThrough(messageId: "older-u0", seq: 1)).thenAnswer((_) async {
+        await load.future;
+        when(() => cubit.state).thenReturn(withOlder);
+        states.add(withOlder);
+        return const LoadThroughLoaded();
+      });
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      final before = transcript(tester).pixels;
+      await openPrompts(tester);
+      await tester.drag(find.descendant(of: layer, matching: find.byType(CustomScrollView)), const Offset(0, 2000));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(of: layer, matching: find.text("Older 0")));
+      await tester.pump();
+
+      await tester.tap(find.byTooltip("Close prompts"));
+      await tester.pump(const Duration(milliseconds: 16));
+      load.complete();
+      await tester.pumpAndSettle();
+
+      expect(layer, findsNothing);
+      expect(transcript(tester).pixels, before, reason: "closing the screen cancelled the move");
+    });
+
+    testWidgets("Load earlier prompts is disabled while the transcript refreshes", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final idle = _loadedState(
+        pendingQuestions: const [],
+        pendingPermissions: const [],
+        messages: [textMessage(id: "u0", user: true, text: "Prompt 0")],
+      ).copyWith(olderMessagesCursor: 42);
+      when(() => cubit.state).thenReturn(idle);
+      whenListen(cubit, states.stream, initialState: idle);
+      when(() => cubit.loadOlderMessages()).thenAnswer((_) async {});
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      await openPrompts(tester);
+      final control = find.byKey(const Key("session-prompts-load-earlier"));
+      expect(tester.widget<TextButton>(control).onPressed, isNotNull);
+
+      // The refresh's progress bar never settles, so frames are pumped singly.
+      final refreshing = idle.copyWith(isRefreshing: true);
+      when(() => cubit.state).thenReturn(refreshing);
+      states.add(refreshing);
+      await tester.idle();
+      await tester.pump();
+      expect(tester.widget<TextButton>(control).onPressed, isNull);
+      // The short transcript has already paged back on its own.
+      clearInteractions(cubit);
+      await tester.tap(control, warnIfMissed: false);
+      await tester.pump();
+      verifyNever(() => cubit.loadOlderMessages());
+
+      when(() => cubit.state).thenReturn(idle);
+      states.add(idle);
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextButton>(control).onPressed, isNotNull);
+    });
+
     testWidgets("an older page the transcript was already loading as the screen opened joins it", (tester) async {
       final newer = [
         for (var turn = 0; turn < 3; turn++) ...[
@@ -1473,7 +1813,7 @@ void main() {
         }
       }
 
-      testWidgets("every way out but the edge swipe runs the opening backwards", (tester) async {
+      testWidgets("every way out but the edge swipe and a pinch out runs the opening backwards", (tester) async {
         await tester.pumpWidget(_buildApp(cubit: cubit));
         await tester.pumpAndSettle();
         final before = transcriptAsSeen(tester);
@@ -1482,11 +1822,6 @@ void main() {
           "the close button": () => tester.tap(find.byTooltip("Close prompts")),
           "Escape": () => tester.sendKeyEvent(LogicalKeyboardKey.escape),
           "back": () => tester.binding.handlePopRoute(),
-          "a pinch out": () async {
-            final fingers = await _TwoFingers.land(tester: tester, center: tester.getCenter(layer), gap: 120);
-            await fingers.spread(scale: 1.4, stepTime: const Duration(milliseconds: 200));
-            await fingers.lift(after: const Duration(milliseconds: 200));
-          },
           // Last: the jump moves the transcript the others leave untouched.
           "a tapped prompt": () => tester.tap(find.text("Prompt 10").last),
         };
@@ -1559,22 +1894,28 @@ void main() {
         Future<_TwoFingers> land(WidgetTester tester) =>
             _TwoFingers.land(tester: tester, center: tester.getCenter(layer), gap: 120);
 
-        testWidgets("closes the screen in step with the fingers once spread past halfway", (tester) async {
+        testWidgets("swells around the fingers, drifts with them, then dissolves past a third", (tester) async {
           await tester.pumpWidget(_buildApp(cubit: cubit));
           await tester.pumpAndSettle();
           final before = transcriptAsSeen(tester);
           final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
           await openPrompts(tester);
+          final landing = tester.getCenter(layer);
 
+          // 40 px of a full 200 px spread: inside the first third.
           final fingers = await land(tester);
-          await fingers.spread(scale: 1.1, stepTime: slow);
-          final early = opacity(tester);
-          expect(early, inExclusiveRange(0.5, 1), reason: "the screen starts to leave as the fingers part");
-          expect(tester.getRect(layer).width, inExclusiveRange(screen.width * 0.96, screen.width));
+          await fingers.spread(scale: 160 / 120, stepTime: slow);
+          expect(opacity(tester), 1, reason: "the screen stays readable for the first third");
+          expect(tester.getRect(layer).width, greaterThan(screen.width), reason: "it swells with the fingers");
           expect(leaving(tester), isFalse, reason: "the fingers, not the clock, move it");
-          await fingers.spread(scale: 1.4, stepTime: slow);
+          await fingers.drift(by: const Offset(0, 60), stepTime: slow);
+          final underFingers = tester.renderObject<RenderBox>(layer).localToGlobal(landing);
+          expect(underFingers.dx, moreOrLessEquals(landing.dx, epsilon: 0.5));
+          expect(underFingers.dy, moreOrLessEquals(landing.dy + 60, epsilon: 0.5), reason: "it drifts with them");
+
+          await fingers.spread(scale: 280 / 120, stepTime: slow);
           final spread = opacity(tester);
-          expect(spread, inExclusiveRange(0, early), reason: "and goes further as they spread");
+          expect(spread, inExclusiveRange(0, 1), reason: "past a third it dissolves");
           expect(transcriptAsSeen(tester), before);
 
           await fingers.lift(after: slow);
@@ -1587,32 +1928,33 @@ void main() {
           expect(transcriptAsSeen(tester), before);
         }, variant: _pinchPlatforms);
 
-        testWidgets("let go short of halfway springs back open", (tester) async {
+        testWidgets("let go short of 100 px eases back open", (tester) async {
           await tester.pumpWidget(_buildApp(cubit: cubit));
           await tester.pumpAndSettle();
           final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
           await openPrompts(tester);
 
           final fingers = await land(tester);
-          await fingers.spread(scale: 1.15, stepTime: slow);
+          await fingers.spread(scale: 210 / 120, stepTime: slow);
+          await fingers.drift(by: const Offset(0, 40), stepTime: slow);
           final held = opacity(tester);
           expect(held, inExclusiveRange(0, 1));
           await fingers.lift(after: slow);
-          await tester.pump(const Duration(milliseconds: 20));
-          expect(opacity(tester), inExclusiveRange(held, 1), reason: "it springs back, not snaps");
+          await tester.pump(const Duration(milliseconds: 10));
+          expect(opacity(tester), inExclusiveRange(held, 1), reason: "it eases back, not snaps");
           await tester.pumpAndSettle();
           expect(opacity(tester), 1);
-          expect(tester.getRect(layer), screen);
+          expect(tester.getRect(layer), screen, reason: "its drift went back with it");
         }, variant: _pinchPlatforms);
 
-        testWidgets("spread all the way and brought back, it springs back open", (tester) async {
+        testWidgets("spread all the way and brought back, it eases back open", (tester) async {
           await tester.pumpWidget(_buildApp(cubit: cubit));
           await tester.pumpAndSettle();
           final screen = Offset.zero & tester.view.physicalSize / tester.view.devicePixelRatio;
           await openPrompts(tester);
 
           final fingers = await land(tester);
-          await fingers.spread(scale: 1.7, stepTime: slow);
+          await fingers.spread(scale: 370 / 120, stepTime: slow);
           expect(layer, findsOneWidget, reason: "a full spread keeps the screen while the fingers are down");
           await fingers.spread(scale: 1, stepTime: slow);
           expect(opacity(tester), 1, reason: "and it follows them back");
@@ -1668,16 +2010,87 @@ void main() {
           expect(tester.getRect(layer), screen);
         }, variant: _pinchPlatforms);
 
-        testWidgets("a quick short spread closes", (tester) async {
+        testWidgets("closes for real fingers, which land apart in time and slide as they lift", (tester) async {
           await tester.pumpWidget(_buildApp(cubit: cubit));
           await tester.pumpAndSettle();
           await openPrompts(tester);
 
-          final fingers = await land(tester);
-          await fingers.spread(scale: 1.15, stepTime: const Duration(milliseconds: 10));
-          await fingers.lift(after: const Duration(milliseconds: 10));
+          // A thumb and finger landing together on a row, the second 64 ms
+          // after the first, both drifting up a little before they spread.
+          const frame = Duration(milliseconds: 8);
+          var time = Duration.zero;
+          final row = tester.getCenter(find.text("Prompt 10").last);
+          var thumb = row - const Offset(15, 0);
+          var finger = row + const Offset(15, -3);
+          final first = await tester.createGesture();
+          final second = await tester.createGesture();
+          Future<void> step({required Offset thumbBy, required Offset fingerBy}) async {
+            time += frame;
+            thumb += thumbBy;
+            finger += fingerBy;
+            await first.moveTo(thumb, timeStamp: time);
+            await second.moveTo(finger, timeStamp: time);
+            await tester.pump(frame);
+          }
+
+          await first.down(thumb, timeStamp: time);
+          for (var move = 0; move < 8; move++) {
+            time += frame;
+            thumb -= const Offset(0, 0.4);
+            await first.moveTo(thumb, timeStamp: time);
+            await tester.pump(frame);
+          }
+          await second.down(finger, timeStamp: time);
+          await tester.pump();
+          for (var move = 0; move < 4; move++) {
+            await step(thumbBy: const Offset(0, -1.5), fingerBy: const Offset(0, -1.5));
+          }
+          for (var move = 0; move < 12; move++) {
+            await step(thumbBy: const Offset(-6, 2), fingerBy: const Offset(6, -2));
+          }
+          expect(opacity(tester), lessThan(0.5), reason: "the spread has taken the screen half away");
+
+          // As they lift off the glass, the fingers slide a pixel back together.
+          for (var move = 0; move < 3; move++) {
+            await step(thumbBy: const Offset(1, 0), fingerBy: const Offset(-1, 0));
+          }
+          time += frame;
+          await first.up(timeStamp: time);
+          await tester.pump(frame);
+          time += const Duration(milliseconds: 30);
+          await second.up(timeStamp: time);
           await tester.pumpAndSettle();
-          expect(layer, findsNothing);
+          expect(layer, findsNothing, reason: "a wide spread closes the screen");
+          expect(find.byType(SessionDetailBody), findsOneWidget);
+        }, variant: _pinchPlatforms);
+
+        testWidgets("a quick short spread eases back, and a quick wide one carries its speed out", (tester) async {
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pumpAndSettle();
+          const quick = Duration(milliseconds: 10);
+          await openPrompts(tester);
+
+          final short = await land(tester);
+          await short.spread(scale: 180 / 120, stepTime: quick);
+          await short.lift(after: quick);
+          await tester.pumpAndSettle();
+          expect(opacity(tester), 1, reason: "short of 100 px it stays, however fast");
+
+          Future<double> shownAfterRelease({required Duration stepTime}) async {
+            final fingers = await land(tester);
+            await fingers.spread(scale: 240 / 120, stepTime: stepTime);
+            await fingers.lift(after: stepTime);
+            await tester.pump(const Duration(milliseconds: 16));
+            final shown = opacity(tester);
+            await tester.pumpAndSettle();
+            expect(layer, findsNothing);
+            return shown;
+          }
+
+          final slowly = await shownAfterRelease(stepTime: slow);
+          await openPrompts(tester);
+          final quickly = await shownAfterRelease(stepTime: quick);
+          expect(quickly, lessThan(slowly), reason: "the fingers' speed carries into the finish");
         }, variant: _pinchPlatforms);
 
         testWidgets("on a trackpad closes past halfway and springs back short of it", (tester) async {
@@ -1749,8 +2162,127 @@ void main() {
           expect(selection, const TextSelection(baseOffset: 0, extentOffset: 6), reason: "a double tap selects");
           expect(layer, findsOneWidget);
         }, variant: _pinchPlatforms);
+
+        testWidgets("takes the gesture from a list the first finger is already scrolling", (tester) async {
+          // Short enough that the twelve prompts overflow and the list can scroll.
+          tester.view.physicalSize = const Size(800, 400) * tester.view.devicePixelRatio;
+          addTearDown(tester.view.resetPhysicalSize);
+          // A phone's 8 px scroll slop, so 20 px is well into a scroll.
+          tester.view.gestureSettings = GestureSettings(physicalTouchSlop: 8 * tester.view.devicePixelRatio);
+          addTearDown(tester.view.resetGestureSettings);
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pumpAndSettle();
+          await openPrompts(tester);
+          final list = find.descendant(
+            of: layer,
+            matching: find.byWidgetPredicate((widget) => widget is Scrollable && widget.axis == Axis.vertical),
+          );
+          final position = tester.state<ScrollableState>(list.first).position;
+          final unscrolled = position.pixels;
+          // A finger moving down the screen scrolls toward the list's start.
+          final towardScroll = unscrolled > position.minScrollExtent ? 1.0 : -1.0;
+
+          // Two fingers landing together reach the screen as one, which moves
+          // past the scroll slop before the second is seen.
+          var time = Duration.zero;
+          var thumb = tester.getCenter(layer);
+          final first = await tester.createGesture();
+          final second = await tester.createGesture();
+          await first.down(thumb, timeStamp: time);
+          for (var move = 0; move < 4; move++) {
+            time += const Duration(milliseconds: 16);
+            thumb += Offset(0, 5 * towardScroll);
+            await first.moveTo(thumb, timeStamp: time);
+            await tester.pump();
+          }
+          final scrolled = position.pixels;
+          expect(scrolled, isNot(unscrolled), reason: "the list took the first finger");
+
+          var finger = thumb + const Offset(30, 0);
+          await second.down(finger, timeStamp: time);
+          await tester.pump();
+          for (var move = 0; move < 12; move++) {
+            time += const Duration(milliseconds: 16);
+            thumb += Offset(-6, towardScroll);
+            finger += Offset(6, towardScroll);
+            await first.moveTo(thumb, timeStamp: time);
+            await second.moveTo(finger, timeStamp: time);
+            await tester.pump();
+          }
+          expect(position.pixels, scrolled, reason: "the list holds still from the second finger on");
+          expect(opacity(tester), lessThan(1), reason: "the pinch out follows the fingers");
+
+          time += const Duration(milliseconds: 16);
+          await first.up(timeStamp: time);
+          await second.up(timeStamp: time);
+          await tester.pumpAndSettle();
+          expect(layer, findsNothing, reason: "a spread of 144 px closes the screen");
+          expect(find.byType(SessionDetailBody), findsOneWidget);
+        }, variant: _pinchPlatforms);
+
+        testWidgets("moves the screen without repainting it or the page beneath", (tester) async {
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pumpAndSettle();
+          await openPrompts(tester);
+          RenderRepaintBoundary boundaryAbove(RenderObject node) => switch (node.parent) {
+            final RenderRepaintBoundary boundary => boundary,
+            final RenderObject parent => boundaryAbove(parent),
+            null => throw StateError("No repaint boundary above $node"),
+          };
+          bool contains({required RenderObject ancestor, required RenderObject node}) => switch (node.parent) {
+            final RenderObject parent => parent == ancestor || contains(ancestor: ancestor, node: parent),
+            null => false,
+          };
+          final transcript = tester.renderObject(listView);
+          final placement = tester.renderObject(find.ancestor(of: layer, matching: find.byType(Opacity)).first);
+          final dim = tester.renderObject(
+            find
+                .descendant(
+                  of: find.ancestor(of: layer, matching: find.byType(AnimatedBuilder)).first,
+                  matching: find.byType(ColoredBox),
+                )
+                .first,
+          );
+
+          expect(
+            contains(ancestor: boundaryAbove(dim), node: transcript),
+            isFalse,
+            reason: "the dim and the screen's placement repaint apart from the page",
+          );
+          expect(
+            contains(ancestor: placement, node: boundaryAbove(tester.renderObject(layer))),
+            isTrue,
+            reason: "the screen's own content is only recomposited as it is placed",
+          );
+        });
       });
     });
+  });
+
+  testWidgets("shows the can't-continue banner only while the session carries a message", (tester) async {
+    final restricted = _loadedState(
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+    ).copyWith(cannotContinueMessage: "Oh My Pi can no longer restore its model.");
+    final controller = StreamController<SessionDetailState>.broadcast();
+    addTearDown(controller.close);
+    when(() => cubit.state).thenReturn(restricted);
+    when(() => cubit.stream).thenAnswer((_) => controller.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SessionDetailCannotContinueNotice), findsOneWidget);
+    expect(find.text("Can't continue this session"), findsOneWidget);
+    expect(find.text("Oh My Pi can no longer restore its model."), findsOneWidget);
+    expect(find.byType(PromptInput), findsOneWidget, reason: "the composer stays available");
+
+    final cleared = restricted.copyWith(cannotContinueMessage: null);
+    when(() => cubit.state).thenReturn(cleared);
+    controller.add(cleared);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SessionDetailCannotContinueNotice), findsNothing);
   });
 
   testWidgets("offers no Changes entry for archived sessions", (tester) async {
@@ -1847,6 +2379,98 @@ void main() {
     verify(cubit.recheckHarnessAvailability).called(1);
     await tester.tap(find.byKey(const Key("session_harness_settings")));
     expect(settingsOpened, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("owed messages hold still from the launch through a blocked first load and its Recheck", (
+    tester,
+  ) async {
+    tester.view.padding = const FakeViewPadding(bottom: 102);
+    addTearDown(tester.view.resetPadding);
+    QueuedSessionSubmission submission({required String promptId, required String text}) =>
+        QueuedSessionSubmission.text(
+          promptId: promptId,
+          text: text,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+          agent: null,
+          agentModel: null,
+          fastMode: false,
+        );
+    final launchFollowUps = [
+      LaunchFollowUp.queued(
+        submission: submission(promptId: "prm_launch", text: "Sent while creating"),
+      ),
+    ];
+    final queuedMessages = [submission(promptId: "prm_early", text: "Sent before the load")];
+    final states = StreamController<SessionDetailState>();
+    addTearDown(states.close);
+    whenListen(
+      cubit,
+      states.stream,
+      initialState: SessionDetailState.loading(
+        launchHandoff: SessionLaunchHandoff(
+          submission: NewSessionSubmissionSnapshot.text(
+            draft: ComposerDraft.typed(text: "Launch prompt"),
+            attachments: const [],
+          ),
+          pluginId: "claude",
+          startedAt: DateTime.now(),
+          followUpIds: const {"prm_launch"},
+          acceptedFollowUps: const [],
+          composer: null,
+        ),
+        seededComposer: null,
+        launchFollowUps: launchFollowUps,
+        queuedMessages: queuedMessages,
+      ),
+    );
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    Finder bubbleOf(String text) => find.ancestor(of: find.text(text), matching: find.byType(QueuedMessageBubble));
+    final followUp = bubbleOf("Sent while creating");
+    final last = bubbleOf("Sent before the load");
+    final followUpRect = tester.getRect(followUp);
+    final lastRect = tester.getRect(last);
+
+    // The first load finds the harness blocked: the notice sits above the
+    // owed messages, which neither move nor lose their actions.
+    states.add(
+      SessionDetailState.harnessUnavailable(
+        session: testSession(),
+        interaction: authRequired,
+        launchFollowUps: launchFollowUps,
+        queuedMessages: queuedMessages,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
+    expect(tester.getRect(followUp), followUpRect);
+    expect(tester.getRect(last), lastRect);
+    final cancels = find.widgetWithText(TextButton, "Cancel");
+    expect(cancels, findsNWidgets(2));
+    await tester.tap(cancels.first);
+    verify(() => cubit.removeLaunchFollowUp(promptId: "prm_launch")).called(1);
+    await tester.tap(cancels.last);
+    verify(() => cubit.cancelQueuedMessage(0)).called(1);
+
+    // Recheck reloads without hiding or moving what is still owed.
+    states.add(
+      SessionDetailState.loading(
+        launchHandoff: null,
+        seededComposer: null,
+        launchFollowUps: launchFollowUps,
+        queuedMessages: queuedMessages,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(PregoLaunchStatus), findsOneWidget);
+    expect(tester.getRect(followUp), followUpRect);
+    expect(tester.getRect(last), lastRect);
     expect(tester.takeException(), isNull);
   });
 
@@ -2168,9 +2792,14 @@ void main() {
     });
   });
 
-  for (final (name, interaction) in [
-    ("legacy", const SessionInteractionState.legacyUnverified()),
-    ("refresh-error", SessionInteractionState.available(displayName: "Claude Code", refreshError: ApiError.generic())),
+  for (final (name, interaction, actionKey) in [
+    // An old bridge offers its update steps in place of harness settings.
+    ("legacy", const SessionInteractionState.legacyUnverified(), const Key("session_bridge_update")),
+    (
+      "refresh-error",
+      SessionInteractionState.available(displayName: "Claude Code", refreshError: ApiError.generic()),
+      const Key("session_harness_settings"),
+    ),
   ]) {
     testWidgets("archiving hides the $name harness warning", (tester) async {
       final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
@@ -2182,13 +2811,13 @@ void main() {
 
       await tester.pumpWidget(_buildApp(cubit: cubit));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key("session_harness_settings")), findsOneWidget);
+      expect(find.byKey(actionKey), findsOneWidget);
       expect(find.byType(PromptInput), findsOneWidget);
 
       states.add(loaded.copyWith(isArchived: true));
       await tester.pumpAndSettle();
 
-      expect(find.byKey(const Key("session_harness_settings")), findsNothing);
+      expect(find.byKey(actionKey), findsNothing);
       expect(find.text("This session is archived and read-only."), findsOneWidget);
       expect(find.byType(PromptInput), findsNothing);
       expect(tester.takeException(), isNull);
@@ -5022,8 +5651,8 @@ void main() {
 const _pinchPlatforms = TargetPlatformVariant({TargetPlatform.iOS, TargetPlatform.android, TargetPlatform.macOS});
 
 /// Two fingers across [center], [gap] px apart along the horizontal, moved
-/// apart or together in even steps on a clock of their own, so slow steps
-/// give the release no speed and quick ones do.
+/// apart, together or along in even steps on a clock of their own, so slow
+/// steps give the release no speed and quick ones do.
 class _TwoFingers({
   required final WidgetTester tester,
   required final Offset center,
@@ -5032,6 +5661,7 @@ class _TwoFingers({
   required final TestGesture second,
 }) {
   late double _apart = gap;
+  late Offset _center = center;
   Duration _time = Duration.zero;
 
   static Future<_TwoFingers> land({
@@ -5053,10 +5683,25 @@ class _TwoFingers({
     for (var step = 1; step <= 4; step++) {
       _time += stepTime;
       _apart = from + (gap * scale - from) * step / 4;
-      await first.moveTo(center - Offset(_apart / 2, 0), timeStamp: _time);
-      await second.moveTo(center + Offset(_apart / 2, 0), timeStamp: _time);
-      await tester.pump();
+      await _place();
     }
+  }
+
+  /// Moves them together [by] in four steps, [stepTime] apart, keeping their
+  /// gap.
+  Future<void> drift({required Offset by, required Duration stepTime}) async {
+    final from = _center;
+    for (var step = 1; step <= 4; step++) {
+      _time += stepTime;
+      _center = from + by * (step / 4);
+      await _place();
+    }
+  }
+
+  Future<void> _place() async {
+    await first.moveTo(_center - Offset(_apart / 2, 0), timeStamp: _time);
+    await second.moveTo(_center + Offset(_apart / 2, 0), timeStamp: _time);
+    await tester.pump();
   }
 
   /// Lifts both, [after] the last move.

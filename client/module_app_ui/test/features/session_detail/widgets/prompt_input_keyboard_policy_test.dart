@@ -115,6 +115,9 @@ Future<void> _pumpComposer({
         imageClipboard: () => imageClipboard,
         child: Scaffold(
           body: PromptInput(
+            initialSelection: null,
+            onBusyChanged: null,
+            onSelectionChanged: null,
             isBusy: false,
             hasMessages: true,
             canSend: true,
@@ -135,6 +138,8 @@ Future<void> _pumpComposer({
             restorationKey: null,
             initialDraft: ComposerDraft.typed(text: ""),
             initialAttachments: const [],
+            onAttachmentsChanged: null,
+            autofocus: false,
             onInitialAttachmentsConsumed: () {},
           ),
         ),

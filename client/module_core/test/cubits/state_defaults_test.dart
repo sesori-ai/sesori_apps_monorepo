@@ -15,6 +15,7 @@ void main() {
       messages: [],
       olderMessagesCursor: null,
       userMessagesBeforeOldest: null,
+      promptIndex: null,
       streamingText: {},
       sessionStatus: SessionStatus.idle(),
       pendingQuestions: [],
@@ -40,6 +41,7 @@ void main() {
       fastMode: false,
       stagedCommand: null,
       isRefreshing: false,
+      cannotContinueMessage: null,
     );
     const loaded = state as SessionDetailLoaded;
     expect(loaded.isRefreshing, isFalse);

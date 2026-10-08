@@ -18,8 +18,10 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.d
 import "package:sesori_dart_core/src/foundation/models/composer/new_session_submission_snapshot.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/prompt_send_failure.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
+import "package:sesori_dart_core/src/foundation/models/composer/unsent_composer.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/launch_follow_up.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch.dart";
+import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch_composer.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/session_launch_handoff.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
@@ -35,6 +37,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
+import "../../services/session_interaction_calculator_test.dart" show managementFixture;
 
 const _sessionId = "session-1";
 
@@ -167,6 +170,11 @@ void main() {
       List<MessageWithParts> snapshotMessages = const [],
       SessionLaunchRepository? sessionLaunchRepository,
       void Function(SessionDetailState initial)? onInitialState,
+      // Holds the first load until completed; the cubit is returned before it.
+      Completer<void>? loadGate,
+      bool firstLoadFails = false,
+      // Blocks the session's harness, with nothing stored for the session.
+      bool harnessBlocked = false,
     }) async {
       final mockLoadService = MockSessionDetailLoadService();
       when(
@@ -174,8 +182,10 @@ void main() {
           session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
-      ).thenAnswer(
-        (_) async => SessionDetailLoadResult.loaded(
+      ).thenAnswer((_) async {
+        await loadGate?.future;
+        if (firstLoadFails) return SessionDetailLoadResult.failed(error: StateError("offline"), stackTrace: null);
+        return SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
             areOptionsStale: areOptionsStale,
             projectId: "project-1",
@@ -197,9 +207,53 @@ void main() {
             promptDefaults: promptDefaults,
             isRootSession: true,
             isArchived: isArchived,
+            cannotContinueMessage: null,
           ),
+        );
+      });
+      when(
+        () => mockLoadService.loadWithoutHarness(
+          session: any(named: "session"),
+          projectId: any(named: "projectId"),
         ),
-      );
+      ).thenAnswer((_) async {
+        await loadGate?.future;
+        return const SessionDetailLoadResult.loaded(
+          snapshot: SessionDetailSnapshot(
+            areOptionsStale: false,
+            projectId: "project-1",
+            pluginId: "plugin-1",
+            supportsPromptAttachments: false,
+            messages: <MessageWithParts>[],
+            olderMessagesCursor: null,
+            userMessagesBefore: null,
+            awaitingHarnessSync: true,
+            pendingQuestions: <PendingQuestion>[],
+            pendingPermissions: <PendingPermission>[],
+            bridgeQueuedPrompts: <QueuedSessionPrompt>[],
+            childSessions: <Session>[],
+            statuses: <String, SessionStatus>{},
+            agents: <AgentInfo>[],
+            providerData: null,
+            commands: <CommandInfo>[],
+            canonicalSessionTitle: null,
+            promptDefaults: null,
+            isRootSession: true,
+            isArchived: false,
+            cannotContinueMessage: null,
+          ),
+        );
+      });
+      final pluginManagementService = stubbedPluginManagementService();
+      if (harnessBlocked) {
+        final blocked = managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        );
+        final snapshots = Stream.value(blocked).shareValueSeeded(blocked);
+        when(() => pluginManagementService.snapshots).thenAnswer((_) => snapshots);
+      }
       when(
         () => mockLoadService.reload(
           session: any(named: "session"),
@@ -228,6 +282,7 @@ void main() {
             promptDefaults: null,
             isRootSession: true,
             isArchived: false,
+            cannotContinueMessage: null,
           ),
         ),
       );
@@ -239,7 +294,7 @@ void main() {
       final cubit = SessionDetailCubit(
         mockConnectionService,
         claimProjectView: true,
-        pluginManagementService: stubbedPluginManagementService(),
+        pluginManagementService: pluginManagementService,
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: mockLoadService,
         sessionAbortService: SessionAbortService(repository: mockSessionRepository),
@@ -265,7 +320,7 @@ void main() {
       );
       addTearDown(cubit.close);
       onInitialState?.call(cubit.state);
-      await cubit.stream.firstWhere((state) => state is SessionDetailLoaded);
+      if (loadGate == null) await cubit.stream.firstWhere((state) => state is SessionDetailLoaded);
       return cubit;
     }
 
@@ -2317,6 +2372,7 @@ void main() {
           projectId: "project-1",
           pluginId: "claude",
           startedAt: DateTime.utc(2026, 9, 27),
+          projectName: null,
           submission: NewSessionSubmissionSnapshot.text(
             draft: ComposerDraft.typed(text: "Hello"),
             attachments: const [],
@@ -2342,6 +2398,7 @@ void main() {
       SessionLaunchRepository launchedRepository({
         Set<String> followUpIds = const {},
         List<LaunchFollowUp> followUps = const [],
+        SessionLaunchComposer? composer,
       }) {
         final storage = SessionLaunchStorage();
         storage.write(
@@ -2354,6 +2411,7 @@ void main() {
             followUps: followUps,
             session: testSession(id: _sessionId),
             submission: submission,
+            composer: composer,
           ),
         );
         return SessionLaunchRepository(storage: storage);
@@ -2375,6 +2433,7 @@ void main() {
         startedAt: startedAt,
         followUpIds: const {},
         acceptedFollowUps: const [],
+        composer: null,
       );
 
       Iterable<SessionDetailLoaded> showingBoth(List<SessionDetailState> emissions) =>
@@ -2394,7 +2453,7 @@ void main() {
           onInitialState: (state) => initial = state,
         );
 
-        expect(initial, SessionDetailState.loading(launchHandoff: expectedHandoff));
+        expect(initial, SessionDetailState.loading(launchHandoff: expectedHandoff, seededComposer: null));
         expect((cubit.state as SessionDetailLoaded).launchHandoff, expectedHandoff);
         expect(repository.takeHandoff(sessionId: _sessionId), isNull, reason: "the handoff is taken once");
       });
@@ -2403,7 +2462,7 @@ void main() {
         SessionDetailState? initial;
         final cubit = await createLoadedCubit(onInitialState: (state) => initial = state);
 
-        expect(initial, const SessionDetailState.loading(launchHandoff: null));
+        expect(initial, const SessionDetailState.loading(launchHandoff: null, seededComposer: null));
         expect((cubit.state as SessionDetailLoaded).launchHandoff, isNull);
       });
 
@@ -2647,6 +2706,40 @@ void main() {
         expect(shown().map((followUp) => followUp.submission.promptId), ["prm_b"]);
       });
 
+      test("a screen opened before the create reply still gets the launch's follow-ups", () async {
+        // Reaching the session's row means its composer was left, which drops
+        // the first message's handoff; the follow-ups stay owed.
+        final repository = SessionLaunchRepository(storage: SessionLaunchStorage())
+          ..start(
+            launchId: "launch-1",
+            projectId: "project-1",
+            pluginId: "claude",
+            startedAt: startedAt,
+            projectName: null,
+            submission: submission,
+          )
+          ..addFollowUp(
+            launchId: "launch-1",
+            submission: followUp(promptId: "prm_a"),
+          )
+          ..releaseHandoff(launchId: "launch-1");
+        final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
+        SessionDetailLoaded loaded() => cubit.state as SessionDetailLoaded;
+        expect(loaded().launchFollowUps, isEmpty, reason: "nothing names this session yet");
+
+        repository.promote(
+          launchId: "launch-1",
+          session: testSession(id: _sessionId),
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect(loaded().launchFollowUps.map((followUp) => followUp.submission.promptId), ["prm_a"]);
+
+        expect(repository.beginFollowUp(launchId: "launch-1")?.submission.promptId, "prm_a");
+        repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+        await Future<void>.delayed(Duration.zero);
+        expect(loaded().awaitingBridgeSubmissions.map((submission) => submission.promptId), ["prm_a"]);
+      });
+
       test("a prompt sent here does not release the launch bubble when the bridge queues it", () async {
         final sentTexts = <String>[];
         stubSends(sentTexts: sentTexts);
@@ -2684,6 +2777,148 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         expect((cubit.state as SessionDetailLoaded).launchHandoff, isNotNull);
+      });
+
+      group("the launch's composer before the first load", () {
+        final image = ComposerAttachment(mime: "image/png", bytes: utf8.encode("png"), filename: "a.png");
+        SessionLaunchComposer composer({required UnsentComposer? unsent}) => SessionLaunchComposer(
+          agents: const [],
+          agent: "plan",
+          providers: const [],
+          agentModel: null,
+          availableVariants: const [],
+          commands: const [],
+          fastMode: false,
+          supportsPromptAttachments: true,
+          hadFocus: true,
+          unsent: unsent,
+        );
+
+        Future<void> send(SessionDetailCubit cubit, {required String text}) =>
+            cubit.sendMessage(text: text, command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+
+        test("takes over what the composing route held unsent", () async {
+          final cubit = await createLoadedCubit(
+            sessionLaunchRepository: launchedRepository(
+              composer: composer(
+                unsent: UnsentComposer(
+                  draft: ComposerDraft.typed(text: "carry on"),
+                  selection: null,
+                  command: _reviewCommand,
+                  attachments: [image],
+                ),
+              ),
+            ),
+            loadGate: Completer<void>(),
+          );
+
+          final loading = cubit.state as SessionDetailLoading;
+          expect(loading.seededComposer?.stagedCommand, _reviewCommand);
+          expect(cubit.composerDraft.text, "carry on");
+          expect(cubit.launchAttachments, [same(image)]);
+          cubit.acknowledgeLaunchAttachments();
+          expect(cubit.launchAttachments, isEmpty);
+
+          cubit.clearStagedCommand();
+          expect((cubit.state as SessionDetailLoading).seededComposer?.stagedCommand, isNull);
+        });
+
+        test("queues and shows a send, then sends it after the load behind the launch's follow-ups", () async {
+          final sentTexts = <String>[];
+          stubSends(sentTexts: sentTexts);
+          final gate = Completer<void>();
+          final repository = launchedRepository(
+            followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+            composer: composer(unsent: null),
+          );
+          final cubit = await createLoadedCubit(sessionLaunchRepository: repository, loadGate: gate);
+
+          await send(cubit, text: "early");
+          await Future<void>.delayed(Duration.zero);
+          final loading = cubit.state as SessionDetailLoading;
+          expect(loading.queuedMessages.map((submission) => submission.text), ["early"]);
+          expect(loading.queuedMessages.single.agent, "plan", reason: "it runs on the options the launch locked");
+          expect(loading.launchFollowUps.map((followUp) => followUp.submission.promptId), ["prm_a"]);
+          expect(loading.launchHandoff?.followUpIds, contains(loading.queuedMessages.single.promptId));
+
+          gate.complete();
+          await cubit.stream.firstWhere((state) => state is SessionDetailLoaded);
+          await Future<void>.delayed(Duration.zero);
+          expect(sentTexts, isEmpty, reason: "the launch's follow-up was pressed first");
+
+          repository.beginFollowUp(launchId: "launch-1");
+          repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+          await _awaitCondition(() => sentTexts.isNotEmpty);
+          expect(sentTexts, ["early"]);
+        });
+
+        test("an ordinary load still refuses a send before it loads", () async {
+          final cubit = await createLoadedCubit(loadGate: Completer<void>());
+
+          await send(cubit, text: "early");
+
+          expect((cubit.state as SessionDetailLoading).queuedMessages, isEmpty);
+        });
+
+        test("sends before a failed first load stay shown and the screen's own go out on retry", () async {
+          final sentTexts = <String>[];
+          stubSends(sentTexts: sentTexts);
+          final gate = Completer<void>();
+          final repository = launchedRepository(
+            followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+            composer: composer(unsent: null),
+          );
+          final cubit = await createLoadedCubit(
+            sessionLaunchRepository: repository,
+            loadGate: gate,
+            firstLoadFails: true,
+          );
+
+          await send(cubit, text: "early");
+          gate.complete();
+          final failed = await cubit.stream.firstWhere((state) => state is SessionDetailFailed) as SessionDetailFailed;
+          expect(failed.queuedMessages.map((submission) => submission.text), ["early"]);
+          expect(failed.launchFollowUps.map((followUp) => followUp.submission.promptId), ["prm_a"]);
+
+          repository.beginFollowUp(launchId: "launch-1");
+          repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+          await Future<void>.delayed(Duration.zero);
+          final accepted = cubit.state as SessionDetailFailed;
+          expect(accepted.launchFollowUps, isEmpty);
+          expect(
+            accepted.awaitingBridgeSubmissions.map((submission) => submission.promptId),
+            ["prm_a"],
+            reason: "a send the bridge took stays shown until the load lists it",
+          );
+
+          await cubit.reload();
+          await _awaitCondition(() => sentTexts.isNotEmpty);
+          expect(sentTexts, ["early"]);
+        });
+
+        test("a first load that finds the harness blocked keeps what is owed in view", () async {
+          final gate = Completer<void>();
+          final repository = launchedRepository(
+            followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+            composer: composer(unsent: null),
+          );
+          final cubit = await createLoadedCubit(
+            sessionLaunchRepository: repository,
+            loadGate: gate,
+            harnessBlocked: true,
+          );
+
+          await send(cubit, text: "early");
+          gate.complete();
+          final blocked = await cubit.stream.firstWhere(
+            (state) => state is SessionDetailHarnessUnavailable,
+          ) as SessionDetailHarnessUnavailable;
+          expect(blocked.queuedMessages.map((submission) => submission.text), ["early"]);
+          expect(blocked.launchFollowUps.map((followUp) => followUp.submission.promptId), ["prm_a"]);
+
+          cubit.cancelQueuedMessage(0);
+          expect((cubit.state as SessionDetailHarnessUnavailable).queuedMessages, isEmpty);
+        });
       });
     });
   });

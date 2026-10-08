@@ -63,7 +63,7 @@ final class const ClaudePluginDescriptor({
   static const String minVersion = "2.1.221";
 
   /// Latest stable Claude Code release targeted by this plugin.
-  static const String targetVersion = "2.1.281";
+  static const String targetVersion = "2.1.291";
 
   static const IoHostExecutableLocator _executableLocator = IoHostExecutableLocator(platformIsWindows: null);
   static final Random _secureRandom = Random.secure();

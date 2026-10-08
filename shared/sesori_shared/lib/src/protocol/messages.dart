@@ -16,6 +16,8 @@ sealed class RelayMessage with _$RelayMessage {
     required String path,
     required Map<String, String> headers,
     required String? body,
+    // COMPATIBILITY 2026-10-07 (v1.9.1): Released apps omit this field and read only plain responses, so absence means plain. Make it required once every supported app sends it.
+    @Default(false) bool acceptsDeflatedResponse,
   }) = RelayRequest;
 
   @FreezedUnionValue("response")

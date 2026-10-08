@@ -2,7 +2,7 @@ import "dart:async";
 import "dart:typed_data";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show KeyedParallelLock, ParallelLock;
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginSessionUnrestorableException;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/attachment_spill_storage.dart";
@@ -10,7 +10,9 @@ import "../api/models/archived_session_file_dto.dart";
 import "../auth/bridge_id_provider.dart";
 import "../repositories/attachment_thumbnail_builder.dart";
 import "../repositories/chat_history_repository.dart";
+import "../repositories/models/history_window.dart";
 import "../repositories/models/stored_session.dart";
+import "../repositories/models/tool_output_lookup.dart";
 import "../repositories/session_repository.dart";
 
 sealed class const SessionAttachmentResult();
@@ -47,11 +49,17 @@ typedef SessionMessagesPage = ({
   SessionPromptDefaults? replayedPromptDefaults,
 
   /// Whether the store served this page while behind the harness, so newer
-  /// messages may be missing. Only a store-only read can report this.
+  /// messages may be missing. Only a store-only read, or a read whose
+  /// backfill the backend refused because it cannot restore the session, can
+  /// report this.
   bool awaitingHarnessSync,
 
   /// How many of the session's user messages are older than [messages].
   int userMessagesBefore,
+
+  /// The plugin's explanation when the backend cannot restore the session, so
+  /// it cannot be continued; `null` when nothing restricts it.
+  String? cannotContinueMessage,
 });
 
 /// The single writer of the chat history store.
@@ -68,11 +76,8 @@ class ChatHistoryService({
   final Map<String, Future<SessionPromptDefaults?>> _inFlightBackfills = {};
   final ParallelLock _thumbnailGenerationLock = ParallelLock(maxParallelOperations: 1);
 
-  /// One page of the session's messages, served from the store whenever it is
-  /// known to be current and falling back to the backend otherwise.
-  ///
-  /// A null [limit] returns the whole transcript, which is what an app that
-  /// predates pagination asks for.
+  /// The [window] of the session's messages, served from the store whenever
+  /// it is known to be current and falling back to the backend otherwise.
   ///
   /// The store is preferred only when a backfill has completed *and* no
   /// backend activity has been observed past the captured watermark, so a
@@ -84,18 +89,18 @@ class ChatHistoryService({
   /// start — ask for that instead of a page they may never receive.
   Future<SessionMessagesPage> getSessionMessages({
     required String sessionId,
-    int? limit,
-    int? before,
+    required HistoryWindow window,
     required MessageAttachmentDelivery attachmentDelivery,
+    required ToolOutputDelivery toolOutputDelivery,
     required bool storedOnly,
   }) async {
     final attachmentProjection = _attachmentProjectionFor(delivery: attachmentDelivery);
     if (storedOnly) {
       return await _storedOnlyPage(
         sessionId: sessionId,
-        limit: limit,
-        before: before,
+        window: window,
         attachmentProjection: attachmentProjection,
+        toolOutputDelivery: toolOutputDelivery,
       );
     }
     // The archive check, the freshness decision, and the read all run inside
@@ -118,9 +123,9 @@ class ChatHistoryService({
           final archived = await _chatHistoryRepository.getArchivedSessionMessages(
             sessionId: sessionId,
             storageScope: storageScope,
-            limit: limit,
-            before: before,
+            window: window,
             attachmentProjection: attachmentProjection,
+            toolOutputDelivery: toolOutputDelivery,
           );
           if (archived != null) return archived;
         }
@@ -132,9 +137,9 @@ class ChatHistoryService({
         return await _chatHistoryRepository.getSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
-          limit: limit,
-          before: before,
+          window: window,
           attachmentProjection: attachmentProjection,
+          toolOutputDelivery: toolOutputDelivery,
         );
       },
     );
@@ -144,7 +149,7 @@ class ChatHistoryService({
       // the dead turn's open tool parts — no idle event ever fired and no
       // backfill will run. The page is already in memory, so detecting them is
       // free; only a page that actually contains one pays for a status read.
-      if (!_containsOpenToolPart(page: decided)) {
+      if (!_containsUnfinishedPart(page: decided)) {
         return _messagesPage(page: decided, replayedPromptDefaults: replayedPromptDefaults);
       }
       if (!await _sweepUnlessTurnRunning(sessionId: sessionId)) {
@@ -156,15 +161,41 @@ class ChatHistoryService({
         read: () => _chatHistoryRepository.getSessionMessages(
           sessionId: sessionId,
           storageScope: storageScope,
-          limit: limit,
-          before: before,
+          window: window,
           attachmentProjection: attachmentProjection,
+          toolOutputDelivery: toolOutputDelivery,
         ),
       );
       return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
     }
 
-    final replayedPromptDefaults = await _backfillSessionForRead(sessionId: sessionId);
+    final SessionPromptDefaults? replayedPromptDefaults;
+    try {
+      replayedPromptDefaults = await _backfillSessionForRead(sessionId: sessionId);
+    } on PluginSessionUnrestorableException catch (error, stackTrace) {
+      // The backend refuses to reopen the session as stored, so serve what the
+      // store already holds with the plugin's explanation. Nothing is written:
+      // the store stays stale, so a later open retries and recovers once the
+      // backend can restore the session again.
+      Log.w("Backend cannot restore session $sessionId; serving stored history", error.cause, stackTrace);
+      // No backfill will finalize a dead turn's open tool parts while the
+      // session stays unrestorable, so sweep them here as the success path does.
+      await _sweepUnlessTurnRunning(sessionId: sessionId);
+      final stored = await _storedOnlyPage(
+        sessionId: sessionId,
+        window: window,
+        attachmentProjection: attachmentProjection,
+        toolOutputDelivery: toolOutputDelivery,
+      );
+      return (
+        messages: stored.messages,
+        nextCursor: stored.nextCursor,
+        replayedPromptDefaults: null,
+        awaitingHarnessSync: true,
+        userMessagesBefore: stored.userMessagesBefore,
+        cannotContinueMessage: error.message,
+      );
+    }
     // A backend transcript reports no result for a tool whose turn died, so a
     // fresh backfill can import open tool parts that will never complete.
     await _sweepUnlessTurnRunning(sessionId: sessionId);
@@ -176,9 +207,9 @@ class ChatHistoryService({
       read: () => _chatHistoryRepository.getSessionMessages(
         sessionId: sessionId,
         storageScope: storageScope,
-        limit: limit,
-        before: before,
+        window: window,
         attachmentProjection: attachmentProjection,
+        toolOutputDelivery: toolOutputDelivery,
       ),
     );
     return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
@@ -200,50 +231,124 @@ class ChatHistoryService({
   /// does not justify reintroducing that wait. The next ordinary read sweeps.
   Future<SessionMessagesPage> _storedOnlyPage({
     required String sessionId,
-    required int? limit,
-    required int? before,
+    required HistoryWindow window,
     required MessageAttachmentProjection attachmentProjection,
-  }) async {
-    final stored = await _sessionRepository.getStoredSession(sessionId: sessionId);
-    // The bridge holds no row for this session at all, and a store-only read
-    // has no backfill with which to create one.
-    if (stored == null) {
-      return (
-        messages: const <MessageWithParts>[],
-        nextCursor: null,
-        replayedPromptDefaults: null,
-        awaitingHarnessSync: true,
-        userMessagesBefore: 0,
-      );
-    }
-    final storageScope = _storageScopeFor(session: stored);
-    if (stored.archivedAt != null) {
+    required ToolOutputDelivery toolOutputDelivery,
+  }) => _readStoredHistory(
+    sessionId: sessionId,
+    // A store-only read has no backfill with which to create the missing row.
+    noStoredSession: (
+      messages: const <MessageWithParts>[],
+      nextCursor: null,
+      replayedPromptDefaults: null,
+      awaitingHarnessSync: true,
+      userMessagesBefore: 0,
+      cannotContinueMessage: null,
+    ),
+    readArchive: (storageScope) async {
       final archived = await _chatHistoryRepository.getArchivedSessionMessages(
         sessionId: sessionId,
         storageScope: storageScope,
-        limit: limit,
-        before: before,
+        window: window,
         attachmentProjection: attachmentProjection,
+        toolOutputDelivery: toolOutputDelivery,
       );
       // An audit file is the whole transcript of a session the harness can no
       // longer advance, so it owes nothing.
-      if (archived != null) return _messagesPage(page: archived, replayedPromptDefaults: null);
-    }
+      return archived == null ? null : _messagesPage(page: archived, replayedPromptDefaults: null);
+    },
+    readStore: (storageScope) async {
+      // One snapshot for the marker and the rows: outside the queue a backfill
+      // or purge could otherwise commit between them and hand back a page
+      // whose parts belong to a different transcript than its messages, or a
+      // freshness verdict describing neither.
+      final read = await _chatHistoryRepository.getSessionMessagesWithSyncState(
+        sessionId: sessionId,
+        storageScope: storageScope,
+        window: window,
+        attachmentProjection: attachmentProjection,
+        toolOutputDelivery: toolOutputDelivery,
+      );
+      final state = read.syncState;
+      final synced = state != null && state.syncedAt != null && state.watermark >= state.backendActivityAt;
+      return _messagesPage(page: read.page, replayedPromptDefaults: null, awaitingHarnessSync: !synced);
+    },
+  );
 
-    // One snapshot for the marker and the rows: outside the queue a backfill
-    // or purge could otherwise commit between them and hand back a page whose
-    // parts belong to a different transcript than its messages, or a freshness
-    // verdict describing neither.
-    final read = await _chatHistoryRepository.getSessionMessagesWithSyncState(
+  /// Every prompt in the session's history, oldest first, kinded by the
+  /// shared prompt-turn rule.
+  ///
+  /// Read like [_storedOnlyPage]: from the store or the audit file alone,
+  /// outside the session queue and without a backfill. The app asks after a
+  /// page read, which has already backfilled when it could. An unknown or
+  /// empty session has no prompts.
+  Future<List<SessionPromptIndexEntry>> getPromptIndex({required String sessionId}) => _readStoredHistory(
+    sessionId: sessionId,
+    noStoredSession: const <SessionPromptIndexEntry>[],
+    readArchive: (_) => _chatHistoryRepository.getArchivedPromptIndex(sessionId: sessionId),
+    readStore: (_) => _chatHistoryRepository.getPromptIndex(sessionId: sessionId),
+  );
+
+  /// The prompts in the session's history whose whole text holds [query],
+  /// ignoring case, oldest first, each with the words around its first match.
+  ///
+  /// Read like [getPromptIndex]. A blank query, like an unknown or empty
+  /// session, matches nothing.
+  Future<List<SessionPromptSearchMatch>> searchPrompts({required String sessionId, required String query}) async {
+    final pattern = promptSearchPattern(query: query);
+    if (pattern == null) return const [];
+    return await _readStoredHistory(
       sessionId: sessionId,
-      storageScope: storageScope,
-      limit: limit,
-      before: before,
-      attachmentProjection: attachmentProjection,
+      noStoredSession: const <SessionPromptSearchMatch>[],
+      readArchive: (_) => _chatHistoryRepository.searchArchivedPrompts(sessionId: sessionId, pattern: pattern),
+      readStore: (_) => _chatHistoryRepository.searchPrompts(sessionId: sessionId, pattern: pattern),
     );
-    final state = read.syncState;
-    final synced = state != null && state.syncedAt != null && state.watermark >= state.backendActivityAt;
-    return _messagesPage(page: read.page, replayedPromptDefaults: null, awaitingHarnessSync: !synced);
+  }
+
+  /// The output and error a summary tool part withheld, read like
+  /// [getPromptIndex]: from the store or the audit file alone, outside the
+  /// session queue and without a backfill. The app asks only for a part a page
+  /// already delivered.
+  Future<ToolOutputLookup> getToolOutput({
+    required String sessionId,
+    required String messageId,
+    required String partId,
+  }) => _readStoredHistory(
+    sessionId: sessionId,
+    noStoredSession: const ToolOutputMissing(),
+    readArchive: (_) => _chatHistoryRepository.getArchivedToolOutput(
+      sessionId: sessionId,
+      messageId: messageId,
+      partId: partId,
+    ),
+    readStore: (_) => _chatHistoryRepository.getToolOutput(
+      sessionId: sessionId,
+      messageId: messageId,
+      partId: partId,
+    ),
+  );
+
+  /// Where a read that answers from stored history alone looks: nowhere when
+  /// the bridge holds no row for the session, else an archived session's
+  /// audit file when it has one, else the store.
+  ///
+  /// The audit file is authoritative only once the session is archived:
+  /// export writes it before the archive flip, so a file can exist for a
+  /// session whose newer messages are still in the store.
+  Future<T> _readStoredHistory<T>({
+    required String sessionId,
+    required T noStoredSession,
+    required Future<T?> Function(AttachmentStorageScope storageScope) readArchive,
+    required Future<T> Function(AttachmentStorageScope storageScope) readStore,
+  }) async {
+    final stored = await _sessionRepository.getStoredSession(sessionId: sessionId);
+    if (stored == null) return noStoredSession;
+    final storageScope = _storageScopeFor(session: stored);
+    if (stored.archivedAt != null) {
+      final archived = await readArchive(storageScope);
+      if (archived != null) return archived;
+    }
+    return await readStore(storageScope);
   }
 
   SessionMessagesPage _messagesPage({
@@ -256,6 +361,7 @@ class ChatHistoryService({
     replayedPromptDefaults: replayedPromptDefaults,
     awaitingHarnessSync: awaitingHarnessSync,
     userMessagesBefore: page.userMessagesBefore,
+    cannotContinueMessage: null,
   );
 
   MessageAttachmentProjection _attachmentProjectionFor({required MessageAttachmentDelivery delivery}) =>
@@ -553,11 +659,12 @@ class ChatHistoryService({
     };
   }
 
-  /// Finalizes tool parts left open after the session's turn ended, returning
-  /// each rewritten part in both delivery shapes for live emission.
+  /// Finalizes tool, subtask and compaction parts left open after the
+  /// session's turn ended, returning each rewritten part in both delivery
+  /// shapes for live emission.
   ///
-  /// A stored `pending`/`running` tool part whose turn is over can never
-  /// receive a result, so it would spin forever on every later read. The
+  /// A stored `pending`/`running` tool part or running compaction whose turn
+  /// is over can never finish, so it would spin forever on every later read. The
   /// sweep does not touch the session's freshness marks: rewriting local rows
   /// is neither a live capture nor backend activity, and advancing the
   /// watermark here could make a stale store look current.
@@ -567,10 +674,7 @@ class ChatHistoryService({
       sessionId: sessionId,
       read: () async {
         try {
-          final refs = await _chatHistoryRepository.finalizeOpenToolParts(
-            sessionId: sessionId,
-            updatedAt: observedAt,
-          );
+          final refs = await _endUnfinishedStoredParts(sessionId: sessionId, updatedAt: observedAt);
           if (refs.isEmpty) return const <CapturedPartShapes>[];
           final storageScope = await _requireStorageScope(sessionId: sessionId);
           final shapes = <CapturedPartShapes>[];
@@ -608,24 +712,49 @@ class ChatHistoryService({
     );
   }
 
-  /// Whether any served part is a tool or subtask still reported as
-  /// `pending`/`running`.
-  bool _containsOpenToolPart({required ChatHistoryPage page}) {
-    for (final message in page.messages) {
-      for (final part in message.parts) {
-        final status = switch (part) {
-          MessagePartTool(:final state) => state.status,
-          MessagePartSubtask(:final taskState) => taskState?.status,
-          _ => null,
-        };
-        if (status == ToolStatus.pending || status == ToolStatus.running) return true;
-      }
-    }
-    return false;
+  /// Whether any served part is still unfinished.
+  bool _containsUnfinishedPart({required ChatHistoryPage page}) =>
+      page.messages.any((message) => message.parts.any((part) => _endUnfinishedPart(part: part) != null));
+
+  /// Rewrites the session's stored unfinished parts to how they end when
+  /// their turn has ended, and returns the rewritten rows.
+  Future<List<StoredPartRef>> _endUnfinishedStoredParts({required String sessionId, required int updatedAt}) {
+    return _chatHistoryRepository.rewriteStoredParts(
+      sessionId: sessionId,
+      statuses: _unfinishedStatuses,
+      updatedAt: updatedAt,
+      rewrite: _endUnfinishedPart,
+    );
   }
 
-  /// Finalizes the session's open tool parts unless a turn is running now, and
-  /// reports whether anything was rewritten.
+  /// The stored statuses the sweep prefilters on. A running compaction's
+  /// stored `"status":"running"` matches [ToolStatus.running]'s marker.
+  static const _unfinishedStatuses = {ToolStatus.pending, ToolStatus.running};
+
+  /// How [part] ends when its turn ended before it finished, or null when it
+  /// is already finished or has no lifecycle.
+  ///
+  /// A tool left `pending`/`running` after its turn ended can never receive a
+  /// result — the backend reports tool completion only within the turn that
+  /// ran it — so it ends as an error. A subtask's sub-agent died with its
+  /// turn, which is a cancellation, not a tool error. A compaction still
+  /// running when its turn ended never compacted, so it ends as failed.
+  MessagePart? _endUnfinishedPart({required MessagePart part}) => switch (part) {
+    // Stored tool parts are always full; only page reads summarize them.
+    MessagePartTool(:final ToolStateFull state) && final tool when _unfinishedStatuses.contains(state.status) =>
+      tool.copyWith(
+        state: state.copyWith(status: ToolStatus.error, error: "The turn ended before this tool reported a result."),
+      ),
+    MessagePartSubtask(:final taskState?) && final subtask when _unfinishedStatuses.contains(taskState.status) =>
+      subtask.copyWith(taskState: taskState.copyWith(status: ToolStatus.cancelled)),
+    MessagePartCompaction(state: CompactionStateRunning()) && final compaction => compaction.copyWith(
+      state: const CompactionState.failed(error: "The turn ended before compaction finished."),
+    ),
+    _ => null,
+  };
+
+  /// Finalizes the session's unfinished parts (tools, subtasks, compactions)
+  /// unless a turn is running now, and reports whether anything was rewritten.
   ///
   /// A read-path sweep, so it mutates rows without projecting delivery shapes:
   /// the caller re-reads the page itself, and projection could fail for
@@ -642,10 +771,7 @@ class ChatHistoryService({
       sessionId: sessionId,
       read: () async {
         try {
-          final refs = await _chatHistoryRepository.finalizeOpenToolParts(
-            sessionId: sessionId,
-            updatedAt: observedAt,
-          );
+          final refs = await _endUnfinishedStoredParts(sessionId: sessionId, updatedAt: observedAt);
           return refs.isNotEmpty;
         } on Object catch (error, stackTrace) {
           Log.w(
@@ -836,9 +962,9 @@ class ChatHistoryService({
   /// file.
   Future<ChatHistoryPage?> getArchivedSessionMessages({
     required String sessionId,
-    int? limit,
-    int? before,
+    required HistoryWindow window,
     required MessageAttachmentDelivery attachmentDelivery,
+    required ToolOutputDelivery toolOutputDelivery,
   }) async {
     final session = await _sessionRepository.getStoredSession(sessionId: sessionId);
     if (session == null) return null;
@@ -846,9 +972,9 @@ class ChatHistoryService({
     return await _chatHistoryRepository.getArchivedSessionMessages(
       sessionId: sessionId,
       storageScope: _storageScopeFor(session: session),
-      limit: limit,
-      before: before,
+      window: window,
       attachmentProjection: attachmentProjection,
+      toolOutputDelivery: toolOutputDelivery,
     );
   }
 

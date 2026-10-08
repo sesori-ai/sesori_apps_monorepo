@@ -36,6 +36,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
   /// authentication fails, and [TimeoutException] when the shared deadline
   /// passes.
   Future<AcpInitializeResult> initialize({
+    required AcpClientIdentity clientIdentity,
     required bool formElicitation,
     required Map<String, dynamic>? capabilityMeta,
     required String? authMethodId,
@@ -44,6 +45,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
   }) async {
     final deadline = Stopwatch()..start();
     final init = await initializeOnly(
+      clientIdentity: clientIdentity,
       formElicitation: formElicitation,
       capabilityMeta: capabilityMeta,
       timeout: timeout,
@@ -71,6 +73,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
   /// runtime probes that must inspect an unauthenticated agent. The combined
   /// [initialize] operation still rejects unsupported protocol versions.
   Future<AcpInitializeResult> initializeOnly({
+    required AcpClientIdentity clientIdentity,
     required bool formElicitation,
     required Map<String, dynamic>? capabilityMeta,
     required Duration timeout,
@@ -78,6 +81,7 @@ class AcpAgentApi({required final AcpStdioClient client}) {
     final raw = await client.request(
       method: AcpMethods.initialize,
       params: buildInitializeParams(
+        clientIdentity: clientIdentity,
         formElicitation: formElicitation,
         capabilityMeta: capabilityMeta,
       ),

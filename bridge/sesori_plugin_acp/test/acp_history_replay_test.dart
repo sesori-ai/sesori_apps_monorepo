@@ -102,6 +102,32 @@ void main() {
       );
     });
 
+    test("a load error the plugin does not recognize as unrestorable stays a plain failure", () async {
+      final loading = plugin.getSessionMessages(sessionId);
+      await completeReplayHandshake();
+
+      final loadFrame = await waitForFrame("session/load");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": loadFrame["id"],
+        "error": {
+          "code": -32603,
+          "message": "Internal error",
+          "data": {"details": "Could not restore model anthropic/claude-old"},
+        },
+      });
+
+      await expectLater(
+        loading,
+        throwsA(
+          allOf(
+            isA<PluginOperationException>().having((error) => error.cause, "cause", isA<AcpRpcException>()),
+            isNot(isA<PluginSessionUnrestorableException>()),
+          ),
+        ),
+      );
+    });
+
     test("partial history replayed before a -32602 rejection is preserved", () async {
       final loading = plugin.getSessionMessages(sessionId);
       await completeReplayHandshake();
