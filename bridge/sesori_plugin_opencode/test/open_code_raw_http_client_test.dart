@@ -1,7 +1,10 @@
+import "dart:async";
 import "dart:convert";
+import "dart:io";
 
 import "package:fake_async/fake_async.dart";
 import "package:http/http.dart" as http;
+import "package:http/io_client.dart";
 import "package:http/testing.dart";
 import "package:opencode_plugin/opencode_plugin.dart";
 import "package:test/test.dart";
@@ -222,6 +225,34 @@ void main() {
         expect(error, isNull);
         expect(response?.body, equals("done"));
       });
+    });
+
+    test("a timed-out read frees its pooled connection for the next request", () async {
+      final stalled = Completer<void>();
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() async {
+        stalled.complete();
+        await server.close(force: true);
+      });
+      server.listen((request) async {
+        if (request.uri.path == "/stall") await stalled.future;
+        request.response.write("ok");
+        await request.response.close();
+      });
+      final ioClient = IOClient(HttpClient()..maxConnectionsPerHost = 1);
+      addTearDown(ioClient.close);
+      final client = OpenCodeRawHttpClient(
+        serverURL: "http://127.0.0.1:${server.port}",
+        password: null,
+        client: ioClient,
+      );
+
+      await expectLater(
+        client.get(path: "/stall", timeout: const Duration(milliseconds: 50)),
+        throwsA(isA<OpenCodeApiException>().having((e) => e.statusCode, "statusCode", 504)),
+      );
+      final response = await client.get(path: "/next", timeout: const Duration(seconds: 5));
+      expect(response.body, "ok");
     });
   });
 }

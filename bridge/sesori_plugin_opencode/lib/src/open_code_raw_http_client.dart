@@ -39,9 +39,10 @@ enum _HttpMethod() { get, post, patch, delete }
 ///   2. enforces a 2xx response (throws [OpenCodeApiException] otherwise),
 ///   3. computes a debug endpoint label ("METHOD /path") for error messages.
 ///
-/// **Why reads time out but writes don't.** `Future.timeout` cannot cancel an
-/// in-flight HTTP request — it only stops *waiting* for the response. For an
-/// idempotent GET that is harmless: report a 504 and let the caller retry. For
+/// **Why reads time out but writes don't.** A timeout aborts the request and
+/// frees its pooled connection, but it cannot undo work the server already
+/// accepted. For an idempotent GET that is harmless: report a 504 and let the
+/// caller retry. For
 /// a non-idempotent write it is dangerous: OpenCode may have accepted the
 /// mutation and merely be slow to respond, so a client-side timeout would
 /// surface a false 504 while the write still commits server-side, leaving the
@@ -87,7 +88,7 @@ class OpenCodeRawHttpClient({
     required String path,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
-    Object? body,
+    String? body,
     Duration? timeout, // unbounded by default — non-idempotent; see class docs
   }) {
     return _send(
@@ -104,7 +105,7 @@ class OpenCodeRawHttpClient({
     required String path,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
-    Object? body,
+    String? body,
     Duration? timeout, // unbounded by default — non-idempotent; see class docs
   }) {
     return _send(
@@ -121,7 +122,7 @@ class OpenCodeRawHttpClient({
     required String path,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
-    Object? body,
+    String? body,
     Duration? timeout, // unbounded by default — non-idempotent; see class docs
   }) {
     return _send(
@@ -142,7 +143,7 @@ class OpenCodeRawHttpClient({
     required String path,
     Map<String, String>? queryParameters,
     Map<String, String>? headers,
-    Object? body,
+    String? body,
     required Duration? timeout,
   }) async {
     final hasQuery = queryParameters != null && queryParameters.isNotEmpty;
@@ -152,20 +153,22 @@ class OpenCodeRawHttpClient({
     final endpoint = "${method.name.toUpperCase()} $path";
     final mergedHeaders = {..._authHeaders, ...?headers};
 
-    final request = switch (method) {
-      _HttpMethod.get => _client.get(uri, headers: mergedHeaders),
-      _HttpMethod.post => _client.post(uri, headers: mergedHeaders, body: body),
-      _HttpMethod.patch => _client.patch(uri, headers: mergedHeaders, body: body),
-      _HttpMethod.delete => _client.delete(uri, headers: mergedHeaders, body: body),
-    };
+    // Aborting a timed-out request frees its connection; with a capped pool a
+    // stalled server would otherwise hold every slot and queue all later calls.
+    final abort = Completer<void>();
+    final request = http.AbortableRequest(method.name.toUpperCase(), uri, abortTrigger: abort.future)
+      ..headers.addAll(mergedHeaders);
+    if (body != null) request.body = body;
+    final sending = _client.send(request).then(http.Response.fromStream);
 
     final http.Response response;
     if (timeout == null) {
-      response = await request;
+      response = await sending;
     } else {
       try {
-        response = await request.timeout(timeout);
+        response = await sending.timeout(timeout);
       } on TimeoutException {
+        abort.complete();
         throw OpenCodeApiException(
           endpoint,
           _timeoutStatusCode,
