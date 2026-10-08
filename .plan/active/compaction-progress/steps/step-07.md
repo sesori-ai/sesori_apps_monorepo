@@ -136,10 +136,12 @@ session's inherited compaction, which has no live row.
 
 Codex plugin only. The rollout DTO reads the `ContextCompaction` completed
 item and the event's two times. The history mapper re-keys the last
-`compacted` row with that item's id and part id `<id>-tool` and, when the
-start is present, the live time. So a reload replaces the live row by exact
-identity, and the bridge's replay rule is unchanged. A `compacted` line with
-no item keeps `codex-compaction-N` and its own timestamp.
+`compacted` row with that item's id and part id `<id>-tool`. It takes the
+item's start, else its end (as the live mapper does for a completion with no
+known start), as the creation time, and keeps the line's time when the item
+has neither. So a reload replaces the live row by exact identity, and the
+bridge's replay rule is unchanged. A `compacted` line with no item keeps
+`codex-compaction-N` and its own timestamp.
 
 ### Evidence
 
@@ -148,10 +150,11 @@ Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
 - `sesori_plugin_codex`: `dart analyze --fatal-infos` no issues; all 481
   tests pass.
 - New test: a rollout in Codex's record order (`compacted`, another event,
-  then the `ContextCompaction` item), twice, once without times. Both rows
-  take the item id and part id; the first takes the item's start and end, the
-  second keeps the `compacted` time and its summary. Without the fix it fails
-  with `codex-compaction-1` instead of the item id.
+  then the `ContextCompaction` item), three times: with both times, with only
+  the end, and with none. Every row takes the item id and part id; the first
+  takes the start and end, the second the end for both, and the third keeps
+  the `compacted` time. Without the fix it fails with `codex-compaction-1`
+  instead of the item id.
 - Live rerun, source-run bridge on slot 1 through the debug port: a new
   one-prompt Codex session, manual compact, then a forced stale re-read (the
   sync state's backend activity bumped past its watermark). The re-import
@@ -159,3 +162,11 @@ Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
   the live creation and completion times.
 
 No wire or database change.
+
+### PR Review
+
+- **Wave 1 (`0286fc1d82`):** Codex was clean. cubic had four findings, and
+  three were fixed: an item with only its end now takes that end as both
+  times, and PLAN and this section say so. Declined: making 7b a prerequisite
+  of step 9's row. Step 9's own live run found this fix, so the retirement
+  waits for it already, and the parallel Pi fix keeps edits off that row.

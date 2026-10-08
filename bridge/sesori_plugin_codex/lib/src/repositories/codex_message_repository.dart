@@ -601,12 +601,13 @@ class CodexMessageRepository({
             :final completedAtMs,
           ),
         ):
-          // Key the row as the live mapper does, by the item id and its start,
+          // Key the row as the live mapper does, by the item id and its times,
           // so a reload replaces the live row instead of adding a second one.
           if (unkeyedCompaction case (:final slot, :final summary, :final time)) {
+            final created = startedAtMs ?? completedAtMs;
             messages[slot] = compactionMessage(
               id: id,
-              time: startedAtMs == null ? time : PluginMessageTime(created: startedAtMs, completed: completedAtMs),
+              time: created == null ? time : PluginMessageTime(created: created, completed: completedAtMs),
               summary: summary,
             );
             unkeyedCompaction = null;

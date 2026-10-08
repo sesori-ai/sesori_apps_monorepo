@@ -1943,8 +1943,15 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
             "type": "compacted",
             "payload": {"message": "Continue the auth work.", "replacement_history": <Object?>[]},
           }),
+          // An item with only its end takes it as the start, as live does.
+          compactionItemLine(id: "cmp-live-2", times: {"completed_at_ms": 1791469200500}),
+          jsonEncode({
+            "timestamp": "2026-10-08T14:30:00.000Z",
+            "type": "compacted",
+            "payload": {"message": "", "replacement_history": <Object?>[]},
+          }),
           // An item with no times keeps the `compacted` line's time.
-          compactionItemLine(id: "cmp-live-2", times: const {}),
+          compactionItemLine(id: "cmp-live-3", times: const {}),
         ],
       );
 
@@ -1957,12 +1964,19 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 
       // The live mapper emits message `<item id>` with part `<item id>-tool`,
       // created at `startedAtMs`, so the bridge's replay pairs them by id.
-      expect(messages.map((message) => message.info.id), ["cmp-live-1", "cmp-live-2"]);
-      expect(messages.map((message) => message.parts.single.id), ["cmp-live-1-tool", "cmp-live-2-tool"]);
-      expect(messages.first.info.time, const PluginMessageTime(created: 1791468756635, completed: 1791468767525));
-      expect(messages.last.info.time, const PluginMessageTime(created: 1791469200000, completed: null));
+      expect(messages.map((message) => message.info.id), ["cmp-live-1", "cmp-live-2", "cmp-live-3"]);
+      expect(messages.map((message) => message.parts.single.id), [
+        "cmp-live-1-tool",
+        "cmp-live-2-tool",
+        "cmp-live-3-tool",
+      ]);
+      expect(messages.map((message) => message.info.time), const [
+        PluginMessageTime(created: 1791468756635, completed: 1791468767525),
+        PluginMessageTime(created: 1791469200500, completed: 1791469200500),
+        PluginMessageTime(created: 1791469800000, completed: null),
+      ]);
       expect(
-        messages.last.parts.single,
+        messages[1].parts.single,
         isA<PluginMessagePartCompaction>().having(
           (part) => part.compactionState,
           "compactionState",

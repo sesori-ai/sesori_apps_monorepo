@@ -655,8 +655,10 @@ Design:
 - `item/completed` settles the part as today: `completed`, with no summary
   or trigger, because Codex reports neither.
 - No failure signal exists, so a missing completion is left to the P6 sweep.
-  History keys the row by the rollout's `ContextCompaction` item id and start,
-  as live does (step 7b), and falls back to `codex-compaction-N`.
+  History keys the row by the rollout's `ContextCompaction` item id (step 7b)
+  and takes its start, else its end, as the creation time. An item with no
+  times keeps the `compacted` line's time, and a row with no item keeps
+  `codex-compaction-N`.
 
 **DeepSeek (step 7).**
 
