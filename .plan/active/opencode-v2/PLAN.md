@@ -231,8 +231,8 @@ no history rewrite, compatibility shim or new mutable owner is needed. Count all
    - `OpenCodeV2Service` owns cold start and reconnect re-fetch through the repository, seeds the tracker, resolves
      event enrichments and uses the stateless mapper. It builds activity summaries and never touches `OpenCodeV2Api`.
    - Seed session metadata globally without agent-catalog lookups, then read pending inputs for the directories
-     OpenCode has loaded (`/api/debug/location`; user decision O1, 2026-10-08) and active IDs globally. Keep useful state on refresh failure, but preserve unknown work state until
-     a complete baseline. Reuse the existing shared session value; do not copy v1's instance/alias registries.
+     OpenCode has loaded (`/api/debug/location`; user decision, 2026-10-08) and active IDs globally. Keep useful
+     state on refresh failure, but preserve unknown work state until a complete baseline. Reuse the existing shared session value; do not copy v1's instance/alias registries.
    - Tests: event-sequence tests for tracker state, and service tests over a fake repository.
 7.a. **🚧 v2 write coordination and form replies.**
    - `OpenCodeV2Service` gains the write flows:

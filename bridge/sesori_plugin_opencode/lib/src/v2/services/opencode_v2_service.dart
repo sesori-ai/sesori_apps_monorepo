@@ -32,12 +32,14 @@ class OpenCodeV2Service({
 
   Future<void> coldStart() async {
     _tracker.invalidateBaseline();
-    // Query only loaded folders: a directory-scoped read would load (and keep
-    // loaded) a folder that cannot hold pending input anyway.
-    final (sessions, (active, directories)) = await shared.wait2(
+    final (sessions, active) = await shared.wait2(
       _repository.getSessionMetadata(),
-      shared.wait2(_repository.getActiveSessionIds(), _repository.getLoadedDirectories()),
+      _repository.getActiveSessionIds(),
     );
+    // Query only loaded folders: a directory-scoped read would load (and keep
+    // loaded) a folder that cannot hold pending input anyway. Snapshot them
+    // after the slower reads so a folder loaded meanwhile is still included.
+    final directories = await _repository.getLoadedDirectories();
     final pending = await Future.wait(directories.map((directory) => _pendingInput(directory: directory)));
     _tracker.seed(
       sessions: sessions,

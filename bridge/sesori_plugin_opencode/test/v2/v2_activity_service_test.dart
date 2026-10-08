@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:opencode_plugin/src/v2/mappers/v2_form_answer_mapper.dart";
 import "package:opencode_plugin/src/v2/mappers/v2_form_answer_validator.dart";
 import "package:opencode_plugin/src/v2/models/openapi/form_info.g.dart";
@@ -229,8 +231,14 @@ void main() {
   });
 
   test("pending input is read only for loaded directories, never for every session folder", () async {
+    // The loaded snapshot follows the slower reads, so a folder loaded meanwhile is included.
+    final gate = repository.metadataGate = Completer<void>();
+    final starting = service.coldStart();
+    await pumpEventQueue();
+    expect(repository.calls, isNot(contains("loaded")));
     repository.loaded = {worktree};
-    await service.coldStart();
+    gate.complete();
+    await starting;
     expect(repository.calls.where((call) => call.contains(project)), isEmpty);
     expect(repository.calls, containsAll(["permissions:$worktree", "forms:$worktree"]));
 
@@ -602,10 +610,12 @@ class FakeRepository() implements OpenCodeV2Repository {
   Object? pendingFailure;
   Object? metadataFailure;
   Object? messageFailure;
+  Completer<void>? metadataGate;
 
   @override
   Future<List<shared.Session>> getSessionMetadata() async {
     calls.add("metadata");
+    await metadataGate?.future;
     return sessions;
   }
 

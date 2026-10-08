@@ -496,7 +496,7 @@ empty loaded list (a fresh server) makes no pending-input reads. Root/direct-chi
 include input-only work and retain canonical project identity across worktrees.
 Failed refreshes preserve useful state but report unknown work state until a complete
 baseline succeeds. A loaded directory that no longer exists on disk (OpenCode answers
-its pending-input reads with 404) is logged and read as holding no pending input, so
+a 404 to either pending-input read) is logged and read as holding no pending input, so
 the refresh still succeeds and live events keep flowing for every other session; the
 plugin's loopback-server coverage proves this. Other pending-input failures still fail
 the refresh. Deletion uses retained metadata without reading a deleted row.
