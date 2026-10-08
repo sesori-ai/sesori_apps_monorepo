@@ -11,6 +11,9 @@
   `architecture-plan-review` in [Plan Review](#plan-review). The user
   answered its two product questions, O2 and O3, the same day; see
   [User Decisions](#user-decisions-final).
+- Completed 2026-10-08 (step 15): steps 2–14b are merged, the last being
+  #1906. The L3 matrix was reduced with the user's explicit acceptance; see
+  [Regression Coverage](#regression-coverage) and `steps/step-15.md`.
 - Live status lives on GitHub:
   `gh pr list --state all --search "[transcript-history]"`. Evidence for a
   finished step lives in `steps/step-NN.md`, written only by that step's PR.
@@ -954,6 +957,21 @@ Each feature step updates its document. Step 14 reconciles them all.
 
 Any reduction of this matrix needs the user's explicit acceptance, recorded
 here before step 15 retires the plan.
+
+**Reduced 2026-10-08 with the user's explicit acceptance (L2):** the L3 cells
+were not executed and the recordings for steps 9, 9b, 10, 11b and 13 were not
+made, because device tools were unavailable; cubit, widget, bridge-route and
+parity tests cover the logic. The unexecuted cells:
+
+- the iOS client end-to-end cell (the full Prompts list, the far tap, the pin
+  over unloaded turns, merged search and tool expand);
+- the macOS desktop client end-to-end cell (the same behaviors);
+- the Android smoke check of deflated responses and the far tap;
+- the new app with a v1.9.0 bridge;
+- a v1.9.0 app with the new bridge;
+- the relay integration of W1 across the three app and bridge pairings.
+
+No cell is recorded as passed. Evidence: `steps/step-15.md`.
 
 ## Complexity Budget
 
