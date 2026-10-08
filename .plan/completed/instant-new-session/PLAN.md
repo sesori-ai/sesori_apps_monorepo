@@ -3,7 +3,10 @@
 ## Status
 
 - **Plan slug:** `instant-new-session`
-- **Status:** Proposed (2026-09-26)
+- **Status:** Completed 2026-10-08. Fourteen PRs merged (#1774 through #1902);
+  step 14 retired the plan with the user's explicit acceptance of the
+  unexecuted L3 cells, listed under "Highest level and matrix" below; see
+  [step 14](steps/step-14.md).
 - **Implementation base:** `main` at `654519baf1`
 - **Supersedes:** `.plan/active/instant-session-launch/` (planned 2026-08-31,
   never implemented). This plan is removed in the same PR. Its client-side
@@ -2281,6 +2284,35 @@ list composition, and each plugin's first-message echo.
   when the session is opened, and the analytics outcome is still reported. Confirm
   the follow-ups' `sessionMessageSent` events arrive in the debug analytics log,
   since the service, not the session screen, reports them.
+
+**Reduced 2026-10-08 with the user's explicit acceptance (L1): the L3 live
+cells were not executed, because device tools were unavailable; cubit, widget
+and resolver tests cover the logic.** The user chose "Accept the unexecuted L3
+cells and retire now". Every cell of the matrix above stayed unexecuted:
+
+- **Client:** phone in narrow and split layouts; desktop on all three creating
+  surfaces; the sidebar; the desktop home pane; the phone home Activity group.
+- **Plugins:** the release rule on each echo family (ACP synthesized echo,
+  Claude CLI replay, OpenCode backend SSE, Codex, Pi queue); a command start on
+  Claude and on one ACP harness.
+- **Modes:** dedicated and in-place, with warm and cold plugins, including the
+  cold OpenCode start.
+- **Follow-ups:** two queued during a cold create sending in order; one
+  cancelled before it sends; the same run leaving the route at once.
+- **The launching row:** the tap alert, no navigation or list movement, and
+  "Creating…" before the harness name until the real row takes over.
+- **Failure:** definitive rejection; response loss or timeout; the D1 append
+  of queued follow-ups with re-staged attachments; Back mid-creation; failure
+  after leaving with exactly one alert naming the project (D5).
+- **Structural acceptance:** the frame-by-frame checks on a real device (the
+  bubble in the first sending frame, no spinner or empty frame, the bubble's
+  rect, harness name and "Sending to `<harness>`…" text unchanged across both
+  swaps, no frame without either row, and the row below not moving).
+- **Abandoned launches:** a cold create left at once still resolving its row,
+  sending its follow-ups and reporting its outcome, with the follow-ups'
+  `sessionMessageSent` events in the debug analytics log.
+
+The acceptance permits retirement; it does not claim that these cells passed.
 
 ## Risks And Accepted Limits
 
