@@ -67,7 +67,6 @@ class const SubtaskPartWidget({
                   detail: TextSpan(text: description),
                   live: status == TranscriptStepStatus.running,
                   color: null,
-                  below: null,
                   trailing: null,
                 ),
               ),

@@ -124,7 +124,6 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
         ),
         live: live,
         color: color,
-        below: null,
         trailing: null,
       );
     }
@@ -135,7 +134,6 @@ class const _ToolHeader({required final MessagePartTool part}) extends Stateless
       detail: title == null ? null : TextSpan(text: title),
       live: live,
       color: null,
-      below: null,
       trailing: null,
     );
   }

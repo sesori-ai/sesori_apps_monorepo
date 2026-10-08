@@ -2,8 +2,31 @@ import "dart:math";
 
 import "package:material_ui/material_ui.dart";
 
-/// One line holding the end of streaming [text] under a live row: the newest
-/// words stay in view and the older start fades out at the leading edge.
+import "../../../extensions/build_context_x.dart";
+import "transcript_motion.dart";
+
+/// A live row's trailing slot: the latest words of streaming [text] fade in
+/// and out on the label's line, so they never change the row's height.
+/// Anchored at the line's end from the first word, so the newest words stay
+/// put while anything before them, such as a timer, changes width.
+class const TranscriptTrailingLatestWords({super.key, required final String? text, required final TextStyle style})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final text = this.text;
+    return AnimatedSwitcher(
+      duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+      layoutBuilder: (current, previous) =>
+          Stack(alignment: AlignmentDirectional.centerEnd, children: [...previous, ?current]),
+      child: text == null || text.isEmpty
+          ? const SizedBox.shrink()
+          : TranscriptLatestWords(key: const ValueKey("latestWords"), text: text, style: style),
+    );
+  }
+}
+
+/// One line holding the end of streaming [text]: the newest words stay in
+/// view and the older start fades out at the leading edge.
 class const TranscriptLatestWords({super.key, required final String text, required final TextStyle style})
     extends StatelessWidget {
   /// How much of the end of the text the line considers; more than one line
