@@ -336,6 +336,36 @@ class const OpenCodePluginDescriptor({
         _explicitBin(config) == null;
   }
 
+  /// OpenCode 2's shared background server: the running one, or one OpenCode
+  /// starts from the provisioned binary. Using it keeps the bridge, the TUI and
+  /// the desktop app on one server instead of two colliding on one database.
+  /// `null` means the caller spawns a private server.
+  ///
+  /// A private server left by a replaced or crashed bridge is never reused, so
+  /// it is reclaimed first, before a service can start on the same database.
+  /// The private start reclaims it the same way.
+  Future<OpenCodeSharedServerEndpoint?> _acquireSharedServer({
+    required PluginHost host,
+    required ManagedProcessService<OpenCodeOwnershipRecord> service,
+    required http.Client Function() probeClientFactory,
+  }) async {
+    await service.cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: host.bridge.terminatedBridgeIdentities);
+    return await OpenCodeSharedServerService(
+      repository: OpenCodeSharedServerRepository(
+        registrationApi: const OpenCodeServiceRegistrationApi(),
+        commandApi: OpenCodeServiceCommandApi(
+          executor: HostProcessCommandExecutor(
+            includeParentEnvironment: true,
+            processes: host.processes,
+            runInShell: io.Platform.isWindows,
+            maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+          ),
+        ),
+        probeClientFactory: probeClientFactory,
+      ),
+    ).acquire(binary: host.provisionedRuntimePath, environment: host.environment, startAborted: host.startAborted);
+  }
+
   String? _explicitBin(PluginConfig config) {
     final value = config.value(_OpenCodeConfigKey.binary)?.trim();
     return value == null || value.isEmpty ? null : value;
@@ -638,36 +668,9 @@ class const OpenCodePluginDescriptor({
       gracefulShutdownWait: openCodeGracefulShutdownWait,
     );
 
-    // OpenCode 2's shared background server: the running one, or one OpenCode
-    // starts for us from the provisioned binary. Using it keeps the bridge, the
-    // TUI and the desktop app on one server instead of two servers colliding on
-    // one database.
-    final sharesServer = _sharesServer(config);
-    if (sharesServer) {
-      // Reclaim a private server a replaced or crashed bridge left behind, as
-      // the managed start does, before acquisition can start a service on the
-      // same database.
-      await service.cleanupStaleOwnedRuntimes(terminatedBridgeIdentities: host.bridge.terminatedBridgeIdentities);
-    }
-    final sharedEndpoint = sharesServer
-        ? await OpenCodeSharedServerService(
-            repository: OpenCodeSharedServerRepository(
-              registrationApi: const OpenCodeServiceRegistrationApi(),
-              commandApi: OpenCodeServiceCommandApi(
-                executor: HostProcessCommandExecutor(
-                  includeParentEnvironment: true,
-                  processes: host.processes,
-                  runInShell: io.Platform.isWindows,
-                  maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
-                ),
-              ),
-              probeClientFactory: probeClientFactory,
-            ),
-          ).acquire(
-            binary: host.provisionedRuntimePath,
-            environment: host.environment,
-            startAborted: host.startAborted,
-          )
+    // OpenCode 2's shared server when it applies; otherwise a private server below.
+    final sharedEndpoint = _sharesServer(config)
+        ? await _acquireSharedServer(host: host, service: service, probeClientFactory: probeClientFactory)
         : null;
     if (host.startAborted.isAborted) {
       throw const PluginStartAbortedException();
