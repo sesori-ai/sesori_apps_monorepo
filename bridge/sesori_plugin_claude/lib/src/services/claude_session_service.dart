@@ -653,9 +653,10 @@ final class ClaudeSessionService({
   /// no queued turn, no self-started turn, no running task.
   void _settleIdle({required String sessionId, required _SessionTurnState state}) {
     if (state.hasWork) {
-      // Only background sub-agents remain: the session stays busy, but the
-      // summary's main agent stopped running.
-      if (!isMainAgentRunning(sessionId: sessionId)) _emit(const BridgeSseProjectUpdated());
+      // Background work remains, so the session stays busy, but the summary
+      // may have changed: the main agent may have stopped, and sub-agents the
+      // ended turn launched now count as running children.
+      _emit(const BridgeSseProjectUpdated());
       return;
     }
     _emit(BridgeSseSessionIdle(sessionID: sessionId));
