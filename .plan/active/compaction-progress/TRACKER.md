@@ -56,6 +56,7 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | 3 | `compaction-progress/contract` | [3](#fixed-pr-titles) | ≤ 1,100 (about 550 generated) | 2 |
 | 4 | `compaction-progress/app` | [4](#fixed-pr-titles) | ≤ 800 | 3 |
 | 5 | `compaction-progress/claude` | [5](#fixed-pr-titles) | ≤ 700 | 4 |
+| 5b | `compaction-progress/claude-reimport-dedup` | [5b](#fixed-pr-titles) | ≤ 400 | 5 |
 | 6 | `compaction-progress/opencode` | [6](#fixed-pr-titles) | ≤ 800 | 4 |
 | 7 | `compaction-progress/pi-codex-deepseek` | [7](#fixed-pr-titles) | ≤ 900 | 4, step 6's plan detail |
 | 8 | `compaction-progress/step-8-docs` | [8](#fixed-pr-titles) | ≤ 300 | 2–7 |
@@ -71,6 +72,8 @@ Steps 3 and 4 include generated Freezed, JSON and localization output.
 3. `🚧 [compaction-progress] Carry compaction progress on the compaction part [step 3/9]`
 4. `⚙️ [compaction-progress] Show running and failed compaction in the transcript [step 4/9]`
 5. `🚧 [compaction-progress] Show Claude compaction live, with its outcome [step 5/9]`
+   - 5b. `🌿 [compaction-progress] Keep one Claude compaction row after a reload [step 5b/9]`
+     (a fix found by step 9's live run)
 6. `⚙️ [compaction-progress] Stream OpenCode compaction into the live row [step 6/9]`
 7. `⚙️ [compaction-progress] Move Pi, Codex and DeepSeek onto the live compaction row [step 7/9]`
 8. `🌱 [compaction-progress] Reconcile the docs with shipped compaction progress [step 8/9]`

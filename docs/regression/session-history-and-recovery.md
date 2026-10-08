@@ -217,6 +217,10 @@ reconnect or restart.
   known creation times also keep a singleton pair distinct. Equal content in
   another ordered context and additional repeated occurrences remain, while
   stored rows already stale at this import do not shape the comparison context.
+  A compaction row, whose parts the fingerprint ignores, is matched by its
+  creation time instead of its context, so a live compaction row pairs with its
+  replayed row even beside a live-only row such as the bridge's own `/compact`
+  bubble, while distinct compactions, which never share a time, stay apart.
   The content fingerprint ignores identity, time, agent/model attribution, and
   internal parts hidden from transcripts; alignment still uses available
   creation times as above, normalizes spilled attachments, and keeps replay

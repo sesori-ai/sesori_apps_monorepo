@@ -55,6 +55,7 @@ typedef _SemanticMessageFingerprints = ({
   int? createdAt,
   bool isAssistant,
   bool isStandaloneTool,
+  bool isCompaction,
 });
 
 /// How fresh a session's stored transcript is.
@@ -488,7 +489,8 @@ class ChatHistoryRepository({
   /// to the imported multiplicity while preserving truly live-only rows and
   /// additional identical messages. Exact identities consume replay capacity
   /// first and anchor neighboring context by ID even when their payload changes;
-  /// stale rows due for removal do not shape semantic context, and a
+  /// stale rows due for removal do not shape semantic context, a compaction
+  /// row matches by its creation time instead of its neighbors, and a
   /// repeated run matches only occurrences with equal creation times. A unique
   /// exact standalone-tool identity can additionally anchor one adjacent
   /// assistant/tool/assistant replay window when replay strictly completes the
@@ -1259,6 +1261,7 @@ class ChatHistoryRepository({
         createdAt: message.time?.created,
         isAssistant: message is MessageAssistant,
         isStandaloneTool: visibleParts.length == 1 && visibleParts.single is MessagePartTool,
+        isCompaction: visibleParts.isEmpty && parts.any((part) => part is MessagePartCompaction),
       );
     } on Object catch (error, stackTrace) {
       Log.w(
@@ -1310,7 +1313,14 @@ class ChatHistoryRepository({
     return [
       for (var index = 0; index < fingerprints.length; index++)
         if (fingerprints[index] case final _SemanticMessageFingerprints fingerprint)
-          jsonEncode([previousDistinct[index], fingerprint.content, nextDistinct[index]])
+          // A compaction row has no transcript-visible content, and its live
+          // neighbours can be rows the replay never has, such as the bridge's
+          // own `/compact` bubble before a Claude compaction. Its creation
+          // time identifies it instead: it matches without neighbours, under
+          // the same time rules, and distinct compactions never share a time.
+          fingerprint.isCompaction
+              ? jsonEncode(["compaction", fingerprint.content])
+              : jsonEncode([previousDistinct[index], fingerprint.content, nextDistinct[index]])
         else
           null,
     ];

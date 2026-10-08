@@ -125,3 +125,61 @@ PR #1911 merged as `f4700fdc71` on 2026-10-08. It merged `origin/main` once
 1,054 changed lines against the merge base (982 added, 72 deleted): 230
 generated Freezed and JSON output, about 414 of production code, 267 of
 tests, 33 of docs and 110 of plan.
+
+## Step 5b — One Row After A Reload
+
+Branch `compaction-progress/claude-reimport-dedup`. Step 9's live run on
+Claude Code found the failure signal P10 names: after a `/compact` and a
+reload, two "Context compacted" rows (the history row and the live row), with
+the same summary, details and time.
+
+### Root Cause
+
+`replaceSessionMessages` pairs a retained live row with an imported one by
+content plus the nearest distinct neighbour on each side. A compaction row's
+parts are hidden from that fingerprint, so its neighbours were its only
+identity, and they never agree for Claude:
+
+- live, the row follows the bridge's own `/compact` bubble (`sesori-user-N`),
+  which the transcript never has;
+- the transcript writes the boundary and summary records before the caveat,
+  `<command-name>` and stdout records, and history drops all three.
+
+So the live row's previous neighbour was the bubble, and the imported row's
+was the reply before it. The step-5 test missed this because its live row
+followed a prompt that history also has.
+
+### Fix
+
+`replaceSessionMessages` marks a row with only compaction parts and keys it by
+its content alone, not its neighbours. The existing time rules still apply: a
+lone pair matches at an equal (or unknown) time, and a group matches only at
+equal times. Distinct compactions never share a time, so they never merge, and
+a live failure note, stamped at its start, keeps its row. A first attempt made
+every live-only row transparent to its neighbours instead; it changed an
+unrelated, deliberately conservative tool-window test, so it was dropped for
+this narrower rule.
+
+### Evidence
+
+Dart from Flutter 3.47.5-stable first on `PATH`.
+
+- `bridge/app`: `dart analyze --fatal-infos` no issues; `dart test` all
+  passed.
+- New capture test: a synthetic transcript in Claude's real record order
+  (prompt, reply, then for each round the boundary, summary, caveat, command
+  and stdout records), read by the real catalog and history mapper; live, the
+  same prompt and reply, a failed `/compact` round and two successful
+  back-to-back rounds, each behind its own bridge bubble, through the real
+  dispatcher. After the replay: both bubbles stay, each live row gives way to
+  its own history row, and the failure note stays. Without the fix it fails
+  with `start-1` and `start-2` still beside `summary-1` and `summary-2`.
+- Live rerun, source-run bridge on slot 1 through the debug port: a new
+  one-prompt Claude session, `/compact`, then two reloads. Before the reload
+  the store held prompt, reply, the bubble and the minted row; each reload
+  returned prompt, reply, bubble and one compaction row under the summary
+  record's id.
+- Docs: `docs/regression/session-history-and-recovery.md` (the replay rule)
+  and `docs/regression/session-turns.md` (the Claude row and its L2 coverage).
+
+No wire or database change.
