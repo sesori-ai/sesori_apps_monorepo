@@ -12,8 +12,9 @@ sealed class const TranscriptActivity();
 /// The session works and nothing else shows it: before the first token and
 /// between steps.
 final class const TranscriptActivityWorking({
-  /// When the running turn's prompt was sent, in epoch ms; null when the
-  /// harness reports no time or no prompt opened the turn.
+  /// When the running turn's latest user message was sent, in epoch ms: a
+  /// message sent mid-turn, else the prompt that opened it. Null when the
+  /// harness reports no time for it, or no user message has loaded.
   required final int? sinceMs,
 }) extends TranscriptActivity;
 
@@ -38,7 +39,6 @@ final class const TranscriptActivityIdle() extends TranscriptActivity;
 class const TranscriptActivityBuilder() {
   TranscriptActivity build({
     required Transcript transcript,
-    required TranscriptTurns turns,
 
     /// Supplies the time of the message holding each sub-agent step, and any
     /// running compaction.
@@ -66,13 +66,13 @@ class const TranscriptActivityBuilder() {
       );
     }
     if (transcript.liveStep != null || compacting) return const TranscriptActivityIdle();
-    // While busy, the last turn is the running one.
-    return TranscriptActivityWorking(
-      sinceMs: switch (turns.turns.lastOrNull) {
-        TranscriptPromptTurn(:final opener) => opener.info.time?.created,
-        TranscriptPartialTurn() || TranscriptPreamble() || null => null,
-      },
-    );
+    // While busy, the last turn is the running one, and it runs to the newest
+    // message. So whatever the turn's shape, its latest user message is the
+    // newest shown one: a message sent mid-turn, else the opener.
+    final latestUser = messages
+        .where((message) => message.info is MessageUser && message.hasRenderableUserContent)
+        .lastOrNull;
+    return TranscriptActivityWorking(sinceMs: latestUser?.info.time?.created);
   }
 
   static bool _isCompacting({required List<MessageWithParts> messages}) => messages.any(
