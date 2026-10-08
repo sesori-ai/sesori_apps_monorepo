@@ -43,7 +43,7 @@ class OpenCodeV2Plugin._({
     required void Function() onConnected,
     required void Function() onDisconnected,
   }) {
-    final httpClient = io.HttpClient();
+    final httpClient = io.HttpClient()..maxConnectionsPerHost = openCodeMaxConnectionsPerHost;
     final modelMapper = V2ModelMapper(pluginId: _id);
     const messageMapper = V2MessageMapper();
     final repository = OpenCodeV2Repository(

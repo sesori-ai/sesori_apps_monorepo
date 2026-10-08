@@ -42,16 +42,21 @@ void main() {
             "paths": <String, dynamic>{"tmp": "/fixture/tmp"},
           },
           "/api/location" => v2LocationFixture,
+          "/api/debug/location" => [
+            <String, String>{"directory": "/fixture/project"},
+          ],
           _ => throw StateError("Unexpected test route"),
         };
-        if (request.url.path == "/api/location") {
-          expect(request.url.queryParameters, <String, String>{"location[directory]": "/fixture/project"});
-        }
+        expect(
+          request.url.queryParameters,
+          request.url.path == "/api/location" ? {"location[directory]": "/fixture/project"} : isEmpty,
+        );
         return http.Response(jsonEncode(body), 200);
       },
     );
     expect((await api.getServerInfo()).version, "2.0.16");
     expect((await api.getLocation(directory: "/fixture/project")).project.id, "project-fixture");
+    expect((await api.listLoadedLocations()).single.directory, "/fixture/project");
   });
 
   test("follows session cursors while retaining filters and ordering", () async {

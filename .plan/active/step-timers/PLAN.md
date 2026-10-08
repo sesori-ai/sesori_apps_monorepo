@@ -138,7 +138,11 @@ The user's decisions of 2026-09-26 (final):
   (step 2), including its regression-doc text and tests.
 - **D3 A group with a running step holds its time still;** only the running
   step ticks (Q2 A).
-- **D4 "Working…" ticks the whole turn** from when the prompt was sent (Q3 A).
+- **D4 "Working…" ticks from the latest user message** (user decision
+  2026-10-08, replacing Q3 A's whole turn: "should not count the whole turn.
+  only from latest steer"). It counts from the running turn's newest user
+  message, a mid-turn one or else the prompt that opened the turn; automation
+  rows do not restart it.
 - **D5 The running step gets its own timer.** Compaction gets a running row,
   "Compacting context · 1m 42s", that becomes today's "Context compacted" when
   it ends.
@@ -164,7 +168,8 @@ The user's decisions of 2026-09-26 (final):
 Planning decisions, from code evidence:
 
 - **P1 Phase 1 derives everything from data the client already has.** The
-  Working timer reads the running prompt turn's `opener.info.time.created`.
+  Working timer reads the `time.created` of the running prompt turn's latest
+  user message (D4).
   The sub-agent timer reads the earliest known start among running sub-agents
   (below). Where that time is missing, the row shows without a timer; no
   client-side "first seen" clock (it would restart on reopen or on another

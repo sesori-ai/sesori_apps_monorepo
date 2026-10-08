@@ -39,6 +39,14 @@ const _config = NewSessionComposeConfig(
 const _state = NewSessionState.composing(config: _config, phase: NewSessionPhase.idle());
 
 void main() {
+  setUp(() {
+    final voice = MockVoiceTranscriptionService();
+    stubVoiceTranscriptionService(service: voice);
+    getIt.registerSingleton<VoiceTranscriptionService>(voice);
+  });
+
+  tearDown(getIt.reset);
+
   testWidgets("desktop new session stays text-first with a persisted voice-first preference", (tester) async {
     final newSessionCubit = _MockNewSessionCubit();
     final inputModeCubit = _MockChatInputModeCubit();
@@ -257,8 +265,6 @@ void main() {
 
   for (final closeFromDetail in [false, true]) {
     testWidgets("desktop harness modal X preserves the live composer draft (detail: $closeFromDetail)", (tester) async {
-      await getIt.reset();
-      addTearDown(getIt.reset);
       registerFallbackValue(ComposerDraft.typed(text: ""));
       final newSessionCubit = _MockNewSessionCubit();
       final inputModeCubit = _MockChatInputModeCubit();

@@ -16,6 +16,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../composer_presentation_scope.dart";
 import "command_picker.dart";
+import "composer_listening_pulse.dart";
 import "composer_options_accordion.dart";
 import "composer_surface_style.dart";
 import "image_attachment_viewer.dart";
@@ -199,6 +200,10 @@ class _PromptInputState() extends State<PromptInput> {
   final _controller = TextEditingController();
   final _textScrollController = ScrollController();
   final _focusNode = FocusNode();
+
+  /// Holds keyboard focus for the whole composer while a click-started
+  /// recording runs outside the text field, so Escape can cancel it.
+  final _composerFocusNode = FocusNode(debugLabel: "PromptInput composer", skipTraversal: true);
   late final Action<PasteTextIntent> _pasteAction;
   int _pasteGeneration = 0;
   late ComposerDraft _draft;
@@ -309,6 +314,7 @@ class _PromptInputState() extends State<PromptInput> {
     _controller.dispose();
     _textScrollController.dispose();
     _focusNode.dispose();
+    _composerFocusNode.dispose();
     super.dispose();
   }
 
@@ -858,17 +864,26 @@ class _PromptInputState() extends State<PromptInput> {
     await _stopAndTranscribe();
   }
 
-  /// Assistive-technology activation: a semantic tap cannot express the
-  /// press-and-hold gesture, so activation toggles recording instead. An
-  /// activation while the recorder is still starting up counts as the stop
-  /// half of the toggle, not another start.
-  Future<void> _handleSemanticRecordToggle() async {
+  /// Toggles recording for a pointer shell's mic click and for
+  /// assistive-technology activation, which cannot express the press-and-hold
+  /// gesture. An activation while the recorder is still starting up counts as
+  /// the stop half of the toggle, not another start.
+  Future<void> _toggleRecording() async {
     if (_voiceInteraction is _VoiceStarting || _voiceInteraction is _VoiceRecording) {
       await _handleRecordEnd();
     } else if (_voiceInteraction is _VoiceIdle) {
       await _handleRecordStart(pointer: null);
     }
   }
+
+  /// A pointer shell's mic click. Starting keeps keyboard focus inside the
+  /// composer so Escape reaches its cancel binding.
+  void _handleMicClick() {
+    if (_voiceInteraction is _VoiceIdle && !_composerFocusNode.hasFocus) _composerFocusNode.requestFocus();
+    unawaited(_toggleRecording());
+  }
+
+  bool get _isListening => _voiceInteraction is _VoiceStarting || _voiceInteraction is _VoiceRecording;
 
   Future<bool> _startRecording() async {
     await _voiceCubit.startRecording();
@@ -1144,6 +1159,19 @@ class _PromptInputState() extends State<PromptInput> {
         ? context.watch<VoiceInputCubit>().state
         : const VoiceInputState.idle();
 
+    // Escape cancels a running recording from anywhere in the composer. The
+    // binding exists only while listening, so an idle Escape still reaches the
+    // shell's own handling (leaving the text field, closing popups).
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        if (_isListening)
+          const SingleActivator(LogicalKeyboardKey.escape): () => unawaited(_cancelVoiceInteractionWithFeedback()),
+      },
+      child: Focus(focusNode: _composerFocusNode, child: _buildComposerColumn(context, capabilities: capabilities)),
+    );
+  }
+
+  Widget _buildComposerColumn(BuildContext context, {required ComposerPresentationScope capabilities}) {
     // Floating composer: no bar surface, no separator line. Each control's
     // [PregoPageHalo] fades the content passing under it.
     return Column(
@@ -1360,6 +1388,10 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildReleaseHint(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
+    // A pointer shell records on click, so there is no hold to release.
+    final transcribeHint = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer
+        ? loc.voiceClickToTranscribe
+        : loc.voiceReleaseToTranscribe;
 
     return Padding(
       // The design floats the helper spacing-3xl above the pill, less the
@@ -1379,7 +1411,7 @@ class _PromptInputState() extends State<PromptInput> {
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 150),
                   child: Text(
-                    cancelling ? loc.voiceReleaseToCancel : loc.voiceReleaseToTranscribe,
+                    cancelling ? loc.voiceReleaseToCancel : transcribeHint,
                     key: ValueKey(cancelling),
                     textAlign: TextAlign.center,
                     style: prego.textTheme.textMd.regular.copyWith(
@@ -2018,7 +2050,18 @@ class _PromptInputState() extends State<PromptInput> {
       ),
     };
 
-    return AnimatedSwitcher(duration: _morphDuration, child: child);
+    final switcher = AnimatedSwitcher(duration: _morphDuration, child: child);
+    if (prefersReducedMotion(context)) return switcher;
+    // The pointer accordion is wider than the 44pt cancel target; glide the
+    // width change so the waveform beside it does not snap at the fade's end.
+    return AnimatedSize(
+      duration: _morphDuration,
+      curve: _morphCurve,
+      alignment: AlignmentDirectional.centerStart,
+      // The accordion's focus ring and glass may paint past its box at rest.
+      clipBehavior: Clip.none,
+      child: switcher,
+    );
   }
 
   /// Wraps a resting pill's centre in the press-and-hold recording gesture.
@@ -2034,7 +2077,7 @@ class _PromptInputState() extends State<PromptInput> {
       button: true,
       label: loc.sessionDetailHoldToTalk,
       excludeSemantics: true,
-      onTap: _handleSemanticRecordToggle,
+      onTap: _toggleRecording,
       child: Listener(
         behavior: HitTestBehavior.opaque,
         onPointerDown: _handleRecordPointerDown,
@@ -2120,6 +2163,27 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildMicButton(BuildContext context) {
     final loc = context.loc;
 
+    // A pointer shell clicks to start and clicks again to stop; the halo
+    // breathes while the mic listens.
+    if (ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer) {
+      final listening = _voicePresentation == _VoicePresentation.recording;
+      return Semantics(
+        button: true,
+        child: Tooltip(
+          message: listening ? loc.voiceStopAndTranscribe : loc.voiceRecord,
+          child: ComposerListeningPulse(
+            active: listening,
+            child: PregoButtonsSolid.iconOnly(
+              leadingIcon: TablerRegular.microphone,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.lg,
+              onPressed: _handleMicClick,
+            ),
+          ),
+        ),
+      );
+    }
+
     // No Tooltip here: its long-press trigger would race the recording hold.
     // The button keeps its enabled look and swallows plain taps via
     // [_ignoreTap]; the surrounding raw pointer listener drives recording.
@@ -2129,7 +2193,7 @@ class _PromptInputState() extends State<PromptInput> {
       button: true,
       label: loc.voiceRecord,
       excludeSemantics: true,
-      onTap: _handleSemanticRecordToggle,
+      onTap: _toggleRecording,
       child: Listener(
         onPointerDown: _handleRecordPointerDown,
         onPointerMove: _handleRecordPointerMove,

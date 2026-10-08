@@ -2039,6 +2039,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceReleaseToTranscribe => 'Release to transcribe';
 
   @override
+  String get voiceClickToTranscribe => 'Click the mic to transcribe · Esc to cancel';
+
+  @override
+  String get voiceStopAndTranscribe => 'Stop and transcribe';
+
+  @override
   String get voiceReleaseToCancel => 'Release to cancel';
 
   @override

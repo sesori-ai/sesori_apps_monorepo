@@ -64,10 +64,8 @@ dependencies:
   universal_platform: ^1.1.0
   device_info_plus: ^13.2.0
   package_info_plus: ^10.2.1
-  record: ^7.1.1
   path: any
   path_provider: ^2.1.6
-  wakelock_plus: ^1.8.0
   firebase_core: ^4.15.0
   firebase_analytics: ^12.6.0
   firebase_crashlytics: ^5.4.0

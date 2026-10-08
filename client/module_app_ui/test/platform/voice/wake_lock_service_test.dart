@@ -1,7 +1,7 @@
 import "dart:async";
 
 import "package:flutter_test/flutter_test.dart";
-import "package:sesori_mobile/capabilities/voice/wake_lock_service.dart";
+import "package:sesori_app_ui/src/platform/voice/wake_lock_service.dart";
 
 void main() {
   test("keeps the global wake lock until the final overlapping session releases", () async {

@@ -75,7 +75,6 @@ TranscriptActivity _activity({
   );
   return const TranscriptActivityBuilder().build(
     transcript: transcript,
-    turns: const TranscriptTurnBuilder().build(messages: messages, hasOlderMessages: false),
     messages: messages,
     isBusy: isBusy,
     mainAgentRunning: mainAgentRunning,
@@ -102,6 +101,114 @@ void main() {
       );
 
       expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 5000));
+    });
+
+    test("works since the latest message sent mid-turn", () {
+      final activity = _activity(
+        messages: [
+          _prompt(id: "u1", at: 1000),
+          _agent(
+            id: "a1",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+          _prompt(id: "u2", at: 4000),
+          _agent(
+            id: "a2",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+          _prompt(id: "u3", at: 7000),
+        ],
+        isBusy: true,
+      );
+
+      expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 7000));
+    });
+
+    test("keeps the opener's time while no message joins the turn", () {
+      final activity = _activity(
+        messages: [
+          _prompt(id: "u1", at: 1000),
+          _agent(
+            id: "a1",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+        ],
+        isBusy: true,
+      );
+
+      expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 1000));
+    });
+
+    test("keeps the opener's time through automation and hidden user messages", () {
+      final activity = _activity(
+        messages: [
+          _prompt(id: "u1", at: 1000),
+          _agent(
+            id: "a1",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+          const MessageWithParts(
+            info: Message.assistant(
+              id: "auto",
+              sessionID: "s",
+              agent: null,
+              modelID: null,
+              providerID: null,
+              sender: MessageSender.system,
+              time: MessageTime(created: 6000, completed: null),
+            ),
+            parts: [MessagePart.text(id: "auto-text", sessionID: "s", messageID: "auto", text: "Reminder")],
+          ),
+          const MessageWithParts(
+            info: Message.user(
+              id: "hidden",
+              sessionID: "s",
+              agent: null,
+              time: MessageTime(created: 8000, completed: null),
+              promptId: null,
+            ),
+            parts: [],
+          ),
+        ],
+        isBusy: true,
+      );
+
+      expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 1000));
+    });
+
+    test("works since a follow-up sent before any loaded prompt", () {
+      final activity = _activity(
+        messages: [
+          _agent(
+            id: "a1",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+          _prompt(id: "u2", at: 4000),
+          _agent(
+            id: "a2",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+        ],
+        isBusy: true,
+      );
+
+      expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 4000));
+    });
+
+    test("works without a time when the latest mid-turn message carries none", () {
+      final activity = _activity(
+        messages: [
+          _prompt(id: "u1", at: 1000),
+          _agent(
+            id: "a1",
+            parts: [_tool(status: ToolStatus.completed)],
+          ),
+          _prompt(id: "u2", at: null),
+        ],
+        isBusy: true,
+      );
+
+      expect(activity, isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", isNull));
     });
 
     test("works without a time when the prompt carries none", () {

@@ -160,10 +160,15 @@ class const DesktopSessionDetailView({
           onBack: null,
           onShowDiffs: onShowDiffs,
           bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>
-              SessionDetailComposerControls(
+              // Voice lives with the composer, so a block that removes it also
+              // closes any recording.
+              DesktopVoiceInputScope(
                 projectId: projectId,
-                sessionId: sessionId,
-                source: source,
+                child: SessionDetailComposerControls(
+                  projectId: projectId,
+                  sessionId: sessionId,
+                  source: source,
+                ),
               ),
           pageChrome: SessionDetailPageChrome(
             columnWidths: const SessionDetailColumnWidths(

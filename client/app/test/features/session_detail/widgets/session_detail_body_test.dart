@@ -24,7 +24,6 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../helpers/test_helpers.dart";
-import "../../../helpers/voice_test_helpers.dart";
 
 class MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 

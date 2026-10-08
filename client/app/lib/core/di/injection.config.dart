@@ -23,14 +23,8 @@ import 'package:http/http.dart' as _i519;
 import 'package:image_picker/image_picker.dart' as _i183;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
-import 'package:sesori_mobile/capabilities/voice/audio_format_config.dart'
-    as _i430;
 import 'package:sesori_mobile/capabilities/voice/recorder_prewarm_client.dart'
     as _i361;
-import 'package:sesori_mobile/capabilities/voice/recording_file_provider.dart'
-    as _i62;
-import 'package:sesori_mobile/capabilities/voice/wake_lock_service.dart'
-    as _i511;
 import 'package:sesori_mobile/core/di/firebase_register_module.dart' as _i677;
 import 'package:sesori_mobile/core/di/register_module.dart' as _i124;
 import 'package:sesori_mobile/core/platform/app_lifecycle_observer.dart'
@@ -80,8 +74,6 @@ import 'package:sesori_mobile/core/platform/flutter_persistence_directory.dart'
 import 'package:sesori_mobile/core/platform/flutter_plugin_authentication_browser.dart'
     as _i987;
 import 'package:sesori_mobile/core/platform/flutter_url_launcher.dart' as _i10;
-import 'package:sesori_mobile/core/platform/flutter_voice_capture.dart'
-    as _i698;
 import 'package:sesori_mobile/core/platform/flutter_web_auth_client.dart'
     as _i489;
 import 'package:sesori_mobile/core/platform/gal_client.dart' as _i227;
@@ -122,11 +114,9 @@ extension GetItInjectableX on _i174.GetIt {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
     final firebaseRegisterModule = _$FirebaseRegisterModule();
-    gh.lazySingleton<_i430.AudioFormatConfig>(() => _i430.AudioFormatConfig());
     gh.lazySingleton<_i361.RecorderPrewarmClient>(
       () => _i361.RecorderPrewarmClient(),
     );
-    gh.lazySingleton<_i511.WakeLockService>(() => _i511.WakeLockService());
     gh.lazySingleton<_i519.Client>(() => registerModule.httpClient);
     gh.lazySingleton<_i553.RelayCryptoService>(
       () => registerModule.relayCryptoService,
@@ -171,12 +161,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i437.PathProviderTemporaryDirectoryProvider(),
     );
     gh.singleton<_i948.LifecycleSource>(() => _i875.AppLifecycleObserver());
-    gh.lazySingleton<_i62.RecordingFileProvider>(
-      () => _i62.RecordingFileProvider(
-        audioFormat: gh<_i430.AudioFormatConfig>(),
-        temporaryDirectoryClient: gh<_i948.TemporaryDirectoryClient>(),
-      ),
-    );
     gh.lazySingleton<_i948.ActiveBridgeLocality>(
       () => _i877.MobileActiveBridgeLocality(),
     );
@@ -244,6 +228,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => firebaseRegisterModule.enabledFirebaseMessagingStaticAdapter,
       registerFor: {_firebaseEnabled},
     );
+    gh.lazySingleton<_i948.VoiceCapture>(
+      () => registerModule.voiceCapture(
+        temporaryDirectoryClient: gh<_i948.TemporaryDirectoryClient>(),
+        recorderPrewarmClient: gh<_i361.RecorderPrewarmClient>(),
+      ),
+    );
     gh.lazySingleton<_i948.AnalyticsReleaseCutoffSource>(
       () => _i1005.NoOpAnalyticsReleaseCutoffSource(),
       registerFor: {_firebaseDisabled},
@@ -266,14 +256,6 @@ extension GetItInjectableX on _i174.GetIt {
         analytics: gh<_i398.FirebaseAnalytics>(),
       ),
       registerFor: {_firebaseEnabled},
-    );
-    gh.lazySingleton<_i948.VoiceCapture>(
-      () => _i698.FlutterVoiceCapture(
-        recorderPrewarmClient: gh<_i361.RecorderPrewarmClient>(),
-        fileProvider: gh<_i62.RecordingFileProvider>(),
-        wakeLockService: gh<_i511.WakeLockService>(),
-        audioFormat: gh<_i430.AudioFormatConfig>(),
-      ),
     );
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),

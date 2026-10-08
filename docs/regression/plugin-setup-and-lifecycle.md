@@ -180,6 +180,26 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   first v2 launch migrates the native database one-way, while PATH v1 stays supported.
   Attach mode without a server retains degraded v1 recovery; a later-started v2
   server requires a bridge restart to select its adapter.
+- A managed OpenCode start first looks for OpenCode 2's shared background server:
+  `<XDG_STATE_HOME or home/.local/state>/opencode/service.json`. It uses that server
+  when `/api/info` answers `200` for the registered pid at 2.0.11 or newer. Like
+  OpenCode's own client, it connects to whatever host the file lists, using the
+  file's password, with no loopback or tunnel check. The URL must be `http` with
+  an explicit port and no path beyond `/`; a wildcard host is dialled over loopback.
+  - **Attached:** the server is never owned, signalled, restarted or interrupted,
+    and diagnostics report `mode: shared` without the password. A private server
+    orphaned by a replaced bridge is still reclaimed first.
+  - **Not usable:** a missing, corrupt or non-`http` registration, or a booting,
+    failed, foreign, unreachable or too-old server, logs the reason and spawns a
+    private server as before. Known phase-1 limitation: a service started later
+    on the same database can resume that private server's in-flight turns.
+  - **Answer lost after discovery:** the plugin starts degraded on the v2 adapter
+    and keeps retrying the same URL.
+  - **Sharing off:** with `--opencode-no-shared-service`, an explicit
+    `--opencode-bin` or attach mode. `--opencode-port`, `--opencode-host` and
+    the password flags do not turn sharing off; they shape only the private
+    fallback server, and a degraded private start reports `mode: managed`.
+  - **Rediscovery:** the next plugin start looks for the service again.
 - A managed harness whose first handshake stalls does not hang bridge startup.
   Codex and OpenCode wait a bounded 15 seconds for that cold start: succeeding
   within it reports connected, failing within it reports degraded, and exceeding
@@ -450,6 +470,19 @@ behind HTML (including an oversized web UI page), HTML-only endpoints, a booting
 Descriptor fixtures cover version bounds, owned versus attached cleanup, cancellation
 while protocol detection is in flight, and production factory selection against a
 loopback v2 server. These checks do not prove native process teardown.
+Shared-service automation covers the registration path, decoding and URL rules, the
+pid, health and version gates, and routing:
+- attach without spawn or signal;
+- spawn when the service is missing or unhealthy;
+- the opt-out flag and an explicit binary;
+- degraded v2 after a lost answer;
+- orphan reclaim before attach.
+
+The live-plugin check runs an isolated `opencode serve --service` with its own
+`HOME` and XDG directories, and a source-run bridge pointed at the same state
+directory. It confirms that the bridge selects the shared server, and that events, a
+prompt and Stop work through it. OpenCode 2 on macOS is live. Linux and Windows path
+resolution is automated only.
 
 The OpenCode v2 transport also has fixture coverage for authenticated
 REST requests, typed data envelopes and request bodies, location scoping,
@@ -488,11 +521,15 @@ Source checks cover the minimum 2.0.11 message-query and interruption shapes;
 mapper/parser fixtures are not evidence of a native event sequence.
 
 V2 activity/service coverage seeds global session metadata and active IDs,
-with pending inputs read once per observed directory. Root/direct-child summaries
+with pending inputs read once per directory OpenCode currently has loaded
+(`GET /api/debug/location`). OpenCode keeps pending permissions and forms only in
+memory per loaded location, and every directory-scoped read loads that folder and
+keeps it resident, so the baseline must not fan out over every session folder; an
+empty loaded list (a fresh server) makes no pending-input reads. Root/direct-child summaries
 include input-only work and retain canonical project identity across worktrees.
 Failed refreshes preserve useful state but report unknown work state until a complete
-baseline succeeds. A known directory that no longer exists on disk (OpenCode answers
-its pending-input reads with 404) is logged and read as holding no pending input, so
+baseline succeeds. A loaded directory that no longer exists on disk (OpenCode answers
+a 404 to either pending-input read) is logged and read as holding no pending input, so
 the refresh still succeeds and live events keep flowing for every other session; the
 plugin's loopback-server coverage proves this. Other pending-input failures still fail
 the refresh. Deletion uses retained metadata without reading a deleted row.
@@ -566,6 +603,10 @@ owned-process exit; and restart.
   v2 startup reaches the v1 adapter after successful protocol detection, a refusal
   recommends downgrading a migrated database, an owned v2 runtime survives refusal,
   an attached runtime is signalled, or cancellation becomes an ordinary refusal.
+- With OpenCode's shared service running and healthy, the bridge spawns a second
+  server. Or the bridge signals, restarts or interrupts the shared service, logs or
+  reports its password, or fails to start instead of spawning when the registration
+  is unusable.
 - A stalled first handshake holds bridge startup past the cold-start budget, a
   budget-exceeded harness reports connected instead of degraded, or its late
   cold-start failure surfaces as an unhandled error rather than a log line.

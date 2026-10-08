@@ -4,6 +4,7 @@ import "package:flutter_local_notifications/flutter_local_notifications.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart" show createFlutterVoiceCapture;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_persistence/sesori_persistence.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -38,4 +39,9 @@ abstract class RegisterModule() {
       mOptions: MacOsOptions(accountName: PersistenceScope.masterKeyNamespace, usesDataProtectionKeychain: false),
     ),
   );
+
+  // Desktop has no native recorder-prewarm channel; that is a mobile startup optimization.
+  @lazySingleton
+  VoiceCapture voiceCapture({required TemporaryDirectoryClient temporaryDirectoryClient}) =>
+      createFlutterVoiceCapture(temporaryDirectoryClient: temporaryDirectoryClient, recorderPrewarm: null);
 }

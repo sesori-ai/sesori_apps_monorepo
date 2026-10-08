@@ -40,6 +40,9 @@ void main() {
     when(() => connection.status).thenAnswer((_) => statuses);
     getIt.registerSingleton<RegisteredBridgesService>(bridges);
     getIt.registerSingleton<ConnectionService>(connection);
+    final voice = MockVoiceTranscriptionService();
+    stubVoiceTranscriptionService(service: voice);
+    getIt.registerSingleton<VoiceTranscriptionService>(voice);
     bridgeControlCubit = _MockBridgeControlCubit();
     when(bridgeControlCubit.recoverConnection).thenAnswer((_) async {});
     whenListen(

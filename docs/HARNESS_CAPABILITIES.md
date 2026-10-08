@@ -244,14 +244,16 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 
 ## Live timers
 
-"Working…" ticks the time since the running turn's prompt was sent, from the
-prompt message's `time.created`. Without that time it reads plain "Working…";
-the client never starts its own clock.
+"Working…" ticks the time since the running turn's latest user message was
+sent: a message sent mid-turn, else the prompt that opened the turn, from that
+message's `time.created`. Each mid-turn message restarts it; automation does
+not. Without that time it reads plain "Working…"; the client never starts its
+own clock.
 
 | Harness | Prompt sent time |
 |---|---|
 | OpenCode, Codex, Pi, DeepSeek | ✅ Live and after reload. |
-| Claude | ✅ Live from the `--replay-user-messages` echo's `timestamp` (verified 2026-09-26 on CLI 2.1.281), and after reload from the transcript record. A slash command's synthetic bubble is stamped at dispatch. |
+| Claude | ✅ Live from the `--replay-user-messages` echo's `timestamp` (verified 2026-09-26 on CLI 2.1.281), and after reload from the transcript record. A slash command's synthetic bubble is stamped at dispatch. A message sent mid-turn is stamped when the CLI picks it up at its next tool step, so the restart waits for that step. |
 | Grok, Antigravity, Copilot, Cursor, Hermes, OMP | ✅ For prompts Sesori sent: ACP carries no message time, so the bridge stamps the instant it dispatched the prompt (or created the session for a first prompt). A prompt read back from the harness's own history (`session/load`) stays undated, so a turn it opens shows plain "Working…". |
 
 The Prompts screen shows each prompt's time and groups the prompts under day
@@ -305,6 +307,7 @@ V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the 
 | Native archival | Not supported; archival stays in the bridge database. |
 | Prompt/compaction correlation | Implemented with caller-supplied native IDs and stateless projection. |
 | Custom-command correlation | Not supported by the native command route: no caller ID or result ID is exposed. Command dispatch still waits for native acceptance. |
+| Shared background server | Implemented (attach only). When OpenCode's own `opencode serve --service` is registered, healthy and 2.0.11 or newer, the bridge uses it instead of spawning a private server. The phone, TUI and desktop then share one server's turns, events, permissions, forms and Stop. Turn it off with `--opencode-no-shared-service`. When no service is running in managed mode, the bridge still spawns its own server, and a service started later on the same database can resume that server's in-flight turns a second time. OpenCode-specific: no other harness has a shared server, and OpenCode 1 has no service. |
 
 ## Managed runtime
 

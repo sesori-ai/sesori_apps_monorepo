@@ -307,7 +307,8 @@ The main pane hosts one full-width routed page.
   Escape/outside dismiss;
   active text editing and owned dialogs retain their closer dismissal order.
 - General contains appearance, launch-at-login, desktop app-update guidance and support/legal information.
-  Desktop's composer is text-only, so General does not advertise an ineffective Voice/Text preference.
+  Desktop's composer always leads with text (the mic is an extra click-to-talk control), so General does not
+  advertise an ineffective Voice/Text preference.
   Bridge distinguishes connected-bridge configuration from local
   status/logs. Notifications exposes desktop attention, not mobile push options.
   Account owns supervised logout; failed logout stays open, and delayed success

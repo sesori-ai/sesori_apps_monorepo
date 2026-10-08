@@ -4,7 +4,8 @@
 
 The mobile composer records speech while the user holds the mic control, uploads the audio to the Sesori auth server
 for transcription, and inserts the text into the prompt field for review before sending. A voice-first or text-first
-preference decides which control leads. The device microphone and transcription endpoint are external. The bridge
+preference decides which control leads. The desktop composer stays text-first and adds the mic as an extra
+control on the same pipeline: one click starts listening, a second click transcribes, and Escape cancels. The device microphone and transcription endpoint are external. The bridge
 independently prepares optional project-scoped vocabulary from bounded local evidence; no backend plugin participates.
 
 ## Required Behavior
@@ -56,7 +57,13 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   value.
 - Mobile Settings groups Harnesses and Default input under Sessions. The keyboard row shows the live
   Voice/Text value and opens a dedicated page rather than selecting a mode inline.
-  Desktop's composer is text-only and does not expose this ineffective preference in General.
+  Desktop's composer always leads with text, so General does not expose this ineffective preference.
+- Desktop click-to-talk: the mic click starts listening without moving keyboard focus out of the composer; while
+  listening the mic pulses softly (static under reduced motion), its tooltip reads "Stop and transcribe", the hint
+  names click-to-transcribe and Esc-to-cancel, the options give way to the shared X cancel target, and the composer
+  does not resize. Clicking elsewhere never stops or discards the recording; only the mic click, the X, Escape, the
+  maximum duration, or leaving the composer ends it. No
+  sound plays. macOS asks for microphone access once through the system prompt.
 - The Default input page has an inline title, explanatory subtitle, and two mutually exclusive Voice/Text previews.
   Selection updates the existing app-root preference and persists immediately; external preference changes update
   both the row and the open page. Back is the sole navigation action and returns to Settings.
@@ -68,7 +75,7 @@ independently prepares optional project-scoped vocabulary from bounded local evi
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
 | L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, current-project/active-view glossary triggers, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, and shutdown cancellation. |
-| L3 Release | Mobile client E2E: [recording and preference navigation](#client-release-coverage-l3). |
+| L3 Release | Mobile and macOS desktop client E2E: [recording and preference navigation](#client-release-coverage-l3). |
 | L4 Extended | Client end to end on iOS: change harness availability from another surface while recording and while transcription is pending; no text or send lands after the block, and voice returns only after session prerequisites recover. Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording. |
 
@@ -78,6 +85,9 @@ On the release-target mobile platform, hold to record, release to transcribe, ed
 drag to cancel, and check layout stability and which control leads under each input preference.
 Open Settings → Default input, select each mode, check Back returns to Settings from a non-home opener,
 reopen the page and verify the saved row value.
+On the macOS desktop build, grant the first microphone prompt, click the mic, speak, click again and edit the
+inserted transcript; start again and press Escape to cancel; click into the transcript mid-recording and confirm
+the recording continues.
 
 ## Exploration Guidance
 
@@ -114,8 +124,12 @@ interruptions such as a call.
 - Microphone and hosted transcription are external and non-deterministic; assert usable non-empty text, never exact
   wording. Simulators and fakes cannot prove real capture, iOS audio-session behavior, or haptics; those stay partial
   without L5.
-- Transcription is unavailable while unauthenticated or offline, which is expected degraded behavior. Mobile only:
-  desktop and bridge have no voice capability.
+- Transcription is unavailable while unauthenticated or offline, which is expected degraded behavior. The bridge has
+  no voice capability beyond the glossary.
+- Desktop capture is unverified on device: the macOS feel check has not been run yet and is pending a check on a
+  build from `main` after merge. Windows records through Media Foundation and is unverified. Linux needs
+  `parecord` and `ffmpeg` on the PATH; without them the composer shows the recording-failed notice. Leaving a
+  desktop session while recording discards the recording, as on the phone.
 - Retained recordings are composer-local and memory-owned. They do not survive composer disposal, route replacement,
   process restart, or a valid submission of other composer content. Failed best-effort deletion can still leave an
   unowned audio file on disk.
@@ -126,9 +140,11 @@ interruptions such as a call.
 
 `client/module_app_ui/test/features/settings/default_input_settings_view_test.dart`,
 `client/app/test/features/settings/`, `client/desktop/test/features/settings/`,
-`client/app/test/capabilities/voice/`, `client/app/test/features/session_detail/widgets/`,
+`client/module_app_ui/test/platform/voice/`, `client/app/test/features/session_detail/widgets/`,
+`client/module_app_ui/test/features/session_detail/widgets/prompt_input_pointer_voice_test.dart`,
 `client/module_core/test/{capabilities,cubits,repositories,services}/`, and bridge glossary tests under
-`bridge/app/test/{bridge,listeners}/`; production code under `client/app/lib/core/platform/`,
-`client/app/lib/features/session_detail/widgets/`,
+`bridge/app/test/{bridge,listeners}/`; production code under `client/module_app_ui/lib/src/platform/voice/`,
+`client/module_app_ui/lib/src/features/session_detail/widgets/`, `client/app/lib/features/session_detail/widgets/`,
+`client/desktop/lib/core/widgets/desktop_composer_presentation_scope.dart`,
 `client/module_core/lib/src/{capabilities,cubits,platform,repositories,services}/`, and
 `bridge/app/lib/src/{listeners,repositories,services}/`.

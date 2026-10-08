@@ -1,7 +1,9 @@
 import "dart:async";
 import "dart:convert";
 import "dart:io";
+import "dart:math";
 
+import "package:opencode_plugin/src/open_code_raw_http_client.dart";
 import "package:opencode_plugin/src/v2/opencode_v2_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
@@ -248,6 +250,18 @@ void main() {
     expect(server.streams, hasLength(1));
   });
 
+  test("cold start asks many loaded folders for pending input without exceeding the socket cap", () async {
+    server.extraDirectories = [for (var index = 0; index < 20; index++) "/fixture/folder-$index"];
+    server.pendingInputGate = Completer<void>();
+    final initializing = plugin.initialize();
+    await server.pendingInputSaturated.future.timeout(const Duration(seconds: 5));
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(server.maxPendingInputInFlight, openCodeMaxConnectionsPerHost);
+    server.pendingInputGate!.complete();
+    await initializing;
+    expect(plugin.currentWorkState, PluginWorkState.idle);
+  });
+
   test("managed interruption waits for native settlement rather than the interrupt ACK", () async {
     await plugin.initialize();
     final busy = plugin.workState.firstWhere((state) => state == PluginWorkState.busy);
@@ -275,7 +289,12 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
   final agentAnswered = Completer<void>();
   final promptEntered = Completer<void>();
   final interrupted = Completer<void>();
+  final pendingInputSaturated = Completer<void>();
   Completer<void>? snapshotGate;
+  Completer<void>? pendingInputGate;
+  int pendingInputInFlight = 0;
+  int maxPendingInputInFlight = 0;
+  List<String> extraDirectories = [];
   Completer<void>? agentGate;
   Completer<void>? promptGate;
   int snapshotReads = 0;
@@ -345,6 +364,14 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
         if (!agentEntered.isCompleted) agentEntered.complete();
         await agentGate?.future;
       }
+      if (path == "/api/form" || path == "/api/permission/request") {
+        maxPendingInputInFlight = max(maxPendingInputInFlight, ++pendingInputInFlight);
+        if (pendingInputInFlight == openCodeMaxConnectionsPerHost && !pendingInputSaturated.isCompleted) {
+          pendingInputSaturated.complete();
+        }
+        await pendingInputGate?.future;
+        pendingInputInFlight--;
+      }
       if (missingDirectory != null &&
           (path == "/api/form" || path == "/api/permission/request") &&
           request.uri.queryParameters["location[directory]"] == missingDirectory) {
@@ -383,6 +410,11 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
           },
           "/api/project" => [native["project"]],
           "/api/location" => v2LocationFixture,
+          "/api/debug/location" => [
+            {"directory": _directory},
+            if (missingDirectory case final directory?) {"directory": directory},
+            for (final directory in extraDirectories) {"directory": directory},
+          ],
           "/api/session" => {
             "data": [
               v2SessionFixture,
@@ -390,6 +422,12 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
                 {
                   ...v2SessionFixture,
                   "id": "session-deleted",
+                  "location": {"directory": directory},
+                },
+              for (final (index, directory) in extraDirectories.indexed)
+                {
+                  ...v2SessionFixture,
+                  "id": "session-extra-$index",
                   "location": {"directory": directory},
                 },
             ],
@@ -427,7 +465,7 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
   }
 
   Future<void> close() async {
-    for (final gate in [snapshotGate, agentGate, promptGate]) {
+    for (final gate in [snapshotGate, agentGate, promptGate, pendingInputGate]) {
       if (gate != null && !gate.isCompleted) gate.complete();
     }
     await server.close(force: true);

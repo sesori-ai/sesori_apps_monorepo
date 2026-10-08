@@ -8,6 +8,9 @@
 	     ID (not MAS); PR 3.0a finalizes the hardened-runtime entitlements. -->
 	<key>com.apple.security.app-sandbox</key>
 	<false/>
+	<!-- Composer voice input; hardened runtime blocks the mic without it. -->
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
 	<key>com.apple.security.network.server</key>

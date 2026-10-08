@@ -1,12 +1,10 @@
 import "package:flutter/foundation.dart" show visibleForTesting;
-import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/logging.dart";
 import "package:wakelock_plus/wakelock_plus.dart";
 
-@lazySingleton
 class WakeLockService({
-  @ignoreParam @visibleForTesting final Future<void> Function() _enable = WakelockPlus.enable,
-  @ignoreParam @visibleForTesting final Future<void> Function() _disable = WakelockPlus.disable,
+  @visibleForTesting final Future<void> Function() _enable = WakelockPlus.enable,
+  @visibleForTesting final Future<void> Function() _disable = WakelockPlus.disable,
 }) {
   Future<void> _operationQueue = Future<void>.value();
   int _activeLeaseCount = 0;
