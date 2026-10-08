@@ -97,3 +97,5 @@ Dart from Flutter 3.47.5-stable first on `PATH`.
   not applied), `docs/regression/session-turns.md` (behavior, failure signal,
   known limitation) and `docs/regression/tools-and-file-changes.md` (a
   replacing row stays put).
+- Architecture implementation review (one pass, `origin/main...HEAD`):
+  approved, no findings.
