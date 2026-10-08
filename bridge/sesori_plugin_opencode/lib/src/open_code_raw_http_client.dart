@@ -21,6 +21,12 @@ const _defaultTimeout = Duration(seconds: 30);
 /// error handling classify it like any other upstream failure.
 const _timeoutStatusCode = 504;
 
+/// Caps the sockets one plugin opens to its OpenCode server. A cold start asks
+/// every known folder for pending input at once; uncapped, ~94 folders opened
+/// ~190 sockets and hit the bridge's 256 file-descriptor limit. Queued requests
+/// count towards [_defaultTimeout]; that 94-folder cold start takes ~10 s here.
+const openCodeMaxConnectionsPerHost = 8;
+
 enum _HttpMethod() { get, post, patch, delete }
 
 /// Transport-level HTTP client for the OpenCode REST API.

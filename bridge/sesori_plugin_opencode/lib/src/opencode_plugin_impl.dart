@@ -84,7 +84,7 @@ class OpenCodePlugin._({
     void Function()? onConnected,
     void Function()? onDisconnected,
   }) {
-    final httpClient = io.HttpClient();
+    final httpClient = io.HttpClient()..maxConnectionsPerHost = openCodeMaxConnectionsPerHost;
     final api = OpenCodeApi(
       client: OpenCodeRawHttpClient(
         serverURL: serverUrl,
