@@ -307,6 +307,7 @@ V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the 
 | Native archival | Not supported; archival stays in the bridge database. |
 | Prompt/compaction correlation | Implemented with caller-supplied native IDs and stateless projection. |
 | Custom-command correlation | Not supported by the native command route: no caller ID or result ID is exposed. Command dispatch still waits for native acceptance. |
+| Shared background server | Implemented (attach only). When OpenCode's own `opencode serve --service` is registered, healthy and 2.0.11 or newer, the bridge uses it instead of spawning a private server. The phone, TUI and desktop then share one server's turns, events, permissions, forms and Stop. Turn it off with `--opencode-no-shared-service`. When no service is running in managed mode, the bridge still spawns its own server, and a service started later on the same database can resume that server's in-flight turns a second time. OpenCode-specific: no other harness has a shared server, and OpenCode 1 has no service. |
 
 ## Managed runtime
 
