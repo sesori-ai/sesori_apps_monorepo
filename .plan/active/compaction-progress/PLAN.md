@@ -302,6 +302,11 @@ the consumed ACP seam. "Working…" only.
 
   A re-import that leaves two rows, or a visible re-insert, is one of this
   plan's failure signals.
+
+  Outcome (step 5, R1): the probe found no start-time id in the transcript,
+  so Claude uses option 2. The message list did animate the re-key, and the
+  user chose a small app fix over option 3: a new row that takes the place
+  of a row that left in the same update stays put instead of easing in.
 - **P11 — A failure note keeps one line.** The error is a single ellipsized
   line in the row's detail. The full error is in the row's semantics label.
   There is no modal and no Retry (C5 declined Retry).
@@ -1038,6 +1043,10 @@ numbers them Q1–Q6. These answers are final; do not reopen them.
   on. No old-app code.
 - **Q6 — May failure notes the harness's own history lacks disappear?** Yes,
   accepted. They survive one bridge history re-import, then disappear.
+- **R1 — The message list eased a re-keyed Claude compaction row in again
+  (P10 option 2). Accept it, fix the app, or use option 3?** Answered
+  2026-10-08: "Small app fix: a replacing row does not animate". Step 5
+  ships the fix in `SessionDetailMessageList`.
 
 ## Plan Review Record
 

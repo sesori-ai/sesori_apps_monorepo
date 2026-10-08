@@ -1,8 +1,9 @@
 # Step 5 — Show Claude Compaction Live, With Its Outcome
 
-Branch `compaction-progress/claude`. Claude plugin only, plus one `bridge/app`
-capture test. No wire or database change: the plugin fills states and fields
-that steps 1–4 already carry.
+Branch `compaction-progress/claude`. The Claude plugin, one `bridge/app`
+capture test, and the R1 fix in `module_app_ui`'s message list. No wire or
+database change: the plugin fills states and fields that steps 1–4 already
+carry.
 
 ## Probe (Claude Code 2.1.291, the plan's probe version)
 
@@ -68,10 +69,14 @@ history keys it by the summary record. The capture test
 prompt neighbour whose id differs from its imported twin, and proves a replay
 leaves one row, now under the history id.
 
-The client check failed: `SessionDetailMessageList` treats the new id as an
-arriving agent row, so while the list follows the bottom the row collapses
-and grows back over 200 ms on the refresh after a re-import. Per P10 this
-needs the user's decision before shipping.
+The client check failed: `SessionDetailMessageList` treated the new id as an
+arriving agent row, so while the list followed the bottom the row collapsed
+and grew back over 200 ms on the refresh after a re-import. The user chose
+the small app fix (R1, 2026-10-08): between two rows both builds share, as
+many new rows as left there take their places and stay put; only the rest
+ease in. A message-list test re-keys a prompt and an agent row in one
+refresh (nothing eases, nothing moves), then appends a row (it eases in), and
+fails without the fix.
 
 ## Evidence
 
@@ -85,6 +90,10 @@ Dart from Flutter 3.47.5-stable first on `PATH`.
   boundary record (DTO, catalog and history mapper together).
 - `bridge/app`: `dart analyze --fatal-infos` no issues;
   `chat_history_capture_test.dart` all passed, including the P10 test.
-- Docs: `docs/HARNESS_CAPABILITIES.md` (column split, Claude cells, re-key
-  note) and `docs/regression/session-turns.md` (behavior, failure signal,
-  known limitation).
+- `module_app_ui`: `dart analyze --fatal-infos` no issues;
+  `flutter test test/features/session_detail/` 425 passed.
+- Docs: the Claude row of `docs/HARNESS_CAPABILITIES.md` (merged onto
+  main's two-column table from steps 6–7, so the planned column split was
+  not applied), `docs/regression/session-turns.md` (behavior, failure signal,
+  known limitation) and `docs/regression/tools-and-file-changes.md` (a
+  replacing row stays put).

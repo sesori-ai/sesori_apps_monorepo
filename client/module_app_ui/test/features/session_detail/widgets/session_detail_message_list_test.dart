@@ -9,6 +9,7 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/compaction_part_widget.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_jump_notifier.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_prompt_slot.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_layout.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_sticky_prompt_overlay.dart";
@@ -566,6 +567,34 @@ Future<void> _trackpadPinch(WidgetTester tester, {required Offset center, requir
 }
 
 void main() {
+  testWidgets("a refresh that re-keys rows keeps them in place, while a new row still eases in", (tester) async {
+    final harness = await _pumpTurns(
+      tester,
+      messages: [
+        _message(messageId: "live-prompt", role: "user", text: "Keep going", createdAtMs: 100),
+        _message(messageId: "live-reply", role: "assistant", text: "Context compacted", createdAtMs: 200),
+      ],
+    );
+    final top = tester.getTopLeft(find.text("Context compacted")).dy;
+    bool easing() =>
+        tester.stateList(find.byType(TranscriptPresence)).any((state) => "$state".contains("tracking 1 ticker"));
+
+    // The history twins replace both live rows at the same place.
+    harness.replaceMessages([
+      _message(messageId: "history-prompt", role: "user", text: "Keep going", createdAtMs: 100),
+      _message(messageId: "history-reply", role: "assistant", text: "Context compacted", createdAtMs: 200),
+    ]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(easing(), isFalse);
+    expect(tester.getTopLeft(find.text("Context compacted")).dy, top);
+
+    harness.appendNewestMessage(_message(messageId: "new-reply", role: "assistant", text: "Next", createdAtMs: 300));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(easing(), isTrue);
+  });
+
   testWidgets("renders system and unknown senders as automation instead of agent output", (tester) async {
     await tester.pumpWidget(
       _SessionDetailMessageListHarness(
