@@ -109,3 +109,53 @@ Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
 888 changed lines against the merge base (709 added, 179 deleted): 89 of
 this file, about 340 of production code, about 385 of tests and 73 of docs.
 Nothing is generated.
+
+## Step 7b — One Codex Row After A Reload
+
+Branch `compaction-progress/codex-reimport-dedup`. Step 9's live run on Codex
+found two "Context compacted" rows after a manual compact and a reload: the
+live row under the item id, and the history row `codex-compaction-N`, about
+11 s apart and with no summary.
+
+### Root Cause
+
+The live row is keyed by the `contextCompaction` item id and created at
+`startedAtMs`. The history mapper built its row from the rollout's
+`compacted` line alone, under a replay-counter id and that line's timestamp,
+which Codex writes when compaction ends. So neither the id nor the time
+agreed, and 5b's replay rule (content plus an equal known time) could not
+pair the rows.
+
+The rollout also stores the live item. After the `compacted` line, Codex
+writes an `item_completed` event with `item: {type: ContextCompaction, id}`
+and `started_at_ms`/`completed_at_ms`, the same values the live notification
+carried. Every local rollout with a compaction has one, except a forked
+session's inherited compaction, which has no live row.
+
+### Fix
+
+Codex plugin only. The rollout DTO reads the `ContextCompaction` completed
+item and the event's two times. The history mapper re-keys the last
+`compacted` row with that item's id and part id `<id>-tool` and, when the
+start is present, the live time. So a reload replaces the live row by exact
+identity, and the bridge's replay rule is unchanged. A `compacted` line with
+no item keeps `codex-compaction-N` and its own timestamp.
+
+### Evidence
+
+Dart 3.13.4 from Flutter 3.47.5-stable first on `PATH`.
+
+- `sesori_plugin_codex`: `dart analyze --fatal-infos` no issues; all 481
+  tests pass.
+- New test: a rollout in Codex's record order (`compacted`, another event,
+  then the `ContextCompaction` item), twice, once without times. Both rows
+  take the item id and part id; the first takes the item's start and end, the
+  second keeps the `compacted` time and its summary. Without the fix it fails
+  with `codex-compaction-1` instead of the item id.
+- Live rerun, source-run bridge on slot 1 through the debug port: a new
+  one-prompt Codex session, manual compact, then a forced stale re-read (the
+  sync state's backend activity bumped past its watermark). The re-import
+  rewrote every row and left one compaction row under the live item id, with
+  the live creation and completion times.
+
+No wire or database change.

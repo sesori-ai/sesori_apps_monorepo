@@ -1904,6 +1904,73 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
     });
 
+    test("message projection keys a compaction row by its ContextCompaction item, like the live row", () {
+      // Codex's real record order: the `compacted` line, then other records,
+      // then the completed item that the live `contextCompaction` row came from.
+      String compactionItemLine({required String id, required Map<String, Object?> times}) => jsonEncode({
+        "timestamp": "2026-10-08T14:12:47.525Z",
+        "type": "event_msg",
+        "payload": {
+          "type": "item_completed",
+          "thread_id": "019a0000-1111-2222-3333-cccccccccccd",
+          "turn_id": "turn-compact",
+          "item": {"type": "ContextCompaction", "id": id},
+          ...times,
+        },
+      });
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/10/08/rollout-compacted-item.jsonl",
+        sessionId: "019a0000-1111-2222-3333-cccccccccccd",
+        cwd: "/repo/app",
+        extraLines: [
+          jsonEncode({
+            "timestamp": "2026-10-08T14:12:47.429Z",
+            "type": "compacted",
+            "payload": {"message": "", "replacement_history": <Object?>[]},
+          }),
+          jsonEncode({
+            "timestamp": "2026-10-08T14:12:47.438Z",
+            "type": "event_msg",
+            "payload": {"type": "thread_settings_applied"},
+          }),
+          compactionItemLine(
+            id: "cmp-live-1",
+            times: {"started_at_ms": 1791468756635, "completed_at_ms": 1791468767525},
+          ),
+          jsonEncode({
+            "timestamp": "2026-10-08T14:20:00.000Z",
+            "type": "compacted",
+            "payload": {"message": "Continue the auth work.", "replacement_history": <Object?>[]},
+          }),
+          // An item with no times keeps the `compacted` line's time.
+          compactionItemLine(id: "cmp-live-2", times: const {}),
+        ],
+      );
+
+      final messages = projectRootMessagesWithoutChildReplay(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-cccccccccccd",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+
+      // The live mapper emits message `<item id>` with part `<item id>-tool`,
+      // created at `startedAtMs`, so the bridge's replay pairs them by id.
+      expect(messages.map((message) => message.info.id), ["cmp-live-1", "cmp-live-2"]);
+      expect(messages.map((message) => message.parts.single.id), ["cmp-live-1-tool", "cmp-live-2-tool"]);
+      expect(messages.first.info.time, const PluginMessageTime(created: 1791468756635, completed: 1791468767525));
+      expect(messages.last.info.time, const PluginMessageTime(created: 1791469200000, completed: null));
+      expect(
+        messages.last.parts.single,
+        isA<PluginMessagePartCompaction>().having(
+          (part) => part.compactionState,
+          "compactionState",
+          const PluginCompactionState.completed(summary: "Continue the auth work.", freedTokens: null, trigger: null),
+        ),
+      );
+    });
+
     test("message projection restores image generations with stable persisted and fallback ids", () {
       final path = _writeRollout(
         codexHome,
