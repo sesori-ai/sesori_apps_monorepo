@@ -101,6 +101,8 @@ sealed class CodexRolloutEventDto with _$CodexRolloutEventDto {
     @JsonKey(name: "thread_id") required String threadId,
     @JsonKey(name: "turn_id") required String turnId,
     required CodexRolloutCompletedItemDto item,
+    @JsonKey(name: "started_at_ms") required int? startedAtMs,
+    @JsonKey(name: "completed_at_ms") required int? completedAtMs,
   }) = CodexRolloutItemCompletedEventDto;
 
   @FreezedUnionValue("image_generation_end")
@@ -162,6 +164,13 @@ sealed class CodexRolloutCompletedItemDto with _$CodexRolloutCompletedItemDto {
     @JsonKey(name: "agent_thread_id") required String agentThreadId,
     @JsonKey(name: "agent_path") required String agentPath,
   }) = CodexRolloutCompletedSubAgentActivityDto;
+
+  /// Written after the `compacted` line. [id] is the live
+  /// `contextCompaction` item id.
+  @FreezedUnionValue("ContextCompaction")
+  const factory contextCompaction({
+    required String id,
+  }) = CodexRolloutCompletedContextCompactionDto;
 
   const factory unknown() = CodexRolloutUnknownCompletedItemDto;
 

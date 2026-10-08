@@ -91,6 +91,8 @@ CodexRolloutItemCompletedEventDto _$CodexRolloutItemCompletedEventDtoFromJson(
   item: CodexRolloutCompletedItemDto.fromJson(
     Map<String, dynamic>.from(json['item'] as Map),
   ),
+  startedAtMs: (json['started_at_ms'] as num?)?.toInt(),
+  completedAtMs: (json['completed_at_ms'] as num?)?.toInt(),
   $type: json['type'] as String?,
 );
 
@@ -179,6 +181,13 @@ const _$CodexSubAgentActivityKindEnumMap = {
   CodexSubAgentActivityKind.completed: 'completed',
   CodexSubAgentActivityKind.unknown: 'unknown',
 };
+
+CodexRolloutCompletedContextCompactionDto
+_$CodexRolloutCompletedContextCompactionDtoFromJson(Map json) =>
+    CodexRolloutCompletedContextCompactionDto(
+      id: json['id'] as String,
+      $type: json['type'] as String?,
+    );
 
 CodexRolloutUnknownCompletedItemDto
 _$CodexRolloutUnknownCompletedItemDtoFromJson(Map json) =>
