@@ -388,6 +388,16 @@ Live plugin plus client, every supporting production plugin:
 - A forced Claude re-import keeps follow-ups, peers and task outcomes in their
   turns.
 
+Last recorded run, 2026-10-06 to 2026-10-08, `Partial`: the user confirmed the pinch in on
+their real devices, the iPhone and the macOS trackpad (`Pass`). On 2026-10-08
+they confirmed the reworked pinch out in a macOS release build (`Pass`); on
+Android it is checked in the next internal build. Every other check above,
+including the pinch out on the iPhone and Android, is `Not run`. Automated
+tests cover related behavior but do not satisfy these device, platform or live
+checks, and some, such as the real-iPhone scroll for visible lag and the
+analytics event's arrival, have no automated stand-in. The plan's step 18
+lists each cell and its coverage.
+
 ## Exploration Guidance
 
 Vary where the reader is: mid-turn, a prompt near the top edge, the latest
@@ -567,5 +577,5 @@ answer, and on a trackpad while text streams.
 - The bridge's prompt search: `client/module_core/lib/src/cubits/session_prompts/`
   and `client/module_core/test/cubits/session_prompts/prompt_search_cubit_test.dart`;
   the route is in `docs/regression/session-history-and-recovery.md`
-- `.plan/active/turn-navigation/PLAN.md` and
+- `.plan/completed/turn-navigation/PLAN.md` and
   `.plan/completed/transcript-history/PLAN.md`
