@@ -366,6 +366,13 @@ defaults and queued client sends coherent.
   re-import re-keys a live row to the summary record's id at the same place,
   leaving one row, also after the bridge's own `/compact` bubble, which the
   transcript never has. Verified live on Claude Code 2.1.291.
+  An automatic compaction that runs before the CLI echoes the prompt opening
+  the turn shows below that prompt: the plugin echoes the prompt first, under
+  the uuid its stdin frame carried (the CLI keeps it for its own echo and the
+  transcript record), and drops the CLI's later echo. Live order, a reload and
+  a re-import all show prompt, then compaction row, and the prompt never
+  jumps. A compaction that starts mid-turn, with the opener already echoed,
+  leaves a pending mid-turn prompt to its own echo.
 - A Claude `<task-notification>` user turn (native `origin.kind:
   task-notification`, or a whole envelope on CLIs without origin) never
   renders as a user bubble, live or after transcript replay. When its tool-use

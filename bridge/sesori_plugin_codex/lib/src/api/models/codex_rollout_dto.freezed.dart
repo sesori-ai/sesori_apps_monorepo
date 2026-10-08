@@ -1620,6 +1620,10 @@ CodexRolloutCompletedItemDto _$CodexRolloutCompletedItemDtoFromJson(
           return CodexRolloutCompletedContextCompactionDto.fromJson(
             json
           );
+                case 'UserMessage':
+          return CodexRolloutCompletedUserMessageDto.fromJson(
+            json
+          );
         
           default:
             return CodexRolloutUnknownCompletedItemDto.fromJson(
@@ -1802,6 +1806,78 @@ class _$CodexRolloutCompletedContextCompactionDtoCopyWithImpl<$Res>
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? id = null,}) {
   return _then(CodexRolloutCompletedContextCompactionDto(
+id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutCompletedUserMessageDto implements CodexRolloutCompletedItemDto {
+  const CodexRolloutCompletedUserMessageDto({required this.id,  String? $type}): $type = $type ?? 'UserMessage';
+  factory CodexRolloutCompletedUserMessageDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutCompletedUserMessageDtoFromJson(json);
+
+ final  String id;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutCompletedItemDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutCompletedUserMessageDtoCopyWith<CodexRolloutCompletedUserMessageDto> get copyWith => _$CodexRolloutCompletedUserMessageDtoCopyWithImpl<CodexRolloutCompletedUserMessageDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompletedUserMessageDto&&(identical(other.id, id) || other.id == id));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,id);
+}
+
+@override
+String toString() {
+    return 'CodexRolloutCompletedItemDto.userMessage(id: $id)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutCompletedUserMessageDtoCopyWith<$Res> implements $CodexRolloutCompletedItemDtoCopyWith<$Res> {
+  factory $CodexRolloutCompletedUserMessageDtoCopyWith(CodexRolloutCompletedUserMessageDto value, $Res Function(CodexRolloutCompletedUserMessageDto) _then) = _$CodexRolloutCompletedUserMessageDtoCopyWithImpl;
+@useResult
+$Res call({
+ String id
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutCompletedUserMessageDtoCopyWithImpl<$Res>
+    implements $CodexRolloutCompletedUserMessageDtoCopyWith<$Res> {
+  _$CodexRolloutCompletedUserMessageDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutCompletedUserMessageDto _self;
+  final $Res Function(CodexRolloutCompletedUserMessageDto) _then;
+
+/// Create a copy of CodexRolloutCompletedItemDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? id = null,}) {
+  return _then(CodexRolloutCompletedUserMessageDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,
   ));

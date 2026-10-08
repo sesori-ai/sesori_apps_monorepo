@@ -151,10 +151,13 @@ class ClaudeStreamClient({
 
   /// Sends a user turn. Content blocks are built by the caller.
   ///
+  /// The CLI keeps [uuid] as the id of its echo and of the transcript record
+  /// (verified on 2.1.221 and 2.1.294).
+  ///
   /// Throws [ClaudeControlException] when the process has already exited or the
   /// frame cannot be written. Calls after explicit teardown remain a no-op so a
   /// late UI callback cannot revive a disposed session.
-  void sendUserMessage({required List<Map<String, Object?>> content}) {
+  void sendUserMessage({required List<Map<String, Object?>> content, required String uuid}) {
     final process = _process;
     if (process == null) return;
     if (_exited.isCompleted) {
@@ -167,6 +170,7 @@ class ClaudeStreamClient({
       "type": "user",
       "message": {"role": "user", "content": content},
       "session_id": _launchSpec.launch.sessionId,
+      "uuid": uuid,
       // Claude absorbs `next` messages at the next tool boundary when a turn
       // is active, without interrupting the model response currently streaming.
       "priority": "next",

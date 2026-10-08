@@ -407,6 +407,53 @@ void main() {
       await subscription.cancel();
     });
 
+    test("shows a prompt above the compaction Claude runs before echoing it", () async {
+      await harness.createSession();
+      final first = harness.processes.single;
+      await waitForFrame(first, "user");
+      first.emit(_result());
+      await pump();
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+
+      await harness.plugin.sendPrompt(
+        fastMode: false,
+        promptId: "prompt-1",
+        sessionId: testSessionId,
+        parts: const [PluginPromptPart.text(text: "follow-up")],
+        variant: null,
+        agent: "Agent",
+        model: (providerID: "anthropic", modelID: "default"),
+      );
+      await _waitForUserText(first, "follow-up");
+      final written = first.written.lastWhere((frame) => frame["type"] == "user");
+      final uuid = written["uuid"]! as String;
+      // Claude compacts first and echoes the prompt only afterwards.
+      first.emit({
+        "type": "system",
+        "subtype": "status",
+        "status": "compacting",
+        "session_id": testSessionId,
+        "uuid": "compact-start",
+      });
+      await pump();
+      first.emit(_replayOf(written, uuid: uuid));
+      await pump();
+
+      final ids = [
+        for (final event in events)
+          if (event is BridgeSseMessageUpdated) event.info.id,
+      ];
+      expect(ids.skipWhile((id) => id != uuid), [
+        uuid,
+        "compact-start",
+      ], reason: "the prompt shows once, above the compaction");
+      final prompt = events.whereType<BridgeSseMessageUpdated>().firstWhere((event) => event.info.id == uuid).info;
+      expect((prompt as PluginMessageUser).promptId, "prompt-1");
+      expect(await harness.plugin.getQueuedPrompts(sessionId: testSessionId), isEmpty);
+      await subscription.cancel();
+    });
+
     test("stamps an unmarked re-encoded image echo and consumes its queued entry", () async {
       await harness.createSession();
       final first = harness.processes.single;

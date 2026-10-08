@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:collection";
+import "dart:math";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
@@ -49,6 +50,10 @@ final class const ClaudeAppliedSelection({
 });
 
 final class _PendingTurn({
+  /// The uuid the stdin frame carries, which the CLI keeps for its echo and
+  /// its transcript record.
+  required final String messageId,
+  required final DateTime dispatchedAt,
   required final String? promptId,
   required final List<Map<String, Object?>>? replayContent,
   required bool started,
@@ -78,6 +83,10 @@ final class _ResidentProcess({
   /// work and closes the post-interrupt window.
   bool interruptSettled = false;
   bool turnActive = false;
+
+  /// Prompts echoed ahead of a compaction; the CLI's own echo of each, still
+  /// to come, is dropped.
+  final Set<String> earlyEchoIds = {};
 
   Future<void> cancelMessages() => messages.cancel();
 }
@@ -243,6 +252,8 @@ final class ClaudeSessionProcessRepository({
     // settles exactly that started prefix.
     final turnWasActive = process.turnActive;
     final pending = _PendingTurn(
+      messageId: _newMessageId(),
+      dispatchedAt: DateTime.now(),
       promptId: promptId,
       replayContent: promptId == null ? null : content,
       started: !turnWasActive && process.pendingTurns.every((pending) => pending.settled),
@@ -250,7 +261,7 @@ final class ClaudeSessionProcessRepository({
     process.pendingTurns.addLast(pending);
     if (pending.started) process.turnActive = true;
     try {
-      process.client.sendUserMessage(content: content);
+      process.client.sendUserMessage(content: content, uuid: pending.messageId);
     } on Object {
       process.pendingTurns.remove(pending);
       process.turnActive = turnWasActive;
@@ -387,6 +398,20 @@ final class ClaudeSessionProcessRepository({
       if ((current?.resumed ?? false) && current?.appliedModel == null && message is ClaudeAssistantMessage) {
         current?.appliedModel = message.model;
       }
+      if (_echoBeforeCompaction(sessionId: sessionId, process: process, message: message)
+          case (:final echo, :final promptId) when !_events.isClosed) {
+        _events.add(
+          ClaudeSessionProcessMessage(
+            sessionId: sessionId,
+            message: echo,
+            interrupted: process.interrupted,
+            promptId: promptId,
+          ),
+        );
+      }
+      if (message case ClaudeUserMessage(parentToolUseId: null, :final uuid?) when process.earlyEchoIds.remove(uuid)) {
+        return;
+      }
       final promptId = _trackTurnMessage(process: process, message: message);
       if (!_events.isClosed) {
         _events.add(
@@ -420,6 +445,44 @@ final class ClaudeSessionProcessRepository({
     } finally {
       await process.client.dispose();
     }
+  }
+
+  /// The CLI compacts before it echoes the prompt that opens a turn, so the
+  /// compaction row would land above that prompt and the prompt would jump
+  /// above it once echoed. The prompt went first, so it is echoed here, under
+  /// the uuid it was sent with, exactly as the CLI will echo it; the CLI's own
+  /// echo is then dropped.
+  ({ClaudeUserMessage echo, String promptId})? _echoBeforeCompaction({
+    required String sessionId,
+    required _ResidentProcess process,
+    required ClaudeStreamMessage message,
+  }) {
+    if (message is! ClaudeStatusMessage || !message.isCompacting) return null;
+    final opener = process.pendingTurns.where((pending) => !pending.settled && !pending.replayObserved).firstOrNull;
+    if (opener == null) return null;
+    final promptId = opener.promptId;
+    final content = opener.replayContent;
+    // A prompt sent mid-turn joins it only at the next tool boundary, so a
+    // compaction now is the running turn's, not that prompt's.
+    if (promptId == null || content == null || (!opener.started && process.turnActive)) return null;
+    final echo = ClaudeStreamMessage.parse({
+      "type": "user",
+      "message": {"role": "user", "content": content},
+      "session_id": sessionId,
+      "parent_tool_use_id": null,
+      "uuid": opener.messageId,
+      "timestamp": opener.dispatchedAt.toUtc().toIso8601String(),
+      "isReplay": true,
+    });
+    if (echo is! ClaudeUserMessage) return null;
+    opener
+      ..replayObserved = true
+      ..started = true;
+    process
+      ..turnActive = true
+      ..earlyEchoIds.add(opener.messageId);
+    _removeSettledReplays(process: process);
+    return (echo: echo, promptId: promptId);
   }
 
   String? _trackTurnMessage({required _ResidentProcess process, required ClaudeStreamMessage message}) {
@@ -493,6 +556,18 @@ final class ClaudeSessionProcessRepository({
     process.pendingTurns.clear();
     process.turnActive = false;
   }
+}
+
+final Random _messageIdRandom = Random.secure();
+
+/// A random (version 4) UUID for a stdin user frame.
+String _newMessageId() {
+  final bytes = [for (var index = 0; index < 16; index++) _messageIdRandom.nextInt(256)];
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  final hex = [for (final byte in bytes) byte.toRadixString(16).padLeft(2, "0")].join();
+  return "${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-"
+      "${hex.substring(16, 20)}-${hex.substring(20)}";
 }
 
 /// Matches an echoed stdin payload to the prompt that wrote it.

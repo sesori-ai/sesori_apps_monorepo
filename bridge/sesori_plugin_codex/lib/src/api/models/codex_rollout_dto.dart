@@ -172,6 +172,13 @@ sealed class CodexRolloutCompletedItemDto with _$CodexRolloutCompletedItemDto {
     required String id,
   }) = CodexRolloutCompletedContextCompactionDto;
 
+  /// Written after the user's `response_item` message. [id] is the live
+  /// `userMessage` item id.
+  @FreezedUnionValue("UserMessage")
+  const factory userMessage({
+    required String id,
+  }) = CodexRolloutCompletedUserMessageDto;
+
   const factory unknown() = CodexRolloutUnknownCompletedItemDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexRolloutCompletedItemDtoFromJson(json);

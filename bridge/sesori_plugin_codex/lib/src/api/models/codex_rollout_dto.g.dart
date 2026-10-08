@@ -189,6 +189,13 @@ _$CodexRolloutCompletedContextCompactionDtoFromJson(Map json) =>
       $type: json['type'] as String?,
     );
 
+CodexRolloutCompletedUserMessageDto
+_$CodexRolloutCompletedUserMessageDtoFromJson(Map json) =>
+    CodexRolloutCompletedUserMessageDto(
+      id: json['id'] as String,
+      $type: json['type'] as String?,
+    );
+
 CodexRolloutUnknownCompletedItemDto
 _$CodexRolloutUnknownCompletedItemDtoFromJson(Map json) =>
     CodexRolloutUnknownCompletedItemDto($type: json['type'] as String?);

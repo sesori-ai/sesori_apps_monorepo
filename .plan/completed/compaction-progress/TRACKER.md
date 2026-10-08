@@ -5,6 +5,9 @@ not mirror PR state. Live status is on GitHub:
 `gh pr list --state all --search "[compaction-progress]"`. Evidence for a
 finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 
+**Retired on 2026-10-08 by step 9.** Follow-ups F6–F11 are standalone work;
+see [step 9](steps/step-09.md#findings).
+
 ## Decisions In Force
 
 - C1–C7 are the user's final decisions of 2026-10-06. Do not reopen them.
