@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/claude_stream_message.dart";
 import "models/claude_agent_selection.dart";
+import "models/claude_compact_metadata.dart";
 import "models/claude_message_origin_kind.dart";
 import "models/claude_task_notification.dart";
 import "models/claude_tool_use_result.dart";
@@ -33,8 +34,8 @@ final class ClaudeEventDispatcher({
   final Map<String, Set<String>> _streamedMessageIds = {};
   final Set<String> _mappedApiErrorSessions = {};
 
-  /// Sessions whose next synthetic `user` frame is a compaction summary.
-  final Set<String> _awaitingCompactionSummary = {};
+  /// The compaction each session is running, or has just finished, this turn.
+  final Map<String, _ClaudeCompaction> _compactions = {};
 
   /// Content blocks already carried by `assistant` frames, per message id.
   ///
@@ -93,6 +94,7 @@ final class ClaudeEventDispatcher({
     _messageIds.remove(sessionId);
     _announcedMessageIds.remove(sessionId);
     _mappedApiErrorSessions.remove(sessionId);
+    _compactions.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.beginTurn(sessionId: sessionId);
   }
@@ -119,7 +121,7 @@ final class ClaudeEventDispatcher({
     _mappedApiErrorSessions.remove(sessionId);
     _models.remove(sessionId);
     _turnSelections.remove(sessionId);
-    _awaitingCompactionSummary.remove(sessionId);
+    _compactions.remove(sessionId);
     _clearStreamedMessages(sessionId: sessionId);
     _tools.forgetSession(sessionId: sessionId);
   }
@@ -199,9 +201,9 @@ final class ClaudeEventDispatcher({
         ClaudeResultMessage() => _mapResult(sessionId: sessionId, message: message),
         ClaudeTaskStartedMessage() => _mapTaskStarted(message: message),
         ClaudeTaskNotificationMessage() => _mapTaskNotification(message: message),
-        ClaudeCompactBoundaryMessage() => _awaitCompactionSummary(sessionId: sessionId),
+        ClaudeStatusMessage() => _mapStatus(sessionId: sessionId, message: message, now: now ?? DateTime.now()),
+        ClaudeCompactBoundaryMessage() => _mapCompactBoundary(sessionId: sessionId, message: message),
         ClaudeInitMessage() ||
-        ClaudeStatusMessage() ||
         // ponytail: parsed but not surfaced — no client UI consumes thinking
         // token estimates, task/tool progress, or hook output yet.
         ClaudeThinkingTokensMessage() ||
@@ -365,6 +367,9 @@ final class ClaudeEventDispatcher({
   }) {
     final messageId = _nonEmptyString(message.messageId);
     if (messageId == null) return const [];
+    // A failed compaction echoes its error as a synthetic reply, which the
+    // failed row already shows.
+    if (_compactions[sessionId] is _FailedCompaction && _realModel(model: message.model) == null) return const [];
     _messageIds[sessionId] = messageId;
     _streamedMessageIds.putIfAbsent(sessionId, () => <String>{}).add(messageId);
     if (_realModel(model: message.model) case final model?) _models[sessionId] = model;
@@ -439,8 +444,66 @@ final class ClaudeEventDispatcher({
     return events;
   }
 
-  List<BridgeSseEvent> _awaitCompactionSummary({required String sessionId}) {
-    _awaitingCompactionSummary.add(sessionId);
+  /// A compaction starts with a `compacting` status, repeated while it runs,
+  /// and ends with a status carrying its result.
+  List<BridgeSseEvent> _mapStatus({
+    required String sessionId,
+    required ClaudeStatusMessage message,
+    required DateTime now,
+  }) {
+    final compaction = _compactions[sessionId];
+    if (message.isCompacting) {
+      if (compaction != null) return const [];
+      final messageId = _nonEmptyString(message.uuid);
+      if (messageId == null) return const [];
+      _compactions[sessionId] = _RunningCompaction(messageId: messageId);
+      final running = _content.compactionRunningMessage(
+        sessionId: sessionId,
+        messageId: messageId,
+        time: PluginMessageTime(created: now.millisecondsSinceEpoch, completed: null),
+      );
+      return [
+        BridgeSseMessageUpdated(info: running.info),
+        for (final part in running.parts) BridgeSseMessagePartUpdated(part: part),
+      ];
+    }
+    if (compaction is! _RunningCompaction) return const [];
+    switch (message.compactResult) {
+      case ClaudeCompactResult.success:
+        return [
+          BridgeSseMessagePartUpdated(
+            part: _content.compactionSucceededPart(sessionId: sessionId, messageId: compaction.messageId),
+          ),
+        ];
+      case ClaudeCompactResult.failed:
+        _compactions[sessionId] = const _FailedCompaction();
+        return [
+          BridgeSseMessagePartUpdated(
+            part: _content.compactionFailedPart(
+              sessionId: sessionId,
+              messageId: compaction.messageId,
+              error: message.compactError,
+            ),
+          ),
+        ];
+      case null:
+        return const [];
+    }
+  }
+
+  List<BridgeSseEvent> _mapCompactBoundary({
+    required String sessionId,
+    required ClaudeCompactBoundaryMessage message,
+  }) {
+    switch (_compactions[sessionId]) {
+      case _RunningCompaction(:final messageId):
+        _compactions[sessionId] = _CompactedCompaction(messageId: messageId, metadata: message.metadata);
+      // An older CLI that reports no status frames.
+      case null:
+        _compactions[sessionId] = _UnstartedCompaction(metadata: message.metadata);
+      case _FailedCompaction() || _CompactedCompaction() || _UnstartedCompaction():
+        break;
+    }
     return const [];
   }
 
@@ -449,22 +512,32 @@ final class ClaudeEventDispatcher({
     required ClaudeUserMessage message,
     required String? promptId,
   }) {
-    // The summary frame's uuid is the transcript record's id, so live and
-    // replayed rows share one message id.
-    if (message.originKind != ClaudeMessageOriginKind.peer &&
-        _awaitingCompactionSummary.remove(sessionId) &&
-        message.isHarnessGenerated) {
-      if (_nonEmptyString(message.uuid) case final messageId?) {
-        final compaction = _content.compactionMessage(
-          sessionId: sessionId,
-          messageId: messageId,
-          time: _messageTime(message.timestamp),
-          content: message.message["content"],
-        );
-        return [
-          BridgeSseMessageUpdated(info: compaction.info),
-          for (final part in compaction.parts) BridgeSseMessagePartUpdated(part: part),
-        ];
+    // The frame right after a compact boundary is the summary. A live row
+    // keeps the id minted at its start; history keys it by the summary
+    // record's id, so a re-import re-keys it once (the step-5 probe found no
+    // start-time id in the transcript). A row with no seen start takes the
+    // summary frame's uuid, the transcript record's id.
+    if (message.originKind != ClaudeMessageOriginKind.peer) {
+      final summary = switch (_compactions[sessionId]) {
+        _CompactedCompaction(:final messageId, :final metadata) => (messageId: messageId, metadata: metadata),
+        _UnstartedCompaction(:final metadata) => (messageId: _nonEmptyString(message.uuid), metadata: metadata),
+        _RunningCompaction() || _FailedCompaction() || null => null,
+      };
+      if (summary != null) {
+        _compactions.remove(sessionId);
+        if (summary case (messageId: final messageId?, :final metadata) when message.isHarnessGenerated) {
+          final compaction = _content.compactionMessage(
+            sessionId: sessionId,
+            messageId: messageId,
+            time: _messageTime(message.timestamp),
+            content: message.message["content"],
+            metadata: metadata,
+          );
+          return [
+            BridgeSseMessageUpdated(info: compaction.info),
+            for (final part in compaction.parts) BridgeSseMessagePartUpdated(part: part),
+          ];
+        }
       }
     }
     final mapped = _content.map(content: message.message["content"]);
@@ -734,6 +807,25 @@ String? _realModel({required String? model}) {
   final normalized = _nonEmptyString(model);
   return normalized == "<synthetic>" ? null : normalized;
 }
+
+/// One session's compaction within a turn.
+sealed class const _ClaudeCompaction();
+
+/// Compacting, under the row minted from the first `compacting` status.
+final class const _RunningCompaction({required final String messageId}) extends _ClaudeCompaction;
+
+/// Compacted; the next user frame is the summary for the row [messageId].
+final class const _CompactedCompaction({
+  required final String messageId,
+  required final ClaudeCompactMetadata? metadata,
+}) extends _ClaudeCompaction;
+
+/// Compacted with no `compacting` status seen; the next user frame is the
+/// summary and keys its own row.
+final class const _UnstartedCompaction({required final ClaudeCompactMetadata? metadata}) extends _ClaudeCompaction;
+
+/// Failed; the row already shows the failure, so nothing else renders for it.
+final class const _FailedCompaction() extends _ClaudeCompaction;
 
 PluginMessageTime? _messageTime(DateTime? timestamp) =>
     timestamp == null ? null : PluginMessageTime(created: timestamp.millisecondsSinceEpoch, completed: null);

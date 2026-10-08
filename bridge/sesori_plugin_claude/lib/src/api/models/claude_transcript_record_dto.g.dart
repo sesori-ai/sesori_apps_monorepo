@@ -28,6 +28,8 @@ _ClaudeTranscriptRecordDto _$ClaudeTranscriptRecordDtoFromJson(Map json) =>
       toolUseResult: ClaudeToolUseResult.parse(json['toolUseResult']),
       originKind: _originKind(json['origin']),
       attachment: _attachmentOrNull(json['attachment']),
+      subtype: _stringOrNull(json['subtype']),
+      compactMetadata: _compactMetadataOrNull(json['compactMetadata']),
     );
 
 _ClaudeTranscriptAttachmentDto _$ClaudeTranscriptAttachmentDtoFromJson(

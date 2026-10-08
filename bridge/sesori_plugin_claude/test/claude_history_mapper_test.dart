@@ -197,7 +197,7 @@ IMPORTANT: Do NOT create new worktrees.
       expect(messages.map((message) => message.parts.single.text), ["visible prompt", "/review visible args"]);
     });
 
-    test("maps the transcript-only compaction summary to one compaction row", () async {
+    test("maps the transcript-only compaction summary to one compaction row with its boundary's details", () async {
       _writeTranscript(
         temp: temp,
         records: [
@@ -208,6 +208,7 @@ IMPORTANT: Do NOT create new worktrees.
             "uuid": "boundary",
             "timestamp": "2026-08-09T10:00:00Z",
             "content": "Conversation compacted",
+            "compactMetadata": {"trigger": "auto", "preTokens": 24835, "postTokens": 6505, "durationMs": 11722},
           },
           {
             ..._messageRecord(type: "user", uuid: "summary-record", content: "Continue the auth work."),
@@ -232,7 +233,11 @@ IMPORTANT: Do NOT create new worktrees.
         isA<PluginMessagePartCompaction>().having(
           (part) => part.compactionState,
           "compactionState",
-          const PluginCompactionState.completed(summary: "Continue the auth work.", freedTokens: null, trigger: null),
+          const PluginCompactionState.completed(
+            summary: "Continue the auth work.",
+            freedTokens: 18330,
+            trigger: PluginCompactionTrigger.auto,
+          ),
         ),
       );
     });

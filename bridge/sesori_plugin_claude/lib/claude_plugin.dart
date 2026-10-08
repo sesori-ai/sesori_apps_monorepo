@@ -25,6 +25,7 @@ export "src/claude_history_mapper.dart";
 export "src/claude_plugin_impl.dart";
 export "src/foundation/claude_login_environment.dart";
 export "src/models/claude_agent_selection.dart";
+export "src/models/claude_compact_metadata.dart";
 export "src/models/claude_effort_level.dart";
 export "src/models/claude_message_origin_kind.dart";
 export "src/models/claude_pasted_code.dart";

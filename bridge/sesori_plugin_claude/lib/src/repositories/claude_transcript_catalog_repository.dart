@@ -398,6 +398,21 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
     }
   }
 
+  if (type == ClaudeTranscriptContextKind.system.wireType &&
+      dto.subtype == ClaudeTranscriptCompactBoundaryRecord.subtype) {
+    return ClaudeTranscriptCompactBoundaryRecord(
+      metadata: dto.compactMetadata,
+      cwd: dto.cwd,
+      timestamp: dto.timestamp,
+      isSidechain: dto.isSidechain,
+      agentId: dto.agentId,
+      gitBranch: dto.gitBranch,
+      version: dto.version,
+      sessionId: dto.sessionId,
+      raw: line.raw,
+    );
+  }
+
   final contextKind = ClaudeTranscriptContextKind.tryParse(type);
   if (contextKind != null) {
     return ClaudeTranscriptContextRecord(

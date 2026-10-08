@@ -796,6 +796,36 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     ];
   }
 
+  /// The rows of [current] that are new since [previous], less those that
+  /// take the place of rows that left: between two rows both builds share, as
+  /// many new rows as left there replace them, in order.
+  static Set<String> _rowsArriving({required List<String> previous, required List<String> current}) {
+    final currentIds = current.toSet();
+    // The rows that left after each shared row, keyed null before the first.
+    final leftAfter = <String?, int>{};
+    String? shared;
+    for (final rowId in previous) {
+      if (currentIds.contains(rowId)) {
+        shared = rowId;
+      } else {
+        leftAfter[shared] = (leftAfter[shared] ?? 0) + 1;
+      }
+    }
+    final previousIds = previous.toSet();
+    final arriving = <String>{};
+    var leftHere = leftAfter[null] ?? 0;
+    for (final rowId in current) {
+      if (previousIds.contains(rowId)) {
+        leftHere = leftAfter[rowId] ?? 0;
+      } else if (leftHere > 0) {
+        leftHere--;
+      } else {
+        arriving.add(rowId);
+      }
+    }
+    return arriving;
+  }
+
   static _TransientSubmission? _localSendRow({required LocalSendPhase localSend}) => switch (localSend) {
     LocalSendIdle() => null,
     LocalSendSending(:final submission) => (submission: submission, stage: _TransientStage.sending),
@@ -896,6 +926,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           )
           .firstOrNull;
     }
+    final previousRowIds = _rowIndexById.keys.toList();
     _knownRowIds = rowIds.toSet();
     _rowIndexById = {for (final (index, rowId) in rowIds.indexed) rowId: index};
     _userMessagesById = {
@@ -903,14 +934,15 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         if (message.info is MessageUser && message.hasRenderableUserContent) message.info.id: message,
     };
     // Rows held still while scrolled away never animate, and a prompt shows
-    // at once: only the agent's side of the transcript eases in.
+    // at once: only the agent's side of the transcript eases in. A row that
+    // takes the place of one that just left is that row re-keyed, as when a
+    // refresh swaps a live row for its history twin, so it stays put.
     final enteringRowIds = knownRowIds == null || snap != null || context.isReducedMotion
         ? const <String>{}
-        : {
+        : _rowsArriving(previous: previousRowIds, current: rowIds).difference({
             for (final rowId in rowIds)
-              if (!knownRowIds.contains(rowId) && !_isUserRow(rowId: rowId, messages: messages, indexById: indexById))
-                rowId,
-          };
+              if (_isUserRow(rowId: rowId, messages: messages, indexById: indexById)) rowId,
+          });
     // Coalesced post-frame pin-to-edge while following. The scheduler
     // collapses repeated calls within a frame and the jump is skipped
     // when `position.pixels` is already at the edge.

@@ -59,7 +59,9 @@ sub-agent parts, plus the signal that a tool changed files.
   digit), and the summary's width eases so the text after it moves rather than
   jumps. At rest the summary is one line that ellipsizes on a narrow screen. A new group, a new live row, the
   thinking tail's first words and a new agent message row ease their height in
-  the same way; user prompts appear at once. Only the rows that change animate,
+  the same way; user prompts appear at once. A row that takes the place of one
+  that left in the same update, as when a refresh swaps a live row for its
+  history twin under a new id, stays put. Only the rows that change animate,
   and a reader pinned to the newest edge stays pinned while they do. Reduced
   motion makes every such change instant. Finished sub-agents show a neutral icon and
   failed ones a red one, without a status label; the grouping is computed by the

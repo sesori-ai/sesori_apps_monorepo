@@ -10,6 +10,7 @@ import "package:sesori_shared/sesori_shared.dart"
         maxTranscriptImageCollectionBytes;
 
 import "../../api/models/claude_content_block_dto.dart";
+import "../../models/claude_compact_metadata.dart";
 import "../../models/claude_message_origin_kind.dart";
 import "../../models/claude_task_notification.dart";
 import "claude_shell_command_mapper.dart";
@@ -263,39 +264,100 @@ final class const ClaudeContentMapper() {
     time: time,
   );
 
+  /// The compaction row while the CLI compacts.
+  PluginMessageWithParts compactionRunningMessage({
+    required String sessionId,
+    required String messageId,
+    required PluginMessageTime? time,
+  }) => PluginMessageWithParts(
+    info: _compactionInfo(sessionId: sessionId, messageId: messageId, time: time),
+    parts: [
+      _compactionPart(sessionId: sessionId, messageId: messageId, state: const .running(summary: null)),
+    ],
+  );
+
+  /// Settles a running compaction row the moment the CLI reports success,
+  /// before the summary and its details arrive.
+  PluginMessagePart compactionSucceededPart({required String sessionId, required String messageId}) => _compactionPart(
+    sessionId: sessionId,
+    messageId: messageId,
+    state: const .completed(summary: null, freedTokens: null, trigger: null),
+  );
+
+  /// Settles a running compaction row as failed, with the CLI's [error].
+  PluginMessagePart compactionFailedPart({
+    required String sessionId,
+    required String messageId,
+    required String? error,
+  }) => _compactionPart(
+    sessionId: sessionId,
+    messageId: messageId,
+    state: .failed(error: error),
+  );
+
   /// The compaction row for the continuation summary [content] the CLI
-  /// injects as a user turn right after compacting.
+  /// injects as a user turn right after compacting, with the [metadata] of the
+  /// compact boundary before it.
   PluginMessageWithParts compactionMessage({
     required String sessionId,
     required String messageId,
     required PluginMessageTime? time,
     required Object? content,
+    required ClaudeCompactMetadata? metadata,
   }) {
     final summary = [
       for (final block in map(content: content))
         if (block case ClaudeMappedTextContentBlock(:final text)) text,
     ].join("\n\n").trim();
+    final freedTokens = switch (metadata) {
+      ClaudeCompactMetadata(preTokens: final pre?, postTokens: final post?) when pre > post => pre - post,
+      _ => null,
+    };
     return PluginMessageWithParts(
-      info: PluginMessage.assistant(
-        id: messageId,
-        sessionID: sessionId,
-        agent: "claude",
-        modelID: null,
-        providerID: "anthropic",
-        variant: null,
-        sender: PluginMessageSender.agent,
-        time: time,
-      ),
+      info: _compactionInfo(sessionId: sessionId, messageId: messageId, time: time),
       parts: [
-        PluginMessagePart.compaction(
-          id: "$messageId-compaction",
-          sessionID: sessionId,
-          messageID: messageId,
-          compactionState: .completed(summary: summary.isEmpty ? null : summary, freedTokens: null, trigger: null),
+        _compactionPart(
+          sessionId: sessionId,
+          messageId: messageId,
+          state: .completed(
+            summary: summary.isEmpty ? null : summary,
+            freedTokens: freedTokens,
+            trigger: switch (metadata?.trigger) {
+              ClaudeCompactTrigger.manual => PluginCompactionTrigger.manual,
+              ClaudeCompactTrigger.auto => PluginCompactionTrigger.auto,
+              null => null,
+            },
+          ),
         ),
       ],
     );
   }
+
+  PluginMessage _compactionInfo({
+    required String sessionId,
+    required String messageId,
+    required PluginMessageTime? time,
+  }) => PluginMessage.assistant(
+    id: messageId,
+    sessionID: sessionId,
+    agent: "claude",
+    modelID: null,
+    providerID: "anthropic",
+    variant: null,
+    sender: PluginMessageSender.agent,
+    time: time,
+  );
+
+  PluginMessagePart _compactionPart({
+    required String sessionId,
+    required String messageId,
+    required PluginCompactionState state,
+  }) => PluginMessagePart.compaction(
+    id: "$messageId-compaction",
+    sessionID: sessionId,
+    messageID: messageId,
+    compactionState: state,
+  );
 
   List<PluginMessagePart> mapParts({
     required Object? content,

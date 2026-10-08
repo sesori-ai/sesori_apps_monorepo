@@ -638,12 +638,16 @@ can initiate login, and managed installation does **not** authenticate a harness
 
 ## Context compaction row
 
-The transcript marks a finished context compaction with a "Context compacted"
-row, which opens the carried-forward summary when the harness exposes it.
+The transcript marks a context compaction with a row. Where the harness
+reports a start, the row appears live with a timer and settles in place as
+"Context compacted" or as a one-line failure note. A settled row shows the
+freed tokens when the harness reports them, marks an automatic compaction when
+the harness reports its trigger, and opens the carried-forward summary when the
+harness exposes it.
 
 | Harness | Compaction row | Summary |
 |---|---|---|
-| Claude | ✅ | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.281). |
+| Claude | ✅ Live from the first `system/status` `compacting` frame, timed from the bridge's stamp of it, settling in place at the closing status's `compact_result`; the summary frame then fills in the details under the same row. A `failed` result becomes a failure note with `compact_error`; a failure writes no transcript record, so the note is gone after a history re-import. Freed tokens are `pre − post` from `compact_boundary` `compact_metadata` live and the boundary record's `compactMetadata` in history, with the trigger. The transcript keeps no start-time id, so a later re-import re-keys a live row to the summary record's id at the same place, once (verified on 2.1.291). | ✅ The synthetic summary message after `compact_boundary` live, and the `isCompactSummary` transcript record in history (verified on 2.1.291). |
 | OpenCode v1 | ✅ Live from the first text of the `summary: true` assistant message, with the newest summary words streamed from its text deltas, settling in place when the message finishes, as completed or as a failure note with OpenCode's error (a summary that errors before writing text stays an error message). An automatic trigger (from the compaction marker's `auto`) is shown as "· auto" (a manual one is not named); the freed count is not reported. A compaction that starts during a bridge stream outage shows plain text live until a read reloads the transcript from OpenCode, which maps it to the row in its stored state. | ✅ The text of the `summary: true` assistant message. |
 | OpenCode v2 | ✅ Live from `session.compaction.started` once its running snapshot loads (or from the next delta after a bridge reconnect), with the newest summary words streamed from its deltas, settling in place as completed or as a failure note with OpenCode's error. An automatic trigger is shown as "· auto" (a manual one is not named); the freed count is not reported, because the reported tokens are the summary call's usage. | ✅ The completed native compaction message's `summary`. |
 | Pi | ✅ Live from `compaction_start`, timed from the bridge's stamp of it (Pi sends no time), staying live while Pi retries and settling in place on success. A terminal failure or abort becomes a failure note, moved off the reserved compaction id, with Pi's error when it sends one (an abort may carry none); Stop or a process exit leaves the running row to the bridge sweep's note. A `threshold` or `overflow` trigger is shown as "· auto" once a live compaction completes; history entries carry no reason. No freed count: Pi reports only the tokens before compaction. | ✅ `compaction_end.result.summary` live and the compaction entry in history (verified on 0.87.1). |

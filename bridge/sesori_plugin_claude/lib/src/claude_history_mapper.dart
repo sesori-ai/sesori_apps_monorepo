@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "models/claude_agent_selection.dart";
+import "models/claude_compact_metadata.dart";
 import "models/claude_message_origin_kind.dart";
 import "models/claude_tool_use_result.dart";
 import "repositories/mappers/claude_api_error_mapper.dart";
@@ -42,6 +43,8 @@ final class const ClaudeHistoryMapper({
     final assistantsByToolId = <String, _AssistantHistoryMessage>{};
     final apiErrorsByMessageId = <String, _ApiErrorHistoryMessage>{};
     String? lastRealModel;
+    // The last compact boundary's details, for the summary record after it.
+    ClaudeCompactMetadata? compactMetadata;
     // Task lifecycle replays through the same tracker the live path uses, so
     // terminal precedence has exactly one implementation.
     final tasks = ClaudeToolTracker();
@@ -93,6 +96,9 @@ final class const ClaudeHistoryMapper({
           });
           apiError.content.add(record.content);
           apiError.apiErrorStatus ??= record.apiErrorStatus;
+        case ClaudeTranscriptCompactBoundaryRecord():
+          if (skip(record)) continue;
+          compactMetadata = record.metadata;
         case ClaudeTranscriptUserRecord(isCompactSummary: true):
           if (skip(record)) continue;
           entries.add(
@@ -102,9 +108,11 @@ final class const ClaudeHistoryMapper({
                 messageId: record.id,
                 time: _messageTime(record.timestamp),
                 content: record.content,
+                metadata: compactMetadata,
               ),
             ),
           );
+          compactMetadata = null;
         case ClaudeTranscriptUserRecord():
           if (skip(record) ||
               _content.hidesHarnessGeneratedUserTurn(
