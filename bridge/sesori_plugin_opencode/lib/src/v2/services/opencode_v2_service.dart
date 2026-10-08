@@ -32,12 +32,16 @@ class OpenCodeV2Service({
 
   Future<void> coldStart() async {
     _tracker.invalidateBaseline();
+    // Live state is read after the slow metadata read, so sessions and folders
+    // that another client starts or loads meanwhile are still included.
     final sessions = await _repository.getSessionMetadata();
-    final directories = sessions.map((session) => session.directory).toSet();
-    final (active, pending) = await shared.wait2(
+    // Query only loaded folders: a directory-scoped read would load (and keep
+    // loaded) a folder that cannot hold pending input anyway.
+    final (active, directories) = await shared.wait2(
       _repository.getActiveSessionIds(),
-      Future.wait(directories.map((directory) => _pendingInput(directory: directory))),
+      _repository.getLoadedDirectories(),
     );
+    final pending = await Future.wait(directories.map((directory) => _pendingInput(directory: directory)));
     _tracker.seed(
       sessions: sessions,
       activeSessionIds: active,

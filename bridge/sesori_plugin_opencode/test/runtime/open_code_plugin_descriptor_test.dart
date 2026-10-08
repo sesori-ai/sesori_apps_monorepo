@@ -911,6 +911,7 @@ void main() {
               "paths": {"tmp": "/fixture/tmp"},
             },
             "/api/project" => <Object?>[],
+            "/api/debug/location" => <Object?>[],
             "/api/session" => {
               "data": <Object?>[],
               "cursor": {"next": null},

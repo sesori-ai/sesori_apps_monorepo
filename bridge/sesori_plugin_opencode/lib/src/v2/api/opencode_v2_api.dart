@@ -11,6 +11,7 @@ import "../models/openapi/command_info.g.dart";
 import "../models/openapi/form_info.g.dart";
 import "../models/openapi/form_reply.g.dart";
 import "../models/openapi/location_public_info.g.dart";
+import "../models/openapi/location_public_ref.g.dart";
 import "../models/openapi/model_info.g.dart";
 import "../models/openapi/permission_request.g.dart";
 import "../models/openapi/project.g.dart";
@@ -67,6 +68,17 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
       ),
       operation: path,
       fromJson: LocationPublicInfo.fromJson,
+    );
+  }
+
+  /// Lists the locations the server has loaded, without loading any. OpenCode
+  /// tags this endpoint "debug"; it exists from the minimum supported v2.0.11.
+  Future<List<LocationPublicRef>> listLoadedLocations() async {
+    const path = "/api/debug/location";
+    return _decode<List<LocationPublicRef>>(
+      response: await _response(request: _client.get(path: path)),
+      operation: path,
+      decode: (body) => jsonDecodeListMap(body).map(LocationPublicRef.fromJson).toList(),
     );
   }
 

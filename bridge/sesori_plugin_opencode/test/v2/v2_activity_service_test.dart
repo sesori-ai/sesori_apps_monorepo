@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:opencode_plugin/src/v2/mappers/v2_form_answer_mapper.dart";
 import "package:opencode_plugin/src/v2/mappers/v2_form_answer_validator.dart";
 import "package:opencode_plugin/src/v2/models/openapi/form_info.g.dart";
@@ -191,7 +193,7 @@ void main() {
     });
   });
 
-  test("cold start and reconnect use global activity and unique session directories", () async {
+  test("cold start and reconnect use global activity and loaded directories", () async {
     repository.sessions.add(child.copyWith(id: "sibling"));
     repository.active = {"child"};
     repository.permissions = [permission];
@@ -201,6 +203,7 @@ void main() {
       containsAll([
         "metadata",
         "active",
+        "loaded",
         "permissions:$project",
         "permissions:$worktree",
         "forms:$project",
@@ -225,6 +228,25 @@ void main() {
     await service.coldStart();
     expect(service.workState, PluginWorkState.idle);
     expect(service.buildSummary(), isEmpty);
+  });
+
+  test("pending input is read only for loaded directories, never for every session folder", () async {
+    // Live state follows the slow metadata read, so a folder loaded meanwhile is included.
+    final gate = repository.metadataGate = Completer<void>();
+    final starting = service.coldStart();
+    await pumpEventQueue();
+    expect(repository.calls, isNot(anyOf(contains("loaded"), contains("active"))));
+    repository.loaded = {worktree};
+    gate.complete();
+    await starting;
+    expect(repository.calls.where((call) => call.contains(project)), isEmpty);
+    expect(repository.calls, containsAll(["permissions:$worktree", "forms:$worktree"]));
+
+    repository.calls.clear();
+    repository.loaded = {};
+    await service.coldStart();
+    expect(repository.calls.where((call) => call.startsWith("permissions:") || call.startsWith("forms:")), isEmpty);
+    expect(service.workState, PluginWorkState.idle);
   });
 
   test("failed refresh retains useful state but cannot claim a trusted baseline", () async {
@@ -579,6 +601,7 @@ void main() {
 class FakeRepository() implements OpenCodeV2Repository {
   List<shared.Session> sessions = [root, child];
   Set<String> active = {};
+  Set<String> loaded = {project, worktree};
   List<PermissionRequest> permissions = [];
   List<FormInfo> forms = [];
   final calls = <String>[];
@@ -587,10 +610,12 @@ class FakeRepository() implements OpenCodeV2Repository {
   Object? pendingFailure;
   Object? metadataFailure;
   Object? messageFailure;
+  Completer<void>? metadataGate;
 
   @override
   Future<List<shared.Session>> getSessionMetadata() async {
     calls.add("metadata");
+    await metadataGate?.future;
     return sessions;
   }
 
@@ -605,6 +630,12 @@ class FakeRepository() implements OpenCodeV2Repository {
   Future<Set<String>> getActiveSessionIds() async {
     calls.add("active");
     return active;
+  }
+
+  @override
+  Future<Set<String>> getLoadedDirectories() async {
+    calls.add("loaded");
+    return loaded;
   }
 
   @override
