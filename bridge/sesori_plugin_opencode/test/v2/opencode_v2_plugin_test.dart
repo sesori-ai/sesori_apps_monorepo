@@ -250,7 +250,7 @@ void main() {
     expect(server.streams, hasLength(1));
   });
 
-  test("cold start asks many folders for pending input without exceeding the socket cap", () async {
+  test("cold start asks many loaded folders for pending input without exceeding the socket cap", () async {
     server.extraDirectories = [for (var index = 0; index < 20; index++) "/fixture/folder-$index"];
     server.pendingInputGate = Completer<void>();
     final initializing = plugin.initialize();
@@ -413,6 +413,7 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
           "/api/debug/location" => [
             {"directory": _directory},
             if (missingDirectory case final directory?) {"directory": directory},
+            for (final directory in extraDirectories) {"directory": directory},
           ],
           "/api/session" => {
             "data": [
