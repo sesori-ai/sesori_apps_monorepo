@@ -2271,10 +2271,14 @@ void main() {
         ],
       ),
     ]);
+    // The step fades in where it will sit, rather than sliding in from the edge.
+    final stepLefts = <double>[];
     for (var frame = 0; frame < 12; frame++) {
       await tester.pump(const Duration(milliseconds: 20));
       expect(tester.getTopLeft(_messageKey("user-1")).dy, moreOrLessEquals(top, epsilon: 0.5), reason: "frame $frame");
+      stepLefts.add(tester.getTopLeft(find.text("Read notes.md")).dx);
     }
+    expect(stepLefts, everyElement(moreOrLessEquals(stepLefts.last, epsilon: 0.5)));
     expect(find.text("Working…"), findsNothing);
     expect(find.text("Read notes.md"), findsOneWidget);
   });

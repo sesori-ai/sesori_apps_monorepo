@@ -25,17 +25,18 @@ class const AssistantMessageCard({
   /// When the message was created, in epoch ms; a running compaction counts
   /// from it.
   required final int? createdAtMs,
-  required final EdgeInsetsGeometry contentPadding,
+  required final EdgeInsets contentPadding,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // The column stays mounted while empty, so the first block counts as
-    // joining; the padding waits for it, so an empty row has no height, and
-    // eases in with it, so the row grows as one.
+    // joining; the vertical padding waits for it, so an empty row has no
+    // height, and eases in with it, so the row grows as one. The horizontal
+    // inset stays, so the first block fades in where it will sit.
     return AnimatedPadding(
       duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
       curve: transcriptMotionCurve,
-      padding: blocks.isEmpty ? EdgeInsets.zero : contentPadding,
+      padding: blocks.isEmpty ? contentPadding.copyWith(top: 0, bottom: 0) : contentPadding,
       child: PregoReadableSelectionArea(
         child: TranscriptPresenceColumn(
           children: [
