@@ -245,7 +245,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
         onSessionCreated: ({required session}) =>
             widget.onOpenSession(context: context, project: picked, displayName: displayName, session: session),
         composerScopeBuilder: ({required child}) =>
-            DesktopComposerPresentationScope(projectId: picked.id, child: child),
+            DesktopComposerPresentationScope(child: DesktopVoiceInputScope(projectId: picked.id, child: child)),
         // The desktop root owns its single connection banner.
         banner: null,
         pageChrome: NewSessionPageChrome(

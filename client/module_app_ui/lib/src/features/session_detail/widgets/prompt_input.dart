@@ -2167,15 +2167,18 @@ class _PromptInputState() extends State<PromptInput> {
     // breathes while the mic listens.
     if (ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer) {
       final listening = _voicePresentation == _VoicePresentation.recording;
-      return Tooltip(
-        message: listening ? loc.voiceStopAndTranscribe : loc.voiceRecord,
-        child: ComposerListeningPulse(
-          active: listening,
-          child: PregoButtonsSolid.iconOnly(
-            leadingIcon: TablerRegular.microphone,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.lg,
-            onPressed: _handleMicClick,
+      return Semantics(
+        button: true,
+        child: Tooltip(
+          message: listening ? loc.voiceStopAndTranscribe : loc.voiceRecord,
+          child: ComposerListeningPulse(
+            active: listening,
+            child: PregoButtonsSolid.iconOnly(
+              leadingIcon: TablerRegular.microphone,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.lg,
+              onPressed: _handleMicClick,
+            ),
           ),
         ),
       );

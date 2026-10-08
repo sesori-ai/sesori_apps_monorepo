@@ -51,7 +51,7 @@ blocking migration screen prevents access to the normal login flow.
 
 **Voice Features**
 
-`FlutterVoiceCapture` — adapts the `record` package into one native capture session per composer. Module-core `VoiceTranscriptionService` owns recording/transcription policy through `VoiceRepository`, while `VoiceInputCubit` exposes lifecycle state to the shell. `WakeLockService` coordinates session leases over the process-wide `wakelock_plus` capability.
+`FlutterVoiceCapture` (shared with desktop in `module_app_ui/lib/src/platform/voice/`) — adapts the `record` package into one native capture session per composer; the app adds only its native recorder prewarm. Module-core `VoiceTranscriptionService` owns recording/transcription policy through `VoiceRepository`, while `VoiceInputCubit` exposes lifecycle state to the shell. `WakeLockService` coordinates session leases over the process-wide `wakelock_plus` capability.
 
 ## Running
 
@@ -134,6 +134,5 @@ flutter test
 | Native master key | `flutter_secure_storage` |
 | Deep links | `app_links` |
 | URL launching | `url_launcher` |
-| Audio recording | `record` |
-| Wake lock | `wakelock_plus` |
+| Audio recording and wake lock | `record`, `wakelock_plus` (via `module_app_ui`) |
 | Markdown rendering | `flutter_markdown_plus` |

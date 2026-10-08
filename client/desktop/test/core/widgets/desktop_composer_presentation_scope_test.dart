@@ -13,7 +13,6 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: DesktopComposerPresentationScope(
-          projectId: "project-1",
           child: Builder(
             builder: (context) {
               final scope = ComposerPresentationScope.of(context);

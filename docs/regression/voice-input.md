@@ -4,8 +4,8 @@
 
 The mobile composer records speech while the user holds the mic control, uploads the audio to the Sesori auth server
 for transcription, and inserts the text into the prompt field for review before sending. A voice-first or text-first
-preference decides which control leads. The desktop composer stays text-first and adds the mic as an extra control on
-the same pipeline: one click starts listening, a second click transcribes, and Escape cancels. The device microphone and transcription endpoint are external. The bridge
+preference decides which control leads. The desktop composer stays text-first and adds the mic as an extra
+control on the same pipeline: one click starts listening, a second click transcribes, and Escape cancels. The device microphone and transcription endpoint are external. The bridge
 independently prepares optional project-scoped vocabulary from bounded local evidence; no backend plugin participates.
 
 ## Required Behavior
@@ -126,7 +126,7 @@ interruptions such as a call.
   without L5.
 - Transcription is unavailable while unauthenticated or offline, which is expected degraded behavior. The bridge has
   no voice capability beyond the glossary.
-- Desktop capture is verified on macOS only. Windows records through Media Foundation and is unverified. Linux needs
+- Desktop capture has been tried by hand on a macOS Release build only. Windows records through Media Foundation and is unverified. Linux needs
   `parecord` and `ffmpeg` on the PATH; without them the composer shows the recording-failed notice. Leaving a
   desktop session while recording discards the recording, as on the phone.
 - Retained recordings are composer-local and memory-owned. They do not survive composer disposal, route replacement,

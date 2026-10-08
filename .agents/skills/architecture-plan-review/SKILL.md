@@ -578,7 +578,7 @@ Mobile initialization order: platform adapters → auth → core. Desktop initia
 
 - Shared/mobile platform interfaces are defined in `module_core/lib/src/foundation/platform/`; concrete mobile implementations live in `app/lib/core/platform/`.
 - Desktop-only platform interfaces are defined in `module_desktop_core/lib/src/foundation/platform/`; concrete desktop implementations live in `desktop/lib/core/platform/`.
-- If the plan needs a platform capability, it must define the interface in the owning pure Dart module and implement it in the product shell.
+- If the plan needs a platform capability, it must define the interface in the owning pure Dart module and implement it in the product shell, except for an implementation both shells use unchanged, which may live in `module_app_ui/lib/src/platform/` (see B-C1).
 
 **B-C9. `module_desktop_core` and `module_app_ui`**
 
