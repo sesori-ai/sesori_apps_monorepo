@@ -383,6 +383,10 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
           },
           "/api/project" => [native["project"]],
           "/api/location" => v2LocationFixture,
+          "/api/debug/location" => [
+            {"directory": _directory},
+            if (missingDirectory case final directory?) {"directory": directory},
+          ],
           "/api/session" => {
             "data": [
               v2SessionFixture,

@@ -488,10 +488,14 @@ Source checks cover the minimum 2.0.11 message-query and interruption shapes;
 mapper/parser fixtures are not evidence of a native event sequence.
 
 V2 activity/service coverage seeds global session metadata and active IDs,
-with pending inputs read once per observed directory. Root/direct-child summaries
+with pending inputs read once per directory OpenCode currently has loaded
+(`GET /api/debug/location`). OpenCode keeps pending permissions and forms only in
+memory per loaded location, and every directory-scoped read loads that folder and
+keeps it resident, so the baseline must not fan out over every session folder; an
+empty loaded list (a fresh server) makes no pending-input reads. Root/direct-child summaries
 include input-only work and retain canonical project identity across worktrees.
 Failed refreshes preserve useful state but report unknown work state until a complete
-baseline succeeds. A known directory that no longer exists on disk (OpenCode answers
+baseline succeeds. A loaded directory that no longer exists on disk (OpenCode answers
 its pending-input reads with 404) is logged and read as holding no pending input, so
 the refresh still succeeds and live events keep flowing for every other session; the
 plugin's loopback-server coverage proves this. Other pending-input failures still fail

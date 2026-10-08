@@ -182,6 +182,12 @@ class OpenCodeV2Repository({
   /// The native active-session endpoint is global and contains only running IDs.
   Future<Set<String>> getActiveSessionIds() async => (await _api.getActiveSessions()).keys.toSet();
 
+  /// Pending permissions and forms live only in memory per loaded location, so
+  /// these are the only directories that can hold pending input.
+  Future<Set<String>> getLoadedDirectories() async => {
+    for (final location in await _api.listLoadedLocations()) location.directory,
+  };
+
   // Keep native constraints for the activity tracker and form-answer validator.
   Future<List<PermissionRequest>> getPendingPermissions({required String directory}) =>
       _api.listPermissions(directory: directory);
