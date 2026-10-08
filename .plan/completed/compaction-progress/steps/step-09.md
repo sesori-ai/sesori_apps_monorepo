@@ -1,18 +1,20 @@
 # Step 9 — Verify And Retire
 
 Branch `compaction-progress/retire`, from `origin/main` at `57d736b9e4` (step 8
-merged). `origin/main` was merged in twice afterwards: at `48bcaaf080` (step
-5b) and at `002478109d` (steps 7b and 7c, and #1916). Plan only. There is no
-user-visible, wire or database change.
+merged). `origin/main` was merged in three times afterwards: at `48bcaaf080`
+(step 5b), at `002478109d` (steps 7b and 7c, and #1916) and at `0b2da1ea81`
+before the on-screen run. Plan only. There is no user-visible, wire or
+database change.
 
 ## Status
 
-**Not retired.** Every wire-level live cell now passes. The first run's
-findings were fixed by step 5b (#1914), step 7b (#1917), step 7c (#1918) and
-#1916, and re-checked live; see [Findings](#findings). The screen, device and
-L5 cells are unexecuted and wait on the user's decision (V2).
-[Regression Coverage](../PLAN.md#regression-coverage) requires that acceptance
-in this plan before retirement.
+**Retired on 2026-10-08.** Every wire-level live cell passes after the fixes
+of step 5b (#1914), step 7b (#1917), step 7c (#1918) and #1916; see
+[Findings](#findings). The on-screen cells then ran on the slot's own iOS
+simulator, a desktop debug build and the slot's Android emulator; see
+[Live Cells, On Screen](#live-cells-on-screen). The new findings F6–F11 are
+follow-ups outside this PR. The cells that stay unexecuted, and the
+reductions, are under [Not Executed And Reductions](#not-executed-and-reductions).
 
 ## User Decisions
 
@@ -20,7 +22,11 @@ in this plan before retirement.
   before retiring.
 - **OpenCode v1 is excluded by the user's decision (2026-10-08).** Only
   OpenCode v2 is tested from now on.
-- **V2 (unexecuted screen and device cells):** pending.
+- **V2 (2026-10-08):** keep the plan open until the device tools reconnect,
+  then run the on-screen and device cells and retire. A Claude automatic
+  compaction and the v1.9.0 App Store cell may be recorded as not executed,
+  with the reason, when they cost too much or cannot be installed. Bugs found
+  on screen become their own follow-ups, not fixes in this PR.
 
 ## Automated Matrix
 
@@ -52,7 +58,7 @@ A source-run bridge on a free dev slot (dev account), driven through its local
 debug server the way the app sends requests (`command: "compact"`), in an empty
 scratch Git directory. Each harness got tiny sessions with one-word prompts.
 The bridge's event stream and `/session/messages` (the reload) were read back.
-No device rendered a row, so motion, the timer and semantics are not covered.
+Motion, the timer and semantics are covered by the on-screen run below.
 
 There were two runs. The first ran at `57d736b9e4`, with the Claude re-check
 after step 5b. The second ran after the fixes merged (at `002478109d`), with
@@ -87,6 +93,34 @@ Notes:
 - **Pi rows after a re-import** have no `time.created` and sort above their own
   `/compact` bubble; the trigger is gone, as documented ("history entries carry
   no reason"). This is low damage and recorded only.
+
+## Live Cells, On Screen
+
+Run on 2026-10-08 at `3c203b1802` (`origin/main` `0b2da1ea81` merged in), on
+the same slot bridge and dev account, against tiny scratch sessions. The
+surfaces were the slot's own `sesori-dev-1` iOS simulator (iPhone 17,
+`client/app` debug), a macOS `client/desktop` debug build under a throwaway
+bundle id with its bridge helper disabled (it reached the slot bridge through
+the relay; the bundle id edit was reverted), and the slot's own `sesori-dev-1`
+Android emulator. Compactions were sent through the debug server, as in the
+wire run, while the surface showed the session. Evidence (screen recordings,
+contact sheets and event captures) stays local under `/tmp/cp9/v2/`.
+
+| Cell | Result | Evidence (local) |
+|---|---|---|
+| iOS, Claude manual `/compact` | Pass. "Compacting context" ticks 0 → 7 s with the sparkle, then settles in place to "Context compacted · freed 23k tokens"; no jump. Details open the summary. | `ios_claude_compact.mp4`, `ios_claude_sheet.png` |
+| iOS, Claude Stop mid-compaction | Pass. The row settles in place to "Compaction failed · The turn ended before compaction finished." | `ios_claude_stop.mp4` |
+| iOS, one row after reload | Pass. Reopening a Claude session, also after a bridge restart, shows one row per compaction. The other harnesses' reloads are covered by the wire run. | `ios_autoc_end.png`, `claude_compact.txt` |
+| iOS, semantics | Pass, reduced. The row's accessibility label is fixed for the build ("Compacting context · 0s") while the visual timer ticks, so a reader announces it once. Read from the XCTest accessibility tree, not VoiceOver speech. | agent-device snapshots |
+| iOS, Codex | Pass. Ticks 0 → 9 s, settles in place; no details, as documented. No `/compact` bubble is shown. | `ios_codex.mp4` |
+| iOS, Pi | Pass. Ticks, settles in place, no failed flash (F3 fixed). A rejected `/compact` shows "Compaction failed · Compaction failed: Already compacted" (wording repeats; F9). | `ios_pi.mp4` |
+| iOS, DeepSeek | Pass with F7. Ticks and settles, but inside an "Automation" card. | `ios_deepseek.mp4` |
+| iOS, OpenCode v2 | Pass with F7 and F8. The summary strip streams under the row and the row settles with the summary. No `/compact` bubble is shown. | `ios_opencode.mp4`, `ios_opencode_sheet.png` |
+| macOS desktop, Claude manual `/compact` | Pass. Ticks 0 → 10 s, settles in place to "Context compacted · freed 23k tokens"; no jump. | `mac_claude.mov`, `mac_claude_sheet.png` |
+| Android emulator, Claude manual `/compact` | Pass, smoke. Ticks 0 → 8 s and is settled ("freed 19k tokens") in place afterwards. The recording stops before the settle frame (Android `screenrecord` stops encoding), so the settle motion itself is not recorded. | `and_compact.mp4`, `and_settled.png` |
+| Claude automatic compaction | Pass with F9 and F10. With `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=1` on the bridge, turns 1–2 failed (`too_few_groups`) and turn 3 compacted: the row ticked 0 → 10 s and settled to "Context compacted · freed 34k tokens · auto". | `ios_autoc.mp4`, `ios_autoc_t3.png`, `autoc_t1.txt`–`autoc_t3.txt` |
+| Claude, one row after a catalog re-import | Pass, reduced. After a bridge restart and three later turns, both Claude sessions read back one row per compaction, on the wire and on iOS and Android. The log does not show whether a full history re-import ran; the P10 path itself is covered by step 5b's capture test and the F1 re-check. | `ios_autoc_end.png`, `and_reload.png` |
+| ACP harness without a signal (OMP) | Partial. OMP refused every `/compact` on a tiny session ("Nothing to compact (session too small)"), also with a scratch `.omp/config.yml` lowering `compaction.keepRecentTokens`. The refusal shows as plain agent text with no row, which is correct, but "Working…" during a real OMP compaction was not observed. | `ios_omp3.mp4`, `omp_compact3.txt` |
 
 ## Findings
 
@@ -178,33 +212,70 @@ affect any bridge whose OpenCode knows a deleted directory. This belonged to
 the `opencode-v2` work, and it blocked the OpenCode v2 compaction cell until
 #1916.
 
-## Unexecuted Cells
+### F6 — Codex: a session's first prompt shows twice (open, outside this series)
 
-No device tooling was available (the agent-device and peekaboo servers were
-disconnected), so nothing was rendered or recorded on a surface. These wait on
-the user's V2 decision.
+A new Codex session stores and shows its first prompt as two user messages
+with different ids. An older Codex session on the same slot shows the same.
+It is unrelated to compaction and has no existing issue. Follow-up.
 
-- **iOS phone, real device:** live row ticking, settle with no jump (a
-  recording), details, failed note, VoiceOver reading the row once, and one row
-  after reload. No device control or recording.
-- **macOS desktop:** the same rows and the settle. No screen control or
-  capture.
-- **Android phone:** smoke of the live row and the settle. No device control.
-- **Claude Code:** one automatic compaction (it needs a full context window),
-  one row after a catalog history re-import, and every visual part.
-- **OpenCode v2:** the strip from deltas on screen, and the visual parts. The
-  deltas themselves reached the bridge.
-- **Codex:** the visual parts.
-- **Pi:** threshold compaction, a `willRetry` row staying live, and the visual
-  parts.
-- **DeepSeek:** the visual parts.
-- **One ACP harness without a signal:** plain "Working…". Client rendering.
-- **v1.9.0 App Store app with the new bridge (L5):** "Working…" during a
-  compaction, nothing while an OpenCode summary streams, no decode failure, and
-  the transcript loading after reload. Needs a device with the store build.
+### F7 — DeepSeek and OpenCode v2: the compaction row sits in an "Automation" card (open)
+
+Both harnesses send the compaction message with the `system` sender, which the
+client renders as a labelled "Automation" card around the row. Claude, Codex
+and Pi show the bare row. DeepSeek's sender came with step 7 (#1908,
+`_compactionRow` in `deepseek_event_mapper.dart`); OpenCode v2's predates this
+series. Follow-up.
+
+### F8 — OpenCode v2: the summary strip shifts the transcript (open)
+
+When the first summary delta opens the strip under the row, the content above
+it jumps up by about 8 pt with no transition. When the strip collapses at the
+settle, the content moves down by about 18 pt over roughly 100–150 ms. Both
+hit "content must never jump". Evidence: `ios_opencode.mp4`. Follow-up.
+
+### F9 — Failure notes show harness wording raw (open)
+
+- Pi's rejected `/compact` reads "Compaction failed · Compaction failed:
+  Already compacted": Pi's own message repeats the label.
+- Claude's automatic compaction failure reads "Compaction failed ·
+  too_few_groups", the raw `compact_result` code.
+
+Low damage; both are readable. Follow-up for the wording.
+
+### F10 — Claude automatic compaction: the row and the new prompt swap places (open)
+
+On a turn that auto-compacts, the running row (and a failed note) appears
+above the user's just-sent prompt, which still shows "Sending to Claude
+Code…". When Claude accepts the prompt, the prompt bubble jumps above the row.
+After a reload the row sorts above the prompt again, so the live and reloaded
+orders differ. It reproduced on all three turns. Evidence: `ios_autoc_t3.png`,
+`ios_autoc_working.png`, `and_reload.png`. Follow-up.
+
+### F11 — "Working…" starts from a stale time (open, likely outside this series)
+
+While a new prompt is still "Sending", the "Working…" timer counts from an
+earlier start: "2m 34s" on the first turn after a bridge restart (the previous
+`/compact`'s start), "7s" on the next turn. It resets when the turn starts.
+Evidence: `ios_autoc_working.png`. This is the turn timer, not the compaction
+row. Follow-up.
+
+## Not Executed And Reductions
+
+- **v1.9.0 App Store app with the new bridge (L5): not executed.** The App
+  Store build installs only on a real device, and the user's physical iPhones
+  are off-limits for this run; the simulator cannot install it.
+- **OMP "Working…" during a real compaction: not executed** (see the table).
+  OMP refuses `/compact` on a session small enough to test cheaply.
+- **Pi threshold compaction and a `willRetry` row: not executed.** They need a
+  full context window or a provider error.
+- **Real devices: reduced** to the slot's iOS simulator and Android emulator.
+- **VoiceOver: reduced** to the accessibility tree; no speech was recorded.
+- **Android settle motion: reduced** to before-and-after frames.
+- **Catalog re-import: reduced**; see the table row.
 
 OpenCode v1 is not listed: the user excluded it on 2026-10-08.
 
 ## Size
 
-This file only, before the retirement edits.
+This file, the move to `.plan/completed/` and small `PLAN.md` and `TRACKER.md`
+status edits.

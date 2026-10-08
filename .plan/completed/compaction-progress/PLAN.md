@@ -15,6 +15,10 @@
   6a (OpenCode v2) and 6b (OpenCode v1); see
   [Phase 2](#5-phase-2-steps-67-detailed-by-the-step-6a-pr-on-2026-10-07).
   Steps 8–9 reconcile the docs and retire the plan.
+- **Completed:** 2026-10-08, by step 9, which recorded the live matrix and
+  moved the plan here; see [step 9](steps/step-09.md). Step 9's live run found
+  F1–F5, fixed by steps 5b, 7b and 7c and #1916. Its on-screen run found
+  F6–F11, left as standalone follow-ups.
 - **Renumbered 2026-10-07:** the user approved the sweep-rule refactor (Q4) as
   its own PR before the wire contract, so it became step 2 and every later
   step moved up by one.
@@ -842,6 +846,12 @@ harness's events and the motion must be seen on a device.
 
 Required matrix, recorded now. Any reduction needs the user's acceptance in
 this file before retirement.
+
+The user's V2 decision (2026-10-08) let step 9 run the device cells on the
+slot's simulator and emulator and record the v1.9.0 App Store cell and a
+costly Claude automatic compaction as not executed, with the reason. The
+results and the remaining reductions are in
+[step 9](steps/step-09.md#not-executed-and-reductions).
 
 - **iOS phone, real device (release target):** live row ticking, settle in
   place with no jump (a recording), details, failed note, VoiceOver reading
