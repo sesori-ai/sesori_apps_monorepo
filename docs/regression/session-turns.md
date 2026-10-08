@@ -358,7 +358,9 @@ defaults and queued client sends coherent.
   (`pre − post` when both are reported) and the trigger, under the same row,
   stamped with the summary's time. A `compact_result: failed` settles it as a
   failure note carrying `compact_error`, and the CLI's synthetic echo of that
-  error renders nothing. An older CLI that sends no status frames keeps the
+  error renders nothing. A Stop or process exit mid-compaction leaves the
+  running row to the bridge's idle sweep, which ends it as a failure note. An
+  older CLI that sends no status frames keeps the
   settled row from the boundary and summary. History rebuilds the settled row
   with its details from the boundary and `isCompactSummary` records; a later
   re-import re-keys a live row to the summary record's id at the same place,

@@ -69,8 +69,9 @@ sub-agent parts, plus the signal that a tool changed files.
 - The client never classifies a raw tool name or parses tool input.
 - A finished context compaction renders as one quiet "Context compacted" row in
   the step style; like visible text it ends a group. While it runs, Pi, Codex
-  and DeepSeek show the live row below from the start, OpenCode v1 from its
-  summary's first text, and OpenCode v2 once its running snapshot loads. When the
+  and DeepSeek show the live row below from the start, Claude from its first
+  `compacting` status, OpenCode v1 from its summary's first text, and OpenCode
+  v2 once its running snapshot loads. When the
   harness exposes the carried-forward summary, tapping the row opens a
   reading-width modal at once. A long summary shows a spinner that the Markdown
   replaces once the modal's entry transition ends (at once under reduced
@@ -116,12 +117,13 @@ sub-agent parts, plus the signal that a tool changed files.
   down when the compaction ends, the row stays running, like any live part
   stranded by the outage, until a later ordinary transcript read once the
   session is idle; stored-only reads and reads while the session is busy or
-  retrying leave it running. On Pi, Codex and DeepSeek the time counts from the
-  bridge's stamp of the start when the harness sends none, and a Pi attempt
-  that Pi retries keeps its first stamp. A Pi compaction that fails or is
+  retrying leave it running. On Claude, Pi, Codex and DeepSeek the time counts
+  from the bridge's stamp of the start when the harness sends none, and a Pi
+  attempt that Pi retries keeps its first stamp. A Pi compaction that fails or is
   aborted becomes the failure note at the row's place, under its own id so the
   next attempt gets a new row. An unfinished compaction elsewhere (Stop or a
-  lost process on Pi, any Codex or DeepSeek compaction without a completion)
+  lost process on Claude or Pi, any Codex or DeepSeek compaction without a
+  completion)
   stays running until the turn goes idle, when the bridge's sweep ends it
   with the "turn ended" failure note. DeepSeek's history has no compaction
   record, so its row survives one history re-import and then disappears.
@@ -400,7 +402,7 @@ guarantee.
 - A group shows a per-kind list, a failed count, or a lone finished step's own
   row instead of “1 step”, or a summary names a backend tool.
 - A finished compaction shows no row, shows its summary inline as a user or
-  assistant message, leaves a running `compact` tool beside the row, or opens an
+  assistant message, shows a `compact` tool card beside the row, or opens an
   empty modal; tapping a long summary stalls before the ripple, skips the
   modal's entry transition, or leaves the spinner in place; the Claude summary
   appears live but not after reload, or the reverse.
@@ -483,10 +485,10 @@ guarantee.
   child sessions remain unsupported in Sesori.
 - Attachment presentation is being reworked toward referenced images; only the
   shipped build counts.
-- An older client decodes the compaction part but ignores its state, summary
-  included, and renders nothing, so during a Pi, Codex or DeepSeek compaction
-  it shows only “Working…”, without the running `compact` card older bridges
-  sent (accepted). While an OpenCode summary streams, an
+- An app at v1.9.0 or older decodes the compaction part but ignores its state
+  and renders nothing, so during a Claude, Pi, Codex or DeepSeek compaction it
+  shows only “Working…”; on Pi and Codex that replaces the running `compact`
+  card it got from a v1.9.0 bridge (accepted). While an OpenCode summary streams, an
   older client buffers the words for a part it never shows, so it shows neither
   “Working…” nor a row until the compaction ends and the turn goes on
   (accepted; no old-client code).

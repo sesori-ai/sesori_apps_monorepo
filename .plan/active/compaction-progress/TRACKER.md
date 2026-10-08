@@ -20,6 +20,10 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
     extra code.
   - Q6: failure notes the harness's history lacks survive one re-import,
     then disappear.
+- R1 is the user's answer of 2026-10-08: a list row that replaces one that
+  left in the same update stays put; only new rows ease in.
+- `docs/HARNESS_CAPABILITIES.md` keeps one two-column compaction table
+  (Compaction row, Summary). Step 8 dropped the planned four-column split.
 - The series was renumbered on 2026-10-07 to insert step 2. Step 1 merged
   under its old title.
 - This plan approves the phase-1 architecture only. The step-6 PR details
@@ -40,7 +44,8 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 - Stranded running compactions are finalized only by the existing idle and
   read sweep, whose rule lives in `ChatHistoryService` from step 2.
 - The row settles in place, keyed by part id. Never remove and re-add it,
-  except for the documented Claude fallback in P10.
+  except for Pi's failure note (step 7) and Claude's one re-key after a
+  history re-import (P10 option 2, with R1).
 
 ## Steps
 
@@ -53,7 +58,7 @@ finished step lives in `steps/step-NN.md`, written only by that step's own PR.
 | 5 | `compaction-progress/claude` | [5](#fixed-pr-titles) | ≤ 700 | 4 |
 | 6 | `compaction-progress/opencode` | [6](#fixed-pr-titles) | ≤ 800 | 4 |
 | 7 | `compaction-progress/pi-codex-deepseek` | [7](#fixed-pr-titles) | ≤ 900 | 4, step 6's plan detail |
-| 8 | `compaction-progress/docs` | [8](#fixed-pr-titles) | ≤ 300 | 2–7 |
+| 8 | `compaction-progress/step-8-docs` | [8](#fixed-pr-titles) | ≤ 300 | 2–7 |
 | 9 | `compaction-progress/retire` | [9](#fixed-pr-titles) | ≤ 250 | 8 |
 
 Steps 3 and 4 include generated Freezed, JSON and localization output.
