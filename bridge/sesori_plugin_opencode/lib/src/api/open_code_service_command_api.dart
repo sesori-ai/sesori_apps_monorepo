@@ -103,9 +103,10 @@ class const OpenCodeServiceCommandApi({required final HostProcessCommandExecutor
       throw OpenCodeServiceCommandException(message: "$command did not finish", cause: error);
     }
     if (result.exitCode != 0) {
+      final stderrText = result.stderr.trim();
       throw OpenCodeServiceCommandException(
         message: "$command exited ${result.exitCode}",
-        cause: result.stderr.trim(),
+        cause: stderrText.isEmpty ? null : stderrText,
       );
     }
     return result;

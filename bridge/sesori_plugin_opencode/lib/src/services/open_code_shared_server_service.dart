@@ -30,8 +30,9 @@ class const OpenCodeSharedServerService({required final OpenCodeSharedServerRepo
       );
       if (version.version.compareTo(openCodeMinimumV2Version) < 0) {
         // OpenCode 1 has no shared service, and starting a v2 one instead
-        // would migrate the user's database one way.
-        Log.i("[opencode] OpenCode $version has no shared service; using a private server");
+        // would migrate the user's database one way. The bridge does not
+        // support 2.x releases before the minimum.
+        Log.i("[opencode] OpenCode $version is older than $openCodeMinimumV2Version; using a private server");
         return null;
       }
       if (await repository.isServiceDisabled(binary: binary, environment: environment, startAborted: startAborted)) {

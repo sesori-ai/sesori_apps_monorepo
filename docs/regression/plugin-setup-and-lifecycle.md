@@ -627,7 +627,8 @@ owned-process exit; and restart.
   reports its password, or fails to start instead of spawning when the registration
   is unusable.
 - With sharing on and no service, the bridge spawns a private server instead of
-  running `opencode service start` on OpenCode 2, starts a service while OpenCode's
+  running `opencode service start` on OpenCode 2 whose `disabled` setting reads
+  `false`, starts a service while OpenCode's
   `disabled` setting is `true` or the selected runtime is OpenCode 1, hangs past the
   60-second start bound, or stops the service it started when the bridge stops.
 - A stalled first handshake holds bridge startup past the cold-start budget, a
