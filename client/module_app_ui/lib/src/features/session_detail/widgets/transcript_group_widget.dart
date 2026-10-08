@@ -62,7 +62,7 @@ class const TranscriptGroupWidget({
     // Spaced as a step row is.
     return Padding(
       key: const ValueKey("transcriptGroup.summary"),
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: TranscriptStepRow.stepGap),
       child: switch (PregoInteractionScope.of(context)) {
         PregoInteractionMode.pointer => PregoPopover(
           popoverWidth: panelWidth,

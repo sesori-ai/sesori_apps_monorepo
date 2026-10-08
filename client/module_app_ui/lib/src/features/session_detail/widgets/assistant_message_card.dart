@@ -3,6 +3,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../../extensions/build_context_x.dart";
 import "agent_part_widget.dart";
 import "attachment_collection_widget.dart";
 import "compaction_part_widget.dart";
@@ -24,14 +25,18 @@ class const AssistantMessageCard({
   /// When the message was created, in epoch ms; a running compaction counts
   /// from it.
   required final int? createdAtMs,
-  required final EdgeInsetsGeometry contentPadding,
+  required final EdgeInsets contentPadding,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // The column stays mounted while empty, so the first block counts as
-    // joining; the padding waits for it, so an empty row has no height.
-    return Padding(
-      padding: blocks.isEmpty ? EdgeInsets.zero : contentPadding,
+    // joining; the vertical padding waits for it, so an empty row has no
+    // height, and eases in with it, so the row grows as one. The horizontal
+    // inset stays, so the first block fades in where it will sit.
+    return AnimatedPadding(
+      duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+      curve: transcriptMotionCurve,
+      padding: blocks.isEmpty ? contentPadding.copyWith(top: 0, bottom: 0) : contentPadding,
       child: PregoReadableSelectionArea(
         child: TranscriptPresenceColumn(
           children: [

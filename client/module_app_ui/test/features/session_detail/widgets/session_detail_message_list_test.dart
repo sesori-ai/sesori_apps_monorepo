@@ -1856,6 +1856,8 @@ void main() {
           tool: "read",
           state: ToolState(status: status, title: "notes.md", shellCommand: null, output: null, error: null),
         ),
+        // Shows only once it streams.
+        const MessagePart.text(id: "assistant-1-text", sessionID: "session-1", messageID: "assistant-1", text: ""),
       ],
     );
     // The first frame starts the row's ease in or out; the second ends it.
@@ -2108,6 +2110,177 @@ void main() {
     expect(find.text("Read second"), findsNothing);
     expect(find.text("2 steps"), findsOneWidget);
     expect(find.text("Working…"), findsOneWidget);
+  });
+
+  testWidgets("a step that takes over from Working… moves nothing above it, opening a reply or joining one", (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    MessageWithParts assistant({required String id, required List<MessagePart> parts}) => MessageWithParts(
+      info: Message.assistant(id: id, sessionID: "session-1", agent: null, modelID: null, providerID: null, time: null),
+      parts: parts,
+    );
+    MessagePart thought({required String text}) =>
+        MessagePart.reasoning(id: "thought", sessionID: "session-1", messageID: "assistant-1", text: text);
+    final reply = assistant(
+      id: "assistant-1",
+      parts: [thought(text: "")],
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 2),
+        initialStreamingText: const {},
+        platform: TargetPlatform.iOS,
+      ),
+    );
+    final harness = harnessKey.currentState!;
+    harness.setBusy(true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("Working…"), findsOneWidget);
+
+    // Every frame keeps the prompt above where it was.
+    Future<void> expectStill({required int frames}) async {
+      final top = tester.getTopLeft(_messageKey("user-1")).dy;
+      for (var frame = 0; frame < frames; frame++) {
+        await tester.pump(const Duration(milliseconds: 20));
+        expect(tester.getTopLeft(_messageKey("user-1")).dy, moreOrLessEquals(top, epsilon: 0.5));
+      }
+    }
+
+    Future<void> expectStillThrough({required String step}) async {
+      await expectStill(frames: 12);
+      expect(find.text("Working…"), findsNothing);
+      expect(find.text(step), findsOneWidget);
+    }
+
+    // A thought's first words can land before the thought; nothing shows them
+    // yet, so Working stays.
+    harness.updateStreamingText(partId: "thought", text: "Weighing");
+    await expectStill(frames: 3);
+    expect(find.text("Working…"), findsOneWidget);
+
+    // The thought opens the reply, its card's padding and all.
+    harness.appendNewestMessage(reply);
+    await expectStillThrough(step: "Thinking...");
+
+    final thoughtDone = assistant(
+      id: "assistant-1",
+      parts: [thought(text: "Weighing")],
+    );
+    harness
+      ..replaceMessages([..._userMessages(count: 2), thoughtDone])
+      ..clearStreamingText();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("Working…"), findsOneWidget);
+
+    // The next reply's envelope shows nothing; its first step joins the shown
+    // reply's group.
+    harness.appendNewestMessage(assistant(id: "assistant-2", parts: const []));
+    await expectStill(frames: 3);
+    MessageWithParts reading({required String id, required String file, required ToolStatus status}) => assistant(
+      id: id,
+      parts: [
+        MessagePart.tool(
+          id: "read-$id",
+          sessionID: "session-1",
+          messageID: id,
+          tool: "read",
+          state: ToolState(status: status, title: file, shellCommand: null, output: null, error: null),
+        ),
+      ],
+    );
+    harness.replaceMessages([
+      ..._userMessages(count: 2),
+      thoughtDone,
+      reading(id: "assistant-2", file: "notes.md", status: ToolStatus.running),
+    ]);
+    await expectStillThrough(step: "Read notes.md");
+
+    // A user message that shows nothing still closes the group, so the next
+    // step opens a card of its own.
+    final readDone = reading(id: "assistant-2", file: "notes.md", status: ToolStatus.completed);
+    final hiddenUser = _message(messageId: "user-hidden", role: "user", text: "");
+    harness.replaceMessages([..._userMessages(count: 2), thoughtDone, readDone, hiddenUser]);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("Working…"), findsOneWidget);
+    harness.appendNewestMessage(reading(id: "assistant-3", file: "plan.md", status: ToolStatus.running));
+    await expectStillThrough(step: "Read plan.md");
+  });
+
+  testWidgets("a step that opens a new card after the reply's text takes over from Working… without moving", (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    MessageWithParts assistant({required String id, required List<MessagePart> parts}) => MessageWithParts(
+      info: Message.assistant(id: id, sessionID: "session-1", agent: null, modelID: null, providerID: null, time: null),
+      parts: parts,
+    );
+    final said = assistant(
+      id: "assistant-1",
+      parts: const [MessagePart.text(id: "said", sessionID: "session-1", messageID: "assistant-1", text: "Read it.")],
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [..._userMessages(count: 2), said],
+        initialStreamingText: const {},
+        platform: TargetPlatform.iOS,
+      ),
+    );
+    final harness = harnessKey.currentState!;
+    harness.setBusy(true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("Working…"), findsOneWidget);
+
+    // The next reply's envelope lands first; its step will open a card of its
+    // own, so Working makes room for that card's padding now.
+    harness.appendNewestMessage(assistant(id: "assistant-2", parts: const []));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("Working…"), findsOneWidget);
+
+    final top = tester.getTopLeft(_messageKey("user-1")).dy;
+    harness.replaceMessages([
+      ..._userMessages(count: 2),
+      said,
+      assistant(
+        id: "assistant-2",
+        parts: const [
+          MessagePart.tool(
+            id: "read",
+            sessionID: "session-1",
+            messageID: "assistant-2",
+            tool: "read",
+            state: ToolState(
+              status: ToolStatus.running,
+              title: "notes.md",
+              shellCommand: null,
+              output: null,
+              error: null,
+            ),
+          ),
+        ],
+      ),
+    ]);
+    // The step fades in where it will sit, rather than sliding in from the edge.
+    final stepLefts = <double>[];
+    for (var frame = 0; frame < 12; frame++) {
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(tester.getTopLeft(_messageKey("user-1")).dy, moreOrLessEquals(top, epsilon: 0.5), reason: "frame $frame");
+      stepLefts.add(tester.getTopLeft(find.text("Read notes.md")).dx);
+    }
+    expect(stepLefts, everyElement(moreOrLessEquals(stepLefts.last, epsilon: 0.5)));
+    expect(find.text("Working…"), findsNothing);
+    expect(find.text("Read notes.md"), findsOneWidget);
   });
 
   testWidgets("following mode stays pinned to latest", (tester) async {

@@ -29,7 +29,7 @@ class const ToolPartWidget({super.key, required final MessagePartTool part}) ext
         };
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: TranscriptStepRow.stepGap),
       child: Column(
         crossAxisAlignment: .start,
         children: [

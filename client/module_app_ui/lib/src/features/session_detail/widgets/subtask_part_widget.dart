@@ -32,7 +32,7 @@ class const SubtaskPartWidget({
     final targetProjectId = projectId ?? childSession?.projectID;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: TranscriptStepRow.stepGap),
       child: Material(
         type: MaterialType.transparency,
         child: InkWell(

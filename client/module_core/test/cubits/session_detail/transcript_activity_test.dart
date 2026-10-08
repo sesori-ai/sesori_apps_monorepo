@@ -81,7 +81,7 @@ TranscriptActivity _activity({
     isBusy: isBusy,
     mainAgentRunning: mainAgentRunning,
     retryErrorMessage: retryErrorMessage,
-    hasStreamingText: streamingText.isNotEmpty,
+    streamingText: streamingText,
     children: children,
     childStatuses: childStatuses,
     pendingPrompts: pendingPrompts,
@@ -97,6 +97,12 @@ final List<MessageWithParts> _finishedTurn = [
     parts: [const MessagePart.text(id: "t", sessionID: "s", messageID: "a1", text: "Done.")],
   ),
 ];
+
+/// An agent reply whose text part "t" streams.
+final MessageWithParts _streamingReply = _agent(
+  id: "a-streaming",
+  parts: [const MessagePart.text(id: "t", sessionID: "s", messageID: "a-streaming", text: "")],
+);
 
 void main() {
   group("TranscriptActivityBuilder", () {
@@ -330,12 +336,21 @@ void main() {
         isA<TranscriptActivityIdle>(),
       );
       expect(
-        _activity(messages: [prompt], isBusy: true, streamingText: const {"t": "Hel"}),
+        _activity(messages: [prompt, _streamingReply], isBusy: true, streamingText: const {"t": "Hel"}),
         isA<TranscriptActivityIdle>(),
       );
       expect(
         _activity(messages: [prompt], isBusy: true, retryErrorMessage: "Overloaded"),
         isA<TranscriptActivityIdle>(),
+      );
+    });
+
+    test("keeps working while streaming text waits for its part, since nothing shows it yet", () {
+      final prompt = _prompt(id: "u1", at: 1000);
+
+      expect(
+        _activity(messages: [prompt], isBusy: true, streamingText: const {"t": "Hel"}),
+        isA<TranscriptActivityWorking>().having((a) => a.sinceMs, "sinceMs", 1000),
       );
     });
 
@@ -457,7 +472,7 @@ void main() {
         );
         expect(
           _activity(
-            messages: [prompt, spawned],
+            messages: [prompt, spawned, _streamingReply],
             isBusy: true,
             streamingText: const {"t": "Hel"},
             children: children,

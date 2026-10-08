@@ -49,7 +49,7 @@ class _ReasoningPartCardState() extends State<ReasoningPartCard> {
     final prego = context.prego;
     final loc = context.loc;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: TranscriptStepRow.stepGap),
       child: MergeSemantics(
         child: Semantics(
           button: true,

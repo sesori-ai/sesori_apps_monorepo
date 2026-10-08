@@ -87,7 +87,10 @@ void main() {
       final semantics = tester.ensureSemantics();
       await tester.pumpWidget(
         _harness(
-          child: TranscriptWorkingRow(sinceMs: _nowMs(tester: tester) - 103000),
+          child: TranscriptWorkingRow(
+            sinceMs: _nowMs(tester: tester) - 103000,
+            padding: EdgeInsets.zero,
+          ),
         ),
       );
       expect(find.text("Working… · "), findsOneWidget);
@@ -111,7 +114,10 @@ void main() {
               alignment: Alignment.topLeft,
               child: SizedBox(
                 width: 300,
-                child: TranscriptWorkingRow(sinceMs: _nowMs(tester: tester) - 3905000),
+                child: TranscriptWorkingRow(
+                  sinceMs: _nowMs(tester: tester) - 3905000,
+                  padding: EdgeInsets.zero,
+                ),
               ),
             ),
           ),
@@ -125,7 +131,7 @@ void main() {
     });
 
     _clockTestWidgets("reads plain Working… when the prompt time is unknown", (tester) async {
-      await tester.pumpWidget(_harness(child: const TranscriptWorkingRow(sinceMs: null)));
+      await tester.pumpWidget(_harness(child: const TranscriptWorkingRow(sinceMs: null, padding: EdgeInsets.zero)));
 
       expect(find.text("Working…"), findsOneWidget);
       expect(find.byType(TranscriptElapsedTime), findsNothing);

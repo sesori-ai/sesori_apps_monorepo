@@ -103,7 +103,7 @@ class const CompactionPartWidget({
       CompactionStateCompleted() || CompactionStateFailed() => null,
     };
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: TranscriptStepRow.stepGap),
       // One button in every state, so the row keeps its place and the icon
       // its switcher as the state changes.
       child: TextButton(

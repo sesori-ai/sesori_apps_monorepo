@@ -53,7 +53,10 @@ class const TranscriptActivityBuilder() {
     /// foreground sub-agent still counts, since a new prompt waits for it.
     required bool mainAgentRunning,
     required String? retryErrorMessage,
-    required bool hasStreamingText,
+
+    /// Streaming text by part id. A delta can land before its part, and until
+    /// the part arrives nothing shows it, so Working stays.
+    required Map<String, String> streamingText,
     required List<Session> children,
     required Map<String, SessionStatus> childStatuses,
 
@@ -65,7 +68,9 @@ class const TranscriptActivityBuilder() {
     /// keeps counting from the acceptance, which the message itself lacks.
     required ({String promptId, int acceptedAt})? lastHeldPrompt,
   }) {
-    if (!isBusy || retryErrorMessage != null || hasStreamingText) return const TranscriptActivityIdle();
+    if (!isBusy || retryErrorMessage != null || _showsStreamingText(messages: messages, streamingText: streamingText)) {
+      return const TranscriptActivityIdle();
+    }
     final running = runningChildren(children: children, childStatuses: childStatuses);
     // A running compaction's own row is live, and it is the main agent's work.
     final compacting = _isCompacting(messages: messages);
@@ -102,6 +107,15 @@ class const TranscriptActivityBuilder() {
       sinceMs: acceptedAt != null && (created == null || acceptedAt < created) ? acceptedAt : created,
     );
   }
+
+  /// Streaming text shows only through its part, which sits in a newest
+  /// message.
+  static bool _showsStreamingText({
+    required List<MessageWithParts> messages,
+    required Map<String, String> streamingText,
+  }) =>
+      streamingText.isNotEmpty &&
+      messages.reversed.any((message) => message.parts.any((part) => streamingText.containsKey(part.id)));
 
   static bool _isCompacting({required List<MessageWithParts> messages}) => messages.any(
     (message) => message.parts.any((part) => part is MessagePartCompaction && part.state is CompactionStateRunning),

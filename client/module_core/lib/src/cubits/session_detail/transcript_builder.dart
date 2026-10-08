@@ -84,6 +84,10 @@ final class const Transcript({
   /// The newest running step, which the jump button names while the reader
   /// is scrolled away from it; null when nothing runs.
   required final TranscriptStep? liveStep,
+
+  /// Whether the newest group is still open, so a step that arrives next joins
+  /// it.
+  required final bool endsInOpenGroup,
 }) {
   List<TranscriptBlock> blocksFor({required String messageId}) => blocksByMessageId[messageId] ?? const [];
 }
@@ -150,6 +154,7 @@ class const TranscriptBuilder() {
 
     return Transcript(
       liveStep: liveStep,
+      endsInOpenGroup: group != null,
       blocksByMessageId: {
         for (final MapEntry(:key, :value) in pendingByMessageId.entries)
           key: [

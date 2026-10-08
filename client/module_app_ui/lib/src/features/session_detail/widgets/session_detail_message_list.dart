@@ -205,6 +205,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// in and out as work starts and ends.
   static const _kWorkingRowId = "session-detail-working-row";
 
+  /// Around the agent's reply, and the working row that stands in for it.
+  static const _kReplyPadding = EdgeInsets.symmetric(horizontal: 16, vertical: 4);
+
   /// Synthetic id for the launch's first message, the oldest transient row. A
   /// session has at most one, so it is never matched against echoes.
   static const _kLaunchRowId = "session-detail-launch-row";
@@ -899,7 +902,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       isBusy: isBusy,
       mainAgentRunning: mainAgentRunning,
       retryErrorMessage: retryErrorMessage,
-      hasStreamingText: streamingText.isNotEmpty,
+      streamingText: streamingText,
       children: children,
       childStatuses: childStatuses,
       // In the order their rows show.
@@ -1128,7 +1131,13 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       );
     }
     if (entryId == _kWorkingRowId) {
-      return _revealable(createdAtMs: null, child: _workingRow(activity: activity));
+      return _revealable(
+        createdAtMs: null,
+        child: _workingRow(
+          activity: activity,
+          stepJoinsShownCard: _stepJoinsShownCard(messages: messages, transcript: transcript),
+        ),
+      );
     }
     if (widget.launchHandoff
         case SessionLaunchHandoff(
@@ -1280,7 +1289,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         blocks: transcript.blocksFor(messageId: id),
         streamingText: streamingText,
         createdAtMs: createdAtMs,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding: _kReplyPadding,
       ),
       MessageAssistant(:final id) => SystemMessageCard(
         projectId: widget.projectId,
@@ -1327,22 +1336,36 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// The working row eases in when work starts or a step ends, and away when
   /// a step starts or work ends. The sub-agent row takes over, easing, while
   /// only sub-agents work.
-  Widget _workingRow({required TranscriptActivity activity}) => TranscriptPresenceColumn(
-    children: [
-      ?switch (activity) {
-        TranscriptActivityWorking(:final sinceMs) => TranscriptWorkingRow(
-          key: const ValueKey("session-detail-working"),
-          sinceMs: sinceMs,
-        ),
-        TranscriptActivitySubAgents(:final count, :final sinceMs) => TranscriptSubAgentsRow(
-          key: const ValueKey("session-detail-sub-agents"),
-          count: count,
-          sinceMs: sinceMs,
-        ),
-        TranscriptActivityIdle() => null,
-      },
-    ],
-  );
+  Widget _workingRow({required TranscriptActivity activity, required bool stepJoinsShownCard}) =>
+      TranscriptPresenceColumn(
+        children: [
+          ?switch (activity) {
+            TranscriptActivityWorking(:final sinceMs) => TranscriptWorkingRow(
+              key: const ValueKey("session-detail-working"),
+              sinceMs: sinceMs,
+              // A step that opens a card of its own brings the card's padding.
+              padding: stepJoinsShownCard ? _kReplyPadding.copyWith(top: 0, bottom: 0) : _kReplyPadding,
+            ),
+            TranscriptActivitySubAgents(:final count, :final sinceMs) => TranscriptSubAgentsRow(
+              key: const ValueKey("session-detail-sub-agents"),
+              count: count,
+              sinceMs: sinceMs,
+            ),
+            TranscriptActivityIdle() => null,
+          },
+        ],
+      );
+
+  /// Whether the next step lands in an agent reply card that already shows,
+  /// and so already carries the reply padding: it joins the open group, or
+  /// follows the newest message when that is a shown agent reply. Otherwise
+  /// it opens a card of its own.
+  static bool _stepJoinsShownCard({required List<MessageWithParts> messages, required Transcript transcript}) =>
+      transcript.endsInOpenGroup ||
+      switch (messages.lastOrNull?.info) {
+        MessageAssistant(sender: MessageSender.agent, :final id) => transcript.blocksFor(messageId: id).isNotEmpty,
+        MessageUser() || MessageAssistant() || MessageError() || null => false,
+      };
 
   /// Wraps a row so the shared horizontal drag reveals its timestamp.
   Widget _revealable({required int? createdAtMs, required Widget child}) {
