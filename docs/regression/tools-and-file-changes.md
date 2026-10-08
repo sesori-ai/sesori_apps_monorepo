@@ -79,9 +79,10 @@ sub-agent parts, plus the signal that a tool changed files.
   `docs/HARNESS_CAPABILITIES.md` for which harnesses mark compaction.
 - The compaction part carries its state: running (with any summary written so
   far), completed (with the summary, freed tokens and an `auto` or `manual`
-  trigger when the harness reports them) or failed (with a typed reason when
-  the plugin recognizes the harness's error: nothing to compact, already
-  compacted, stopped, or the turn ended first). The raw harness error never
+  trigger when the harness reports them) or failed (with a typed reason: nothing
+  to compact, already compacted or stopped when the plugin recognizes the
+  harness's error, or the turn ended first when the bridge's idle sweep ends a
+  compaction still running). The raw harness error never
   reaches the client; the plugin logs it locally. A part from a released bridge
   carries no state and reads as completed with no details; a state status this
   client does not know reads as completed with whichever completed fields it

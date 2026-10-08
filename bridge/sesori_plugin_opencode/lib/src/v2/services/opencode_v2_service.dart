@@ -440,6 +440,11 @@ class OpenCodeV2Service({
         ..._mapper.mapCompactionDelta(event: event, running: running),
       ];
     }
+    // The failed row shows no error, so the raw one is logged, even when the
+    // row cannot load.
+    if (event case V2SessionCompactionFailed(:final sessionID, :final error)) {
+      Log.w("OpenCode v2 compaction failed in $sessionID: ${error.type}: ${error.message}");
+    }
     if (directory == null) return const [];
     switch (event) {
       case V2SessionStepStarted():
@@ -482,10 +487,6 @@ class OpenCodeV2Service({
       case V2SessionCompactionStarted(:final sessionID) ||
           V2SessionCompactionEnded(:final sessionID) ||
           V2SessionCompactionFailed(:final sessionID):
-        // The failed row shows no error, so the raw one is logged.
-        if (event case V2SessionCompactionFailed(:final error)) {
-          Log.w("OpenCode v2 compaction failed in $sessionID: ${error.type}: ${error.message}");
-        }
         final message = await _repository.getLatestMessage(
           sessionId: sessionID,
           filter: V2MessageFilter.compaction,

@@ -8,7 +8,6 @@ import "models/openapi/part.g.dart";
 import "models/openapi/user_message.g.dart";
 import "models/sse_event_data.g.dart";
 import "models/summary_message.dart";
-import "open_code_error_mapper.dart";
 import "plugin_model_mapper.dart";
 import "question_info_mapper.dart";
 
@@ -42,7 +41,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
     switch (summary) {
       case (:final message, :final textParts, auto: _) when message.error != null || message.time.completed != null:
         if (message.error case final error? when textParts.isNotEmpty) {
-          Log.w("[opencode] compaction failed in ${message.sessionID}: ${openCodeError(error: error)}");
+          Log.w("[opencode] compaction failed in ${message.sessionID}: $error");
         }
         return [
           for (final part in textParts) BridgeSseMessagePartUpdated(part: _mapLivePart(part, summary: summary)),

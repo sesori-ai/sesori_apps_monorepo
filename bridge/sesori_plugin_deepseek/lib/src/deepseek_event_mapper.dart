@@ -272,7 +272,7 @@ class DeepSeekEventMapper({
     );
   }
 
-  /// The live compaction row: one system message stamped at the start, with
+  /// The live compaction row: one agent message stamped at the start, with
   /// one part that settles in place. DeepSeek's history has no compaction
   /// record, so the row is live only.
   List<BridgeSseEvent> _compactionRow({
