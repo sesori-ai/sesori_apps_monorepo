@@ -3,9 +3,9 @@
 ## Status
 
 - **Plan slug:** `opencode-shared-service`
-- **Status:** Active. Phase 1 shipped: Step 1 merged in #1923, Step 2 in #1924, Step 3 in #1925. Step 4 (phase-1
-  verification and the phase-2 plan) merged in #1926. Step 5 (phase 2 start path) merged in #1927. Step 6 (re-attach after
-  a drop) merged in #1933. Step 7 (docs reconcile) is in review. Phase 3 is dropped; see "Later phase".
+- **Status:** Complete; retired 2026-10-08 in step 8. Step 1 merged in #1923, Step 2 in #1924, Step 3 in #1925,
+  Step 4 in #1926, Step 5 in #1927, Step 6 in #1933 and Step 7 in #1934. Phase 3 is dropped; see "Later phase".
+  The user's own post-merge check of the shared service is still pending; see "Phase 2 Verification".
 - **Plan date:** 2026-10-08
 - **Implementation base:** `main` at `2ad69c9545`
 - **Scope:** OpenCode 2 only. OpenCode 1 has no background service, so it needs no work. No other harness has a
@@ -237,7 +237,7 @@ their running bridge, or any other process.
   nothing failed.
 - **Pending (the user, after merge):** the user's real-setup check. With their own `opencode serve --service`
   running, they run a bridge built from `main` and confirm the log line, one shared turn visible in both the TUI
-  and the phone, and Stop from the phone. Record the result here when it arrives. It does not block phase 2.
+  and the phone, and Stop from the phone. It is folded into the pending check under "Phase 2 Verification".
 
 ## Phase 2 Design: the bridge starts the shared service
 
@@ -434,6 +434,40 @@ user's own processes.
   - The behavior today: `OpenCodeV2Service.abortSession` ignores the `interrupted` result and reports the abort as
     accepted.
 
+## Phase 2 Verification
+
+- **Automated (#1927, #1933):**
+  - `dart test` passed in `sesori_plugin_opencode` (639 tests), `sesori_plugin_runtime` (213) and
+    `sesori_plugin_codex` (482);
+  - `dart analyze --fatal-infos` clean in all three;
+  - new service, descriptor and reporter tests as listed in "Tests that matter";
+  - CI green on both merged heads (one conditional job skipped);
+  - architecture implementation review approved both PRs (#1927 on its second pass, after the exception moved to
+    `models/`).
+- **Isolated live check, step 5 (2026-10-08, OpenCode 2.0.25, macOS): passed.**
+  - With no service registered, the bridge ran `service start` with the PATH CLI, logged `starting the shared
+    OpenCode 2.0.25 service`, then `using the shared OpenCode 2.0.25 service`, and a prompt answered `pong`.
+  - After the bridge stopped, it logged `server is not bridge-owned; skipping active-work interruption`, and
+    `opencode service status` still showed the service running (P1).
+  - With `service set disabled true`, the bridge used a private server, which stopped with the bridge.
+  - With OpenCode's default service port held by another process, `service start` exited 1; the bridge logged
+    OpenCode's error and used a private server.
+- **Isolated live check, step 6 (2026-10-08): passed.** After `opencode service stop` and a port change, the bridge
+  logged `Plugin "opencode" failed after startup: the server stopped answering` about 5 seconds later and retired the
+  generation. The next request started the service on the new port, attached, and a prompt answered `pong`, with no
+  bridge restart.
+- Every isolated service was stopped with `opencode service stop`. The user's own service and bridge were not touched.
+- **Not run live:**
+  - starting the service from the bundled runtime (the binary choice is the existing runtime selection);
+  - Stop through a service the bridge started (the same attach path as phase 1, where Stop was checked live);
+  - Linux and Windows.
+- **Pending (the user, after merge):** the user's real-setup check of the shared service, covering both phases.
+  - With their own `opencode serve --service` running, run a bridge built from `main` and confirm the `using the
+    shared` log line, one turn visible in both the TUI and the phone, and Stop from the phone.
+  - With no service running, confirm that the bridge starts one and that it keeps running after the bridge stops.
+
+  This plan is retired without that result. Neither check has been run.
+
 ## Steps
 
 Merged PRs keep their original `/4` titles. From step 4 on, the series total is 8; phase 3 adds no steps.
@@ -446,8 +480,8 @@ Merged PRs keep their original `/4` titles. From step 4 on, the series total is 
 | 4 | `🌱 [opencode-shared-service] Record phase-1 verification and plan phase 2 [step 4/8]` | Merged in #1926. The phase-1 verification record and the phase-2 design and steps. Docs only. |
 | 5 | `🚧 [opencode-shared-service] Start OpenCode's shared service instead of a private server [step 5/8]` | Merged in #1927. Phase 2 start path: the command Api, the repository delegates, `OpenCodeSharedServerService.acquire`, descriptor routing, tests, the isolated live check (PATH CLI, bundled runtime, disabled), and the regression bullets for the new behavior. About 500 to 700 changed lines, half of them tests. Complexity `🚧`: start-path lifecycle and an external process that outlives the bridge. No database change. User-visible: with sharing on, the phone and the TUI always share one server, even when the bridge starts first. |
 | 6 | `⚙️ [opencode-shared-service] Re-attach after the shared service drops [step 6/8]` | Merged in #1933. `ManagedRuntimeDisconnectOutcome` on the reporter (covering both `markDisconnected` and `markDegradedNow`), shared mode reporting failure, the Codex and OpenCode consumers updated in lockstep, tests, and the live stop-then-request check. About 200 to 300 changed lines. No database change. User-visible: after the service restarts or moves, the next request reconnects without a bridge restart. |
-| 7 | `🌱 [opencode-shared-service] Reconcile the regression docs [step 7/8]` | Reconcile `plugin-setup-and-lifecycle.md`, `HARNESS_CAPABILITIES.md` and the `bridge/app/README.md` flag notes with everything shipped. |
-| 8 | `🌱 [opencode-shared-service] Record verification and retire the plan [step 8/8]` | Run the recorded coverage, record it, and move the plan to `.plan/completed/`. |
+| 7 | `🌱 [opencode-shared-service] Reconcile the regression docs [step 7/8]` | Merged in #1934. Reconcile `plugin-setup-and-lifecycle.md`, `HARNESS_CAPABILITIES.md` and the `bridge/app/README.md` flag notes with everything shipped. |
+| 8 | `🌱 [opencode-shared-service] Record verification and retire the plan [step 8/8]` | This update: the phase-2 verification record, with the user's post-merge check pending, and the move to `.plan/completed/`. |
 
 ## Regression Coverage
 
@@ -457,7 +491,7 @@ Merged PRs keep their original `/4` titles. From step 4 on, the series total is 
   - Automated descriptor and discovery fixtures cover the selection rules.
   - A live-plugin check covers a real OpenCode 2 service: attach, events, a prompt and Stop through the shared server.
   - Phase 2 adds live coverage for:
-    - the bridge starting the service from the PATH CLI and from the bundled runtime;
+    - the bridge starting the service from the PATH CLI (the bundled runtime is automated only);
     - the `disabled` opt-out;
     - re-attach after `opencode service stop`.
 - **Matrix:** OpenCode 2 on macOS (live). Linux and Windows path resolution is covered only by automated tests:
