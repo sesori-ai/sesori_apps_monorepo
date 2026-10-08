@@ -5,7 +5,7 @@
 - **Plan slug:** `opencode-shared-service`
 - **Status:** Active. Phase 1 shipped: Step 1 merged in #1923, Step 2 in #1924, Step 3 in #1925. Step 4 (phase-1
   verification and the phase-2 plan) merged in #1926. Step 5 (phase 2 start path) merged in #1927. Step 6 (re-attach after
-  a drop) is in review. Phase 3 is still rough.
+  a drop) merged in #1933. Step 7 (docs reconcile) is in review. Phase 3 is dropped; see "Later phase".
 - **Plan date:** 2026-10-08
 - **Implementation base:** `main` at `2ad69c9545`
 - **Scope:** OpenCode 2 only. OpenCode 1 has no background service, so it needs no work. No other harness has a
@@ -46,7 +46,7 @@ Recorded as given. Do not re-litigate them in later steps or PRs.
   Otherwise the bridge spawns its own server as today. Rough later phases:
   - Phase 2: when no service runs, the bridge starts `opencode serve --service` itself, never replacing an existing
     one, and re-discovers or re-attaches after a drop instead of falling back to a private server.
-  - Phase 3 (small): surface a Stop that returned `interrupted:false`.
+  - Phase 3 (small): surface a Stop that returned `interrupted:false`. Dropped in step 7; see "Later phase".
 - **S2:** on by default, with a bridge flag to turn sharing off.
 - **S3 (revised the same day, final):** mirror OpenCode's own client behaviour. The bridge attaches to whatever URL
   `service.json` lists, using its password, with no loopback or tunnel check and no refusal path. The user's words,
@@ -423,25 +423,29 @@ user's own processes.
   binary while the service runs. The running process is unaffected, and the next `service start` uses the current
   binary.
 
-### Later phase (rough)
+### Later phase (dropped)
 
-- **Phase 3: surface a Stop that did not interrupt.**
-  - What: when OpenCode answers Stop with `interrupted:false`, tell the user instead of silently succeeding.
-  - Why: with two processes, or a turn owned elsewhere, Stop can be a no-op that the user cannot see.
+- **Phase 3: surface a Stop that did not interrupt.** Dropped as a follow-up on 2026-10-08.
+  - What it was: when OpenCode answers Stop with `interrupted:false`, tell the user instead of silently succeeding.
+  - Why dropped: the shared service removes the two-server case that motivated it. In the remaining private
+    fallback, a turn running on another server never shows as busy through the bridge, because session status comes
+    from the bridge's own server, so the app offers no Stop for it. A turn that settles just before Stop also answers
+    `interrupted:false`, and reporting that as a failure would be wrong. Nothing live needs it.
+  - The behavior today: `OpenCodeV2Service.abortSession` ignores the `interrupted` result and reports the abort as
+    accepted.
 
 ## Steps
 
-Merged PRs keep their original `/4` titles. From step 4 on, the series total is 8. Phase 3's steps go before step 7
-when phase 3 is detailed, and every open title is updated then.
+Merged PRs keep their original `/4` titles. From step 4 on, the series total is 8; phase 3 adds no steps.
 
 | Step | Title | Contents |
 |---|---|---|
 | 1 | `🌱 [opencode-shared-service] Plan sharing OpenCode 2's background server [step 1/4]` | Merged in #1923. |
 | 2 | `🚧 [opencode-shared-service] Attach to OpenCode 2's shared background server [step 2/4]` | Merged in #1924. Phase 1. |
 | 3 | `🌱 [opencode-shared-service] Reconcile the regression docs [step 3/4]` | Merged in #1925. Phase-1 docs. |
-| 4 | `🌱 [opencode-shared-service] Record phase-1 verification and plan phase 2 [step 4/8]` | This update: the phase-1 verification record and the phase-2 design and steps. Docs only. |
-| 5 | `🚧 [opencode-shared-service] Start OpenCode's shared service instead of a private server [step 5/8]` | Phase 2 start path: the command Api, the repository delegates, `OpenCodeSharedServerService.acquire`, descriptor routing, tests, the isolated live check (PATH CLI, bundled runtime, disabled), and the regression bullets for the new behavior. About 500 to 700 changed lines, half of them tests. Complexity `🚧`: start-path lifecycle and an external process that outlives the bridge. No database change. User-visible: with sharing on, the phone and the TUI always share one server, even when the bridge starts first. |
-| 6 | `⚙️ [opencode-shared-service] Re-attach after the shared service drops [step 6/8]` | `ManagedRuntimeDisconnectOutcome` on the reporter (covering both `markDisconnected` and `markDegradedNow`), shared mode reporting failure, the Codex and OpenCode consumers updated in lockstep, tests, and the live stop-then-request check. About 200 to 300 changed lines. No database change. User-visible: after the service restarts or moves, the next request reconnects without a bridge restart. |
+| 4 | `🌱 [opencode-shared-service] Record phase-1 verification and plan phase 2 [step 4/8]` | Merged in #1926. The phase-1 verification record and the phase-2 design and steps. Docs only. |
+| 5 | `🚧 [opencode-shared-service] Start OpenCode's shared service instead of a private server [step 5/8]` | Merged in #1927. Phase 2 start path: the command Api, the repository delegates, `OpenCodeSharedServerService.acquire`, descriptor routing, tests, the isolated live check (PATH CLI, bundled runtime, disabled), and the regression bullets for the new behavior. About 500 to 700 changed lines, half of them tests. Complexity `🚧`: start-path lifecycle and an external process that outlives the bridge. No database change. User-visible: with sharing on, the phone and the TUI always share one server, even when the bridge starts first. |
+| 6 | `⚙️ [opencode-shared-service] Re-attach after the shared service drops [step 6/8]` | Merged in #1933. `ManagedRuntimeDisconnectOutcome` on the reporter (covering both `markDisconnected` and `markDegradedNow`), shared mode reporting failure, the Codex and OpenCode consumers updated in lockstep, tests, and the live stop-then-request check. About 200 to 300 changed lines. No database change. User-visible: after the service restarts or moves, the next request reconnects without a bridge restart. |
 | 7 | `🌱 [opencode-shared-service] Reconcile the regression docs [step 7/8]` | Reconcile `plugin-setup-and-lifecycle.md`, `HARNESS_CAPABILITIES.md` and the `bridge/app/README.md` flag notes with everything shipped. |
 | 8 | `🌱 [opencode-shared-service] Record verification and retire the plan [step 8/8]` | Run the recorded coverage, record it, and move the plan to `.plan/completed/`. |
 

@@ -84,9 +84,14 @@ to see their combined options. The OpenCode plugin adds:
 | `--opencode-no-shared-service` | `false` | Do not use OpenCode 2's shared background server (`opencode serve --service`); always spawn the bridge's own server. |
 
 When OpenCode 2's shared background server is running, healthy and 2.0.11 or newer,
-the bridge uses it instead of spawning its own. `--opencode-port`, `--opencode-host`
-and the password flags then apply only to the bridge's own server, which it spawns
-when no usable shared server is found.
+the bridge uses it instead of spawning its own. When none is running, the bridge runs
+`opencode service start` and uses the service it starts; that service keeps running
+after the bridge stops, and `opencode service stop` stops it. If the service later
+stops or moves, the next request re-attaches, starting it again if needed. OpenCode's
+own `opencode service set disabled true` also turns sharing off. `--opencode-port`,
+`--opencode-host` and the password flags apply only to the bridge's own server, which
+it spawns when sharing is off, the selected OpenCode is older than 2.0.11, or the
+service cannot be started.
 
 ## Commands
 
