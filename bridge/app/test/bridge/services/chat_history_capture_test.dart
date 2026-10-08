@@ -445,7 +445,7 @@ void main() {
         messageId: "summary-record",
         time: PluginMessageTime(created: DateTime.parse(summaryAt).millisecondsSinceEpoch, completed: null),
         content: summary,
-        metadata: ClaudeCompactMetadata.fromTranscript(
+        metadata: ClaudeCompactMetadata.fromJsonOrNull(
           json: const {"trigger": "manual", "preTokens": 24835, "postTokens": 6505},
         ),
       );

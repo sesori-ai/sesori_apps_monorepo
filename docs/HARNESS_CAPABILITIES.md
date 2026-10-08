@@ -641,8 +641,9 @@ can initiate login, and managed installation does **not** authenticate a harness
 The transcript marks a context compaction with a row. Where the harness
 reports a start, the row appears live with a timer and settles in place as
 "Context compacted" or as a one-line failure note. A settled row shows the
-freed tokens and what triggered it when the harness reports them, and opens the
-carried-forward summary when the harness exposes it.
+freed tokens when the harness reports them, marks an automatic compaction when
+the harness reports its trigger, and opens the carried-forward summary when the
+harness exposes it.
 
 | Harness | Compaction row | Summary |
 |---|---|---|

@@ -109,6 +109,6 @@ ClaudeTranscriptMessageDto? _messageOrNull(Object? value) =>
 ClaudeTranscriptAttachmentDto? _attachmentOrNull(Object? value) =>
     value is Map ? ClaudeTranscriptAttachmentDto.fromJson(value.cast<String, dynamic>()) : null;
 
-ClaudeCompactMetadata? _compactMetadataOrNull(Object? value) => ClaudeCompactMetadata.fromTranscript(json: value);
+ClaudeCompactMetadata? _compactMetadataOrNull(Object? value) => ClaudeCompactMetadata.fromJsonOrNull(json: value);
 
 DateTime? _timestampOrNull(Object? value) => value is String ? DateTime.tryParse(value)?.toUtc() : null;

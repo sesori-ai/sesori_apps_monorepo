@@ -67,7 +67,7 @@ sealed class const ClaudeStreamMessage({
           ),
           "task_progress" => ClaudeTaskProgressMessage.fromJson(json, sessionId: sessionId, uuid: uuid),
           "compact_boundary" => ClaudeCompactBoundaryMessage(
-            metadata: ClaudeCompactMetadata.fromStream(json: json["compact_metadata"]),
+            metadata: ClaudeCompactMetadata.fromJsonOrNull(json: json["compact_metadata"]),
             sessionId: sessionId,
             uuid: uuid,
             raw: json,

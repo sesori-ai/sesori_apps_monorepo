@@ -59,7 +59,7 @@ $Res call({
 });
 
 
-$ClaudeTranscriptMessageDtoCopyWith<$Res>? get message;$ClaudeTranscriptAttachmentDtoCopyWith<$Res>? get attachment;
+$ClaudeTranscriptMessageDtoCopyWith<$Res>? get message;$ClaudeTranscriptAttachmentDtoCopyWith<$Res>? get attachment;$ClaudeCompactMetadataCopyWith<$Res>? get compactMetadata;
 
 }
 /// @nodoc
@@ -122,6 +122,18 @@ $ClaudeTranscriptAttachmentDtoCopyWith<$Res>? get attachment {
 
   return $ClaudeTranscriptAttachmentDtoCopyWith<$Res>(_self.attachment!, (value) {
     return _then(_self.copyWith(attachment: value));
+  });
+}/// Create a copy of ClaudeTranscriptRecordDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ClaudeCompactMetadataCopyWith<$Res>? get compactMetadata {
+    if (_self.compactMetadata == null) {
+    return null;
+  }
+
+  return $ClaudeCompactMetadataCopyWith<$Res>(_self.compactMetadata!, (value) {
+    return _then(_self.copyWith(compactMetadata: value));
   });
 }
 }
@@ -198,7 +210,7 @@ $Res call({
 });
 
 
-@override $ClaudeTranscriptMessageDtoCopyWith<$Res>? get message;@override $ClaudeTranscriptAttachmentDtoCopyWith<$Res>? get attachment;
+@override $ClaudeTranscriptMessageDtoCopyWith<$Res>? get message;@override $ClaudeTranscriptAttachmentDtoCopyWith<$Res>? get attachment;@override $ClaudeCompactMetadataCopyWith<$Res>? get compactMetadata;
 
 }
 /// @nodoc
@@ -262,6 +274,18 @@ $ClaudeTranscriptAttachmentDtoCopyWith<$Res>? get attachment {
 
   return $ClaudeTranscriptAttachmentDtoCopyWith<$Res>(_self.attachment!, (value) {
     return _then(_self.copyWith(attachment: value));
+  });
+}/// Create a copy of ClaudeTranscriptRecordDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$ClaudeCompactMetadataCopyWith<$Res>? get compactMetadata {
+    if (_self.compactMetadata == null) {
+    return null;
+  }
+
+  return $ClaudeCompactMetadataCopyWith<$Res>(_self.compactMetadata!, (value) {
+    return _then(_self.copyWith(compactMetadata: value));
   });
 }
 }
