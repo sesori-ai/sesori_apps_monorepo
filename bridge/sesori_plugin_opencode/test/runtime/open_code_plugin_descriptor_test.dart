@@ -1197,28 +1197,41 @@ void main() {
       expect(host.processes.signals, isEmpty);
     });
 
-    test("spawns a private server when no service is registered", () async {
+    void scriptCli({required _FakeHost host, required String version, required bool startSucceeds}) {
+      host.processes.commandOutputs
+        ..["--version"] = version
+        ..["service get disabled"] = "false";
+      if (startSucceeds) host.processes.commandOutputs["service start"] = "http://127.0.0.1:49374";
+      host.processes.onServiceStart = registerService;
+    }
+
+    test("starts the shared service when none is registered and attaches without owning it", () async {
       final host = sharedHost();
+      scriptCli(host: host, version: "opencode v2.0.25", startSucceeds: true);
+
+      final plugin = await descriptor().start(host);
+
+      expect(plugin.describe().details["mode"], equals("shared"));
+      expect(host.processes.commands, equals(["--version", "service get disabled", "service start"]));
+      expect(host.processes.spawnedProcesses, isEmpty);
+      expect(host.ownershipRecord("owner-current"), isNull);
+      await plugin.shutdown(budget: null);
+      expect(host.processes.signals, isEmpty);
+    });
+
+    test("spawns a private server when OpenCode cannot start the shared service", () async {
+      final host = sharedHost();
+      scriptCli(host: host, version: "2.0.25", startSucceeds: false);
 
       final plugin = await descriptor().start(host);
 
       expect(plugin.describe().details["mode"], equals("managed"));
+      expect(host.processes.commands, contains("service start"));
       expect(host.processes.spawnedProcesses, hasLength(1));
       await plugin.shutdown(budget: null);
     });
 
-    test("spawns a private server when the registered service is not healthy", () async {
-      registerService();
-      final host = sharedHost();
-
-      final plugin = await descriptor(infoStatus: (call) => call == 0 ? 503 : 200).start(host);
-
-      expect(plugin.describe().details["mode"], equals("managed"));
-      expect(host.processes.spawnedProcesses, hasLength(1));
-      await plugin.shutdown(budget: null);
-    });
-
-    test("the opt-out flag and an explicit binary never read the registration", () async {
+    test("the opt-out flag and an explicit binary never read the registration or run the CLI", () async {
       registerService();
       for (final host in [sharedHost(noSharedService: true), sharedHost(bin: "/custom/opencode")]) {
         requests.clear();
@@ -1226,6 +1239,7 @@ void main() {
 
         expect(plugin.describe().details["mode"], equals("managed"));
         expect(host.processes.spawnedProcesses, hasLength(1));
+        expect(host.processes.commands, isEmpty);
         expect(requests.map((request) => request.url.port), isNot(contains(49374)));
         await plugin.shutdown(budget: null);
       }
@@ -1490,6 +1504,12 @@ class _FakeHostProcessService() implements HostProcessService {
   final Map<int, ProcessIdentity> inspectResults = <int, ProcessIdentity>{};
   int nextPid = 4242;
 
+  /// Short OpenCode CLI commands (`--version`, `service ...`), keyed by their
+  /// arguments. Each prints its output and exits 0; an unscripted one exits 1.
+  final List<String> commands = <String>[];
+  final Map<String, String> commandOutputs = <String, String>{};
+  void Function()? onServiceStart;
+
   @override
   Future<SpawnedProcess> spawn({
     required String executable,
@@ -1499,8 +1519,16 @@ class _FakeHostProcessService() implements HostProcessService {
     required bool runInShell,
     required bool includeParentEnvironment,
   }) async {
+    if (arguments.first == "--version" || arguments.first == "service") {
+      final command = arguments.join(" ");
+      commands.add(command);
+      if (command == "service start") onServiceStart?.call();
+      final output = commandOutputs[command];
+      return _FakeSpawnedProcess(pid: nextPid++, executablePath: executable, stdoutText: output ?? "")
+        ..completeExit(output == null ? 1 : 0);
+    }
     spawnEnvironments.add(environment);
-    final process = _FakeSpawnedProcess(pid: nextPid++, executablePath: executable);
+    final process = _FakeSpawnedProcess(pid: nextPid++, executablePath: executable, stdoutText: "");
     spawnedProcesses.add(process);
     return process;
   }
@@ -1538,8 +1566,11 @@ class _FakeHostProcessService() implements HostProcessService {
   }
 }
 
-class _FakeSpawnedProcess({@override required final int pid, required final String _executablePath})
-    implements SpawnedProcess {
+class _FakeSpawnedProcess({
+  @override required final int pid,
+  required final String _executablePath,
+  required final String _stdoutText,
+}) implements SpawnedProcess {
   final Completer<int> _exit = Completer<int>();
 
   void completeExit([int code = 0]) {
@@ -1566,7 +1597,7 @@ class _FakeSpawnedProcess({@override required final int pid, required final Stri
   IOSink get stdin => throw UnimplementedError();
 
   @override
-  Stream<List<int>> get stdout => Stream<List<int>>.value(const <int>[]);
+  Stream<List<int>> get stdout => Stream<List<int>>.value(utf8.encode(_stdoutText));
 
   @override
   Stream<List<int>> get stderr => Stream<List<int>>.value(const <int>[]);

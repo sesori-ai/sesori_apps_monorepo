@@ -9,12 +9,14 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness, StringExtensions, maxTranscriptImageCollectionBytes;
 
 import "../api/open_code_catalog_database_api.dart";
+import "../api/open_code_service_command_api.dart";
 import "../api/open_code_service_registration_api.dart";
 import "../message_part_mapper.dart";
 import "../opencode_plugin_impl.dart";
 import "../plugin_model_mapper.dart";
 import "../repositories/open_code_catalog_repository.dart";
 import "../repositories/open_code_shared_server_repository.dart";
+import "../services/open_code_shared_server_service.dart";
 import "../v2/opencode_v2_plugin.dart";
 import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
@@ -636,14 +638,29 @@ class const OpenCodePluginDescriptor({
       gracefulShutdownWait: openCodeGracefulShutdownWait,
     );
 
-    // OpenCode 2's shared background server, when one is running, healthy and
-    // compatible. Using it keeps the bridge, the TUI and the desktop app on one
-    // server instead of two servers colliding on one database.
+    // OpenCode 2's shared background server: the running one, or one OpenCode
+    // starts for us from the provisioned binary. Using it keeps the bridge, the
+    // TUI and the desktop app on one server instead of two servers colliding on
+    // one database.
     final sharedEndpoint = _sharesServer(config)
-        ? await OpenCodeSharedServerRepository(
-            registrationApi: const OpenCodeServiceRegistrationApi(),
-            probeClientFactory: probeClientFactory,
-          ).discover(environment: host.environment)
+        ? await OpenCodeSharedServerService(
+            repository: OpenCodeSharedServerRepository(
+              registrationApi: const OpenCodeServiceRegistrationApi(),
+              commandApi: OpenCodeServiceCommandApi(
+                executor: HostProcessCommandExecutor(
+                  includeParentEnvironment: true,
+                  processes: host.processes,
+                  runInShell: io.Platform.isWindows,
+                  maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+                ),
+              ),
+              probeClientFactory: probeClientFactory,
+            ),
+          ).acquire(
+            binary: host.provisionedRuntimePath,
+            environment: host.environment,
+            startAborted: host.startAborted,
+          )
         : null;
     if (host.startAborted.isAborted) {
       throw const PluginStartAbortedException();

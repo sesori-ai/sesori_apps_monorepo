@@ -190,13 +190,24 @@ credentials; a completed helper must not hide failed load, replay or teardown.
     and diagnostics report `mode: shared` without the password. A private server
     orphaned by a replaced bridge is still reclaimed first.
   - **Not usable:** a missing, corrupt or non-`http` registration, or a booting,
-    failed, foreign, unreachable or too-old server, logs the reason and spawns a
-    private server as before. Known phase-1 limitation: a service started later
-    on the same database can resume that private server's in-flight turns.
+    failed, foreign, unreachable or too-old server, logs the reason. The bridge
+    then runs `<binary> service start` with the selected runtime (the PATH CLI
+    when it meets the minimum, otherwise the bundled runtime), bounded at 60
+    seconds and stopped by a bridge shutdown, and attaches to the service it
+    registers exactly as above. The service is OpenCode's own detached process:
+    it keeps running after the bridge stops, as one started by the TUI does, and
+    `opencode service stop` stops it.
+  - **Private fallback:** the bridge spawns a private server as before, with one
+    log line, when the selected runtime is OpenCode 1, when
+    `opencode service get disabled` prints `true` or cannot be read, or when the
+    start fails, times out or still leaves no usable service. Known limitation: a
+    service started later on the same database can resume that private server's
+    in-flight turns.
   - **Answer lost after discovery:** the plugin starts degraded on the v2 adapter
     and keeps retrying the same URL.
   - **Sharing off:** with `--opencode-no-shared-service`, an explicit
-    `--opencode-bin` or attach mode. `--opencode-port`, `--opencode-host` and
+    `--opencode-bin` or attach mode. None of these runs an OpenCode `service`
+    command. `--opencode-port`, `--opencode-host` and
     the password flags do not turn sharing off; they shape only the private
     fallback server, and a degraded private start reports `mode: managed`.
   - **Rediscovery:** the next plugin start looks for the service again.
@@ -473,16 +484,24 @@ loopback v2 server. These checks do not prove native process teardown.
 Shared-service automation covers the registration path, decoding and URL rules, the
 pid, health and version gates, and routing:
 - attach without spawn or signal;
-- spawn when the service is missing or unhealthy;
-- the opt-out flag and an explicit binary;
+- `service start` when none is registered, then attach without owning it;
+- a private server when the start fails, OpenCode 1 is selected, OpenCode's
+  `disabled` setting is `true` or unreadable, or the started service is still not
+  discoverable; an aborted bridge start aborts instead of falling back;
+- the opt-out flag and an explicit binary, which run no CLI command;
 - degraded v2 after a lost answer;
 - orphan reclaim before attach.
 
 The live-plugin check runs an isolated `opencode serve --service` with its own
 `HOME` and XDG directories, and a source-run bridge pointed at the same state
 directory. It confirms that the bridge selects the shared server, and that events, a
-prompt and Stop work through it. OpenCode 2 on macOS is live. Linux and Windows path
-resolution is automated only.
+prompt and Stop work through it. With no service registered, the same isolated bridge
+runs `opencode service start` with the PATH CLI, attaches to the started service, a
+prompt answers through it, and the service keeps running after the bridge stops. With
+OpenCode's `disabled` setting `true`, or with the service port held by another
+process, the bridge starts a private server instead. OpenCode 2 on macOS is live.
+Starting the service from the bundled runtime, and Linux and Windows path resolution,
+are automated only.
 
 The OpenCode v2 transport also has fixture coverage for authenticated
 REST requests, typed data envelopes and request bodies, location scoping,
@@ -607,6 +626,10 @@ owned-process exit; and restart.
   server. Or the bridge signals, restarts or interrupts the shared service, logs or
   reports its password, or fails to start instead of spawning when the registration
   is unusable.
+- With sharing on and no service, the bridge spawns a private server instead of
+  running `opencode service start` on OpenCode 2, starts a service while OpenCode's
+  `disabled` setting is `true` or the selected runtime is OpenCode 1, hangs past the
+  60-second start bound, or stops the service it started when the bridge stops.
 - A stalled first handshake holds bridge startup past the cold-start budget, a
   budget-exceeded harness reports connected instead of degraded, or its late
   cold-start failure surfaces as an unhandled error rather than a log line.
