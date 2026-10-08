@@ -231,11 +231,11 @@ void main() {
   });
 
   test("pending input is read only for loaded directories, never for every session folder", () async {
-    // The loaded snapshot follows the slower reads, so a folder loaded meanwhile is included.
+    // Live state follows the slow metadata read, so a folder loaded meanwhile is included.
     final gate = repository.metadataGate = Completer<void>();
     final starting = service.coldStart();
     await pumpEventQueue();
-    expect(repository.calls, isNot(contains("loaded")));
+    expect(repository.calls, isNot(anyOf(contains("loaded"), contains("active"))));
     repository.loaded = {worktree};
     gate.complete();
     await starting;
