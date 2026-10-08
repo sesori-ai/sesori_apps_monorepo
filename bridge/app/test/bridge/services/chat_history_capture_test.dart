@@ -524,6 +524,53 @@ void main() {
       );
     });
 
+    test("a first replay keeps a live failure note beside an untimed history compaction", () async {
+      MessageWithParts compaction({required String id, required int? createdAt, required CompactionState state}) =>
+          MessageWithParts(
+            info: Message.assistant(
+              id: id,
+              sessionID: "ses_a",
+              agent: null,
+              modelID: null,
+              providerID: null,
+              sender: MessageSender.agent,
+              time: createdAt == null ? null : MessageTime(created: createdAt, completed: createdAt),
+            ),
+            parts: [MessagePart.compaction(id: "$id-compaction", sessionID: "ses_a", messageID: id, state: state)],
+          );
+      final history = createTestChatHistory(
+        sessionRepository: _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "prompt", text: "Keep going", createdAt: 100, promptId: null),
+            compaction(
+              id: "history-compaction",
+              createdAt: null,
+              state: const CompactionState.completed(summary: "Earlier work.", freedTokens: null, trigger: null),
+            ),
+          ],
+        ),
+      );
+      await _captureMessageWithParts(
+        history: history,
+        message: _messageWithText(id: "prompt", text: "Keep going", createdAt: 100, promptId: null),
+      );
+      await _captureMessageWithParts(
+        history: history,
+        message: compaction(
+          id: "live-failure",
+          createdAt: 300,
+          state: const CompactionState.failed(error: "Compaction failed."),
+        ),
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        const ["prompt", "history-compaction", "live-failure"],
+      );
+    });
+
     test("a replay keeps one row per Claude compaction behind the bridge's own /compact bubbles", () async {
       const claudeSessionId = "11111111-2222-4333-8444-555555555555";
       final temp = Directory.systemTemp.createTempSync("claude-compaction-replay-");

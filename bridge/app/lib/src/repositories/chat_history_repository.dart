@@ -1315,10 +1315,12 @@ class ChatHistoryRepository({
         if (fingerprints[index] case final _SemanticMessageFingerprints fingerprint)
           // A compaction row has no transcript-visible content, and its live
           // neighbours can be rows the replay never has, such as the bridge's
-          // own `/compact` bubble before a Claude compaction. Its creation
-          // time identifies it instead: it matches without neighbours, under
-          // the same time rules, and distinct compactions never share a time.
-          fingerprint.isCompaction
+          // own `/compact` bubble before a Claude compaction. A known creation
+          // time identifies it instead, so it matches without neighbours, only
+          // a row with that same time; distinct compactions never share one.
+          // An untimed row keeps the neighbour match, so it never pairs with
+          // a live failure note that only shares its content.
+          fingerprint.isCompaction && fingerprint.createdAt != null
               ? jsonEncode(["compaction", fingerprint.content])
               : jsonEncode([previousDistinct[index], fingerprint.content, nextDistinct[index]])
         else

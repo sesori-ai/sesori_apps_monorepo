@@ -151,10 +151,10 @@ followed a prompt that history also has.
 
 ### Fix
 
-`replaceSessionMessages` marks a row with only compaction parts and keys it by
-its content alone, not its neighbours. The existing time rules still apply: a
-lone pair matches at an equal (or unknown) time, and a group matches only at
-equal times. Distinct compactions in one session run seconds apart, so they
+`replaceSessionMessages` marks a row with only compaction parts and, when it
+has a creation time, keys it by its content alone, not its neighbours. It then
+pairs only with a row of the same time, because an untimed row keeps the
+neighbour match. Distinct compactions in one session run seconds apart, so they
 never share a millisecond creation time and never merge, and
 a live failure note, stamped at its start, keeps its row. A first attempt made
 every live-only row transparent to its neighbours instead; it changed an
@@ -184,3 +184,18 @@ Dart from Flutter 3.47.5-stable first on `PATH`.
   and `docs/regression/session-turns.md` (the Claude row and its L2 coverage).
 
 No wire or database change.
+
+### PR Review
+
+- **Wave 1 (`27cc1321cb`), cubic:** six doc threads. Fixed in `3cb47f7229`:
+  the time reasoning in this section, the content-and-time wording in PLAN and
+  the replay rule, and the failure note's fate (kept through the first
+  re-import, gone after the next) in the L2 row and the known limitation.
+  Declined: rescoping the replay rule (it already needs a replayed row),
+  reflowing the long table row, and pinning commits and commands in this file.
+  Codex: clean.
+- **Wave 2 (`3cb47f7229`), Codex P2:** Pi replays compactions with no time,
+  so a neighbour-free key let one pair with a live failure note as a lone pair
+  and drop the note. Fixed: only a timed compaction row skips the neighbour
+  match. A new capture test keeps a live failure note beside an untimed history
+  compaction and fails without the fix.
