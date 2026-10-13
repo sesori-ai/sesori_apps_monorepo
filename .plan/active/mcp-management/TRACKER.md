@@ -57,7 +57,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   bridge/relay ownership, client presentation, or the final L4 matrix. Those gates remain active.
 - Public release check still identifies v1.9.0/build 970 as latest production; newer v1.9.1 builds are prereleases.
   The released SSE parser plus byte-identical codecs passed four event-order/settlement fixtures and a snapshot fixture.
-  Actual mixed-client/native-owner tests remain required in steps 7/8.
+  Actual mixed-client/native-owner tests remain required in steps 8/9.
 
 ## Review record
 
@@ -71,7 +71,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 - Codex follow-up review: verified the current browser service cancels its previous operation, question replies carry
   only string lists, and the question modal closes before validation. The plan now requires owner-scoped browser reuse
   with a busy result, distinct server/connector inventory variants, and typed form contracts/UI that preserve invalid
-  drafts. These clarify the existing scope; arbitrary server configuration remains deferred. Step 8's estimate now
+  drafts. These clarify the existing scope; arbitrary server configuration remains deferred. Step 9's estimate now
   includes the explicit shared form work.
 - Architecture follow-up on 2026-10-13: **approved**, comparing the revised plan against `6fe2ad9944`. The specificity
   gate passed with no findings across client, bridge, and shared boundaries. Browser ownership, distinct catalog offers,
@@ -85,7 +85,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   executable runtime compatibility remains an implementation gate.
 - Further review clarifications: separated the existing non-pending catalog setup result from native session consent
   requests; settings setup does not fabricate session ownership. Required capability and regression updates in each
-  production PR, retaining step 12 for reconciliation. Added the dated source-only verification record below.
+  production PR, retaining step 13 for reconciliation. Added the dated source-only verification record below.
 
 ## Verification log
 

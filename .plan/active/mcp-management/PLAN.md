@@ -68,13 +68,13 @@ inventory.
 
 Step-2 evidence is now [recorded with executable probes](evidence/native-contracts.md). Both pinned Claude versions
 support inventory/toggle/reconnect and typed forms; URL elicitation is native-unsupported on 2.1.221 and forwarded on
-2.1.291. Both require a terminal-capable CLI login process for the no-browser URL/paste journey. Step 6 must extend
+2.1.291. Both require a terminal-capable CLI login process for the no-browser URL/paste journey. Step 7 must extend
 the plugin's native process boundary accordingly and qualify its supported hosts; the fixture's Python PTY helper
 is not a production dependency. Toggle is a live-process action, not persistent configuration enablement.
 
 Neither pinned Codex version returns an MCP OAuth attempt ID: login returns an authorization URL and completes by
 server name, with optional thread context at the target. The bridge owns its operation identity and binds native
-callback continuation to that attempt. There is no native MCP completion/cancel RPC at these pins; step 9 must verify
+callback continuation to that attempt. There is no native MCP completion/cancel RPC at these pins; step 10 must verify
 denial/cancel/expiry semantics before advertising cancellation. Retain the native lease until it actually settles.
 Minimum Codex status lacks target-only connection/discovery-error/origin metadata and must show honest absence.
 Authenticated connector offers remain a catalog/runtime qualification gate.
@@ -380,7 +380,7 @@ Every production PR updates the relevant `docs/regression/` documents and `docs/
 behavior that lands in that PR. Record each harness as implemented, not implemented, or not supported for each partial
 capability; do not defer these records to step 13. Create `mcp-management.md` in step 3 for the inventory codec/API
 contracts and their automated coverage. Add the first live inventory behavior in step 4, then extend it as actions,
-UI, and additional adapters land. Step 12 is final reconciliation only.
+UI, and additional adapters land. Step 13 is final reconciliation only.
 
 | Step | Outcome | Planned diff |
 |---|---|---:|
@@ -470,7 +470,7 @@ Exact PR titles and scope:
 
 13. `🌿 [mcp-management] Reconcile MCP regression and capability coverage [step 13/14]`
 
-    Reconcile the docs and capability records maintained in steps 3–11 with the final matrix and remaining limitations;
+    Reconcile the docs and capability records maintained in steps 3–12 with the final matrix and remaining limitations;
     no production or database change. This step does not postpone documentation required in earlier PRs.
 
 14. `⚙️ [mcp-management] Qualify MCP journeys and retire the plan [step 14/14]`
@@ -478,7 +478,7 @@ Exact PR titles and scope:
     Execute the recorded matrix, record privacy-safe evidence, and move to completed only after passing. No intended
     production/database change.
 
-Steps depend on the preceding step. The Claude milestone is steps 2–8; Codex follows immediately in 9–10. Step 2 verifies
+Steps depend on the preceding step. The Claude milestone is steps 2–9; Codex follows immediately in 10–11. Step 2 verifies
 both from the start so Claude-first implementation does not bake in incompatible Codex assumptions. Do not spend the
 priority milestone implementing secondary harnesses.
 
@@ -527,7 +527,7 @@ Affected documents: new `docs/regression/mcp-management.md`; update `questions-a
 regression index, and `docs/HARNESS_CAPABILITIES.md`. Update browser-return packaging documents only where this
 implementation changes their supported behavior. Keep provider-account authentication distinct from MCP authentication.
 
-Step 12 reconciles the full supported contract. Step 13 records versions, builds, platforms, plugins, boundaries,
+Step 13 reconciles the full supported contract. Step 14 records versions, builds, platforms, plugins, boundaries,
 outcomes, limitations, cleanup, and privacy-safe evidence references in `TRACKER.md`. Retire only when this matrix
 passes. Any reduction requires explicit user acceptance recorded here; verified native limitations must be explicit
 product limitations rather than unfinished promised behavior.
