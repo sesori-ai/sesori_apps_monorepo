@@ -4,6 +4,9 @@ Ordinal 11/14. The user now prioritizes Linux before Windows (D10). Windows sign
 and winget remain separate; they no longer block Linux. Private package mechanics
 below are already merged. The user requested key-generation commands and a signed
 Linux-build PR; cloud resources and public repository publication are not part of it.
+The approved CLI signatures, public internal previews and website continuation are now
+complete. Remaining stable Linux/repository work is blocked on separate admission;
+accepted internal-preview gaps do not qualify those remaining gates.
 
 ## Signing continuation — 11.a/14 (merged)
 
@@ -213,8 +216,9 @@ against primary `E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7`, signing subkey
 | x64 DEB | 21311998 | `af9ff52a9888e754e6169be99fe41a9493a5725bf6c3cbb605383405ed21c720` |
 | x64 RPM | 21262293 | `bad6787061d80bac151653d3846afd8939383691d5f701a2dc2c02c0b9012319` |
 
-The original 13 core/macOS assets kept their IDs, sizes and digests. Release metadata,
-tag and Latest (`v1.9.0`) stayed unchanged. Original `checksums.txt`,
+The original 13 core/macOS assets kept their IDs, sizes and digests. Release identity,
+content, channel, target, tag and Latest (`v1.9.0`) stayed unchanged. Outside the asset
+list, only GitHub's automatic `updated_at` changed. Original `checksums.txt`,
 `desktop-checksums.txt` and `desktop-release.json` bytes were re-downloaded and compared;
 this is not a claim that all original archives were re-downloaded. No release was created,
 no store upload or local application/package installation ran, and no repository/cloud
@@ -224,7 +228,52 @@ Local records: `build/desktop-linux-publication/public-1013/verified-summary.jso
 `native-downloads-verified.json`, `prepared-local/desktop-linux-release.json`, run/job
 records and `verify-public.py` in the same directory. GUI/login/keyring/tray and real
 N→N+1 remain unverified and accepted only for internal previews. Stable Linux and
-APT/RPM hosting remain unadmitted. Website discovery and CTA spacing follow as step 11.e.
+APT/RPM hosting remain unadmitted.
+
+## Live website acceptance — 11.e/14
+
+`sesori-ai/landingpage#112` accepted `3fbc80d42d069905655a33fe47616d2b649b65de`,
+then squash-merged as `77772b9d2c7ce083183ff275b37d8f864cf1e237` at
+2026-10-13T19:15:34Z. Both revisions have tree `6247f8d552ce73b33455be0c8ecf4619b69fad91`.
+The 649-line/12-file change extends the existing anonymous cached release lookup with
+independent Linux completion, four per-format download rows, explicit preview limits,
+verification links and spacing below the preview actions. It preserves every shipped
+app fragment and does not turn preview availability into stable/repository availability.
+
+Node 22.23.2/npm 11.19.0 completed 26 tests without skips, strict focused TypeScript,
+ESLint and real SSR contracts at the implementation checkpoint. Synthetic font-loaded
+browser fixtures covered both platforms, Linux-only, stable macOS with Linux previews,
+and unavailable states. Cubic's one finding identified duplicated stale crawler FAQ
+copy; the follow-up corrected it and added an assertion scoped to that answer. The new
+assertion rejected the old copy; SSR, focused lint and formatting passed after the fix.
+Final-head Site contracts passed. Cubic reported all findings addressed; Codex's quota
+notice supplied no code review. No production resolver/UI change followed the fixtures.
+
+Normal website deployment was independently checked at **2026-10-13T19:20:22.227Z**:
+
+- `https://sesori.com/desktop/` served all four real Linux `1.9.1+1013` package links;
+  macOS independently selected the same internal tag. Each Linux URL returned anonymous
+  HTTP 200 with the correct package size. Displayed hashes matched the release index,
+  public manifest and per-CPU checksum list. All verification-file bytes matched their
+  published digests; packages were HEAD-checked, not rehashed in this browser pass.
+- Desktop 1280×900 and mobile 390×844 both measured **32px** below the preview group,
+  versus the fixture baseline's 0px. Fonts were loaded; no horizontal overflow or
+  browser exception occurred. Preview navigation opened its channel; the shared
+  experimental-warning link landed below the sticky header.
+- All 13 download/app anchors worked. Stable desktop schema remained without download,
+  version, offer or install claims; Windows and signed repositories stayed unavailable.
+- Both live `llms` files exactly matched the merged source bytes, including the corrected
+  FAQ. The desktop sitemap lastmod was 2026-10-13. This was normal deployment, not a new
+  deploy commit or cloud command.
+
+Local record: `build/landingpage-linux-preview/production-verification.json`, with
+`verify-production.mjs`, screenshots, retrieved public verification files and separate
+fixture/validation/merge records in that directory. This proves website delivery and
+navigation only, not native Settings dispatch, GUI/sign-in/keyring/tray, installed-state
+preservation, N→N+1 upgrades, stable Linux or repository trust.
+
+The documentation-only acceptance record is step 11.f/14. Further stable/repository
+work is not authorized by completion of this internal-preview slice.
 
 ## Original private-package implementation
 

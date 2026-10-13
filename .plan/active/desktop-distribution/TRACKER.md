@@ -17,7 +17,7 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 6 | 8 | macOS internal packages and website live; stable production pending | in-progress |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
-| 9 | 11 | Linux internal previews public; website in progress; repositories gated | in-progress |
+| 9 | 11 | Linux internal previews and website live; stable/repositories gated | blocked |
 | 10 | 12 | Shipped-download onboarding requires genuine public releases | blocked |
 | 11 | 13 | Reconcile private distribution coverage; public closeout remains gated | in-progress |
 | 12 | 14 | Verify six-target releases and retire distribution plan | blocked |
@@ -26,7 +26,7 @@ Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
 Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
 remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 
-## Current continuation — Linux CLI signing and public internal previews
+## Completed Linux internal-preview continuation (2026-10-13)
 
 The user prioritized Linux before Windows and requested key-generation guidance plus
 a PR for signed builds. #1941 delivered step 11.a/14 and merged as
@@ -46,7 +46,7 @@ fingerprint. Exact evidence lives in [step 9](steps/step-09.md); setup remains i
 as #1943 (`6f7e60d933e9dcb2a3aa9a8e13afbd2b94a16af7`) on 2026-10-13.
 Build `1.9.1+147` uses the qualification workflow's number, not the
 shared release sequence. CLI archive signatures (11.c) and aligned desktop internal previews
-(11.d) are now public and independently verified. Website tracking/spacing (11.e) is next. The user authorized
+(11.d) are public and independently verified; website tracking/spacing (11.e) is live. The user authorized
 Linux internal desktop previews with the GUI/login/keyring/N→N+1 gaps stated, and
 OpenPGP signatures for the existing Linux Bridge CLI archives. D11–D12 in `PLAN.md`
 record the next implementation slices and the website tracking/spacing PR.
@@ -125,14 +125,28 @@ internal identity and all six package fixtures passing. Main-only publisher
 `38443588001` reused those exact artifacts and attached ten Linux desktop assets.
 Independent anonymous retrieval verified both signatures against the separately known
 primary fingerprint and all four signed package hashes. All 13 original asset identities,
-release metadata, tag and Latest remained unchanged; original core/macOS checksum and
+release identity/content/channel, tag and Latest remained unchanged; original core/macOS checksum and
 manifest bytes were also re-downloaded and matched. No stores, local installation, new
 release, stable promotion or repository/cloud setup occurred.
 
 [Step 9](steps/step-09.md#public-native-desktop-verification--11d14) records exact
 sources/trees, jobs, commands and hashes. GUI/login/keyring/tray and real N→N+1 remain
-unverified. Website continuation 11.e is being prepared in `sesori-ai/landingpage`;
-merged implementation and an updated resolver do not yet prove deployed website behavior.
+unverified. Website continuation 11.e merged as `sesori-ai/landingpage#112`, squash
+`77772b9d2c7ce083183ff275b37d8f864cf1e237` at 19:15:34 UTC. Final head
+`3fbc80d42d069905655a33fe47616d2b649b65de` passed CI; the single Cubic finding was fixed
+with a regression assertion, then reported addressed. Codex hit its review quota, not an approval.
+
+Normal deployment was independently checked at 19:20:22.227 UTC. The live page selected
+all four Linux `1.9.1+1013` packages, with anonymous HTTP 200 links/sizes and matching
+release-index, manifest and checksum metadata. Verification-file bytes matched their
+published hashes. Desktop/mobile layouts had 32px below previews, no horizontal overflow
+or browser exceptions, and a reachable limitations note. All 13 anchors worked; stable
+schema/Windows/repository gates stayed intact. Both crawler files matched merged source.
+This is live website acceptance, not another package installation or GUI/upgrade test.
+
+The bounded documentation record is step 11.f/14. Approved CLI/internal-preview/website
+work is complete. Remaining step 9 work needs separate stable/repository admission and
+cloud authorization; Windows remains a separate gated continuation.
 
 ## Completed macOS website continuation (2026-09-26)
 
