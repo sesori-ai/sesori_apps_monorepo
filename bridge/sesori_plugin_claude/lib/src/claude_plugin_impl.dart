@@ -16,6 +16,7 @@ import "repositories/claude_backend_catalog_repository.dart";
 import "repositories/claude_session_process_repository.dart";
 import "repositories/claude_transcript_catalog_repository.dart";
 import "services/claude_catalog_service.dart";
+import "services/claude_mcp_authentication_service.dart";
 import "services/claude_session_service.dart";
 
 typedef ClaudeSessionIdGenerator = String Function();
@@ -23,6 +24,7 @@ typedef ClaudeSessionIdGenerator = String Function();
 /// Backend-neutral Claude Code plugin API over the stream-json components.
 final class ClaudePlugin({
   required final ClaudeSessionProcessRepository _processes,
+  required final ClaudeMcpAuthenticationService _mcpAuthentication,
   required final ClaudeTranscriptCatalogRepository _transcripts,
   required final ClaudeSessionService _sessions,
   required final ClaudeCatalogService _catalogService,
@@ -33,7 +35,8 @@ final class ClaudePlugin({
   required final ServerClock _clock,
   required final ClaudeSessionIdGenerator _generateSessionId,
   required String launchDirectory,
-}) extends BridgeDerivedProjectsPluginApi implements PersistedSessionCleanupApi, McpManagementPluginApi {
+}) extends BridgeDerivedProjectsPluginApi
+    implements PersistedSessionCleanupApi, McpManagementPluginApi, McpAuthenticationPluginApi {
   this {
     _sessions.events.listen(_eventBuffer.add).addTo(_subscriptions);
     _sessions.dispatches.listen(_handleTurnDispatched).addTo(_subscriptions);
@@ -60,6 +63,13 @@ final class ClaudePlugin({
   @override
   Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) =>
       _processes.getMcpInventory(scope: scope);
+
+  @override
+  Future<PluginMcpAuthenticationOperation> beginMcpAuthentication({required PluginMcpServerTarget target}) =>
+      _mcpAuthentication.begin(target: target);
+
+  @override
+  Future<void> forgetMcpAuthentication({required PluginMcpServerTarget target}) => _mcpAuthentication.forget(target: target);
 
   @override
   Future<PluginMcpActionResult> executeMcpServerAction({

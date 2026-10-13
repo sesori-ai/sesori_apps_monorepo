@@ -213,21 +213,21 @@ int get hashCode {
 /// @nodoc
 mixin _$ClaudeMcpConfigDto {
 
- String? get url;
+@JsonKey(unknownEnumValue: ClaudeMcpTransportType.unknown) ClaudeMcpTransportType? get type; String? get url;
 
 
 
 @override
 bool operator ==(Object other) {
   final _this = this as ClaudeMcpConfigDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeMcpConfigDto&&(identical(other.url, _this.url) || other.url == _this.url));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeMcpConfigDto&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.url, _this.url) || other.url == _this.url));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as ClaudeMcpConfigDto;
-  return Object.hash(runtimeType,_this.url);
+  return Object.hash(runtimeType,_this.type,_this.url);
 }
 
 
@@ -242,9 +242,10 @@ int get hashCode {
 @JsonSerializable(createToJson: false)
 
 class _ClaudeMcpConfigDto implements ClaudeMcpConfigDto {
-  const _ClaudeMcpConfigDto({required this.url});
+  const _ClaudeMcpConfigDto({@JsonKey(unknownEnumValue: ClaudeMcpTransportType.unknown) required this.type, required this.url});
   factory _ClaudeMcpConfigDto.fromJson(Map<String, dynamic> json) => _$ClaudeMcpConfigDtoFromJson(json);
 
+@override@JsonKey(unknownEnumValue: ClaudeMcpTransportType.unknown) final  ClaudeMcpTransportType? type;
 @override final  String? url;
 
 
@@ -252,13 +253,13 @@ class _ClaudeMcpConfigDto implements ClaudeMcpConfigDto {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeMcpConfigDto&&(identical(other.url, url) || other.url == url));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeMcpConfigDto&&(identical(other.type, type) || other.type == type)&&(identical(other.url, url) || other.url == url));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,url);
+    return Object.hash(runtimeType,type,url);
 }
 
 

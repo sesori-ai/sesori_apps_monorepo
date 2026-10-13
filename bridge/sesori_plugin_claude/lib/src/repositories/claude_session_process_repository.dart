@@ -7,11 +7,13 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../api/claude_launch_spec.dart";
 import "../api/claude_process_factory.dart";
 import "../api/claude_stream_client.dart";
+import "../api/models/claude_mcp_status_dto.dart";
 import "../api/models/claude_stream_message.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_message_origin_kind.dart";
 import "../models/claude_permission_mode.dart";
 import "mappers/claude_mcp_mapper.dart";
+import "models/claude_mcp_authentication_context.dart";
 
 sealed class const ClaudeTurnOutcome();
 
@@ -110,6 +112,55 @@ final class ClaudeSessionProcessRepository({
   Stream<ClaudeSessionProcessEvent> get events => _events.stream;
 
   bool isResident({required String sessionId}) => _resident.containsKey(sessionId);
+
+  /// CLI authentication resolves native configuration in the same project.
+  /// Dynamic session overrides cannot be safely addressed by a named CLI login.
+  Future<ClaudeMcpAuthenticationContext> resolveMcpAuthenticationContext({
+    required PluginMcpServerTarget target,
+  }) async {
+    final scope = target.scope;
+    if (scope is! PluginMcpSessionScope) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.unsupportedScope,
+      );
+    }
+    final process = _resident[scope.sessionId];
+    if (process == null) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.liveSessionRequired,
+      );
+    }
+    final status = await process.client.getMcpStatus();
+    final server = status.mcpServers.where((server) => server.name == target.serverKey).firstOrNull;
+    if (server == null) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.targetNotFound,
+      );
+    }
+    if (server.scope == null ||
+        server.scope == ClaudeMcpConfigurationScope.unknown ||
+        server.scope == ClaudeMcpConfigurationScope.dynamic) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
+      );
+    }
+    if (server.config?.type == ClaudeMcpTransportType.stdio) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.notSupported,
+      );
+    }
+    if (server.config?.type == ClaudeMcpTransportType.sse) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.notImplemented,
+      );
+    }
+    if (server.config?.type != ClaudeMcpTransportType.http || server.config?.url == null) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
+      );
+    }
+    return ClaudeMcpAuthenticationContext(serverName: server.name, workingDirectory: process.client.workingDirectory);
+  }
 
   /// MCP inspection uses only the named existing resident. Reading an inactive
   /// session must never restore it or manufacture an agent process.

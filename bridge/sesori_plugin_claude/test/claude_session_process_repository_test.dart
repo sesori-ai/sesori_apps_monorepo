@@ -49,6 +49,58 @@ void main() {
       expect(harness.specs, isEmpty);
     });
 
+    test("authentication context never starts a resident and rejects unsupported scope", () async {
+      for (final (scope, reason) in [
+        (const PluginMcpHarnessScope(), PluginMcpAuthenticationUnavailableReason.unsupportedScope),
+        (const PluginMcpSessionScope(sessionId: testSessionId), PluginMcpAuthenticationUnavailableReason.liveSessionRequired),
+      ]) {
+        await expectLater(
+          repository.resolveMcpAuthenticationContext(target: PluginMcpServerTarget(scope: scope, serverKey: "fixture")),
+          throwsA(isA<PluginMcpAuthenticationUnavailableException>().having((e) => e.reason, "reason", reason)),
+        );
+      }
+      expect(harness.specs, isEmpty);
+    });
+
+    for (final (nativeScope, url, reason) in [
+      ("dynamic", "https://fixture.example/mcp", PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired),
+      (null, "https://fixture.example/mcp", PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired),
+      ("local", null, PluginMcpAuthenticationUnavailableReason.notSupported),
+    ]) {
+      test("authentication rejects unresolved CLI config $nativeScope/$url", () async {
+        await _ensure(repository, createNew: true);
+        final result = repository.resolveMcpAuthenticationContext(
+          target: const PluginMcpServerTarget(scope: PluginMcpSessionScope(sessionId: testSessionId), serverKey: "fixture"),
+        );
+        final rejected = expectLater(result, throwsA(isA<PluginMcpAuthenticationUnavailableException>().having((e) => e.reason, "reason", reason)));
+        await pump();
+        final process = harness.processes.single;
+        final request = process.written.lastWhere((f) => f["type"] == "control_request");
+        process.emitControlResponse(requestId: request["request_id"]! as String, payload: {
+          "mcpServers": [{"name": "fixture", "status": "needs-auth", "scope": nativeScope, "config": {"type": url == null ? "stdio" : "http", "url": url}}],
+        });
+        await rejected;
+        expect(harness.specs, hasLength(1));
+      });
+    }
+
+    test("authentication binds the exact native server and resident directory", () async {
+      await _ensure(repository, createNew: true);
+      final result = repository.resolveMcpAuthenticationContext(
+        target: const PluginMcpServerTarget(scope: PluginMcpSessionScope(sessionId: testSessionId), serverKey: "fixture"),
+      );
+      await pump();
+      final process = harness.processes.single;
+      final request = process.written.lastWhere((f) => f["type"] == "control_request");
+      process.emitControlResponse(requestId: request["request_id"]! as String, payload: {
+        "mcpServers": [{"name": "fixture", "status": "needs-auth", "scope": "local", "config": {"type": "http", "url": "https://fixture.example/mcp"}}],
+      });
+      final context = await result;
+      expect(context.serverName, "fixture");
+      expect(context.workingDirectory, harness.specs.single.workingDirectory);
+      expect(harness.specs, hasLength(1));
+    });
+
     for (final action in PluginMcpServerAction.values) {
       test("MCP ${action.name} controls exactly the existing resident server", () async {
         await _ensure(repository, createNew: true);
