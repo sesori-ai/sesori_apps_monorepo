@@ -69,6 +69,7 @@ import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
+import "repositories/mcp_repository.dart";
 import "repositories/models/normalized_bridge_event.dart";
 import "repositories/new_session_defaults_repository.dart";
 import "repositories/pending_interaction_support.dart";
@@ -136,6 +137,7 @@ import "routing/patch_bridge_settings_handler.dart";
 import "routing/patch_plugin_idle_timeout_handler.dart";
 import "routing/plugin_authentication_handlers.dart";
 import "routing/post_agents_handler.dart";
+import "routing/post_mcp_inventory_handler.dart";
 import "routing/post_plugin_lifecycle_command_handler.dart";
 import "routing/post_session_options_handler.dart";
 import "routing/reject_question_handler.dart";
@@ -458,6 +460,11 @@ class Orchestrator({
       ),
       now: () => DateTime.now().millisecondsSinceEpoch,
     );
+    final mcpRepository = McpRepository(
+      runtime: _pluginRuntime,
+      sessionDao: _database.sessionDao,
+      projectsDao: _database.projectsDao,
+    );
     final pendingInteractionSupport = PendingInteractionSupport(sessionDao: _database.sessionDao);
     final permissionRepository = PermissionRepository(
       runtime: _pluginRuntime,
@@ -683,6 +690,7 @@ class Orchestrator({
           yoloSettingsService: yoloSettingsService,
           pluginWarmupSettingsService: pluginWarmupSettingsService,
         ),
+        PostMcpInventoryHandler(mcpRepository: mcpRepository),
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService, bridgeIdProvider: _bridgeRegistrationService),

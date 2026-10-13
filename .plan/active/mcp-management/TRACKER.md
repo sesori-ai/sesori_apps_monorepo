@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-inventory-contracts`, `2c70025d8f`, in the provided `copper-heron` worktree.
-- Current step: 3/13, inventory foundation in PR review (#1947).
-  Adapter work is preserved for step 4. Execution authorized on 2026-10-13.
+- Branch/base: `sesori/claude-mcp-inventory`, `a708a3a84e`, in the provided `copper-heron` worktree.
+- Current step: 4/14, Claude inventory API in PR review (#1948).
+  Shared client inventory work is local as step 5. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
 - Plan PR: [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940).
@@ -17,19 +17,20 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/13 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/13 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/13 | Inventory foundation (original 3.a) | PR review | [#1947][pr-1947]; six codec tests |
-| 4/13 | Claude scoped inventory and bridge read (original 3.b) | Preserved adapter work | Not published |
-| 5/13 | Shared phone/desktop inventory and details | Not started | — |
-| 6/13 | Claude actions and native authentication | Not started | — |
-| 7/13 | Shared authentication and external-action presentation | Not started | — |
-| 8/13 | Claude approvals and form/URL elicitation | Not started | — |
-| 9/13 | Codex inventory/actions/authentication | Not started | — |
-| 10/13 | Codex forms and offered connectors | Not started | — |
-| 11/13 | Secondary harness support and explicit gaps | Not started | — |
-| 12/13 | Reconcile regression/capability documents | Not started | — |
-| 13/13 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/14 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/14 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/14 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/14 | Claude scoped inventory and bridge read (original 3.b) | PR review | [#1948][pr-1948] |
+| 5/14 | Client inventory lifecycle (original 5.a) | Local verification | Not published |
+| 6/14 | Shared phone/desktop inventory and details (original 5.b) | Not started | — |
+| 7/14 | Claude actions and native authentication | Not started | — |
+| 8/14 | Shared authentication and external-action presentation | Not started | — |
+| 9/14 | Claude approvals and form/URL elicitation | Not started | — |
+| 10/14 | Codex inventory/actions/authentication | Not started | — |
+| 11/14 | Codex forms and offered connectors | Not started | — |
+| 12/14 | Secondary harness support and explicit gaps | Not started | — |
+| 13/14 | Reconcile regression/capability documents | Not started | — |
+| 14/14 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -56,7 +57,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   bridge/relay ownership, client presentation, or the final L4 matrix. Those gates remain active.
 - Public release check still identifies v1.9.0/build 970 as latest production; newer v1.9.1 builds are prereleases.
   The released SSE parser plus byte-identical codecs passed four event-order/settlement fixtures and a snapshot fixture.
-  Actual mixed-client/native-owner tests remain required in steps 7/8.
+  Actual mixed-client/native-owner tests remain required in steps 8/9.
 
 ## Review record
 
@@ -70,7 +71,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 - Codex follow-up review: verified the current browser service cancels its previous operation, question replies carry
   only string lists, and the question modal closes before validation. The plan now requires owner-scoped browser reuse
   with a busy result, distinct server/connector inventory variants, and typed form contracts/UI that preserve invalid
-  drafts. These clarify the existing scope; arbitrary server configuration remains deferred. Step 8's estimate now
+  drafts. These clarify the existing scope; arbitrary server configuration remains deferred. Step 9's estimate now
   includes the explicit shared form work.
 - Architecture follow-up on 2026-10-13: **approved**, comparing the revised plan against `6fe2ad9944`. The specificity
   gate passed with no findings across client, bridge, and shared boundaries. Browser ownership, distinct catalog offers,
@@ -84,7 +85,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   executable runtime compatibility remains an implementation gate.
 - Further review clarifications: separated the existing non-pending catalog setup result from native session consent
   requests; settings setup does not fabricate session ownership. Required capability and regression updates in each
-  production PR, retaining step 12 for reconciliation. Added the dated source-only verification record below.
+  production PR, retaining step 13 for reconciliation. Added the dated source-only verification record below.
 
 ## Verification log
 
@@ -115,7 +116,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   unchanged; its observed initial pending status is explicitly not a guaranteed startup state.
 
 - Step 3 split: original 3.a/3.b map to PR ordinals 3/4; later ordinals shift by one, with 13 total. The merged
-  plan PR #1940 keeps its historical title. No feature scope or architecture decision changed.
+  plan PR #1940 now uses the current 14-step total; its squash commit is unchanged.
+  No feature scope or architecture decision changed.
 - Step-3 foundation: four shared wire tests and shared/interface analyzers passed on exact Dart 3.13.4. No runtime
   endpoint or adapter is exposed yet. No old owner, cache, route, or persisted model is superseded at this boundary.
 - Step-3 pre-publication measurement: 1,679 generated lines and 470 authored lines (2,149 total before this record),
@@ -150,3 +152,45 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   graceful unknown response enum/union parsing. Six wire tests and shared plus
   plugin-interface analysis passed; request scopes/targets remain intentionally
   closed. No published MCP peer needs a legacy field default.
+
+- Step 4: Claude mapper/resident-process suite passed (17 tests), and bridge MCP
+  route suite passed (7 tests). Exact Dart 3.13.4 analysis passed for Claude and
+  bridge app. Tests cover safe metadata, truthful discovery state, no implicit
+  spawn, durable owner/native-ID binding, moved project path, and explicit
+  unavailable states. Architecture implementation review approved the staged
+  step-4 flow. Production resident-process adapter smoke passed with isolated
+  stdio fixture on Claude 2.1.221 and 2.1.291: inactive read spawned nothing,
+  one explicit launch returned connected state and the echo tool. Initial smoke
+  used a missing Node path; reruns with the installed executable passed. A real
+  relay/client route smoke remains unexecuted.
+
+- Step 4 updated in lockstep with the reviewed section-availability contract.
+  The bridge route also proves readable offered connectors survive server-section
+  failure and retain bridge-owned target scope. Claude tests remain 17 passing,
+  route tests are now 7 passing, and affected analysis is clean.
+
+- Step 3 merged as #1947 after both current-head reviews completed with no
+  remaining findings and required CI passed. Step 4 rebased onto `a708a3a84e`;
+  owning bridge/Claude package contents on main match the reviewed foundation
+  base, so focused verification remains applicable. No prior cache, route,
+  persistence or runtime owner is superseded by this additive read flow.
+
+[pr-1948]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1948
+
+- Step-4 review: stdio transport no longer implies authentication is unnecessary.
+  Known control rejection/process-exit/timeout errors retain typed causes/stacks
+  in the plugin result, log once at the bridge repository, and emit only a safe
+  read-failed wire state. Archived inventory remains a read-only operation.
+  Claude mapper/process/control tests passed (47); bridge route tests passed (9);
+  shared codec tests passed (6). All four affected packages analyze cleanly.
+
+- Original step 5 split into 5.a client lifecycle (ordinal 5) and 5.b UI (ordinal 6).
+  One PR remains open with one local successor. New per-view state ownership is
+  independently testable before presentation: 9 lifecycle and 3 repository tests
+  pass on the pinned Flutter/Dart SDK. No scope expansion or database change.
+
+- Step-4 teardown review: disposal now completes pending native controls with
+  ClaudeControlException at the stream-client boundary. The inventory repository
+  keeps its narrow catch and maps teardown to safe readFailed state without
+  swallowing unrelated StateError bugs. Focused Claude tests passed (48);
+  Claude analysis passed. Original step 5 is now two PRs, with total 14.

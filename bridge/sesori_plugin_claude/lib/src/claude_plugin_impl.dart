@@ -33,7 +33,7 @@ final class ClaudePlugin({
   required final ServerClock _clock,
   required final ClaudeSessionIdGenerator _generateSessionId,
   required String launchDirectory,
-}) extends BridgeDerivedProjectsPluginApi implements PersistedSessionCleanupApi {
+}) extends BridgeDerivedProjectsPluginApi implements PersistedSessionCleanupApi, McpManagementPluginApi {
   this {
     _sessions.events.listen(_eventBuffer.add).addTo(_subscriptions);
     _sessions.dispatches.listen(_handleTurnDispatched).addTo(_subscriptions);
@@ -56,6 +56,10 @@ final class ClaudePlugin({
 
   @override
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;
+
+  @override
+  Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) =>
+      _processes.getMcpInventory(scope: scope);
 
   @override
   String get launchDirectory => _launchDirectory;

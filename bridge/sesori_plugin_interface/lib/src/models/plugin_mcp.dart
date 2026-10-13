@@ -94,3 +94,9 @@ final class const PluginMcpInventoryUnavailable({
   required final PluginMcpInventoryUnavailableReason reason,
   required final String message,
 }) extends PluginMcpInventoryResult;
+
+/// A failed live read retains local diagnostics without exporting native errors.
+final class const PluginMcpInventoryReadFailed({
+  required final Exception cause,
+  required final StackTrace causeStackTrace,
+}) extends PluginMcpInventoryResult;

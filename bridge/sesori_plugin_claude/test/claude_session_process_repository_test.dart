@@ -26,6 +26,68 @@ void main() {
       await harness.close();
     });
 
+    test("inventory reads do not create or resume a process", () async {
+      final result = await repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
+      expect(result, isA<PluginMcpInventoryUnavailable>().having(
+        (value) => value.reason, "reason", PluginMcpInventoryUnavailableReason.liveSessionRequired,
+      ));
+      final unsupported = await repository.getMcpInventory(scope: const PluginMcpHarnessScope());
+      expect(unsupported, isA<PluginMcpInventoryUnavailable>().having(
+        (value) => value.reason, "reason", PluginMcpInventoryUnavailableReason.unsupportedScope,
+      ));
+      expect(harness.specs, isEmpty);
+    });
+
+    test("inventory reads status through the resident process control channel", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final result = repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
+      await pump();
+      final request = process.written.lastWhere((frame) => frame["type"] == "control_request");
+      expect(request["request"], {"subtype": "mcp_status"});
+      process.emitControlResponse(requestId: request["request_id"]! as String, payload: {
+        "mcpServers": [{"name": "fixture", "status": "connected", "tools": <Map<String, dynamic>>[]}],
+      });
+      expect((await result as PluginMcpInventorySnapshot).entries, hasLength(1));
+      expect(harness.specs, hasLength(1));
+    });
+
+    test("inventory control rejection retains the original diagnostic cause", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final result = repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
+      await pump();
+      final request = process.written.lastWhere((frame) => frame["type"] == "control_request");
+      process.emitControlError(requestId: request["request_id"]! as String, error: "fixture native rejection");
+      final failed = await result as PluginMcpInventoryReadFailed;
+      expect(failed.cause, isA<ClaudeControlException>().having((error) => error.message, "message", "fixture native rejection"));
+      expect(failed.causeStackTrace.toString(), isNotEmpty);
+      expect(harness.specs, hasLength(1));
+    });
+
+    test("process exit during an inventory read returns a read failure without resuming", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final result = repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
+      await pump();
+      process.exit(1);
+      expect(await result, isA<PluginMcpInventoryReadFailed>().having((value) => value.cause, "cause", isA<ClaudeControlException>()));
+      expect(harness.specs, hasLength(1));
+    });
+
+    test("teardown during inventory reads returns a typed failure", () async {
+      await _ensure(repository, createNew: true);
+      final result = repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
+      await pump();
+      await repository.teardown(sessionId: testSessionId);
+      expect(await result, isA<PluginMcpInventoryReadFailed>().having(
+        (value) => value.cause, "cause", isA<ClaudeControlException>().having(
+          (error) => error.message, "message", "ClaudeStreamClient disposed",
+        ),
+      ));
+      expect(harness.specs, hasLength(1));
+    });
+
     test("creates first process and resumes after an accepted turn", () async {
       await _ensure(repository, createNew: true);
       expect(harness.specs.single.launch, isA<ClaudeNewSession>());
@@ -288,7 +350,7 @@ void main() {
 
       final disposal = repository.dispose();
 
-      await expectLater(residency, throwsStateError);
+      await expectLater(residency, throwsA(isA<ClaudeControlException>()));
       await disposal.timeout(const Duration(seconds: 1));
       gate.complete();
       expect(repository.isResident(sessionId: testSessionId), isFalse);

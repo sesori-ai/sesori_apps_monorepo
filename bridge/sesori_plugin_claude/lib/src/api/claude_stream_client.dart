@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "claude_launch_spec.dart";
 import "claude_process_factory.dart";
+import "models/claude_mcp_status_dto.dart";
 import "models/claude_stream_message.dart";
 
 /// A control request that the CLI answered with a failure, or that could not be
@@ -182,6 +183,12 @@ class ClaudeStreamClient({
     }
   }
 
+  /// Inspects this resident process without sending a turn or changing configuration.
+  Future<ClaudeMcpStatusDto> getMcpStatus() async {
+    final response = await sendControlRequest(subtype: "mcp_status", params: const {});
+    return ClaudeMcpStatusDto.fromJson(response);
+  }
+
   /// Sends a control request and awaits its response payload.
   ///
   /// Throws [ClaudeControlException] when the CLI answers with a failure, when
@@ -286,6 +293,7 @@ class ClaudeStreamClient({
               subtype: "<response>",
               message: message.error ?? "control request failed",
             ),
+            StackTrace.current,
           );
         }
       case ClaudeUnknownMessage(:final type, :final subtype):
@@ -338,7 +346,7 @@ class ClaudeStreamClient({
     _disposed = true;
     await _teardownConnection(
       gracefulTimeout: gracefulTimeout,
-      pendingError: StateError("ClaudeStreamClient disposed"),
+      pendingError: ClaudeControlException(subtype: "<process>", message: "ClaudeStreamClient disposed"),
     );
     try {
       await _messages.close();
