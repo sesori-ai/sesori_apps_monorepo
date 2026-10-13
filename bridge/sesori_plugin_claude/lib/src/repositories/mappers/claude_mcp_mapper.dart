@@ -7,6 +7,7 @@ class const ClaudeMcpMapper() {
   PluginMcpInventorySnapshot map({required ClaudeMcpStatusDto status, required PluginMcpSessionScope scope}) {
     final servers = status.mcpServers.toList(growable: false)..sort((a, b) => a.name.compareTo(b.name));
     return PluginMcpInventorySnapshot(
+      servers: const PluginMcpCatalogAvailable(),
       entries: List.unmodifiable(servers.map((server) => _server(server: server, scope: scope))),
       connectors: const PluginMcpCatalogUnavailable(
         message: "This integration does not yet expose a connector catalog.",

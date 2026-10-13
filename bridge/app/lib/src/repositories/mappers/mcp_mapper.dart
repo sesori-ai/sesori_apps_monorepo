@@ -12,15 +12,18 @@ class const McpMapper() {
       },
       message: message,
     ),
-    PluginMcpInventorySnapshot(:final entries, :final connectors) => McpInventorySnapshot(
+    PluginMcpInventorySnapshot(:final entries, :final servers, :final connectors) => McpInventorySnapshot(
       scope: scope,
       entries: [for (final entry in entries) _entry(scope: scope, entry: entry)],
-      connectors: switch (connectors) {
-        PluginMcpCatalogAvailable() => const McpCatalogAvailable(),
-        PluginMcpCatalogNotSupported() => const McpCatalogNotSupported(),
-        PluginMcpCatalogUnavailable(:final message) => McpCatalogUnavailable(message: message),
-      },
+      servers: _catalog(availability: servers),
+      connectors: _catalog(availability: connectors),
     ),
+  };
+
+  McpCatalogAvailability _catalog({required PluginMcpCatalogAvailability availability}) => switch (availability) {
+    PluginMcpCatalogAvailable() => const McpCatalogAvailable(),
+    PluginMcpCatalogNotSupported() => const McpCatalogNotSupported(),
+    PluginMcpCatalogUnavailable(:final message) => McpCatalogUnavailable(message: message),
   };
 
   McpInventoryEntry _entry({required McpScope scope, required PluginMcpInventoryEntry entry}) => switch (entry) {

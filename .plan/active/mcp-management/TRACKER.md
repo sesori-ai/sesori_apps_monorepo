@@ -152,7 +152,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   closed. No published MCP peer needs a legacy field default.
 
 - Step 4: Claude mapper/resident-process suite passed (17 tests), and bridge MCP
-  route suite passed (6 tests). Exact Dart 3.13.4 analysis passed for Claude and
+  route suite passed (7 tests). Exact Dart 3.13.4 analysis passed for Claude and
   bridge app. Tests cover safe metadata, truthful discovery state, no implicit
   spawn, durable owner/native-ID binding, moved project path, and explicit
   unavailable states. Architecture implementation review approved the staged
@@ -161,3 +161,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   one explicit launch returned connected state and the echo tool. Initial smoke
   used a missing Node path; reruns with the installed executable passed. A real
   relay/client route smoke remains unexecuted.
+
+- Step 4 updated in lockstep with the reviewed section-availability contract.
+  The bridge route also proves readable offered connectors survive server-section
+  failure and retain bridge-owned target scope. Claude tests remain 17 passing,
+  route tests are now 7 passing, and affected analysis is clean.

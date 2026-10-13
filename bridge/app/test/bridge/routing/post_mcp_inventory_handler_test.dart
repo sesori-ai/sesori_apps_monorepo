@@ -66,6 +66,7 @@ void main() {
     expect(response.status, 200);
     expect((plugin.scopes.single as PluginMcpSessionScope).sessionId, "native-session");
     final result = decode(response) as McpInventorySnapshot;
+    expect(result.servers, isA<McpCatalogAvailable>());
     final server = result.entries.single as McpServerSnapshot;
     expect(server.serverTarget.scope, const McpSessionScope(sessionId: "bridge-session"));
     expect(server.serverTarget.serverKey, "opaque-server");
@@ -108,6 +109,36 @@ void main() {
       404,
     );
     expect(plugin.scopes, hasLength(1));
+  });
+
+  test("server-section failure preserves offered connectors and bridge-owned targets", () async {
+    plugin.nextResult = const PluginMcpInventorySnapshot(
+      servers: PluginMcpCatalogUnavailable(message: "Server discovery failed"),
+      connectors: PluginMcpCatalogAvailable(),
+      entries: [
+        PluginMcpConnectorOfferSnapshot(
+          target: PluginMcpConnectorOfferTarget(
+            scope: PluginMcpSessionScope(sessionId: "native-session"),
+            offerKey: "fixture-offer",
+          ),
+          name: "Fixture offer",
+          description: null,
+          availability: PluginMcpConnectorOfferAvailability.setupRequired,
+        ),
+      ],
+    );
+    final result = decode(
+      await read(
+        pluginId: "fixture",
+        scope: const McpSessionScope(sessionId: "bridge-session"),
+      ),
+    ) as McpInventorySnapshot;
+    expect(result.servers, const McpCatalogUnavailable(message: "Server discovery failed"));
+    expect(result.connectors, isA<McpCatalogAvailable>());
+    final offer = result.entries.single as McpConnectorOfferSnapshot;
+    expect(offer.offerTarget.scope, const McpSessionScope(sessionId: "bridge-session"));
+    expect(offer.offerTarget.offerKey, "fixture-offer");
+    expect(offer.availability, McpConnectorOfferAvailability.setupRequired);
   });
 
   test("inactive integration is explicit and inventory never activates it", () async {
@@ -165,11 +196,14 @@ void main() {
 class _InventoryPlugin() extends FakeDerivedBridgePlugin implements McpManagementPluginApi {
   this : super(id: "fixture", launchDirectory: "/fixture", allSessions: const []);
   final List<PluginMcpScope> scopes = [];
+  PluginMcpInventoryResult? nextResult;
 
   @override
   Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) async {
     scopes.add(scope);
+    if (nextResult case final result?) return result;
     return PluginMcpInventorySnapshot(
+      servers: const PluginMcpCatalogAvailable(),
       entries: List.unmodifiable([
         PluginMcpServerSnapshot(
           target: PluginMcpServerTarget(scope: scope, serverKey: "opaque-server"),
