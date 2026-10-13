@@ -56,6 +56,21 @@ class const McpMapper() {
         PluginMcpToolsUnavailable() => const McpToolsUnavailable(),
         PluginMcpToolsFailed(:final message) => McpToolsFailed(message: message),
       },
+      actions: [
+        for (final action in entry.actions)
+          McpServerActionCapability(
+            action: switch (action.action) {
+              PluginMcpServerAction.reconnect => McpServerAction.reconnect,
+              PluginMcpServerAction.enable => McpServerAction.enable,
+              PluginMcpServerAction.disable => McpServerAction.disable,
+            },
+            effectScope: switch (action.effectScope) {
+              PluginMcpActionEffectScope.harness => McpActionEffectScope.harness,
+              PluginMcpActionEffectScope.project => McpActionEffectScope.project,
+              PluginMcpActionEffectScope.session => McpActionEffectScope.session,
+            },
+          ),
+      ],
     ),
     PluginMcpConnectorOfferSnapshot() => McpConnectorOfferSnapshot(
       offerTarget: McpConnectorOfferTarget(scope: scope, offerKey: entry.target.offerKey),

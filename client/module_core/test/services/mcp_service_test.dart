@@ -4,6 +4,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/repositories/mcp_repository.dart";
 import "package:sesori_dart_core/src/repositories/models/mcp_read_result.dart";
@@ -54,6 +55,36 @@ void main() {
     final failed = service.currentState as McpInventoryReady;
     expect(failed.inventory, same(original.inventory));
     expect((failed.refresh as McpInventoryRefreshFailed).cause, same(cause));
+  });
+
+  test("native mutation invalidation refreshes only the selected plugin and scope", () async {
+    await load();
+    for (final event in [
+      SesoriMcpInventoryChanged(pluginId: "other", scope: _request.scope),
+      const SesoriMcpInventoryChanged(pluginId: "fixture", scope: McpHarnessScope()),
+    ]) {
+      connection.eventController.add(SseEvent(data: event));
+    }
+    await _pump();
+    expect(repository.requests, hasLength(1));
+    connection.eventController.add(
+      SseEvent(
+        data: SesoriMcpInventoryChanged(pluginId: "fixture", scope: _request.scope),
+      ),
+    );
+    await _pump();
+    expect(repository.requests, hasLength(2));
+    repository.pending.last.complete(
+      McpReadSuccess(
+        inventory: _snapshot(scope: _request.scope, name: "Updated"),
+      ),
+    );
+    await _pump();
+    final state = service.currentState as McpInventoryReady;
+    expect(
+      (state.inventory as McpInventorySnapshot).entries.single,
+      isA<McpServerSnapshot>().having((s) => s.name, "name", "Updated"),
+    );
   });
 
   test("a stopped integration retains last details with an unavailable refresh state", () async {
@@ -313,6 +344,7 @@ McpInventorySnapshot _snapshot({required McpScope scope, required String name}) 
   connectors: const McpCatalogNotSupported(),
   entries: [
     McpServerSnapshot(
+      actions: const [],
       serverTarget: McpServerTarget(scope: scope, serverKey: "fixture"),
       name: name,
       description: null,
@@ -342,6 +374,9 @@ class _Connection() implements ConnectionService {
     const ConnectionConnected(config: _config, health: _health),
   );
   final StreamController<void> stale = StreamController.broadcast();
+  final StreamController<SseEvent> eventController = StreamController.broadcast();
+  @override
+  Stream<SseEvent> get events => eventController.stream;
   @override
   ConnectionStatus get currentStatus => statuses.value;
   @override
@@ -352,6 +387,7 @@ class _Connection() implements ConnectionService {
   Future<void> dispose() async {
     await statuses.close();
     await stale.close();
+    await eventController.close();
   }
 
   @override

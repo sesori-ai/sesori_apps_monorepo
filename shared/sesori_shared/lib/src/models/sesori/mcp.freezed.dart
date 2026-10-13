@@ -832,6 +832,80 @@ String toString() {
 
 
 
+
+/// @nodoc
+mixin _$McpServerActionCapability {
+
+@JsonKey(unknownEnumValue: McpServerAction.unknown) McpServerAction get action;@JsonKey(unknownEnumValue: McpActionEffectScope.unknown) McpActionEffectScope get effectScope;
+
+  /// Serializes this McpServerActionCapability to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as McpServerActionCapability;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is McpServerActionCapability&&(identical(other.action, _this.action) || other.action == _this.action)&&(identical(other.effectScope, _this.effectScope) || other.effectScope == _this.effectScope));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as McpServerActionCapability;
+  return Object.hash(runtimeType,_this.action,_this.effectScope);
+}
+
+@override
+String toString() {
+  final _this = this as McpServerActionCapability;
+  return 'McpServerActionCapability(action: ${_this.action}, effectScope: ${_this.effectScope})';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _McpServerActionCapability implements McpServerActionCapability {
+  const _McpServerActionCapability({@JsonKey(unknownEnumValue: McpServerAction.unknown) required this.action, @JsonKey(unknownEnumValue: McpActionEffectScope.unknown) required this.effectScope});
+  factory _McpServerActionCapability.fromJson(Map<String, dynamic> json) => _$McpServerActionCapabilityFromJson(json);
+
+@override@JsonKey(unknownEnumValue: McpServerAction.unknown) final  McpServerAction action;
+@override@JsonKey(unknownEnumValue: McpActionEffectScope.unknown) final  McpActionEffectScope effectScope;
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$McpServerActionCapabilityToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _McpServerActionCapability&&(identical(other.action, action) || other.action == action)&&(identical(other.effectScope, effectScope) || other.effectScope == effectScope));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,action,effectScope);
+}
+
+@override
+String toString() {
+    return 'McpServerActionCapability(action: $action, effectScope: $effectScope)';
+}
+
+
+}
+
+
+
+
 McpInventoryEntry _$McpInventoryEntryFromJson(
   Map<String, dynamic> json
 ) {
@@ -926,10 +1000,10 @@ String toString() {
 @JsonSerializable()
 
 class McpServerSnapshot implements McpInventoryEntry {
-  const McpServerSnapshot({@JsonKey(name: "target") required this.serverTarget, required this.name, required this.description, required this.endpointOrigin, required this.connection, @JsonKey(unknownEnumValue: McpAuthorizationState.unknown) required this.authorization, required this.configuration, required this.tools,  String? $type}): $type = $type ?? 'server';
+  const McpServerSnapshot({@JsonKey(name: "target", fromJson: McpEntryTarget.serverFromJson) required this.serverTarget, required this.name, required this.description, required this.endpointOrigin, required this.connection, @JsonKey(unknownEnumValue: McpAuthorizationState.unknown) required this.authorization, required this.configuration, required this.tools, required  List<McpServerActionCapability> actions,  String? $type}): _actions = actions,$type = $type ?? 'server';
   factory McpServerSnapshot.fromJson(Map<String, dynamic> json) => _$McpServerSnapshotFromJson(json);
 
-@JsonKey(name: "target") final  McpServerTarget serverTarget;
+@JsonKey(name: "target", fromJson: McpEntryTarget.serverFromJson) final  McpServerTarget serverTarget;
  final  String name;
  final  String? description;
  final  String? endpointOrigin;
@@ -937,6 +1011,13 @@ class McpServerSnapshot implements McpInventoryEntry {
 @JsonKey(unknownEnumValue: McpAuthorizationState.unknown) final  McpAuthorizationState authorization;
  final  McpConfigurationSource? configuration;
  final  McpToolInventory tools;
+ final  List<McpServerActionCapability> _actions;
+ List<McpServerActionCapability> get actions {
+  if (_actions is EqualUnmodifiableListView) return _actions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_actions);
+}
+
 
 @JsonKey(name: 'type')
 final String $type;
@@ -950,18 +1031,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpServerSnapshot&&const DeepCollectionEquality().equals(other.serverTarget, serverTarget)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.endpointOrigin, endpointOrigin) || other.endpointOrigin == endpointOrigin)&&(identical(other.connection, connection) || other.connection == connection)&&(identical(other.authorization, authorization) || other.authorization == authorization)&&(identical(other.configuration, configuration) || other.configuration == configuration)&&(identical(other.tools, tools) || other.tools == tools));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpServerSnapshot&&const DeepCollectionEquality().equals(other.serverTarget, serverTarget)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.endpointOrigin, endpointOrigin) || other.endpointOrigin == endpointOrigin)&&(identical(other.connection, connection) || other.connection == connection)&&(identical(other.authorization, authorization) || other.authorization == authorization)&&(identical(other.configuration, configuration) || other.configuration == configuration)&&(identical(other.tools, tools) || other.tools == tools)&&const DeepCollectionEquality().equals(other.actions, _actions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(serverTarget),name,description,endpointOrigin,connection,authorization,configuration,tools);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(serverTarget),name,description,endpointOrigin,connection,authorization,configuration,tools,const DeepCollectionEquality().hash(_actions));
 }
 
 @override
 String toString() {
-    return 'McpInventoryEntry.server(serverTarget: $serverTarget, name: $name, description: $description, endpointOrigin: $endpointOrigin, connection: $connection, authorization: $authorization, configuration: $configuration, tools: $tools)';
+    return 'McpInventoryEntry.server(serverTarget: $serverTarget, name: $name, description: $description, endpointOrigin: $endpointOrigin, connection: $connection, authorization: $authorization, configuration: $configuration, tools: $tools, actions: $actions)';
 }
 
 

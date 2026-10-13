@@ -643,15 +643,20 @@ can initiate login, and managed installation does **not** authenticate a harness
 
 Read-only MCP inventory and server details are **implemented** in the shared
 phone/desktop UI, opened from session menus and harness settings. Connection
-actions and authentication UI remain **not implemented**.
+action UI and authentication UI remain **not implemented**.
 The backend-neutral inventory wire models and optional plugin read interface
 are implemented. Claude implements session inventory through its resident
 process status control request, exposed headlessly by `POST /mcp/inventory`.
 The shared client API, repository, per-view loading service, and cubit are
 implemented, including reconnect and refresh failure state.
 Project/harness inventory and offered-connector discovery remain **not implemented**
-for Claude. The other harness adapters and management actions
-remain **not implemented**. Reads never start an integration or agent session.
+for Claude. Claude live-session reconnect, enable and disable are **implemented**
+headlessly through `POST /mcp/entry/action`, with authoritative refresh and scoped
+client invalidation. They change the live process only, with no persistent
+configuration write or implicit session launch; archived mutations are rejected.
+Each declared control includes its effect scope. Native MCP authentication,
+client action UI and the other harness adapters remain **not implemented**.
+Reads never start an integration or agent session.
 Connection, authorization and discovery state remain distinct; only a safe HTTP(S)
 endpoint origin crosses the wire. See
 [MCP management regression coverage](regression/mcp-management.md).

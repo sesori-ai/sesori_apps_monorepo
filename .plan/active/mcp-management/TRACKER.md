@@ -3,8 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-inventory-presentation`, `d3a4dfb8e7`, in the provided `copper-heron` worktree.
-- Current step: 6/14, shared inventory UI in PR [#1950][pr-1950], addressing review findings.
+- Branch/base: `sesori/claude-mcp-actions`, `fa9717350c`, in the provided `copper-heron` worktree.
+- Current step: 7/15, live Claude controls verified and preparing publication;
+  step 6 merged as [#1950][pr-1950].
   Client loading merged as #1949; Claude inventory API merged as #1948. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
@@ -17,20 +18,21 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/14 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/14 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/14 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/14 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/14 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/14 | Shared phone/desktop inventory and details (original 5.b) | In review | [#1950][pr-1950] |
-| 7/14 | Claude actions and native authentication | Local native-boundary research | Successor branch `sesori/claude-mcp-actions`; no implementation yet |
-| 8/14 | Shared authentication and external-action presentation | Not started | — |
-| 9/14 | Claude approvals and form/URL elicitation | Not started | — |
-| 10/14 | Codex inventory/actions/authentication | Not started | — |
-| 11/14 | Codex forms and offered connectors | Not started | — |
-| 12/14 | Secondary harness support and explicit gaps | Not started | — |
-| 13/14 | Reconcile regression/capability documents | Not started | — |
-| 14/14 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/15 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/15 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/15 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/15 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/15 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/15 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/15 | Claude live-server controls (original 7.a) | Local implementation | Successor branch `sesori/claude-mcp-actions` |
+| 8/15 | Claude native authentication (original 7.b) | Native-boundary research | No implementation yet |
+| 9/15 | Shared authentication and external-action presentation | Not started | — |
+| 10/15 | Claude approvals and form/URL elicitation | Not started | — |
+| 11/15 | Codex inventory/actions/authentication | Not started | — |
+| 12/15 | Codex forms and offered connectors | Not started | — |
+| 13/15 | Secondary harness support and explicit gaps | Not started | — |
+| 14/15 | Reconcile regression/capability documents | Not started | — |
+| 15/15 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -57,7 +59,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   bridge/relay ownership, client presentation, or the final L4 matrix. Those gates remain active.
 - Public release check still identifies v1.9.0/build 970 as latest production; newer v1.9.1 builds are prereleases.
   The released SSE parser plus byte-identical codecs passed four event-order/settlement fixtures and a snapshot fixture.
-  Actual mixed-client/native-owner tests remain required in steps 8/9.
+  Actual mixed-client/native-owner tests remain required in steps 9/10.
 
 ## Review record
 
@@ -71,7 +73,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 - Codex follow-up review: verified the current browser service cancels its previous operation, question replies carry
   only string lists, and the question modal closes before validation. The plan now requires owner-scoped browser reuse
   with a busy result, distinct server/connector inventory variants, and typed form contracts/UI that preserve invalid
-  drafts. These clarify the existing scope; arbitrary server configuration remains deferred. Step 9's estimate now
+  drafts. These clarify the existing scope; arbitrary server configuration remains deferred. Step 10's estimate now
   includes the explicit shared form work.
 - Architecture follow-up on 2026-10-13: **approved**, comparing the revised plan against `6fe2ad9944`. The specificity
   gate passed with no findings across client, bridge, and shared boundaries. Browser ownership, distinct catalog offers,
@@ -85,7 +87,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   executable runtime compatibility remains an implementation gate.
 - Further review clarifications: separated the existing non-pending catalog setup result from native session consent
   requests; settings setup does not fabricate session ownership. Required capability and regression updates in each
-  production PR, retaining step 13 for reconciliation. Added the dated source-only verification record below.
+  production PR, retaining step 14 for reconciliation. Added the dated source-only verification record below.
 
 ## Verification log
 
@@ -304,6 +306,45 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   from `client/app` with `flutter test test/features/session_detail/widgets/session_detail_body_test.dart --plain-name 'a child session exposes shell-provided read-only menu entries' --no-pub --reporter expanded`.
   Default native fixture content/motion is unchanged by these conditional fixes.
 
+- Original step 7 is split into 7.a live-server controls (ordinal 7) and 7.b
+  native authentication (ordinal 8). The series has 15 PRs. Terminal ownership
+  and cancellation remain in the authentication step; no Python dependency,
+  generic config writer or credential store is introduced by controls.
+- Local step-7 controls verification on `33048f9eef` plus the source changes:
+  54 Claude mapper/process/control tests, 14 bridge inventory/action route tests,
+  and 20 shared-client service/repository tests passed. Seven shared codecs tests
+  pass, including equal-key connector rejection and typed mutation refresh results.
+  Commands use the pinned Dart SDK from the previous verification section:
+  `dart test test/claude_session_process_repository_test.dart test/claude_mcp_mapper_test.dart test/claude_stream_client_test.dart --reporter expanded`
+  from `bridge/sesori_plugin_claude`; `dart test test/bridge/routing/post_mcp_inventory_handler_test.dart --reporter expanded`
+  from `bridge/app`; `dart test test/services/mcp_service_test.dart test/repositories/mcp_repository_test.dart --reporter expanded`
+  from `client/module_core`; `dart test test/models/mcp_test.dart --reporter expanded`
+  from `shared/sesori_shared`. Owning-package analysis is clean.
+- Production controls smoke passed with exact Claude 2.1.221 and 2.1.291 using
+  isolated synthetic stdio configuration: disable observed as disabled; enable
+  independently left disabled state; reconnect returned connected with discovered
+  tools. One explicit process launch throughout; configuration content unchanged.
+  Private smoke source/logs are under `/private/tmp`; no real server, account,
+  provider credential or model request was used. Relay/packaged/other-host
+  qualification remains pending.
+
 - Unknown-entry notice deduplication was verified against `33048f9eef` plus
   the notice changes: nine MCP widget tests and shared UI analysis pass. The
   test checks one global hint for unknown-only and mixed known/unknown entries.
+
+- Step-7 architecture review found no general/client/bridge violations and raised
+  one shared-wire default concern. That finding is inapplicable under the user's
+  public-production-only compatibility rule: the latest public release is v1.9.0
+  (2026-09-24), and exact commit `ffa5935c8363c6429fdf2e3c3fb95b3a906f5ab5`
+  contains neither `/mcp/inventory` nor `McpServerSnapshot`. MCP inventory has only
+  landed in this unpublished series. Its contracts therefore update in lockstep;
+  no legacy default or compatibility marker is introduced. All other reviewed
+  boundaries passed. Release baseline was rechecked through `gh release list
+  --exclude-pre-releases --exclude-drafts --limit 1 --json tagName,publishedAt,isLatest`
+  and `git grep` against that release commit.
+
+- Step 6 merged as #1950 after all current-head reviews completed without
+  remaining findings and required CI passed. The local controls successor moved
+  onto `fa9717350c`; its tree matches `8a5589010f` exactly before controls, so
+  unchanged focused verification remains applicable. No prior cache, database,
+  runtime process owner or compatibility path is made obsolete by these controls.

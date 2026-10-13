@@ -1464,6 +1464,7 @@ class SessionDetailCubit(
       SesoriServerInstanceDisposed() ||
       SesoriGlobalDisposed() ||
       SesoriCatalogImportProgress() ||
+      SesoriMcpInventoryChanged() ||
       SesoriPluginManagementChanged() ||
       SesoriPluginInstallProgress() ||
       SesoriPluginAuthenticationProgress() ||
@@ -1539,6 +1540,7 @@ class SessionDetailCubit(
             SesoriServerInstanceDisposed() ||
             SesoriGlobalDisposed() ||
             SesoriCatalogImportProgress() ||
+            SesoriMcpInventoryChanged() ||
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||

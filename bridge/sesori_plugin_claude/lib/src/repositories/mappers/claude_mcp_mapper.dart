@@ -19,6 +19,20 @@ class const ClaudeMcpMapper() {
     final title = _presentText(value: server.serverInfo?.title);
     return PluginMcpServerSnapshot(
       target: PluginMcpServerTarget(scope: scope, serverKey: server.name),
+      actions: const [
+        PluginMcpServerActionCapability(
+          action: PluginMcpServerAction.reconnect,
+          effectScope: PluginMcpActionEffectScope.session,
+        ),
+        PluginMcpServerActionCapability(
+          action: PluginMcpServerAction.enable,
+          effectScope: PluginMcpActionEffectScope.session,
+        ),
+        PluginMcpServerActionCapability(
+          action: PluginMcpServerAction.disable,
+          effectScope: PluginMcpActionEffectScope.session,
+        ),
+      ],
       name: title ?? server.name,
       description: _presentText(value: server.serverInfo?.description),
       endpointOrigin: _endpointOrigin(value: server.config?.url),

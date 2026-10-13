@@ -39,6 +39,9 @@ void main() {
     expect(server.endpointOrigin, "https://example.com:8443");
     expect(server.authorization, PluginMcpAuthorizationState.unknown);
     expect(server.configuration!.mutability, PluginMcpConfigurationMutability.readOnly);
+    expect(server.actions.map((capability) => capability.action), PluginMcpServerAction.values);
+    expect(server.actions.every((capability) => capability.effectScope == PluginMcpActionEffectScope.session), isTrue);
+    expect(server.actions.clear, throwsUnsupportedError);
     expect((server.tools as PluginMcpToolsAvailable).tools.single.description, "Echo a value");
   });
 

@@ -40,6 +40,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriPluginManagementChanged.fromJson(
             json
           );
+                case 'mcp.inventory.changed':
+          return SesoriMcpInventoryChanged.fromJson(
+            json
+          );
                 case 'plugin.install.progress':
           return SesoriPluginInstallProgress.fromJson(
             json
@@ -557,6 +561,83 @@ class _$SesoriPluginManagementChangedCopyWithImpl<$Res>
   return _then(SesoriPluginManagementChanged(
 snapshotToken: null == snapshotToken ? _self.snapshotToken : snapshotToken // ignore: cast_nullable_to_non_nullable
 as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriMcpInventoryChanged implements SesoriSseEvent {
+  const SesoriMcpInventoryChanged({required this.pluginId, required this.scope,  String? $type}): $type = $type ?? 'mcp.inventory.changed';
+  factory SesoriMcpInventoryChanged.fromJson(Map<String, dynamic> json) => _$SesoriMcpInventoryChangedFromJson(json);
+
+ final  String pluginId;
+ final  McpScope scope;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriMcpInventoryChangedCopyWith<SesoriMcpInventoryChanged> get copyWith => _$SesoriMcpInventoryChangedCopyWithImpl<SesoriMcpInventoryChanged>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriMcpInventoryChangedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriMcpInventoryChanged&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.scope, scope) || other.scope == scope));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,scope);
+}
+
+@override
+String toString() {
+    return 'SesoriSseEvent.mcpInventoryChanged(pluginId: $pluginId, scope: $scope)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriMcpInventoryChangedCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriMcpInventoryChangedCopyWith(SesoriMcpInventoryChanged value, $Res Function(SesoriMcpInventoryChanged) _then) = _$SesoriMcpInventoryChangedCopyWithImpl;
+@useResult
+$Res call({
+ String pluginId, McpScope scope
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriMcpInventoryChangedCopyWithImpl<$Res>
+    implements $SesoriMcpInventoryChangedCopyWith<$Res> {
+  _$SesoriMcpInventoryChangedCopyWithImpl(this._self, this._then);
+
+  final SesoriMcpInventoryChanged _self;
+  final $Res Function(SesoriMcpInventoryChanged) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? scope = null,}) {
+  return _then(SesoriMcpInventoryChanged(
+pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+as String,scope: null == scope ? _self.scope : scope // ignore: cast_nullable_to_non_nullable
+as McpScope,
   ));
 }
 

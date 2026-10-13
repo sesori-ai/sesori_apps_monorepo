@@ -1,3 +1,4 @@
 enum McpOperation() {
   getInventory,
+  executeAction,
 }

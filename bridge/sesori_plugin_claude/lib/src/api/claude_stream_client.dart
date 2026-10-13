@@ -189,6 +189,14 @@ class ClaudeStreamClient({
     return ClaudeMcpStatusDto.fromJson(response);
   }
 
+  Future<void> reconnectMcpServer({required String serverName}) async {
+    await sendControlRequest(subtype: "mcp_reconnect", params: {"serverName": serverName});
+  }
+
+  Future<void> setMcpServerEnabled({required String serverName, required bool enabled}) async {
+    await sendControlRequest(subtype: "mcp_toggle", params: {"serverName": serverName, "enabled": enabled});
+  }
+
   /// Sends a control request and awaits its response payload.
   ///
   /// Throws [ClaudeControlException] when the CLI answers with a failure, when
