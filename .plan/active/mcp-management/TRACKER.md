@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-contract-evidence`, `c03b588d9e`, in the provided `copper-heron` worktree.
-- Current step: 2/13, [PR #1945](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1945) in review.
-  Step-3 inventory foundations are implemented locally; adapter work is preserved for step 4. Execution authorized on 2026-10-13.
+- Branch/base: `sesori/mcp-inventory-contracts`, `2c70025d8f`, in the provided `copper-heron` worktree.
+- Current step: 3/13, inventory foundation verified and ready for its PR.
+  Adapter work is preserved for step 4. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
 - Plan PR: [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940).
@@ -18,8 +18,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
 | 1/13 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/13 | Freeze priority native contracts and capability evidence | PR review | [#1945](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1945); [evidence](evidence/native-contracts.md) |
-| 3/13 | Inventory foundation (original 3.a) | Local verification passed | Not published |
+| 2/13 | Freeze priority native contracts and capability evidence | Merged | [#1945](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1945); [evidence](evidence/native-contracts.md) |
+| 3/13 | Inventory foundation (original 3.a) | Verified, ready for PR | Current branch; four codec tests |
 | 4/13 | Claude scoped inventory and bridge read (original 3.b) | Preserved adapter work | Not published |
 | 5/13 | Shared phone/desktop inventory and details | Not started | — |
 | 6/13 | Claude actions and native authentication | Not started | — |
@@ -135,3 +135,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   read; both Codex pins passed 22 with changed-config reload visible in app/live-thread inventory and wrong-state
   callback rejected without token exchange before fresh success. Negative Codex callback HTTP200 still reports
   native failure. Codex JSONL framing follows the official header-omitting protocol, rather than strict MCP framing.
+- Step 2 merged as PR #1945 after all actionable bot findings were addressed, current-head reviews settled, and
+  required CI passed. Step 3 rebased onto `2c70025d8f`; neither owning production package changed on main, so the
+  existing focused tests/analyzers and architecture approval remain applicable. Foundation measurement before this
+  tracker update: 356 authored and 1,679 generated lines (2,035 total). No obsolete runtime owner or stored data exists
+  to remove in this contract-only step.
