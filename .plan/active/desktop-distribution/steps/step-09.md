@@ -51,6 +51,26 @@ then succeeded at that exact merged source, producing private `1.9.1+147` packag
 Tooling job `115211910113`, native x64 job `115212528442` and native arm64 job
 `115212528505` all passed. Both CPUs used the configured `linux-signing` environment
 and full primary fingerprint `E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7`.
+Committed source tree: `d55bf537542f9650b6633ae9bba0d02eaa840c0e`.
+Both checkout logs explicitly report cwd
+`/home/runner/work/sesori_apps_monorepo/sesori_apps_monorepo`.
+The workflow is `.github/workflows/desktop-qualification.yml` at the exact merged
+source above; use that immutable revision, not today's `main`:
+
+```bash
+source=de53cafb2483d76e9350a28d014b4d3906ee0fe0
+git show "$source:.github/workflows/desktop-qualification.yml"
+gh run view 38372268594 --repo sesori-ai/sesori_apps_monorepo \
+  --job 115212528442 --log
+gh run view 38372268594 --repo sesori-ai/sesori_apps_monorepo \
+  --job 115212528505 --log
+```
+
+Direct execution logs:
+[x64](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38372268594/job/115212528442),
+[arm64](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38372268594/job/115212528505).
+These identify the executed commands; rolling dependency repositories still prevent
+promising byte-identical future rebuilds.
 
 All six Ubuntu 24.04, Debian 13 and Fedora 44 fixtures verified signed checksums,
 complete root-owned installed payloads, bounded package ownership, same-version
@@ -61,7 +81,7 @@ Independent verification downloaded the four artifact archives, matched their Gi
 SHA-256 digests, confirmed matching source/build/CPU identities and empty source
 patches, compared installed/reinstalled records, and verified detached checksum
 signatures against the separately known public fingerprint. No private key was read.
-Final payload hashes:
+Final package-file SHA-256 values:
 
 | CPU | Format | SHA-256 |
 |---|---|---|

@@ -153,7 +153,8 @@ received native signatures; signed checksums covered both formats, leaving DEB b
 unchanged. All six native container package fixtures passed. Independent downloaded
 hashes and public-key-pinned checksum
 signatures matched. See [the acceptance record](../../.plan/active/desktop-distribution/steps/step-09.md)
-for the exact source, fingerprint and hashes.
+for the exact source tree, measured checkout cwd, immutable workflow revision,
+expanded native job logs/commands, fingerprint and package-file hashes.
 
 This proves the configured signing path works. It does not admit public repository
 publication or establish GUI/account/keyring/tray behavior or real N→N+1 upgrades.

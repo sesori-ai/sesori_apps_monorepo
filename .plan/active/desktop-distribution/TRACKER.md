@@ -37,7 +37,7 @@ findings shown. All nine review threads received substantive dispositions.
 Main-only run [38372268594](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38372268594)
 then signed real x64/arm64 packages with the configured key. All six Ubuntu 24.04,
 Debian 13 and Fedora 44 install/reinstall/remove fixtures passed. Independent download
-verification matched all four archive digests, payload hashes, identities and empty
+verification matched all four archive digests, package-file hashes, identities and empty
 source patches, and verified checksum signatures against the separately known public
 fingerprint. Exact evidence lives in [step 9](steps/step-09.md); setup remains in
 [key guidance](../../../docs/desktop/linux-signing.md).
@@ -45,10 +45,13 @@ fingerprint. Exact evidence lives in [step 9](steps/step-09.md); setup remains i
 `🌱 [desktop-distribution] Record signed Linux qualification [step 11.b/14]` records
 this acceptance. Build `1.9.1+147` uses the qualification workflow's number, not the
 shared release sequence. Next: signed repository hosting and shared-cycle integration
-with aligned source/build/channel, followed by the remaining Linux ship gates. Cloud
-provisioning/publication is not authorized by the signing slice. Windows no longer
-blocks Linux; neither platform's unexecuted GUI/account/N→N+1 checks are waived.
-No public release/repository, cloud resource or store upload was created.
+with aligned source/build/channel. The user subsequently authorized public opt-in
+Linux internal desktop previews with the GUI/login/keyring/N→N+1 gaps stated, and
+OpenPGP signatures for the existing Linux Bridge CLI archives. D11–D12 in `PLAN.md`
+record the next implementation slices and the website tracking/spacing PR.
+Stable Linux admission and public APT/RPM hosting remain separate; cloud resources
+are not authorized. Build 147 itself remains private. No public release/repository,
+cloud resource or store upload was created by this qualification.
 
 ## Completed macOS website continuation (2026-09-26)
 

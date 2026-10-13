@@ -75,6 +75,8 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 | D8 | Selected 2026-09-25: share the bridge/mobile release cycle; retain platform gates and macOS-first delivery. |
 | D9 | 2026-09-26: retire Gate C with accepted QA gaps; admit macOS publication through the shared cycle. |
 | D10 | User-directed order: Linux before Windows; private signing now, public repositories separately. |
+| D11 | Public Linux internal previews approved with stated desktop QA gaps; stable/repository gates stay closed. |
+| D12 | Sign Linux Bridge CLI archives with OpenPGP too; keep CLI and desktop artifacts distinct. |
 
 ### User-retired QA gate and macOS admission — 2026-09-26
 
@@ -86,7 +88,8 @@ L3 sweep. Keep the configured macOS 12 minimum without claiming it was executed.
 Enable the existing `DESKTOP_MACOS_PUBLICATION_ENABLED` admission and continue
 macOS public distribution. Existing `store-production`, native signing/notarization,
 immutable asset/public-hash verification and private-evidence exclusion remain intact.
-Windows/Linux publication and their distinct trust requirements are not admitted.
+Windows and stable Linux publication remain unadmitted. D11 separately admits Linux
+internal previews with the listed desktop QA gaps; APT/RPM repository hosting stays gated.
 No additional credentials, scheduler, mutable owner or application state is needed.
 
 ### Proposed implementation defaults
@@ -443,8 +446,38 @@ Public repository/shared-cycle delivery follows this completed signing slice and
 preserve existing core release authority. Qualification build 147 uses the manual
 workflow's number, not the shared bridge/mobile build sequence. Public integration
 must resolve the aligned shared source/build/channel and retain its validation metadata.
-Cloud provisioning/public repository publication still require the setup decision;
-private signing does not authorize them or retire Linux desktop-session/upgrade gates.
+On 2026-10-13 the user explicitly authorized public opt-in Linux internal desktop
+previews with GUI/login/keyring and real version-upgrade checks still unverified
+(D11), plus OpenPGP signatures for the public Linux Bridge CLI archives (D12).
+This accepts those gaps for internal previews only, not stable Linux or APT/RPM
+repository admission. No cloud provisioning is authorized. Build 147 remains private;
+never relabel it as an existing shared release.
+
+Next bounded slices, keeping the same signing key, shared cycle and ordinal total:
+
+- `🚧 [desktop-distribution] Sign Linux Bridge CLI archives [step 11.c/14]`:
+  share the existing isolated signing/key-handling mechanism with this second real
+  consumer; publish detached signatures without replacing existing archive bytes or
+  weakening macOS signing. Document manual verification without implying existing
+  CLI updaters already enforce OpenPGP. Estimate 500–900 authored lines.
+- `🚧 [desktop-distribution] Publish Linux desktop internal previews [step 11.d/14]`:
+  supply aligned source/build/channel to both native builders; validate signed
+  artifacts and attach to the existing shared internal release. Use a Linux-specific
+  completion marker uploaded last, independent of macOS completion. Retain the newest
+  completed preview per platform; desktop failures must not block core finalization.
+  Stable Linux stays gated. Bootstrap only against matching source/build of an existing
+  shared release, never by forcing store submissions. Estimate 800–1,200 authored lines.
+- `⚙️ [desktop-distribution] Track Linux previews on the website [step 11.e/14]`:
+  in `sesori-ai/landingpage`, discover completed public Linux internal packages from
+  the same cached release lookup, keep stable/repository states honest, and fix spacing
+  below the preview CTA. Preserve installed-app anchors. Verify fixture SSR and actual
+  desktop/mobile browser geometry; include synthetic before/after media. Estimate
+  400–800 authored lines, not private CI links or a hardcoded preview version.
+
+Complexity budget: no new persistent pointer, scheduler, release service, application
+state or updater. Reuse the existing signing owner and one website cache; immutable
+release assets plus per-platform completion markers own availability. Remove replaced
+Mac-only wording/retention assumptions and duplicated signing setup as each slice lands.
 
 Step 6 delivered read-only private metadata/checksums in PR #1511 without publication.
 Credential migration is complete, but parent and native/public ship gates still apply.
