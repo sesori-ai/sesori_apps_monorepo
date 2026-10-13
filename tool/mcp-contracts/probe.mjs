@@ -184,6 +184,7 @@ async function probeClaude(binary, root, http, oauth, model) {
 }
 
 async function probeCodex(binary, root, http, oauth) {
+  const nativeVersion = version(binary, root, 'codex');
   await writeFile(join(root, 'config', 'config.toml'),
     `[analytics]\nenabled = false\n[mcp_servers.stdio_fixture]\ncommand = ${JSON.stringify(process.execPath)}\n` +
     `args = [${JSON.stringify(fixturePath)}, "--stdio"]\n[mcp_servers.http_fixture]\nurl = "${http.origin}/mcp"\n` +
@@ -231,7 +232,8 @@ async function probeCodex(binary, root, http, oauth) {
     assert.equal(elicitations.length, beforeNever, 'Never-policy elicitation must not reach the client');
     await capture('config/mcpServer/reload', null);
     await capture('mcpServer/oauth/login', { name: 'stdio_fixture', timeoutSecs: 1 });
-    const login = await capture('mcpServer/oauth/login', { name: 'oauth_fixture', timeoutSecs: 2 });
+    const login = await capture('mcpServer/oauth/login', { name: 'oauth_fixture', timeoutSecs: 2,
+      ...(nativeVersion === 'codex-cli 0.160.1' ? { threadId } : {}) });
     if (login.result) {
       const completed = peer.waitFor(frame => frame.method === 'mcpServer/oauthLogin/completed');
       const auth = new URL(login.result.authorizationUrl);
@@ -246,7 +248,7 @@ async function probeCodex(binary, root, http, oauth) {
     }
     await capture('app/list', { threadId, limit: 1, forceRefetch: false });
     await capture('mcp_unknown_fixture', {});
-    return { version: version(binary, root, 'codex'), captures, elicitations,
+    return { version: nativeVersion, captures, elicitations,
       notifications: peer.frames.filter(frame => frame.method?.startsWith('mcpServer/') && frame.id === undefined) };
   } finally { await peer.close(); }
 }
@@ -279,6 +281,14 @@ async function main() {
 function assertContracts(harness, result) {
   const exchanges = result.captures;
   if (harness === 'claude') {
+    for (const exchange of exchanges) {
+      if (exchange.method === 'fixture_turn') {
+        assert.equal(exchange.frame.is_error, false, 'Fixture model turn must complete');
+      } else {
+        const errorExpected = exchange.method === 'mcp_unknown_fixture' || exchange.params.serverName === 'unknown_fixture';
+        assert.equal(exchange.frame.response.subtype, errorExpected ? 'error' : 'success', exchange.method);
+      }
+    }
     const statuses = exchanges.filter(x => x.method === 'mcp_status');
     assert.equal(statuses[1].frame.response.response.mcpServers[0].status, 'disabled');
     const connected = statuses.at(-1).frame.response.response.mcpServers;
@@ -300,12 +310,27 @@ function assertContracts(harness, result) {
       assert.equal(urlReply.error.code, -32602);
       assert.match(urlReply.error.message, /does not support URL-mode/);
     }
+    if (result.version.startsWith('2.1.291 ')) {
+      assert.ok(result.elicitations.some(x => x.request.mode === 'url'), 'Target Claude must forward URL requests');
+    }
+    if (result.version.startsWith('2.1.221 ')) {
+      assert.ok(!result.elicitations.some(x => x.request.mode === 'url'), 'Minimum URL rejection must stay explicit');
+    }
     assert.match(result.login.untrusted.stderr, /awaiting approval/);
+    assert.ok(result.login.untrusted.status > 0, 'Untrusted project login must fail');
+    assert.doesNotMatch(result.login.untrusted.stdout + result.login.untrusted.stderr,
+      /https?:\/\//, 'Untrusted login must not expose a URL');
     assert.equal(result.login.piped.timedOut, true, 'Plain-pipe login must remain blocked');
-    assert.doesNotMatch(result.login.piped.stdout, /https?:\/\//, 'Plain-pipe login must not expose a URL');
+    assert.doesNotMatch(result.login.piped.stdout + result.login.piped.stderr,
+      /https?:\/\//, 'Plain-pipe login must not expose a URL');
     assert.equal(result.login.terminal.status, 0, 'Terminal OAuth must complete');
     assert.equal(result.login.terminal.callbackSent, true);
   } else {
+    for (const exchange of exchanges) {
+      const errorExpected = exchange.method === 'mcp_unknown_fixture' ||
+        (exchange.method === 'mcpServer/oauth/login' && exchange.params?.name === 'stdio_fixture');
+      assert.ok(errorExpected ? exchange.frame.error : exchange.frame.result !== undefined, exchange.method);
+    }
     const inventory = exchanges.filter(x => x.method === 'mcpServerStatus/list' && x.params.limit === 1);
     assert.ok(inventory.some(x => x.frame.result.nextCursor), 'Pagination must be exercised');
     const names = inventory.slice(1).flatMap(x => x.frame.result.data.map(server => server.name));
@@ -319,7 +344,12 @@ function assertContracts(harness, result) {
     const formReply = JSON.parse(returned[1].frame.result.content[0].text).result;
     assert.deepEqual(formReply, { action: 'accept', content: { approved: true, count: 2, plan: 'pro', tags: ['b'] } });
     assert.equal(JSON.parse(returned[2].frame.result.content[0].text).result.action, 'decline');
-    assert.equal(result.notifications.find(x => x.method === 'mcpServer/oauthLogin/completed').params.success, true);
+    const completion = result.notifications.find(x => x.method === 'mcpServer/oauthLogin/completed').params;
+    assert.equal(completion.success, true);
+    assert.equal(completion.name, 'oauth_fixture', 'Completion must name the requested server');
+    const login = exchanges.find(x => x.method === 'mcpServer/oauth/login' && x.params.name === 'oauth_fixture');
+    if (login.params.threadId !== undefined) assert.equal(completion.threadId, login.params.threadId);
+    assert.deepEqual(exchanges.find(x => x.method === 'config/mcpServer/reload').frame.result, {});
     const stdioLogin = exchanges.find(x => x.method === 'mcpServer/oauth/login' && x.params.name === 'stdio_fixture');
     assert.equal(stdioLogin.frame.error.code, -32600);
     assert.match(stdioLogin.frame.error.message, /only supported for streamable HTTP/);

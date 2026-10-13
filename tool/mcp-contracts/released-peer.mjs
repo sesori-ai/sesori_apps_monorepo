@@ -8,7 +8,8 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const baseline = 'ffa5935c8363c6429fdf2e3c3fb95b3a906f5ab5'; // Public v1.9.0, build 970.
 const source = path => {
   const result = spawnSync('git', ['show', `${baseline}:${path}`], { cwd: root, encoding: 'utf8' });
-  assert.equal(result.status, 0, `Released source must be available: ${path}`);
+  assert.equal(result.status, 0,
+    `Released source must be available: ${path}. Fetch the fixed baseline: git fetch origin ${baseline}`);
   return result.stdout;
 };
 

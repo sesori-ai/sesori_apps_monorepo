@@ -25,6 +25,14 @@ before doing so. It never opens a browser. Native fixture credentials may remain
 in the temporary harness configuration. Captures contain fixture authorization
 URLs and should stay local; publish the bounded evidence summary instead.
 
+The released-peer runner and its missing-Dart test require the fixed public
+release tree in local Git history. For a shallow/partial checkout, fetch it
+explicitly before running either command:
+
+```sh
+git fetch origin ffa5935c8363c6429fdf2e3c3fb95b3a906f5ab5
+```
+
 After `dart pub get` in `shared/sesori_shared`, run:
 
 ```sh
