@@ -210,7 +210,11 @@ void main() {
     await tester.pumpWidget(app(scale: 1));
     await tester.pumpAndSettle();
     expect(find.text("No entries were returned."), findsNothing);
-    expect(find.text("Some inventory information requires a newer app."), findsWidgets);
+    expect(find.text("Some inventory information requires a newer app."), findsOneWidget);
+    states.add(_ready(entries: [_server, const McpUnknownInventoryEntry()], refresh: const McpInventoryRefreshIdle()));
+    await tester.pumpAndSettle();
+    expect(find.text("Fixture server"), findsOneWidget);
+    expect(find.text("Some inventory information requires a newer app."), findsOneWidget);
   });
 
   testWidgets("phone width with larger text keeps refresh and server details reachable", (tester) async {

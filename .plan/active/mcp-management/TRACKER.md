@@ -303,3 +303,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   child-session menu test pass; UI and mobile analysis are clean. The latter runs
   from `client/app` with `flutter test test/features/session_detail/widgets/session_detail_body_test.dart --plain-name 'a child session exposes shell-provided read-only menu entries' --no-pub --reporter expanded`.
   Default native fixture content/motion is unchanged by these conditional fixes.
+
+- Unknown-entry notice deduplication was verified against `33048f9eef` plus
+  the notice changes: nine MCP widget tests and shared UI analysis pass. The
+  test checks one global hint for unknown-only and mixed known/unknown entries.

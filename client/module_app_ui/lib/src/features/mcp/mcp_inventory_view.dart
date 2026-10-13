@@ -193,11 +193,11 @@ class const _Section({
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (entries.isNotEmpty) PregoGroupedRows(color: context.prego.colors.bgSurface2, children: entries),
-          if (availability is! McpCatalogAvailable || entries.isEmpty)
+          if (availability is! McpCatalogAvailable || entries.isEmpty && !hasUnknownEntries)
             Padding(
               padding: const EdgeInsets.all(PregoSpacing.md),
               child: Text(switch (availability) {
-                McpCatalogAvailable() => hasUnknownEntries ? loc.mcpUnknownResponse : loc.mcpEmptyCatalog,
+                McpCatalogAvailable() => loc.mcpEmptyCatalog,
                 McpCatalogNotSupported() => loc.mcpCatalogNotSupported,
                 McpCatalogUnavailable() => loc.mcpCatalogUnavailable,
                 McpCatalogUnknown() => loc.mcpUnknownResponse,
