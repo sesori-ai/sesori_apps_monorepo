@@ -15,8 +15,6 @@ enum ClaudeMcpStatus() {
 
 enum ClaudeMcpConfigurationScope() { unknown, user, local, project, dynamic, managed }
 
-enum ClaudeMcpTransportType() { unknown, stdio, http, sse }
-
 /// Selective native DTO: never retain launch arguments, environment or headers.
 @Freezed(copyWith: false, fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudeMcpStatusDto with _$ClaudeMcpStatusDto {
@@ -49,7 +47,6 @@ sealed class ClaudeMcpServerInfoDto with _$ClaudeMcpServerInfoDto {
 @Freezed(copyWith: false, fromJson: true, toJson: false, toStringOverride: false)
 sealed class ClaudeMcpConfigDto with _$ClaudeMcpConfigDto {
   const factory({
-    @JsonKey(unknownEnumValue: ClaudeMcpTransportType.unknown) required ClaudeMcpTransportType? type,
     required String? url,
   }) = _ClaudeMcpConfigDto;
 

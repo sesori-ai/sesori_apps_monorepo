@@ -21,7 +21,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 2/13 | Native contracts | Merged | [#1945][pr-1945] |
 | 3/13 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
 | 4/13 | Claude scoped inventory and bridge read (original 3.b) | PR review | [#1948][pr-1948] |
-| 5/13 | Shared phone/desktop inventory and details | Not started | — |
+| 5/13 | Shared phone/desktop inventory and details | Local work | Not published |
 | 6/13 | Claude actions and native authentication | Not started | — |
 | 7/13 | Shared authentication and external-action presentation | Not started | — |
 | 8/13 | Claude approvals and form/URL elicitation | Not started | — |
