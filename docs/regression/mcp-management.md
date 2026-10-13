@@ -5,7 +5,8 @@
 Backend-neutral inventory contracts describe configured servers and offered
 connectors. The optional plugin read interface and shared wire models are
 implemented. `POST /mcp/inventory` reads Claude Code inventory from an existing
-resident session. Client views and management actions are not yet exposed.
+resident session. The shared client has a typed loading lifecycle; client views
+and management actions are not yet exposed.
 Existing permission flows remain separate. Read-only inventory may inspect an
 archived session if its native process remains live; it grants no session mutation.
 
@@ -37,13 +38,22 @@ archived session if its native process remains live; it grants no session mutati
   native session ID from its durable binding. Project reads resolve the current
   catalog path; missing IDs never become native paths. Claude supports session
   inventory only, with explicit unsupported states for project/harness reads.
+- Each client inventory view owns its loading service. Scope changes and changed
+  connection configuration clear prior inventory and discard older responses.
+- Refresh errors and reconnects with the same connection configuration preserve
+  readable details, with a separate refresh state. Staleness signals wait while
+  offline and coalesce into reads after reconnect; no background polling occurs.
+- A staleness signal arriving during a read still triggers a follow-up read, even
+  if the first read fails. Closing the view cancels listeners and fences its read.
+- HTTP 404 retains a missing-route-or-entity result; it does not assert that the
+  bridge is old. Native read failures remain distinct from unsupported inventory.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Read a live Claude session through the headless route; compare with native status. |
-| L2 Routine | Automated codec and adapter/route coverage described below. |
+| L2 Routine | Automated codec, adapter/route, and client lifecycle coverage described below. |
 | L3 Release | No additional coverage. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
@@ -52,7 +62,8 @@ Automated codec checks preserve distinct targets, empty/unavailable/failed tool
 states, authorization without grants, independent section availability, and
 unknown response states. These require no plugin or native process. Adapter and
 route tests prove safe metadata, resident-only reads, owner validation, scope
-rebinding, and inactive/unsupported states.
+rebinding, and inactive/unsupported states. Client tests cover refresh failures,
+offline staleness, reconnect, scope/connection changes, and disposal in flight.
 
 ## Exploration Guidance
 
@@ -69,6 +80,8 @@ manual qualification; unit tests do not prove a real relay or native runtime.
   catalog hides otherwise readable servers.
 - Authorization implies a permission grant or native configuration enters a
   shared inventory payload.
+- Old responses appear under a changed scope or connection, a refresh failure
+  removes readable details, or an offline client polls for inventory.
 
 ## Evidence
 
@@ -83,3 +96,5 @@ Automated adapter/route coverage:
 - `bridge/sesori_plugin_claude/test/claude_mcp_mapper_test.dart`
 - `bridge/sesori_plugin_claude/test/claude_session_process_repository_test.dart`
 - `bridge/app/test/bridge/routing/post_mcp_inventory_handler_test.dart`
+- `client/module_core/test/services/mcp_service_test.dart`
+- `client/module_core/test/repositories/mcp_repository_test.dart`

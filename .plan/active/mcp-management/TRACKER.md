@@ -194,3 +194,14 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   keeps its narrow catch and maps teardown to safe readFailed state without
   swallowing unrelated StateError bugs. Focused Claude tests passed (48);
   Claude analysis passed. Original step 5 is now two PRs, with total 14.
+
+- Step 5.a local verification: 12 focused client service/repository tests pass;
+  core, mobile, and desktop analyze cleanly on Flutter 3.47.5 / Dart 3.13.4.
+  Full core DI generation changed only the intended registrations. Per-view
+  service ownership avoids a shared inventory cache; no prior persistence,
+  listener, or lifecycle owner becomes obsolete. This step exposes no UI or
+  analytics action; screen reporting remains with the following UI step.
+  Real relay/client and packaged qualification remain pending.
+- Step 5.a architecture implementation review: **approved** for the client
+  additions against `53f16cb004`; no findings in layering, DI ownership,
+  lifecycle ownership, or shared boundaries. Prior Claude changes were excluded.
