@@ -551,7 +551,7 @@ Affected documents: new `docs/regression/mcp-management.md`; update `questions-a
 regression index, and `docs/HARNESS_CAPABILITIES.md`. Update browser-return packaging documents only where this
 implementation changes their supported behavior. Keep provider-account authentication distinct from MCP authentication.
 
-Step 14 reconciles the full supported contract. Step 15 records versions, builds, platforms, plugins, boundaries,
+Step 15 reconciles the full supported contract. Step 16 records versions, builds, platforms, plugins, boundaries,
 outcomes, limitations, cleanup, and privacy-safe evidence references in `TRACKER.md`. Retire only when this matrix
 passes. Any reduction requires explicit user acceptance recorded here; verified native limitations must be explicit
 product limitations rather than unfinished promised behavior.
