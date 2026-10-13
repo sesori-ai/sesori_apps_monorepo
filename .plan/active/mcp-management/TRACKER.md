@@ -3,8 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/claude-mcp-authentication`, `5dfef8672f`, in the provided `copper-heron` worktree.
-- Current step: 9/17, native Claude authentication boundary in progress;
+- Branch/base: `sesori/mcp-authentication-contracts`, `64617e92bb`, in the provided `copper-heron` worktree.
+- Current step: 10/18 authentication wire contracts are ready for PR;
+  native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
   Client loading merged as #1949; Claude inventory API merged as #1948. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
@@ -18,23 +19,24 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/17 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/17 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/17 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/17 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/17 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/17 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/17 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
-| 8/17 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
-| 9/17 | Claude native authentication boundary (7.b.1) | In progress | Native API and OAuth qualification |
-| 10/17 | Headless authentication owner and wire (original 7.b.2) | Not started | — |
-| 11/17 | Shared authentication and external-action presentation | Not started | — |
-| 12/17 | Claude approvals and form/URL elicitation | Not started | — |
-| 13/17 | Codex inventory/actions/authentication | Not started | — |
-| 14/17 | Codex forms and offered connectors | Not started | — |
-| 15/17 | Secondary harness support and explicit gaps | Not started | — |
-| 16/17 | Reconcile regression/capability documents | Not started | — |
-| 17/17 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/18 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/18 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/18 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/18 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/18 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/18 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/18 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/18 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
+| 9/18 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
+| 10/18 | Authentication wire (original 7.b.2.a) | Ready for PR | 12 codec tests, analyzer and architecture approval |
+| 11/18 | Headless authentication owner and routes (original 7.b.2.b) | Not started | — |
+| 12/18 | Shared authentication and external-action presentation | Not started | — |
+| 13/18 | Claude approvals and form/URL elicitation | Not started | — |
+| 14/18 | Codex inventory/actions/authentication | Not started | — |
+| 15/18 | Codex forms and offered connectors | Not started | — |
+| 16/18 | Secondary harness support and explicit gaps | Not started | — |
+| 17/18 | Reconcile regression/capability documents | Not started | — |
+| 18/18 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -532,3 +534,64 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   its cleanup stack as well. This localized logging correction changes no native
   lifecycle or public result; the owning analyzer passes. The 19 native tests,
   other 68 focused tests and native fixture evidence remain from `68a966b4e2`.
+
+- The authentication wire alone measures 900 generated lines plus its models and
+  tests. Original 7.b.2 is therefore split into codec foundation 7.b.2.a (ordinal
+  10) and headless owner/routes 7.b.2.b (ordinal 11). Current total is 18, with
+  unchanged behavior scope and final qualification matrix. This keeps native
+  lifecycle ownership review separate from codec churn. No compatibility shim is
+  introduced between these internal steps.
+
+[pr-1954]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1954
+
+- Authentication wire validation ran in the provided worktree with parent HEAD
+  `bcfcd8e9f3752fc1bf790439e1381f519b78c6bf`. The validated shared source/test
+  snapshot is captured by commit `9770290513` and tree
+  `9244e84847d5aff6d4bba2b53229c3d6b3b1c4a7`; those shared files are byte-identical
+  to published head `5627fb32fc` (`git diff 9770290513 5627fb32fc -- shared/sesori_shared` is empty).
+  Working directory:
+  `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/copper-heron/shared/sesori_shared`.
+  Executable: `/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.5-stable/bin/cache/dart-sdk/bin/dart`.
+  Results:
+  five new privacy/binding/round-trip/forward-unknown tests and seven existing MCP
+  codec tests pass (12 total), and shared analysis is clean. Exact pinned SDK
+  commands from `shared/sesori_shared`:
+
+  ```sh
+  dart test test/models/mcp_authentication_test.dart \
+    test/models/mcp_test.dart --reporter expanded
+  dart analyze --fatal-infos
+  ```
+
+  The first connector-target expectation used an invalid union tag and therefore
+  tested the generic union decoder instead of the server-only target boundary;
+  it was corrected to the real connector-offer variant. Callback malformed-body
+  errors preserve their cause without reflecting credential input. Filtered
+  generation's unrelated tracked deletions were restored from HEAD.
+
+- Authentication wire architecture review pass 1 approved the complete successor
+  diff against `bcfcd8e9f3`; native owner/routes are excluded. All nine published
+  series titles are synchronized to 18.
+
+- The unpublished wire successor is rebased onto native review fixes `3aa6bbd887`.
+  Only plan/tracker bookkeeping conflicted; both verification histories are retained.
+  The shared wire source, generated output and passing test inputs are unchanged.
+
+- The unpublished wire successor also includes the final context correction
+  `8681e53fa0`. The shared contracts and their passing test inputs are unchanged.
+
+- The unpublished wire successor includes native dual-failure correction
+  `68a966b4e2`. Only plan/tracker bookkeeping conflicted; contract and test inputs
+  remain unchanged. Both step histories and current 18-step numbering are retained.
+
+- The unpublished wire successor includes cancellation diagnostic correction
+  `75ffab0694`. Both verification histories are retained; shared contract and
+  test inputs remain unchanged.
+
+- PR #1954 merged after current-head CI, Cubic approval and completed Codex review.
+  The wire successor was rebased onto squash `64617e92bb` without contract changes.
+  Published diff measurement pins base `64617e92bb` and head `5627fb32fc`:
+  `git diff --numstat 64617e92bb 5627fb32fc` reports 1,264 additions and 64 deletions,
+  1,328 changed lines in nine files, including this tracker. Generated codec files
+  contribute 900 lines; the remaining 428 are authored code, tests and docs.
+  This measurement precedes the documentation-only review correction.

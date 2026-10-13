@@ -644,6 +644,11 @@ can initiate login, and managed installation does **not** authenticate a harness
 Read-only MCP inventory and server details are **implemented** in the shared
 phone/desktop UI, opened from session menus and harness settings. Connection
 action UI and authentication UI remain **not implemented**.
+
+Backend-neutral authentication attempt/request/response codecs are implemented,
+including explicit native cancellation availability and private callback
+presentation. This is a shared contract foundation; bridge authentication routes
+and client actions remain not implemented for every harness.
 The backend-neutral inventory wire models and optional plugin read interface
 are implemented. Claude implements session inventory through its resident
 process status control request, exposed headlessly by `POST /mcp/inventory`.
