@@ -73,7 +73,21 @@ _ClaudeMcpServerInfoDto _$ClaudeMcpServerInfoDtoFromJson(Map json) =>
     );
 
 _ClaudeMcpConfigDto _$ClaudeMcpConfigDtoFromJson(Map json) =>
-    _ClaudeMcpConfigDto(url: json['url'] as String?);
+    _ClaudeMcpConfigDto(
+      type: $enumDecodeNullable(
+        _$ClaudeMcpTransportTypeEnumMap,
+        json['type'],
+        unknownValue: ClaudeMcpTransportType.unknown,
+      ),
+      url: json['url'] as String?,
+    );
+
+const _$ClaudeMcpTransportTypeEnumMap = {
+  ClaudeMcpTransportType.unknown: 'unknown',
+  ClaudeMcpTransportType.stdio: 'stdio',
+  ClaudeMcpTransportType.http: 'http',
+  ClaudeMcpTransportType.sse: 'sse',
+};
 
 _ClaudeMcpToolDto _$ClaudeMcpToolDtoFromJson(Map json) => _ClaudeMcpToolDto(
   name: json['name'] as String,

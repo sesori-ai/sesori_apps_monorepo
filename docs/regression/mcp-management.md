@@ -8,7 +8,9 @@ implemented. `POST /mcp/inventory` reads Claude Code inventory from an existing
 resident session. Phone and desktop expose a shared read-only inventory and
 server-details view backed by the typed loading lifecycle. `POST /mcp/entry/action`
 exposes explicit live-session Claude reconnect, enable and disable controls to
-headless consumers. Product UI controls and MCP authentication remain pending.
+headless consumers. Claude native plugin authentication is implemented for
+existing configured HTTP servers. Product action UI and headless authentication
+routes remain pending.
 Existing permission flows remain separate. Read-only inventory may inspect an
 archived session if its native process remains live; it grants no session mutation.
 
@@ -81,6 +83,30 @@ archived session if its native process remains live; it grants no session mutati
 - Connection, authentication, configuration origin/access, and tools are shown
   separately. Endpoint origins are plain text, not browser-launch actions.
 
+## Native authentication boundary
+
+The optional plugin API can sign in to an existing live Claude session's
+native-configured HTTP server and clear its native credentials. This is a
+plugin-level boundary; headless authentication routes and client action UI
+remain pending.
+
+- Resolve the exact server and resident directory without starting a session.
+  Dynamic/unknown configuration returns a handoff instead of addressing a
+  possibly different CLI configuration with the same name.
+- Login runs in a terminal through the host process seam. Native exit and cleanup
+  establish completion; browser opening alone does not.
+- Callback origin, path and OAuth state must match the native challenge. Reject
+  invalid callbacks without writing to the child; provider denial stops it.
+- URL/completion deadlines and cancellation, including an in-flight spawn, stop
+  the owned child and release subscriptions. Errors retain their causes without
+  printing authentication URLs or callbacks. A simultaneous native and cleanup
+  failure retains both causes/stacks and the original failure classification.
+- Credential clearing uses the native CLI and leaves MCP server definitions
+  unchanged. It does not disable or remove a server.
+- macOS arm64 is qualified with both pins. Linux qualification, Windows terminal
+  integration and SSE authentication remain pending; retain explicit unavailable
+  results until those boundaries land and pass their native checks.
+
 ## Regression Levels
 
 | Level | Additional coverage |
@@ -127,6 +153,10 @@ Pinned native protocol evidence is recorded in
 [HARNESS_CAPABILITIES.md](../HARNESS_CAPABILITIES.md); it does not qualify a
 full Sesori management flow on its own; native protocol evidence, adapter tests,
 and real route/client qualification are distinct.
+
+Native authentication lifecycle, callback validation, denial and expiry coverage
+is in `bridge/sesori_plugin_claude/test/claude_mcp_login_repository_test.dart`.
+Resident context coverage remains in the process-repository tests below.
 
 Automated adapter/route coverage:
 

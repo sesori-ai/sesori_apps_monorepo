@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-archive-rejection`, `0ed5a42b81`, in the provided `copper-heron` worktree.
-- Current step: 8/16, canonical archived-control rejection in PR [#1953][pr-1953];
-  live Claude controls merged as [#1952][pr-1952].
+- Branch/base: `sesori/claude-mcp-authentication`, `5dfef8672f`, in the provided `copper-heron` worktree.
+- Current step: 9/17, native Claude authentication boundary in progress;
+  archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
   Client loading merged as #1949; Claude inventory API merged as #1948. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
@@ -18,22 +18,23 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/16 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/16 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/16 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/16 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/16 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/16 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/16 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
-| 8/16 | Canonical archived-control rejection | In review | [#1953][pr-1953] |
-| 9/16 | Claude native authentication (original 7.b) | Draft paused | Native terminal/login draft preserved in stash |
-| 10/16 | Shared authentication and external-action presentation | Not started | — |
-| 11/16 | Claude approvals and form/URL elicitation | Not started | — |
-| 12/16 | Codex inventory/actions/authentication | Not started | — |
-| 13/16 | Codex forms and offered connectors | Not started | — |
-| 14/16 | Secondary harness support and explicit gaps | Not started | — |
-| 15/16 | Reconcile regression/capability documents | Not started | — |
-| 16/16 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/17 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/17 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/17 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/17 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/17 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/17 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/17 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/17 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
+| 9/17 | Claude native authentication boundary (7.b.1) | In progress | Native API and OAuth qualification |
+| 10/17 | Headless authentication owner and wire (original 7.b.2) | Not started | — |
+| 11/17 | Shared authentication and external-action presentation | Not started | — |
+| 12/17 | Claude approvals and form/URL elicitation | Not started | — |
+| 13/17 | Codex inventory/actions/authentication | Not started | — |
+| 14/17 | Codex forms and offered connectors | Not started | — |
+| 15/17 | Secondary harness support and explicit gaps | Not started | — |
+| 16/17 | Reconcile regression/capability documents | Not started | — |
+| 17/17 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -60,7 +61,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   bridge/relay ownership, client presentation, or the final L4 matrix. Those gates remain active.
 - Public release check still identifies v1.9.0/build 970 as latest production; newer v1.9.1 builds are prereleases.
   The released SSE parser plus byte-identical codecs passed four event-order/settlement fixtures and a snapshot fixture.
-  Actual mixed-client/native-owner tests remain required in steps 10/11.
+  Actual mixed-client/native-owner tests remain required in steps 11/12.
 
 ## Review record
 
@@ -88,7 +89,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   executable runtime compatibility remains an implementation gate.
 - Further review clarifications: separated the existing non-pending catalog setup result from native session consent
   requests; settings setup does not fabricate session ownership. Required capability and regression updates in each
-  production PR, retaining step 15 for reconciliation. Added the dated source-only verification record below.
+  production PR, retaining step 16 for reconciliation. Added the dated source-only verification record below.
 
 ## Verification log
 
@@ -411,3 +412,123 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 
   Outcomes: 45 tests passed and no analyzer issues. The `dart` label above means
   the exact pinned executable, not a PATH-resolved installation.
+
+- Original 7.b is split into native boundary 7.b.1 (ordinal 9) and headless
+  authentication owner/wire 7.b.2 (ordinal 10), keeping native process lifetime
+  review separate from bridge leases and transport. Current series total is 17.
+  This changes PR boundaries, not the final qualification matrix.
+- Native-boundary verification at base `5dfef8672f` plus the source draft: 11
+  native login/parser/service tests, 29 resident-process tests and four mapper
+  tests pass. Plugin API construction/behavior regression tests pass
+  (35 tests), for 79 focused tests in total.
+  Claude and interface analysis is clean after the service ownership fix. Exact commands
+  below use the pinned SDK already recorded above, from `bridge/sesori_plugin_claude`:
+
+  ```sh
+  dart test test/claude_mcp_login_repository_test.dart \
+    test/claude_session_process_repository_test.dart \
+    test/claude_plugin_impl_test.dart test/claude_mcp_mapper_test.dart \
+    --reporter expanded
+  dart analyze --fatal-infos
+  ```
+
+  Interface analysis uses the same analyzer command from `bridge/sesori_plugin_interface`.
+- Native production service/repository OAuth smoke passed on exact Claude 2.1.221
+  and 2.1.291 on macOS arm64: one explicitly launched resident, static configured
+  target binding, native completion, reconnect with discovered tools, cancellation
+  and native logout. Terminal/native children stopped within the bounded one-second
+  observation (106 ms for 2.1.221 and 110 ms for 2.1.291 in the final run).
+  Server definitions are unchanged; the target CLI's `pluginUsage`
+  preference bookkeeping can change. No model/provider account or real MCP server.
+  Private source: `/private/tmp/copper-heron-mcp-auth-smoke.dart` and its Node
+  fixture runner. Command from the worktree:
+
+  ```sh
+  /Users/alexandrudochioiu/.local/bin/node /private/tmp/copper-heron-mcp-auth-smoke.mjs
+  ```
+
+  The runner uses the exact pinned Dart executable with the bridge package config,
+  isolated `CLAUDE_CONFIG_DIR` and a local OAuth fixture. The initial whole-file
+  preference byte comparison was too broad; the passing invariant compares MCP
+  server definitions. Only isolated native fixture credentials were used; no
+  real account or production configuration was used. Real provider, relay, packaged
+  and other-host checks remain pending.
+- Terminal choice uses the system `script` helper through `HostProcessService`;
+  there is no Python, Rust or new PTY dependency in production. Native child
+  exit codes 0 and 7 and cancellation were measured on the current host. Apple's
+  source also preserves child status in `shell_cmds-234` and current main:
+  [Apple terminal helper source][apple-script].
+  Source inspection does not qualify older host versions. Linux and Windows/SSE
+  gates remain explicit and the plan stays active until its recorded matrix passes.
+
+- Architecture review pass 1 rejected peer-repository coordination in the new
+  authentication repository. Context resolution and login construction now belong
+  to the authentication service and runtime composer; logout accepts its resolved
+  context. The second/final architecture review approved the complete native-boundary diff. Provider callback
+  errors preserve bounded failure classification: denial is declined, while
+  server failure remains a native failure; neither submits a callback code.
+
+- Final native-boundary verification covers the source staged on
+  `sesori/claude-mcp-authentication` above base `5dfef8672ffefdf1ce94a0f69596f195bf0874ad`.
+  All 79 tests and both owning-package analyzers passed after the ownership fix;
+  the final production fixture then passed both exact Claude pins. Series titles
+  for all eight published predecessors are synchronized to 17.
+
+[apple-script]: https://github.com/apple-oss-distributions/shell_cmds/blob/shell_cmds-234/script/script.c
+
+- Step 9 review fixes reproduce and correct cancellation before listener attachment,
+  browser-denial/cancellation overlap, ambiguous OAuth query parameters, logout
+  health reporting, and pipe cleanup after native exit. Context read failures keep
+  a typed cause and private authentication presentation rather than becoming false
+  unsupported-capability results. The six new tests first failed against the
+  corresponding old behaviors, then the complete 85-test focused suite passed;
+  final Claude and interface analyzers are clean. Commands and pinned SDK match
+  the native-boundary record above. One baseline probe and a suite initially ran
+  concurrently during temporary context-wrapper removal; that failed/incomplete
+  run is excluded. After restoration, the final full focused suite passed.
+- Terminal-helper spawn outcomes are deliberately excluded from session binary
+  health. The verified pins emit an exact native authorization URL; speculative
+  prose punctuation trimming or skipping malformed OAuth challenges is declined.
+  No broad native-output parser or additional operation registry is added.
+
+- Final native fixture after the review fixes passed both exact pins again, with
+  cancellation children stopped within 105/107 ms and server definitions unchanged.
+  The review-corrected native PR measures about 1,580 changed lines (29 generated),
+  a small soft-cap overage from focused lifecycle/privacy regressions. Its coupled
+  fixes stay with the native boundary; the 900 generated wire lines remain in the
+  separate unpublished successor. No published history is rewritten.
+
+- A final context-failure regression extended the same assertion to credential
+  clearing and reproduced the remaining raw error there. Both operations now use
+  one private context wrapper. All 17 native authentication tests and Claude
+  analysis passed after this correction; the other 68 passing focused tests and
+  interface analysis are unchanged. Native fixture evidence above is from
+  `3aa6bbd887`; this local change only shares context-error presentation.
+
+- Current-head Codex review found cleanup could replace an existing native failure.
+  Two regressions first reproduced lost native exit/timeout causes and expiry
+  classification. Settlement now retains both failures and both stack traces,
+  preserves the primary classification, and disables the stream's cancellation
+  callback after disposal so stream close cannot repeat a handled cleanup failure.
+  All 19 native authentication tests pass; the other 68 focused tests and interface
+  analysis remain unchanged. The Claude analyzer caught one const declaration in
+  the new fixture, now corrected; final analyzer is clean.
+- The separate macOS `script -F` argument finding is invalid on the supported
+  helper. Installed usage is `script [-aeFkpqr] [-t time] [file [command ...]]`;
+  `/usr/share/man/man1/script.1` identifies `-F` as immediate flushing. Apple
+  `shell_cmds-234` parses `adFkpqrt:` and its F branch sets `Fflg`, with no argument.
+  Primary source was re-read through GitHub API after web fetching failed; the
+  existing source link and both pinned production OAuth fixtures agree. No flag
+  rewrite or typescript destination change is made.
+
+- Final settlement-change fixture passed both exact Claude pins again on macOS
+  arm64: completion, reconnect/tools, cancellation (109/108 ms child-stop
+  observation), logout and unchanged MCP server definitions. The remaining
+  qualification matrix is unchanged; the new double-failure tests exercise a
+  failure seam that normal native success cannot manufacture.
+
+- Cubic identified cancellation-time diagnostics logging only the primary stack
+  from a dual failure. The same catch now logs the private cleanup wrapper and
+  its cleanup stack as well. This localized logging correction changes no native
+  lifecycle or public result; the owning analyzer passes. The 19 native tests,
+  other 68 focused tests and native fixture evidence remain from `68a966b4e2`.

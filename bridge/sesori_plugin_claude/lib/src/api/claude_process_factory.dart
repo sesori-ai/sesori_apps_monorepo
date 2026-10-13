@@ -33,25 +33,64 @@ final class HostClaudeProcessFactory({
 
   Stream<ProcessSpawnOutcome> get events => _events.stream;
 
+  bool get supportsTerminal => io.Platform.isMacOS || io.Platform.isLinux;
+
+  /// MCP's no-browser login requires a terminal, rather than ordinary pipes.
+  /// The native helper owns the terminal and propagates the child exit status.
+  Future<ClaudeProcessHandle> spawnTerminal({required ClaudeProcessLaunch launch}) async {
+    final List<String> arguments;
+    if (io.Platform.isMacOS) {
+      arguments = ["-qF", "/dev/null", launch.binaryPath, ...launch.arguments];
+    } else if (io.Platform.isLinux) {
+      final command = [launch.binaryPath, ...launch.arguments].map((value) => _shellQuote(value: value)).join(" ");
+      arguments = ["-qefc", "exec $command", "/dev/null"];
+    } else {
+      throw const ClaudeTerminalUnavailableException();
+    }
+    final process = await _processes.spawn(
+      executable: "/usr/bin/script",
+      arguments: arguments,
+      environment: {..._environment, ...launch.environment},
+      workingDirectory: launch.workingDirectory,
+      runInShell: false,
+      includeParentEnvironment: true,
+    );
+    return _HostClaudeProcessHandle(process: process, processes: _processes);
+  }
+
+  String _shellQuote({required String value}) => "'${value.replaceAll("'", r"'\''")}'";
+
   Future<ClaudeProcessHandle> spawn(ClaudeProcessLaunch launch) async {
     try {
-      final process = await _processes.spawn(
-        includeParentEnvironment: true,
-        executable: launch.binaryPath,
-        arguments: launch.arguments,
-        environment: {..._environment, ...launch.environment},
-        workingDirectory: launch.workingDirectory,
-        runInShell: io.Platform.isWindows,
-      );
+      final process = await spawnCommand(launch: launch);
       if (!_events.isClosed) _events.add(ProcessSpawnOutcome.succeeded);
-      return _HostClaudeProcessHandle(process: process, processes: _processes);
+      return process;
     } on Object {
       if (!_events.isClosed) _events.add(ProcessSpawnOutcome.failed);
       rethrow;
     }
   }
 
+  /// Credential commands do not establish session runtime health.
+  Future<ClaudeProcessHandle> spawnCommand({required ClaudeProcessLaunch launch}) async {
+    final process = await _processes.spawn(
+      includeParentEnvironment: true,
+      executable: launch.binaryPath,
+      arguments: launch.arguments,
+      environment: {..._environment, ...launch.environment},
+      workingDirectory: launch.workingDirectory,
+      runInShell: io.Platform.isWindows,
+    );
+    return _HostClaudeProcessHandle(process: process, processes: _processes);
+  }
+
   Future<void> dispose() => _events.close();
+}
+
+/// Host terminal integration has not been implemented on this platform.
+final class const ClaudeTerminalUnavailableException() implements Exception {
+  @override
+  String toString() => "Claude MCP terminal support is unavailable on this host";
 }
 
 final class _HostClaudeProcessHandle({

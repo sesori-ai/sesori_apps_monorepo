@@ -44,6 +44,7 @@ class ClaudeStreamClient({
   final Duration _controlTimeout = const Duration(seconds: 60),
   final String _logTag = "claude",
 }) {
+  String get workingDirectory => _launchSpec.workingDirectory;
   ClaudeProcessHandle? _process;
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<String>? _stderrSubscription;
