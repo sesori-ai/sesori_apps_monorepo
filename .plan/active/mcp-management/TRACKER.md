@@ -526,3 +526,9 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   observation), logout and unchanged MCP server definitions. The remaining
   qualification matrix is unchanged; the new double-failure tests exercise a
   failure seam that normal native success cannot manufacture.
+
+- Cubic identified cancellation-time diagnostics logging only the primary stack
+  from a dual failure. The same catch now logs the private cleanup wrapper and
+  its cleanup stack as well. This localized logging correction changes no native
+  lifecycle or public result; the owning analyzer passes. The 19 native tests,
+  other 68 focused tests and native fixture evidence remain from `68a966b4e2`.

@@ -168,6 +168,9 @@ final class _ClaudeMcpLoginService({
       outcome = failure;
       if (_termination is _ClaudeMcpLoginCancelled) {
         Log.w("[claude] MCP authentication cleanup failed", failure.cause, failure.causeStackTrace);
+        if (failure.cause case ClaudeMcpAuthenticationCleanupException(:final cleanupError, :final cleanupStackTrace)) {
+          Log.w("[claude] MCP authentication cleanup failed during native settlement", cleanupError, cleanupStackTrace);
+        }
       }
     }
     // Terminal settlement already attempted disposal; closing the stream must
