@@ -348,11 +348,8 @@ McpConnectionState _$McpConnectionStateFromJson(
           );
         
           default:
-            throw CheckedFromJsonException(
-  json,
-  'type',
-  'McpConnectionState',
-  'Invalid union type "${json['type']}"!'
+            return McpConnectionUnknown.fromJson(
+  json
 );
         }
       
@@ -391,11 +388,50 @@ String toString() {
 /// @nodoc
 @JsonSerializable()
 
+class McpConnectionUnknown implements McpConnectionState {
+  const McpConnectionUnknown({ String? $type}): $type = $type ?? 'unknown';
+  factory McpConnectionUnknown.fromJson(Map<String, dynamic> json) => _$McpConnectionUnknownFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$McpConnectionUnknownToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpConnectionUnknown);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'McpConnectionState.unknown()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
 class McpConnectionStatus implements McpConnectionState {
-  const McpConnectionStatus({required this.phase,  String? $type}): $type = $type ?? 'status';
+  const McpConnectionStatus({@JsonKey(unknownEnumValue: McpConnectionPhase.unknown) required this.phase,  String? $type}): $type = $type ?? 'status';
   factory McpConnectionStatus.fromJson(Map<String, dynamic> json) => _$McpConnectionStatusFromJson(json);
 
- final  McpConnectionPhase phase;
+@JsonKey(unknownEnumValue: McpConnectionPhase.unknown) final  McpConnectionPhase phase;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -474,7 +510,7 @@ String toString() {
 /// @nodoc
 mixin _$McpConfigurationSource {
 
- McpConfigurationScope get scope; McpConfigurationMutability get mutability;
+@JsonKey(unknownEnumValue: McpConfigurationScope.unknown) McpConfigurationScope get scope;@JsonKey(unknownEnumValue: McpConfigurationMutability.unknown) McpConfigurationMutability get mutability;
 
   /// Serializes this McpConfigurationSource to a JSON map.
   Map<String, dynamic> toJson();
@@ -510,11 +546,11 @@ String toString() {
 @JsonSerializable()
 
 class _McpConfigurationSource implements McpConfigurationSource {
-  const _McpConfigurationSource({required this.scope, required this.mutability});
+  const _McpConfigurationSource({@JsonKey(unknownEnumValue: McpConfigurationScope.unknown) required this.scope, @JsonKey(unknownEnumValue: McpConfigurationMutability.unknown) required this.mutability});
   factory _McpConfigurationSource.fromJson(Map<String, dynamic> json) => _$McpConfigurationSourceFromJson(json);
 
-@override final  McpConfigurationScope scope;
-@override final  McpConfigurationMutability mutability;
+@override@JsonKey(unknownEnumValue: McpConfigurationScope.unknown) final  McpConfigurationScope scope;
+@override@JsonKey(unknownEnumValue: McpConfigurationMutability.unknown) final  McpConfigurationMutability mutability;
 
 
 @override
@@ -626,21 +662,14 @@ McpToolInventory _$McpToolInventoryFromJson(
           return McpToolsAvailable.fromJson(
             json
           );
-                case 'unavailable':
-          return McpToolsUnavailable.fromJson(
-            json
-          );
                 case 'failed':
           return McpToolsFailed.fromJson(
             json
           );
         
           default:
-            throw CheckedFromJsonException(
-  json,
-  'type',
-  'McpToolInventory',
-  'Invalid union type "${json['type']}"!'
+            return McpToolsUnavailable.fromJson(
+  json
 );
         }
       
@@ -817,11 +846,8 @@ McpInventoryEntry _$McpInventoryEntryFromJson(
           );
         
           default:
-            throw CheckedFromJsonException(
-  json,
-  'type',
-  'McpInventoryEntry',
-  'Invalid union type "${json['type']}"!'
+            return McpUnknownInventoryEntry.fromJson(
+  json
 );
         }
       
@@ -830,7 +856,7 @@ McpInventoryEntry _$McpInventoryEntryFromJson(
 /// @nodoc
 mixin _$McpInventoryEntry {
 
- String get name; String? get description;
+
 
   /// Serializes this McpInventoryEntry to a JSON map.
   Map<String, dynamic> toJson();
@@ -838,21 +864,16 @@ mixin _$McpInventoryEntry {
 
 @override
 bool operator ==(Object other) {
-  final _this = this as McpInventoryEntry;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is McpInventoryEntry&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpInventoryEntry);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode {
-  final _this = this as McpInventoryEntry;
-  return Object.hash(runtimeType,_this.name,_this.description);
-}
+int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  final _this = this as McpInventoryEntry;
-  return 'McpInventoryEntry(name: ${_this.name}, description: ${_this.description})';
+    return 'McpInventoryEntry()';
 }
 
 
@@ -865,16 +886,55 @@ String toString() {
 /// @nodoc
 @JsonSerializable()
 
+class McpUnknownInventoryEntry implements McpInventoryEntry {
+  const McpUnknownInventoryEntry({ String? $type}): $type = $type ?? 'unknown';
+  factory McpUnknownInventoryEntry.fromJson(Map<String, dynamic> json) => _$McpUnknownInventoryEntryFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$McpUnknownInventoryEntryToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpUnknownInventoryEntry);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'McpInventoryEntry.unknown()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
 class McpServerSnapshot implements McpInventoryEntry {
-  const McpServerSnapshot({@JsonKey(name: "target") required this.serverTarget, required this.name, required this.description, required this.endpointOrigin, required this.connection, required this.authorization, required this.configuration, required this.tools,  String? $type}): $type = $type ?? 'server';
+  const McpServerSnapshot({@JsonKey(name: "target") required this.serverTarget, required this.name, required this.description, required this.endpointOrigin, required this.connection, @JsonKey(unknownEnumValue: McpAuthorizationState.unknown) required this.authorization, required this.configuration, required this.tools,  String? $type}): $type = $type ?? 'server';
   factory McpServerSnapshot.fromJson(Map<String, dynamic> json) => _$McpServerSnapshotFromJson(json);
 
 @JsonKey(name: "target") final  McpServerTarget serverTarget;
-@override final  String name;
-@override final  String? description;
+ final  String name;
+ final  String? description;
  final  String? endpointOrigin;
  final  McpConnectionState connection;
- final  McpAuthorizationState authorization;
+@JsonKey(unknownEnumValue: McpAuthorizationState.unknown) final  McpAuthorizationState authorization;
  final  McpConfigurationSource? configuration;
  final  McpToolInventory tools;
 
@@ -914,13 +974,13 @@ String toString() {
 @JsonSerializable()
 
 class McpConnectorOfferSnapshot implements McpInventoryEntry {
-  const McpConnectorOfferSnapshot({@JsonKey(name: "target") required this.offerTarget, required this.name, required this.description, required this.availability,  String? $type}): $type = $type ?? 'connectorOffer';
+  const McpConnectorOfferSnapshot({@JsonKey(name: "target") required this.offerTarget, required this.name, required this.description, @JsonKey(unknownEnumValue: McpConnectorOfferAvailability.unknown) required this.availability,  String? $type}): $type = $type ?? 'connectorOffer';
   factory McpConnectorOfferSnapshot.fromJson(Map<String, dynamic> json) => _$McpConnectorOfferSnapshotFromJson(json);
 
 @JsonKey(name: "target") final  McpConnectorOfferTarget offerTarget;
-@override final  String name;
-@override final  String? description;
- final  McpConnectorOfferAvailability availability;
+ final  String name;
+ final  String? description;
+@JsonKey(unknownEnumValue: McpConnectorOfferAvailability.unknown) final  McpConnectorOfferAvailability availability;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -972,11 +1032,8 @@ McpCatalogAvailability _$McpCatalogAvailabilityFromJson(
           );
         
           default:
-            throw CheckedFromJsonException(
-  json,
-  'type',
-  'McpCatalogAvailability',
-  'Invalid union type "${json['type']}"!'
+            return McpCatalogUnknown.fromJson(
+  json
 );
         }
       
@@ -1008,6 +1065,45 @@ String toString() {
 
 }
 
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class McpCatalogUnknown implements McpCatalogAvailability {
+  const McpCatalogUnknown({ String? $type}): $type = $type ?? 'unknown';
+  factory McpCatalogUnknown.fromJson(Map<String, dynamic> json) => _$McpCatalogUnknownFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$McpCatalogUnknownToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpCatalogUnknown);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'McpCatalogAvailability.unknown()';
+}
+
+
+}
 
 
 
@@ -1145,11 +1241,8 @@ McpInventoryResult _$McpInventoryResultFromJson(
           );
         
           default:
-            throw CheckedFromJsonException(
-  json,
-  'type',
-  'McpInventoryResult',
-  'Invalid union type "${json['type']}"!'
+            return McpInventoryUnknown.fromJson(
+  json
 );
         }
       
@@ -1158,7 +1251,7 @@ McpInventoryResult _$McpInventoryResultFromJson(
 /// @nodoc
 mixin _$McpInventoryResult {
 
- McpScope get scope;
+
 
   /// Serializes this McpInventoryResult to a JSON map.
   Map<String, dynamic> toJson();
@@ -1166,21 +1259,16 @@ mixin _$McpInventoryResult {
 
 @override
 bool operator ==(Object other) {
-  final _this = this as McpInventoryResult;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is McpInventoryResult&&(identical(other.scope, _this.scope) || other.scope == _this.scope));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpInventoryResult);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode {
-  final _this = this as McpInventoryResult;
-  return Object.hash(runtimeType,_this.scope);
-}
+int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  final _this = this as McpInventoryResult;
-  return 'McpInventoryResult(scope: ${_this.scope})';
+    return 'McpInventoryResult()';
 }
 
 
@@ -1193,11 +1281,50 @@ String toString() {
 /// @nodoc
 @JsonSerializable()
 
+class McpInventoryUnknown implements McpInventoryResult {
+  const McpInventoryUnknown({ String? $type}): $type = $type ?? 'unknown';
+  factory McpInventoryUnknown.fromJson(Map<String, dynamic> json) => _$McpInventoryUnknownFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$McpInventoryUnknownToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpInventoryUnknown);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'McpInventoryResult.unknown()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
 class McpInventorySnapshot implements McpInventoryResult {
-  const McpInventorySnapshot({required this.scope, required  List<McpInventoryEntry> entries, required this.connectors,  String? $type}): _entries = entries,$type = $type ?? 'available';
+  const McpInventorySnapshot({required this.scope, required  List<McpInventoryEntry> entries, required this.servers, required this.connectors,  String? $type}): _entries = entries,$type = $type ?? 'available';
   factory McpInventorySnapshot.fromJson(Map<String, dynamic> json) => _$McpInventorySnapshotFromJson(json);
 
-@override final  McpScope scope;
+ final  McpScope scope;
  final  List<McpInventoryEntry> _entries;
  List<McpInventoryEntry> get entries {
   if (_entries is EqualUnmodifiableListView) return _entries;
@@ -1205,6 +1332,7 @@ class McpInventorySnapshot implements McpInventoryResult {
   return EqualUnmodifiableListView(_entries);
 }
 
+ final  McpCatalogAvailability servers;
  final  McpCatalogAvailability connectors;
 
 @JsonKey(name: 'type')
@@ -1219,18 +1347,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpInventorySnapshot&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other.entries, _entries)&&(identical(other.connectors, connectors) || other.connectors == connectors));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpInventorySnapshot&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other.entries, _entries)&&(identical(other.servers, servers) || other.servers == servers)&&(identical(other.connectors, connectors) || other.connectors == connectors));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,scope,const DeepCollectionEquality().hash(_entries),connectors);
+    return Object.hash(runtimeType,scope,const DeepCollectionEquality().hash(_entries),servers,connectors);
 }
 
 @override
 String toString() {
-    return 'McpInventoryResult.available(scope: $scope, entries: $entries, connectors: $connectors)';
+    return 'McpInventoryResult.available(scope: $scope, entries: $entries, servers: $servers, connectors: $connectors)';
 }
 
 
@@ -1243,11 +1371,11 @@ String toString() {
 @JsonSerializable()
 
 class McpInventoryUnavailable implements McpInventoryResult {
-  const McpInventoryUnavailable({required this.scope, required this.reason, required this.message,  String? $type}): $type = $type ?? 'unavailable';
+  const McpInventoryUnavailable({required this.scope, @JsonKey(unknownEnumValue: McpInventoryUnavailableReason.unknown) required this.reason, required this.message,  String? $type}): $type = $type ?? 'unavailable';
   factory McpInventoryUnavailable.fromJson(Map<String, dynamic> json) => _$McpInventoryUnavailableFromJson(json);
 
-@override final  McpScope scope;
- final  McpInventoryUnavailableReason reason;
+ final  McpScope scope;
+@JsonKey(unknownEnumValue: McpInventoryUnavailableReason.unknown) final  McpInventoryUnavailableReason reason;
  final  String message;
 
 @JsonKey(name: 'type')

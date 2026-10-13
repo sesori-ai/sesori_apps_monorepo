@@ -56,9 +56,20 @@ Map<String, dynamic> _$McpConnectorOfferTargetToJson(
   'type': instance.$type,
 };
 
+McpConnectionUnknown _$McpConnectionUnknownFromJson(Map json) =>
+    McpConnectionUnknown($type: json['type'] as String?);
+
+Map<String, dynamic> _$McpConnectionUnknownToJson(
+  McpConnectionUnknown instance,
+) => <String, dynamic>{'type': instance.$type};
+
 McpConnectionStatus _$McpConnectionStatusFromJson(Map json) =>
     McpConnectionStatus(
-      phase: $enumDecode(_$McpConnectionPhaseEnumMap, json['phase']),
+      phase: $enumDecode(
+        _$McpConnectionPhaseEnumMap,
+        json['phase'],
+        unknownValue: McpConnectionPhase.unknown,
+      ),
       $type: json['type'] as String?,
     );
 
@@ -90,10 +101,15 @@ Map<String, dynamic> _$McpConnectionFailedToJson(
 
 _McpConfigurationSource _$McpConfigurationSourceFromJson(Map json) =>
     _McpConfigurationSource(
-      scope: $enumDecode(_$McpConfigurationScopeEnumMap, json['scope']),
+      scope: $enumDecode(
+        _$McpConfigurationScopeEnumMap,
+        json['scope'],
+        unknownValue: McpConfigurationScope.unknown,
+      ),
       mutability: $enumDecode(
         _$McpConfigurationMutabilityEnumMap,
         json['mutability'],
+        unknownValue: McpConfigurationMutability.unknown,
       ),
     );
 
@@ -105,6 +121,7 @@ Map<String, dynamic> _$McpConfigurationSourceToJson(
 };
 
 const _$McpConfigurationScopeEnumMap = {
+  McpConfigurationScope.unknown: 'unknown',
   McpConfigurationScope.harness: 'harness',
   McpConfigurationScope.project: 'project',
   McpConfigurationScope.session: 'session',
@@ -154,6 +171,13 @@ McpToolsFailed _$McpToolsFailedFromJson(Map json) => McpToolsFailed(
 Map<String, dynamic> _$McpToolsFailedToJson(McpToolsFailed instance) =>
     <String, dynamic>{'message': instance.message, 'type': instance.$type};
 
+McpUnknownInventoryEntry _$McpUnknownInventoryEntryFromJson(Map json) =>
+    McpUnknownInventoryEntry($type: json['type'] as String?);
+
+Map<String, dynamic> _$McpUnknownInventoryEntryToJson(
+  McpUnknownInventoryEntry instance,
+) => <String, dynamic>{'type': instance.$type};
+
 McpServerSnapshot _$McpServerSnapshotFromJson(Map json) => McpServerSnapshot(
   serverTarget: McpServerTarget.fromJson(
     Map<String, dynamic>.from(json['target'] as Map),
@@ -167,6 +191,7 @@ McpServerSnapshot _$McpServerSnapshotFromJson(Map json) => McpServerSnapshot(
   authorization: $enumDecode(
     _$McpAuthorizationStateEnumMap,
     json['authorization'],
+    unknownValue: McpAuthorizationState.unknown,
   ),
   configuration: json['configuration'] == null
       ? null
@@ -209,6 +234,7 @@ McpConnectorOfferSnapshot _$McpConnectorOfferSnapshotFromJson(Map json) =>
       availability: $enumDecode(
         _$McpConnectorOfferAvailabilityEnumMap,
         json['availability'],
+        unknownValue: McpConnectorOfferAvailability.unknown,
       ),
       $type: json['type'] as String?,
     );
@@ -230,6 +256,12 @@ const _$McpConnectorOfferAvailabilityEnumMap = {
   McpConnectorOfferAvailability.setupRequired: 'setupRequired',
   McpConnectorOfferAvailability.unavailable: 'unavailable',
 };
+
+McpCatalogUnknown _$McpCatalogUnknownFromJson(Map json) =>
+    McpCatalogUnknown($type: json['type'] as String?);
+
+Map<String, dynamic> _$McpCatalogUnknownToJson(McpCatalogUnknown instance) =>
+    <String, dynamic>{'type': instance.$type};
 
 McpCatalogAvailable _$McpCatalogAvailableFromJson(Map json) =>
     McpCatalogAvailable($type: json['type'] as String?);
@@ -255,6 +287,13 @@ Map<String, dynamic> _$McpCatalogUnavailableToJson(
   McpCatalogUnavailable instance,
 ) => <String, dynamic>{'message': instance.message, 'type': instance.$type};
 
+McpInventoryUnknown _$McpInventoryUnknownFromJson(Map json) =>
+    McpInventoryUnknown($type: json['type'] as String?);
+
+Map<String, dynamic> _$McpInventoryUnknownToJson(
+  McpInventoryUnknown instance,
+) => <String, dynamic>{'type': instance.$type};
+
 McpInventorySnapshot _$McpInventorySnapshotFromJson(Map json) =>
     McpInventorySnapshot(
       scope: McpScope.fromJson(Map<String, dynamic>.from(json['scope'] as Map)),
@@ -264,6 +303,9 @@ McpInventorySnapshot _$McpInventorySnapshotFromJson(Map json) =>
                 McpInventoryEntry.fromJson(Map<String, dynamic>.from(e as Map)),
           )
           .toList(),
+      servers: McpCatalogAvailability.fromJson(
+        Map<String, dynamic>.from(json['servers'] as Map),
+      ),
       connectors: McpCatalogAvailability.fromJson(
         Map<String, dynamic>.from(json['connectors'] as Map),
       ),
@@ -275,6 +317,7 @@ Map<String, dynamic> _$McpInventorySnapshotToJson(
 ) => <String, dynamic>{
   'scope': instance.scope.toJson(),
   'entries': instance.entries.map((e) => e.toJson()).toList(),
+  'servers': instance.servers.toJson(),
   'connectors': instance.connectors.toJson(),
   'type': instance.$type,
 };
@@ -285,6 +328,7 @@ McpInventoryUnavailable _$McpInventoryUnavailableFromJson(Map json) =>
       reason: $enumDecode(
         _$McpInventoryUnavailableReasonEnumMap,
         json['reason'],
+        unknownValue: McpInventoryUnavailableReason.unknown,
       ),
       message: json['message'] as String,
       $type: json['type'] as String?,
@@ -300,6 +344,7 @@ Map<String, dynamic> _$McpInventoryUnavailableToJson(
 };
 
 const _$McpInventoryUnavailableReasonEnumMap = {
+  McpInventoryUnavailableReason.unknown: 'unknown',
   McpInventoryUnavailableReason.unsupportedHarness: 'unsupportedHarness',
   McpInventoryUnavailableReason.unsupportedScope: 'unsupportedScope',
   McpInventoryUnavailableReason.liveSessionRequired: 'liveSessionRequired',

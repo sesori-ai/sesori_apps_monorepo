@@ -86,6 +86,7 @@ sealed class const PluginMcpInventoryResult();
 /// Adapters must supply immutable entries, including each server tool list.
 final class const PluginMcpInventorySnapshot({
   required final List<PluginMcpInventoryEntry> entries,
+  required final PluginMcpCatalogAvailability servers,
   required final PluginMcpCatalogAvailability connectors,
 }) extends PluginMcpInventoryResult;
 

@@ -66,14 +66,61 @@ void main() {
           'tools': {'type': 'unavailable'},
         },
       ],
+      'servers': {'type': 'available'},
       'connectors': {'type': 'unavailable', 'message': 'Catalog requires sign-in'},
     });
     expect(snapshot, isA<McpInventorySnapshot>());
     final inventory = snapshot as McpInventorySnapshot;
+    expect(inventory.servers, const McpCatalogAvailable());
     expect(inventory.scope, const McpScope.project(projectId: 'project-1'));
     expect(inventory.connectors, const McpCatalogAvailability.unavailable(message: 'Catalog requires sign-in'));
     final restored = McpInventoryResult.fromJson(snapshot.toJson()) as McpInventorySnapshot;
     expect(restored, snapshot);
     expect((restored.entries.single as McpServerSnapshot).serverTarget.serverKey, 'fixture');
   });
+
+  test('unknown response variants and scalar states degrade without losing known inventory', () {
+    expect(McpConnectionState.fromJson({'type': 'status', 'phase': 'reconnecting'}),
+        const McpConnectionStatus(phase: McpConnectionPhase.unknown));
+    expect(McpConnectionState.fromJson({'type': 'future'}), const McpConnectionUnknown());
+    expect(McpToolInventory.fromJson({'type': 'future'}), const McpToolsUnavailable());
+    expect(McpCatalogAvailability.fromJson({'type': 'future'}), const McpCatalogUnknown());
+    expect(McpInventoryEntry.fromJson({'type': 'future'}), const McpUnknownInventoryEntry());
+    expect(McpInventoryResult.fromJson({'type': 'future'}), const McpInventoryUnknown());
+    final unknownReason = McpInventoryResult.fromJson({
+      'type': 'unavailable', 'scope': {'type': 'harness'}, 'reason': 'future', 'message': 'Unavailable',
+    }) as McpInventoryUnavailable;
+    expect(unknownReason.reason, McpInventoryUnavailableReason.unknown);
+    final server = McpInventoryEntry.fromJson({
+      'type': 'server', 'target': {'type': 'server', 'scope': {'type': 'harness'}, 'serverKey': 'fixture'},
+      'name': 'Fixture', 'connection': {'type': 'future'}, 'authorization': 'future',
+      'configuration': {'scope': 'future', 'mutability': 'future'}, 'tools': {'type': 'future'},
+    }) as McpServerSnapshot;
+    expect(server.authorization, McpAuthorizationState.unknown);
+    expect(server.configuration!.scope, McpConfigurationScope.unknown);
+    expect(server.configuration!.mutability, McpConfigurationMutability.unknown);
+    final offer = McpInventoryEntry.fromJson({
+      'type': 'connectorOffer', 'target': {'type': 'connectorOffer', 'scope': {'type': 'harness'}, 'offerKey': 'offer'},
+      'name': 'Offer', 'availability': 'future',
+    }) as McpConnectorOfferSnapshot;
+    expect(offer.availability, McpConnectorOfferAvailability.unknown);
+  });
+
+  test('server-section failure preserves readable offered connectors', () {
+    final snapshot = McpInventoryResult.fromJson({
+      'type': 'available', 'scope': {'type': 'harness'},
+      'entries': [{
+        'type': 'connectorOffer', 'target': {'type': 'connectorOffer', 'scope': {'type': 'harness'}, 'offerKey': 'offer'},
+        'name': 'Fixture offer', 'availability': 'available',
+      }],
+      'servers': {'type': 'unavailable', 'message': 'Server discovery failed'},
+      'connectors': {'type': 'available'},
+    }) as McpInventorySnapshot;
+    final restored = McpInventoryResult.fromJson(snapshot.toJson()) as McpInventorySnapshot;
+    expect(restored, snapshot);
+    expect(restored.servers, isA<McpCatalogUnavailable>());
+    expect(restored.connectors, isA<McpCatalogAvailable>());
+    expect((restored.entries.single as McpConnectorOfferSnapshot).offerTarget.offerKey, 'offer');
+  });
+
 }

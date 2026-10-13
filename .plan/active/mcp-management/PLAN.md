@@ -139,7 +139,8 @@ names.
 - `McpInventoryEntry` is sealed with configured-server and connector-offer variants.
   `McpConnectorOfferSnapshot` contains its offer target, display metadata, native-reported availability/setup state,
   and setup or handoff actions. It has no
-  invented server connection state, configuration source, or tool list. `McpInventorySnapshot` carries these entries and
+  invented server connection state, configuration source, or tool list. `McpInventorySnapshot` carries independent server and connector section
+  availability, these entries and
   each section's supported/unavailable result; a harness without a connector catalog still exposes its servers.
 - Server operations and connector setup use separate sealed action variants with their corresponding target types.
   The adapter resolves an offered connector's verified setup URL from its native catalog; clients cannot supply a URL

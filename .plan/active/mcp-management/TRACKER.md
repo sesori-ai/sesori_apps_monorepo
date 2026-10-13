@@ -19,7 +19,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 |---|---|---|---|
 | 1/13 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
 | 2/13 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/13 | Inventory foundation (original 3.a) | PR review | [#1947][pr-1947]; four codec tests |
+| 3/13 | Inventory foundation (original 3.a) | PR review | [#1947][pr-1947]; six codec tests |
 | 4/13 | Claude scoped inventory and bridge read (original 3.b) | Preserved adapter work | Not published |
 | 5/13 | Shared phone/desktop inventory and details | Not started | — |
 | 6/13 | Claude actions and native authentication | Not started | — |
@@ -145,3 +145,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 [pr-1947]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1947
 
 Native evidence: [contract captures](evidence/native-contracts.md).
+
+- Step-3 Codex review added independent server/connector section availability and
+  graceful unknown response enum/union parsing. Six wire tests and shared plus
+  plugin-interface analysis passed; request scopes/targets remain intentionally
+  closed. No published MCP peer needs a legacy field default.

@@ -15,6 +15,10 @@ actions are not yet exposed. Existing permission flows remain separate.
   including when their opaque keys happen to match.
 - Server connection, authorization, configuration origin, and tool discovery
   are separate values. Authentication alone grants no tool permission.
+- Server and connector sections report availability independently; failure of
+  one section never turns into a successful empty catalog or hides the other.
+- Unknown response states degrade to unknown/unavailable variants. Request scope
+  and target variants remain closed and invalid requests are rejected.
 - Unavailable or failed discovery is distinct from a successfully discovered
   empty tool catalog. Connector-catalog unavailability leaves server inventory
   readable; an offer has no invented server status or tool list.
@@ -29,10 +33,14 @@ actions are not yet exposed. Existing permission flows remain separate.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated, no plugin: shared codec round trips preserve distinct targets, empty/unavailable/failed tool states, authorization without grants, and partial catalog availability. |
+| L2 Routine | Automated codec coverage described below. |
 | L3 Release | No additional coverage. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
+
+Automated codec checks preserve distinct targets, empty/unavailable/failed tool
+states, authorization without grants, independent section availability, and
+unknown response states. These require no plugin or native process.
 
 ## Exploration Guidance
 
