@@ -298,6 +298,14 @@ void main() {
               .having((error) => error.toString(), "presentation", isNot(contains("fixture-private-authorization"))),
         ),
       );
+      await expectLater(
+        service.forget(target: _target),
+        throwsA(
+          isA<ClaudeMcpAuthenticationException>()
+              .having((error) => error.innerError, "cause", same(cause))
+              .having((error) => error.toString(), "presentation", isNot(contains("fixture-private-authorization"))),
+        ),
+      );
       expect(host.executable, isNull);
     });
 

@@ -497,3 +497,10 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   a small soft-cap overage from focused lifecycle/privacy regressions. Its coupled
   fixes stay with the native boundary; the 900 generated wire lines remain in the
   separate unpublished successor. No published history is rewritten.
+
+- A final context-failure regression extended the same assertion to credential
+  clearing and reproduced the remaining raw error there. Both operations now use
+  one private context wrapper. All 17 native authentication tests and Claude
+  analysis passed after this correction; the other 68 passing focused tests and
+  interface analysis are unchanged. Native fixture evidence above is from
+  `3aa6bbd887`; this local change only shares context-error presentation.

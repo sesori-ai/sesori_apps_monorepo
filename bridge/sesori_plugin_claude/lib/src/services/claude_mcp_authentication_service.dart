@@ -37,15 +37,8 @@ final class ClaudeMcpAuthenticationService({
   required final Duration _overallBudget,
 }) {
   Future<PluginMcpAuthenticationOperation> begin({required PluginMcpServerTarget target}) async {
-    final ClaudeMcpLoginRepository login;
-    try {
-      final context = await _resolveContext(target: target);
-      login = _createLogin(context: context);
-    } on PluginMcpAuthenticationUnavailableException {
-      rethrow;
-    } on Object catch (error, stackTrace) {
-      Error.throwWithStackTrace(ClaudeMcpAuthenticationException(innerError: error), stackTrace);
-    }
+    final context = await _authenticationContext(target: target);
+    final login = _createLogin(context: context);
     return _ClaudeMcpLoginService(
       repository: login,
       urlBudget: _urlBudget,
@@ -54,8 +47,18 @@ final class ClaudeMcpAuthenticationService({
   }
 
   Future<void> forget({required PluginMcpServerTarget target}) async {
-    final context = await _resolveContext(target: target);
+    final context = await _authenticationContext(target: target);
     await _repository.forget(context: context);
+  }
+
+  Future<ClaudeMcpAuthenticationContext> _authenticationContext({required PluginMcpServerTarget target}) async {
+    try {
+      return await _resolveContext(target: target);
+    } on PluginMcpAuthenticationUnavailableException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(ClaudeMcpAuthenticationException(innerError: error), stackTrace);
+    }
   }
 }
 
