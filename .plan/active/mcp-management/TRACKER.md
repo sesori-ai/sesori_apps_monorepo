@@ -127,3 +127,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   servers open, target Claude URL/identifier are asserted, and both Claude pins reject wrong-state callbacks without
   exchanging a token before a fresh valid login succeeds. Minimum exits; target rejects and reprompts until bounded
   cancellation. Four tooling tests passed. Split metadata is now published in step 2 to match its 13-step PR title.
+- Step-2 grant/ownership/refresh review at `2e52cf2b23`: all four probes passed with exact Claude native grant
+  suggestions and elicitation subtype/server ownership, plus refreshed Codex OAuth/tool state and target connected
+  status without discovery error. The unsupported-version test passed after decoding its script file URL. The codec
+  regression document begins in step 3; live inventory coverage begins in step 4.

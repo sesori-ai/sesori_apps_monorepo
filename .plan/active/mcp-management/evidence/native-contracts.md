@@ -1,7 +1,7 @@
 # Priority MCP contract evidence
 
 Date: 2026-10-13. Implementation base: `c03b588d9e`. Host: macOS arm64.
-Measured executable probe revision: `992af36665` (all four pins passed final
+Measured executable probe revision: `2e52cf2b23` (all four pins passed final
 version, ownership, URL, pagination, and OAuth-state assertions).
 
 ## Exact executables
@@ -60,7 +60,10 @@ Claude sends `can_use_tool` with tool name, input, and native permission
 suggestions. The target also supplies `mcp_server` with the fixture name and
 dynamic source; the minimum omits that field. Assertions check the exact native
 tool name for each approval and the version-specific server context. Both versions
-independently ask before all three tools.
+independently ask before all three tools. Each approval asserts its native
+`addRules` suggestion with the matching tool, allow behavior, and local-settings
+destination. Each forwarded form/URL request asserts its elicitation subtype
+and fixture server name.
 Forms use `subtype: elicitation`, `mcp_server_name`, `requested_schema`, and typed
 `{action, content}` responses. The boolean, integer, choice value distinct from
 its label, optional-field omission, and bounded string-array values round-trip
@@ -92,7 +95,9 @@ include `threadId`. The plan's anticipated native attempt ID does not exist at
 these pins. The bridge owns its operation identity and native callback lease.
 
 Codex fixture OAuth succeeds after its exact loopback callback receives the
-fixture state/code. There is no MCP callback-completion or cancel RPC in either
+fixture state/code. The post-completion refresh reports OAuth and the fixture
+tool at both pins; target also reports connected with no discovery error.
+There is no MCP callback-completion or cancel RPC in either
 generated request schema. The adapter must bind continuation to the issued
 callback and retain ownership through native completion/expiry; cancelling UI
 alone cannot imply that the native listener stopped. No provider-account login
@@ -126,7 +131,7 @@ recovery after the real typed interactions exist.
 
 ## Reproduction and measured results
 
-Run from the repository root at probe revision `992af36665`; dependencies were
+Run from the repository root at probe revision `2e52cf2b23`; dependencies were
 resolved in `shared/sesori_shared` using Dart 3.13.4. Native fixture subprocess
 cwd is a fresh temporary directory chosen by `mkdtemp`, not the checkout or the
 developer's project. The released-peer Dart cwd is `shared/sesori_shared`.
