@@ -4,7 +4,8 @@ import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart" show Session;
+import "package:sesori_shared/sesori_shared.dart" show McpInventoryRequest, McpSessionScope, Session;
+import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
@@ -156,12 +157,29 @@ class const _MobileSessionDetailBody({
         // holds archived sessions only, so the audit view offers no actions.
         menuEntriesBuilder: auditView
             ? null
-            : ({required context, required session}) => _sessionActions.sessionMenuEntries(
-                context: context,
-                cubit: context.read<SessionListCubit>()..updateActionSession(session: session),
-                session: session,
-                readEntry: SessionReadMenuEntry.markUnread,
-              ),
+            : ({required context, required session}) => [
+                PregoMenuItem(
+                  leadingIcon: TablerRegular.plug,
+                  title: context.loc.mcpTitle,
+                  subtitle: null,
+                  isSelected: false,
+                  shortcutLabel: null,
+                  onTap: () => showMcpInventory(
+                    context: context,
+                    request: McpInventoryRequest(
+                      pluginId: session.pluginId,
+                      scope: McpSessionScope(sessionId: session.id),
+                    ),
+                    createService: getIt.call<McpService>,
+                  ),
+                ),
+                ..._sessionActions.sessionMenuEntries(
+                  context: context,
+                  cubit: context.read<SessionListCubit>()..updateActionSession(session: session),
+                  session: session,
+                  readEntry: SessionReadMenuEntry.markUnread,
+                ),
+              ],
         bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>
             MobileSessionDetailComposerControls(
               projectId: projectId,

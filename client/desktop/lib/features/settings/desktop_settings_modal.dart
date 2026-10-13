@@ -8,6 +8,7 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -396,6 +397,11 @@ class _DesktopHarnessSettingsPageState() extends State<_DesktopHarnessSettingsPa
               key: ValueKey(pluginId),
               child: HarnessSettingsDetailView(
                 pluginId: pluginId,
+                onShowMcp: () => showMcpInventory(
+                  context: context,
+                  request: McpInventoryRequest(pluginId: pluginId, scope: const McpHarnessScope()),
+                  createService: getIt.call<McpService>,
+                ),
                 chrome: HarnessSettingsChrome.window,
                 onBack: () => setState(() => _pluginId = null),
                 onClose: widget.onClose,

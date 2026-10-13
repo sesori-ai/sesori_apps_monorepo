@@ -3066,4 +3066,155 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get bridgeUpdateCopyLink => 'Copy link';
+
+  @override
+  String get mcpTitle => 'MCP servers and connectors';
+
+  @override
+  String get mcpRefresh => 'Refresh';
+
+  @override
+  String get mcpReadOnly => 'Server and tool information';
+
+  @override
+  String get mcpRefreshing => 'Refreshing…';
+
+  @override
+  String get mcpRefreshUnrecognized => 'A newer app is needed to refresh. Showing the last inventory.';
+
+  @override
+  String get mcpRefreshNotFound => 'Inventory could not be found. Showing the last inventory.';
+
+  @override
+  String get mcpOffline => 'Offline. Showing the last inventory.';
+
+  @override
+  String get mcpRefreshFailed => 'Could not refresh. Showing the last inventory.';
+
+  @override
+  String get mcpLoading => 'Loading inventory…';
+
+  @override
+  String get mcpWaiting => 'Waiting for the bridge connection.';
+
+  @override
+  String get mcpNotFound =>
+      'Inventory could not be found. Check that the session still exists and your bridge is up to date.';
+
+  @override
+  String get mcpReadFailed => 'Could not read inventory. Try refreshing.';
+
+  @override
+  String get mcpUnknownResponse => 'Some inventory information requires a newer app.';
+
+  @override
+  String get mcpUnavailable => 'Inventory is unavailable.';
+
+  @override
+  String get mcpUnsupportedHarness => 'This integration does not expose MCP inventory yet.';
+
+  @override
+  String get mcpUnsupportedScope =>
+      'This integration does not expose inventory here. Open MCP from a running session to inspect its servers.';
+
+  @override
+  String get mcpLiveSessionRequired =>
+      'Open a running session to inspect its MCP servers. Reading inventory will not start a session.';
+
+  @override
+  String get mcpPluginInactive =>
+      'This integration is inactive. Enable it in harness settings before reading inventory.';
+
+  @override
+  String get mcpServers => 'Configured servers';
+
+  @override
+  String get mcpConnectors => 'Offered connectors';
+
+  @override
+  String get mcpUnknown => 'Unknown';
+
+  @override
+  String get mcpOfferAvailable => 'Available';
+
+  @override
+  String get mcpSetupRequired => 'Setup required';
+
+  @override
+  String get mcpEmptyCatalog => 'No entries were returned.';
+
+  @override
+  String get mcpCatalogNotSupported => 'This integration does not support this catalog.';
+
+  @override
+  String get mcpCatalogUnavailable => 'This catalog is currently unavailable.';
+
+  @override
+  String get mcpServerDetails => 'Server details';
+
+  @override
+  String get mcpConnection => 'Connection';
+
+  @override
+  String get mcpAuthorization => 'Authentication';
+
+  @override
+  String get mcpAuthNotRequired => 'Not required';
+
+  @override
+  String get mcpAuthRequired => 'Sign-in required';
+
+  @override
+  String get mcpAuthenticated => 'Authenticated';
+
+  @override
+  String get mcpOrigin => 'Endpoint origin';
+
+  @override
+  String get mcpConfiguration => 'Configuration source';
+
+  @override
+  String get mcpHarnessScope => 'Harness';
+
+  @override
+  String get mcpProjectScope => 'Project';
+
+  @override
+  String get mcpSessionScope => 'Session';
+
+  @override
+  String get mcpTools => 'Discovered tools';
+
+  @override
+  String get mcpNoTools => 'Discovery succeeded with no tools.';
+
+  @override
+  String get mcpToolsUnavailable => 'Tool discovery information is unavailable.';
+
+  @override
+  String get mcpToolsFailed => 'Tool discovery failed.';
+
+  @override
+  String get mcpConnectionFailed => 'Connection failed';
+
+  @override
+  String get mcpPending => 'Pending';
+
+  @override
+  String get mcpConnecting => 'Connecting';
+
+  @override
+  String get mcpConnected => 'Connected';
+
+  @override
+  String get mcpDisabled => 'Disabled';
+
+  @override
+  String get mcpConfigurationAccess => 'Configuration ownership';
+
+  @override
+  String get mcpUserManaged => 'User managed';
+
+  @override
+  String get mcpReadOnlyConfiguration => 'Read only';
 }
