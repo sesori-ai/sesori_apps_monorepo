@@ -27,10 +27,11 @@ class McpRepository({
             message: "This integration does not yet expose MCP inventory.",
           );
         }
-        return const McpMapper().map(
-          scope: scope,
-          result: await (plugin as McpManagementPluginApi).getMcpInventory(scope: nativeScope),
-        );
+        final native = await (plugin as McpManagementPluginApi).getMcpInventory(scope: nativeScope);
+        if (native case PluginMcpInventoryReadFailed(:final cause, :final causeStackTrace)) {
+          Log.w("MCP inventory read failed for $pluginId in $scope", cause, causeStackTrace);
+        }
+        return const McpMapper().map(scope: scope, result: native);
       },
     );
     return result ??

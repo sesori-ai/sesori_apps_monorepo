@@ -100,7 +100,7 @@ sealed class McpCatalogAvailability with _$McpCatalogAvailability {
   factory fromJson(Map<String, dynamic> json) => _$McpCatalogAvailabilityFromJson(json);
 }
 
-enum McpInventoryUnavailableReason() { unknown, unsupportedHarness, unsupportedScope, liveSessionRequired, pluginInactive }
+enum McpInventoryUnavailableReason() { unknown, unsupportedHarness, unsupportedScope, liveSessionRequired, pluginInactive, readFailed }
 
 @Freezed(unionKey: "type", fallbackUnion: "unknown", copyWith: false, fromJson: true, toJson: true)
 sealed class McpInventoryResult with _$McpInventoryResult {

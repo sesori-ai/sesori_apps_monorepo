@@ -127,8 +127,14 @@ final class ClaudeSessionProcessRepository({
         message: "Start or resume this session to inspect its MCP servers.",
       );
     }
-    final status = await process.client.getMcpStatus();
-    return const ClaudeMcpMapper().map(status: status, scope: scope);
+    try {
+      final status = await process.client.getMcpStatus();
+      return const ClaudeMcpMapper().map(status: status, scope: scope);
+    } on ClaudeControlException catch (error, stackTrace) {
+      return PluginMcpInventoryReadFailed(cause: error, causeStackTrace: stackTrace);
+    } on TimeoutException catch (error, stackTrace) {
+      return PluginMcpInventoryReadFailed(cause: error, causeStackTrace: stackTrace);
+    }
   }
 
   Map<String, Object?>? handshake({required String sessionId}) => _resident[sessionId]?.client.handshake;

@@ -52,6 +52,29 @@ void main() {
       expect(harness.specs, hasLength(1));
     });
 
+    test("inventory control rejection retains the original diagnostic cause", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final result = repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
+      await pump();
+      final request = process.written.lastWhere((frame) => frame["type"] == "control_request");
+      process.emitControlError(requestId: request["request_id"]! as String, error: "fixture native rejection");
+      final failed = await result as PluginMcpInventoryReadFailed;
+      expect(failed.cause, isA<ClaudeControlException>().having((error) => error.message, "message", "fixture native rejection"));
+      expect(failed.causeStackTrace.toString(), isNotEmpty);
+      expect(harness.specs, hasLength(1));
+    });
+
+    test("process exit during an inventory read returns a read failure without resuming", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final result = repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
+      await pump();
+      process.exit(1);
+      expect(await result, isA<PluginMcpInventoryReadFailed>().having((value) => value.cause, "cause", isA<ClaudeControlException>()));
+      expect(harness.specs, hasLength(1));
+    });
+
     test("creates first process and resumes after an accepted turn", () async {
       await _ensure(repository, createNew: true);
       expect(harness.specs.single.launch, isA<ClaudeNewSession>());

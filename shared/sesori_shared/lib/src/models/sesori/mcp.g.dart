@@ -349,6 +349,7 @@ const _$McpInventoryUnavailableReasonEnumMap = {
   McpInventoryUnavailableReason.unsupportedScope: 'unsupportedScope',
   McpInventoryUnavailableReason.liveSessionRequired: 'liveSessionRequired',
   McpInventoryUnavailableReason.pluginInactive: 'pluginInactive',
+  McpInventoryUnavailableReason.readFailed: 'readFailed',
 };
 
 _McpInventoryRequest _$McpInventoryRequestFromJson(Map json) =>

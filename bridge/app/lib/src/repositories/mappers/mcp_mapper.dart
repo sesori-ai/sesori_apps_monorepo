@@ -4,6 +4,11 @@ import "package:sesori_shared/sesori_shared.dart";
 /// Rebinds native targets to the bridge scope selected by the caller.
 class const McpMapper() {
   McpInventoryResult map({required McpScope scope, required PluginMcpInventoryResult result}) => switch (result) {
+    PluginMcpInventoryReadFailed() => McpInventoryUnavailable(
+      scope: scope,
+      reason: McpInventoryUnavailableReason.readFailed,
+      message: "MCP inventory could not be read. Refresh to try again.",
+    ),
     PluginMcpInventoryUnavailable(:final reason, :final message) => McpInventoryUnavailable(
       scope: scope,
       reason: switch (reason) {

@@ -6,7 +6,8 @@ Backend-neutral inventory contracts describe configured servers and offered
 connectors. The optional plugin read interface and shared wire models are
 implemented. `POST /mcp/inventory` reads Claude Code inventory from an existing
 resident session. Client views and management actions are not yet exposed.
-Existing permission flows remain separate.
+Existing permission flows remain separate. Read-only inventory may inspect an
+archived session if its native process remains live; it grants no session mutation.
 
 ## Required Behavior
 
@@ -25,6 +26,9 @@ Existing permission flows remain separate.
   readable; an offer has no invented server status or tool list.
 - Wire metadata contains no native commands, arguments, environment, headers,
   credentials, or full endpoint URL. An endpoint origin is presentation metadata.
+- Known native control rejection, process-exit and timeout failures produce a
+  typed read-failed state. Original causes and stacks remain in local bridge logs;
+  native error payloads are not returned as inventory metadata.
 - An inventory read does not launch or resume an agent, authenticate a server,
   execute a tool, or write configuration. The optional API declares this contract;
   Claude reads only the named resident process and reports live-session-required
@@ -71,7 +75,8 @@ manual qualification; unit tests do not prove a real relay or native runtime.
 The owning automated coverage is `shared/sesori_shared/test/models/mcp_test.dart`.
 Pinned native protocol evidence is recorded in
 [HARNESS_CAPABILITIES.md](../HARNESS_CAPABILITIES.md); it does not qualify a
-Sesori management flow before an adapter and route are implemented.
+full Sesori management flow on its own; native protocol evidence, adapter tests,
+and real route/client qualification are distinct.
 
 Automated adapter/route coverage:
 

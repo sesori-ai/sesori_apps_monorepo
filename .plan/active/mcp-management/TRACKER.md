@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-inventory-contracts`, `2c70025d8f`, in the provided `copper-heron` worktree.
-- Current step: 4/13, Claude inventory API verified and ready for PR.
-  Adapter work is preserved for step 4. Execution authorized on 2026-10-13.
+- Branch/base: `sesori/claude-mcp-inventory`, `a708a3a84e`, in the provided `copper-heron` worktree.
+- Current step: 4/13, Claude inventory API in PR review (#1948).
+  Shared client inventory work is local as step 5. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
 - Plan PR: [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940).
@@ -20,7 +20,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 1/13 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
 | 2/13 | Native contracts | Merged | [#1945][pr-1945] |
 | 3/13 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/13 | Claude scoped inventory and bridge read (original 3.b) | Local verification passed | Not published |
+| 4/13 | Claude scoped inventory and bridge read (original 3.b) | PR review | [#1948][pr-1948] |
 | 5/13 | Shared phone/desktop inventory and details | Not started | — |
 | 6/13 | Claude actions and native authentication | Not started | — |
 | 7/13 | Shared authentication and external-action presentation | Not started | — |
@@ -173,3 +173,12 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   owning bridge/Claude package contents on main match the reviewed foundation
   base, so focused verification remains applicable. No prior cache, route,
   persistence or runtime owner is superseded by this additive read flow.
+
+[pr-1948]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1948
+
+- Step-4 review: stdio transport no longer implies authentication is unnecessary.
+  Known control rejection/process-exit/timeout errors retain typed causes/stacks
+  in the plugin result, log once at the bridge repository, and emit only a safe
+  read-failed wire state. Archived inventory remains a read-only operation.
+  Claude mapper/process/control tests passed (47); bridge route tests passed (9);
+  shared codec tests passed (6). All four affected packages analyze cleanly.

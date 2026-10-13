@@ -42,6 +42,13 @@ void main() {
     expect((server.tools as PluginMcpToolsAvailable).tools.single.description, "Echo a value");
   });
 
+  test("stdio credentials are not inferred from transport", () {
+    final server = map({
+      "name": "fixture", "status": "connected", "config": {"type": "stdio", "env": {"TOKEN": "fixture-secret"}},
+    });
+    expect(server.authorization, PluginMcpAuthorizationState.unknown);
+  });
+
   test("keeps empty, unavailable, failed and cached tools distinct", () {
     expect(
       map({"name": "a", "status": "connected", "tools": <Map<String, dynamic>>[]}).tools,

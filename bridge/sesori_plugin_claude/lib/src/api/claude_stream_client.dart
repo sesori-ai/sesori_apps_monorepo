@@ -293,6 +293,7 @@ class ClaudeStreamClient({
               subtype: "<response>",
               message: message.error ?? "control request failed",
             ),
+            StackTrace.current,
           );
         }
       case ClaudeUnknownMessage(:final type, :final subtype):

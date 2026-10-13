@@ -32,9 +32,8 @@ class const ClaudeMcpMapper() {
         ),
         ClaudeMcpStatus.failed => const PluginMcpConnectionFailed(message: "The MCP server failed to connect."),
       },
-      authorization: switch ((server.status, server.config?.type)) {
-        (ClaudeMcpStatus.needsAuth, _) => PluginMcpAuthorizationState.required,
-        (_, ClaudeMcpTransportType.stdio) => PluginMcpAuthorizationState.notRequired,
+      authorization: switch (server.status) {
+        ClaudeMcpStatus.needsAuth => PluginMcpAuthorizationState.required,
         _ => PluginMcpAuthorizationState.unknown,
       },
       configuration: _configuration(scope: server.scope),

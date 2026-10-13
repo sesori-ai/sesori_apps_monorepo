@@ -141,6 +141,27 @@ void main() {
     expect(offer.availability, McpConnectorOfferAvailability.setupRequired);
   });
 
+  test("native read failures return typed state without native error payloads", () async {
+    plugin.nextResult = PluginMcpInventoryReadFailed(
+      cause: Exception("https://fixture.test/private?token=fixture-secret"), causeStackTrace: StackTrace.current,
+    );
+    final response = await read(pluginId: "fixture", scope: const McpSessionScope(sessionId: "bridge-session"));
+    expect(response.status, 200);
+    expect((decode(response) as McpInventoryUnavailable).reason, McpInventoryUnavailableReason.readFailed);
+    expect(response.body, isNot(contains("fixture-secret")));
+    expect(response.body, isNot(contains("fixture.test")));
+  });
+
+  test("archiving does not turn read-only inventory into a session mutation", () async {
+    await (db.update(db.sessionTable)..where((row) => row.sessionId.equals("bridge-session"))).write(
+      const SessionTableCompanion(archivedAt: Value(1)),
+    );
+    final response = await read(pluginId: "fixture", scope: const McpSessionScope(sessionId: "bridge-session"));
+    expect(response.status, 200);
+    expect(decode(response), isA<McpInventorySnapshot>());
+    expect((plugin.scopes.single as PluginMcpSessionScope).sessionId, "native-session");
+  });
+
   test("inactive integration is explicit and inventory never activates it", () async {
     runtime.stoppedPluginIds.add("fixture");
     final result = decode(await read(pluginId: "fixture", scope: const McpHarnessScope()));
