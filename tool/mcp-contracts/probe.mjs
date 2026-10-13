@@ -78,7 +78,12 @@ function environment(root, harness) {
 function version(binary, root, harness) {
   const result = spawnSync(binary, ['--version'], { encoding: 'utf8', env: environment(root, harness) });
   assert.equal(result.status, 0, 'Native executable must run');
-  return result.stdout.trim();
+  const value = result.stdout.trim();
+  const pins = harness === 'claude'
+    ? ['2.1.221 (Claude Code)', '2.1.291 (Claude Code)']
+    : ['codex-cli 0.139.0', 'codex-cli 0.160.1'];
+  assert.ok(pins.includes(value), `Unsupported ${harness} probe version: ${value}`);
+  return value;
 }
 
 async function probeClaudeLogin(binary, root, oauth) {
@@ -96,9 +101,17 @@ async function probeClaudeLogin(binary, root, oauth) {
   assert.equal(add.status, 0, 'Explicit native fixture setup must succeed');
   const piped = spawnSync(binary, ['mcp', 'login', 'oauth_fixture', '--no-browser'],
     { ...options, input: '', timeout: 10000 });
+  const wrongState = await probeClaudeTerminal({ binary, options, oauth, wrongState: true });
+  const terminal = await probeClaudeTerminal({ binary, options, oauth, wrongState: false });
+  return { untrusted: { status: untrusted.status, stdout: untrusted.stdout, stderr: untrusted.stderr },
+    piped: { status: piped.status, timedOut: piped.error?.code === 'ETIMEDOUT',
+      stdout: piped.stdout, stderr: piped.stderr }, wrongState, terminal };
+}
+
+async function probeClaudeTerminal({ binary, options, oauth, wrongState }) {
   const child = spawn('python3', [terminalPath, binary, 'mcp', 'login', 'oauth_fixture', '--no-browser'],
     { ...options, stdio: ['pipe', 'pipe', 'pipe'] });
-  let stdout = '', stderr = '', callbackSent = false;
+  let stdout = '', stderr = '', callbackSent = false, validationError;
   const exited = new Promise((resolve, reject) => {
     child.on('error', reject);
     child.on('exit', (status, signal) => resolve({ status, signal }));
@@ -107,28 +120,30 @@ async function probeClaudeLogin(binary, root, oauth) {
     stdout += chunk;
     const urlText = stdout.match(/https?:\/\/[^\s\x1b]+/g)?.find(text => text.includes('/authorize?'));
     if (!callbackSent && urlText) {
-      const auth = new URL(urlText);
-      const callback = new URL(auth.searchParams.get('redirect_uri'));
-      assert.equal(auth.origin, oauth.origin, 'Only the fixture issuer may be used');
-      assert.ok(['localhost', '127.0.0.1'].includes(callback.hostname));
-      callback.searchParams.set('code', 'fixture-code');
-      callback.searchParams.set('state', auth.searchParams.get('state'));
-      callbackSent = true;
-      child.stdin.write(`${callback.href}\n`);
+      try {
+        const auth = new URL(urlText);
+        const callback = new URL(auth.searchParams.get('redirect_uri'));
+        assert.equal(auth.origin, oauth.origin, 'Only the fixture issuer may be used');
+        assert.ok(['localhost', '127.0.0.1'].includes(callback.hostname));
+        const state = auth.searchParams.get('state');
+        assert.ok(state?.trim(), 'OAuth authorization URL must contain state');
+        callback.searchParams.set('code', 'fixture-code');
+        callback.searchParams.set('state', wrongState ? `${state}-wrong` : state);
+        callbackSent = true;
+        child.stdin.write(`${callback.href}\n`);
+      } catch (error) { validationError = error; child.kill('SIGTERM'); }
     }
   });
   child.stderr.on('data', chunk => { stderr += chunk; });
   const timer = setTimeout(() => child.kill('SIGTERM'), 20000);
   try {
     const result = await exited;
-    return { untrusted: { status: untrusted.status, stdout: untrusted.stdout, stderr: untrusted.stderr },
-      piped: { status: piped.status, timedOut: piped.error?.code === 'ETIMEDOUT',
-        stdout: piped.stdout, stderr: piped.stderr },
-      terminal: { ...result, callbackSent, stdout, stderr } };
+    assert.ifError(validationError);
+    return { ...result, callbackSent, stdout, stderr };
   } finally { clearTimeout(timer); child.stdin.end(); }
 }
 
-async function probeClaude(binary, root, http, oauth, model) {
+async function probeClaude(binary, root, http, oauth, model, nativeVersion) {
   const config = join(root, 'mcp.json');
   await writeFile(config, JSON.stringify({ mcpServers: {
     stdio_fixture: { command: process.execPath, args: [fixturePath, '--stdio'] },
@@ -175,7 +190,7 @@ async function probeClaude(binary, root, http, oauth, model) {
       .flatMap(frame => Array.isArray(frame.message?.content) ? frame.message.content : [])
       .filter(block => block.type === 'tool_result');
     const login = await probeClaudeLogin(binary, root, oauth);
-    return { version: version(binary, root, 'claude'), captures, elicitations, approvals, toolResults, login,
+    return { version: nativeVersion, captures, elicitations, approvals, toolResults, login,
       loginHelp: { status: help.status, stdout: help.stdout } };
   } catch (error) {
     await writeFile(join(root, 'failed-probe.json'), JSON.stringify({ captures, frames: peer.frames, stderr: peer.stderr }));
@@ -183,8 +198,7 @@ async function probeClaude(binary, root, http, oauth, model) {
   } finally { await peer.close(); }
 }
 
-async function probeCodex(binary, root, http, oauth) {
-  const nativeVersion = version(binary, root, 'codex');
+async function probeCodex(binary, root, http, oauth, model, nativeVersion) {
   await writeFile(join(root, 'config', 'config.toml'),
     `[analytics]\nenabled = false\n[mcp_servers.stdio_fixture]\ncommand = ${JSON.stringify(process.execPath)}\n` +
     `args = [${JSON.stringify(fixturePath)}, "--stdio"]\n[mcp_servers.http_fixture]\nurl = "${http.origin}/mcp"\n` +
@@ -243,8 +257,10 @@ async function probeCodex(binary, root, http, oauth) {
       const callback = new URL(auth.searchParams.get('redirect_uri'));
       assert.equal(auth.origin, oauth.origin, 'Only the fixture issuer may be used');
       assert.ok(['localhost', '127.0.0.1'].includes(callback.hostname));
+      const state = auth.searchParams.get('state');
+      assert.ok(state?.trim(), 'OAuth authorization URL must contain state');
       callback.searchParams.set('code', 'fixture-code');
-      callback.searchParams.set('state', auth.searchParams.get('state'));
+      callback.searchParams.set('state', state);
       await fetch(callback);
       await completed;
       await capture('mcpServerStatus/list', { threadId, detail: 'toolsAndAuthOnly' });
@@ -262,11 +278,12 @@ async function main() {
     'Usage: node probe.mjs <claude|codex> <absolute-binary> <output.json>');
   const root = await mkdtemp(join(tmpdir(), 'sesori-mcp-contract-'));
   await mkdir(join(root, 'config'));
+  const nativeVersion = version(resolve(binary), root, harness);
   const http = await startHttpFixture();
   const oauth = await startHttpFixture({ oauth: true });
   const model = await startModelFixture();
   try {
-    const result = await (harness === 'claude' ? probeClaude : probeCodex)(resolve(binary), root, http, oauth, model);
+    const result = await (harness === 'claude' ? probeClaude : probeCodex)(resolve(binary), root, http, oauth, model, nativeVersion);
     assertContracts(harness, result);
     // All input is fixture-owned. Replace temporary paths, ports and native thread ids in captures.
     let text = JSON.stringify(result, null, 2).replaceAll(root, '<fixture-root>')
@@ -317,6 +334,9 @@ function assertContracts(harness, result) {
     assert.deepEqual(formReply, { action: 'accept', content: { approved: true, count: 2, plan: 'pro', tags: ['b'] } });
     const urlReply = JSON.parse(result.toolResults[2].content[0].text);
     if (result.elicitations.some(x => x.request.mode === 'url')) {
+      const request = result.elicitations.find(x => x.request.mode === 'url').request;
+      assert.equal(request.url, 'https://fixture.example/setup');
+      assert.equal(request.elicitation_id, 'fixture-url');
       assert.equal(urlReply.result.action, 'decline');
     } else {
       assert.equal(urlReply.error.code, -32602);
@@ -337,6 +357,9 @@ function assertContracts(harness, result) {
       /https?:\/\//, 'Plain-pipe login must not expose a URL');
     assert.equal(result.login.terminal.status, 0, 'Terminal OAuth must complete');
     assert.equal(result.login.terminal.callbackSent, true);
+    assert.equal(result.login.wrongState.callbackSent, true);
+    assert.equal(result.login.wrongState.status, 1, 'Mismatched OAuth state must fail');
+    assert.match(result.login.wrongState.stdout + result.login.wrongState.stderr, /state/i);
   } else {
     for (const exchange of exchanges) {
       const errorExpected = exchange.method === 'mcp_unknown_fixture' ||

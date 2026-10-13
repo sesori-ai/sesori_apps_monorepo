@@ -4,8 +4,8 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-contract-evidence`, `c03b588d9e`, in the provided `copper-heron` worktree.
-- Current step: 2/12, [PR #1945](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1945) in review.
-  Step-3 inventory foundations are preserved locally. Execution authorized on 2026-10-13.
+- Current step: 2/13, [PR #1945](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1945) in review.
+  Step-3 inventory foundations are implemented locally; adapter work is preserved for step 4. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
 - Plan PR: [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940).
@@ -17,18 +17,19 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/12 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/12 | Freeze priority native contracts and capability evidence | PR review | [#1945](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1945); [evidence](evidence/native-contracts.md) |
-| 3/12 | Claude scoped inventory and bridge contract | Local foundations in progress | Not published |
-| 4/12 | Shared phone/desktop inventory and details | Not started | — |
-| 5/12 | Claude actions and native authentication | Not started | — |
-| 6/12 | Shared authentication and external-action presentation | Not started | — |
-| 7/12 | Claude approvals and form/URL elicitation | Not started | — |
-| 8/12 | Codex inventory/actions/authentication | Not started | — |
-| 9/12 | Codex forms and offered connectors | Not started | — |
-| 10/12 | Secondary harness support and explicit gaps | Not started | — |
-| 11/12 | Reconcile regression/capability documents | Not started | — |
-| 12/12 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/13 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/13 | Freeze priority native contracts and capability evidence | PR review | [#1945](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1945); [evidence](evidence/native-contracts.md) |
+| 3/13 | Inventory foundation (original 3.a) | Local verification passed | Not published |
+| 4/13 | Claude scoped inventory and bridge read (original 3.b) | Preserved adapter work | Not published |
+| 5/13 | Shared phone/desktop inventory and details | Not started | — |
+| 6/13 | Claude actions and native authentication | Not started | — |
+| 7/13 | Shared authentication and external-action presentation | Not started | — |
+| 8/13 | Claude approvals and form/URL elicitation | Not started | — |
+| 9/13 | Codex inventory/actions/authentication | Not started | — |
+| 10/13 | Codex forms and offered connectors | Not started | — |
+| 11/13 | Secondary harness support and explicit gaps | Not started | — |
+| 12/13 | Reconcile regression/capability documents | Not started | — |
+| 13/13 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -55,7 +56,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   bridge/relay ownership, client presentation, or the final L4 matrix. Those gates remain active.
 - Public release check still identifies v1.9.0/build 970 as latest production; newer v1.9.1 builds are prereleases.
   The released SSE parser plus byte-identical codecs passed four event-order/settlement fixtures and a snapshot fixture.
-  Actual mixed-client/native-owner tests remain required in steps 6/7.
+  Actual mixed-client/native-owner tests remain required in steps 7/8.
 
 ## Review record
 
@@ -69,7 +70,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 - Codex follow-up review: verified the current browser service cancels its previous operation, question replies carry
   only string lists, and the question modal closes before validation. The plan now requires owner-scoped browser reuse
   with a busy result, distinct server/connector inventory variants, and typed form contracts/UI that preserve invalid
-  drafts. These clarify the existing scope; arbitrary server configuration remains deferred. Step 7's estimate now
+  drafts. These clarify the existing scope; arbitrary server configuration remains deferred. Step 8's estimate now
   includes the explicit shared form work.
 - Architecture follow-up on 2026-10-13: **approved**, comparing the revised plan against `6fe2ad9944`. The specificity
   gate passed with no findings across client, bridge, and shared boundaries. Browser ownership, distinct catalog offers,
@@ -83,7 +84,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   executable runtime compatibility remains an implementation gate.
 - Further review clarifications: separated the existing non-pending catalog setup result from native session consent
   requests; settings setup does not fabricate session ownership. Required capability and regression updates in each
-  production PR, retaining step 11 for reconciliation. Added the dated source-only verification record below.
+  production PR, retaining step 12 for reconciliation. Added the dated source-only verification record below.
 
 ## Verification log
 
@@ -112,3 +113,13 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 - Step-2 pagination/payload review: both Codex native probes passed at `c7cd246fbb` with three-page termination,
   exact URL elicitation mode/destination/identifier, and URL-only OAuth response assertions. Claude assertions are
   unchanged; its observed initial pending status is explicitly not a guaranteed startup state.
+
+- Step 3 split: original 3.a/3.b map to PR ordinals 3/4; later ordinals shift by one, with 13 total. The merged
+  plan PR #1940 keeps its historical title. No feature scope or architecture decision changed.
+- Step-3 foundation: four shared wire tests and shared/interface analyzers passed on exact Dart 3.13.4. No runtime
+  endpoint or adapter is exposed yet. No old owner, cache, route, or persisted model is superseded at this boundary.
+- Step-3 pre-publication measurement: 1,679 generated lines and 470 authored lines (2,149 total before this record),
+  including plan/doc churn. Keep generated codecs with their source as the soft-cap exception; the adapter/read
+  flow is split into step 4. No persistence, runtime lifecycle, or user-visible behavior changes in step 3.
+- Step-3 architecture implementation review: **approved** against staged HEAD `2412bcd3da`, applying Bridge and
+  Shared rules. No findings; optional plugin ownership and backend-neutral contracts were preserved.

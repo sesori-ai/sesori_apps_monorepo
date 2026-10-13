@@ -68,13 +68,13 @@ inventory.
 
 Step-2 evidence is now [recorded with executable probes](evidence/native-contracts.md). Both pinned Claude versions
 support inventory/toggle/reconnect and typed forms; URL elicitation is native-unsupported on 2.1.221 and forwarded on
-2.1.291. Both require a terminal-capable CLI login process for the no-browser URL/paste journey. Step 5 must extend
+2.1.291. Both require a terminal-capable CLI login process for the no-browser URL/paste journey. Step 6 must extend
 the plugin's native process boundary accordingly and qualify its supported hosts; the fixture's Python PTY helper
 is not a production dependency. Toggle is a live-process action, not persistent configuration enablement.
 
 Neither pinned Codex version returns an MCP OAuth attempt ID: login returns an authorization URL and completes by
 server name, with optional thread context at the target. The bridge owns its operation identity and binds native
-callback continuation to that attempt. There is no native MCP completion/cancel RPC at these pins; step 8 must verify
+callback continuation to that attempt. There is no native MCP completion/cancel RPC at these pins; step 9 must verify
 denial/cancel/expiry semantics before advertising cancellation. Retain the native lease until it actually settles.
 Minimum Codex status lacks target-only connection/discovery-error/origin metadata and must show honest absence.
 Authenticated connector offers remain a catalog/runtime qualification gate.
@@ -313,7 +313,7 @@ terminal UI output.
   cancellation emits `question.rejected`. Late competing replies cannot send another native reply.
   An old-client-only session therefore has an explicit cancel/upgrade path; a mixed session can still answer from its
   modern client. Never infer unsupported native input merely because an older client is connected.
-- Steps 6 and 7 implement this compatibility view with external actions and forms respectively. Test the released
+- Steps 7 and 8 implement this compatibility view with external actions and forms respectively. Test the released
   client alone and mixed with a modern client: both event orders, snapshot recovery, modern completion, legacy cancel,
   and competing replies. Keep this projection only while supported public clients lack the typed interaction, with the
   required dated compatibility marker. Native schemas outside the supported set still receive an observable native
@@ -365,6 +365,9 @@ server, connector, tool, account, path, form, or URL identifiers.
 
 ## Delivery series
 
+Original step 3 is split into durable substeps 3.a (PR ordinal 3) and 3.b (ordinal 4). Later steps shift by one;
+the series now has 13 PRs. Merged plan PR #1940 retains its historical `[step 1/12]` title.
+
 All implementation PRs are independently valid and update this tracker. Estimates include tests/docs/generated output;
 separate authored/generated churn at each push. Target below 1,500 changed lines, and lower for authentication/lifecycle
 work. If codegen or coupling breaks the estimate, split coherently before the first push and synchronize the one series
@@ -372,91 +375,98 @@ total. No artificial compatibility scaffolding between steps.
 
 Every production PR updates the relevant `docs/regression/` documents and `docs/HARNESS_CAPABILITIES.md` with the
 behavior that lands in that PR. Record each harness as implemented, not implemented, or not supported for each partial
-capability; do not defer these records to step 11. Create `mcp-management.md` with the first supported behavior in
-step 3 and extend it as actions, UI, and additional adapters land. Step 11 is final reconciliation only.
+capability; do not defer these records to step 12. Create `mcp-management.md` with the first supported behavior in
+step 3 and extend it as actions, UI, and additional adapters land. Step 12 is final reconciliation only.
 
 | Step | Outcome | Planned diff |
 |---|---|---:|
-| 1/12 | Reviewed plan | 350–650 |
-| 2/12 | Native contract evidence | 500–1,000 |
-| 3/12 | Claude inventory | 850–1,400 |
-| 4/12 | Phone and desktop details | 800–1,300 |
-| 5/12 | Claude actions and authentication | 800–1,350 |
-| 6/12 | Shared authentication and external actions | 850–1,400 |
-| 7/12 | Claude approvals and elicitation | 900–1,450 |
-| 8/12 | Codex inventory and actions | 750–1,300 |
-| 9/12 | Codex forms and connector offers | 650–1,200 |
-| 10/12 | Secondary harness support | 800–1,400 |
-| 11/12 | Regression and capability coverage | 250–500 |
-| 12/12 | Qualification and retirement | 100–300 |
+| 1/13 | Reviewed plan | 350–650 |
+| 2/13 | Native contract evidence | 500–1,000 |
+| 3/13 | Inventory foundation (3.a) | 1,900–2,300, mostly generated |
+| 4/13 | Claude inventory and bridge read (3.b) | 850–1,400 |
+| 5/13 | Phone and desktop details | 800–1,300 |
+| 6/13 | Claude actions and authentication | 800–1,350 |
+| 7/13 | Shared authentication and external actions | 850–1,400 |
+| 8/13 | Claude approvals and elicitation | 900–1,450 |
+| 9/13 | Codex inventory and actions | 750–1,300 |
+| 10/13 | Codex forms and connector offers | 650–1,200 |
+| 11/13 | Secondary harness support | 800–1,400 |
+| 12/13 | Regression and capability coverage | 250–500 |
+| 13/13 | Qualification and retirement | 100–300 |
 
 Exact PR titles and scope:
 
-1. `🌿 [mcp-management] Plan MCP information and connection support [step 1/12]`
+1. `🌿 [mcp-management] Plan MCP information and connection support [step 1/13]`
 
    Publish this reviewed plan and tracker. No user-visible or database change.
 
-2. `⚙️ [mcp-management] Verify Claude and Codex native MCP contracts [step 2/12]`
+2. `⚙️ [mcp-management] Verify Claude and Codex native MCP contracts [step 2/13]`
 
    Add bounded fixture probes/captures and the exact capability/version table. No production behavior or database
    change.
 
-3. `🚧 [mcp-management] Expose scoped MCP inventory for Claude Code [step 3/12]`
+3. `⚙️ [mcp-management] Define scoped MCP inventory contracts [step 3/13]`
 
-   Shared/plugin inventory variants for servers and connector offers, supported-capability detection, bridge read
-   route/events, and Claude typed server mapping. Headless consumers can inspect a live session; no database change.
+   Original step 3.a: optional plugin read interface and shared wire inventory models, keeping server and connector
+   offer targets distinct. No adapter, route, UI, database, credentials, or configuration mutation yet. Generated codecs
+   stay with their source; the generated-heavy diff is the documented soft-cap exception.
 
-4. `⚙️ [mcp-management] Show MCP server details on phone and desktop [step 4/12]`
+4. `🚧 [mcp-management] Expose scoped MCP inventory for Claude Code [step 4/13]`
+
+   Original step 3.b: supported-capability detection, bridge read route, and Claude typed server mapping using
+   the foundation contracts. Add native invalidation events only with an actual native producer or mutation owner. Headless consumers can inspect a live session; no database change.
+
+5. `⚙️ [mcp-management] Show MCP server details on phone and desktop [step 5/13]`
 
    Shared client layers/views and settings/session entry points. Stable status/tool details with
    loading/error/unsupported states; no database change.
 
-5. `🚧 [mcp-management] Add native Claude MCP actions and authentication [step 5/12]`
+6. `🚧 [mcp-management] Add native Claude MCP actions and authentication [step 6/13]`
 
    Action/authentication DTOs, bridge owner/routes, Claude reconnect/toggle/login/logout adapter. Headless flow works;
    native config/credential changes only after explicit actions.
 
-6. `🚧 [mcp-management] Present MCP authentication and external actions [step 6/12]`
+7. `🚧 [mcp-management] Present MCP authentication and external actions [step 7/13]`
 
    Shared client authentication UI and owner-scoped browser reuse, neutral pending external-action contract and session
    routing/presentation. Conflicting provider/MCP starts return busy without cancellation. Visible connection actions
    and fixture-proven URL requests, safe destination policy, and legacy cancel/upgrade notices; no Sesori database
    change.
 
-7. `⚙️ [mcp-management] Complete Claude MCP approvals and elicitation [step 7/12]`
+8. `⚙️ [mcp-management] Complete Claude MCP approvals and elicitation [step 8/13]`
 
    Shared typed form contracts, bridge/client layers, draft-preserving form UI, and Claude native form/URL handlers with
    server/tool context and the same legacy notice/settlement projection. Preserve exact grant/cancel behavior. Completes
    the Claude milestone subject to native gates; no database change. Keep generated form models with their source;
    split before push if the full boundary exceeds the estimate.
 
-8. `🚧 [mcp-management] Add Codex MCP inventory and connection actions [step 8/12]`
+9. `🚧 [mcp-management] Add Codex MCP inventory and connection actions [step 9/13]`
 
    Codex DTO/API/repository mapping and native status/OAuth events using the shared UI. No duplicate auth owner; native
    settings/credentials change only for explicit actions.
 
-9. `⚙️ [mcp-management] Complete Codex MCP forms and connector offers [step 9/12]`
+10. `⚙️ [mcp-management] Complete Codex MCP forms and connector offers [step 10/13]`
 
    Map native forms to the shared typed interaction, URL elicitation, native grant scopes, and connector-offer inventory
    and setup actions. Verify catalog offers never enter server-control/auth routes. Remove superseded generic MCP
    mapping. No Sesori database change.
 
-10. `⚙️ [mcp-management] Extend supported MCP controls across harnesses [step 10/12]`
+11. `⚙️ [mcp-management] Extend supported MCP controls across harnesses [step 11/13]`
 
     OpenCode v1/v2 structured support and bounded Pi/ACP capability integration/audit. Preserve existing dialogs. Split
     additional proven adapter work if needed; no Sesori database change.
 
-11. `🌿 [mcp-management] Reconcile MCP regression and capability coverage [step 11/12]`
+12. `🌿 [mcp-management] Reconcile MCP regression and capability coverage [step 12/13]`
 
-    Reconcile the docs and capability records maintained in steps 3–10 with the final matrix and remaining limitations;
+    Reconcile the docs and capability records maintained in steps 3–11 with the final matrix and remaining limitations;
     no production or database change. This step does not postpone documentation required in earlier PRs.
 
-12. `⚙️ [mcp-management] Qualify MCP journeys and retire the plan [step 12/12]`
+13. `⚙️ [mcp-management] Qualify MCP journeys and retire the plan [step 13/13]`
 
     Execute the recorded matrix, record privacy-safe evidence, and move to completed only after passing. No intended
     production/database change.
 
-Steps depend on the preceding step. The Claude milestone is steps 2–7; Codex follows immediately in 8–9. Step 2 verifies
+Steps depend on the preceding step. The Claude milestone is steps 2–8; Codex follows immediately in 9–10. Step 2 verifies
 both from the start so Claude-first implementation does not bake in incompatible Codex assumptions. Do not spend the
 priority milestone implementing secondary harnesses.
 
@@ -505,7 +515,7 @@ Affected documents: new `docs/regression/mcp-management.md`; update `questions-a
 regression index, and `docs/HARNESS_CAPABILITIES.md`. Update browser-return packaging documents only where this
 implementation changes their supported behavior. Keep provider-account authentication distinct from MCP authentication.
 
-Step 11 reconciles the full supported contract. Step 12 records versions, builds, platforms, plugins, boundaries,
+Step 12 reconciles the full supported contract. Step 13 records versions, builds, platforms, plugins, boundaries,
 outcomes, limitations, cleanup, and privacy-safe evidence references in `TRACKER.md`. Retire only when this matrix
 passes. Any reduction requires explicit user acceptance recorded here; verified native limitations must be explicit
 product limitations rather than unfinished promised behavior.
