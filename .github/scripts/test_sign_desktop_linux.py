@@ -266,11 +266,14 @@ class LinuxSigningIntegrationTests(unittest.TestCase):
             signing.run(command=["rpm", "--root", str(install_root), "--initdb"], env=public_env)
             signing.run(command=["rpmkeys", "--root", str(install_root), "--import",
                                  str(self.output / signing.PUBLIC_KEY)], env=public_env)
-            dnf = ["dnf", "--installroot", str(install_root), "--releasever=44", "--disable-repo=*",
+            # The fresh install root has no repository configuration. DNF5 rejects
+            # --disable-repo=* when there are no matching repositories to disable.
+            dnf = ["dnf", "--installroot", str(install_root), "--releasever=44",
                    "--setopt=localpkg_gpgcheck=True", "--assumeyes"]
             name = "Sesori-linux-x64-9.8.7-42.rpm"
-            with self.assertRaises(subprocess.CalledProcessError):
+            with self.assertRaises(subprocess.CalledProcessError) as unsigned:
                 signing.run(command=[*dnf, "install", str(self.input / "rpm" / name)], env=public_env)
+            self.assertRegex(unsigned.exception.stdout + unsigned.exception.stderr, r"(?i)not signed|signature")
             payload = install_root / "opt/sesori-desktop/fixture.txt"
             self.assertFalse(payload.exists())
             signing.run(command=[*dnf, "install", str(self.output / name)], env=public_env)
