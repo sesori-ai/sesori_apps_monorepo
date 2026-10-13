@@ -125,6 +125,7 @@ class const _Catalog({required final McpInventorySnapshot inventory}) extends St
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
+    final hasUnknownEntries = inventory.entries.any((entry) => entry is McpUnknownInventoryEntry);
     return ListView(
       key: const PageStorageKey("mcp_inventory"),
       padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
@@ -132,6 +133,7 @@ class const _Catalog({required final McpInventorySnapshot inventory}) extends St
         _Section(
           title: loc.mcpServers,
           availability: inventory.servers,
+          hasUnknownEntries: hasUnknownEntries,
           entries: inventory.entries
               .whereType<McpServerSnapshot>()
               .map(
@@ -149,6 +151,7 @@ class const _Catalog({required final McpInventorySnapshot inventory}) extends St
         _Section(
           title: loc.mcpConnectors,
           availability: inventory.connectors,
+          hasUnknownEntries: hasUnknownEntries,
           entries: inventory.entries
               .whereType<McpConnectorOfferSnapshot>()
               .map(
@@ -165,7 +168,7 @@ class const _Catalog({required final McpInventorySnapshot inventory}) extends St
               )
               .toList(growable: false),
         ),
-        if (inventory.entries.any((entry) => entry is McpUnknownInventoryEntry))
+        if (hasUnknownEntries)
           Padding(
             padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md),
             child: Text(loc.mcpUnknownResponse),
@@ -179,6 +182,7 @@ class const _Section({
   required final String title,
   required final McpCatalogAvailability availability,
   required final List<Widget> entries,
+  required final bool hasUnknownEntries,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -193,7 +197,7 @@ class const _Section({
             Padding(
               padding: const EdgeInsets.all(PregoSpacing.md),
               child: Text(switch (availability) {
-                McpCatalogAvailable() => loc.mcpEmptyCatalog,
+                McpCatalogAvailable() => hasUnknownEntries ? loc.mcpUnknownResponse : loc.mcpEmptyCatalog,
                 McpCatalogNotSupported() => loc.mcpCatalogNotSupported,
                 McpCatalogUnavailable() => loc.mcpCatalogUnavailable,
                 McpCatalogUnknown() => loc.mcpUnknownResponse,

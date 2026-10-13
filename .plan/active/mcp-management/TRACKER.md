@@ -295,3 +295,11 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   `pr-media` at `9591e31107`. Every GIF frame was inspected. Full-display raw
   recordings include unrelated surfaces and remain private; only the verified
   app crop from the stable interval was published.
+
+- Additional step-6 review fixes were validated on `8dc8a25fb3` plus the
+  corresponding source changes: unknown entries suppress successful empty-catalog
+  claims; mobile child sessions expose read-only menu entries while root-only
+  mutations remain guarded in the shell. Nine MCP widget tests and the focused
+  child-session menu test pass; UI and mobile analysis are clean. The latter runs
+  from `client/app` with `flutter test test/features/session_detail/widgets/session_detail_body_test.dart --plain-name 'a child session exposes shell-provided read-only menu entries' --no-pub --reporter expanded`.
+  Default native fixture content/motion is unchanged by these conditional fixes.

@@ -410,6 +410,37 @@ void main() {
     expect(left, [unseen.id]);
   });
 
+  testWidgets("a child session exposes shell-provided read-only menu entries", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      session: testConstSession.copyWith(id: "child-session", parentID: "parent-session"),
+      isRootSession: false,
+    );
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    String? inspectedSession;
+    await tester.pumpWidget(
+      _buildApp(
+        cubit: cubit,
+        readOnly: true,
+        menuEntriesBuilder: ({required context, required session}) => [
+          PregoMenuItem(
+            leadingIcon: TablerRegular.plug,
+            title: "MCP",
+            subtitle: null,
+            isSelected: false,
+            shortcutLabel: null,
+            onTap: () => inspectedSession = session.id,
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("session-detail-more")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("MCP"));
+    expect(inspectedSession, "child-session");
+    expect(find.text("Rename"), findsNothing);
+  });
+
   testWidgets("PromptInput consumes initial attachments once per identity or restoration", (tester) async {
     final first = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "first.png");
     final second = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "second.png");

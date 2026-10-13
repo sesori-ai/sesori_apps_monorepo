@@ -170,7 +170,7 @@ class const _MobileSessionDetailBody({
               createService: getIt.call<McpService>,
             ),
           ),
-          if (!auditView)
+          if (!auditView && session.parentID == null)
             ..._sessionActions.sessionMenuEntries(
               context: context,
               cubit: context.read<SessionListCubit>()..updateActionSession(session: session),

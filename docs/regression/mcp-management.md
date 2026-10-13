@@ -58,7 +58,8 @@ archived session if its native process remains live; it grants no session mutati
   use a separate presentation layer; closing either returns to the previous view.
 - Refresh feedback occupies a stable header area. Existing inventory remains
   scrollable, with stable target keys and no offset reset during refresh failure.
-- Archived sessions retain the read-only MCP menu entry; session mutations stay hidden.
+- Archived and sub-agent sessions retain the read-only MCP menu entry; session mutations stay hidden.
+- Unknown entries show an upgrade hint instead of claiming an empty available catalog.
 - Offline refresh controls are disabled. Server details retain the fixed refresh
   status header and distinguish a removed server from a failed inventory read.
 - Connection, authentication, configuration origin/access, and tools are shown

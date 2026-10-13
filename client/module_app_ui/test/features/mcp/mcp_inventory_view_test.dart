@@ -195,6 +195,24 @@ void main() {
     expect(find.text("No entries were returned."), findsNothing);
   });
 
+  testWidgets("unknown entries never produce a successful empty-catalog claim", (tester) async {
+    states.add(
+      const McpInventoryReady(
+        inventory: McpInventorySnapshot(
+          scope: _scope,
+          entries: [McpUnknownInventoryEntry()],
+          servers: McpCatalogAvailable(),
+          connectors: McpCatalogAvailable(),
+        ),
+        refresh: McpInventoryRefreshIdle(),
+      ),
+    );
+    await tester.pumpWidget(app(scale: 1));
+    await tester.pumpAndSettle();
+    expect(find.text("No entries were returned."), findsNothing);
+    expect(find.text("Some inventory information requires a newer app."), findsWidgets);
+  });
+
   testWidgets("phone width with larger text keeps refresh and server details reachable", (tester) async {
     tester.view.physicalSize = const Size(393, 852);
     tester.view.devicePixelRatio = 1;
