@@ -21,7 +21,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 2/14 | Native contracts | Merged | [#1945][pr-1945] |
 | 3/14 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
 | 4/14 | Claude scoped inventory and bridge read (original 3.b) | PR review | [#1948][pr-1948] |
-| 5/14 | Client inventory lifecycle (original 5.a) | Local verification | Not published |
+| 5/14 | Client inventory lifecycle (original 5.a) | Ready for PR | Not published |
 | 6/14 | Shared phone/desktop inventory and details (original 5.b) | Not started | — |
 | 7/14 | Claude actions and native authentication | Not started | — |
 | 8/14 | Shared authentication and external-action presentation | Not started | — |
@@ -205,3 +205,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Step 5.a architecture implementation review: **approved** for the client
   additions against `53f16cb004`; no findings in layering, DI ownership,
   lifecycle ownership, or shared boundaries. Prior Claude changes were excluded.
+
+- Step 4 merged as #1948 after current-head Codex completed without new findings,
+  Cubic approved, and all 32 required checks passed. Step 5.a rebased onto
+  `120a438770`; client package contents are unchanged from the validated base,
+  so the focused tests, code generation, and downstream analysis remain applicable.
