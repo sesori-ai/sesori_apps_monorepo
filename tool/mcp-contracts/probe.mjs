@@ -213,7 +213,9 @@ async function probeCodex(binary, root, http, oauth) {
     assert.ok(threadId, 'Native thread start must return an id');
     await capture('mcpServerStatus/list', { threadId, limit: 1, detail: 'toolsAndAuthOnly' });
     let cursor = null;
+    let pages = 0;
     do {
+      assert.ok(++pages <= 3, 'Three-server fixture pagination must terminate within three pages');
       const frame = await capture('mcpServerStatus/list', { threadId, limit: 1, cursor });
       assert.ok(frame.result, 'Inventory should succeed');
       cursor = frame.result.nextCursor;
@@ -235,6 +237,7 @@ async function probeCodex(binary, root, http, oauth) {
     const login = await capture('mcpServer/oauth/login', { name: 'oauth_fixture', timeoutSecs: 2,
       ...(nativeVersion === 'codex-cli 0.160.1' ? { threadId } : {}) });
     if (login.result) {
+      assert.deepEqual(Object.keys(login.result), ['authorizationUrl'], 'Pinned login has no native attempt ID');
       const completed = peer.waitFor(frame => frame.method === 'mcpServer/oauthLogin/completed');
       const auth = new URL(login.result.authorizationUrl);
       const callback = new URL(auth.searchParams.get('redirect_uri'));
@@ -373,6 +376,9 @@ function assertContracts(harness, result) {
       assert.equal(elicitation.params.turnId, null, 'Direct calls have no model turn');
     }
     assert.deepEqual(result.elicitations[0].params.requestedSchema, formSchema);
+    assert.equal(result.elicitations[1].params.mode, 'url');
+    assert.equal(result.elicitations[1].params.url, 'https://fixture.example/setup');
+    assert.equal(result.elicitations[1].params.elicitationId, 'fixture-url');
     const returned = exchanges.filter(x => x.method === 'mcpServer/tool/call');
     const formReply = JSON.parse(returned[1].frame.result.content[0].text).result;
     assert.deepEqual(formReply, { action: 'accept', content: { approved: true, count: 2, plan: 'pro', tags: ['b'] } });

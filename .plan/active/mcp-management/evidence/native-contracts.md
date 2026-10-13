@@ -46,8 +46,10 @@ and distinct HTTP origins with no path; minimum fields remain absent.
 | OAuth native attempt ID | None; owned CLI process | Same | None | None |
 | Connector catalog | Not exercised | Not exercised | Empty unauthenticated `app/list` | Same |
 
-Claude status initially reports `pending`, reports `disabled` after a toggle,
-and reports `connected` with all three fixture tools after reconnect. Native
+The captured initial Claude status was `pending`; asynchronous startup can
+finish before the first read, so this observation is not an initial-state
+requirement. Assertions require `disabled` after a toggle and `connected` with
+all three fixture tools after reconnect. Native
 config is included in this reply: production mapping must selectively omit
 commands, arguments, environment, headers, and endpoint paths/query/user info.
 The toggle affects the resident process; it is not evidence of persistent
