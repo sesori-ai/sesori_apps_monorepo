@@ -56,6 +56,10 @@ authentication success.
   request variants. These versions are newer than this branch's targets and do not qualify the pinned runtimes.
 - Branch baselines: Claude minimum `2.1.221`, target `2.1.291`; Codex PATH minimum `0.139.0`, managed target `0.160.1`.
   Do not silently raise either minimum or copy current documentation into older-version assumptions.
+- Public client baseline checked on 2026-10-13: [v1.9.0, build 970][public-client-release], commit `ffa5935c8363`, is a
+  non-prerelease published on 2026-09-24. Its connection service skips unknown SSE variants; its generated question
+  parsers ignore additive fields, and its question API has pending/reply/reject routes. These source checks support the
+  legacy notice below; step 2 still captures executable released-peer fixtures and checks any other supported release.
 
 Step 2 produces credential-free native captures at these baselines and records exact method support, scope, side
 effects, and response semantics. Cover local stdio and HTTP MCP fixtures, a fixture OAuth server, project trust
@@ -197,6 +201,11 @@ schema keys, connector IDs, persistence metadata, and answer encoding in the own
   payload contains request/session/display-session IDs, explanatory text, a validated URL, purpose, and the declared
   native reply choices. Add matching session-scoped snapshot/reply routes and a normalized SSE event; bridge replies
   pass through the same `SessionOperationDispatcher` as existing interactions.
+- Before forwarding any authorization, elicitation, or connector-setup destination, its bridge service requires an
+  absolute HTTPS URI with a nonempty host and no user info. Reject relative URLs, HTTP, `file:`, `data:`, `javascript:`,
+  and custom schemes with a typed unsupported/error result before client browser launch. Native loopback callback
+  addresses are a separate challenge field validated against the owned native attempt; they are not launch URLs or
+  exceptions to this policy. Test each rejection at the bridge boundary, including fixture-provided URLs.
 - The client acknowledges consent according to that native request's contract. A URL-elicitation `accept` is not an
   OAuth-completed signal. Only a native completion or refreshed status proves connection. Connector offers without a
   verified install/setup URL receive an explicit native-harness handoff, not an invented installer.
@@ -267,9 +276,28 @@ terminal UI output.
   flag with an honest omitted default; an older bridge gets an explicit upgrade/unavailable state. New routes do not
   replace existing question/permission routes. Check the released clients' unknown-event behavior before adding
   broadcasts; do not assume they ignore a new event.
-- New form/external-action requests must not strand old clients. Supply a safe existing-question handoff with explicit
-  decline/cancel behavior if it faithfully represents the request; otherwise return an observable native unsupported
-  response. Never degrade a connection/install request into a generic Allow permission. No silent acceptance.
+- New form/external-action requests also expose a legacy notice through existing question snapshots and asked/settled
+  events. `PendingInteractionService` derives that view from the same canonical pending request through a pure mapper;
+  question read handlers use that service for the projection. There is no second native wait, pending registry, timer,
+  or per-client capability registry. Use the same request/session attribution on both views.
+- An additive `QuestionInteractionKind` field on question snapshots/events defaults to ordinary question when omitted;
+  form and external-action values mark these notices. Modern clients filter marked notices from question presentation,
+  counts, and notifications, and consume the corresponding typed interaction instead. The marker works even if the
+  legacy event arrives first. Released clients ignore it and display “Use an updated Sesori client to answer this
+  request, or cancel it here,” with custom answers disabled and only a cancel choice. No form values or consent are
+  requested through this fallback.
+- Legacy reply/reject routes recognize that the named canonical request is a form/external action and can only decline
+  or cancel it through `PendingInteractionService` and the existing session dispatcher. A typed reply, legacy cancel,
+  native settlement, or teardown settles the same request once and emits both typed and legacy settlement events.
+  Successful typed completion emits `question.replied` with only request/session attribution, never submitted form data;
+  cancellation emits `question.rejected`. Late competing replies cannot send another native reply.
+  An old-client-only session therefore has an explicit cancel/upgrade path; a mixed session can still answer from its
+  modern client. Never infer unsupported native input merely because an older client is connected.
+- Steps 6 and 7 implement this compatibility view with external actions and forms respectively. Test the released
+  client alone and mixed with a modern client: both event orders, snapshot recovery, modern completion, legacy cancel,
+  and competing replies. Keep this projection only while supported public clients lack the typed interaction, with the
+  required dated compatibility marker. Native schemas outside the supported set still receive an observable native
+  unsupported response. Never degrade a connection/install request into a generic Allow permission.
 - Internal APIs update all consumers together. Add no database migrations, backfills, or shims for unpublished
   implementations. Use the then-current product version and dated compatibility comments only for actual released-peer
   needs.
@@ -367,14 +395,15 @@ Exact PR titles and scope:
 
    Shared client authentication UI and owner-scoped browser reuse, neutral pending external-action contract and session
    routing/presentation. Conflicting provider/MCP starts return busy without cancellation. Visible connection actions
-   and fixture-proven URL requests; no Sesori database change.
+   and fixture-proven URL requests, safe destination policy, and legacy cancel/upgrade notices; no Sesori database
+   change.
 
 7. `⚙️ [mcp-management] Complete Claude MCP approvals and elicitation [step 7/12]`
 
    Shared typed form contracts, bridge/client layers, draft-preserving form UI, and Claude native form/URL handlers with
-   server/tool context. Preserve exact grant/cancel behavior. Completes the Claude milestone subject to native gates;
-   no database change. Keep generated form models with their source; split before push if the full boundary exceeds
-   the estimate.
+   server/tool context and the same legacy notice/settlement projection. Preserve exact grant/cancel behavior. Completes
+   the Claude milestone subject to native gates; no database change. Keep generated form models with their source;
+   split before push if the full boundary exceeds the estimate.
 
 8. `🚧 [mcp-management] Add Codex MCP inventory and connection actions [step 8/12]`
 
@@ -437,6 +466,11 @@ submission followed by correction without losing the draft. Verify configured se
 opaque key text remain distinct, unsupported catalogs leave server inventory usable, and opening connector setup does
 not fabricate connection success.
 
+Run old-client-only and mixed released/current client fixtures against the same native pending request. Confirm the
+modern client displays one typed interaction, the older client can cancel, and either completion clears both views.
+Reject unsafe external destinations before forwarding; fixture OAuth authorization pages follow the HTTPS policy,
+while native HTTP loopback callbacks remain separately bound to their owned attempt.
+
 Affected documents: new `docs/regression/mcp-management.md`; update `questions-and-permissions.md`,
 `permission-auto-approval.md`, `plugin-setup-and-lifecycle.md`, `bridge-connectivity.md`, `session-turns.md`, the
 regression index, and `docs/HARNESS_CAPABILITIES.md`. Update browser-return packaging documents only where this
@@ -461,7 +495,11 @@ The architecture follow-up after PR feedback also passed: owner-scoped browser r
 inventory, and typed form interactions preserve the same plugin and shared-layer boundaries. Runtime gates remain
 unchanged.
 
+The subsequent released-client compatibility projection and bridge URL-policy amendment also passed a focused
+architecture review. This approves their ownership; released-peer and mixed-client execution remains required.
+
 [sdk-query]: https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/_internal/query.py
 [claude-cli-auth]: https://code.claude.com/docs/en/mcp#authenticate-from-the-command-line
 [claude-sdk-auth]: https://code.claude.com/docs/en/agent-sdk/mcp#oauth2-authentication
 [codex-app-server]: https://learn.chatgpt.com/docs/app-server
+[public-client-release]: https://github.com/sesori-ai/sesori_apps_monorepo/releases/tag/v1.9.0

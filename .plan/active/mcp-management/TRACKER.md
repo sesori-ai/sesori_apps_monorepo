@@ -62,6 +62,12 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 - Architecture follow-up on 2026-10-13: **approved**, comparing the revised plan against `6fe2ad9944`. The specificity
   gate passed with no findings across client, bridge, and shared boundaries. Browser ownership, distinct catalog offers,
   and typed form layers retain one native pending owner and add no credential store or server-configuration framework.
+- Further Codex feedback: made the external destination policy explicit (absolute HTTPS, host, no user info) and chose
+  a shared legacy cancel/upgrade notice over per-client negotiation. Verified public v1.9.0/build 970 at `ffa5935c8363`
+  has the required question routes, additive-field tolerance, and unknown-SSE handling. Both typed and legacy views
+  share one canonical request and settlement; mixed released/current client fixtures are required. Focused architecture
+  review against `124e2e9abc` **approved** the compatibility projection and URL-policy ownership with no findings;
+  executable runtime compatibility remains an implementation gate.
 
 ## Verification log
 
