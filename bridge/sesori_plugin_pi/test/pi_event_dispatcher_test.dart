@@ -282,6 +282,35 @@ void main() {
     expect(steeringUser.whereType<BridgeSseMessagePartUpdated>().single.part.text, "second");
   });
 
+  test("correlates a user prompt whose text Pi extended with image resize notes", () {
+    dispatcher.registerPrompt(
+      sessionId: sessionId,
+      promptId: "prompt-1",
+      executionText: "fix the margin",
+      userVisibleText: null,
+    );
+    final user = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_end", {
+        "message": {
+          "role": "user",
+          "content": [
+            {
+              "type": "text",
+              "text":
+                  "fix the margin\n\n[Image converted from image/webp to image/png.]\n"
+                  "[Image: original 2202x490, displayed at 2000x445. Multiply coordinates by 1.10 to map to original image.]",
+            },
+          ],
+          "timestamp": 90,
+        },
+      }),
+    );
+
+    expect(((user.first as BridgeSseMessageUpdated).info as PluginMessageUser).promptId, "prompt-1");
+    expect(user.whereType<BridgeSseMessagePartUpdated>().single.part.text, "fix the margin");
+  });
+
   test("user message finals equal cold replay", () {
     final raw = {
       "role": "user",
