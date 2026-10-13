@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/claude-mcp-actions`, `fa9717350c`, in the provided `copper-heron` worktree.
-- Current step: 7/15, live Claude controls verified and preparing publication;
+- Current step: 7/15, live Claude controls in PR [#1952][pr-1952];
   step 6 merged as [#1950][pr-1950].
   Client loading merged as #1949; Claude inventory API merged as #1948. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
@@ -24,7 +24,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 4/15 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
 | 5/15 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
 | 6/15 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/15 | Claude live-server controls (original 7.a) | Local implementation | Successor branch `sesori/claude-mcp-actions` |
+| 7/15 | Claude live-server controls (original 7.a) | In review | [#1952][pr-1952] |
 | 8/15 | Claude native authentication (original 7.b) | Native-boundary research | No implementation yet |
 | 9/15 | Shared authentication and external-action presentation | Not started | — |
 | 10/15 | Claude approvals and form/URL elicitation | Not started | — |
@@ -348,3 +348,10 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   onto `fa9717350c`; its tree matches `8a5589010f` exactly before controls, so
   unchanged focused verification remains applicable. No prior cache, database,
   runtime process owner or compatibility path is made obsolete by these controls.
+
+[pr-1952]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1952
+
+- Step 7 published as #1952 at `2d9f6d91c2`; validation above describes the
+  pre-commit source snapshot that this commit contains. The PR monitor started
+  immediately. Published series titles now use 15; historical commits are intact.
+  Authored/generated churn before this publication record: 922/714 (1,636 total).
