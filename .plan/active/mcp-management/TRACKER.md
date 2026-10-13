@@ -257,7 +257,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 
 [pr-1950]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1950
 
-- Step-6 review fixes are uncommitted on `f1fd4bce10`: archived mobile sessions
+- Step-6 review fixes were verified uncommitted on `f1fd4bce10`, then
+  committed as `d8aad49ec6`: archived mobile sessions
   retain read-only inventory, offline Refresh is disabled, details show refresh
   status and distinguish a removed server from a failed read. Eight focused MCP
   widget tests pass; shared UI, mobile and desktop analyze cleanly. The second
