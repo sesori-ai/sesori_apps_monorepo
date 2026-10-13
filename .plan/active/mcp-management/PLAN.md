@@ -33,8 +33,10 @@ authentication success.
 | Claude transport | `api/claude_stream_client.dart` and `repositories/claude_session_process_repository.dart` already send control requests to the named resident process. `ClaudeApprovalRegistry` handles `can_use_tool`; MCP elicitation needs its own native classification. |
 | Codex | `api/codex_app_server_api.dart` is the typed request boundary. `approval_registry.dart` recognizes tagged MCP tool approvals, but maps other MCP requests to a generic question and replies with a flattened `answers` object. `codex_event_mapper.dart` drops MCP startup status. |
 | Existing interactions | `PendingPermissionRegistry`, bridge `PendingInteractionService`, and `SessionOperationDispatcher` already own native pending requests and ordered replies. Reuse their cancellation, session attribution, and settlement mechanisms. |
+| Form gap | `QuestionInfo` lacks field types, required flags, constraints, and separate choice values; `ReplyAnswer` carries only string lists. `QuestionModal` closes on submission before validation completes. Supported typed MCP forms need a separate typed payload and draft-preserving submission UI. |
 | Client | `module_core` owns API/repository/service/cubit behavior; `module_app_ui` owns shared settings and session presentation. `permission_modal.dart` already renders once/always/reject. No dedicated MCP inventory exists. |
 | Browser authentication | `PluginAuthenticationBrowserService`, `PluginAuthenticationLoopbackServer`, and the platform `PluginAuthenticationBrowser` already support local and remote browser returns. Reuse these capabilities; provider-account login in `PluginLifecycleService` is a different operation from signing into an MCP server. |
+| Browser ownership gap | The client browser service has one `_active` operation and cancels it when another starts; `cancelActive()` is unscoped. Before MCP reuse, bind start/retry/cancel to an owner and reject a conflicting start without cancelling the first flow. |
 | Other harnesses | Pi's `/mcp` command has status/reconnect/login/logout behavior; login currently opens on the bridge host. ACP has bounded form mapping. OpenCode's local API reference contains MCP management routes, while its SSE mapper currently drops MCP housekeeping/auth-browser failures. These are integration leads, not proof of current version parity. |
 
 ### Upstream and local evidence
@@ -96,7 +98,7 @@ decision before reducing acceptance criteria.
 
 ## Ownership and contracts
 
-### Server identity and future configuration
+### Inventory identity and future configuration
 
 Introduce plugin-neutral MCP models under `sesori_plugin_interface/lib/src/models/` and wire DTOs under
 `shared/sesori_shared/lib/src/models/sesori/`. Use `Mcp` naming for the product concept, not a particular harness's RPC
@@ -105,9 +107,10 @@ names.
 - `McpScope` is a sealed value: harness, project with project ID, or session with session ID. A route also names the
   harness; the relay connection selects the bridge. The bridge resolves project/session ownership from its catalog and
   rejects a mismatched harness.
-- `McpServerTarget` combines scope with an opaque adapter-issued server key. Keep keys separate from display names and
-  URLs. Consumers pass keys back without parsing them. They need only survive the native configuration's lifetime, not a
-  future rename.
+- `McpEntryTarget` is sealed: `McpServerTarget` combines scope with an opaque adapter-issued server key;
+  `McpConnectorOfferTarget` combines scope with an opaque offer key. Equal keys in both variants are distinct targets.
+  Keep keys separate from display names and URLs. Consumers pass keys back without parsing them. Server keys need only
+  survive the native configuration's lifetime, not a future rename; offer keys follow the native catalog's lifetime.
 - `McpConfigurationSource` describes native ownership and scope, including read-only/managed configuration when known.
   Unknown origin is honest absence. Do not introduce a Sesori configuration database or derive ownership from a name
   prefix.
@@ -117,6 +120,15 @@ names.
 - `McpServerSnapshot` contains presentation-safe metadata and tool summaries. Distinguish discovery failure/unavailable
   from an empty tool list. Resource browsing, resource content retrieval, manual tool execution, and MCP Apps HTML
   rendering are outside this feature.
+- `McpInventoryEntry` is sealed with configured-server and connector-offer variants.
+  `McpConnectorOfferSnapshot` contains its offer target, display metadata, native-reported availability/setup state,
+  and setup or handoff actions. It has no
+  invented server connection state, configuration source, or tool list. `McpInventorySnapshot` carries these entries and
+  each section's supported/unavailable result; a harness without a connector catalog still exposes its servers.
+- Server operations and connector setup use separate sealed action variants with their corresponding target types.
+  The adapter resolves an offered connector's verified setup URL from its native catalog; clients cannot supply a URL
+  to an action request. Setup completion is re-read from native state. Opening a page alone leaves setup unconfirmed;
+  link an offer to a configured server only when the harness supplies that relationship.
 - A later `createServer` flow belongs behind the same concrete plugin's native configuration boundary and returns a
   `McpServerTarget`. It can reuse the details, authentication, refresh, and action flows. This plan adds no
   create/update/delete request, generic config writer, empty tab, or speculative transport abstraction.
@@ -125,7 +137,7 @@ names.
 
 Add `McpManagementPluginApi` as an optional interface implemented by supporting `BridgePluginApi` implementations. It
 owns typed inventory reads and supported actions for a scope. Add authentication capability only to implementations with
-an actual flow. Per-server availability comes from the snapshot, not client checks for a harness name.
+an actual flow. Per-entry availability comes from the snapshot, not client checks for a harness name.
 
 Concrete plugin data flow is
 `native client/process API -> plugin repository/mapper -> plugin service where lifecycle is owned -> plugin API`. Extend
@@ -143,15 +155,15 @@ Proposed shared-router surface, with typed request/response models:
 
 | Route | Contract |
 |---|---|
-| `POST /mcp/servers` | Read inventory for `{pluginId, scope}`. Returns an explicit supported snapshot, temporarily unavailable result, or unsupported capability. POST permits a typed sealed scope without ambiguous optional query fields; it is a read operation. |
-| `POST /mcp/server/action` | Named target plus a closed native-supported action. Returns refreshed state or a typed failure; never accepts arbitrary native method names or raw config. |
-| `POST /mcp/authentication` | Begin explicit authentication for the named target. Returns the attempt ID and one concrete challenge variant. |
+| `POST /mcp/inventory` | Read server and offered-connector inventory for `{pluginId, scope}`. Returns a typed inventory snapshot with explicit section availability. POST permits a typed sealed scope; it is a read operation. |
+| `POST /mcp/entry/action` | A sealed server-action or connector-setup request carries its matching target. Returns refreshed state, a verified external-setup challenge/handoff, or a typed failure; never accepts raw methods, config, or a client-supplied destination. |
+| `POST /mcp/authentication` | Begin explicit authentication for the named server target. Returns the attempt ID and one concrete challenge variant. Catalog setup without a native auth operation uses the entry-action result instead. |
 | `GET /mcp/authentication` | Current attempt/status for reconnect recovery. No stored authentication history. |
 | `POST /mcp/authentication/continue` | Attempt-bound callback/code only for the continuation variant the plugin declared. |
 | `POST /mcp/authentication/cancel` | Cancel the named active attempt. If the native runtime cannot cancel, show its true state until it terminates; closing a UI is not native cancellation. |
 
 Register handlers in the existing `Orchestrator` composition and shared request router so headless and relay clients use
-the same API. Add backend-neutral `mcp.servers.changed` invalidation and `mcp.authentication.changed` events through the
+the same API. Add backend-neutral `mcp.inventory.changed` invalidation and `mcp.authentication.changed` events via the
 existing plugin stream and Orchestrator event mapping. A read, explicit refresh, completed mutation, auth completion, or
 actual native notification refreshes the open client view. Do not add background polling or wake every plugin to
 populate settings.
@@ -164,11 +176,22 @@ schema keys, connector IDs, persistence metadata, and answer encoding in the own
 - Ordinary tool approvals continue through `PluginPendingPermission` and `PermissionReply`; enrich the display context
   without changing existing once/always/reject meanings. Never treat a server trust prompt, installation offer, form, or
   URL request as an auto-approvable tool call.
-- Represent supported string, finite number/integer, boolean, enum, and bounded string-choice-array forms using the
-  existing question surface where it can express the request faithfully. Each plugin retains a typed schema next to its
-  pending request and encodes answers under native property keys. Validate before replying; invalid input keeps the
-  request pending and returns a useful field error. Do not forward a guessed `answers` object. Unsupported structures
-  are explicitly declined with a visible explanation. Secret/credential entry is not added to ordinary question fields.
+- Add `PluginPendingForm` and shared `PendingForm` models for supported string, finite number/integer, boolean, enum,
+  and bounded string-choice-array fields. Each field has an opaque field ID, label, required flag, typed default when
+  present, and supported constraints. Sealed field/value variants preserve scalar types; choice options have separate
+  opaque IDs and display labels. The plugin retains native schema keys and choice values beside the pending request.
+  Typed submissions map field IDs to values; omission means an optional field was unanswered, not an empty string.
+- A supporting plugin implements optional `FormInteractionPluginApi` for pending snapshots and submit/decline. Bridge
+  `FormRepository` maps these models; `PendingInteractionService` and `SessionOperationDispatcher` own reply ordering.
+  Add `POST /session/forms`, `POST /form/reply`, and `POST /form/decline` routes plus form asked/settled events.
+  A reply result distinguishes accepted, field-validation errors keyed by field ID, and already settled. The adapter
+  validates before sending the native reply and retains the native pending request on validation failure.
+- Extend client `SessionApi` and `SessionRepository` for those operations. `PendingFormService` coordinates submissions
+  and settlement; `PendingFormCubit` owns drafts, submission state, and field errors. Shared form UI stays open while
+  submitting and preserves drafts/focus on validation failure; it closes only on accepted or authoritative settlement.
+  Reuse existing field widgets where appropriate. Keep generic questions only for requests they represent faithfully;
+  do not coerce required booleans/numbers or distinct choice values into string answer lists. Unsupported schemas are
+  explicitly declined with a visible explanation. Secret/credential entry is outside ordinary form fields.
 - Add a neutral pending external-action variant for URL authorization and offered-connector setup. Extend the existing
   plugin pending-request owner and teardown paths, rather than introducing a second request-ID registry. Its wire
   payload contains request/session/display-session IDs, explanatory text, a validated URL, purpose, and the declared
@@ -191,9 +214,18 @@ Shared views live under `module_app_ui/lib/src/features/mcp/`, composed from ses
 permission/question widgets and system-browser/loopback capabilities. Do not copy the large provider-management state
 machine or add a client-side credential repository.
 
-Use the existing browser service where its contract is adequate. If a small rename/extraction is necessary to share the
-exact browser transport between provider and MCP authentication, keep it confined to that proven second use and update
-callers in lockstep. A broader authentication refactor requires a separate scope decision.
+Reuse the existing browser transport with explicit cross-flow ownership. Keep one active browser operation per client,
+with an opaque owner handle bound to its bridge connection and provider/MCP purpose. Starting a different operation
+returns a typed busy result and leaves the first operation and listener untouched. Retry and cancel require the matching
+handle; replace provider callers' unscoped `cancelActive()` calls in lockstep, including cleanup and disposal. This is a
+small change at the existing browser owner, not a second operation registry or copied authentication state machine.
+
+The second flow shows “Finish the current sign-in first” and allows an explicit retry once the browser is free. If its
+native challenge already exists, retain that challenge until retry or native expiry; do not silently cancel another
+flow or queue automatic consent. URL-only connector setup without a callback uses the existing system-browser opener
+and native inventory refresh, without inventing an OAuth callback. Test provider-then-MCP and MCP-then-provider starts,
+owner-scoped retry/cancel/disposal, and callback delivery to the surviving operation. Keep provider and MCP native
+authentication lifecycles separate. A broader authentication refactor requires a separate scope decision.
 
 ## Harness delivery
 
@@ -235,7 +267,7 @@ terminal UI output.
   flag with an honest omitted default; an older bridge gets an explicit upgrade/unavailable state. New routes do not
   replace existing question/permission routes. Check the released clients' unknown-event behavior before adding
   broadcasts; do not assume they ignore a new event.
-- New external-action requests must not strand old clients. Supply a safe existing-question handoff with explicit
+- New form/external-action requests must not strand old clients. Supply a safe existing-question handoff with explicit
   decline/cancel behavior if it faithfully represents the request; otherwise return an observable native unsupported
   response. Never degrade a connection/install request into a generic Allow permission. No silent acceptance.
 - Internal APIs update all consumers together. Add no database migrations, backfills, or shims for unpublished
@@ -248,6 +280,8 @@ terminal UI output.
 |---|---|
 | One active MCP auth operation plus its native handle, completion subscription, and bounded expiry | Bridge `McpAuthenticationService`; a browser journey outlives its initial HTTP request. No per-server operation map, queue, or durable job. |
 | Typed form/external-action payloads | Existing plugin pending-input owners; the native process is waiting for a response. Reuse their request map and cancellation lifecycle. |
+| Browser owner handle and typed busy result | Existing client browser service's single active operation; prevent provider and MCP flows from cancelling each other. No new registry or queue. |
+| Form draft, submission state, and field errors | Client `PendingFormCubit`; invalid input must remain editable until accepted or settled. Drafts stay in memory only. |
 | Current visible inventory, refresh-in-flight marker, and auth presentation | Client service/cubit, scoped to the selected bridge/harness/context. Reuse connection fencing; no persistent inventory. |
 | Native subscriptions | Existing plugin connection/process owner, held in its existing composite subscription where applicable. No new watcher framework. |
 
@@ -296,7 +330,7 @@ total. No artificial compatibility scaffolding between steps.
 | 4/12 | Phone and desktop details | 800–1,300 |
 | 5/12 | Claude actions and authentication | 800–1,350 |
 | 6/12 | Shared authentication and external actions | 850–1,400 |
-| 7/12 | Claude approvals and elicitation | 650–1,150 |
+| 7/12 | Claude approvals and elicitation | 900–1,450 |
 | 8/12 | Codex inventory and actions | 750–1,300 |
 | 9/12 | Codex forms and connector offers | 650–1,200 |
 | 10/12 | Secondary harness support | 800–1,400 |
@@ -316,8 +350,8 @@ Exact PR titles and scope:
 
 3. `🚧 [mcp-management] Expose scoped MCP inventory for Claude Code [step 3/12]`
 
-   Shared/plugin inventory models, supported-capability detection, bridge read route/events, and Claude typed inventory
-   mapping. Headless consumers can inspect a live session; no database change.
+   Shared/plugin inventory variants for servers and connector offers, supported-capability detection, bridge read
+   route/events, and Claude typed server mapping. Headless consumers can inspect a live session; no database change.
 
 4. `⚙️ [mcp-management] Show MCP server details on phone and desktop [step 4/12]`
 
@@ -331,13 +365,16 @@ Exact PR titles and scope:
 
 6. `🚧 [mcp-management] Present MCP authentication and external actions [step 6/12]`
 
-   Shared client authentication UI/browser reuse, neutral pending external-action contract and session
-   routing/presentation. Visible connection actions and fixture-proven URL requests; no Sesori database change.
+   Shared client authentication UI and owner-scoped browser reuse, neutral pending external-action contract and session
+   routing/presentation. Conflicting provider/MCP starts return busy without cancellation. Visible connection actions
+   and fixture-proven URL requests; no Sesori database change.
 
 7. `⚙️ [mcp-management] Complete Claude MCP approvals and elicitation [step 7/12]`
 
-   Native form/URL handlers and server/tool context through the shared surfaces; preserve exact grant/cancel behavior.
-   Completes the Claude milestone subject to native gates; no database change.
+   Shared typed form contracts, bridge/client layers, draft-preserving form UI, and Claude native form/URL handlers with
+   server/tool context. Preserve exact grant/cancel behavior. Completes the Claude milestone subject to native gates;
+   no database change. Keep generated form models with their source; split before push if the full boundary exceeds
+   the estimate.
 
 8. `🚧 [mcp-management] Add Codex MCP inventory and connection actions [step 8/12]`
 
@@ -346,8 +383,9 @@ Exact PR titles and scope:
 
 9. `⚙️ [mcp-management] Complete Codex MCP forms and connector offers [step 9/12]`
 
-   Typed forms, URL elicitation, native grant scopes, and verified offered-connector setup URLs. Remove superseded
-   generic MCP mapping. No Sesori database change.
+   Map native forms to the shared typed interaction, URL elicitation, native grant scopes, and connector-offer inventory
+   and setup actions. Verify catalog offers never enter server-control/auth routes. Remove superseded generic MCP
+   mapping. No Sesori database change.
 
 10. `⚙️ [mcp-management] Extend supported MCP controls across harnesses [step 10/12]`
 
@@ -393,6 +431,12 @@ bridge switch, two-client reply, unsupported schema, blocked project trust, and 
 Verify sign-in does not weaken tool approvals, tool auto-approval does not grant install/login consent, and native
 credentials remain native across restart.
 
+Include provider/MCP browser overlap in both start orders, owner-scoped cancellation, and correct callback delivery.
+Form cases cover a required boolean/number, labels distinct from choice values, omitted optional fields, and an invalid
+submission followed by correction without losing the draft. Verify configured servers and catalog offers with equal
+opaque key text remain distinct, unsupported catalogs leave server inventory usable, and opening connector setup does
+not fabricate connection success.
+
 Affected documents: new `docs/regression/mcp-management.md`; update `questions-and-permissions.md`,
 `permission-auto-approval.md`, `plugin-setup-and-lifecycle.md`, `bridge-connectivity.md`, `session-turns.md`, the
 regression index, and `docs/HARNESS_CAPABILITIES.md`. Update browser-return packaging documents only where this
@@ -412,6 +456,10 @@ normal repository workflow; implementation remains pending a later instruction.
 Architecture plan review on 2026-10-13: **approved**, with the specificity gate passed and no architectural findings.
 This establishes the design boundaries, not native feasibility or authentication qualification. Local
 document/link/series checks and staged Git whitespace validation passed before publication.
+
+The architecture follow-up after PR feedback also passed: owner-scoped browser reuse, distinct connector-offer
+inventory, and typed form interactions preserve the same plugin and shared-layer boundaries. Runtime gates remain
+unchanged.
 
 [sdk-query]: https://github.com/anthropics/claude-agent-sdk-python/blob/main/src/claude_agent_sdk/_internal/query.py
 [claude-cli-auth]: https://code.claude.com/docs/en/mcp#authenticate-from-the-command-line

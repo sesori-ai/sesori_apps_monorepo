@@ -51,9 +51,17 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   client/bridge/shared rules applied, and no architectural findings were reported. No design changes were required.
 - Review explicitly leaves native method/version support, OAuth continuation behavior, connector setup URLs, and
   released-client event handling to step 2. It does not establish runtime feasibility or successful authentication.
-- PR #1940 review: clarified exclusion of full authorization/elicitation URLs from diagnostics, wrapped prose, made the
-  delivery overview concise while retaining exact titles and scopes below it, and recorded the measured publication
-  diff. Feature scope and architectural ownership are unchanged.
+- Initial PR #1940 review: clarified exclusion of full authorization/elicitation URLs from diagnostics, wrapped prose,
+  made the delivery overview concise while retaining exact titles and scopes below it, and recorded the measured
+  publication diff. Feature scope and architectural ownership were unchanged.
+- Codex follow-up review: verified the current browser service cancels its previous operation, question replies carry
+  only string lists, and the question modal closes before validation. The plan now requires owner-scoped browser reuse
+  with a busy result, distinct server/connector inventory variants, and typed form contracts/UI that preserve invalid
+  drafts. These clarify the existing scope; arbitrary server configuration remains deferred. Step 7's estimate now
+  includes the explicit shared form work.
+- Architecture follow-up on 2026-10-13: **approved**, comparing the revised plan against `6fe2ad9944`. The specificity
+  gate passed with no findings across client, bridge, and shared boundaries. Browser ownership, distinct catalog offers,
+  and typed form layers retain one native pending owner and add no credential store or server-configuration framework.
 
 ## Verification log
 
