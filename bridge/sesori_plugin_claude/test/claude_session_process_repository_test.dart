@@ -26,6 +26,32 @@ void main() {
       await harness.close();
     });
 
+    test("inventory reads do not create or resume a process", () async {
+      final result = await repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
+      expect(result, isA<PluginMcpInventoryUnavailable>().having(
+        (value) => value.reason, "reason", PluginMcpInventoryUnavailableReason.liveSessionRequired,
+      ));
+      final unsupported = await repository.getMcpInventory(scope: const PluginMcpHarnessScope());
+      expect(unsupported, isA<PluginMcpInventoryUnavailable>().having(
+        (value) => value.reason, "reason", PluginMcpInventoryUnavailableReason.unsupportedScope,
+      ));
+      expect(harness.specs, isEmpty);
+    });
+
+    test("inventory reads status through the resident process control channel", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      final result = repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
+      await pump();
+      final request = process.written.lastWhere((frame) => frame["type"] == "control_request");
+      expect(request["request"], {"subtype": "mcp_status"});
+      process.emitControlResponse(requestId: request["request_id"]! as String, payload: {
+        "mcpServers": [{"name": "fixture", "status": "connected", "tools": <Map<String, dynamic>>[]}],
+      });
+      expect((await result as PluginMcpInventorySnapshot).entries, hasLength(1));
+      expect(harness.specs, hasLength(1));
+    });
+
     test("creates first process and resumes after an accepted turn", () async {
       await _ensure(repository, createNew: true);
       expect(harness.specs.single.launch, isA<ClaudeNewSession>());

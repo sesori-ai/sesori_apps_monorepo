@@ -20,7 +20,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 1/13 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
 | 2/13 | Native contracts | Merged | [#1945][pr-1945] |
 | 3/13 | Inventory foundation (original 3.a) | PR review | [#1947][pr-1947]; six codec tests |
-| 4/13 | Claude scoped inventory and bridge read (original 3.b) | Preserved adapter work | Not published |
+| 4/13 | Claude scoped inventory and bridge read (original 3.b) | Local verification passed | Not published |
 | 5/13 | Shared phone/desktop inventory and details | Not started | — |
 | 6/13 | Claude actions and native authentication | Not started | — |
 | 7/13 | Shared authentication and external-action presentation | Not started | — |
@@ -150,3 +150,14 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   graceful unknown response enum/union parsing. Six wire tests and shared plus
   plugin-interface analysis passed; request scopes/targets remain intentionally
   closed. No published MCP peer needs a legacy field default.
+
+- Step 4: Claude mapper/resident-process suite passed (17 tests), and bridge MCP
+  route suite passed (6 tests). Exact Dart 3.13.4 analysis passed for Claude and
+  bridge app. Tests cover safe metadata, truthful discovery state, no implicit
+  spawn, durable owner/native-ID binding, moved project path, and explicit
+  unavailable states. Architecture implementation review approved the staged
+  step-4 flow. Production resident-process adapter smoke passed with isolated
+  stdio fixture on Claude 2.1.221 and 2.1.291: inactive read spawned nothing,
+  one explicit launch returned connected state and the echo tool. Initial smoke
+  used a missing Node path; reruns with the installed executable passed. A real
+  relay/client route smoke remains unexecuted.

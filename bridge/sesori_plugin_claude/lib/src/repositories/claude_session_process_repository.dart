@@ -11,6 +11,7 @@ import "../api/models/claude_stream_message.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_message_origin_kind.dart";
 import "../models/claude_permission_mode.dart";
+import "mappers/claude_mcp_mapper.dart";
 
 sealed class const ClaudeTurnOutcome();
 
@@ -109,6 +110,26 @@ final class ClaudeSessionProcessRepository({
   Stream<ClaudeSessionProcessEvent> get events => _events.stream;
 
   bool isResident({required String sessionId}) => _resident.containsKey(sessionId);
+
+  /// MCP inspection uses only the named existing resident. Reading an inactive
+  /// session must never restore it or manufacture an agent process.
+  Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) async {
+    if (scope is! PluginMcpSessionScope) {
+      return const PluginMcpInventoryUnavailable(
+        reason: PluginMcpInventoryUnavailableReason.unsupportedScope,
+        message: "Select a live session to inspect its MCP servers.",
+      );
+    }
+    final process = _resident[scope.sessionId];
+    if (process == null) {
+      return const PluginMcpInventoryUnavailable(
+        reason: PluginMcpInventoryUnavailableReason.liveSessionRequired,
+        message: "Start or resume this session to inspect its MCP servers.",
+      );
+    }
+    final status = await process.client.getMcpStatus();
+    return const ClaudeMcpMapper().map(status: status, scope: scope);
+  }
 
   Map<String, Object?>? handshake({required String sessionId}) => _resident[sessionId]?.client.handshake;
 

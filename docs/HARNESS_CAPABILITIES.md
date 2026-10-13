@@ -643,9 +643,13 @@ can initiate login, and managed installation does **not** authenticate a harness
 
 Dedicated MCP inventory and connection UI are **not implemented** in Sesori yet.
 The backend-neutral inventory wire models and optional plugin read interface
-are implemented. No harness implements that interface at this checkpoint;
-native inventory routes, client presentation, and management actions remain
-**not implemented** for every registered harness. See
+are implemented. Claude implements session inventory through its resident
+process status control request, exposed headlessly by `POST /mcp/inventory`.
+Project/harness inventory and offered-connector discovery remain **not implemented**
+for Claude. The other harness adapters, client presentation, and management actions
+remain **not implemented**. Reads never start an integration or agent session.
+Connection, authorization and discovery state remain distinct; only a safe HTTP(S)
+endpoint origin crosses the wire. See
 [MCP management regression coverage](regression/mcp-management.md).
 Existing tool permissions are separate from this management capability. Native
 protocol probes on macOS arm64 (2026-10-13) establish the following integration

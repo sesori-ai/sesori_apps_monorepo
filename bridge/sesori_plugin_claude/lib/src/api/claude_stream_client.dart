@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "claude_launch_spec.dart";
 import "claude_process_factory.dart";
+import "models/claude_mcp_status_dto.dart";
 import "models/claude_stream_message.dart";
 
 /// A control request that the CLI answered with a failure, or that could not be
@@ -180,6 +181,12 @@ class ClaudeStreamClient({
         message: "failed to write user turn",
       );
     }
+  }
+
+  /// Inspects this resident process without sending a turn or changing configuration.
+  Future<ClaudeMcpStatusDto> getMcpStatus() async {
+    final response = await sendControlRequest(subtype: "mcp_status", params: const {});
+    return ClaudeMcpStatusDto.fromJson(response);
   }
 
   /// Sends a control request and awaits its response payload.
