@@ -39,8 +39,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 - Repository target/minimum versions differ from the installed CLIs. Native target/minimum captures, real OAuth,
   packaged clients, and end-to-end checks are **Not run** and belong to implementation/qualification.
 - External documentation links and their scope are recorded in the plan. Claude terminal requirements, native
-  elicitation frames, Codex callback completion, connector setup contracts, and old-client event handling remain
-  explicit step-2 gates.
+  elicitation frames, Codex callback completion, connector setup contracts, and executable old-client event handling
+  remain explicit step-2 gates. The source-only released-client check is recorded in the verification log below.
 - Additional product analytics events are deferred; existing screen reporting applies. No server/tool/connector
   identities enter analytics.
 - No reduction of the retirement matrix has been requested or accepted.
@@ -50,7 +50,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 - 2026-10-13: `architecture-plan-review` approved the initial design at base `55c7d4cbba`; specificity gate passed,
   client/bridge/shared rules applied, and no architectural findings were reported. No design changes were required.
 - Review explicitly leaves native method/version support, OAuth continuation behavior, connector setup URLs, and
-  released-client event handling to step 2. It does not establish runtime feasibility or successful authentication.
+  executable released-client event handling to step 2. It does not establish runtime feasibility or authentication.
 - Initial PR #1940 review: clarified exclusion of full authorization/elicitation URLs from diagnostics, wrapped prose,
   made the delivery overview concise while retaining exact titles and scopes below it, and recorded the measured
   publication diff. Feature scope and architectural ownership were unchanged.
@@ -63,14 +63,22 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   gate passed with no findings across client, bridge, and shared boundaries. Browser ownership, distinct catalog offers,
   and typed form layers retain one native pending owner and add no credential store or server-configuration framework.
 - Further Codex feedback: made the external destination policy explicit (absolute HTTPS, host, no user info) and chose
-  a shared legacy cancel/upgrade notice over per-client negotiation. Verified public v1.9.0/build 970 at `ffa5935c8363`
-  has the required question routes, additive-field tolerance, and unknown-SSE handling. Both typed and legacy views
+  a shared legacy cancel/upgrade notice over per-client negotiation. Source-only inspection of public v1.9.0/build 970
+  at `ffa5935c8363` found the required question routes, additive-field tolerance, and unknown-SSE handling; step 2 must
+  confirm that behavior in executable released-peer fixtures. Both typed and legacy views
   share one canonical request and settlement; mixed released/current client fixtures are required. Focused architecture
   review against `124e2e9abc` **approved** the compatibility projection and URL-policy ownership with no findings;
   executable runtime compatibility remains an implementation gate.
+- Further review clarifications: separated the existing non-pending catalog setup result from native session consent
+  requests; settings setup does not fabricate session ownership. Required capability and regression updates in each
+  production PR, retaining step 11 for reconciliation. Added the dated source-only verification record below.
 
 ## Verification log
 
+- 2026-10-13: source-only inspection of public v1.9.0/build 970, commit `ffa5935c8363`, checked
+  `connection_service.dart` unknown-SSE handling, `SessionApi` question routes, generated question codecs, and
+  `QuestionModal` cancellation. This supports the proposed legacy notice; it does not prove runtime compatibility.
+  Step 2 must confirm old-client-only and mixed-client behavior with executable released-peer fixtures.
 - Step 1: Markdown local links, 12 exact series titles, tracker order, user scope/future-creation boundaries, and staged
   `git diff --check` passed.
 - Initial publication measurement on 2026-10-13: `git diff --numstat 55c7d4cbba c56bb0c02d` reported 202 additions for

@@ -96,9 +96,9 @@ decision before reducing acceptance criteria.
 - An external action shows the destination domain and purpose before opening the system browser. Opening, waiting,
   completed, cancelled, failed, and “continue on bridge computer” states are explicit. Returning from the browser
   refreshes authoritative native state; it does not manufacture success.
-- Pending actions also remain discoverable in the session's existing waiting-for-input surface. Resolving a request on
-  another client closes its overlay smoothly, without moving the transcript. Dismissing a sheet alone is not approval or
-  denial. Add no audio.
+- Native session requests also remain discoverable in the session's existing waiting-for-input surface. Resolving a
+  request on another client closes its overlay smoothly, without moving the transcript. Dismissing a sheet alone is not
+  approval or denial. Add no audio.
 
 ## Ownership and contracts
 
@@ -133,6 +133,12 @@ names.
   The adapter resolves an offered connector's verified setup URL from its native catalog; clients cannot supply a URL
   to an action request. Setup completion is re-read from native state. Opening a page alone leaves setup unconfirmed;
   link an offer to a configured server only when the harness supplies that relationship.
+- A catalog setup action from harness/project settings, or from a session inventory, returns a non-pending
+  `McpExternalSetup` result containing its offer target, validated URL, and purpose. No native request is waiting for a
+  reply: it requires no session and has no pending request ID, snapshot, reply route, or legacy question notice. The
+  client browser opener launches it; returning or reopening inventory re-reads native setup state for its target.
+  Do not invent a session to open or recover this path. An offer that requires an unverified native consent protocol
+  receives an explicit native-harness handoff until that protocol is supported.
 - A later `createServer` flow belongs behind the same concrete plugin's native configuration boundary and returns a
   `McpServerTarget`. It can reuse the details, authentication, refresh, and action flows. This plan adds no
   create/update/delete request, generic config writer, empty tab, or speculative transport abstraction.
@@ -160,7 +166,7 @@ Proposed shared-router surface, with typed request/response models:
 | Route | Contract |
 |---|---|
 | `POST /mcp/inventory` | Read server and offered-connector inventory for `{pluginId, scope}`. Returns a typed inventory snapshot with explicit section availability. POST permits a typed sealed scope; it is a read operation. |
-| `POST /mcp/entry/action` | A sealed server-action or connector-setup request carries its matching target. Returns refreshed state, a verified external-setup challenge/handoff, or a typed failure; never accepts raw methods, config, or a client-supplied destination. |
+| `POST /mcp/entry/action` | A sealed server-action or connector-setup request carries its matching target. Returns refreshed state, a non-pending `McpExternalSetup` result/handoff, or a typed failure; never accepts raw methods, config, or a client-supplied destination. |
 | `POST /mcp/authentication` | Begin explicit authentication for the named server target. Returns the attempt ID and one concrete challenge variant. Catalog setup without a native auth operation uses the entry-action result instead. |
 | `GET /mcp/authentication` | Current attempt/status for reconnect recovery. No stored authentication history. |
 | `POST /mcp/authentication/continue` | Attempt-bound callback/code only for the continuation variant the plugin declared. |
@@ -196,11 +202,13 @@ schema keys, connector IDs, persistence metadata, and answer encoding in the own
   Reuse existing field widgets where appropriate. Keep generic questions only for requests they represent faithfully;
   do not coerce required booleans/numbers or distinct choice values into string answer lists. Unsupported schemas are
   explicitly declined with a visible explanation. Secret/credential entry is outside ordinary form fields.
-- Add a neutral pending external-action variant for URL authorization and offered-connector setup. Extend the existing
-  plugin pending-request owner and teardown paths, rather than introducing a second request-ID registry. Its wire
-  payload contains request/session/display-session IDs, explanatory text, a validated URL, purpose, and the declared
-  native reply choices. Add matching session-scoped snapshot/reply routes and a normalized SSE event; bridge replies
-  pass through the same `SessionOperationDispatcher` as existing interactions.
+- Add a neutral pending external-action variant only for native session requests that wait for a URL-authorization or
+  offered-connector consent reply. Extend the existing plugin pending-request owner and teardown paths, rather than
+  introducing a second request-ID registry. Its wire payload contains request/session/display-session IDs, explanatory
+  text, a validated URL, purpose, and the declared native reply choices. Add matching session-scoped snapshot/reply
+  routes and a normalized SSE event; bridge replies pass through the same `SessionOperationDispatcher` as existing
+  interactions. This pending contract does not represent the non-pending catalog setup result above; explicit server
+  authentication uses the separately defined scope-bound `McpAuthenticationService` attempt.
 - Before forwarding any authorization, elicitation, or connector-setup destination, its bridge service requires an
   absolute HTTPS URI with a nonempty host and no user info. Reject relative URLs, HTTP, `file:`, `data:`, `javascript:`,
   and custom schemes with a typed unsupported/error result before client browser launch. Native loopback callback
@@ -350,6 +358,11 @@ separate authored/generated churn at each push. Target below 1,500 changed lines
 work. If codegen or coupling breaks the estimate, split coherently before the first push and synchronize the one series
 total. No artificial compatibility scaffolding between steps.
 
+Every production PR updates the relevant `docs/regression/` documents and `docs/HARNESS_CAPABILITIES.md` with the
+behavior that lands in that PR. Record each harness as implemented, not implemented, or not supported for each partial
+capability; do not defer these records to step 11. Create `mcp-management.md` with the first supported behavior in
+step 3 and extend it as actions, UI, and additional adapters land. Step 11 is final reconciliation only.
+
 | Step | Outcome | Planned diff |
 |---|---|---:|
 | 1/12 | Reviewed plan | 350–650 |
@@ -423,7 +436,8 @@ Exact PR titles and scope:
 
 11. `🌿 [mcp-management] Reconcile MCP regression and capability coverage [step 11/12]`
 
-    Complete supported-behavior docs and exact remaining limitations; no production or database change.
+    Reconcile the docs and capability records maintained in steps 3–10 with the final matrix and remaining limitations;
+    no production or database change. This step does not postpone documentation required in earlier PRs.
 
 12. `⚙️ [mcp-management] Qualify MCP journeys and retire the plan [step 12/12]`
 
@@ -470,6 +484,9 @@ Run old-client-only and mixed released/current client fixtures against the same 
 modern client displays one typed interaction, the older client can cancel, and either completion clears both views.
 Reject unsafe external destinations before forwarding; fixture OAuth authorization pages follow the HTTPS policy,
 while native HTTP loopback callbacks remain separately bound to their owned attempt.
+Open a catalog offer from harness and project settings with no live session: the URL/handoff works without a pending
+session request, reopening refreshes setup state, and no session or legacy question is fabricated. Separately exercise
+a native session consent request through its typed and legacy settlement views.
 
 Affected documents: new `docs/regression/mcp-management.md`; update `questions-and-permissions.md`,
 `permission-auto-approval.md`, `plugin-setup-and-lifecycle.md`, `bridge-connectivity.md`, `session-turns.md`, the
