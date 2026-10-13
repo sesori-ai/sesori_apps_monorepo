@@ -299,6 +299,11 @@ function assertContracts(harness, result) {
     assert.equal(unknownServer.frame.response.subtype, 'error');
     assert.match(unknownServer.frame.response.error, /Server not found/);
     assert.equal(result.approvals.length, 3, 'Each tool needs native permission');
+    for (const [index, approval] of result.approvals.entries()) {
+      assert.equal(approval.request.mcp_server.name, 'stdio_fixture');
+      assert.equal(approval.request.mcp_server.source, 'dynamic');
+      assert.equal(approval.request.tool_name, `mcp__stdio_fixture__${['echo', 'form', 'url'][index]}`);
+    }
     const form = result.elicitations.find(x => x.request.mode === 'form');
     assert.deepEqual(form.request.requested_schema, formSchema);
     const formReply = JSON.parse(result.toolResults[1].content[0].text).result;
@@ -333,12 +338,36 @@ function assertContracts(harness, result) {
     }
     const inventory = exchanges.filter(x => x.method === 'mcpServerStatus/list' && x.params.limit === 1);
     assert.ok(inventory.some(x => x.frame.result.nextCursor), 'Pagination must be exercised');
-    const names = inventory.slice(1).flatMap(x => x.frame.result.data.map(server => server.name));
+    const servers = inventory.slice(1).flatMap(x => x.frame.result.data);
+    const names = servers.map(server => server.name);
     assert.deepEqual(names, ['http_fixture', 'oauth_fixture', 'stdio_fixture']);
+    if (result.version === 'codex-cli 0.160.1') {
+      assert.deepEqual(servers.map(server => server.runtimeStatus),
+        ['connected', 'authenticationRequired', 'connected']);
+      assert.equal(servers[0].toolsError, null);
+      assert.match(servers[1].toolsError, /Auth required/);
+      assert.equal(servers[2].toolsError, null);
+      for (const server of servers.slice(0, 2)) {
+        const origin = new URL(server.httpOrigin);
+        assert.equal(origin.protocol, 'http:');
+        assert.equal(origin.hostname, '127.0.0.1');
+        assert.equal(origin.pathname, '/');
+        assert.equal(server.httpOrigin, origin.origin);
+      }
+      assert.notEqual(servers[0].httpOrigin, servers[1].httpOrigin);
+      assert.equal(servers[2].httpOrigin, null);
+      assert.deepEqual(servers.map(server => server.serverCapabilities), [{ tools: {} }, null, { tools: {} }]);
+    }
     const appInventory = exchanges.find(x => x.method === 'mcpServerStatus/list' && x.params.threadId === undefined);
     assert.deepEqual(appInventory.frame.result.data.map(server => server.name), names);
     assert.equal(exchanges.find(x => x.method === 'mcp_unknown_fixture').frame.error.code, -32600);
     assert.equal(result.elicitations.length, 2, 'Form and URL requests must reach the client');
+    const interactiveThreadId = exchanges.find(x => x.method === 'thread/start').frame.result.thread.id;
+    for (const elicitation of result.elicitations) {
+      assert.equal(elicitation.params.serverName, 'stdio_fixture');
+      assert.equal(elicitation.params.threadId, interactiveThreadId);
+      assert.equal(elicitation.params.turnId, null, 'Direct calls have no model turn');
+    }
     assert.deepEqual(result.elicitations[0].params.requestedSchema, formSchema);
     const returned = exchanges.filter(x => x.method === 'mcpServer/tool/call');
     const formReply = JSON.parse(returned[1].frame.result.content[0].text).result;
