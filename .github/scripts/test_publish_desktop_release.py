@@ -10,6 +10,7 @@ import textwrap
 import unittest
 from unittest.mock import patch
 
+import github_release_assets as public_assets
 import publish_desktop_release as publisher
 import test_prepare_desktop_release as fixtures
 
@@ -51,7 +52,7 @@ class PublishDesktopReleaseTest(unittest.TestCase):
 
     def publish(self):
         with patch.object(publisher, "github", side_effect=self.github), \
-                patch.object(publisher, "urlopen", side_effect=self.download):
+                patch.object(public_assets, "urlopen", side_effect=self.download):
             publisher.publish(**self.args)
 
     def test_payloads_verified_before_metadata_and_no_bridge_assets_changed(self):
@@ -121,7 +122,7 @@ class PublishDesktopReleaseTest(unittest.TestCase):
     def test_http_hash_reads_without_auth_and_in_bounded_chunks(self):
         payload = b"fixture" * 200_000
         response = io.BytesIO(payload)
-        with patch.object(publisher, "urlopen", return_value=response) as opened, \
+        with patch.object(public_assets, "urlopen", return_value=response) as opened, \
                 patch.object(response, "read", wraps=response.read) as chunks:
             result = publisher.public_sha256(url="https://example.invalid/asset.zip")
         opened.assert_called_once_with("https://example.invalid/asset.zip", timeout=60)
@@ -195,7 +196,7 @@ class InternalReleaseRolloverTest(unittest.TestCase):
     def roll(self, *, releases, tag):
         workflow = Path(__file__).resolve().parents[1] / "workflows/release-all-platforms.yml"
         step = workflow.read_text().split("      - name: Roll internal pre-release\n", 1)[1]
-        script = textwrap.dedent(step.split("        run: |\n", 1)[1].split("      - name: Summary", 1)[0])
+        script = textwrap.dedent(step.split("        run: |\n", 1)[1].split("\n      - ", 1)[0])
         return self.run_script(script=script, releases=releases, tag=tag)
 
     def run_script(self, *, script, releases, tag):
@@ -203,7 +204,8 @@ class InternalReleaseRolloverTest(unittest.TestCase):
             root = Path(temporary)
             (root / "releases.json").write_text(json.dumps(releases))
             (root / "artifacts").mkdir()
-            for name in ["fixture.tar.gz", "fixture.zip", "checksums.txt"]:
+            for name in ["fixture.tar.gz", "fixture.zip", "checksums.txt", "fixture.tar.gz.asc",
+                         "sesori-linux-public.asc", "signing.json"]:
                 (root / "artifacts" / name).write_text("fixture")
             gh = root / "gh"
             gh.write_text(textwrap.dedent('''\
@@ -264,7 +266,10 @@ class InternalReleaseRolloverTest(unittest.TestCase):
         calls = self.roll(releases=[old, current], tag=current["tag_name"])
         self.assertIn(["release", "delete", old["tag_name"], "--yes"], calls)
         self.assertNotIn(["release", "delete", current["tag_name"], "--yes"], calls)
-        self.assertTrue(any(c[:3] == ["release", "upload", current["tag_name"]] for c in calls))
+        upload = next(c for c in calls if c[:3] == ["release", "upload", current["tag_name"]])
+        self.assertIn("artifacts/fixture.tar.gz.asc", upload)
+        self.assertIn("artifacts/sesori-linux-public.asc", upload)
+        self.assertNotIn("artifacts/signing.json", upload)
 
     def test_stable_cleanup_preserves_desktop_previews_regardless_of_stable_assets(self):
         workflow = Path(__file__).resolve().parents[1] / "workflows/bridge-npm-publish.yml"

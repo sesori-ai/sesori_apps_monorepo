@@ -26,7 +26,7 @@ Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
 Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
 remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 
-## Current continuation — private signed Linux packages
+## Current continuation — Linux CLI signing and public internal previews
 
 The user prioritized Linux before Windows and requested key-generation guidance plus
 a PR for signed builds. #1941 delivered step 11.a/14 and merged as
@@ -42,8 +42,9 @@ source patches, and verified checksum signatures against the separately known pu
 fingerprint. Exact evidence lives in [step 9](steps/step-09.md); setup remains in
 [key guidance](../../../docs/desktop/linux-signing.md).
 
-`🌱 [desktop-distribution] Record signed Linux qualification [step 11.b/14]` records
-this acceptance. Build `1.9.1+147` uses the qualification workflow's number, not the
+`🌱 [desktop-distribution] Record signed Linux qualification [step 11.b/14]` merged
+as #1943 (`6f7e60d933e9dcb2a3aa9a8e13afbd2b94a16af7`) on 2026-10-13.
+Build `1.9.1+147` uses the qualification workflow's number, not the
 shared release sequence. Next: CLI archive signatures (11.c), aligned public desktop
 internal previews (11.d), and website tracking/spacing (11.e). The user authorized
 Linux internal desktop previews with the GUI/login/keyring/N→N+1 gaps stated, and
@@ -52,6 +53,50 @@ record the next implementation slices and the website tracking/spacing PR.
 Stable Linux admission and public APT/RPM hosting remain separate; cloud resources
 are not authorized. Build 147 itself remains private. No public release/repository,
 cloud resource or store upload was created by this qualification.
+
+Step 11.c implements shared temporary key ownership, detached signatures for both
+unchanged CLI archives, protected signing in the existing native build flow, and
+anonymous public-byte verification in both release channels. A separate main-only
+bootstrap attaches signatures to existing matching archives without rebuilding or
+replacing release assets/metadata. Its failed publication job reuses the original
+signature artifact; re-signing is not assumed to produce identical bytes.
+### Step 11.c verification checkpoints (2026-10-13)
+
+- Local review-fix source: `a9293b206b6db1ad1fd2c01855ad8a55704a6c5a`,
+  tree `7bdf7b7f96f4a9afeea37076d6d1401ff0b0318e`. Cwd is the Git checkout root (`.`);
+  the local record retains the host-specific absolute cwd. Python 3.13.16 completed
+  **26 tests, zero skips, exit 0** in 1.753s at 12:33:29 UTC. Exact command:
+
+  ```bash
+  PYTHONPATH=.github/scripts /opt/homebrew/bin/python3.13 -m unittest \
+    test_bridge_linux_signatures test_publish_desktop_release
+  ```
+
+  These cover read-only delivery checks, append-only bootstrap, unchanged core
+  publication/retention and the environment-secret inheritance contract. Actionlint
+  (with ShellCheck) also passed for the four changed caller workflows. Local records:
+  `build/bridge-linux-signing/review-validation-a9293b2.json` and
+  `build/bridge-linux-signing/review-fixes-a9293b2.log`; these are not public artifacts.
+- Real-tool signer checkpoint: PR head `fef42563d4be12bcacb09f9708a58977d022083a`;
+  [Fedora job 115276279835](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38391541309/job/115276279835)
+  checked out merge commit `28ee521f8711f2dba54f2ef04bb7cc984291b27c`, whose tree
+  `474f10c159fc1b970e70f496fedf2a30e0aaf156` equals that PR head's tree. Host cwd:
+  `/home/runner/work/sesori_apps_monorepo/sesori_apps_monorepo`; container cwd: `/workspace`.
+  **13 tests passed, zero skips**, in 4.491s, with disposable keys only. Exact commands:
+
+  ```bash
+  docker build --file .github/scripts/Dockerfile.linux-signing --tag sesori-linux-signing .github/scripts
+  docker run --rm --network none -v "$GITHUB_WORKSPACE:/workspace:ro" \
+    -e SESORI_LINUX_SIGNING_TEST_REQUIRED=1 sesori-linux-signing \
+    python3 -m unittest discover -s .github/scripts -p 'test_sign_desktop_linux.py'
+  ```
+
+  Retrieve the expanded log with `gh run view 38391541309 --job 115276279835 --log`
+  from this repository. This checkpoint proves the shared signer and public-only
+  verification mechanics, not the later read-only delivery-command change.
+
+Actual production-key signing/public verification of an existing public release
+remains a post-merge operation, not evidence claimed by either checkpoint.
 
 ## Completed macOS website continuation (2026-09-26)
 

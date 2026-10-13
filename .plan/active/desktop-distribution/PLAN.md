@@ -459,7 +459,11 @@ Next bounded slices, keeping the same signing key, shared cycle and ordinal tota
   share the existing isolated signing/key-handling mechanism with this second real
   consumer; publish detached signatures without replacing existing archive bytes or
   weakening macOS signing. Document manual verification without implying existing
-  CLI updaters already enforce OpenPGP. Estimate 500–900 authored lines.
+  CLI updaters already enforce OpenPGP. About 1,000 authored lines including shared
+  key/network helper moves, fixture coverage and the existing-release bootstrap.
+  L3 proof: protected production-key signing of both public archive bytes, independently
+  pinned public verification and unchanged release/archives/checksums; no store dispatch
+  for proof. Real disposable-key GPG/RPM/GPGV/DNF fixtures remain the PR CI gate.
 - `🚧 [desktop-distribution] Publish Linux desktop internal previews [step 11.d/14]`:
   supply aligned source/build/channel to both native builders; validate signed
   artifacts and attach to the existing shared internal release. Use a Linux-specific

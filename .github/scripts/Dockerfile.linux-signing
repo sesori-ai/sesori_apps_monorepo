@@ -1,5 +1,4 @@
-# Use the same pinned native Fedora image as Linux RPM packaging.
-ARG FEDORA_IMAGE
-FROM ${FEDORA_IMAGE}
+# Shared native Fedora 44 pin for CLI/desktop signing, RPM packaging and install fixtures.
+FROM registry.fedoraproject.org/fedora@sha256:61beafd34111e1cb85fb49377ceadeee0a53622dbc20670ed8ca303f0e17ed9c
 RUN dnf install -y python3 gnupg2 rpm-sign rpm-build && dnf clean all
 WORKDIR /workspace
