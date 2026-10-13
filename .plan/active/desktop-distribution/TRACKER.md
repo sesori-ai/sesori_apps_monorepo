@@ -17,7 +17,7 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 6 | 8 | macOS internal packages and website live; stable production pending | in-progress |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
-| 9 | 11 | CLI signatures public; Linux desktop internal publication in progress; repositories gated | in-progress |
+| 9 | 11 | Linux internal previews and website live; stable/repositories gated | blocked |
 | 10 | 12 | Shipped-download onboarding requires genuine public releases | blocked |
 | 11 | 13 | Reconcile private distribution coverage; public closeout remains gated | in-progress |
 | 12 | 14 | Verify six-target releases and retire distribution plan | blocked |
@@ -26,7 +26,7 @@ Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
 Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
 remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 
-## Current continuation — Linux CLI signing and public internal previews
+## Completed Linux internal-preview continuation (2026-10-13)
 
 The user prioritized Linux before Windows and requested key-generation guidance plus
 a PR for signed builds. #1941 delivered step 11.a/14 and merged as
@@ -45,14 +45,14 @@ fingerprint. Exact evidence lives in [step 9](steps/step-09.md); setup remains i
 `🌱 [desktop-distribution] Record signed Linux qualification [step 11.b/14]` merged
 as #1943 (`6f7e60d933e9dcb2a3aa9a8e13afbd2b94a16af7`) on 2026-10-13.
 Build `1.9.1+147` uses the qualification workflow's number, not the
-shared release sequence. CLI archive signatures (11.c) are now public. Next: aligned
-public desktop internal previews (11.d), then website tracking/spacing (11.e). The user authorized
+shared release sequence. CLI archive signatures (11.c) and aligned desktop internal previews
+(11.d) are public and independently verified; website tracking/spacing (11.e) is live. The user authorized
 Linux internal desktop previews with the GUI/login/keyring/N→N+1 gaps stated, and
 OpenPGP signatures for the existing Linux Bridge CLI archives. D11–D12 in `PLAN.md`
-record the next implementation slices and the website tracking/spacing PR.
-Stable Linux admission and public APT/RPM hosting remain separate; cloud resources
-are not authorized. Build 147 itself remains private. No public release/repository,
-cloud resource or store upload was created by this qualification.
+record that limited authorization, not permission for stable Linux or signed repositories.
+Those remaining gates still require separate admission; cloud resources are not authorized.
+Build 147 itself remains private. That earlier qualification created no public
+release/repository, cloud resource or store upload.
 
 Step 11.c merged as #1946, squash `a3457903cf50155345e7afd293e7ec564d0e3238`,
 accepted head `e727acb68d85bc0998c5f7d703d61ca78dbfc865`. It implements shared
@@ -114,7 +114,39 @@ assets, and uploads Linux completion last. Dockerfile-only signing fixes qualify
 the shared cycle; no new per-release Linux approval condition is introduced.
 Linux/macOS completion and retention are independent; core/mobile finalization remains
 unchanged. No admission flag, scheduler, service, application state or stable Linux route
-is added. Focused fixtures are not yet a claim of public desktop retrieval.
+is added. #1951 accepted `fc536a9ceca952466372cb8e03ee16f98773a1b8` and merged as
+`69b3c4a329bb52f51fe5b07da9801346928268e2` at 2026-10-13T17:22:18Z. All five review
+threads were resolved; Cubic approved. One Intel check timed out with unavailable logs;
+its single failed-job-only retry passed without changing source or the deadline.
+
+Native run `38438783418` built both CPUs for existing shared `v1.9.1-internal.1013`,
+product source `704c3cae3c0f74c7756fcbf8cb2f60f1cebbb6b2`, with retained compiled
+internal identity and all six package fixtures passing. Main-only publisher
+`38443588001` reused those exact artifacts and attached ten Linux desktop assets.
+Independent anonymous retrieval verified both signatures against the separately known
+primary fingerprint and all four signed package hashes. All 13 original asset identities,
+release identity/content/channel, tag and Latest remained unchanged; original core/macOS checksum and
+manifest bytes were also re-downloaded and matched. No stores, local installation, new
+release, stable promotion or repository/cloud setup occurred.
+
+[Step 9](steps/step-09.md#public-native-desktop-verification--11d14) records exact
+sources/trees, jobs, commands and hashes. GUI/login/keyring/tray and real N→N+1 remain
+unverified. Website continuation 11.e merged as `sesori-ai/landingpage#112`, squash
+`77772b9d2c7ce083183ff275b37d8f864cf1e237` at 19:15:34 UTC. Final head
+`3fbc80d42d069905655a33fe47616d2b649b65de` passed CI; the single Cubic finding was fixed
+with a regression assertion, then reported addressed. Codex hit its review quota, not an approval.
+
+Normal deployment was independently checked at 19:20:22.227 UTC. The live page selected
+all four Linux `1.9.1+1013` packages, with anonymous HTTP 200 links/sizes and matching
+release-index, manifest and checksum metadata. Verification-file bytes matched their
+published hashes. Desktop/mobile layouts had 32px below previews, no horizontal overflow
+or browser exceptions, and a reachable limitations note. All 13 anchors worked; stable
+schema/Windows/repository gates stayed intact. Both crawler files matched merged source.
+This is live website acceptance, not another package installation or GUI/upgrade test.
+
+The bounded documentation record is step 11.f/14. Approved CLI/internal-preview/website
+work is complete. Remaining step 9 work needs separate stable/repository admission and
+cloud authorization; Windows remains a separate gated continuation.
 
 ## Completed macOS website continuation (2026-09-26)
 
@@ -565,7 +597,7 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
 | macOS update | On/Off to stable build 981 accepted on both CPUs; 82 shutdown tests passed | Evidence predates shared-store cutover; accepted QA gaps remain limitations, not renewed prerequisites. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
-| Signing and static hosting | macOS signing migration and internal GitHub hosting complete | Windows signing and Linux signed hosting remain pending. |
+| Signing/hosting | macOS and Linux previews public | Windows signing and signed Linux repositories pending. |
 | macOS public gate | Admitted; internal assets and deployed website verified | Ordinary stable submission retains `store-production`; no reopening of retired QA. |
 | Windows public gate | Pending; ARM64 interactive host unavailable | Both CPUs, per-user install/remove, actual signed manual N→N+1 upgrade, safe Quit, signing/SmartScreen observation and winget external path. Native CI build success alone does not close this gate. |
 | Linux public gate | Pending; private mechanics passed on both CPUs | Public and interactive checks below. |

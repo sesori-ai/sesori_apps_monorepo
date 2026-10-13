@@ -4,6 +4,9 @@ Ordinal 11/14. The user now prioritizes Linux before Windows (D10). Windows sign
 and winget remain separate; they no longer block Linux. Private package mechanics
 below are already merged. The user requested key-generation commands and a signed
 Linux-build PR; cloud resources and public repository publication are not part of it.
+The approved CLI signatures, public internal previews and website continuation are now
+complete. Remaining stable Linux/repository work is blocked on separate admission;
+accepted internal-preview gaps do not qualify those remaining gates.
 
 ## Signing continuation — 11.a/14 (merged)
 
@@ -161,12 +164,135 @@ completion marker last. The desktop key has its own immutable filename, not the 
 owner's replaceable key asset. Rollover retains the newest completed release per platform.
 No new service, admission flag, application state, production approval or updater exists.
 
-Post-merge L3 remains: build matching native packages for an existing shared internal
-release, attach without stores/rebuild relabeling, then independently verify public
-hashes/signatures, both identities and unchanged core/macOS/Latest/tag state. Build 147
-cannot substitute for that aligned qualification. GUI/login/keyring/tray and real
-N→N+1 gaps remain accepted only for internal previews; stable Linux and APT/RPM hosting
-are not admitted. Website discovery and CTA spacing follow as step 11.e.
+#1951 accepted `fc536a9ceca952466372cb8e03ee16f98773a1b8`, tree
+`75e067bff95bb97eb6a2b54d0ddd2d4d44794aa9`, and merged as
+`69b3c4a329bb52f51fe5b07da9801346928268e2` at 2026-10-13T17:22:18Z. Five review
+threads were resolved and Cubic approved. Intel job `115401956425` exceeded its unchanged
+40-minute deadline; its logs were unavailable. A single failed-job-only retry in run
+`38427767587` passed. This is retry success, not a diagnosed root cause for the timeout.
+
+### Public native desktop verification — 11.d/14
+
+On 2026-10-13, both native CPU packages were built for the existing shared public
+`v1.9.1-internal.1013` release (`405100008`), not relabeled from private build 147.
+
+| Role | Commit | Tree |
+|---|---|---|
+| Product | `704c3cae3c0f74c7756fcbf8cb2f60f1cebbb6b2` | `f8c697207ca00eb0278961a6fca1b92335628c74` |
+| Native/local | `69b3c4a329bb52f51fe5b07da9801346928268e2` | `adec647ee87059c7efba7e2f8f5f292b4c538f90` |
+| Publication workflow | `5dfef8672ffefdf1ce94a0f69596f195bf0874ad` | `2dea21dae00a7a2fe4db87aee74c18bad486facc` |
+
+[Native run 38438783418](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38438783418)
+used main-only `linux-packaging`, selected the product's pinned Flutter 3.47.5 SDK, and
+retained exact compiled `internal` / `1.9.1+1013` identity. ARM64 job `115439936920`
+and x64 job `115439937034` passed all six Ubuntu 24.04/Debian 13/Fedora 44 fixtures.
+The four Actions ZIP hashes/sizes, clean source patches, signed/unsigned package provenance,
+unchanged DEB bytes, source identities and both actual GPGV signatures passed local checks.
+
+[Publisher run 38443588001](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38443588001),
+job `115456112776`, reused those original artifacts, finishing at 18:03:32 UTC.
+Executed dispatches, with the workflow revisions attributed above:
+
+```bash
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=linux-packaging -f channel=internal \
+  -f source_sha=704c3cae3c0f74c7756fcbf8cb2f60f1cebbb6b2 -f build_number=1013
+gh workflow run desktop-linux-release.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f packaging_run=38438783418 \
+  -f source_sha=704c3cae3c0f74c7756fcbf8cb2f60f1cebbb6b2 -f version=1.9.1 -f build_number=1013
+```
+
+These are historical dispatches, not instructions to generate fresh signatures for a retry.
+Both native checkout logs explicitly report the product checkout at
+`/home/runner/work/sesori_apps_monorepo/sesori_apps_monorepo` and the trusted workflow
+checkout at `/home/runner/work/sesori_apps_monorepo/sesori_apps_monorepo/.ci-workflow`.
+The fixture Docker commands mount that same absolute workspace and use
+`-w "$GITHUB_WORKSPACE"`; they invoke the qualifier from `.ci-workflow`, not an unpinned
+copy from today's main. Inspect the immutable workflow/qualifier and expanded execution logs:
+
+```bash
+workflow=69b3c4a329bb52f51fe5b07da9801346928268e2
+git show "$workflow:.github/workflows/desktop-qualification.yml"
+git show "$workflow:.github/scripts/qualify_desktop_linux_package.sh"
+gh run view 38438783418 --repo sesori-ai/sesori_apps_monorepo \
+  --job 115439936920 --log
+gh run view 38438783418 --repo sesori-ai/sesori_apps_monorepo \
+  --job 115439937034 --log
+```
+
+These logs identify each CPU's fixture invocation, package/bundle path selection and
+container image digests. Local copies are `native-job-<job-id>.log` beside the evidence below.
+Local verification ran from this checkout's root (`.`), with Python 3.13 and a short,
+public-only GPG home. It independently downloaded
+all ten new public files without authentication and verified both signed checksum pairs
+against primary `E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7`, signing subkey
+`2BB08B81FF5491A1F68C95C7CBACDB2E5623160F`, then checked all four package digests.
+
+| Package | Bytes | SHA-256 |
+|---|---:|---|
+| ARM64 DEB | 20822010 | `984d7e2ec9db091624afa977970a7e23aa1ffa89dd0818e6293c90905157aa19` |
+| ARM64 RPM | 20758451 | `764029166b7cea1fcab5aace6fdcb64d95d5d1b8537ab8d2de4ff35e3d4f9bab` |
+| x64 DEB | 21311998 | `af9ff52a9888e754e6169be99fe41a9493a5725bf6c3cbb605383405ed21c720` |
+| x64 RPM | 21262293 | `bad6787061d80bac151653d3846afd8939383691d5f701a2dc2c02c0b9012319` |
+
+The original 13 core/macOS assets kept their IDs, sizes and digests. Release identity,
+content, channel, target, tag and Latest (`v1.9.0`) stayed unchanged. Outside the asset
+list, only GitHub's automatic `updated_at` changed. Original `checksums.txt`,
+`desktop-checksums.txt` and `desktop-release.json` bytes were re-downloaded and compared;
+this is not a claim that all original archives were re-downloaded. No release was created,
+no store upload or local application/package installation ran, and no repository/cloud
+resources were provisioned. Completion is public package/signature delivery only.
+
+Local records: `build/desktop-linux-publication/public-1013/verified-summary.json`,
+`native-downloads-verified.json`, `prepared-local/desktop-linux-release.json`, run/job
+records and `verify-public.py` in the same directory. GUI/login/keyring/tray and real
+N→N+1 remain unverified and accepted only for internal previews. Stable Linux and
+APT/RPM hosting remain unadmitted.
+
+## Live website acceptance — 11.e/14
+
+`sesori-ai/landingpage#112` accepted `3fbc80d42d069905655a33fe47616d2b649b65de`,
+then squash-merged as `77772b9d2c7ce083183ff275b37d8f864cf1e237` at
+2026-10-13T19:15:34Z. Both revisions have tree `6247f8d552ce73b33455be0c8ecf4619b69fad91`.
+The 649-line/12-file change extends the existing anonymous cached release lookup with
+independent Linux completion, four per-format download rows, explicit preview limits,
+verification links and spacing below the preview actions. It preserves every shipped
+app fragment and does not turn preview availability into stable/repository availability.
+
+Node 22.23.2/npm 11.19.0 completed 26 tests without skips, strict focused TypeScript,
+ESLint and real SSR contracts at the implementation checkpoint. Synthetic font-loaded
+browser fixtures covered both platforms, Linux-only, stable macOS with Linux previews,
+and unavailable states. Cubic's one finding identified duplicated stale crawler FAQ
+copy; the follow-up corrected it and added an assertion scoped to that answer. The new
+assertion rejected the old copy; SSR, focused lint and formatting passed after the fix.
+Final-head Site contracts passed. Cubic reported all findings addressed; Codex's quota
+notice supplied no code review. No production resolver/UI change followed the fixtures.
+
+Normal website deployment was independently checked at **2026-10-13T19:20:22.227Z**:
+
+- `https://sesori.com/desktop/` served all four real Linux `1.9.1+1013` package links;
+  macOS independently selected the same internal tag. Each Linux URL returned anonymous
+  HTTP 200 with the correct package size. Displayed hashes matched the release index,
+  public manifest and per-CPU checksum list. All verification-file bytes matched their
+  published digests; packages were HEAD-checked, not rehashed in this browser pass.
+- Desktop 1280×900 and mobile 390×844 both measured **32px** below the preview group,
+  versus the fixture baseline's 0px. Fonts were loaded; no horizontal overflow or
+  browser exception occurred. Preview navigation opened its channel; the shared
+  experimental-warning link landed below the sticky header.
+- All 13 download/app anchors worked. Stable desktop schema remained without download,
+  version, offer or install claims; Windows and signed repositories stayed unavailable.
+- Both live `llms` files exactly matched the merged source bytes, including the corrected
+  FAQ. The desktop sitemap lastmod was 2026-10-13. This was normal deployment, not a new
+  deploy commit or cloud command.
+
+Local record: `build/landingpage-linux-preview/production-verification.json`, with
+`verify-production.mjs`, screenshots, retrieved public verification files and separate
+fixture/validation/merge records in that directory. This proves website delivery and
+navigation only, not native Settings dispatch, GUI/sign-in/keyring/tray, installed-state
+preservation, N→N+1 upgrades, stable Linux or repository trust.
+
+The documentation-only acceptance record is step 11.f/14. Further stable/repository
+work is not authorized by completion of this internal-preview slice.
 
 ## Original private-package implementation
 

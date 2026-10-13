@@ -273,6 +273,22 @@ passed for both unchanged archives; original checksums/assets, release metadata,
 and Latest stayed unchanged. [Exact provenance and hashes](../../.plan/active/desktop-distribution/steps/step-09.md)
 keep this proof separate from desktop packages and automatic updater enforcement.
 
+## Verified public internal desktop preview
+
+Native [run 38438783418](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38438783418)
+aligned both CPUs with shared `1.9.1+1013`, retained compiled internal identity and passed
+all six native package fixtures. Publisher `38443588001`, with no signing-secret access,
+attached the original artifacts to the existing release. Independent anonymous verification authenticated
+both checksum signatures against the known primary and matched all four package hashes.
+Original core/macOS asset identities, release content/channel, tag, Latest and original
+checksum/manifest bytes were preserved. No store submission, local install or cloud setup ran.
+
+Website PR `sesori-ai/landingpage#112` now discovers these previews. Live desktop/mobile navigation,
+package/verification links, metadata and spacing were checked after normal deployment.
+[The acceptance record](../../.plan/active/desktop-distribution/steps/step-09.md)
+separates exact package, signature and website evidence from still-unverified
+GUI/account/keyring/tray and real N→N+1 behavior. Stable Linux and repositories remain gated.
+
 ## Verified private qualification
 
 [Run 38372268594](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38372268594)
@@ -286,5 +302,6 @@ expanded native job logs/commands, fingerprint and package-file hashes.
 
 This proves the configured signing path works. It does not admit public repository
 publication or establish GUI/account/keyring/tray behavior or real N→N+1 upgrades.
-Qualification build 147 is not a shared bridge/mobile release number; future public
-integration must align source/build/channel with that release cycle.
+Qualification build 147 is not a shared bridge/mobile release number and remains private.
+Public build 1013 was separately qualified with its exact shared source/build/channel;
+build 147 must never be relabeled as that or another shared release.

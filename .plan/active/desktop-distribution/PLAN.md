@@ -442,8 +442,8 @@ PR titles or the 14-ordinal total. #1941 merged as
 `de53cafb2483d76e9350a28d014b4d3906ee0fe0` on 2026-10-13. The signed native evidence
 is recorded by `🌱 [desktop-distribution] Record signed Linux qualification [step 11.b/14]`;
 see [step 9](steps/step-09.md) for the exact run, package hashes and proof boundary.
-Public repository/shared-cycle delivery follows this completed signing slice and must
-preserve existing core release authority. Qualification build 147 uses the manual
+Shared internal delivery is recorded below and preserves existing core release authority.
+Signed public repository delivery remains separately gated. Qualification build 147 uses the manual
 workflow's number, not the shared bridge/mobile build sequence. Public integration
 must resolve the aligned shared source/build/channel and retain its validation metadata.
 On 2026-10-13 the user explicitly authorized public opt-in Linux internal desktop
@@ -480,12 +480,26 @@ Bounded slices, keeping the same signing key, shared cycle and ordinal total:
   CPU's signed checksum pair intact; namespace the desktop public key separately from
   mutable core CLI assets. Validate the actual shared tag's source before attachment.
   Remove Mac-only retention assumptions. No application state or new admission flag.
+  Merged as #1951 (`69b3c4a329bb52f51fe5b07da9801346928268e2`). Native producer
+  `38438783418` and publisher `38443588001` completed existing shared internal build
+  `1013`; independent public signature/hash verification and unchanged core/macOS/tag/Latest
+  state passed. Exact provenance and remaining limits are in [step 9](steps/step-09.md).
 - `⚙️ [desktop-distribution] Track Linux previews on the website [step 11.e/14]`:
   in `sesori-ai/landingpage`, discover completed public Linux internal packages from
   the same cached release lookup, keep stable/repository states honest, and fix spacing
   below the preview CTA. Preserve installed-app anchors. Verify fixture SSR and actual
-  desktop/mobile browser geometry; include synthetic before/after media. Estimate
-  400–800 authored lines, not private CI links or a hardcoded preview version.
+  desktop/mobile browser geometry; include synthetic before/after media. Delivered as
+  `sesori-ai/landingpage#112`: 649 authored lines in 12 files, squash
+  `77772b9d2c7ce083183ff275b37d8f864cf1e237`. Normal deployment was independently
+  verified on 2026-10-13 at 19:20:22.227 UTC: four genuine Linux `1.9.1+1013` downloads,
+  matching verification metadata, all 13 anchors, 32px desktop/mobile spacing and no
+  stable/repository leakage. No private CI links or hardcoded preview version.
+- `🌱 [desktop-distribution] Record public Linux preview acceptance [step 11.f/14]`:
+  bounded monorepo documentation record of 11.d/11.e execution, exact sources/hashes,
+  native package fixtures, public signatures, unchanged core/macOS release state, and
+  deployed website acceptance. No production or database change; approximately
+  250–400 authored lines. Preserve GUI/upgrade/stable/repository limitations and keep
+  the original 14-ordinal plan active. No new qualification or deployment is needed.
 
 Complexity budget: no new persistent pointer, scheduler, release service, application
 state or updater. Reuse the existing signing owner and one website cache; immutable

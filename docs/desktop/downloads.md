@@ -7,11 +7,12 @@ plus `linux-package-managers`, and its contract checks fail when one is renamed 
 removed. Its `src/lib/desktop-downloads.ts` resolves completed public shared releases;
 individual preview builds do not need a source edit or website redeployment.
 
-**Internal macOS installers are public for both CPUs, with live website downloads.**
-Stable macOS, Windows and stable Linux are not published yet. Linux internal-preview
-publication is admitted; first public retrieval and website discovery remain separate
-qualification/website steps. The website currently selects completed macOS previews
-rather than permanently pinning the first publication.
+**Internal macOS installers and native Linux DEB/RPM previews are public for both CPUs.**
+Both platforms' website downloads are live, independently selected by completion marker.
+Stable macOS, Windows and stable Linux are not published yet. Linux internal build
+`1.9.1+1013` passed independent anonymous package/signature verification on 2026-10-13.
+The website selects each platform's newest completed preview rather than pinning
+its first publication.
 Private CI artifacts are not public links. This index never substitutes a mobile/CLI
 release or private evidence for a desktop installer.
 
@@ -21,6 +22,9 @@ endpoint. A completed macOS entry requires the desktop manifest/checksum assets 
 both native DMGs with valid index sizes/SHA-256 digests. The publisher uploads the
 manifest last; the website does not rehash packages or parse that manifest on each
 lookup. Displayed checksums and manifest links support independent verification.
+Linux internal completion independently requires its `desktop-linux-release.json`, all
+four version/build-matched DEB/RPM names, both checksum/signature pairs and desktop
+public key, each with valid index sizes/hashes. Discovery does not verify OpenPGP itself.
 Preview availability never creates stable controls, version metadata or offers.
 
 The website's base branch deploys automatically after push/merge, normally within
@@ -107,8 +111,15 @@ Signed APT and RPM repositories and stable Linux downloads remain unpublished.
 Opt-in internal DEB/RPM previews use `desktop-linux-release.json` as their independent
 completion marker, with native x64/arm64 packages named
 `Sesori-linux-<arch>-<version>-<build>.<deb|rpm>`. The website must not infer them from
-CLI tarballs, private artifacts or macOS completion. Linux discovery/links follow
-independent public retrieval qualification in the website continuation.
+CLI tarballs, private artifacts or macOS completion. Public native producer `38438783418`
+and publisher `38443588001` established shared internal build `1.9.1+1013`, with both
+signatures and all package hashes independently verified. Existing core/macOS asset identities,
+release content/channel, tag and Latest remained unchanged. Website PR `sesori-ai/landingpage#112`
+deployed normally. Live verification at 2026-10-13T19:20:22.227Z confirmed all four
+package/verification links, 13 anchors, 32px desktop/mobile preview spacing and
+unavailable stable/repository state.
+[Qualification evidence](../../.plan/active/desktop-distribution/steps/step-09.md)
+keeps public delivery separate from native GUI/account/upgrade proof.
 
 Verify each CPU's `desktop-linux-<arch>-checksums.txt` and `.asc` using
 `desktop-linux-public.asc` and the independently pinned primary fingerprint in
@@ -117,7 +128,13 @@ RPMs have native signatures; DEBs are covered by signed checksums. Package fixtu
 cover Ubuntu 24.04, Debian 13 and Fedora 44, not GUI/login/keyring/tray behavior or a
 real N→N+1 upgrade. Those gaps are accepted only for internal previews.
 
-Linux replacement remains package-manager-owned, not app-managed. Quit Sesori first;
+Linux preview anchors are `internal-linux-<x64|arm64>-<deb|rpm>`, in addition to the
+unchanged `linux-package-managers` app destination. Each available row links the
+experimental limitations note; direct links must not bypass disclosure.
+
+Linux previews require manually downloading, verifying and installing each package;
+they do not configure automatic repository updates or establish N→N+1 safety.
+Replacement remains package-manager-owned, not app-managed. Quit Sesori first;
 never treat shared CLI credentials, databases, runtimes or projects as update cleanup.
 Repository installation commands appear only after separate repository qualification
 and explicit publication approval.
