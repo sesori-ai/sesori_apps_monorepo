@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/desktop-linux-release.yml'
+      - '.github/scripts/publish_desktop_linux.py'
+      - '.github/scripts/test_publish_desktop_linux.py'
       - '.github/scripts/github_release_assets.py'
       - '.github/scripts/linux_signing.py'
       - '.github/scripts/sign_bridge_linux.py'
@@ -35,6 +38,9 @@ on:
       - '.github/scripts/test_publish_desktop_release.py'
   pull_request:
     paths:
+      - '.github/workflows/desktop-linux-release.yml'
+      - '.github/scripts/publish_desktop_linux.py'
+      - '.github/scripts/test_publish_desktop_linux.py'
       - '.github/scripts/github_release_assets.py'
       - '.github/scripts/linux_signing.py'
       - '.github/scripts/sign_bridge_linux.py'
@@ -84,9 +90,12 @@ jobs:
       - name: Test automatic macOS signing workflow contracts
         run: python -m unittest discover -s .github/scripts -p 'test_macos_signing_workflows.py'
       - name: Test desktop release preparation and publication boundaries
+        env:
+          SESORI_LINUX_SIGNING_TEST_REQUIRED: '1'
         run: |
           python -m unittest discover -s .github/scripts -p 'test_prepare_desktop_release.py'
           python -m unittest discover -s .github/scripts -p 'test_publish_desktop_release.py'
+          python -m unittest discover -s .github/scripts -p 'test_publish_desktop_linux.py'
       - name: Lint release gate
         run: shellcheck .github/scripts/check_internal_release.sh
       - name: Test automatic release decisions and attempt recording

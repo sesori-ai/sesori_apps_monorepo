@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare macOS release metadata from trusted qualification/shared-release artifacts.
+"""Shared desktop producer validation and macOS release-metadata preparation.
 
 Offline consistency checks only: never sign, publish, install, or claim ship readiness.
 """
@@ -33,11 +33,10 @@ def sha256(path: Path) -> str:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
-def prepare(*, root: Path, source_sha: str, channel: str, tooling_sha: str,
-            repository: str, run_id: int, current_run_id: int | None, output: Path) -> dict:
+def require_producer(*, root: Path, source_sha: str, tooling_sha: str,
+                     repository: str, run_id: int, current_run_id: int | None) -> dict:
     require(bool(re.fullmatch(r"[0-9a-f]{40}", source_sha)), "Expected immutable source SHA")
     require(bool(re.fullmatch(r"[0-9a-f]{40}", tooling_sha)), "Expected immutable tooling SHA")
-    require(channel in CHANNELS, "Unknown release channel")
     require(repository == "sesori-ai/sesori_apps_monorepo", "Unexpected producer repository")
     run = read_json(root / "run.json")
     require(run.get("id") == run_id and run_id > 0, "Wrong packaging run")
@@ -57,6 +56,14 @@ def prepare(*, root: Path, source_sha: str, channel: str, tooling_sha: str,
     # Their sealed identity/compiled defines and producer-side ancestry guard bind that source.
     if producer == ".github/workflows/release-all-platforms.yml":
         require(run.get("head_sha") == source_sha, "Run source differs from selected source")
+    return run
+
+
+def prepare(*, root: Path, source_sha: str, channel: str, tooling_sha: str,
+            repository: str, run_id: int, current_run_id: int | None, output: Path) -> dict:
+    require(channel in CHANNELS, "Unknown release channel")
+    run = require_producer(root=root, source_sha=source_sha, tooling_sha=tooling_sha,
+                           repository=repository, run_id=run_id, current_run_id=current_run_id)
     records = []
     common = None
     for arch in ARCHITECTURES:

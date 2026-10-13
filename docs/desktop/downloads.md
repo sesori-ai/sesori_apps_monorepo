@@ -8,8 +8,10 @@ removed. Its `src/lib/desktop-downloads.ts` resolves completed public shared rel
 individual preview builds do not need a source edit or website redeployment.
 
 **Internal macOS installers are public for both CPUs, with live website downloads.**
-Stable macOS and Windows/Linux are not published yet. The website selects the newest
-completed internal release rather than permanently pinning the first publication.
+Stable macOS, Windows and stable Linux are not published yet. Linux internal-preview
+publication is admitted; first public retrieval and website discovery remain separate
+qualification/website steps. The website currently selects completed macOS previews
+rather than permanently pinning the first publication.
 Private CI artifacts are not public links. This index never substitutes a mobile/CLI
 release or private evidence for a desktop installer.
 
@@ -72,11 +74,11 @@ Available in the newest internal [shared release][shared-releases] with a deskto
 `Sesori-macos-arm64.dmg` or `Sesori-macos-arm64.zip`. Verify against its
 `desktop-checksums.txt` and `desktop-release.json`, not bridge `checksums.txt`.
 
-Desktop previews advance only when `desktop-release.json` completes publication.
-The shared cycle retains the newest desktop-completed internal release while newer
-core-only releases build or desktop fails. Older completed previews can roll away
-after a newer one is available. The website must select that newest completed desktop
-preview, not merely the newest core release. Stable bridge/npm publication preserves
+macOS previews advance only when `desktop-release.json` completes publication.
+The shared cycle retains the newest completed internal release independently per
+platform while newer core-only releases build or desktop fails. Older previews can
+roll away after their platform has a newer completion. The website must select each
+platform's newest completed preview, not merely the newest core release. Stable bridge/npm publication preserves
 completed internal previews too; it does not replace their channel with stable.
 Do not pin a permanent website link to the first internal tag or use Latest stable
 as a substitute.
@@ -101,10 +103,21 @@ No public download is available.
 
 ## Linux package managers
 
-Signed APT and RPM repositories are not published yet. Private unsigned x64/arm64
-DEB and RPM packages have passed native Ubuntu 24.04, Debian 13 and Fedora 44 package
-fixtures; they are not supported downloads and same-version reinstall is not N→N+1
-upgrade proof. Linux updates will be owned by the package manager, not an app-managed
-updater. Quit Sesori before upgrading. Repository keys, supported distributions,
-CPU-specific install commands and signature verification instructions will appear
-here only after qualification and publication.
+Signed APT and RPM repositories and stable Linux downloads remain unpublished.
+Opt-in internal DEB/RPM previews use `desktop-linux-release.json` as their independent
+completion marker, with native x64/arm64 packages named
+`Sesori-linux-<arch>-<version>-<build>.<deb|rpm>`. The website must not infer them from
+CLI tarballs, private artifacts or macOS completion. Linux discovery/links follow
+independent public retrieval qualification in the website continuation.
+
+Verify each CPU's `desktop-linux-<arch>-checksums.txt` and `.asc` using
+`desktop-linux-public.asc` and the independently pinned primary fingerprint in
+[Linux signing guidance](linux-signing.md). This is not an APT/RPM repository key setup.
+RPMs have native signatures; DEBs are covered by signed checksums. Package fixtures
+cover Ubuntu 24.04, Debian 13 and Fedora 44, not GUI/login/keyring/tray behavior or a
+real N→N+1 upgrade. Those gaps are accepted only for internal previews.
+
+Linux replacement remains package-manager-owned, not app-managed. Quit Sesori first;
+never treat shared CLI credentials, databases, runtimes or projects as update cleanup.
+Repository installation commands appear only after separate repository qualification
+and explicit publication approval.

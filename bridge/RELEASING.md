@@ -131,9 +131,10 @@ An eligible run uploads mobile apps to TestFlight / Play internal and builds all
 `X.Y.Z-internal.<N>` baked in. Only after all core products succeed, it pushes a `v<X.Y.Z>-internal.<N>` tag
 and publishes its GitHub prerelease: bridge binaries, Linux signatures/public key,
 `checksums.txt` and regenerated notes. Internal tags remain immutable build-number-to-commit mappings.
-Cleanup retains the newest desktop-completed internal prerelease
-alongside the current core release, so a desktop failure does not erase its previous public downloads. Older
-completed desktop previews retire once a newer completion exists. The default `stable` bridge updater ignores
+Cleanup retains the newest completed internal preview independently for macOS and Linux
+alongside the current core release. A platform's failure cannot erase its previous public downloads, even when
+the other platform advances. Older previews retire after their platform has a newer completion.
+The default `stable` bridge updater ignores
 prereleases; `sesori-bridge config track internal` selects the newest `-internal.<N>` core release.
 
 Native macOS desktop builds use the same source and aligned build number, with their own signing/qualification.
@@ -141,7 +142,15 @@ They remain Actions artifacts while `DESKTOP_MACOS_PUBLICATION_ENABLED` is absen
 macOS publication, desktop attaches its installers and separate `desktop-checksums.txt`/`desktop-release.json`
 after both its native jobs and the existing shared finalizer pass. Desktop never changes bridge assets, checksums,
 tags, prerelease status or Latest. Desktop failure remains visible without changing core finalization.
-Stable bridge/npm cleanup skips desktop-completed internal previews, including bridge-only production and
+
+Linux internal previews use the same aligned source/build with native x64/arm64 DEB/RPM packaging
+and OpenPGP signing. They attach after core finalization, independently of macOS completion. Their last-uploaded
+`desktop-linux-release.json` marks completion; per-CPU checksum/signature pairs and `desktop-linux-public.asc`
+remain separate from CLI assets. Main-only bootstrap can target an existing shared internal release without
+store uploads. Stable Linux and APT/RPM repositories remain gated;
+see [Linux signing](../docs/desktop/linux-signing.md).
+
+Stable bridge/npm cleanup skips either platform's completed internal previews, including bridge-only production and
 pending/failed stable desktop attachment. Internal rollover owns their retirement; stable desktop availability
 does not replace the internal channel.
 

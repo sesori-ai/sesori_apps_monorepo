@@ -453,7 +453,7 @@ This accepts those gaps for internal previews only, not stable Linux or APT/RPM
 repository admission. No cloud provisioning is authorized. Build 147 remains private;
 never relabel it as an existing shared release.
 
-Next bounded slices, keeping the same signing key, shared cycle and ordinal total:
+Bounded slices, keeping the same signing key, shared cycle and ordinal total:
 
 - `🚧 [desktop-distribution] Sign Linux Bridge CLI archives [step 11.c/14]`:
   share the existing isolated signing/key-handling mechanism with this second real
@@ -464,6 +464,10 @@ Next bounded slices, keeping the same signing key, shared cycle and ordinal tota
   L3 proof: protected production-key signing of both public archive bytes, independently
   pinned public verification and unchanged release/archives/checksums; no store dispatch
   for proof. Real disposable-key GPG/RPM/GPGV/DNF fixtures remain the PR CI gate.
+  Merged as #1946 (`a3457903cf50155345e7afd293e7ec564d0e3238`); protected run
+  `38412243041` signed existing public `v1.9.0` archives. Independent pinned verification
+  and unchanged release/tag/Latest/archive/checksum state passed; [step 9](steps/step-09.md)
+  records exact provenance and hashes.
 - `🚧 [desktop-distribution] Publish Linux desktop internal previews [step 11.d/14]`:
   supply aligned source/build/channel to both native builders; validate signed
   artifacts and attach to the existing shared internal release. Use a Linux-specific
@@ -471,6 +475,11 @@ Next bounded slices, keeping the same signing key, shared cycle and ordinal tota
   completed preview per platform; desktop failures must not block core finalization.
   Stable Linux stays gated. Bootstrap only against matching source/build of an existing
   shared release, never by forcing store submissions. Estimate 800–1,200 authored lines.
+  Reuse native qualification rather than adding builders: source-specific SDK/icon/plugins,
+  workflow-owned signing/fixtures, and separate Linux/macOS call concurrency. Keep each
+  CPU's signed checksum pair intact; namespace the desktop public key separately from
+  mutable core CLI assets. Validate the actual shared tag's source before attachment.
+  Remove Mac-only retention assumptions. No application state or new admission flag.
 - `⚙️ [desktop-distribution] Track Linux previews on the website [step 11.e/14]`:
   in `sesori-ai/landingpage`, discover completed public Linux internal packages from
   the same cached release lookup, keep stable/repository states honest, and fix spacing

@@ -79,7 +79,9 @@ jobs:
           set -euo pipefail
           gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" \
             | jq -r '.[] | select(.prerelease)
-                     | select(any(.assets[]; .name == "desktop-release.json") | not) | .tag_name' \
+                     | select(any(.assets[];
+                         .name == "desktop-release.json" or .name == "desktop-linux-release.json") | not)
+              | .tag_name' \
             | { grep -E "^v${VERSION//./\\.}-internal\.[0-9]+$" || true; } \
             | while read -r stale; do
                 echo "Deleting superseded internal pre-release $stale (tag kept)"

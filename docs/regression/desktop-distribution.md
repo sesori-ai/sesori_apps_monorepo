@@ -113,8 +113,8 @@ claim. PR CI's disposable-key fixtures also check GPGV and DNF's signature-requi
 install/reinstall/remove flow in an isolated install root, including unsigned-RPM refusal.
 Main-only native runs establish production-key access separately. These fixtures do
 not run the real application. Historical unsigned package runs remain unsigned
-proof; new tooling alone does not relabel them. Public repositories, shared-cycle
-publication and N→N+1/desktop-session checks remain pending.
+proof; new tooling alone does not relabel them. Public repositories and
+N→N+1/desktop-session checks remain separate from internal-preview publication.
 See [key setup and backup guidance](../desktop/linux-signing.md).
 
 Signed native run `38372268594` qualified x64 and arm64 at source
@@ -125,9 +125,36 @@ checksum signatures matched. This establishes real credential access and signed
 package mechanics, not public repositories, GUI/account behavior or N→N+1 updates.
 The manual workflow's build number is not the shared release sequence.
 
+## Linux internal-preview publication
+
+The shared internal cycle builds both native Linux CPUs with its source/build number
+and compiled `internal` channel. The existing native workflow also accepts those same
+inputs for bootstrap against an already-published shared tag; its own run number is not
+an aligned release number. Retained compiled defines must match the sealed identity.
+Product SDK, icon, plugin dependencies and package construction come from the selected
+main-ancestor source. Signing and container qualification use the trusted workflow
+checkout. Parallel Linux/macOS reusable calls have distinct concurrency groups.
+
+The Linux publisher requires both native package sets, matching signed/unsigned
+provenance, clean source and all six package fixtures. Both signer reports and checksum
+signatures must match the repository's approved primary fingerprint, independently of
+producer configuration or downloaded key material. It then requires an existing public
+internal release whose tag resolves to that exact source. No stable Linux path is admitted.
+Core CLI and macOS assets remain untouched. Each public asset is anonymously hash-checked;
+identical retries are allowed, conflicting bytes are never overwritten.
+`desktop-linux-release.json` is uploaded last and does not depend on macOS completion.
+Per-CPU `desktop-linux-<arch>-checksums.txt`/`.asc` pairs retain their original signed
+bytes. `desktop-linux-public.asc` is separate from the core CLI owner's replaceable key
+asset, even though both use the same signing key. Private evidence never becomes a
+release asset. The publisher cannot create/promote releases, move tags or change Latest.
+
+The user accepted GUI/login/keyring/tray and real N→N+1 gaps for opt-in internal previews.
+These packages do not establish stable Linux admission or signed APT/RPM repository trust.
+Fixture tests alone do not establish production-key access or public retrieval.
+
 ## Shared release cycle and private preparation
 
-Private `macos-packaging` accepts optional immutable `source_sha` and `build_number`
+Private `macos-packaging` and `linux-packaging` accept immutable `source_sha` and `build_number`
 overrides, validating main ancestry before building. This qualifies the exact selected
 production source/build without enabling publication or submitting anything to stores.
 The workflow's toolchain-selector action stays at its own revision; product SDK and
@@ -144,25 +171,27 @@ this internal flow end to end for `1.9.1+983`, with desktop publication skipped 
 read-only shared-producer preparation accepted separately. This does not establish
 stable production attachment or public desktop retrieval.
 
-Both reusable native-desktop callers
+Reusable native-desktop callers
 must grant `contents: read`, `actions: read` and `pull-requests: read`: GitHub validates
 the nested upgrade jobs' PR-provenance permission even when those jobs are skipped.
 A missing scope rejects the entire caller before its release gate can execute.
 
 Desktop attachment follows the existing shared release finalizer; production already
 passed `store-production`. Desktop failure does not change bridge/mobile success conditions.
-Internal rollover retains the newest public prerelease with `desktop-release.json`
-alongside the current core release; older completed previews retire only once a newer
-completion exists. A failed desktop build or attachment therefore preserves the last
-downloadable preview without holding back core releases. The marker reuses the publisher's
-existing last-uploaded completion signal, not a second pointer or release owner.
+Internal rollover retains the newest completed public prerelease independently for
+macOS (`desktop-release.json`) and Linux (`desktop-linux-release.json`), alongside the
+current core release. Older previews retire only after their platform has a newer completion.
+A failed build or attachment on one platform preserves its last downloadable preview,
+even when the other platform advances. Markers are the publishers' last-uploaded signals,
+not persistent pointers or another release owner.
 Stable bridge/npm cleanup skips completed desktop previews even when stable desktop
 assets exist: an internal channel must not be forced onto stable. This also preserves
 previews during bridge-only production or pending/failed stable desktop attachment.
 `DESKTOP_MACOS_PUBLICATION_ENABLED` defaults off; the user admitted macOS on 2026-09-26
-and it is now `true`. Windows/Linux remain unadmitted.
+and it is now `true`. Linux internal previews were admitted on 2026-10-13;
+Windows and stable Linux remain unadmitted.
 
-Admitted publication attaches four installers, `desktop-checksums.txt` and
+Admitted macOS publication attaches four installers, `desktop-checksums.txt` and
 `desktop-release.json` to existing product tags. It never creates/promotes a release,
 changes Latest, or replaces bridge assets/checksums. Each asset is retrieved without
 authentication and hash-verified. Retries reuse identical assets and refuse conflicting
@@ -332,7 +361,10 @@ historical evidence as shared-store qualification.
   desktop assets while still deleting same-version core-only internal releases.
   Windows fixtures cover identity/CPU refusal, complete native inventory, pinned
   compiler arguments, bounded installer directives and no-overwrite diagnostics.
-  Linux fixtures cover identity/CPU refusal, payload layout and symlink preservation,
+  Linux publication fixtures cover compiled-channel/source/build refusal, real GPGV
+  checksum verification, independent platform completion, anonymous delivery failure,
+  immutable retries and separate core/macOS ownership. Package fixtures cover identity/CPU
+  refusal, payload layout and symlink preservation,
   source-derived dynamic-loading audit, generated dependency invocation, bounded
   ownership and absence of package lifecycle scripts. macOS upgrade fixtures cover
   producer/run/source/channel/identity ordering, altered DMGs, dirty-source refusal,

@@ -1,0 +1,84 @@
+name: Publish Linux desktop internal previews
+
+# Attach to an existing shared internal release only. No release creation, stores,
+# stable admission, repository hosting or signing credentials in this workflow.
+on:
+  workflow_call:
+    inputs:
+      source_sha:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      build_number:
+        required: true
+        type: string
+      packaging_run:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: 'Exact product SHA already tagged by the shared internal release'
+        required: true
+        type: string
+      version:
+        description: 'Existing shared release version, without internal suffix'
+        required: true
+        type: string
+      build_number:
+        description: 'Existing shared internal build number, not the qualification run number'
+        required: true
+        type: string
+      packaging_run:
+        description: 'Successful aligned Linux qualification/shared run with both native CPUs'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Require trusted main publication
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Linux publication requires main'; exit 1; }
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Select existing native producer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGING_RUN: ${{ inputs.packaging_run }}
+        run: |
+          set -euo pipefail
+          [[ "$PACKAGING_RUN" =~ ^[1-9][0-9]*$ ]] || { echo 'Expected a packaging run ID'; exit 1; }
+          mkdir -p build/desktop-linux-release-input
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$PACKAGING_RUN" > build/desktop-linux-release-input/run.json
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.packaging_run }}
+          pattern: desktop-linux-*
+          path: build/desktop-linux-release-input
+      - name: Validate signed evidence and attach immutable internal previews
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          PACKAGING_RUN: ${{ inputs.packaging_run }}
+        run: |
+          python .github/scripts/publish_desktop_linux.py \
+            --root build/desktop-linux-release-input --output build/desktop-linux-release-prepared \
+            --source-sha "$SOURCE_SHA" --tooling-sha "$GITHUB_SHA" \
+            --version "$VERSION" --build-number "$BUILD_NUMBER" \
+            --repository "$GITHUB_REPOSITORY" --run-id "$PACKAGING_RUN"
