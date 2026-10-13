@@ -1,7 +1,7 @@
 name: Desktop Native Qualification
 
 # Default qualification: no signing credentials, release tags, publication or GUI launch.
-# Explicit manual macOS modes verify credentials or produce private notarized test artifacts.
+# Explicit manual macOS/Linux packaging modes produce private signed test artifacts.
 # Targeted SDK/tooling qualification, NOT another full-source PR CI matrix.
 # Product source changes remain covered by desktop-ci.yml and explicit packaged release gates.
 # Shared releases reuse the macOS leg; bridge/mobile finalization remains independent.
@@ -44,7 +44,7 @@ on:
           - linux-packaging
         default: native-builds
       channel:
-        description: 'Compiled download channel (macos packaging/upgrade modes)'
+        description: 'Compiled download channel (macOS/Linux packaging and macOS upgrade modes)'
         type: choice
         options: [stable, internal]
         default: stable
@@ -68,6 +68,9 @@ on:
       - '.github/scripts/package_desktop_linux.py'
       - '.github/scripts/qualify_desktop_linux_package.sh'
       - '.github/scripts/test_package_desktop_linux.py'
+      - '.github/scripts/sign_desktop_linux.py'
+      - '.github/scripts/test_sign_desktop_linux.py'
+      - '.github/scripts/Dockerfile.linux-signing'
       - 'client/desktop/tool/windows_installer.iss'
       - 'client/app/android/app/src/main/ic_launcher-playstore.png'
       - 'client/desktop/windows/runner/main.cpp'
@@ -90,6 +93,10 @@ on:
 
 permissions:
   contents: read
+
+env:
+  # One native Fedora 44 pin for packaging, install fixtures and signing tests.
+  FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:61beafd34111e1cb85fb49377ceadeee0a53622dbc20670ed8ca303f0e17ed9c
 
 concurrency:
   group: desktop-qualification-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -677,6 +684,7 @@ jobs:
           retention-days: 14
 
   linux-distribution:
+    environment: linux-signing
     needs: tooling
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'linux-packaging'
     timeout-minutes: 65
@@ -698,12 +706,14 @@ jobs:
       # Base filesystem indexes are pinned for both native CPUs. apt/dnf repositories remain rolling.
       UBUNTU_IMAGE: docker.io/library/ubuntu@sha256:69cecf4bbf72d2d44a9eef1b71fb98c7fb973d78af11399deccef19beb008ad9
       DEBIAN_IMAGE: docker.io/library/debian@sha256:f324c7ff54321e8d9c588493a20244965938ce0aa50bbd1022d38010e9ffc4b1
-      # Fedora 44 was current stable when checked against official releases.json.
-      FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:61beafd34111e1cb85fb49377ceadeee0a53622dbc20670ed8ca303f0e17ed9c
     defaults:
       run:
         shell: bash
     steps:
+      - name: Require main before signed Linux qualification
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Linux signing requires main'; exit 1; }
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
@@ -733,7 +743,8 @@ jobs:
           (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
           (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
           (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
-            --build-number '${{ github.run_number }}' --output '${{ github.workspace }}/build/desktop-bundle') \
+            --build-number '${{ github.run_number }}' --channel '${{ inputs.channel }}' \
+            --output '${{ github.workspace }}/build/desktop-bundle') \
             2>&1 | tee build/desktop-qualification/bundle-build.log
           if [[ -s build/desktop-bundle/build-source-changes.patch ]]; then
             echo 'Commit build-generated source changes before package construction.' >&2
@@ -767,10 +778,29 @@ jobs:
                 --package-config client/.dart_tool/package_config.json \
                 --output build/desktop-linux-packaging/rpm
             ' 2>&1 | tee build/desktop-linux-packaging/rpm-packaging.log
+      - name: Build Linux signing tools without secrets
+        run: |
+          set -euo pipefail
+          docker build --build-arg FEDORA_IMAGE="$FEDORA_IMAGE" \
+            --file .github/scripts/Dockerfile.linux-signing --tag sesori-linux-signing .github/scripts
+      - name: Sign and verify qualified Linux packages
+        env:
+          LINUX_GPG_PRIVATE_KEY: ${{ secrets.LINUX_GPG_PRIVATE_KEY }}
+          LINUX_GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
+          LINUX_GPG_FINGERPRINT: ${{ vars.LINUX_GPG_FINGERPRINT }}
+        run: |
+          set -euo pipefail
+          # Secrets exist only in this step/container, never in build dependencies or artifacts.
+          docker run --rm --network none \
+            -v "$GITHUB_WORKSPACE:/workspace:ro" \
+            -v "$GITHUB_WORKSPACE/build/desktop-linux-packaging:/packages" \
+            -e LINUX_GPG_PRIVATE_KEY -e LINUX_GPG_PASSPHRASE -e LINUX_GPG_FINGERPRINT \
+            sesori-linux-signing python3 .github/scripts/sign_desktop_linux.py \
+              --root /packages --output /packages/signed
       - name: Install, same-version reinstall and remove DEB on native Ubuntu and Debian
         run: |
           set -euo pipefail
-          package="$(realpath build/desktop-linux-packaging/deb/*.deb)"
+          package="$(realpath build/desktop-linux-packaging/signed/*.deb)"
           bundle="$(realpath build/desktop-bundle/bundle)"
           for fixture in "ubuntu-24.04|$UBUNTU_IMAGE" "debian-13|$DEBIAN_IMAGE"; do
             IFS='|' read -r name image <<<"$fixture"
@@ -783,7 +813,7 @@ jobs:
             }
             docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" "$image" bash -c "
               set -euo pipefail
-              apt-get update && apt-get install -y python3
+              apt-get update && apt-get install -y python3 gnupg
               .github/scripts/qualify_desktop_linux_package.sh deb '$package' '$bundle' \
                 '${{ matrix.arch }}' 'build/desktop-linux-packaging/${name}-fixture.json'
             " 2>&1 | tee "build/desktop-linux-packaging/${name}-fixture.log"
@@ -791,22 +821,24 @@ jobs:
       - name: Install, same-version reinstall and remove RPM on native Fedora
         run: |
           set -euo pipefail
-          package="$(realpath build/desktop-linux-packaging/rpm/*.rpm)"
+          package="$(realpath build/desktop-linux-packaging/signed/*.rpm)"
           bundle="$(realpath build/desktop-bundle/bundle)"
           docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" \
             "$FEDORA_IMAGE" bash -c "
               set -euo pipefail
-              dnf install -y python3
+              dnf install -y python3 gnupg2
               .github/scripts/qualify_desktop_linux_package.sh rpm '$package' '$bundle' \
                 '${{ matrix.arch }}' 'build/desktop-linux-packaging/fedora-44-fixture.json'
             " 2>&1 | tee build/desktop-linux-packaging/fedora-44-fixture.log
-      - name: Upload private unsigned packages
+      - name: Upload private signed packages
         uses: actions/upload-artifact@v4
         with:
           name: desktop-linux-packages-${{ matrix.arch }}
           path: |
-            build/desktop-linux-packaging/deb/*.deb
-            build/desktop-linux-packaging/rpm/*.rpm
+            build/desktop-linux-packaging/signed/*.deb
+            build/desktop-linux-packaging/signed/*.rpm
+            build/desktop-linux-packaging/signed/*.asc
+            build/desktop-linux-packaging/signed/desktop-linux-checksums.txt
           if-no-files-found: error
           retention-days: 14
       - name: Upload qualification evidence, including partial failures
@@ -821,6 +853,7 @@ jobs:
             build/desktop-linux-packaging/*.json
             build/desktop-linux-packaging/*.log
             build/desktop-linux-packaging/*/packaging.json
+            build/desktop-linux-packaging/signed/signing.json
           if-no-files-found: warn
           retention-days: 14
 
@@ -832,6 +865,14 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m unittest discover -s .github/scripts -p 'test_*desktop*.py'
+      - name: Verify real Linux signatures with a disposable subkey
+        run: |
+          set -euo pipefail
+          docker build --build-arg FEDORA_IMAGE="$FEDORA_IMAGE" \
+            --file .github/scripts/Dockerfile.linux-signing --tag sesori-linux-signing .github/scripts
+          docker run --rm --network none -v "$GITHUB_WORKSPACE:/workspace:ro" \
+            -e SESORI_LINUX_SIGNING_TEST_REQUIRED=1 sesori-linux-signing \
+            python3 -m unittest discover -s .github/scripts -p 'test_sign_desktop_linux.py'
 
   native-build:
     needs: tooling

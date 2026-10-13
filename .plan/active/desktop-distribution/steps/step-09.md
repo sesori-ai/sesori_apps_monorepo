@@ -1,11 +1,44 @@
 # Step 9 — Private Linux package qualification
 
-Ordinal 11/14. Step 8's Windows publication/winget requires signed public assets
-and remains blocked; it is not replaced by fabricated links or manifests. Continue
-independently executable Linux preparation while preserving macOS → Windows → Linux
-shipping order. No signing keys, public repositories, GCS or accounts are authorized.
+Ordinal 11/14. The user now prioritizes Linux before Windows (D10). Windows signing
+and winget remain separate; they no longer block Linux. Private package mechanics
+below are already merged. The user requested key-generation commands and a signed
+Linux-build PR; cloud resources and public repository publication are not part of it.
 
-## Implementation plan
+## Signing continuation — 11.a/14
+
+PR title: `🚧 [desktop-distribution] Sign private native Linux packages [step 11.a/14]`.
+
+- Keep unsigned DEB/RPM construction and its evidence intact. A new small post-build
+  signer verifies their hashes and matching identity, copies them to a fresh output,
+  signs the RPM natively, then signs SHA-256 checksums covering both final artifacts.
+  DEB bytes remain unchanged; detached checksums are not native APT repository trust.
+- Only main may run credential-bearing `linux-packaging`. The `linux-signing`
+  environment allows main only and stores a protected secret-subkey export and
+  passphrase; its public variable pins the full primary fingerprint. The primary
+  certification key and revocation certificate stay with the user, offline.
+- Build signing tools from the existing pinned Fedora image before supplying secrets.
+  Sign in a network-disabled container; import into a temporary private GnuPG home,
+  remove secrets from child environments, verify with public material and clean up
+  the agent/key files. Upload only signed packages, public key/checksums/signature
+  and separate public provenance, never the keyring or passphrase.
+- Existing native Ubuntu/Debian/Fedora install/reinstall/remove fixtures consume the
+  signed output, verify checksums first and require native RPM signature verification.
+  They still do not launch the GUI/helper or establish a real N→N+1 update.
+- Local unit/source contracts and actionlint/ShellCheck cover boundaries. PR CI uses
+  a disposable certification key plus signing-only export to exercise real GPG/RPM
+  signatures, wrong key/passphrase refusal, tampering and isolated DNF signed-package
+  install/reinstall/remove versus unsigned refusal. The fixtures never receive
+  production keys. Actual signed x64/arm64 qualification runs only after merge.
+
+Complexity: approximately 700–1,000 authored lines, no generated/application changes.
+Only temporary signing files and a public report are added; no service, updater,
+coordination state, cloud provisioning or publication authority. Native payloads
+stay unchanged. Remove unsigned-only uploads/fixture assumptions that this replaces;
+retain unsigned source reports as input provenance. Key setup and backup instructions:
+[Linux package signing](../../../../docs/desktop/linux-signing.md).
+
+## Original private-package implementation
 
 - Add `.github/scripts/package_desktop_linux.py`, reusing native inventory and
   committed staging from existing tooling. Consume the current bundle's version,

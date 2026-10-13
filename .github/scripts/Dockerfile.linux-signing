@@ -1,0 +1,5 @@
+# Use the same pinned native Fedora image as Linux RPM packaging.
+ARG FEDORA_IMAGE
+FROM ${FEDORA_IMAGE}
+RUN dnf install -y python3 gnupg2 rpm-sign rpm-build && dnf clean all
+WORKDIR /workspace

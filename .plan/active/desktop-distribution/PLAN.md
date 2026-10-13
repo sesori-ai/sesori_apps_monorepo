@@ -14,7 +14,8 @@
   acceptance and the 82-test shutdown audit retain their recorded scope; later public
   links do not establish fresh authenticated replacement or shared-store qualification.
   Windows signing/winget, Linux signed repositories, six-target onboarding and final
-  reconciliation/retirement remain open. Shipping order stays macOS, Windows, Linux.
+  reconciliation/retirement remain open. The user now prioritizes Linux before Windows;
+  private Linux package signing is the next implementation slice.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
@@ -25,8 +26,8 @@
 
 Deliver the existing supervisor + cockpit as signed, installable, updateable desktop
 software on macOS, Windows, and Linux, each natively on x64 and arm64. Release macOS
-first, then Windows, then Linux; both architectures must pass before their platform
-ships. A working CLI target or an emulated run does not prove native desktop support.
+first, then Linux, then Windows under the user's revised priority; both architectures
+must pass before their platform ships. A working CLI target or an emulated run does not prove native desktop support.
 
 This succeeds [desktop-app](../desktop-app/PLAN.md), whose step 22 explicitly named
 this work. The user requested distribution planning before that plan's retirement.
@@ -62,7 +63,7 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 
 | ID | Decision |
 |---|---|
-| D1 | macOS first, followed by Windows and Linux; independent platform ship gates. |
+| D1 | macOS first, now followed by Linux and then Windows (D10); independent platform ship gates. |
 | D2 | All six native application targets: macOS, Windows, Linux × x64, arm64. User-approved exception (2026-09-15): the Windows ARM64 installer launcher may use emulation; installed GUI/helper/native libraries remain ARM64. No other silent reduction. |
 | D3 | macOS: direct Developer ID distribution, hardened runtime, notarization, stapled DMGs, manual signed-package updates (D6 fallback). App Store sandboxing does not fit the current host-tool model. |
 | D4 | Windows: direct download first, signed per-user Inno Setup EXE, manual Download update button, and winget discovery. No embedded Windows updater or automatic updates. Store/MSIX is not a launch requirement. |
@@ -71,6 +72,7 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 | D7 | GitHub Releases hosts downloadable installers; static GCS hosts signed Linux repositories. No new backend release service. Linux repositories also host their package payloads, rather than relying on cross-origin package-manager redirects. |
 | D8 | Selected 2026-09-25: share the bridge/mobile release cycle; retain platform gates and macOS-first delivery. |
 | D9 | 2026-09-26: retire Gate C with accepted QA gaps; admit macOS publication through the shared cycle. |
+| D10 | User-directed order: Linux before Windows; private signing now, public repositories separately. |
 
 ### User-retired QA gate and macOS admission — 2026-09-26
 
@@ -412,10 +414,27 @@ history and keeps lifecycle changes out of the package-signing review.
 | 6 | ⚙️ [desktop-distribution] Prepare isolated desktop release channels [step 8/14] | Private preparation. |
 | 7 | 🚧 [desktop-distribution] Qualify private per-user Windows installers [step 9/14] | After 3.b and Windows qualification. Independent private unsigned x64/arm64 installers, complete helper bundle, shortcuts, mutex refusal and isolated install/uninstall fixtures. Signing, timestamp/publisher verification and public delivery remain gated, including the prior macOS ship gate. High installer risk; no shared CLI data deletion or database change. |
 | 8 | ⚙️ [desktop-distribution] Deliver manual Windows updates and winget discovery [step 10/14] | After 6 and 7. Settings download action, signed N→N+1 manual replacement, channel-specific downloads, winget manifests and Windows ship gate. Medium integration risk; no embedded updater, forced helper shutdown or automatic restart. No database change. |
-| 9 | ⚙️ [desktop-distribution] Qualify private native DEB and RPM packages [step 11/14] | Independent private preparation after native bundle qualification. Four unsigned native packages, generated dependency manifests, desktop integration and isolated package-manager fixtures. Signing, public APT/RPM repositories and shipping remain blocked behind prior platform gates. No updater, home cleanup or database change. |
+| 9 | ⚙️ [desktop-distribution] Qualify private native DEB and RPM packages [step 11/14] | See below. |
 | 10 | 🌿 [desktop-distribution] Offer shipped desktop downloads during onboarding [step 12/14] | After all platform gates. Shared mobile installation guidance and published links, preserve CLI alternative and truthful platform/CPU choices. Low/medium onboarding regression risk; focused UI/link tests and existing analytics assessment. New installation choice, no database change. |
 | 11 | 🌿 Private regression reconciliation (13/14) | Scope and exact PR title below. |
 | 12 | ⚙️ Release verification and retirement (14/14) | Scope and exact PR title below. |
+
+**Step 9 signing continuation:**
+`🚧 [desktop-distribution] Sign private native Linux packages [step 11.a/14]`.
+Extend the existing main-only manual Linux producer with native RPM signatures and
+signed DEB/RPM checksums. Use one protected `linux-signing` environment and an isolated
+GnuPG home; the user retains the certification primary key offline. Install tools
+before exposing the signing subkey, pin the full fingerprint and keep secrets out of
+logs/artifacts/child environments. Disposable-key CI tests cover real signatures and
+tamper/failure refusal. Native qualification follows merge, not PR-secret exposure.
+No application state/DI/wire/database change or architecture review; this is signing
+and CI tooling. Complexity budget: temporary key/passphrase files and one public
+signing report, no persistent release owner, service, updater or cloud provisioning.
+Estimate 700–1,000 authored lines. Retire unsigned-only upload/fixture assumptions;
+keep unsigned producer evidence distinct from the signed RPM's final digest.
+Original step IDs/ordinals remain stable; D10 changes execution priority, not historical
+PR titles or the 14-ordinal total. Public repository/shared-cycle delivery follows
+this bounded signing slice and must preserve existing core release authority.
 
 Step 6 delivered read-only private metadata/checksums in PR #1511 without publication.
 Credential migration is complete, but parent and native/public ship gates still apply.
