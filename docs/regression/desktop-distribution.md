@@ -136,8 +136,9 @@ main-ancestor source. Signing and container qualification use the trusted workfl
 checkout. Parallel Linux/macOS reusable calls have distinct concurrency groups.
 
 The Linux publisher requires both native package sets, matching signed/unsigned
-provenance, clean source and all six package fixtures. It verifies each signed checksum
-pair with the producer's recorded public-key identity, then requires an existing public
+provenance, clean source and all six package fixtures. Both signer reports and checksum
+signatures must match the repository's approved primary fingerprint, independently of
+producer configuration or downloaded key material. It then requires an existing public
 internal release whose tag resolves to that exact source. No stable Linux path is admitted.
 Core CLI and macOS assets remain untouched. Each public asset is anonymously hash-checked;
 identical retries are allowed, conflicting bytes are never overwritten.

@@ -17,7 +17,7 @@ import publish_desktop_linux as publisher
 
 SOURCE, TOOLING = "a" * 40, "b" * 40
 REPO = "sesori-ai/sesori_apps_monorepo"
-FINGERPRINT = "C" * 40
+FINGERPRINT = publisher.TRUSTED_PRIMARY_FINGERPRINT
 TAG = "v1.9.1-internal.1016"
 WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
 
@@ -113,6 +113,8 @@ class PublishLinuxTest(unittest.TestCase):
         self.assertEqual(metadata["sourceSha"], SOURCE)
         self.assertEqual(metadata["producerWorkflowSha"], TOOLING)
         self.assertEqual(metadata["channel"], "internal")
+        self.assertEqual(metadata["signerFingerprint"], FINGERPRINT)
+        self.assertTrue(all(call.kwargs["fingerprint"] == FINGERPRINT for call in verified.call_args_list))
         self.assertEqual(len(metadata["artifacts"]), 4)
         self.assertEqual(len(metadata["verificationFiles"]), 5)
         self.assertEqual({name: self.public[name] for name in original}, original)
@@ -167,6 +169,19 @@ class PublishLinuxTest(unittest.TestCase):
                     self.publish(**{field: value, "output": self.root / field})
                 self.assertEqual(self.uploads, [])
 
+    def test_untrusted_signer_is_refused_for_either_or_both_architectures(self):
+        for targets in (("arm64",), ("x64",), publisher.ARCHITECTURES):
+            with self.subTest(targets=targets):
+                for arch in publisher.ARCHITECTURES:
+                    path = self.root / f"desktop-linux-evidence-{arch}/desktop-linux-packaging/signed/signing.json"
+                    value = json.loads(path.read_text())
+                    # Even two agreeing reports cannot replace the repository's public trust anchor.
+                    save(path=path, value=value | {"signerFingerprint": "D" * 40 if arch in targets else FINGERPRINT})
+                with self.assertRaisesRegex(ValueError, "trusted primary fingerprint"):
+                    self.publish(output=self.root / ("untrusted-" + "-".join(targets)))
+                self.assertEqual(self.uploads, [])
+                self.assertNotIn(publisher.MANIFEST, self.public)
+
     def test_stable_channel_cannot_be_relabeled_as_internal(self):
         for path in self.root.glob("*/desktop-bundle/dart-defines.env"):
             path.write_text(path.read_text().replace("CHANNEL=internal", "CHANNEL=stable"))
@@ -207,6 +222,10 @@ class PublishLinuxTest(unittest.TestCase):
 
 
 class LinuxWorkflowTest(unittest.TestCase):
+    def test_public_verification_instructions_match_the_repository_pin(self):
+        instructions = (Path(__file__).resolve().parents[2] / "docs/desktop/linux-signing.md").read_text()
+        self.assertIn(f"fingerprint={FINGERPRINT}\n", instructions)
+
     def test_internal_only_parallel_native_calls_preserve_core_and_macos(self):
         workflow = (WORKFLOWS / "release-all-platforms.yml").read_text()
         build = workflow.split("  desktop-linux:\n", 1)[1].split("  publish-desktop-linux:\n", 1)[0]

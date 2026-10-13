@@ -143,7 +143,7 @@ macOS publication, desktop attaches its installers and separate `desktop-checksu
 after both its native jobs and the existing shared finalizer pass. Desktop never changes bridge assets, checksums,
 tags, prerelease status or Latest. Desktop failure remains visible without changing core finalization.
 
-Approved Linux internal previews use the same aligned source/build with native x64/arm64 DEB/RPM packaging
+Linux internal previews use the same aligned source/build with native x64/arm64 DEB/RPM packaging
 and OpenPGP signing. They attach after core finalization, independently of macOS completion. Their last-uploaded
 `desktop-linux-release.json` marks completion; per-CPU checksum/signature pairs and `desktop-linux-public.asc`
 remain separate from CLI assets. Main-only bootstrap can target an existing shared internal release without

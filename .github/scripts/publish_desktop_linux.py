@@ -16,6 +16,9 @@ from sign_desktop_linux import CHECKSUMS, PUBLIC_KEY
 
 MANIFEST = "desktop-linux-release.json"
 PUBLIC_DESKTOP_KEY = "desktop-linux-public.asc"
+# Public trust anchor, independent of producer artifacts/configuration. Rotate explicitly
+# with the current verification instructions in docs/desktop/linux-signing.md.
+TRUSTED_PRIMARY_FINGERPRINT = "E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7"
 FIXTURES = ("ubuntu-24.04", "debian-13", "fedora-44")
 FIXTURE_CHECKS = (
     "installedPayloadVerified", "signedChecksumsVerified", "boundedSystemOwnershipVerified",
@@ -24,9 +27,8 @@ FIXTURE_CHECKS = (
 
 
 def verify_checksums(*, packages: Path, fingerprint: str) -> None:
-    # The trusted producer pins its environment fingerprint before signing. This
-    # verifies the delivered checksum signature against that recorded identity.
-    # Publication acceptance additionally uses an independently known public pin.
+    # The caller supplies the repository's public trust anchor, never an identity
+    # accepted solely from the producer's signing report or downloaded key.
     with tempfile.TemporaryDirectory(prefix="gpg-") as directory:
         home = Path(directory)
         keyring = home / "public.gpg"
@@ -57,7 +59,6 @@ def prepare(*, root: Path, output: Path, source_sha: str, tooling_sha: str,
     require(type(build_number) is int and build_number > 0, "Expected positive shared build number")
     output.mkdir(parents=True)
     artifacts, verification = [], []
-    signer = None
     for arch in ARCHITECTURES:
         packages = root / f"desktop-linux-packages-{arch}"
         evidence = root / f"desktop-linux-evidence-{arch}"
@@ -74,11 +75,9 @@ def prepare(*, root: Path, output: Path, source_sha: str, tooling_sha: str,
         require(defines["SESORI_DESKTOP_RELEASE_CHANNEL"] == "internal", "Only compiled internal previews are admitted")
         patch = bundle / "build-source-changes.patch"
         require(patch.exists() and patch.stat().st_size == 0, "Missing clean-source evidence or modified source")
-        fingerprint = signed["signerFingerprint"]
-        require(bool(re.fullmatch(r"[0-9A-F]{40}", fingerprint)), "Expected full primary fingerprint")
-        if signer is None:
-            signer = fingerprint
-        require(signer == fingerprint, "Architecture signing keys differ")
+        require(signed["signerFingerprint"] == TRUSTED_PRIMARY_FINGERPRINT,
+                f"{arch}: signer {signed['signerFingerprint']} differs from trusted primary fingerprint "
+                f"{TRUSTED_PRIMARY_FINGERPRINT}")
         require(signed["checksumFile"] == CHECKSUMS and signed["publicKeyFile"] == PUBLIC_KEY,
                 "Unexpected signing companion files")
         expected_names = {f"Sesori-linux-{arch}-{version}-{build_number}.{kind}" for kind in ("deb", "rpm")}
@@ -107,7 +106,7 @@ def prepare(*, root: Path, output: Path, source_sha: str, tooling_sha: str,
             require(record["installedIdentity"] == identity and record["architecture"] == arch
                     and CPU_NAMES.get(record["containerMachine"]) == arch, f"Wrong native fixture identity: {fixture}")
             require(all(record.get(check) is True for check in FIXTURE_CHECKS), f"Incomplete fixture: {fixture}")
-        verify_checksums(packages=packages, fingerprint=fingerprint)
+        verify_checksums(packages=packages, fingerprint=TRUSTED_PRIMARY_FINGERPRINT)
         # Keep each native checksum/signature pair intact; renaming does not change signed bytes.
         for suffix in ("", ".asc"):
             name = f"desktop-linux-{arch}-checksums.txt{suffix}"
@@ -125,7 +124,7 @@ def prepare(*, root: Path, output: Path, source_sha: str, tooling_sha: str,
         "schemaVersion": 1, "platform": "linux", "channel": "internal", "version": version,
         "buildNumber": build_number, "sourceSha": source_sha, "tag": f"v{version}-internal.{build_number}",
         "repository": repository, "packagingRun": run_id, "producerWorkflowSha": run["head_sha"],
-        "preparationSourceSha": tooling_sha, "signerFingerprint": signer,
+        "preparationSourceSha": tooling_sha, "signerFingerprint": TRUSTED_PRIMARY_FINGERPRINT,
         "artifacts": artifacts, "verificationFiles": verification,
         "proofBoundary": "Signed native DEB/RPM internal previews and container package fixtures only; "
                          "GUI/login/keyring/tray and real N-to-N+1 upgrades remain unverified. "

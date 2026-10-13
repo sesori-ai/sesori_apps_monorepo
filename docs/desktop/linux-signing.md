@@ -241,9 +241,13 @@ gh workflow run desktop-linux-release.yml --repo sesori-ai/sesori_apps_monorepo 
   -f version="$VERSION" -f build_number="$BUILD_NUMBER"
 ```
 
-The publisher has no signing secrets. It requires retained compiled identity/channel,
-matching signed and unsigned evidence, all six native package fixtures, valid checksum
-signatures, and a pre-existing public internal tag that resolves to the exact source.
+The publisher has no signing secrets. It pins the approved primary fingerprint in
+repository code, independently of producer artifacts or environment configuration.
+A primary-key rotation requires explicitly updating that pin and these verification
+instructions; renewing a signing subkey does not change the primary fingerprint.
+It also requires retained compiled identity/channel, matching signed/unsigned evidence,
+all six native package fixtures, valid checksum signatures, and a pre-existing public
+internal tag that resolves to the exact source.
 It cannot create/promote a release, change Latest/tags or replace conflicting assets.
 Retry a failed publication job at its original workflow revision with its original
 producer artifacts; do not rebuild or relabel private qualification build 147.

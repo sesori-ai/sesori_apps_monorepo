@@ -179,6 +179,7 @@ class InternalReleaseGateTest(unittest.TestCase):
             ".github/scripts/qualify_desktop_linux_package.sh",
             ".github/scripts/sign_desktop_linux.py",
             ".github/scripts/linux_signing.py",
+            ".github/scripts/Dockerfile.linux-signing",
             ".github/scripts/github_release_assets.py",
             ".github/scripts/sign_bridge_linux.py",
             ".github/scripts/publish_bridge_linux_signatures.py",

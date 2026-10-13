@@ -106,9 +106,12 @@ jobs and proof boundary are in [step 9](steps/step-09.md#public-cli-signatures--
 This is CLI artifact authentication, not Linux desktop/repository publication or updater
 OpenPGP enforcement.
 
-Step 11.d reuses the two native Linux builders with aligned source/build/channel and
-retained compile metadata. Its internal-only publisher validates signed evidence and
-matching shared-tag source, attaches immutable assets, and uploads Linux completion last.
+Step 11.d (#1951) reuses the two native Linux builders with aligned source/build/channel
+and retained compile metadata. Its internal-only publisher validates signed evidence
+against the approved primary fingerprint pinned in repository code, independently of
+producer artifacts/configuration. It checks the shared-tag source, attaches immutable
+assets, and uploads Linux completion last. Dockerfile-only signing fixes qualify for
+the shared cycle; no new per-release Linux approval condition is introduced.
 Linux/macOS completion and retention are independent; core/mobile finalization remains
 unchanged. No admission flag, scheduler, service, application state or stable Linux route
 is added. Focused fixtures are not yet a claim of public desktop retrieval.

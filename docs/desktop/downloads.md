@@ -74,7 +74,7 @@ Available in the newest internal [shared release][shared-releases] with a deskto
 `Sesori-macos-arm64.dmg` or `Sesori-macos-arm64.zip`. Verify against its
 `desktop-checksums.txt` and `desktop-release.json`, not bridge `checksums.txt`.
 
-Desktop previews advance only when `desktop-release.json` completes publication.
+macOS previews advance only when `desktop-release.json` completes publication.
 The shared cycle retains the newest completed internal release independently per
 platform while newer core-only releases build or desktop fails. Older previews can
 roll away after their platform has a newer completion. The website must select each
