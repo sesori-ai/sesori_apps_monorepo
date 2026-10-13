@@ -6,6 +6,7 @@ import "../api/database/daos/session_dao.dart";
 import "../foundation/session_archived_read_only_exception.dart";
 import "../runtime/plugin_runtime.dart";
 import "mappers/mcp_mapper.dart";
+import "models/mcp_authentication_update.dart";
 import "models/mcp_control_result.dart";
 import "models/mcp_operation.dart";
 import "models/project_not_found_exception.dart";
@@ -16,6 +17,64 @@ class McpRepository({
   required final SessionDao _sessionDao,
   required final ProjectsDao _projectsDao,
 }) {
+  Future<void> validateAuthenticationTarget({required McpAuthenticationAttempt attempt}) async {
+    await _resolveScope(pluginId: attempt.pluginId, scope: attempt.target.scope, operation: McpOperation.authenticate);
+  }
+
+  /// Keeps the active runtime generation leased through native settlement.
+  Stream<McpAuthenticationUpdate> authenticate({required McpAuthenticationStartRequest request}) async* {
+    final scope = await _resolveScope(
+      pluginId: request.pluginId,
+      scope: request.target.scope,
+      operation: McpOperation.authenticate,
+    );
+    yield* _runtime.useStreamIfActive(
+      pluginId: request.pluginId,
+      operation: McpOperation.authenticate,
+      body: (plugin, _) => _authenticate(
+        plugin: plugin,
+        target: PluginMcpServerTarget(scope: scope, serverKey: request.target.serverKey),
+      ),
+    );
+  }
+
+  Stream<McpAuthenticationUpdate> _authenticate({
+    required BridgePluginApi plugin,
+    required PluginMcpServerTarget target,
+  }) async* {
+    if (plugin is! McpAuthenticationPluginApi) {
+      throw const McpAuthenticationUnavailableException(reason: McpAuthenticationUnavailableReason.unsupportedHarness);
+    }
+    final operation = await (plugin as McpAuthenticationPluginApi).beginMcpAuthentication(target: target);
+    var settled = false;
+    var invalidDestination = false;
+    try {
+      yield McpAuthenticationStarted(operation: operation);
+      yield* operation.events
+          .asyncMap((event) async {
+            if (event case PluginMcpAuthenticationChallenge(:final authorizationUri)) {
+              if (authorizationUri.scheme != "https" ||
+                  authorizationUri.host.isEmpty ||
+                  authorizationUri.userInfo.isNotEmpty) {
+                invalidDestination = true;
+                if (operation case PluginMcpCancelableAuthentication(:final cancel)) {
+                  await cancel();
+                }
+              }
+            }
+            return event;
+          })
+          .where((_) => !invalidDestination)
+          .map((event) => McpAuthenticationNativeEvent(event: event));
+      settled = true;
+      if (invalidDestination) throw const McpAuthenticationDestinationException();
+    } finally {
+      if (!settled) {
+        if (operation case PluginMcpCancelableAuthentication(:final cancel)) await cancel();
+      }
+    }
+  }
+
   Future<McpInventoryResult> getInventory({required String pluginId, required McpScope scope}) async {
     final nativeScope = await _resolveScope(pluginId: pluginId, scope: scope, operation: McpOperation.getInventory);
     final result = await _runtime.useIfActive(
@@ -133,7 +192,7 @@ class McpRepository({
             statusCode: 400,
           );
         }
-        if (operation == McpOperation.executeAction && session.archivedAt != null) {
+        if (operation != McpOperation.getInventory && session.archivedAt != null) {
           throw SessionArchivedReadOnlyException(
             rejection: SessionArchivedRejection(sessionId: sessionId, reason: SessionArchivedReason.archivedReadOnly),
           );

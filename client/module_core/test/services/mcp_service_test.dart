@@ -57,11 +57,31 @@ void main() {
     expect((failed.refresh as McpInventoryRefreshFailed).cause, same(cause));
   });
 
+  test("harness credential changes invalidate the selected session inventory", () async {
+    await load();
+    connection.eventController.add(
+      SseEvent(
+        data: const SesoriMcpInventoryChanged(pluginId: "fixture", scope: McpHarnessScope()),
+      ),
+    );
+    await _pump();
+    expect(repository.requests, hasLength(2));
+    repository.pending.last.complete(
+      McpReadSuccess(
+        inventory: _snapshot(scope: _request.scope, name: "Reauthorized"),
+      ),
+    );
+    await _pump();
+  });
+
   test("native mutation invalidation refreshes only the selected plugin and scope", () async {
     await load();
     for (final event in [
       SesoriMcpInventoryChanged(pluginId: "other", scope: _request.scope),
-      const SesoriMcpInventoryChanged(pluginId: "fixture", scope: McpHarnessScope()),
+      const SesoriMcpInventoryChanged(
+        pluginId: "fixture",
+        scope: McpSessionScope(sessionId: "other-session"),
+      ),
     ]) {
       connection.eventController.add(SseEvent(data: event));
     }

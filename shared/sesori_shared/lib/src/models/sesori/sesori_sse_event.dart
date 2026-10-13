@@ -61,6 +61,10 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   @FreezedUnionValue("mcp.inventory.changed")
   const factory mcpInventoryChanged({required String pluginId, required McpScope scope}) = SesoriMcpInventoryChanged;
 
+  /// Invalidation only: authorization URLs and callbacks stay request-scoped.
+  @FreezedUnionValue("mcp.authentication.changed")
+  const factory mcpAuthenticationChanged() = SesoriMcpAuthenticationChanged;
+
   /// Progress of a phone-triggered managed runtime install for one plugin.
   /// [percent] is only meaningful while [PluginInstallPhase.downloading] with a
   /// known total; [message] carries a sanitized failure description only on

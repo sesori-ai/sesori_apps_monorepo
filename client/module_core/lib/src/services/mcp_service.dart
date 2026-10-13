@@ -24,7 +24,9 @@ class McpService({
         _connectionService.events.listen((event) {
           if (event.data case SesoriMcpInventoryChanged(:final pluginId, :final scope)) {
             final request = _request;
-            if (request != null && request.pluginId == pluginId && request.scope == scope) {
+            if (request != null &&
+                request.pluginId == pluginId &&
+                (scope is McpHarnessScope || request.scope == scope)) {
               _staleVersion++;
               unawaited(refresh());
             }

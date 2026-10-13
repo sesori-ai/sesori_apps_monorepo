@@ -668,6 +668,45 @@ void main() {
     expect(runtime.snapshot.single.leaseCount, 0);
   });
 
+  test("active-only streams do not start dormant plugins", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    var called = false;
+    expect(
+      await runtime
+          .useStreamIfActive<int>(
+            pluginId: "one",
+            operation: _TestOperation.stream,
+            body: (_, _) {
+              called = true;
+              return const Stream.empty();
+            },
+          )
+          .toList(),
+      isEmpty,
+    );
+    expect(called, isFalse);
+    expect(factory.plugins, isEmpty);
+  });
+
+  test("active-only streams retain their generation lease until completion", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    final source = StreamController<int>();
+    final values = runtime
+        .useStreamIfActive<int>(pluginId: "one", operation: _TestOperation.stream, body: (_, _) => source.stream)
+        .toList();
+    await _waitUntil(() => source.hasListener);
+    expect(runtime.snapshot.single.leaseCount, 1);
+    source.add(7);
+    await source.close();
+    expect(await values, [7]);
+    expect(runtime.snapshot.single.leaseCount, 0);
+  });
+
   test("stream acquisition retains its lease until cancellation", () async {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);

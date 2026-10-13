@@ -3,8 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-authentication-contracts`, `64617e92bb`, in the provided `copper-heron` worktree.
-- Current step: 10/18 authentication wire contracts are ready for PR;
+- Branch/base: `sesori/mcp-authentication-owner`, `3361d6b95f`, in the provided `copper-heron` worktree.
+- Current step: 11/18 implements the headless owner and routes;
+  authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
   Client loading merged as #1949; Claude inventory API merged as #1948. Execution authorized on 2026-10-13.
@@ -28,8 +29,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 7/18 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
 | 8/18 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
 | 9/18 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
-| 10/18 | Authentication wire (original 7.b.2.a) | Ready for PR | 12 codec tests, analyzer and architecture approval |
-| 11/18 | Headless authentication owner and routes (original 7.b.2.b) | Not started | — |
+| 10/18 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
+| 11/18 | Headless authentication owner and routes (original 7.b.2.b) | In progress | Single native attempt and request-scoped URLs |
 | 12/18 | Shared authentication and external-action presentation | Not started | — |
 | 13/18 | Claude approvals and form/URL elicitation | Not started | — |
 | 14/18 | Codex inventory/actions/authentication | Not started | — |
@@ -595,3 +596,48 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   1,328 changed lines in nine files, including this tracker. Generated codec files
   contribute 900 lines; the remaining 428 are authored code, tests and docs.
   This measurement precedes the documentation-only review correction.
+
+[pr-1956]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1956
+
+- Wire PR documentation review corrected validation provenance, measured line
+  budget and submitted callback privacy in `3361d6b95f`; all four bot threads
+  were replied to and resolved. The contract files remain unchanged. The first
+  UI CI job failed before tests on a sqlite native-asset checksum mismatch and
+  was retried with the integrity check intact.
+
+- Local headless owner reserves one attempt before scope/native preparation,
+  holds an active-only runtime stream lease, validates HTTPS launch destinations,
+  exposes read/start/continue/cancel handlers, and publishes URL-free invalidation.
+  Completion waits for stream settlement and refreshes affected inventories;
+  OAuth completion does not assert a connection or discovered tools.
+- The first cold-stream preparation test exposed cancellation waiting for a native
+  event inside `await for`. Replacing that loop with cancellation-propagating
+  stream composition fixes the real bridge-shutdown flow. Fixture compile errors
+  and an unlistened fake-controller teardown were also corrected; the failing
+  exploratory runs are excluded from passing evidence.
+
+- Wire PR #1956 merged after the corrected head passed all checks, Cubic approval
+  and completed Codex review. The owner is next; no client auth UI is claimed.
+- Owner verification from the provided worktree with parent `3361d6b95f`:
+  19 route/authentication tests, 77 runtime tests, 17 client inventory tests and
+  56 shared SSE codec tests pass (169 total). The 15 existing inventory-handler
+  tests passed in the initial mixed run; that run's new auth fixture did not load
+  and is excluded from new-owner passing evidence. Tests used the pinned SDK
+  executable recorded above, from the owning package directories:
+
+  ```sh
+  # bridge/app
+  dart test test/bridge/routing/mcp_authentication_handler_test.dart --reporter expanded
+  dart test test/bridge/runtime/plugin_runtime_test.dart --reporter expanded
+  # client/module_core
+  dart test test/services/mcp_service_test.dart --reporter expanded
+  # shared/sesori_shared
+  dart test test/models/sesori_sse_event_test.dart --reporter expanded
+  # each owning package
+  dart analyze --fatal-infos
+  ```
+
+  Bridge, client core and shared analyzers pass. No native provider, packaged
+  client or relay E2E qualification is added by these unit/route tests. The final
+  plan matrix remains required. Native cancellation errors preserve a typed cause
+  and failure state rather than claiming successful cancellation.

@@ -44,6 +44,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriMcpInventoryChanged.fromJson(
             json
           );
+                case 'mcp.authentication.changed':
+          return SesoriMcpAuthenticationChanged.fromJson(
+            json
+          );
                 case 'plugin.install.progress':
           return SesoriPluginInstallProgress.fromJson(
             json
@@ -643,6 +647,45 @@ as McpScope,
 
 
 }
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriMcpAuthenticationChanged implements SesoriSseEvent {
+  const SesoriMcpAuthenticationChanged({ String? $type}): $type = $type ?? 'mcp.authentication.changed';
+  factory SesoriMcpAuthenticationChanged.fromJson(Map<String, dynamic> json) => _$SesoriMcpAuthenticationChangedFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriMcpAuthenticationChangedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriMcpAuthenticationChanged);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'SesoriSseEvent.mcpAuthenticationChanged()';
+}
+
+
+}
+
+
+
 
 /// @nodoc
 @JsonSerializable()

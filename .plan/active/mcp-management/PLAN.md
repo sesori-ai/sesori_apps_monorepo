@@ -180,7 +180,7 @@ Proposed shared-router surface, with typed request/response models:
 |---|---|
 | `POST /mcp/inventory` | Read server and offered-connector inventory for `{pluginId, scope}`. Returns a typed inventory snapshot with explicit section availability. POST permits a typed sealed scope; it is a read operation. |
 | `POST /mcp/entry/action` | A sealed server-action or connector-setup request carries its matching target. Returns refreshed state, a non-pending `McpExternalSetup` result/handoff, or a typed failure; never accepts raw methods, config, or a client-supplied destination. |
-| `POST /mcp/authentication` | Begin explicit authentication for the named server target. Returns the attempt ID and one concrete challenge variant. Catalog setup without a native auth operation uses the entry-action result instead. |
+| `POST /mcp/authentication` | Begin explicit authentication for the named server target. Returns attempt state; request-scoped GET recovers the challenge when native preparation completes. Catalog setup without a native auth operation uses the entry-action result instead. |
 | `GET /mcp/authentication` | Current attempt/status for reconnect recovery. No stored authentication history. |
 | `POST /mcp/authentication/continue` | Attempt-bound callback/code only for the continuation variant the plugin declared. |
 | `POST /mcp/authentication/cancel` | Cancel the named active attempt. If the native runtime cannot cancel, show its true state until it terminates; closing a UI is not native cancellation. |
