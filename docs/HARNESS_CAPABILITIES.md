@@ -642,6 +642,11 @@ can initiate login, and managed installation does **not** authenticate a harness
 ## MCP management native evidence
 
 Dedicated MCP inventory and connection UI are **not implemented** in Sesori yet.
+The backend-neutral inventory wire models and optional plugin read interface
+are implemented. No harness implements that interface at this checkpoint;
+native inventory routes, client presentation, and management actions remain
+**not implemented** for every registered harness. See
+[MCP management regression coverage](regression/mcp-management.md).
 Existing tool permissions are separate from this management capability. Native
 protocol probes on macOS arm64 (2026-10-13) establish the following integration
 boundaries, using isolated stdio/HTTP/OAuth and deterministic model fixtures:
@@ -656,7 +661,9 @@ boundaries, using isolated stdio/HTTP/OAuth and deterministic model fixtures:
 | Codex 0.160.1 | Richer native inventory | Runtime status, discovery error, safe origin |
 
 Claude's toggle changes the resident process, not persisted configuration.
-Its status omits tool descriptions. Plain-pipe login does not expose the
+Its status omits tool descriptions. Approval frames name the tool at both pins;
+explicit `mcp_server` context is absent at 2.1.221 and present at 2.1.291.
+Plain-pipe login does not expose the
 no-browser URL/paste journey. Codex completion must be correlated by the
 adapter; a browser open does not confirm success. All native-supported rows
 remain **not implemented** as Sesori management actions at this checkpoint.
