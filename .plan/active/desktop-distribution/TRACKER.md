@@ -17,7 +17,7 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 6 | 8 | macOS internal packages and website live; stable production pending | in-progress |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
-| 9 | 11 | Private native DEB/RPM packages merged; signing/publication gated | blocked |
+| 9 | 11 | Private native packages merged; OpenPGP signing in progress, public repositories pending | in-progress |
 | 10 | 12 | Shipped-download onboarding requires genuine public releases | blocked |
 | 11 | 13 | Reconcile private distribution coverage; public closeout remains gated | in-progress |
 | 12 | 14 | Verify six-target releases and retire distribution plan | blocked |
@@ -26,7 +26,21 @@ Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
 Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
 remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 
-## Current continuation — live macOS downloads (2026-09-26)
+## Current continuation — private signed Linux packages
+
+The user prioritized Linux before Windows and requested key-generation guidance plus
+a PR for signed builds. Continue original step 9 as
+`🚧 [desktop-distribution] Sign private native Linux packages [step 11.a/14]`.
+Windows no longer blocks Linux; its own admission requirements are unchanged.
+The signing slice reuses native private packaging, adds native RPM signatures and
+signed checksums covering unchanged DEBs, and keeps key import isolated to one
+main-only step. The user owns key generation/backups; Actions receives only the
+protected signing subkey. No cloud resource, public repository or release is created.
+See [step 9](steps/step-09.md) and [key setup](../../../docs/desktop/linux-signing.md).
+Native signed application runs remain pending merged tooling; disposable-key CI
+proves cryptography, not account/session behavior or Linux publication.
+
+## Completed macOS website continuation (2026-09-26)
 
 The user directed **“retire this gate and continue”** after the missing QA was
 itemized. Gate C, macOS 12 execution, remaining phone/live-harness checks and unknown

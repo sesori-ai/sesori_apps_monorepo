@@ -70,9 +70,9 @@ They do not start the product and prove silent fixture behavior only. Output rem
 it does not establish publisher trust, SmartScreen reputation, interactive behavior,
 account restoration, upgrades, or release readiness.
 
-## Private Linux package qualification
+## Private Linux package qualification and signing
 
-Manual `linux-packaging` qualification builds unsigned DEB and RPM packages from
+Manual main-only `linux-packaging` qualification first builds unsigned DEB and RPM packages from
 complete native x64 and ARM64 staged bundles. Both formats own the complete unchanged
 GUI/helper payload below `/opt/sesori-desktop` plus only three system-integration files:
 the `sesori-desktop` launcher, one desktop entry and the existing 512x512 application
@@ -92,8 +92,28 @@ Fixtures compare installed payload paths/hashes with staging,
 require root ownership, reject maintainer scripts/scriptlets, and preserve realistic
 configuration, credentials, database, runtime, attachment and project sentinels.
 They never launch the GUI or helper. Same-version reinstall is not N→N+1 proof.
-Unsigned private containers do not establish desktop-session behavior, account
-restoration, Secret Service/tray behavior, signing, repository trust or publication.
+Container package mechanics do not establish desktop-session behavior, account
+restoration, Secret Service/tray behavior, repository trust or publication.
+
+After construction, a signing step checks the input evidence and matching identities,
+adds a native RPM OpenPGP signature, and signs checksums covering the final RPM and
+unchanged DEB. The full configured primary fingerprint must match the imported key.
+Only this step receives the `linux-signing` secrets. Tools install before secret
+exposure; the network-disabled signing container uses a temporary private GnuPG home
+and passphrase file, removes secret variables from child environments and cleans up
+its agent/key material. Public-only verification must pass before fixture installation
+and artifact upload. RPM fixtures enable local-package signature checking; all three
+distribution fixtures verify signed checksums. Digest-only RPM verification is not
+accepted as a signature. Wrong key/passphrase, changed input, altered payload and
+signature failures refuse completion. No private key material enters artifacts/logs.
+
+The final RPM digest differs from its unsigned source report; `signing.json` records
+both. DEB checksums are detached artifact authentication, not an APT `InRelease`
+claim. Main-only native runs establish production-key access separately from PR CI's
+disposable-key crypto fixtures. Historical unsigned package runs remain unsigned
+proof; new tooling alone does not relabel them. Public repositories, shared-cycle
+publication and N→N+1/desktop-session checks remain pending.
+See [key setup and backup guidance](../desktop/linux-signing.md).
 
 ## Shared release cycle and private preparation
 

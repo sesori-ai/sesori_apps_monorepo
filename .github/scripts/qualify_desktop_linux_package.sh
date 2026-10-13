@@ -9,6 +9,17 @@ arch="$4"
 evidence="$5"
 script="${6:-$(dirname "$(realpath "$0")")/package_desktop_linux.py}"
 
+# Verify only public material before installing. DEB trust here is detached signed
+# checksums, not an APT repository or an embedded dpkg signature.
+signed_dir="$(dirname "$package")"
+verification_home="$(mktemp -d)"
+trap 'rm -rf "$verification_home"' EXIT
+GNUPGHOME="$verification_home" gpg --batch --dearmor \
+  --output "$verification_home/public.gpg" "$signed_dir/sesori-linux-public.asc"
+gpgv --homedir "$verification_home" --keyring "$verification_home/public.gpg" \
+  "$signed_dir/desktop-linux-checksums.txt.asc" "$signed_dir/desktop-linux-checksums.txt"
+(cd "$signed_dir" && sha256sum --check desktop-linux-checksums.txt)
+
 mkdir -p /root/.config/sesori /root/.local/share/sesori/{credentials,databases,runtimes} \
   /root/.local/share/sesori-attachments /root/projects/sesori-project
 printf 'preserve\n' >/root/.config/sesori/settings
@@ -34,7 +45,8 @@ case "$format" in
   rpm)
     scripts="$(rpm -qp --scripts "$package")"
     [[ -z "$scripts" ]] || { echo "RPM contains scriptlets: $scripts" >&2; exit 1; }
-    dnf install -y "$package"
+    rpmkeys --import "$signed_dir/sesori-linux-public.asc"
+    dnf --setopt=localpkg_gpgcheck=True install -y "$package"
     package_paths="$(rpm -ql sesori-desktop)"
     ;;
   *) echo "Unsupported package format: $format" >&2; exit 2 ;;
@@ -55,7 +67,7 @@ case "$format" in
     apt-get remove -y sesori-desktop
     ;;
   rpm)
-    dnf reinstall -y "$package"
+    dnf --setopt=localpkg_gpgcheck=True reinstall -y "$package"
     python3 "$script" verify-installed --bundle "$bundle" --arch "$arch" >"$evidence.reinstalled.json"
     dnf remove -y sesori-desktop
     ;;
@@ -86,10 +98,12 @@ Path(output).write_text(json.dumps({
     "containerMachine": platform.machine(),
     "installedIdentity": installed["identity"],
     "installedPayloadVerified": True,
+    "signedChecksumsVerified": True,
     "boundedSystemOwnershipVerified": ownership["boundedSystemOwnership"],
     "sameVersionReinstallVerified": installed == reinstalled,
     "removeOwnedPathsVerified": True,
     "sharedDataPreserved": True,
-    "proofBoundary": "Native container install, same-version reinstall and removal; not an N-to-N+1 upgrade, GUI, account, signing, repository, or desktop-session proof",
+    "proofBoundary": "Signed-checksum verification and native container install/reinstall/removal; "
+                     "RPM local signatures required. Not repository, N-to-N+1, GUI/account or desktop-session proof",
 }, indent=2) + "\n")
 PY
