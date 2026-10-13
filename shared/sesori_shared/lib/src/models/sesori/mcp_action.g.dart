@@ -14,13 +14,6 @@ McpServerEntryAction _$McpServerEntryActionFromJson(Map json) =>
       action: $enumDecode(_$McpServerActionEnumMap, json['action']),
     );
 
-Map<String, dynamic> _$McpServerEntryActionToJson(
-  McpServerEntryAction instance,
-) => <String, dynamic>{
-  'target': instance.target.toJson(),
-  'action': _$McpServerActionEnumMap[instance.action]!,
-};
-
 const _$McpServerActionEnumMap = {
   McpServerAction.unknown: 'unknown',
   McpServerAction.reconnect: 'reconnect',

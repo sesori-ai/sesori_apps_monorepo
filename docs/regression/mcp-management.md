@@ -83,11 +83,15 @@ archived session if its native process remains live; it grants no session mutati
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Read a live Claude session through the headless route; compare its servers/tools with native status and inspect them from a client session menu. Exercise explicit live-session controls and confirm they leave persisted configuration unchanged. |
+| L1 Smoke | Inspect live Claude MCP inventory and exercise controls without changing persisted configuration. |
 | L2 Routine | Automated codec, adapter/route, and client lifecycle coverage described below. |
 | L3 Release | No additional coverage. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
+
+For L1, read a live Claude session through the headless route, compare its
+servers/tools with native status, and inspect them from a client session menu.
+Exercise explicit live-session controls and confirm persisted configuration is unchanged.
 
 Automated codec checks preserve distinct targets, empty/unavailable/failed tool
 states, authorization without grants, independent section availability, and

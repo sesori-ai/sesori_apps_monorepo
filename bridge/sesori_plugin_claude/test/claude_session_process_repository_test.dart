@@ -108,6 +108,35 @@ void main() {
       expect(process.written.where((f) => (f["request"] as Map? ?? {})["subtype"] == "mcp_toggle"), isEmpty);
     });
 
+    test("malformed MCP status fails reads and controls without mutating or resuming", () async {
+      await _ensure(repository, createNew: true);
+      final process = harness.processes.single;
+      for (final control in [false, true]) {
+        final Future<Object> result = control
+            ? repository.executeMcpServerAction(
+                target: const PluginMcpServerTarget(
+                  scope: PluginMcpSessionScope(sessionId: testSessionId),
+                  serverKey: "fixture",
+                ),
+                action: PluginMcpServerAction.enable,
+              )
+            : repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
+        await pump();
+        final request = process.written.lastWhere((frame) => frame["type"] == "control_request");
+        process.emitControlResponse(requestId: request["request_id"]! as String, payload: {"renamedServers": []});
+        final failed = await result;
+        final (cause, stackTrace) = switch (failed) {
+          PluginMcpActionFailed(:final cause, :final causeStackTrace) => (cause, causeStackTrace),
+          PluginMcpInventoryReadFailed(:final cause, :final causeStackTrace) => (cause, causeStackTrace),
+          _ => throw StateError("Expected a typed failure"),
+        };
+        expect(cause, isA<ClaudeMcpStatusTypeException>().having((e) => e.innerError, "innerError", isA<TypeError>()));
+        expect(stackTrace.toString(), contains("ClaudeMcpStatusDtoFromJson"));
+        expect(process.written.where((f) => (f["request"] as Map? ?? {})["subtype"] == "mcp_toggle"), isEmpty);
+      }
+      expect(harness.specs, hasLength(1));
+    });
+
     test("MCP control teardown retains the typed cause and does not resume", () async {
       await _ensure(repository, createNew: true);
       final result = repository.executeMcpServerAction(

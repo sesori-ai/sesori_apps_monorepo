@@ -87,6 +87,29 @@ void main() {
         ),
       );
 
+  test("unknown action variants reject before native mutation", () async {
+    for (final type in [null, "future", "connectorSetup"]) {
+      final body = const McpEntryActionRequest(
+        pluginId: "fixture",
+        action: McpServerEntryAction(
+          target: McpServerTarget(
+            scope: McpSessionScope(sessionId: "bridge-session"),
+            serverKey: "opaque-server",
+          ),
+          action: McpServerAction.enable,
+        ),
+      ).toJson();
+      (body["action"] as Map<String, dynamic>)["type"] = type;
+      final response = await actionHandler.routeForTest(
+        makeRequest("POST", "/mcp/entry/action", body: jsonEncode(body)),
+      );
+      expect(response.status, 400);
+    }
+    expect(plugin.actions, isEmpty);
+    expect(plugin.scopes, isEmpty);
+    expect(changes, isEmpty);
+  });
+
   test("controls resolve native identity, refresh authoritatively and invalidate their bridge scope", () async {
     final response = await act(
       pluginId: "fixture",

@@ -25,8 +25,6 @@ mixin _$McpEntryAction {
 
 @JsonKey(fromJson: McpEntryTarget.serverFromJson) McpServerTarget get target; McpServerAction get action;
 
-  /// Serializes this McpEntryAction to a JSON map.
-  Map<String, dynamic> toJson();
 
 
 @override
@@ -56,20 +54,17 @@ String toString() {
 
 
 /// @nodoc
-@JsonSerializable()
+@JsonSerializable(createToJson: false)
 
-class McpServerEntryAction implements McpEntryAction {
-  const McpServerEntryAction({@JsonKey(fromJson: McpEntryTarget.serverFromJson) required this.target, required this.action});
+class McpServerEntryAction extends McpEntryAction {
+  const McpServerEntryAction({@JsonKey(fromJson: McpEntryTarget.serverFromJson) required this.target, required this.action}): super._();
   factory McpServerEntryAction.fromJson(Map<String, dynamic> json) => _$McpServerEntryActionFromJson(json);
 
 @override@JsonKey(fromJson: McpEntryTarget.serverFromJson) final  McpServerTarget target;
 @override final  McpServerAction action;
 
 
-@override
-Map<String, dynamic> toJson() {
-  return _$McpServerEntryActionToJson(this, );
-}
+
 
 @override
 bool operator ==(Object other) {

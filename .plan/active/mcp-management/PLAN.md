@@ -392,7 +392,7 @@ UI, and additional adapters land. Step 14 is final reconciliation only.
 | 4/15 | Claude inventory and bridge read (3.b) | 850–1,400 |
 | 5/15 | Client inventory lifecycle (5.a) | 500–900 |
 | 6/15 | Phone and desktop details (5.b) | 500–1,100 |
-| 7/15 | Claude live-server controls (7.a) | 1,350–1,650, including generated codecs |
+| 7/15 | Claude live-server controls (7.a) | 1,350–1,800, generated-heavy exception |
 | 8/15 | Claude native authentication (7.b) | 800–1,350 |
 | 9/15 | Shared authentication and external actions | 850–1,400 |
 | 10/15 | Claude approvals and elicitation | 900–1,450 |
@@ -401,6 +401,10 @@ UI, and additional adapters land. Step 14 is final reconciliation only.
 | 13/15 | Secondary harness support | 800–1,400 |
 | 14/15 | Regression and capability coverage | 250–500 |
 | 15/15 | Qualification and retirement | 100–300 |
+
+Step 7 may exceed the soft cap because its shared action/event codecs require
+about 700 generated lines. Keep authored controls and their verification together;
+measure the final diff before each push.
 
 Exact PR titles and scope:
 
@@ -489,8 +493,9 @@ Exact PR titles and scope:
     Execute the recorded matrix, record privacy-safe evidence, and move to completed only after passing. No intended
     production/database change.
 
-Steps depend on the preceding step. The Claude milestone is steps 2–10; Codex follows immediately in 11–12. Step 2 verifies
-both from the start so Claude-first implementation does not bake in incompatible Codex assumptions. Do not spend the
+Steps depend on the preceding step. The Claude milestone is steps 2–10; Codex
+follows immediately in 11–12. Step 2 verifies both from the start so Claude-first
+implementation does not bake in incompatible Codex assumptions. Do not spend the
 priority milestone implementing secondary harnesses.
 
 For each production PR, tests/analyzer run in the owning packages, with downstream client tests when impacted; CI owns

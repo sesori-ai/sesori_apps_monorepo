@@ -134,6 +134,8 @@ final class ClaudeSessionProcessRepository({
       return PluginMcpInventoryReadFailed(cause: error, causeStackTrace: stackTrace);
     } on TimeoutException catch (error, stackTrace) {
       return PluginMcpInventoryReadFailed(cause: error, causeStackTrace: stackTrace);
+    } on ClaudeMcpStatusDecodeException catch (error, stackTrace) {
+      return PluginMcpInventoryReadFailed(cause: error, causeStackTrace: stackTrace);
     }
   }
 
@@ -168,6 +170,8 @@ final class ClaudeSessionProcessRepository({
     } on ClaudeControlException catch (error, stackTrace) {
       return PluginMcpActionFailed(cause: error, causeStackTrace: stackTrace);
     } on TimeoutException catch (error, stackTrace) {
+      return PluginMcpActionFailed(cause: error, causeStackTrace: stackTrace);
+    } on ClaudeMcpStatusDecodeException catch (error, stackTrace) {
       return PluginMcpActionFailed(cause: error, causeStackTrace: stackTrace);
     }
   }

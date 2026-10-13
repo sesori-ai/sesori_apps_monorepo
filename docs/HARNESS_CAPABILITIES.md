@@ -678,8 +678,10 @@ Its status omits tool descriptions. Approval frames name the tool at both pins;
 explicit `mcp_server` context is absent at 2.1.221 and present at 2.1.291.
 Plain-pipe login does not expose the
 no-browser URL/paste journey. Codex completion must be correlated by the
-adapter; a browser open does not confirm success. All native-supported rows
-remain **not implemented** as Sesori management actions at this checkpoint.
+adapter; a browser open does not confirm success. Claude live-session reconnect
+and enable/disable are **implemented** as Sesori management actions. Authentication,
+elicitation and the remaining native-supported management rows are **not implemented**
+at this checkpoint.
 
 Unauthenticated Codex `app/list` returned an empty catalog; this does not prove
 authenticated connector setup. Other harness management remains **not

@@ -315,11 +315,20 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   and 20 shared-client service/repository tests passed. Seven shared codecs tests
   pass, including equal-key connector rejection and typed mutation refresh results.
   Commands use the pinned Dart SDK from the previous verification section:
-  `dart test test/claude_session_process_repository_test.dart test/claude_mcp_mapper_test.dart test/claude_stream_client_test.dart --reporter expanded`
-  from `bridge/sesori_plugin_claude`; `dart test test/bridge/routing/post_mcp_inventory_handler_test.dart --reporter expanded`
-  from `bridge/app`; `dart test test/services/mcp_service_test.dart test/repositories/mcp_repository_test.dart --reporter expanded`
-  from `client/module_core`; `dart test test/models/mcp_test.dart --reporter expanded`
-  from `shared/sesori_shared`. Owning-package analysis is clean.
+
+  ```sh
+  # bridge/sesori_plugin_claude
+  dart test test/claude_session_process_repository_test.dart \
+    test/claude_mcp_mapper_test.dart test/claude_stream_client_test.dart --reporter expanded
+  # bridge/app
+  dart test test/bridge/routing/post_mcp_inventory_handler_test.dart --reporter expanded
+  # client/module_core
+  dart test test/services/mcp_service_test.dart test/repositories/mcp_repository_test.dart --reporter expanded
+  # shared/sesori_shared
+  dart test test/models/mcp_test.dart --reporter expanded
+  ```
+
+  Owning-package analysis is clean.
 - Production controls smoke passed with exact Claude 2.1.221 and 2.1.291 using
   isolated synthetic stdio configuration: disable observed as disabled; enable
   independently left disabled state; reconnect returned connected with discovered
@@ -355,3 +364,12 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   pre-commit source snapshot that this commit contains. The PR monitor started
   immediately. Published series titles now use 15; historical commits are intact.
   Authored/generated churn before this publication record: 922/714 (1,636 total).
+
+- Step-7 first-review fixes reject absent/unknown action tags before native access
+  and emit the explicit server tag on serialization. Native malformed status
+  becomes a typed read/action failure while preserving its cause and original
+  stack. Focused verification: 24 Claude process tests, 15 bridge route tests,
+  seven shared codec tests passed; Claude, shared and bridge analysis is clean.
+  Second/final architecture review approved the full branch and working fixes.
+  Latest public v1.9.0 has no MCP inventory contract; no unpublished-peer default
+  is retained. Controls smoke inputs and production control logic are unchanged.

@@ -14,6 +14,10 @@ void main() {
       ),
     );
     expect(McpEntryActionRequest.fromJson(request.toJson()), request);
+    for (final type in [null, 'future', 'connectorSetup']) {
+      final json = request.action.toJson()..['type'] = type;
+      expect(() => McpEntryAction.fromJson(json), throwsA(isA<FormatException>()));
+    }
     expect(
       () => McpEntryAction.fromJson({
         'type': 'server',
