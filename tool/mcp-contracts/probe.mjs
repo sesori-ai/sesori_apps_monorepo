@@ -330,6 +330,14 @@ function assertContracts(harness, result) {
         assert.equal(approval.request.mcp_server, undefined, 'Minimum omits explicit server context');
       }
       assert.equal(approval.request.tool_name, `mcp__stdio_fixture__${['echo', 'form', 'url'][index]}`);
+      assert.deepEqual(approval.request.permission_suggestions, [{
+        type: 'addRules', rules: [{ toolName: approval.request.tool_name }],
+        behavior: 'allow', destination: 'localSettings',
+      }]);
+    }
+    for (const elicitation of result.elicitations) {
+      assert.equal(elicitation.request.subtype, 'elicitation');
+      assert.equal(elicitation.request.mcp_server_name, 'stdio_fixture');
     }
     const form = result.elicitations.find(x => x.request.mode === 'form');
     assert.deepEqual(form.request.requested_schema, formSchema);
@@ -422,6 +430,14 @@ function assertContracts(harness, result) {
     const completion = result.notifications.find(x => x.method === 'mcpServer/oauthLogin/completed').params;
     assert.equal(completion.success, true);
     assert.equal(completion.name, 'oauth_fixture', 'Completion must name the requested server');
+    const refreshed = exchanges.filter(x => x.method === 'mcpServerStatus/list').at(-1)
+      .frame.result.data.find(server => server.name === 'oauth_fixture');
+    assert.equal(refreshed.authStatus, 'oAuth', 'Refresh must report authenticated OAuth');
+    assert.deepEqual(Object.keys(refreshed.tools), ['echo']);
+    if (result.version === 'codex-cli 0.160.1') {
+      assert.equal(refreshed.runtimeStatus, 'connected');
+      assert.equal(refreshed.toolsError, null);
+    }
     const login = exchanges.find(x => x.method === 'mcpServer/oauth/login' && x.params.name === 'oauth_fixture');
     if (login.params.threadId !== undefined) assert.equal(completion.threadId, login.params.threadId);
     assert.deepEqual(exchanges.find(x => x.method === 'config/mcpServer/reload').frame.result, {});
