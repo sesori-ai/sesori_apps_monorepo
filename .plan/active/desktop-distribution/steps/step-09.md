@@ -1,4 +1,4 @@
-# Step 9 — Private Linux package qualification
+# Step 9 — Linux package qualification and internal previews
 
 Ordinal 11/14. The user now prioritizes Linux before Windows (D10). Windows signing
 and winget remain separate; they no longer block Linux. Private package mechanics
@@ -102,6 +102,72 @@ real N→N+1 updates and GUI/account/keyring/tray/login/desktop-session qualific
 remain separate. No cloud resource, public release/repository or store upload was
 created, and no local GUI/helper was installed or launched.
 
+## Public CLI signatures — 11.c/14
+
+#1946 merged as `a3457903cf50155345e7afd293e7ec564d0e3238` on 2026-10-13,
+accepting `e727acb68d85bc0998c5f7d703d61ca78dbfc865`. All 41 pre-merge checks passed
+or intentionally skipped; Cubic approved, Codex completed and seven threads were resolved.
+
+Protected [run 38412243041](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38412243041)
+succeeded for existing public CLI release `v1.9.0` (release ID `395815709`). Its workflow
+source is the squash above, tree `9aa6295e7f194667d9fb3f3b34c34606f81ec028`.
+Both checkout logs report `/home/runner/work/sesori_apps_monorepo/sesori_apps_monorepo`.
+Signing job `115347301887` uses the network-disabled container; publication job
+`115347682039` adds only missing public signing assets. Exact executed definitions/logs:
+
+```bash
+source=a3457903cf50155345e7afd293e7ec564d0e3238
+git show "$source:.github/workflows/sign-linux-release.yml"
+git show "$source:.github/workflows/_reusable-linux-cli-signing.yml"
+gh run view 38412243041 --repo sesori-ai/sesori_apps_monorepo --job 115347301887 --log
+gh run view 38412243041 --repo sesori-ai/sesori_apps_monorepo --job 115347682039 --log
+```
+
+Independent anonymous retrieval compared archive/checksum bytes before and after,
+matched public index SHA-256/size, and verified both detached signatures with GPGV 2.5.24
+using only the independently known primary fingerprint
+`E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7`. Both signatures identify signing subkey
+`2BB08B81FF5491A1F68C95C7CBACDB2E5623160F`. All seven original asset IDs/sizes/digests,
+release metadata, annotated tag object `5f031b47b5fb99bf533dc77a9c707098d0a5a73c`,
+and Latest `v1.9.0` stayed unchanged. Downloaded files:
+
+| File | Bytes | SHA-256 |
+|---|---:|---|
+| `checksums.txt` | 586 | `27f8e370977eca565b2b46f714e2cf1e756ed9d1f6ce5715b1f43e13176d5585` |
+| `sesori-bridge-linux-x64.tar.gz` | 8472547 | `8758948aed48395ace75a0c957bea637d9e8c7627544c6780f48400be868fb5d` |
+| `sesori-bridge-linux-arm64.tar.gz` | 8271769 | `edb6effc82bd08833777efc602e365eff6254c59b920c9994f4fc217d71b33ff` |
+| `sesori-bridge-linux-x64.tar.gz.asc` | 833 | `df799c125930e84fbd14d3eef88fe73b775906fce91635c82b6942297bc123ee` |
+| `sesori-bridge-linux-arm64.tar.gz.asc` | 833 | `fa63837b7f5a6b3869de1593a2191e5c042eadf20b00b99e74141e5fde1142bb` |
+| `sesori-linux-public.asc` | 4008 | `44c84486c75d5a404cdc3b53cebc911f3dddc64bea7cd0ad0abe2bffc3ef45f7` |
+
+Local evidence: `build/bridge-linux-signing/public-v1.9.0/verified-summary.json`,
+public-only verification logs, before/after metadata and downloaded bytes. The first
+local import hit macOS's agent socket-path limit in a nested tool temporary directory;
+a short owned GnuPG home fixed that probe without re-signing or changing public assets.
+No archive was rebuilt, unpacked or executed; no store, desktop or repository publication
+occurred. These are CLI signatures; installers/updaters still enforce SHA-256, not OpenPGP.
+
+## Aligned desktop internal previews — 11.d/14
+
+The approved continuation reuses native Linux qualification with the shared product
+source/build/channel and retained `dart-defines.env`. Product SDK/icon/plugin inputs
+stay source-specific; signing/fixture tooling comes from the trusted workflow revision.
+Linux/macOS calls do not cancel each other. Core release prerequisites remain unchanged.
+
+`desktop-linux-release.yml` attaches only to an existing public internal tag resolving
+to the package source. It checks both CPU identities, signatures, hashes and six native
+fixture reports, preserves each signed checksum pair, and publishes a Linux-specific
+completion marker last. The desktop key has its own immutable filename, not the CLI
+owner's replaceable key asset. Rollover retains the newest completed release per platform.
+No new service, admission flag, application state, production approval or updater exists.
+
+Post-merge L3 remains: build matching native packages for an existing shared internal
+release, attach without stores/rebuild relabeling, then independently verify public
+hashes/signatures, both identities and unchanged core/macOS/Latest/tag state. Build 147
+cannot substitute for that aligned qualification. GUI/login/keyring/tray and real
+N→N+1 gaps remain accepted only for internal previews; stable Linux and APT/RPM hosting
+are not admitted. Website discovery and CTA spacing follow as step 11.e.
+
 ## Original private-package implementation
 
 - Add `.github/scripts/package_desktop_linux.py`, reusing native inventory and
@@ -153,10 +219,11 @@ signed/public retrieval gates remain open. A same-version reinstall must not be
 reported as an actual N→N+1 application upgrade. Missing environments are blockers,
 not successful or silently dropped rows.
 
-Keep the PR non-draft for reviews. Hold readiness with an explicit pending evidence
-status while independent native runs execute, and register a completion watcher
-that wakes the parent. Never stop at an unobserved manual Actions run. Do not touch
-local GUI/bridge processes or execute package installation on this Mac.
+Implementation PRs use focused contracts and CI. Credential-bearing native/public
+qualification follows merge through the main-only workflows; never substitute local
+fixtures for that result. Observe each dispatched run with one owned completion watcher,
+then inspect terminal evidence. Do not touch local GUI/bridge processes or execute
+package installation on this Mac.
 
 ## Implementation and evidence checkpoints
 

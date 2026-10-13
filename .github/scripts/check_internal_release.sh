@@ -56,7 +56,11 @@ if [[ "$AUTOMATIC" == true ]]; then
       .github/workflows/desktop-qualification.yml .github/scripts/qualify_desktop.py \
       .github/scripts/package_desktop_macos.py .github/scripts/macos_signing_ci.sh \
       .github/scripts/prepare_desktop_release.py .github/scripts/publish_desktop_release.py \
-      '.github/workflows/_reusable-*.yml'; then
+      .github/workflows/desktop-linux-release.yml .github/scripts/publish_desktop_linux.py \
+      .github/scripts/package_desktop_linux.py .github/scripts/qualify_desktop_linux_package.sh \
+      .github/scripts/sign_desktop_linux.py .github/scripts/linux_signing.py \
+      .github/scripts/github_release_assets.py .github/scripts/sign_bridge_linux.py \
+      .github/scripts/publish_bridge_linux_signatures.py '.github/workflows/_reusable-*.yml'; then
       skip_release "No release-relevant changes since ${BASELINE}."
     else
       STATUS=$?

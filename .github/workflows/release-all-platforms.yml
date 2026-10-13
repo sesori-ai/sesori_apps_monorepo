@@ -150,6 +150,34 @@ jobs:
       version: ${{ needs.preflight.outputs.version }}-internal.${{ needs.next-build-number.outputs.build_number }}
     secrets: inherit
 
+  desktop-linux:
+    name: Build and qualify Linux desktop (internal)
+    needs: [preflight, next-build-number]
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    uses: ./.github/workflows/desktop-qualification.yml
+    with:
+      source_sha: ${{ github.sha }}
+      build_number: ${{ needs.next-build-number.outputs.build_number }}
+      channel: internal
+      mode: linux-packaging
+    secrets: inherit
+
+  publish-desktop-linux:
+    name: Attach Linux desktop internal previews
+    needs: [preflight, next-build-number, desktop-linux, finalize]
+    permissions:
+      contents: write
+      actions: read
+    uses: ./.github/workflows/desktop-linux-release.yml
+    with:
+      source_sha: ${{ github.sha }}
+      version: ${{ needs.preflight.outputs.version }}
+      build_number: ${{ needs.next-build-number.outputs.build_number }}
+      packaging_run: ${{ github.run_id }}
+
   desktop-macos:
     name: Build and qualify macOS desktop (internal)
     needs: [preflight, next-build-number]
@@ -246,8 +274,8 @@ jobs:
             --output notes.md
           cat notes.md
 
-      # Retain the newest completed desktop preview alongside the current core
-      # pre-release. Desktop failure must not remove its last public downloads.
+      # Retain the newest completed preview per platform alongside current core.
+      # One desktop platform's failure must not remove its last public downloads.
       # Older release OBJECTS roll away; tags stay for submit-release.yml.
       - name: Roll internal pre-release
         env:
@@ -255,20 +283,22 @@ jobs:
         run: |
           set -euo pipefail
           RELEASES_JSON="$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100")"
-          # The publisher uploads this completion marker only after anonymous hash checks.
-          KEEP_DESKTOP_TAG="$(jq -r '
+          # Each platform uploads its own completion marker after anonymous hash checks.
+          KEEP_DESKTOP_TAGS="$(jq -c '
             [.[] | select(.prerelease and (.draft | not))
-             | select(.tag_name | test("^v.+-internal[.][0-9]+$"))
-             | select(any(.assets[]; .name == "desktop-release.json"))]
-            | sort_by(.published_at) | last | .tag_name // empty
+             | select(.tag_name | test("^v.+-internal[.][0-9]+$"))] as $releases
+            | ["desktop-release.json", "desktop-linux-release.json"]
+            | map(. as $marker
+              | [$releases[] | select(any(.assets[]; .name == $marker))]
+              | sort_by(.published_at) | last | .tag_name // empty)
+            | unique
           ' <<< "$RELEASES_JSON")"
-          if [ -n "$KEEP_DESKTOP_TAG" ]; then
-            echo "Retaining completed desktop pre-release $KEEP_DESKTOP_TAG"
-          fi
+          echo "Retaining completed desktop pre-releases $KEEP_DESKTOP_TAGS"
           jq -r '.[] | select(.prerelease) | .tag_name' <<< "$RELEASES_JSON" \
             | { grep -E '^v.+-internal\.[0-9]+$' || true; } \
             | while read -r stale; do
-                if [ "$stale" != "$TAG" ] && [ "$stale" != "$KEEP_DESKTOP_TAG" ]; then
+                if [ "$stale" != "$TAG" ] && \
+                    ! jq -e --arg tag "$stale" 'index($tag) != null' <<< "$KEEP_DESKTOP_TAGS" >/dev/null; then
                   echo "Deleting previous internal pre-release $stale (tag kept)"
                   gh release delete "$stale" --yes
                 fi

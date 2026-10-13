@@ -9,8 +9,9 @@ The same key owner signs private native x64/arm64 desktop packages from **Deskto
 Qualification** (`linux-packaging`, main only). RPMs receive native OpenPGP signatures.
 Both RPM and unchanged DEB bytes are covered by a detached signature over SHA-256 checksums. This
 is **not** an APT repository: APT normally authenticates signed repository metadata,
-not a detached signature beside a manually downloaded DEB. Public APT/RPM hosting,
-shared-release attachment and desktop-session/upgrade qualification remain separate.
+not a detached signature beside a manually downloaded DEB. Internal desktop attachment
+uses the shared release described below. Stable Linux, public APT/RPM hosting and
+desktop-session/upgrade qualification remain separate.
 
 ## 1. Generate once, on your Mac
 
@@ -213,6 +214,60 @@ GnuPG installed, verify before extracting or running anything:
 Exporting only the known primary fingerprint excludes unrelated keys that might be
 bundled in a downloaded key file. Do not substitute a fingerprint supplied only by
 that same download. Missing signatures on an older release are not evidence of signing.
+
+## 7. Publish approved internal desktop previews
+
+The shared internal cycle builds both native Linux CPUs with the same product source,
+version and build number as Bridge/mobile, then attaches verified packages after core
+finalization. Linux failure does not block core or macOS publication. Stable Linux and
+public APT/RPM repositories are not admitted. GUI/login/keyring/tray and real N→N+1
+checks remain unverified; users opt into those limitations by choosing internal previews.
+
+For bootstrap, select an existing public shared **internal** release and set
+`SOURCE_SHA`, `VERSION` and `BUILD_NUMBER` from its exact tagged product identity.
+Build matching packages without submitting anything to stores:
+
+```bash
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=linux-packaging -f channel=internal \
+  -f source_sha="$SOURCE_SHA" -f build_number="$BUILD_NUMBER"
+```
+
+After both native jobs succeed, set `PACKAGING_RUN` to that run ID, not its run ordinal:
+
+```bash
+gh workflow run desktop-linux-release.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f packaging_run="$PACKAGING_RUN" -f source_sha="$SOURCE_SHA" \
+  -f version="$VERSION" -f build_number="$BUILD_NUMBER"
+```
+
+The publisher has no signing secrets. It requires retained compiled identity/channel,
+matching signed and unsigned evidence, all six native package fixtures, valid checksum
+signatures, and a pre-existing public internal tag that resolves to the exact source.
+It cannot create/promote a release, change Latest/tags or replace conflicting assets.
+Retry a failed publication job at its original workflow revision with its original
+producer artifacts; do not rebuild or relabel private qualification build 147.
+
+Public package names are `Sesori-linux-<arch>-<version>-<build>.<deb|rpm>`. Each CPU
+keeps its original signed checksum bytes, renamed to
+`desktop-linux-<arch>-checksums.txt` and `.txt.asc`. Verify them with the separately
+named `desktop-linux-public.asc` and the same independently pinned primary fingerprint
+used above; the desktop publisher never replaces `sesori-linux-public.asc` owned by
+core CLI publication. After verifying the checksum signature, compare the selected
+package's SHA-256 before installation. These are artifact checks, not repository setup.
+
+`desktop-linux-release.json` is published last, after anonymous hash checks of all
+packages and verification files. It is independent of macOS `desktop-release.json`.
+Internal rollover retains the newest completed preview per platform; stable/npm cleanup
+preserves those previews instead of redirecting internal users to stable.
+
+## Verified public CLI bootstrap
+
+Main-only [run 38412243041](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38412243041)
+added signatures/key to existing public `v1.9.0`. Independent pinned public verification
+passed for both unchanged archives; original checksums/assets, release metadata, tag
+and Latest stayed unchanged. [Exact provenance and hashes](../../.plan/active/desktop-distribution/steps/step-09.md)
+keep this proof separate from desktop packages and automatic updater enforcement.
 
 ## Verified private qualification
 

@@ -154,8 +154,11 @@ class LinuxSigningTests(unittest.TestCase):
         linux = workflow.split("  linux-distribution:\n", 1)[1].split("\n  tooling:", 1)[0]
         resolve = linux.split("      - name: Resolve the shared Fedora base from the signing Dockerfile\n", 1)[1]
         script = resolve.split("        run: |\n", 1)[1].split("      - name:", 1)[0]
+        tools = self.root / ".ci-workflow/.github/scripts"
+        tools.mkdir(parents=True)
+        (tools / "Dockerfile.linux-signing").write_text(dockerfile)
         env_file = self.root / "github-env"
-        subprocess.run(["/bin/bash", "-c", script], check=True, cwd=WORKFLOW.parents[2],
+        subprocess.run(["/bin/bash", "-c", script], check=True, cwd=self.root,
                        env={"PATH": os.defpath, "GITHUB_ENV": str(env_file)})
         expected_image = next(line.split()[1] for line in dockerfile.splitlines() if line.startswith("FROM "))
         self.assertEqual(env_file.read_text(), f"FEDORA_IMAGE={expected_image}\n")

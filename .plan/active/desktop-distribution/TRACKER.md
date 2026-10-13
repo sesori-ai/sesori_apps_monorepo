@@ -17,7 +17,7 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 6 | 8 | macOS internal packages and website live; stable production pending | in-progress |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
-| 9 | 11 | Signed native packages verified; public repositories/shared-cycle integration pending | in-progress |
+| 9 | 11 | CLI signatures public; Linux desktop internal publication in progress; repositories gated | in-progress |
 | 10 | 12 | Shipped-download onboarding requires genuine public releases | blocked |
 | 11 | 13 | Reconcile private distribution coverage; public closeout remains gated | in-progress |
 | 12 | 14 | Verify six-target releases and retire distribution plan | blocked |
@@ -45,8 +45,8 @@ fingerprint. Exact evidence lives in [step 9](steps/step-09.md); setup remains i
 `🌱 [desktop-distribution] Record signed Linux qualification [step 11.b/14]` merged
 as #1943 (`6f7e60d933e9dcb2a3aa9a8e13afbd2b94a16af7`) on 2026-10-13.
 Build `1.9.1+147` uses the qualification workflow's number, not the
-shared release sequence. Next: CLI archive signatures (11.c), aligned public desktop
-internal previews (11.d), and website tracking/spacing (11.e). The user authorized
+shared release sequence. CLI archive signatures (11.c) are now public. Next: aligned
+public desktop internal previews (11.d), then website tracking/spacing (11.e). The user authorized
 Linux internal desktop previews with the GUI/login/keyring/N→N+1 gaps stated, and
 OpenPGP signatures for the existing Linux Bridge CLI archives. D11–D12 in `PLAN.md`
 record the next implementation slices and the website tracking/spacing PR.
@@ -54,7 +54,9 @@ Stable Linux admission and public APT/RPM hosting remain separate; cloud resourc
 are not authorized. Build 147 itself remains private. No public release/repository,
 cloud resource or store upload was created by this qualification.
 
-Step 11.c implements shared temporary key ownership, detached signatures for both
+Step 11.c merged as #1946, squash `a3457903cf50155345e7afd293e7ec564d0e3238`,
+accepted head `e727acb68d85bc0998c5f7d703d61ca78dbfc865`. It implements shared
+temporary key ownership, detached signatures for both
 unchanged CLI archives, protected signing in the existing native build flow, and
 anonymous public-byte verification in both release channels. A separate main-only
 bootstrap attaches signatures to existing matching archives without rebuilding or
@@ -95,8 +97,21 @@ signature artifact; re-signing is not assumed to produce identical bytes.
   from this repository. This checkpoint proves the shared signer and public-only
   verification mechanics, not the later read-only delivery-command change.
 
-Actual production-key signing/public verification of an existing public release
-remains a post-merge operation, not evidence claimed by either checkpoint.
+Production-key [run 38412243041](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38412243041)
+then added both CLI signatures and the public key to existing stable `v1.9.0` without
+rebuilding. Independent anonymous retrieval and GPGV verification used the separately
+known primary fingerprint; original archive/checksum bytes, all seven existing asset
+identities, release metadata, tag and Latest stayed unchanged. Exact hashes, source/tree,
+jobs and proof boundary are in [step 9](steps/step-09.md#public-cli-signatures--11c14).
+This is CLI artifact authentication, not Linux desktop/repository publication or updater
+OpenPGP enforcement.
+
+Step 11.d reuses the two native Linux builders with aligned source/build/channel and
+retained compile metadata. Its internal-only publisher validates signed evidence and
+matching shared-tag source, attaches immutable assets, and uploads Linux completion last.
+Linux/macOS completion and retention are independent; core/mobile finalization remains
+unchanged. No admission flag, scheduler, service, application state or stable Linux route
+is added. Focused fixtures are not yet a claim of public desktop retrieval.
 
 ## Completed macOS website continuation (2026-09-26)
 
