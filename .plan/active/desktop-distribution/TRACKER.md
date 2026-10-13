@@ -17,7 +17,7 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 6 | 8 | macOS internal packages and website live; stable production pending | in-progress |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
-| 9 | 11 | Private native packages merged; OpenPGP signing in progress, public repositories pending | in-progress |
+| 9 | 11 | Signed native packages verified; public repositories/shared-cycle integration pending | in-progress |
 | 10 | 12 | Shipped-download onboarding requires genuine public releases | blocked |
 | 11 | 13 | Reconcile private distribution coverage; public closeout remains gated | in-progress |
 | 12 | 14 | Verify six-target releases and retire distribution plan | blocked |
@@ -29,16 +29,26 @@ remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 ## Current continuation — private signed Linux packages
 
 The user prioritized Linux before Windows and requested key-generation guidance plus
-a PR for signed builds. Continue original step 9 as
-`🚧 [desktop-distribution] Sign private native Linux packages [step 11.a/14]`.
-Windows no longer blocks Linux; its own admission requirements are unchanged.
-The signing slice reuses native private packaging, adds native RPM signatures and
-signed checksums covering unchanged DEBs, and keeps key import isolated to one
-main-only step. The user owns key generation/backups; Actions receives only the
-protected signing subkey. No cloud resource, public repository or release is created.
-See [step 9](steps/step-09.md) and [key setup](../../../docs/desktop/linux-signing.md).
-Native signed application runs remain pending merged tooling; disposable-key CI
-proves cryptography, not account/session behavior or Linux publication.
+a PR for signed builds. #1941 delivered step 11.a/14 and merged as
+`de53cafb2483d76e9350a28d014b4d3906ee0fe0` on 2026-10-13. Its final-head CI passed,
+including 12 disposable-key/tooling tests; Cubic approved and Codex completed with no
+findings shown. All nine review threads received substantive dispositions.
+
+Main-only run [38372268594](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38372268594)
+then signed real x64/arm64 packages with the configured key. All six Ubuntu 24.04,
+Debian 13 and Fedora 44 install/reinstall/remove fixtures passed. Independent download
+verification matched all four archive digests, payload hashes, identities and empty
+source patches, and verified checksum signatures against the separately known public
+fingerprint. Exact evidence lives in [step 9](steps/step-09.md); setup remains in
+[key guidance](../../../docs/desktop/linux-signing.md).
+
+`🌱 [desktop-distribution] Record signed Linux qualification [step 11.b/14]` records
+this acceptance. Build `1.9.1+147` uses the qualification workflow's number, not the
+shared release sequence. Next: signed repository hosting and shared-cycle integration
+with aligned source/build/channel, followed by the remaining Linux ship gates. Cloud
+provisioning/publication is not authorized by the signing slice. Windows no longer
+blocks Linux; neither platform's unexecuted GUI/account/N→N+1 checks are waived.
+No public release/repository, cloud resource or store upload was created.
 
 ## Completed macOS website continuation (2026-09-26)
 

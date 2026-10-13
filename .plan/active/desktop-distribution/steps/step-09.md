@@ -5,7 +5,7 @@ and winget remain separate; they no longer block Linux. Private package mechanic
 below are already merged. The user requested key-generation commands and a signed
 Linux-build PR; cloud resources and public repository publication are not part of it.
 
-## Signing continuation — 11.a/14
+## Signing continuation — 11.a/14 (merged)
 
 PR title: `🚧 [desktop-distribution] Sign private native Linux packages [step 11.a/14]`.
 
@@ -37,6 +37,50 @@ coordination state, cloud provisioning or publication authority. Native payloads
 stay unchanged. Remove unsigned-only uploads/fixture assumptions that this replaces;
 retain unsigned source reports as input provenance. Key setup and backup instructions:
 [Linux package signing](../../../../docs/desktop/linux-signing.md).
+
+## Accepted signed native qualification — 11.b/14
+
+#1941 accepted head `5eb40f89a7e76902328431912032b0d5a3bf7ace` merged as
+`de53cafb2483d76e9350a28d014b4d3906ee0fe0` on 2026-10-13. Final PR CI passed;
+its pinned-Fedora suite ran all 12 tests without skips, including protected-subkey
+GPG/RPM/GPGV verification, tamper refusal and isolated DNF signed acceptance/unsigned
+refusal. Cubic approved the final head; Codex completed without findings shown.
+
+Main-only [run 38372268594](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38372268594)
+then succeeded at that exact merged source, producing private `1.9.1+147` packages.
+Tooling job `115211910113`, native x64 job `115212528442` and native arm64 job
+`115212528505` all passed. Both CPUs used the configured `linux-signing` environment
+and full primary fingerprint `E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7`.
+
+All six Ubuntu 24.04, Debian 13 and Fedora 44 fixtures verified signed checksums,
+complete root-owned installed payloads, bounded package ownership, same-version
+reinstall, removal and shared-data sentinel preservation. Fedora required native RPM signatures.
+These fixtures never launch the application or helper.
+
+Independent verification downloaded the four artifact archives, matched their GitHub
+SHA-256 digests, confirmed matching source/build/CPU identities and empty source
+patches, compared installed/reinstalled records, and verified detached checksum
+signatures against the separately known public fingerprint. No private key was read.
+Final payload hashes:
+
+| CPU | Format | SHA-256 |
+|---|---|---|
+| x64 | DEB | `57dfbd50ec8e31445cb0326b52729755c76903289b4f02b1887a41d32769bffc` |
+| x64 | RPM | `ceeebe8e05bb376a88b16ec635249a53e147901d089562af90bc32c183ee73ee` |
+| arm64 | DEB | `80b962888f376ef8700a550198e0a90fdc2683270f11c4f3ffe3b99a01b33e32` |
+| arm64 | RPM | `3c75897a1a7ac25b5b7be174e14ae038af174f268a887b1738f6b353c4f18ed9` |
+
+Private artifact IDs: packages x64 `11799393614`, packages arm64 `11800321120`,
+evidence x64 `11800500056`, evidence arm64 `11799284588`. Retention remains 14 days;
+these are not permanent public download links. Local acceptance summary:
+`build/desktop-linux-signing/native-38372268594/verified-summary.json`.
+
+Build 147 belongs to this manual qualification workflow, not the shared release
+sequence. Public integration must supply aligned source/build/channel and retain its
+validation metadata. Public signed APT/RPM repositories, shared-cycle publication,
+real N→N+1 updates and GUI/account/keyring/tray/login/desktop-session qualification
+remain separate. No cloud resource, public release/repository or store upload was
+created, and no local GUI/helper was installed or launched.
 
 ## Original private-package implementation
 

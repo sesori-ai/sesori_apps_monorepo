@@ -13,9 +13,11 @@
   pending its ordinary production submission. Stable build 981's authenticated/Off
   acceptance and the 82-test shutdown audit retain their recorded scope; later public
   links do not establish fresh authenticated replacement or shared-store qualification.
-  Windows signing/winget, Linux signed repositories, six-target onboarding and final
-  reconciliation/retirement remain open. The user now prioritizes Linux before Windows;
-  private Linux package signing is the next implementation slice.
+  Private Linux signing is delivered in #1941; native run `38372268594` qualified
+  both CPUs and all six signed-package fixtures at `1.9.1+147`. Independent artifact
+  hashes and public-key-pinned checksum signatures passed. Windows signing/winget,
+  Linux signed repositories/shared-cycle publication, six-target onboarding and final
+  reconciliation/retirement remain open. Linux stays ahead of Windows.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
@@ -433,8 +435,16 @@ signing report, no persistent release owner, service, updater or cloud provision
 Estimate 700–1,000 authored lines. Retire unsigned-only upload/fixture assumptions;
 keep unsigned producer evidence distinct from the signed RPM's final digest.
 Original step IDs/ordinals remain stable; D10 changes execution priority, not historical
-PR titles or the 14-ordinal total. Public repository/shared-cycle delivery follows
-this bounded signing slice and must preserve existing core release authority.
+PR titles or the 14-ordinal total. #1941 merged as
+`de53cafb2483d76e9350a28d014b4d3906ee0fe0` on 2026-10-13. The signed native evidence
+is recorded by `🌱 [desktop-distribution] Record signed Linux qualification [step 11.b/14]`;
+see [step 9](steps/step-09.md) for the exact run, package hashes and proof boundary.
+Public repository/shared-cycle delivery follows this completed signing slice and must
+preserve existing core release authority. Qualification build 147 uses the manual
+workflow's number, not the shared bridge/mobile build sequence. Public integration
+must resolve the aligned shared source/build/channel and retain its validation metadata.
+Cloud provisioning/public repository publication still require the setup decision;
+private signing does not authorize them or retire Linux desktop-session/upgrade gates.
 
 Step 6 delivered read-only private metadata/checksums in PR #1511 without publication.
 Credential migration is complete, but parent and native/public ship gates still apply.
