@@ -104,3 +104,5 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 - Step-2 review rerun at probe revision `1446909afb`: both Claude probes passed 12 exchanges; both Codex probes passed
   19, including app scope and `never` policy. Released-peer decoding and three focused tooling tests passed. Exact
   command/cwd/source provenance and remaining qualification gaps are recorded in the linked native evidence.
+- Step-2 second review rerun at `a4d4929325` passed the same matrix with expected outcomes for every exchange, target
+  URL forwarding, failed untrusted login, successful reload, and server/thread-attributed Codex OAuth completion.

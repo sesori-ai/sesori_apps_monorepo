@@ -1,7 +1,7 @@
 # Priority MCP contract evidence
 
 Date: 2026-10-13. Implementation base: `c03b588d9e`. Host: macOS arm64.
-Measured executable probe revision: `1446909afb` (rerun after review fixes).
+Measured executable probe revision: `a4d4929325` (rerun after review fixes).
 This record establishes native protocol behavior, not released Sesori support.
 
 ## Exact executables
@@ -114,7 +114,7 @@ recovery after the real typed interactions exist.
 
 ## Reproduction and measured results
 
-Run from the repository root at probe revision `1446909afb`; dependencies were
+Run from the repository root at probe revision `a4d4929325`; dependencies were
 resolved in `shared/sesori_shared` using Dart 3.13.4. Native fixture subprocess
 cwd is a fresh temporary directory chosen by `mkdtemp`, not the checkout or the
 developer's project. The released-peer Dart cwd is `shared/sesori_shared`.
@@ -150,10 +150,16 @@ node --test tool/mcp-contracts/fixture.test.mjs \
 
 The Codex reruns include app scope and explicit `never`-policy form/URL decline.
 They assert stdio OAuth rejection and an empty successful unauthenticated
-catalog. Claude asserts unknown-server reconnect rejection and the ten-second
+catalog, successful reload, and server-attributed completion. Target login
+supplies a thread ID and asserts that the completion carries that same ID.
+Claude asserts unknown-server reconnect rejection and the ten-second
 plain-pipe timeout without a URL. HTTP fixtures advertise only echo; form/URL
 elicitation and exact typed replies are exercised through stdio. None of these
 checks establish HTTP elicitation support or real external provider behavior.
+Every captured exchange now asserts its expected success/error outcome; target
+Claude must forward URL requests, and untrusted login must fail without a URL.
+Shallow/partial checkouts must fetch the fixed public baseline before running
+the released-peer tools; the README and failure diagnostic give that command.
 
 ## Remaining qualification
 
