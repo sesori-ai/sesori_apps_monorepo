@@ -37,8 +37,15 @@ final class ClaudeMcpAuthenticationService({
   required final Duration _overallBudget,
 }) {
   Future<PluginMcpAuthenticationOperation> begin({required PluginMcpServerTarget target}) async {
-    final context = await _resolveContext(target: target);
-    final login = _createLogin(context: context);
+    final ClaudeMcpLoginRepository login;
+    try {
+      final context = await _resolveContext(target: target);
+      login = _createLogin(context: context);
+    } on PluginMcpAuthenticationUnavailableException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(ClaudeMcpAuthenticationException(innerError: error), stackTrace);
+    }
     return _ClaudeMcpLoginService(
       repository: login,
       urlBudget: _urlBudget,
@@ -69,7 +76,13 @@ final class _ClaudeMcpLoginService({
   PluginMcpCancelableAuthentication authenticate() {
     late final StreamController<PluginMcpAuthenticationEvent> events;
     events = StreamController(
-      onListen: () => unawaited(_run(events: events)),
+      onListen: () {
+        if (_termination is _ClaudeMcpLoginCancelled) {
+          unawaited(events.close());
+        } else {
+          unawaited(_run(events: events));
+        }
+      },
       onCancel: _cancel,
     );
     return PluginMcpCancelableAuthentication(
@@ -134,7 +147,14 @@ final class _ClaudeMcpLoginService({
   }
 
   Future<void> _submitCallback({required Uri callbackUri}) async {
+    if (_termination is _ClaudeMcpLoginCancelled) {
+      throw PluginMcpAuthenticationCallbackRejectedException(
+        innerError: StateError("MCP authentication was cancelled"),
+      );
+    }
     final result = await _repository.submitCallback(callback: callbackUri.toString());
+    // A browser return can finish while the user cancels the active sign-in.
+    if (_termination is _ClaudeMcpLoginCancelled) return;
     if (result case ClaudeMcpCallbackRejected(:final cause)) {
       _termination = _ClaudeMcpLoginProviderRejected(cause: cause);
       await _repository.dispose();

@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io" as io;
 
+import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/claude_process_factory.dart";
@@ -12,13 +13,14 @@ import "models/claude_mcp_command_exception.dart";
 class ClaudeMcpAuthenticationRepository({
   required final HostClaudeProcessFactory _processFactory,
   required final String _binaryPath,
+  required final Duration _commandBudget,
 }) {
   static const _killGrace = Duration(seconds: 5);
 
   Future<void> forget({required ClaudeMcpAuthenticationContext context}) async {
     _requireSupportedHost();
-    final process = await _processFactory.spawn(
-      ClaudeProcessLaunch(
+    final process = await _processFactory.spawnCommand(
+      launch: ClaudeProcessLaunch(
         binaryPath: _binaryPath,
         arguments: ["mcp", "logout", "--", context.serverName],
         workingDirectory: context.workingDirectory,
@@ -30,12 +32,13 @@ class ClaudeMcpAuthenticationRepository({
       exited = true;
       return code;
     });
+    final subscriptions = CompositeSubscription();
     try {
       final (code, _, _) = await (
         exit,
-        process.stdout.drain<void>(),
-        process.stderr.drain<void>(),
-      ).wait.timeout(const Duration(seconds: 30));
+        _drain(stream: process.stdout, subscriptions: subscriptions),
+        _drain(stream: process.stderr, subscriptions: subscriptions),
+      ).wait.timeout(_commandBudget);
       if (code != 0) throw ClaudeMcpCommandExitedException(exitCode: code);
     } finally {
       if (!exited) {
@@ -47,8 +50,15 @@ class ClaudeMcpAuthenticationRepository({
           await process.exitCode;
         }
       }
+      await subscriptions.cancel();
       await process.stdin.close();
     }
+  }
+
+  Future<void> _drain({required Stream<List<int>> stream, required CompositeSubscription subscriptions}) {
+    final closed = Completer<void>();
+    subscriptions.add(stream.listen(null, onDone: closed.complete, onError: closed.completeError, cancelOnError: true));
+    return closed.future;
   }
 
   void _requireSupportedHost() {

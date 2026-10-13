@@ -1,11 +1,22 @@
 import "plugin_mcp.dart";
 
 enum PluginMcpAuthenticationUnavailableReason() {
+  /// The harness cannot authenticate servers in this requested scope.
   unsupportedScope,
+
+  /// This scope requires an already running agent session; none is resident.
   liveSessionRequired,
+
+  /// The exact server key no longer occurs in native inventory.
   targetNotFound,
+
+  /// Native credential commands cannot safely address this configuration.
   nativeConfigurationRequired,
+
+  /// The verified native API does not support authentication for this target.
   notSupported,
+
+  /// Sesori has not implemented this host/transport's native boundary yet.
   notImplemented,
 }
 
@@ -17,7 +28,7 @@ final class const PluginMcpAuthenticationUnavailableException({
 }
 
 /// A rejected callback retains its cause without displaying authorization data.
-final class const PluginMcpAuthenticationCallbackRejectedException({required final Exception innerError})
+final class const PluginMcpAuthenticationCallbackRejectedException({required final Object innerError})
     implements Exception {
   @override
   String toString() => "The callback does not match this MCP authentication attempt";
@@ -48,7 +59,12 @@ final class const PluginMcpNativeSettlementAuthentication({
 
 sealed class const PluginMcpAuthenticationEvent();
 
-enum PluginMcpAuthenticationFailureReason() { nativeFailure, declined, expired, nativeTrustRequired }
+enum PluginMcpAuthenticationFailureReason() {
+  nativeFailure,
+  declined,
+  expired,
+  nativeTrustRequired,
+}
 
 final class const PluginMcpAuthenticationChallenge({
   required final Uri authorizationUri,

@@ -8,7 +8,9 @@ implemented. `POST /mcp/inventory` reads Claude Code inventory from an existing
 resident session. Phone and desktop expose a shared read-only inventory and
 server-details view backed by the typed loading lifecycle. `POST /mcp/entry/action`
 exposes explicit live-session Claude reconnect, enable and disable controls to
-headless consumers. Product UI controls and MCP authentication remain pending.
+headless consumers. Claude native plugin authentication is implemented for
+existing configured HTTP servers. Product action UI and headless authentication
+routes remain pending.
 Existing permission flows remain separate. Read-only inventory may inspect an
 archived session if its native process remains live; it grants no session mutation.
 
@@ -150,6 +152,10 @@ Pinned native protocol evidence is recorded in
 [HARNESS_CAPABILITIES.md](../HARNESS_CAPABILITIES.md); it does not qualify a
 full Sesori management flow on its own; native protocol evidence, adapter tests,
 and real route/client qualification are distinct.
+
+Native authentication lifecycle, callback validation, denial and expiry coverage
+is in `bridge/sesori_plugin_claude/test/claude_mcp_login_repository_test.dart`.
+Resident context coverage remains in the process-repository tests below.
 
 Automated adapter/route coverage:
 

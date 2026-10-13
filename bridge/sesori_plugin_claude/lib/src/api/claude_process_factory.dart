@@ -62,20 +62,26 @@ final class HostClaudeProcessFactory({
 
   Future<ClaudeProcessHandle> spawn(ClaudeProcessLaunch launch) async {
     try {
-      final process = await _processes.spawn(
-        includeParentEnvironment: true,
-        executable: launch.binaryPath,
-        arguments: launch.arguments,
-        environment: {..._environment, ...launch.environment},
-        workingDirectory: launch.workingDirectory,
-        runInShell: io.Platform.isWindows,
-      );
+      final process = await spawnCommand(launch: launch);
       if (!_events.isClosed) _events.add(ProcessSpawnOutcome.succeeded);
-      return _HostClaudeProcessHandle(process: process, processes: _processes);
+      return process;
     } on Object {
       if (!_events.isClosed) _events.add(ProcessSpawnOutcome.failed);
       rethrow;
     }
+  }
+
+  /// Credential commands do not establish session runtime health.
+  Future<ClaudeProcessHandle> spawnCommand({required ClaudeProcessLaunch launch}) async {
+    final process = await _processes.spawn(
+      includeParentEnvironment: true,
+      executable: launch.binaryPath,
+      arguments: launch.arguments,
+      environment: {..._environment, ...launch.environment},
+      workingDirectory: launch.workingDirectory,
+      runInShell: io.Platform.isWindows,
+    );
+    return _HostClaudeProcessHandle(process: process, processes: _processes);
   }
 
   Future<void> dispose() => _events.close();

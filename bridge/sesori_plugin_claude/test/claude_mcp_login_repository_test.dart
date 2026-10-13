@@ -37,6 +37,23 @@ void main() {
       }
     });
 
+    test("rejects ambiguous OAuth challenge and callback parameters", () {
+      final challenge = const ClaudeMcpLoginOutputParser().parseLine(line: "$_authorization")!;
+      for (final value in [
+        "$_callback&state=fixture-state",
+        "$_callback&code=other-code",
+        "http://localhost:4321/callback?state=fixture-state&error=access_denied&error=server_error",
+      ]) {
+        expect(() => challenge.validateCallback(value: value), throwsFormatException);
+      }
+      for (final value in [
+        "$_authorization&state=fixture-state",
+        "$_authorization&redirect_uri=http%3A%2F%2Flocalhost%3A4321%2Fcallback",
+      ]) {
+        expect(() => const ClaudeMcpLoginOutputParser().parseLine(line: value), throwsFormatException);
+      }
+    });
+
     test("rejects missing state and non-loopback native callback", () {
       for (final params in [
         {"redirect_uri": "http://localhost:4321/callback"},
@@ -187,6 +204,102 @@ void main() {
         expect(host.signals, [ShutdownSignal.graceful]);
       });
     }
+
+    test("cancellation before listening prevents native login from starting", () async {
+      final operation = await ClaudeMcpAuthenticationService(
+        repository: _UnusedLogoutRepository(),
+        resolveContext: ({required target}) async => _context,
+        createLogin: ({required context}) => repository,
+        urlBudget: const Duration(seconds: 90),
+        overallBudget: const Duration(minutes: 10),
+      ).begin(target: _target) as PluginMcpCancelableAuthentication;
+      await operation.cancel();
+      final done = operation.events.toList();
+      await _pump();
+      try {
+        expect(host.executable, isNull);
+      } finally {
+        host.process.finish(code: 1);
+        await done;
+      }
+    });
+
+    test("a provider callback racing cancellation cannot replace cancellation", () async {
+      final operation = await ClaudeMcpAuthenticationService(
+        repository: _UnusedLogoutRepository(),
+        resolveContext: ({required target}) async => _context,
+        createLogin: ({required context}) => repository,
+        urlBudget: const Duration(seconds: 90),
+        overallBudget: const Duration(minutes: 10),
+      ).begin(target: _target) as PluginMcpCancelableAuthentication;
+      final events = <PluginMcpAuthenticationEvent>[];
+      final done = operation.events.forEach(events.add);
+      await _pump();
+      host.process.output.add(utf8.encode("$_authorization\n"));
+      await _pump();
+      final submission = operation.submitCallback(
+        callbackUri: Uri.parse(_callback).replace(
+          queryParameters: {"state": "fixture-state", "error": "access_denied"},
+        ),
+      );
+      await operation.cancel();
+      await submission;
+      await done;
+      expect(events, hasLength(1));
+      expect(events.single, isA<PluginMcpAuthenticationChallenge>());
+    });
+
+    test("logout commands do not publish session binary health", () async {
+      final health = <ProcessSpawnOutcome>[];
+      final subscription = factory.events.listen(health.add);
+      final logout = ClaudeMcpAuthenticationRepository(
+        processFactory: factory,
+        binaryPath: "/fixture/claude",
+        commandBudget: const Duration(seconds: 30),
+      ).forget(context: _context);
+      await _pump();
+      host.process.finish(code: 0);
+      await logout;
+      await _pump();
+      await subscription.cancel();
+      expect(health, isEmpty);
+    });
+
+    test("logout timeout releases pipes even when native exit precedes pipe closure", () async {
+      final logout = ClaudeMcpAuthenticationRepository(
+        processFactory: factory,
+        binaryPath: "/fixture/claude",
+        commandBudget: const Duration(milliseconds: 20),
+      ).forget(context: _context);
+      final failed = expectLater(logout, throwsA(isA<TimeoutException>()));
+      host.process.exit.complete(0);
+      await failed;
+      expect(host.process.output.hasListener, isFalse);
+      expect(host.process.errors.hasListener, isFalse);
+      expect(host.signals, isEmpty);
+      await host.process.output.close();
+      await host.process.errors.close();
+    });
+
+    test("context read failure remains a typed failure with a private presentation", () async {
+      final cause = TimeoutException("fixture-private-authorization");
+      final service = ClaudeMcpAuthenticationService(
+        repository: _UnusedLogoutRepository(),
+        resolveContext: ({required target}) async => throw cause,
+        createLogin: ({required context}) => repository,
+        urlBudget: const Duration(seconds: 90),
+        overallBudget: const Duration(minutes: 10),
+      );
+      await expectLater(
+        service.begin(target: _target),
+        throwsA(
+          isA<ClaudeMcpAuthenticationException>()
+              .having((error) => error.innerError, "cause", same(cause))
+              .having((error) => error.toString(), "presentation", isNot(contains("fixture-private-authorization"))),
+        ),
+      );
+      expect(host.executable, isNull);
+    });
 
     test("URL deadline expires and releases the native child", () async {
       final operation = await ClaudeMcpAuthenticationService(

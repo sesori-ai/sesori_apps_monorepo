@@ -35,6 +35,9 @@ final class const ClaudeMcpLoginChallenge({
         !uri.hasAuthority ||
         uri.origin != callbackUri.origin ||
         uri.path != callbackUri.path ||
+        uri.queryParametersAll["state"]?.length != 1 ||
+        (uri.queryParametersAll["code"]?.length ?? 0) > 1 ||
+        (uri.queryParametersAll["error"]?.length ?? 0) > 1 ||
         uri.queryParameters["state"] != state ||
         (uri.queryParameters["code"]?.isNotEmpty != true && uri.queryParameters["error"]?.isNotEmpty != true) ||
         uri.userInfo.isNotEmpty) {
@@ -76,6 +79,8 @@ final class const ClaudeMcpLoginOutputParser() {
       if (uri.host.isEmpty ||
           (uri.scheme == "http" && !const {"localhost", "127.0.0.1", "::1"}.contains(uri.host)) ||
           uri.userInfo.isNotEmpty ||
+          uri.queryParametersAll["state"]?.length != 1 ||
+          uri.queryParametersAll["redirect_uri"]?.length != 1 ||
           state == null ||
           state.isEmpty ||
           callback == null ||

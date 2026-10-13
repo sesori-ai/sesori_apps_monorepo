@@ -26,7 +26,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 6/17 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
 | 7/17 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
 | 8/17 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
-| 9/17 | Claude native authentication boundary (original 7.b.1) | In progress | Native API and isolated OAuth qualification |
+| 9/17 | Claude native authentication boundary (7.b.1) | In progress | Native API and OAuth qualification |
 | 10/17 | Headless authentication owner and wire (original 7.b.2) | Not started | — |
 | 11/17 | Shared authentication and external-action presentation | Not started | — |
 | 12/17 | Claude approvals and form/URL elicitation | Not started | — |
@@ -420,7 +420,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Native-boundary verification at base `5dfef8672f` plus the source draft: 11
   native login/parser/service tests, 29 resident-process tests and four mapper
   tests pass. Plugin API construction/behavior regression tests pass
-  (35 tests), for 79 focused tests in total. Claude and interface analysis is clean after the service ownership fix. Exact commands
+  (35 tests), for 79 focused tests in total.
+  Claude and interface analysis is clean after the service ownership fix. Exact commands
   below use the pinned SDK already recorded above, from `bridge/sesori_plugin_claude`:
 
   ```sh
@@ -450,12 +451,13 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   isolated `CLAUDE_CONFIG_DIR` and a local OAuth fixture. The initial whole-file
   preference byte comparison was too broad; the passing invariant compares MCP
   server definitions. Only isolated native fixture credentials were used; no
-  real account or production configuration was used. Real provider, relay, packaged and other-host checks remain pending.
+  real account or production configuration was used. Real provider, relay, packaged
+  and other-host checks remain pending.
 - Terminal choice uses the system `script` helper through `HostProcessService`;
   there is no Python, Rust or new PTY dependency in production. Native child
   exit codes 0 and 7 and cancellation were measured on the current host. Apple's
   source also preserves child status in `shell_cmds-234` and current main:
-  [Apple terminal helper source](https://github.com/apple-oss-distributions/shell_cmds/blob/shell_cmds-234/script/script.c).
+  [Apple terminal helper source][apple-script].
   Source inspection does not qualify older host versions. Linux and Windows/SSE
   gates remain explicit and the plan stays active until its recorded matrix passes.
 
@@ -471,3 +473,27 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   All 79 tests and both owning-package analyzers passed after the ownership fix;
   the final production fixture then passed both exact Claude pins. Series titles
   for all eight published predecessors are synchronized to 17.
+
+[apple-script]: https://github.com/apple-oss-distributions/shell_cmds/blob/shell_cmds-234/script/script.c
+
+- Step 9 review fixes reproduce and correct cancellation before listener attachment,
+  browser-denial/cancellation overlap, ambiguous OAuth query parameters, logout
+  health reporting, and pipe cleanup after native exit. Context read failures keep
+  a typed cause and private authentication presentation rather than becoming false
+  unsupported-capability results. The six new tests first failed against the
+  corresponding old behaviors, then the complete 85-test focused suite passed;
+  final Claude and interface analyzers are clean. Commands and pinned SDK match
+  the native-boundary record above. One baseline probe and a suite initially ran
+  concurrently during temporary context-wrapper removal; that failed/incomplete
+  run is excluded. After restoration, the final full focused suite passed.
+- Terminal-helper spawn outcomes are deliberately excluded from session binary
+  health. The verified pins emit an exact native authorization URL; speculative
+  prose punctuation trimming or skipping malformed OAuth challenges is declined.
+  No broad native-output parser or additional operation registry is added.
+
+- Final native fixture after the review fixes passed both exact pins again, with
+  cancellation children stopped within 105/107 ms and server definitions unchanged.
+  The review-corrected native PR measures about 1,580 changed lines (29 generated),
+  a small soft-cap overage from focused lifecycle/privacy regressions. Its coupled
+  fixes stay with the native boundary; the 900 generated wire lines remain in the
+  separate unpublished successor. No published history is rewritten.

@@ -655,7 +655,8 @@ headlessly through `POST /mcp/entry/action`, with authoritative refresh and scop
 client invalidation. They change the live process only, with no persistent
 configuration write or implicit session launch. Archived mutations return the
 canonical structured 409 rejection before native access.
-Each declared control includes its effect scope. Native MCP authentication,
+Each declared control includes its effect scope. Claude native plugin HTTP
+authentication is implemented as described below. Headless authentication routes,
 client action UI and the other harness adapters remain **not implemented**.
 Reads never start an integration or agent session.
 Connection, authorization and discovery state remain distinct; only a safe HTTP(S)
@@ -680,8 +681,9 @@ explicit `mcp_server` context is absent at 2.1.221 and present at 2.1.291.
 Plain-pipe login does not expose the
 no-browser URL/paste journey. Codex completion must be correlated by the
 adapter; a browser open does not confirm success. Claude live-session reconnect
-and enable/disable are **implemented** as Sesori management actions. Authentication,
-elicitation and the remaining native-supported management rows are **not implemented**
+and enable/disable are **implemented** as Sesori management actions. Claude plugin
+HTTP authentication is also implemented. Headless authentication, elicitation and
+the remaining native-supported management rows are **not implemented**
 at this checkpoint.
 
 The Claude native plugin authentication API is **implemented** for an existing

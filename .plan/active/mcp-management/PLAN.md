@@ -314,7 +314,7 @@ terminal UI output.
   cancellation emits `question.rejected`. Late competing replies cannot send another native reply.
   An old-client-only session therefore has an explicit cancel/upgrade path; a mixed session can still answer from its
   modern client. Never infer unsupported native input merely because an older client is connected.
-- Steps 9 and 10 implement this compatibility view with external actions and forms respectively. Test the released
+- The external-action and form steps implement this compatibility view. Test the released
   client alone and mixed with a modern client: both event orders, snapshot recovery, modern completion, legacy cancel,
   and competing replies. Keep this projection only while supported public clients lack the typed interaction, with the
   required dated compatibility marker. Native schemas outside the supported set still receive an observable native
@@ -395,7 +395,7 @@ UI, and additional adapters land. Step 16 is final reconciliation only.
 | 6/17 | Phone and desktop details (5.b) | 500–1,100 |
 | 7/17 | Claude live-server controls (7.a) | 1,350–1,800, generated-heavy exception |
 | 8/17 | Canonical archived MCP rejection (7.a follow-up) | 100–300 |
-| 9/17 | Claude native authentication boundary (7.b.1) | 900–1,400 |
+| 9/17 | Claude native authentication boundary (7.b.1) | 900–1,600, focused review-fix overage |
 | 10/17 | Headless authentication owner and wire (7.b.2) | 1,100–1,800, includes codecs |
 | 11/17 | Shared authentication and external actions | 850–1,400 |
 | 12/17 | Claude approvals and elicitation | 900–1,450 |

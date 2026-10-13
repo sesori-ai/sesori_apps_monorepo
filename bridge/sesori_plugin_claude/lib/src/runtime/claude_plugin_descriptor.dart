@@ -323,6 +323,7 @@ final class const ClaudePluginDescriptor({
         repository: ClaudeMcpAuthenticationRepository(
           processFactory: processFactory,
           binaryPath: binaryPath,
+          commandBudget: const Duration(seconds: 30),
         ),
       ),
       transcripts: ClaudeTranscriptCatalogRepository(
