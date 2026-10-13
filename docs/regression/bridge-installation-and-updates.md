@@ -32,6 +32,14 @@ client's update steps shown wherever a feature needs a newer bridge.
   in `.tool-versions`; bridge builds do not bootstrap Flutter or asdf. Workflow
   helper actions come from the workflow revision, including when production
   submissions rebuild an older source commit.
+- Both Linux CLI archives get detached OpenPGP signatures through the main-only
+  `linux-signing` environment after the native builds. Secrets enter only the
+  network-disabled signing container, with a pinned primary fingerprint and public-only
+  verification. Internal/production releases include both `.tar.gz.asc` files and the
+  public key; anonymous retrieval must match the signed archive and signature bytes.
+  The one-off existing-release action preserves archive/checksum bytes and release
+  metadata, refuses changed inputs/conflicting assets, and can retry a failed publishing
+  job using its original signatures. Installers/updaters still verify SHA-256, not OpenPGP.
 - TestFlight and Play internal notes list commit subjects since the nearest
   `v*` release tag on the build's first-parent history, newest first, and retain
   the build SHA. Failed attempts do not reset this range. With no release tag,
@@ -115,7 +123,11 @@ immutable targets, Unicode and exact omission counts at both length limits. The 
 artifact set and checksum manifest are complete and basename-keyed, and a managed
 install reports the expected version and starts. The native signing probe must also
 show approval-free `macos-signing` admission and valid x64/arm64 signatures from the
-actual reusable bridge build. Static workflow contracts remain L2 evidence and cannot
+actual reusable bridge build. Linux signing coverage includes disposable-key tamper
+refusal for both archives, protected main-only signing, and independent public verification
+against the known primary fingerprint. Bootstrap must preserve existing release metadata
+and archive/checksum digests. This does not qualify Linux desktop packages or their GUI.
+Static workflow contracts remain L2 evidence and cannot
 replace this packaged/external L3 proof.
 
 ## Exploration Guidance
@@ -193,6 +205,11 @@ macOS signing are material failures.
   differ by design.
 
 ## Sources
+
+- `.github/scripts/linux_signing.py`, `.github/scripts/sign_bridge_linux.py`,
+  `.github/scripts/publish_bridge_linux_signatures.py`, `.github/scripts/test_bridge_linux_signatures.py`,
+  `.github/workflows/_reusable-linux-cli-signing.yml`, `.github/workflows/sign-linux-release.yml`,
+  `docs/desktop/linux-signing.md`
 
 - `.github/workflows/release-all-platforms.yml`, `.github/scripts/check_internal_release.sh`,
   `.github/scripts/test_check_internal_release.py`, `tool/release_scheduler/README.md`

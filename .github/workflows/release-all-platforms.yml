@@ -276,7 +276,8 @@ jobs:
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release for ${TAG} already exists — uploading assets idempotently"
-            gh release upload "$TAG" artifacts/*.tar.gz artifacts/*.zip artifacts/checksums.txt --clobber
+            gh release upload "$TAG" artifacts/*.tar.gz artifacts/*.zip \
+              artifacts/checksums.txt artifacts/*.asc --clobber
             gh release edit "$TAG" --prerelease --notes-file notes.md
           else
             gh release create "$TAG" \
@@ -284,8 +285,16 @@ jobs:
               --verify-tag \
               --title "Internal v${VERSION}-internal.${BUILD_NUMBER}" \
               --notes-file notes.md \
-              artifacts/*.tar.gz artifacts/*.zip artifacts/checksums.txt
+              artifacts/*.tar.gz artifacts/*.zip artifacts/checksums.txt artifacts/*.asc
           fi
+
+      - name: Verify public Linux archive signatures
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          python3 .github/scripts/publish_bridge_linux_signatures.py publish \
+            --repository "$GITHUB_REPOSITORY" --tag "$RELEASE_TAG" --root artifacts
 
       - name: Summary
         env:

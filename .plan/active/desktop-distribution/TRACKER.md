@@ -26,7 +26,7 @@ Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
 Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
 remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 
-## Current continuation — private signed Linux packages
+## Current continuation — Linux CLI signing and public internal previews
 
 The user prioritized Linux before Windows and requested key-generation guidance plus
 a PR for signed builds. #1941 delivered step 11.a/14 and merged as
@@ -42,8 +42,9 @@ source patches, and verified checksum signatures against the separately known pu
 fingerprint. Exact evidence lives in [step 9](steps/step-09.md); setup remains in
 [key guidance](../../../docs/desktop/linux-signing.md).
 
-`🌱 [desktop-distribution] Record signed Linux qualification [step 11.b/14]` records
-this acceptance. Build `1.9.1+147` uses the qualification workflow's number, not the
+`🌱 [desktop-distribution] Record signed Linux qualification [step 11.b/14]` merged
+as #1943 (`6f7e60d933e9dcb2a3aa9a8e13afbd2b94a16af7`) on 2026-10-13.
+Build `1.9.1+147` uses the qualification workflow's number, not the
 shared release sequence. Next: CLI archive signatures (11.c), aligned public desktop
 internal previews (11.d), and website tracking/spacing (11.e). The user authorized
 Linux internal desktop previews with the GUI/login/keyring/N→N+1 gaps stated, and
@@ -52,6 +53,16 @@ record the next implementation slices and the website tracking/spacing PR.
 Stable Linux admission and public APT/RPM hosting remain separate; cloud resources
 are not authorized. Build 147 itself remains private. No public release/repository,
 cloud resource or store upload was created by this qualification.
+
+Step 11.c implements shared temporary key ownership, detached signatures for both
+unchanged CLI archives, protected signing in the existing native build flow, and
+anonymous public-byte verification in both release channels. A separate main-only
+bootstrap attaches signatures to existing matching archives without rebuilding or
+replacing release assets/metadata. Its failed publication job reuses the original
+signature artifact; re-signing is not assumed to produce identical bytes.
+Local focused contracts pass; real disposable-key fixtures run in CI. Actual
+production-key signing/public verification of the existing release remains a
+post-merge operation, not evidence claimed by these local tests.
 
 ## Completed macOS website continuation (2026-09-26)
 

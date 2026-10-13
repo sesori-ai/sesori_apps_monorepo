@@ -1,0 +1,45 @@
+name: Sign existing Linux CLI release
+
+# One-off bootstrap/repair of an existing release, not another release cycle.
+# Never rebuild, create/promote a release, move a tag or replace delivered bytes.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing public shared release tag (vX.Y.Z or vX.Y.Z-internal.N)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  sign:
+    uses: ./.github/workflows/_reusable-linux-cli-signing.yml
+    with:
+      release_tag: ${{ inputs.tag }}
+    secrets: inherit
+  publish:
+    needs: sign
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Require trusted main workflow
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Linux signature publication requires main'; exit 1; }
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: sesori-bridge-linux-signatures
+          path: build/bridge-linux-signatures
+      - name: Attach verified signatures without replacing assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          python3 .github/scripts/publish_bridge_linux_signatures.py publish \
+            --repository "$GITHUB_REPOSITORY" --tag "$RELEASE_TAG" --root build/bridge-linux-signatures

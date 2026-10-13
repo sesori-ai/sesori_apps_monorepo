@@ -11,6 +11,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import linux_signing as keys
+import sign_bridge_linux as bridge_signing
 import sign_desktop_linux as signing
 
 FINGERPRINT = "A" * 40
@@ -37,7 +39,7 @@ class LinuxSigningTests(unittest.TestCase):
         self.root = Path(temporary.name)
         packages(root=self.root)
         self.output = self.root / "signed"
-        self.secrets = {signing.KEY_SECRET: "fixture private key", signing.PASSPHRASE_SECRET: "fixture passphrase"}
+        self.secrets = {keys.KEY_SECRET: "fixture private key", keys.PASSPHRASE_SECRET: "fixture passphrase"}
 
     def test_package_bytes_and_matching_identity_required(self):
         identity, paths = signing.load_packages(root=self.root)
@@ -63,19 +65,19 @@ class LinuxSigningTests(unittest.TestCase):
         cases = [({}, FINGERPRINT, "both protected"), (self.secrets, "short", "full primary")]
         for secrets, fingerprint, message in cases:
             with self.subTest(message=message), mock.patch.dict(os.environ, secrets, clear=True), \
-                    mock.patch.object(signing, "run") as command:
+                    mock.patch.object(keys, "run") as command:
                 with self.assertRaisesRegex(ValueError, message):
                     signing.sign_packages(root=self.root, output=self.output, fingerprint=fingerprint)
                 command.assert_not_called()
         self.output.mkdir()
-        with mock.patch.dict(os.environ, self.secrets), mock.patch.object(signing, "run") as command:
+        with mock.patch.dict(os.environ, self.secrets), mock.patch.object(keys, "run") as command:
             with self.assertRaises(FileExistsError):
                 signing.sign_packages(root=self.root, output=self.output, fingerprint=FINGERPRINT)
             command.assert_not_called()
 
     def test_fingerprints_exclude_subkeys(self):
         listing = f"sec:::::::::\nfpr:::::::::{FINGERPRINT}:\nssb:::::::::\nfpr:::::::::{'B' * 40}:\n"
-        self.assertEqual(signing.primary_fingerprints(listing=listing), [FINGERPRINT])
+        self.assertEqual(keys.primary_fingerprints(listing=listing), [FINGERPRINT])
 
     def test_digest_only_rpm_is_not_accepted_as_signed(self):
         with mock.patch.object(signing, "run", return_value="Header SHA256 digest: OK\nPayload SHA256 digest: OK"):
@@ -88,17 +90,17 @@ class LinuxSigningTests(unittest.TestCase):
 
         def fake_run(*, command, env, input_text=None):
             observed.append(command)
-            self.assertNotIn(signing.KEY_SECRET, env)
-            self.assertNotIn(signing.PASSPHRASE_SECRET, env)
+            self.assertNotIn(keys.KEY_SECRET, env)
+            self.assertNotIn(keys.PASSPHRASE_SECRET, env)
             for secret in self.secrets.values():
                 self.assertNotIn(secret, " ".join(command))
             if "--import" in command:
-                self.assertEqual(input_text, self.secrets[signing.KEY_SECRET])
+                self.assertEqual(input_text, self.secrets[keys.KEY_SECRET])
                 raise subprocess.CalledProcessError(2, command, stderr="private diagnostic")
             return ""
 
         output = io.StringIO()
-        with mock.patch.dict(os.environ, self.secrets), mock.patch.object(signing, "run", side_effect=fake_run), \
+        with mock.patch.dict(os.environ, self.secrets), mock.patch.object(keys, "run", side_effect=fake_run), \
                 contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
             with self.assertRaises(subprocess.CalledProcessError):
                 signing.sign_packages(root=self.root, output=self.output, fingerprint=FINGERPRINT)
@@ -116,7 +118,7 @@ class LinuxSigningTests(unittest.TestCase):
                 raise subprocess.CalledProcessError(2, command)
             return ""
 
-        with mock.patch.dict(os.environ, self.secrets), mock.patch.object(signing, "run", side_effect=fake_run):
+        with mock.patch.dict(os.environ, self.secrets), mock.patch.object(keys, "run", side_effect=fake_run):
             with self.assertRaises(subprocess.CalledProcessError) as caught:
                 signing.sign_packages(root=self.root, output=self.output, fingerprint=FINGERPRINT)
         self.assertIsInstance(caught.exception.__context__, ValueError)
@@ -146,15 +148,24 @@ class LinuxSigningTests(unittest.TestCase):
 
     def test_workflow_is_main_only_secret_scoped_and_uploads_only_signed_outputs(self):
         workflow = WORKFLOW.read_text()
-        self.assertEqual(workflow.count("FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:"), 1)
+        dockerfile = (WORKFLOW.parents[1] / "scripts/Dockerfile.linux-signing").read_text()
+        self.assertEqual(dockerfile.count("FROM registry.fedoraproject.org/fedora@sha256:"), 1)
+        self.assertNotIn("registry.fedoraproject.org/fedora@sha256:", workflow)
         linux = workflow.split("  linux-distribution:\n", 1)[1].split("\n  tooling:", 1)[0]
+        resolve = linux.split("      - name: Resolve the shared Fedora base from the signing Dockerfile\n", 1)[1]
+        script = resolve.split("        run: |\n", 1)[1].split("      - name:", 1)[0]
+        env_file = self.root / "github-env"
+        subprocess.run(["/bin/bash", "-c", script], check=True, cwd=WORKFLOW.parents[2],
+                       env={"PATH": os.defpath, "GITHUB_ENV": str(env_file)})
+        expected_image = next(line.split()[1] for line in dockerfile.splitlines() if line.startswith("FROM "))
+        self.assertEqual(env_file.read_text(), f"FEDORA_IMAGE={expected_image}\n")
         self.assertIn("environment: linux-signing", linux)
         guard = '[[ "$GITHUB_REF" == refs/heads/main ]]'
         self.assertLess(linux.index(guard), linux.index("uses: actions/checkout@v6"))
         signing_step = linux.split("      - name: Sign and verify qualified Linux packages\n", 1)[1].split(
             "      - name:", 1)[0]
         self.assertIn("--network none", signing_step)
-        for secret in (signing.KEY_SECRET, signing.PASSPHRASE_SECRET):
+        for secret in (keys.KEY_SECRET, keys.PASSPHRASE_SECRET):
             self.assertEqual(workflow.count(f"secrets.{secret}"), 1)
             self.assertIn(f"secrets.{secret}", signing_step)
         self.assertNotIn("contents: write", linux)
@@ -189,7 +200,7 @@ class LinuxSigningIntegrationTests(unittest.TestCase):
                              "--quick-generate-key", "Sesori signing fixture <fixture@example.invalid>",
                              "rsa2048", "cert", "1d"], env=cls.env, input_text=cls.passphrase)
         listing = signing.run(command=["gpg", "--batch", "--with-colons", "--list-secret-keys"], env=cls.env)
-        cls.fingerprint = signing.primary_fingerprints(listing=listing)[0]
+        cls.fingerprint = keys.primary_fingerprints(listing=listing)[0]
         signing.run(command=["gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase-fd", "0",
                              "--quick-add-key", cls.fingerprint, "rsa2048", "sign", "1d"],
                     env=cls.env, input_text=cls.passphrase)
@@ -211,7 +222,7 @@ class LinuxSigningIntegrationTests(unittest.TestCase):
         self.input = Path(temporary.name)
         packages(root=self.input, rpm=self.rpm)
         self.output = self.input / "signed"
-        self.secrets = {signing.KEY_SECRET: self.secret, signing.PASSPHRASE_SECRET: self.passphrase}
+        self.secrets = {keys.KEY_SECRET: self.secret, keys.PASSPHRASE_SECRET: self.passphrase}
 
     def test_real_subkey_signatures_public_verification_and_tamper_refusal(self):
         with mock.patch.dict(os.environ, self.secrets):
@@ -285,12 +296,60 @@ class LinuxSigningIntegrationTests(unittest.TestCase):
         except subprocess.CalledProcessError as error:
             self.fail(f"Disposable-key package-manager fixture failed: {error.stdout}\n{error.stderr}")
 
+    def test_cli_archives_keep_their_bytes_and_verify_with_public_material_only(self):
+        archives = self.input / "archives"
+        archives.mkdir()
+        for name in bridge_signing.ARCHIVES:
+            (archives / name).write_bytes(b"inert archive fixture: " + name.encode())
+        before = {p.name: p.read_bytes() for p in archives.iterdir()}
+        with mock.patch.dict(os.environ, self.secrets):
+            report = bridge_signing.sign_archives(root=archives, output=self.output, fingerprint=self.fingerprint)
+        self.assertEqual(report["signerFingerprint"], self.fingerprint)
+        public_home = self.input / "public-only-cli"
+        public_home.mkdir(mode=0o700)
+        public_env = {**os.environ, "GNUPGHOME": str(public_home), "LC_ALL": "C"}
+        keyring = public_home / "public.gpg"
+        keys.run(command=["gpg", "--batch", "--dearmor", "--output", str(keyring),
+                          str(self.output / keys.PUBLIC_KEY)], env=public_env)
+        self.assertEqual({p.name for p in self.output.iterdir()},
+                         {keys.PUBLIC_KEY, "signing.json", *(name + ".asc" for name in bridge_signing.ARCHIVES)})
+        # Execute the documented public verification without the user's real key or keyring.
+        docs = (WORKFLOW.parents[2] / "docs/desktop/linux-signing.md").read_text()
+        verify_script = docs.split("## 6.", 1)[1].split("```bash\n", 1)[1].split("```", 1)[0]
+        verify_script = verify_script.replace("E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7", self.fingerprint)
+        name = "sesori-bridge-linux-x64.tar.gz"
+        shutil.copy2(archives / name, self.output / name)
+        verified = subprocess.run(["/bin/bash", "-c", verify_script], cwd=self.output, capture_output=True, text=True)
+        self.assertEqual(verified.returncode, 0, verified.stderr)
+        refused = subprocess.run(["/bin/bash", "-c", verify_script.replace(self.fingerprint, FINGERPRINT)],
+                                 cwd=self.output, capture_output=True, text=True)
+        self.assertNotEqual(refused.returncode, 0)
+        for artifact in report["artifacts"]:
+            source = archives / artifact["name"]
+            signature = self.output / artifact["signature"]
+            self.assertEqual(source.read_bytes(), before[source.name])
+            self.assertEqual(keys.sha256(path=source), artifact["sha256"])
+            verify = ["gpgv", "--keyring", str(keyring), str(signature), str(source)]
+            keys.run(command=verify, env=public_env)
+            source.write_bytes(b"tampered")
+            with self.assertRaises(subprocess.CalledProcessError):
+                keys.run(command=verify, env=public_env)
+            source.write_bytes(before[source.name])
+            signature.write_text("invalid fixture signature")
+            with self.assertRaises(subprocess.CalledProcessError):
+                keys.run(command=verify, env=public_env)
+        with mock.patch.dict(os.environ, {**self.secrets, keys.PASSPHRASE_SECRET: "wrong"}):
+            with self.assertRaises(subprocess.CalledProcessError):
+                bridge_signing.sign_archives(root=archives, output=self.input / "bad-cli-passphrase",
+                                             fingerprint=self.fingerprint)
+        self.assertFalse((self.input / "bad-cli-passphrase/signing.json").exists())
+
     def test_wrong_key_and_wrong_passphrase_never_complete(self):
         with mock.patch.dict(os.environ, self.secrets):
             with self.assertRaisesRegex(ValueError, "does not match"):
                 signing.sign_packages(root=self.input, output=self.output, fingerprint=FINGERPRINT)
         self.assertFalse((self.output / "signing.json").exists())
-        with mock.patch.dict(os.environ, {**self.secrets, signing.PASSPHRASE_SECRET: "wrong"}):
+        with mock.patch.dict(os.environ, {**self.secrets, keys.PASSPHRASE_SECRET: "wrong"}):
             with self.assertRaises(subprocess.CalledProcessError):
                 signing.sign_packages(root=self.input, output=self.input / "bad-passphrase",
                                       fingerprint=self.fingerprint)

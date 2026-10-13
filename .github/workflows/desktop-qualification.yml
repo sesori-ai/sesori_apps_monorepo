@@ -71,6 +71,8 @@ on:
       - '.github/scripts/sign_desktop_linux.py'
       - '.github/scripts/test_sign_desktop_linux.py'
       - '.github/scripts/Dockerfile.linux-signing'
+      - '.github/scripts/linux_signing.py'
+      - '.github/scripts/sign_bridge_linux.py'
       - 'client/desktop/tool/windows_installer.iss'
       - 'client/app/android/app/src/main/ic_launcher-playstore.png'
       - 'client/desktop/windows/runner/main.cpp'
@@ -93,10 +95,6 @@ on:
 
 permissions:
   contents: read
-
-env:
-  # One native Fedora 44 pin for packaging, install fixtures and signing tests.
-  FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:61beafd34111e1cb85fb49377ceadeee0a53622dbc20670ed8ca303f0e17ed9c
 
 concurrency:
   group: desktop-qualification-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -758,6 +756,10 @@ jobs:
             --package-config client/.dart_tool/package_config.json \
             --output build/desktop-linux-packaging/deb \
             2>&1 | tee build/desktop-linux-packaging/deb-packaging.log
+      - name: Resolve the shared Fedora base from the signing Dockerfile
+        run: |
+          image="$(awk '/^FROM / {print $2}' .github/scripts/Dockerfile.linux-signing)"
+          echo "FEDORA_IMAGE=$image" >> "$GITHUB_ENV"
       - name: Pull validated official Fedora and build native RPM there
         run: |
           set -euo pipefail
@@ -781,8 +783,7 @@ jobs:
       - name: Build Linux signing tools without secrets
         run: |
           set -euo pipefail
-          docker build --build-arg FEDORA_IMAGE="$FEDORA_IMAGE" \
-            --file .github/scripts/Dockerfile.linux-signing --tag sesori-linux-signing .github/scripts
+          docker build --file .github/scripts/Dockerfile.linux-signing --tag sesori-linux-signing .github/scripts
       - name: Sign and verify qualified Linux packages
         env:
           LINUX_GPG_PRIVATE_KEY: ${{ secrets.LINUX_GPG_PRIVATE_KEY }}
@@ -792,10 +793,10 @@ jobs:
           set -euo pipefail
           # Secrets exist only in this step/container, never in build dependencies or artifacts.
           docker run --rm --network none \
-            -v "$GITHUB_WORKSPACE:/workspace:ro" \
+            -v "$GITHUB_WORKSPACE/.github/scripts:/scripts:ro" \
             -v "$GITHUB_WORKSPACE/build/desktop-linux-packaging:/packages" \
             -e LINUX_GPG_PRIVATE_KEY -e LINUX_GPG_PASSPHRASE -e LINUX_GPG_FINGERPRINT \
-            sesori-linux-signing python3 .github/scripts/sign_desktop_linux.py \
+            sesori-linux-signing python3 /scripts/sign_desktop_linux.py \
               --root /packages --output /packages/signed
       - name: Install, same-version reinstall and remove DEB on native Ubuntu and Debian
         run: |
@@ -868,8 +869,7 @@ jobs:
       - name: Verify real Linux signatures with a disposable subkey
         run: |
           set -euo pipefail
-          docker build --build-arg FEDORA_IMAGE="$FEDORA_IMAGE" \
-            --file .github/scripts/Dockerfile.linux-signing --tag sesori-linux-signing .github/scripts
+          docker build --file .github/scripts/Dockerfile.linux-signing --tag sesori-linux-signing .github/scripts
           docker run --rm --network none -v "$GITHUB_WORKSPACE:/workspace:ro" \
             -e SESORI_LINUX_SIGNING_TEST_REQUIRED=1 sesori-linux-signing \
             python3 -m unittest discover -s .github/scripts -p 'test_sign_desktop_linux.py'

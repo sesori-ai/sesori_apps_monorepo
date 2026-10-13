@@ -675,6 +675,15 @@ jobs:
             artifacts/*.tar.gz
             artifacts/*.zip
             artifacts/checksums.txt
+            artifacts/*.asc
+
+      - name: Verify public Linux archive signatures
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v${{ needs.resolve.outputs.version }}
+        run: |
+          python3 .github/scripts/publish_bridge_linux_signatures.py publish \
+            --repository "$GITHUB_REPOSITORY" --tag "$RELEASE_TAG" --root artifacts
 
       # Releases created with GITHUB_TOKEN don't fire the `release: released`
       # event, so kick off npm publishing directly when the release went live.

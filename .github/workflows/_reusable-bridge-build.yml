@@ -1,7 +1,8 @@
 name: Bridge Build (reusable)
 
 # Builds the 6-platform sesori-bridge archives and uploads them as workflow
-# artifacts (sesori-bridge-<os>-<arch>.<ext>). Used by:
+# artifacts (sesori-bridge-<os>-<arch>.<ext>), then signs both Linux archives.
+# Signatures/public key travel in sesori-bridge-linux-signatures. Used by:
 #   - release-all-platforms.yml — hourly when main has eligible changes (or on
 #     manual dispatch), baking an X.Y.Z-internal.<N>
 #     version so internal binaries self-report exactly their release tag.
@@ -228,3 +229,8 @@ jobs:
         with:
           name: ${{ matrix.asset_name }}
           path: bridge/app/${{ matrix.asset_name }}.${{ matrix.archive_ext }}
+
+  sign-linux:
+    needs: build
+    uses: ./.github/workflows/_reusable-linux-cli-signing.yml
+    secrets: inherit

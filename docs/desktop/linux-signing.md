@@ -1,12 +1,13 @@
-# Linux package-signing setup
+# Linux artifact-signing setup
 
 Linux uses a dedicated OpenPGP key, not the Apple Developer ID certificate. No paid
 certificate or external identity verification is required. Keep the certification
 primary key offline; GitHub Actions receives only the protected signing subkey.
 
-Current scope: private native x64/arm64 packages from **Desktop Native Qualification**
-(`linux-packaging`, main only). RPMs receive native OpenPGP signatures. Both RPM and
-unchanged DEB bytes are covered by a detached signature over SHA-256 checksums. This
+The shared Bridge build signs both Linux CLI archives with detached OpenPGP signatures.
+The same key owner signs private native x64/arm64 desktop packages from **Desktop Native
+Qualification** (`linux-packaging`, main only). RPMs receive native OpenPGP signatures.
+Both RPM and unchanged DEB bytes are covered by a detached signature over SHA-256 checksums. This
 is **not** an APT repository: APT normally authenticates signed repository metadata,
 not a detached signature beside a manually downloaded DEB. Public APT/RPM hosting,
 shared-release attachment and desktop-session/upgrade qualification remain separate.
@@ -46,7 +47,7 @@ gpg --homedir "$KEY_HOME" --list-secret-keys --with-subkey-fingerprint
 In `sesori-ai/sesori_apps_monorepo` → Settings → Environments, create
 **`linux-signing`**. Select a custom deployment-branch policy allowing **`main` only**;
 do not allow PR branches or unrestricted tags. No new production approval gate is
-introduced: this environment protects private qualification credentials, not publication.
+introduced: this environment protects signing credentials, not publication authority.
 
 | Setting | Kind | Value |
 |---|---|---|
@@ -144,6 +145,62 @@ DEB bytes remain unchanged. No private key, passphrase or keyring is uploaded.
 This workflow never publishes a release, enables Linux admission, uploads to stores,
 or creates cloud resources. A successful disposable-key CI fixture proves the signer
 mechanics, not production-key access or native application behavior.
+
+## 5. Linux CLI signatures and existing-release bootstrap
+
+`_reusable-bridge-build.yml` waits for the six native builds, then calls the read-only
+`_reusable-linux-cli-signing.yml`. Its main-only `linux-signing` job uses the same
+network-disabled container and temporary key owner as desktop signing. Neither archive
+is unpacked, executed or modified. Each `.tar.gz.asc` is verified with public material
+before upload. Signing failure prevents the shared build from succeeding.
+
+Internal and production releases publish both signatures and `sesori-linux-public.asc`
+alongside the six archives and unchanged basename-keyed `checksums.txt`. Public archive,
+signature and key bytes are checked anonymously after upload. Existing store approval,
+release/tag ownership and the npm archive filters remain unchanged. These are **CLI**
+archives, not desktop DEB/RPM packages. Installers and automatic updaters still enforce
+SHA-256 checksums; adding signatures does not silently add OpenPGP enforcement to them.
+
+For an existing public release without signatures, set `TAG` to its exact shared tag:
+
+```bash
+gh workflow run sign-linux-release.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f tag="$TAG"
+```
+
+This downloads both archives anonymously, matches their GitHub asset digests and
+published checksums, then signs those exact bytes. A separate publication job checks
+that the public archives still match and adds only the public key and two signatures.
+It does not rebuild binaries, replace archives/checksums, create/promote releases, move
+tags, upload to stores or change Latest. Signing evidence stays in Actions artifacts.
+A failed publication job can be rerun with its original signature artifact; a new
+signing run can produce different signature timestamps and will refuse conflicting
+published bytes rather than overwrite them.
+
+## 6. Verify a CLI archive using the independently pinned key
+
+Download the matching archive, its `.asc` and `sesori-linux-public.asc` from the same
+public release. Choose `sesori-bridge-linux-arm64.tar.gz` instead for ARM64. With
+GnuPG installed, verify before extracting or running anything:
+
+```bash
+(
+  set -euo pipefail
+  verify_home="$(mktemp -d)"
+  trap 'gpgconf --homedir "$verify_home" --kill all; rm -rf "$verify_home"' EXIT
+  chmod 700 "$verify_home"
+  fingerprint=E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7
+  gpg --homedir "$verify_home" --batch --import sesori-linux-public.asc
+  gpg --homedir "$verify_home" --batch --export "$fingerprint" > "$verify_home/trusted.gpg"
+  test -s "$verify_home/trusted.gpg"
+  gpgv --homedir "$verify_home" --keyring "$verify_home/trusted.gpg" \
+    sesori-bridge-linux-x64.tar.gz.asc sesori-bridge-linux-x64.tar.gz
+)
+```
+
+Exporting only the known primary fingerprint excludes unrelated keys that might be
+bundled in a downloaded key file. Do not substitute a fingerprint supplied only by
+that same download. Missing signatures on an older release are not evidence of signing.
 
 ## Verified private qualification
 
