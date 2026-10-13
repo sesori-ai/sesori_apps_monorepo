@@ -82,7 +82,7 @@ reprompts until the bounded probe cancels it. A fresh correct-state login exchan
 a token and completes on both. A plain pipe emits only startup text and remains
 blocked through the bounded ten-second check. The production authentication
 boundary needs a terminal-capable native process; Python is not that boundary.
-Any new PTY dependency and supported-host behavior must be qualified in step 8.
+Any new PTY dependency and supported-host behavior must be qualified in step 9.
 
 Codex paginated status returns every configured fixture exactly once when each
 page requests one server. A separate no-thread read returns the same configured

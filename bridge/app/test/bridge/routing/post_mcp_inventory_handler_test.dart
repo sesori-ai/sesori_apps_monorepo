@@ -155,13 +155,16 @@ void main() {
     await (db.update(
       db.sessionTable,
     )..where((row) => row.sessionId.equals("bridge-session"))).write(const SessionTableCompanion(archivedAt: Value(1)));
+    final archived = await act(
+      pluginId: "fixture",
+      scope: const McpSessionScope(sessionId: "bridge-session"),
+      action: McpServerAction.reconnect,
+    );
+    expect(archived.status, 409);
+    expect(archived.headers["content-type"], contains("application/json"));
     expect(
-      (await act(
-        pluginId: "fixture",
-        scope: const McpSessionScope(sessionId: "bridge-session"),
-        action: McpServerAction.reconnect,
-      )).status,
-      409,
+      SessionArchivedRejection.fromJson(jsonDecode(archived.body!) as Map<String, dynamic>),
+      const SessionArchivedRejection(sessionId: "bridge-session", reason: SessionArchivedReason.archivedReadOnly),
     );
     expect(plugin.actions, isEmpty);
     expect(plugin.scopes, isEmpty);

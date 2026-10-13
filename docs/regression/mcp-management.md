@@ -73,6 +73,8 @@ archived session if its native process remains live; it grants no session mutati
 - Refresh feedback occupies a stable header area. Existing inventory remains
   scrollable, with stable target keys and no offset reset during refresh failure.
 - Archived and sub-agent sessions retain the read-only MCP menu entry; session mutations stay hidden.
+- Archived control requests return HTTP 409 with the canonical session ID and
+  `archived_read_only` reason, without accessing the native plugin.
 - Unknown entries show an upgrade hint instead of claiming an empty available catalog.
 - Offline refresh controls are disabled. Server details retain the fixed refresh
   status header and distinguish a removed server from a failed inventory read.
