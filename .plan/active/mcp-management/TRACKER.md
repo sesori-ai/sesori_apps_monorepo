@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-inventory-contracts`, `2c70025d8f`, in the provided `copper-heron` worktree.
-- Current step: 3/13, inventory foundation verified and ready for its PR.
+- Current step: 3/13, inventory foundation in PR review (#1947).
   Adapter work is preserved for step 4. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
@@ -18,8 +18,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
 | 1/13 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/13 | Freeze priority native contracts and capability evidence | Merged | [#1945](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1945); [evidence](evidence/native-contracts.md) |
-| 3/13 | Inventory foundation (original 3.a) | Verified, ready for PR | Current branch; four codec tests |
+| 2/13 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/13 | Inventory foundation (original 3.a) | PR review | [#1947][pr-1947]; four codec tests |
 | 4/13 | Claude scoped inventory and bridge read (original 3.b) | Preserved adapter work | Not published |
 | 5/13 | Shared phone/desktop inventory and details | Not started | — |
 | 6/13 | Claude actions and native authentication | Not started | — |
@@ -138,5 +138,10 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 - Step 2 merged as PR #1945 after all actionable bot findings were addressed, current-head reviews settled, and
   required CI passed. Step 3 rebased onto `2c70025d8f`; neither owning production package changed on main, so the
   existing focused tests/analyzers and architecture approval remain applicable. Foundation measurement before this
-  tracker update: 356 authored and 1,679 generated lines (2,035 total). No obsolete runtime owner or stored data exists
+  tracker update: 291 authored production/test and 1,679 generated lines (1,970 total excluding docs). No obsolete runtime owner or stored data exists
   to remove in this contract-only step.
+
+[pr-1945]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1945
+[pr-1947]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1947
+
+Native evidence: [contract captures](evidence/native-contracts.md).

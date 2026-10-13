@@ -42,6 +42,7 @@ final class const PluginMcpTool({required final String name, required final Stri
 
 sealed class const PluginMcpToolInventory();
 
+/// Adapters must supply an immutable list (const or List.unmodifiable).
 final class const PluginMcpToolsAvailable({required final List<PluginMcpTool> tools}) extends PluginMcpToolInventory;
 
 final class const PluginMcpToolsUnavailable() extends PluginMcpToolInventory;
@@ -82,6 +83,7 @@ enum PluginMcpInventoryUnavailableReason() { unsupportedScope, liveSessionRequir
 
 sealed class const PluginMcpInventoryResult();
 
+/// Adapters must supply immutable entries, including each server tool list.
 final class const PluginMcpInventorySnapshot({
   required final List<PluginMcpInventoryEntry> entries,
   required final PluginMcpCatalogAvailability connectors,

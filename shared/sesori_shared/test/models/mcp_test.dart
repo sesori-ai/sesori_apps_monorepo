@@ -28,6 +28,9 @@ void main() {
     expect(failed, const McpToolInventory.failed(message: 'Discovery failed'));
     expect(available, isNot(unavailable));
     expect(failed.toJson(), {'type': 'failed', 'message': 'Discovery failed'});
+    for (final state in [available, unavailable, failed]) {
+      expect(McpToolInventory.fromJson(state.toJson()), state);
+    }
   });
 
   test('server authorization does not grant a tool permission or create configuration fields', () {
@@ -53,13 +56,24 @@ void main() {
   test('catalog unavailability leaves configured server inventory readable', () {
     final snapshot = McpInventoryResult.fromJson({
       'type': 'available', 'scope': {'type': 'project', 'projectId': 'project-1'},
-      'entries': <Object?>[],
+      'entries': [
+        {
+          'type': 'server',
+          'target': {'type': 'server', 'scope': {'type': 'project', 'projectId': 'project-1'}, 'serverKey': 'fixture'},
+          'name': 'Fixture server',
+          'connection': {'type': 'status', 'phase': 'connected'},
+          'authorization': 'unknown',
+          'tools': {'type': 'unavailable'},
+        },
+      ],
       'connectors': {'type': 'unavailable', 'message': 'Catalog requires sign-in'},
     });
     expect(snapshot, isA<McpInventorySnapshot>());
     final inventory = snapshot as McpInventorySnapshot;
     expect(inventory.scope, const McpScope.project(projectId: 'project-1'));
     expect(inventory.connectors, const McpCatalogAvailability.unavailable(message: 'Catalog requires sign-in'));
-    expect(McpInventoryResult.fromJson(snapshot.toJson()), snapshot);
+    final restored = McpInventoryResult.fromJson(snapshot.toJson()) as McpInventorySnapshot;
+    expect(restored, snapshot);
+    expect((restored.entries.single as McpServerSnapshot).serverTarget.serverKey, 'fixture');
   });
 }
