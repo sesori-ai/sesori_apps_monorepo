@@ -44,8 +44,8 @@ fingerprint. Exact evidence lives in [step 9](steps/step-09.md); setup remains i
 
 `🌱 [desktop-distribution] Record signed Linux qualification [step 11.b/14]` records
 this acceptance. Build `1.9.1+147` uses the qualification workflow's number, not the
-shared release sequence. Next: signed repository hosting and shared-cycle integration
-with aligned source/build/channel. The user subsequently authorized public opt-in
+shared release sequence. Next: CLI archive signatures (11.c), aligned public desktop
+internal previews (11.d), and website tracking/spacing (11.e). The user authorized
 Linux internal desktop previews with the GUI/login/keyring/N→N+1 gaps stated, and
 OpenPGP signatures for the existing Linux Bridge CLI archives. D11–D12 in `PLAN.md`
 record the next implementation slices and the website tracking/spacing PR.
@@ -59,7 +59,8 @@ The user directed **“retire this gate and continue”** after the missing QA w
 itemized. Gate C, macOS 12 execution, remaining phone/live-harness checks and unknown
 manual-build attribution are accepted limitations, not newly passing evidence.
 Parent closeout is no longer a macOS publication prerequisite. Do not reopen those
-checks or interrupt the running app/bridge; Windows/Linux requirements remain intact.
+checks or interrupt the running app/bridge. Windows and stable Linux gates remain
+intact; D11 records the later, limited Linux internal-preview acceptance.
 
 `DESKTOP_MACOS_PUBLICATION_ENABLED=true` now admits macOS through the shared cycle.
 The unchanged publisher attached four signed installers, desktop checksums and the
