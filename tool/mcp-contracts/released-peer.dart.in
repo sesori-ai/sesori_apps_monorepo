@@ -1,0 +1,70 @@
+import 'dart:convert';
+
+import 'package:json_annotation/json_annotation.dart';
+import 'package:sesori_shared/sesori_shared.dart';
+
+class SseEvent({required final SesoriSseEvent data, required final String? directory});
+
+class FixtureFailureReporter() {
+  void recordFailure({required Object error, required StackTrace stackTrace,
+    required String uniqueIdentifier, required bool fatal, required String reason,
+    required List<String> information}) => throw StateError(reason);
+}
+
+void logw(String message, Object error, StackTrace stackTrace) {}
+void loge(String message, Object error, StackTrace stackTrace) => throw StateError(message);
+void logt(String message) {}
+
+class ReleasedReceiver() {
+  final _events = <SseEvent>[];
+  final _failureReporter = FixtureFailureReporter();
+
+/* RELEASED_SSE_METHODS */
+
+  void receive(String type, Map<String, Object?> properties) {
+    _onSseData(jsonEncode({'payload': {'type': type, 'properties': properties}}));
+  }
+}
+
+void check(bool condition, String message) {
+  if (!condition) throw StateError(message);
+}
+
+void main() {
+  const notice = <String, Object?>{
+    'id': 'fixture-request',
+    'sessionID': 'fixture-session',
+    'questions': [
+      {'header': 'MCP input', 'question': 'Upgrade Sesori to answer this request, or cancel it.',
+        'custom': false, 'options': <Object?>[]},
+    ],
+    'interactionKind': 'form',
+  };
+  var count = 0;
+  for (final typedFirst in [false, true]) {
+    for (final terminal in ['question.replied', 'question.rejected']) {
+      final peer = ReleasedReceiver();
+      if (typedFirst) peer.receive('form.asked', {'id': 'fixture-request'});
+      peer.receive('question.asked', notice);
+      if (!typedFirst) peer.receive('form.asked', {'id': 'fixture-request'});
+      peer.receive('form.settled', {'id': 'fixture-request'});
+      peer.receive(terminal, {'requestID': 'fixture-request', 'sessionID': 'fixture-session'});
+      check(peer._events.length == 2, 'Unknown typed events must be skipped');
+      final question = peer._events.first.data as SesoriQuestionAsked;
+      check(question.id == 'fixture-request', 'Canonical native id must survive');
+      check(!question.questions.single.custom, 'Notice must not offer a free-text approval');
+      check(question.questions.single.options.isEmpty, 'Notice must not offer a grant');
+      final settled = peer._events.last.data;
+      check(terminal == 'question.replied' ? settled is SesoriQuestionReplied
+        : settled is SesoriQuestionRejected, 'Legacy settlement must decode');
+      count++;
+    }
+  }
+  // Pending-question snapshots use the same released question decoder.
+  final snapshot = QuestionInfo.fromJson({
+    'header': 'MCP input', 'question': 'Upgrade or cancel.', 'custom': false,
+    'interactionKind': 'externalAction',
+  });
+  check(!snapshot.custom && snapshot.options.isEmpty, 'Snapshot notice must stay cancellable');
+  print('v1.9.0/build 970: $count event-order/settlement fixtures and snapshot passed');
+}

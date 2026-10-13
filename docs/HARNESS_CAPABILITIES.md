@@ -639,6 +639,36 @@ bridge's harness. Provider keys and local/free models may make a backend usable
 without an OAuth login. Setup detection above does **not** imply that Sesori
 can initiate login, and managed installation does **not** authenticate a harness.
 
+## MCP management native evidence
+
+Dedicated MCP inventory and connection UI are **not implemented** in Sesori yet.
+Existing tool permissions are separate from this management capability. Native
+protocol probes on macOS arm64 (2026-10-13) establish the following integration
+boundaries, using isolated stdio/HTTP/OAuth and deterministic model fixtures:
+
+| Harness/version | Native capability | Verified limit |
+|---|---|---|
+| Claude, both pins | Inventory, toggle, reconnect, forms, CLI OAuth | Terminal login; session toggle |
+| Claude 2.1.221 | URL elicitation not supported | Native rejects before forwarding |
+| Claude 2.1.291 | URL elicitation native support | Separate from tool permission |
+| Codex, both pins | Inventory, forms/URL, fixture OAuth | No MCP attempt ID or completion/cancel RPC |
+| Codex 0.139.0 | Basic native inventory | No runtime/discovery-error/origin fields |
+| Codex 0.160.1 | Richer native inventory | Runtime status, discovery error, safe origin |
+
+Claude's toggle changes the resident process, not persisted configuration.
+Its status omits tool descriptions. Plain-pipe login does not expose the
+no-browser URL/paste journey. Codex completion must be correlated by the
+adapter; a browser open does not confirm success. All native-supported rows
+remain **not implemented** as Sesori management actions at this checkpoint.
+
+Unauthenticated Codex `app/list` returned an empty catalog; this does not prove
+authenticated connector setup. Other harness management remains **not
+implemented**, with native support still to be audited. Real provider policy,
+credential persistence, packaged clients, Linux/Windows, and bridge/relay/client
+ownership were not qualified by these probes. See the
+[versioned contract evidence](../.plan/active/mcp-management/evidence/native-contracts.md)
+and [reproduction tools](../tool/mcp-contracts/README.md).
+
 ## Context compaction row
 
 The transcript marks a context compaction with a row. Where the harness
