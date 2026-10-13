@@ -7,6 +7,7 @@ import "../models/pi_assistant_stop_reason.dart";
 import "../models/pi_compaction_reason.dart";
 import "../repositories/mappers/pi_history_mapper.dart";
 import "../repositories/mappers/pi_message_identity_builder.dart";
+import "../repositories/mappers/pi_persisted_user_text_codec.dart";
 import "../trackers/pi_message_identity_tracker.dart";
 import "../trackers/pi_tool_tracker.dart";
 
@@ -352,12 +353,14 @@ final class PiEventDispatcher({
     final message = _historyMapper.decodeUserMessage(raw: raw);
     if (message == null) return const [];
     final state = _session(sessionId);
-    final textContent = message.content.whereType<PiTextContentDto>().singleOrNull;
+    final text = message.content.whereType<PiTextContentDto>().singleOrNull?.text;
+    final promptText = text == null ? null : const PiPersistedUserTextCodec().stripImageHints(text: text);
     final isAttachmentOnlyMessage =
         message.content.isNotEmpty && message.content.every((content) => content is PiImageContentDto);
     final correlationIndex = state.pendingPrompts.indexWhere(
       (prompt) =>
-          textContent?.text == prompt.executionText ||
+          text == prompt.executionText ||
+          promptText == prompt.executionText ||
           ((prompt.executionText?.isEmpty ?? false) && isAttachmentOnlyMessage),
     );
     final correlation = correlationIndex == -1 ? null : state.pendingPrompts.removeAt(correlationIndex);
