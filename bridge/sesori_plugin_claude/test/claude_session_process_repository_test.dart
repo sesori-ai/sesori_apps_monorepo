@@ -75,6 +75,19 @@ void main() {
       expect(harness.specs, hasLength(1));
     });
 
+    test("teardown during inventory reads returns a typed failure", () async {
+      await _ensure(repository, createNew: true);
+      final result = repository.getMcpInventory(scope: const PluginMcpSessionScope(sessionId: testSessionId));
+      await pump();
+      await repository.teardown(sessionId: testSessionId);
+      expect(await result, isA<PluginMcpInventoryReadFailed>().having(
+        (value) => value.cause, "cause", isA<ClaudeControlException>().having(
+          (error) => error.message, "message", "ClaudeStreamClient disposed",
+        ),
+      ));
+      expect(harness.specs, hasLength(1));
+    });
+
     test("creates first process and resumes after an accepted turn", () async {
       await _ensure(repository, createNew: true);
       expect(harness.specs.single.launch, isA<ClaudeNewSession>());
@@ -337,7 +350,7 @@ void main() {
 
       final disposal = repository.dispose();
 
-      await expectLater(residency, throwsStateError);
+      await expectLater(residency, throwsA(isA<ClaudeControlException>()));
       await disposal.timeout(const Duration(seconds: 1));
       gate.complete();
       expect(repository.isResident(sessionId: testSessionId), isFalse);

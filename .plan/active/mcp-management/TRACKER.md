@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/claude-mcp-inventory`, `a708a3a84e`, in the provided `copper-heron` worktree.
-- Current step: 4/13, Claude inventory API in PR review (#1948).
+- Current step: 4/14, Claude inventory API in PR review (#1948).
   Shared client inventory work is local as step 5. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
@@ -17,19 +17,20 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/13 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/13 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/13 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/13 | Claude scoped inventory and bridge read (original 3.b) | PR review | [#1948][pr-1948] |
-| 5/13 | Shared phone/desktop inventory and details | Local work | Not published |
-| 6/13 | Claude actions and native authentication | Not started | — |
-| 7/13 | Shared authentication and external-action presentation | Not started | — |
-| 8/13 | Claude approvals and form/URL elicitation | Not started | — |
-| 9/13 | Codex inventory/actions/authentication | Not started | — |
-| 10/13 | Codex forms and offered connectors | Not started | — |
-| 11/13 | Secondary harness support and explicit gaps | Not started | — |
-| 12/13 | Reconcile regression/capability documents | Not started | — |
-| 13/13 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/14 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/14 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/14 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/14 | Claude scoped inventory and bridge read (original 3.b) | PR review | [#1948][pr-1948] |
+| 5/14 | Client inventory lifecycle (original 5.a) | Local verification | Not published |
+| 6/14 | Shared phone/desktop inventory and details (original 5.b) | Not started | — |
+| 7/14 | Claude actions and native authentication | Not started | — |
+| 8/14 | Shared authentication and external-action presentation | Not started | — |
+| 9/14 | Claude approvals and form/URL elicitation | Not started | — |
+| 10/14 | Codex inventory/actions/authentication | Not started | — |
+| 11/14 | Codex forms and offered connectors | Not started | — |
+| 12/14 | Secondary harness support and explicit gaps | Not started | — |
+| 13/14 | Reconcile regression/capability documents | Not started | — |
+| 14/14 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -115,7 +116,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   unchanged; its observed initial pending status is explicitly not a guaranteed startup state.
 
 - Step 3 split: original 3.a/3.b map to PR ordinals 3/4; later ordinals shift by one, with 13 total. The merged
-  plan PR #1940 now uses the current 13-step total; its squash commit is unchanged.
+  plan PR #1940 now uses the current 14-step total; its squash commit is unchanged.
   No feature scope or architecture decision changed.
 - Step-3 foundation: four shared wire tests and shared/interface analyzers passed on exact Dart 3.13.4. No runtime
   endpoint or adapter is exposed yet. No old owner, cache, route, or persisted model is superseded at this boundary.
@@ -182,3 +183,14 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   read-failed wire state. Archived inventory remains a read-only operation.
   Claude mapper/process/control tests passed (47); bridge route tests passed (9);
   shared codec tests passed (6). All four affected packages analyze cleanly.
+
+- Original step 5 split into 5.a client lifecycle (ordinal 5) and 5.b UI (ordinal 6).
+  One PR remains open with one local successor. New per-view state ownership is
+  independently testable before presentation: 9 lifecycle and 3 repository tests
+  pass on the pinned Flutter/Dart SDK. No scope expansion or database change.
+
+- Step-4 teardown review: disposal now completes pending native controls with
+  ClaudeControlException at the stream-client boundary. The inventory repository
+  keeps its narrow catch and maps teardown to safe readFailed state without
+  swallowing unrelated StateError bugs. Focused Claude tests passed (48);
+  Claude analysis passed. Original step 5 is now two PRs, with total 14.

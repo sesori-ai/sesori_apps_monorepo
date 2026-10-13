@@ -346,7 +346,7 @@ class ClaudeStreamClient({
     _disposed = true;
     await _teardownConnection(
       gracefulTimeout: gracefulTimeout,
-      pendingError: StateError("ClaudeStreamClient disposed"),
+      pendingError: ClaudeControlException(subtype: "<process>", message: "ClaudeStreamClient disposed"),
     );
     try {
       await _messages.close();
