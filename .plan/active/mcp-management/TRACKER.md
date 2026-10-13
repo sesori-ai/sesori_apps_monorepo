@@ -131,3 +131,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   suggestions and elicitation subtype/server ownership, plus refreshed Codex OAuth/tool state and target connected
   status without discovery error. The unsupported-version test passed after decoding its script file URL. The codec
   regression document begins in step 3; live inventory coverage begins in step 4.
+- Step-2 side-effect review at `ed6083f41b`: both Claude pins passed 13 exchanges with an independent enablement
+  read; both Codex pins passed 22 with changed-config reload visible in app/live-thread inventory and wrong-state
+  callback rejected without token exchange before fresh success. Negative Codex callback HTTP200 still reports
+  native failure. Codex JSONL framing follows the official header-omitting protocol, rather than strict MCP framing.

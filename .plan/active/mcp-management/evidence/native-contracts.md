@@ -1,7 +1,7 @@
 # Priority MCP contract evidence
 
 Date: 2026-10-13. Implementation base: `c03b588d9e`. Host: macOS arm64.
-Measured executable probe revision: `2e52cf2b23` (all four pins passed final
+Measured executable probe revision: `ed6083f41b` (all four pins passed final
 version, ownership, URL, pagination, and OAuth-state assertions).
 
 ## Exact executables
@@ -48,7 +48,8 @@ and distinct HTTP origins with no path; minimum fields remain absent.
 The captured initial Claude status was `pending`; asynchronous startup can
 finish before the first read, so this observation is not an initial-state
 requirement. Assertions require `disabled` after a toggle and `connected` with
-all three fixture tools after reconnect. Native
+all three fixture tools after reconnect. A separate read verifies the named
+stdio fixture leaves disabled state after enabling, before reconnect. Native
 config is included in this reply: production mapping must selectively omit
 commands, arguments, environment, headers, and endpoint paths/query/user info.
 The toggle affects the resident process; it is not evidence of persistent
@@ -94,9 +95,16 @@ context. Both return only `authorizationUrl`, then
 include `threadId`. The plan's anticipated native attempt ID does not exist at
 these pins. The bridge owns its operation identity and native callback lease.
 
+Codex reload re-reads a changed fixture configuration: an added isolated server
+appears in both app and existing live-thread inventory. This is a tooling fixture
+change, not a Sesori server-creation feature.
+
 Codex fixture OAuth succeeds after its exact loopback callback receives the
 fixture state/code. The post-completion refresh reports OAuth and the fixture
 tool at both pins; target also reports connected with no discovery error.
+A separate wrong-state callback at both pins exchanges no token and yields
+a failed native completion before a fresh valid attempt. Its HTTP response is
+200, so only native completion/status determines success, not HTTP success.
 There is no MCP callback-completion or cancel RPC in either
 generated request schema. The adapter must bind continuation to the issued
 callback and retain ownership through native completion/expiry; cancelling UI
@@ -131,7 +139,7 @@ recovery after the real typed interactions exist.
 
 ## Reproduction and measured results
 
-Run from the repository root at probe revision `2e52cf2b23`; dependencies were
+Run from the repository root at probe revision `ed6083f41b`; dependencies were
 resolved in `shared/sesori_shared` using Dart 3.13.4. Native fixture subprocess
 cwd is a fresh temporary directory chosen by `mkdtemp`, not the checkout or the
 developer's project. The released-peer Dart cwd is `shared/sesori_shared`.
@@ -159,10 +167,10 @@ node --test tool/mcp-contracts/fixture.test.mjs \
 
 | Command | Result at measured revision |
 |---|---|
-| Claude minimum | Exit 0; 12 native exchanges; all assertions passed |
-| Claude target | Exit 0; 12 native exchanges; all assertions passed |
-| Codex minimum | Exit 0; 19 native exchanges; all assertions passed |
-| Codex target | Exit 0; 19 native exchanges; all assertions passed |
+| Claude minimum | Exit 0; 13 native exchanges; all assertions passed |
+| Claude target | Exit 0; 13 native exchanges; all assertions passed |
+| Codex minimum | Exit 0; 22 native exchanges; all assertions passed |
+| Codex target | Exit 0; 22 native exchanges; all assertions passed |
 | Released peer | Exit 0; four event-order/settlement cases plus snapshot passed |
 | Tooling tests | Exit 0; four tests passed |
 

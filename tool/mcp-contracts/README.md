@@ -54,3 +54,8 @@ advertise only the echo tool; form/URL elicitation is exercised through stdio.
 
 Versioned results and the remaining qualification boundaries are in
 [the contract evidence](../../.plan/active/mcp-management/evidence/native-contracts.md).
+
+Codex App Server intentionally omits the JSON-RPC version marker on JSONL
+requests, responses, and notifications, as described in the
+[official protocol explanation](https://openai.com/index/unlocking-the-codex-harness/).
+The driver follows that framing; fixture MCP servers use their own MCP framing.
