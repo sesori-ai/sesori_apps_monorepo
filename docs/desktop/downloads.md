@@ -7,11 +7,12 @@ plus `linux-package-managers`, and its contract checks fail when one is renamed 
 removed. Its `src/lib/desktop-downloads.ts` resolves completed public shared releases;
 individual preview builds do not need a source edit or website redeployment.
 
-**Internal macOS installers are public for both CPUs, with live website downloads.**
-Stable macOS, Windows and stable Linux are not published yet. Linux internal-preview
-publication is admitted; first public retrieval and website discovery remain separate
-qualification/website steps. The website currently selects completed macOS previews
-rather than permanently pinning the first publication.
+**Internal macOS installers and native Linux DEB/RPM previews are public for both CPUs.**
+macOS website downloads are live; Linux website discovery is the next continuation.
+Stable macOS, Windows and stable Linux are not published yet. Linux internal build
+`1.9.1+1013` passed independent anonymous package/signature verification on 2026-10-13.
+The website must select each platform's newest completed preview rather than pinning
+its first publication.
 Private CI artifacts are not public links. This index never substitutes a mobile/CLI
 release or private evidence for a desktop installer.
 
@@ -107,8 +108,12 @@ Signed APT and RPM repositories and stable Linux downloads remain unpublished.
 Opt-in internal DEB/RPM previews use `desktop-linux-release.json` as their independent
 completion marker, with native x64/arm64 packages named
 `Sesori-linux-<arch>-<version>-<build>.<deb|rpm>`. The website must not infer them from
-CLI tarballs, private artifacts or macOS completion. Linux discovery/links follow
-independent public retrieval qualification in the website continuation.
+CLI tarballs, private artifacts or macOS completion. Public native producer `38438783418`
+and publisher `38443588001` established shared internal build `1.9.1+1013`, with both
+signatures and all package hashes independently verified. Existing core/macOS assets,
+release/tag/Latest state remained unchanged. Website discovery/links are the next step;
+[qualification evidence](../../.plan/active/desktop-distribution/steps/step-09.md)
+keeps this distinct from native GUI/account/upgrade proof.
 
 Verify each CPU's `desktop-linux-<arch>-checksums.txt` and `.asc` using
 `desktop-linux-public.asc` and the independently pinned primary fingerprint in

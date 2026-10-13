@@ -152,6 +152,15 @@ The user accepted GUI/login/keyring/tray and real N→N+1 gaps for opt-in intern
 These packages do not establish stable Linux admission or signed APT/RPM repository trust.
 Fixture tests alone do not establish production-key access or public retrieval.
 
+Public acceptance on 2026-10-13 used native producer `38438783418` for aligned
+`1.9.1+1013` and publisher `38443588001`. Both compiled internal identities and all six
+package fixtures passed. Independent anonymous retrieval authenticated both checksum
+signatures against the separately known primary and all four package hashes. Existing
+13 core/macOS asset identities, release metadata, tag and Latest were preserved; original
+core/macOS checksum and manifest bytes also matched. No store dispatch or local app
+installation occurred. Exact sources, trees and hashes live in the distribution plan's
+[step 9](../../.plan/active/desktop-distribution/steps/step-09.md).
+
 ## Shared release cycle and private preparation
 
 Private `macos-packaging` and `linux-packaging` accept immutable `source_sha` and `build_number`
@@ -319,8 +328,9 @@ Private package mechanics are qualified for both native CPUs on all three deskto
 platforms: signed/notarized/stapled DMGs and ZIPs containing the signed/notarized/stapled
 app on macOS (the ZIP itself is not signed or stapled), unsigned per-user EXE
 construction and isolated fixtures on Windows, and unsigned DEB/RPM construction plus
-six native package-manager fixtures on Linux. macOS internal installers are now public;
-stable macOS and Windows/Linux public availability are not implied.
+six native package-manager fixtures on Linux. Separate signed Linux qualification and
+public internal delivery are recorded above. macOS and Linux internal installers are
+public; stable macOS/Linux and Windows availability are not implied.
 Exact accepted sources, runs, hashes and proof limits stay
 in the active distribution plan's [macOS](../../.plan/active/desktop-distribution/steps/step-06.md),
 [Windows](../../.plan/active/desktop-distribution/steps/step-07.md), and
@@ -386,7 +396,7 @@ historical evidence as shared-store qualification.
   and anonymous link/metadata agreement only, not native Settings dispatch or installation.
 
 L1/L2 do not establish installation, native trust, real-account restoration, minimum
-OS or publication. Published internal macOS assets have their own recorded trust proof;
+OS or publication. Published internal macOS and Linux assets have separate recorded trust proof;
 unshipped platforms/channels remain unavailable. A merged index alone is not a release.
 See [packaging](desktop-macos-packaging.md), [supervision](desktop-bridge-supervision.md)
 and [download instructions](../desktop/downloads.md).

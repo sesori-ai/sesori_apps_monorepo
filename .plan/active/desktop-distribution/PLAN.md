@@ -480,6 +480,10 @@ Bounded slices, keeping the same signing key, shared cycle and ordinal total:
   CPU's signed checksum pair intact; namespace the desktop public key separately from
   mutable core CLI assets. Validate the actual shared tag's source before attachment.
   Remove Mac-only retention assumptions. No application state or new admission flag.
+  Merged as #1951 (`69b3c4a329bb52f51fe5b07da9801346928268e2`). Native producer
+  `38438783418` and publisher `38443588001` completed existing shared internal build
+  `1013`; independent public signature/hash verification and unchanged core/macOS/tag/Latest
+  state passed. Exact provenance and remaining limits are in [step 9](steps/step-09.md).
 - `⚙️ [desktop-distribution] Track Linux previews on the website [step 11.e/14]`:
   in `sesori-ai/landingpage`, discover completed public Linux internal packages from
   the same cached release lookup, keep stable/repository states honest, and fix spacing
