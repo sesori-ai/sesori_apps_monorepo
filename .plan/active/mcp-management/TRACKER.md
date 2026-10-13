@@ -115,7 +115,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   unchanged; its observed initial pending status is explicitly not a guaranteed startup state.
 
 - Step 3 split: original 3.a/3.b map to PR ordinals 3/4; later ordinals shift by one, with 13 total. The merged
-  plan PR #1940 keeps its historical title. No feature scope or architecture decision changed.
+  plan PR #1940 now uses the current 13-step total; its squash commit is unchanged.
+  No feature scope or architecture decision changed.
 - Step-3 foundation: four shared wire tests and shared/interface analyzers passed on exact Dart 3.13.4. No runtime
   endpoint or adapter is exposed yet. No old owner, cache, route, or persisted model is superseded at this boundary.
 - Step-3 pre-publication measurement: 1,679 generated lines and 470 authored lines (2,149 total before this record),

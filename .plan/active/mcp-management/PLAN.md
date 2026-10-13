@@ -367,7 +367,8 @@ server, connector, tool, account, path, form, or URL identifiers.
 ## Delivery series
 
 Original step 3 is split into durable substeps 3.a (PR ordinal 3) and 3.b (ordinal 4). Later steps shift by one;
-the series now has 13 PRs. Merged plan PR #1940 retains its historical `[step 1/12]` title.
+the series now has 13 PRs. Published PR titles use the current total; merged plan
+PR #1940 is titled `[step 1/13]`, while its historical squash commit remains unchanged.
 
 All implementation PRs are independently valid and update this tracker. Estimates include tests/docs/generated output;
 separate authored/generated churn at each push. Target below 1,500 changed lines, and lower for authentication/lifecycle
