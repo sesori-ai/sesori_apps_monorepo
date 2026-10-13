@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/claude-mcp-inventory`, `a708a3a84e`, in the provided `copper-heron` worktree.
-- Current step: 4/14, Claude inventory API in PR review (#1948).
-  Shared client inventory work is local as step 5. Execution authorized on 2026-10-13.
+- Branch/base: `sesori/mcp-inventory-ui`, `120a438770`, in the provided `copper-heron` worktree.
+- Current step: 5/14, shared client inventory lifecycle ready for PR.
+  Claude inventory API merged as #1948. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
 - Plan PR: [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940).
@@ -20,7 +20,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 1/14 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
 | 2/14 | Native contracts | Merged | [#1945][pr-1945] |
 | 3/14 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/14 | Claude scoped inventory and bridge read (original 3.b) | PR review | [#1948][pr-1948] |
+| 4/14 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
 | 5/14 | Client inventory lifecycle (original 5.a) | Ready for PR | Not published |
 | 6/14 | Shared phone/desktop inventory and details (original 5.b) | Not started | — |
 | 7/14 | Claude actions and native authentication | Not started | — |
