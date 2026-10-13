@@ -22,6 +22,8 @@ class const NonNullTextTheme({required final TextTheme textTheme}) extends TextT
     TextDecoration? decoration,
     Color? decorationColor,
     TextDecorationStyle? decorationStyle,
+    List<FontFeature>? fontFeatures,
+    List<FontVariation>? fontVariations,
   }) {
     return NonNullTextTheme(
       textTheme: textTheme.apply(
@@ -41,6 +43,8 @@ class const NonNullTextTheme({required final TextTheme textTheme}) extends TextT
         decoration: decoration,
         decorationColor: decorationColor,
         decorationStyle: decorationStyle,
+        fontFeatures: fontFeatures,
+        fontVariations: fontVariations,
       ),
     );
   }
