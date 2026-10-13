@@ -639,6 +639,30 @@ bridge's harness. Provider keys and local/free models may make a backend usable
 without an OAuth login. Setup detection above does **not** imply that Sesori
 can initiate login, and managed installation does **not** authenticate a harness.
 
+## MCP management native evidence
+
+Dedicated MCP inventory and connection UI are **not implemented** in Sesori yet.
+Existing tool permissions are separate from this management capability. Native
+protocol probes on macOS arm64 (2026-10-13) establish the following integration
+boundaries, using isolated stdio/HTTP/OAuth and deterministic model fixtures:
+
+| Harness/version | Native capability | Verified limit |
+|---|---|---|
+| Claude 2.1.221 / 2.1.291 | Resident inventory, toggle, reconnect, typed forms, terminal CLI OAuth | Toggle is session-process state; tool descriptions are absent from status. Plain-pipe login does not expose the no-browser URL/paste journey. |
+| Claude 2.1.221 | URL elicitation: not supported in stream-json | Native rejects URL mode before forwarding; no Sesori dialog can answer it. |
+| Claude 2.1.291 | URL elicitation: supported natively, not implemented in Sesori | Separate typed native request, independent of tool approval. |
+| Codex 0.139.0 / 0.160.1 | Scoped/paginated inventory, typed forms/URL requests, fixture OAuth | Native MCP login has no attempt ID or completion/cancel RPC; server completion must be correlated by the adapter. |
+| Codex 0.139.0 | Inventory: supported natively, not implemented in Sesori | No connection-state, tool-discovery-error, or safe-origin fields in the status DTO. |
+| Codex 0.160.1 | Richer inventory: supported natively, not implemented in Sesori | Native runtime status, discovery error, and safe origin are available. |
+
+Unauthenticated Codex `app/list` returned an empty catalog; this does not prove
+authenticated connector setup. Other harness management remains **not
+implemented**, with native support still to be audited. Real provider policy,
+credential persistence, packaged clients, Linux/Windows, and bridge/relay/client
+ownership were not qualified by these probes. See the
+[versioned contract evidence](../.plan/active/mcp-management/evidence/native-contracts.md)
+and [reproduction tools](../tool/mcp-contracts/README.md).
+
 ## Context compaction row
 
 The transcript marks a context compaction with a row. Where the harness

@@ -3,14 +3,13 @@
 ## Status and scope
 
 - Date: 2026-10-13. Planning base: `55c7d4cbba` on `sesori/mcp-approvals-issue` in the provided `copper-heron` worktree.
-- Status: architecture-reviewed plan only; production implementation and live authentication qualification have not
-  started.
+- Status: implementation authorized on 2026-10-13; priority native protocol probes are complete in step 2.
+  Production behavior and full authentication qualification remain pending.
 - Priority: deliver Claude Code and Codex before expanding the other harnesses.
 - User-confirmed first version: manage existing MCP servers and harness-offered connectors.
 - Future direction: adding new MCP servers will follow. Preserve an appropriate configuration boundary now, without
   implementing creation, removal, configuration editors, or placeholder APIs.
-- Work stays in the user-provided worktree. This request authorizes planning, not execution of the implementation
-  series.
+- Work stays in the user-provided worktree. The user's 2026-10-13 instruction authorizes execution of the series.
 
 ## Outcome
 
@@ -66,6 +65,19 @@ effects, and response semantics. Cover local stdio and HTTP MCP fixtures, a fixt
 rejection, tool approval, scalar/choice forms, URL elicitation, and connector metadata. No real account/configuration is
 modified for these probes. Use explicit test configuration and fixture directories, never the developer's normal MCP
 inventory.
+
+Step-2 evidence is now [recorded with executable probes](evidence/native-contracts.md). Both pinned Claude versions
+support inventory/toggle/reconnect and typed forms; URL elicitation is native-unsupported on 2.1.221 and forwarded on
+2.1.291. Both require a terminal-capable CLI login process for the no-browser URL/paste journey. Step 5 must extend
+the plugin's native process boundary accordingly and qualify its supported hosts; the fixture's Python PTY helper
+is not a production dependency. Toggle is a live-process action, not persistent configuration enablement.
+
+Neither pinned Codex version returns an MCP OAuth attempt ID: login returns an authorization URL and completes by
+server name, with optional thread context at the target. The bridge owns its operation identity and binds native
+callback continuation to that attempt. There is no native MCP completion/cancel RPC at these pins; step 8 must verify
+denial/cancel/expiry semantics before advertising cancellation. Retain the native lease until it actually settles.
+Minimum Codex status lacks target-only connection/discovery-error/origin metadata and must show honest absence.
+Authenticated connector offers remain a catalog/runtime qualification gate.
 
 The result fixes adapter mappings before production contracts land. A missing native capability becomes a versioned
 limitation with an actionable handoff. It must not become inferred support or a second implementation of the harness's
@@ -501,8 +513,8 @@ product limitations rather than unfinished promised behavior.
 ## Planning validation
 
 For step 1: validate Markdown links, series numbering/dependencies, ownership and scope consistency, `git diff --check`,
-and architecture plan review. No Dart/Flutter suites are needed for planning documents. Publish the plan PR under the
-normal repository workflow; implementation remains pending a later instruction.
+  and architecture plan review. No Dart/Flutter suites are needed for planning documents. The plan PR is merged;
+  implementation was authorized by the later 2026-10-13 instruction.
 
 Architecture plan review on 2026-10-13: **approved**, with the specificity gate passed and no architectural findings.
 This establishes the design boundaries, not native feasibility or authentication qualification. Local
