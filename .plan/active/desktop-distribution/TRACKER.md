@@ -49,10 +49,10 @@ shared release sequence. CLI archive signatures (11.c) and aligned desktop inter
 (11.d) are public and independently verified; website tracking/spacing (11.e) is live. The user authorized
 Linux internal desktop previews with the GUI/login/keyring/N→N+1 gaps stated, and
 OpenPGP signatures for the existing Linux Bridge CLI archives. D11–D12 in `PLAN.md`
-record the next implementation slices and the website tracking/spacing PR.
-Stable Linux admission and public APT/RPM hosting remain separate; cloud resources
-are not authorized. Build 147 itself remains private. No public release/repository,
-cloud resource or store upload was created by this qualification.
+record that limited authorization, not permission for stable Linux or signed repositories.
+Those remaining gates still require separate admission; cloud resources are not authorized.
+Build 147 itself remains private. That earlier qualification created no public
+release/repository, cloud resource or store upload.
 
 Step 11.c merged as #1946, squash `a3457903cf50155345e7afd293e7ec564d0e3238`,
 accepted head `e727acb68d85bc0998c5f7d703d61ca78dbfc865`. It implements shared

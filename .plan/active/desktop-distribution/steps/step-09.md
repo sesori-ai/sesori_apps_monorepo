@@ -203,8 +203,27 @@ gh workflow run desktop-linux-release.yml --repo sesori-ai/sesori_apps_monorepo 
 ```
 
 These are historical dispatches, not instructions to generate fresh signatures for a retry.
-CI operates from its repository checkout root. Local verification ran from this checkout's
-root (`.`), with Python 3.13 and a short, public-only GPG home. It independently downloaded
+Both native checkout logs explicitly report the product checkout at
+`/home/runner/work/sesori_apps_monorepo/sesori_apps_monorepo` and the trusted workflow
+checkout at `/home/runner/work/sesori_apps_monorepo/sesori_apps_monorepo/.ci-workflow`.
+The fixture Docker commands mount that same absolute workspace and use
+`-w "$GITHUB_WORKSPACE"`; they invoke the qualifier from `.ci-workflow`, not an unpinned
+copy from today's main. Inspect the immutable workflow/qualifier and expanded execution logs:
+
+```bash
+workflow=69b3c4a329bb52f51fe5b07da9801346928268e2
+git show "$workflow:.github/workflows/desktop-qualification.yml"
+git show "$workflow:.github/scripts/qualify_desktop_linux_package.sh"
+gh run view 38438783418 --repo sesori-ai/sesori_apps_monorepo \
+  --job 115439936920 --log
+gh run view 38438783418 --repo sesori-ai/sesori_apps_monorepo \
+  --job 115439937034 --log
+```
+
+These logs identify each CPU's fixture invocation, package/bundle path selection and
+container image digests. Local copies are `native-job-<job-id>.log` beside the evidence below.
+Local verification ran from this checkout's root (`.`), with Python 3.13 and a short,
+public-only GPG home. It independently downloaded
 all ten new public files without authentication and verified both signed checksum pairs
 against primary `E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7`, signing subkey
 `2BB08B81FF5491A1F68C95C7CBACDB2E5623160F`, then checked all four package digests.
