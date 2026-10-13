@@ -5370,6 +5370,312 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy link'**
   String get bridgeUpdateCopyLink;
+
+  /// No description provided for @mcpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP servers and connectors'**
+  String get mcpTitle;
+
+  /// No description provided for @mcpMenuLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get mcpMenuLabel;
+
+  /// No description provided for @mcpRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get mcpRefresh;
+
+  /// No description provided for @mcpReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Server and tool information'**
+  String get mcpReadOnly;
+
+  /// No description provided for @mcpRefreshing.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing…'**
+  String get mcpRefreshing;
+
+  /// No description provided for @mcpRefreshUnrecognized.
+  ///
+  /// In en, this message translates to:
+  /// **'A newer app is needed to refresh. Showing the last inventory.'**
+  String get mcpRefreshUnrecognized;
+
+  /// No description provided for @mcpRefreshNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Inventory could not be found. Showing the last inventory.'**
+  String get mcpRefreshNotFound;
+
+  /// No description provided for @mcpOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline. Showing the last inventory.'**
+  String get mcpOffline;
+
+  /// No description provided for @mcpRefreshFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh. Showing the last inventory.'**
+  String get mcpRefreshFailed;
+
+  /// No description provided for @mcpLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading inventory…'**
+  String get mcpLoading;
+
+  /// No description provided for @mcpWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the bridge connection.'**
+  String get mcpWaiting;
+
+  /// No description provided for @mcpNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Inventory could not be found. Check that the session still exists and your bridge is up to date.'**
+  String get mcpNotFound;
+
+  /// No description provided for @mcpReadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read inventory. Try refreshing.'**
+  String get mcpReadFailed;
+
+  /// No description provided for @mcpUnknownResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Some inventory information requires a newer app.'**
+  String get mcpUnknownResponse;
+
+  /// No description provided for @mcpUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Inventory is unavailable.'**
+  String get mcpUnavailable;
+
+  /// No description provided for @mcpUnsupportedHarness.
+  ///
+  /// In en, this message translates to:
+  /// **'This integration does not expose MCP inventory yet.'**
+  String get mcpUnsupportedHarness;
+
+  /// No description provided for @mcpUnsupportedScope.
+  ///
+  /// In en, this message translates to:
+  /// **'This integration does not expose inventory here. Open MCP from a running session to inspect its servers.'**
+  String get mcpUnsupportedScope;
+
+  /// No description provided for @mcpLiveSessionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a running session to inspect its MCP servers. Reading inventory will not start a session.'**
+  String get mcpLiveSessionRequired;
+
+  /// No description provided for @mcpPluginInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'This integration is inactive. Enable it in harness settings before reading inventory.'**
+  String get mcpPluginInactive;
+
+  /// No description provided for @mcpServers.
+  ///
+  /// In en, this message translates to:
+  /// **'Configured servers'**
+  String get mcpServers;
+
+  /// No description provided for @mcpConnectors.
+  ///
+  /// In en, this message translates to:
+  /// **'Offered connectors'**
+  String get mcpConnectors;
+
+  /// No description provided for @mcpUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get mcpUnknown;
+
+  /// No description provided for @mcpOfferAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get mcpOfferAvailable;
+
+  /// No description provided for @mcpSetupRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup required'**
+  String get mcpSetupRequired;
+
+  /// No description provided for @mcpEmptyCatalog.
+  ///
+  /// In en, this message translates to:
+  /// **'No entries were returned.'**
+  String get mcpEmptyCatalog;
+
+  /// No description provided for @mcpCatalogNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This integration does not support this catalog.'**
+  String get mcpCatalogNotSupported;
+
+  /// No description provided for @mcpCatalogUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This catalog is currently unavailable.'**
+  String get mcpCatalogUnavailable;
+
+  /// No description provided for @mcpServerDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Server details'**
+  String get mcpServerDetails;
+
+  /// No description provided for @mcpServerNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This server is no longer in the inventory.'**
+  String get mcpServerNotFound;
+
+  /// No description provided for @mcpConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection'**
+  String get mcpConnection;
+
+  /// No description provided for @mcpAuthorization.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication'**
+  String get mcpAuthorization;
+
+  /// No description provided for @mcpAuthNotRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Not required'**
+  String get mcpAuthNotRequired;
+
+  /// No description provided for @mcpAuthRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in required'**
+  String get mcpAuthRequired;
+
+  /// No description provided for @mcpAuthenticated.
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticated'**
+  String get mcpAuthenticated;
+
+  /// No description provided for @mcpOrigin.
+  ///
+  /// In en, this message translates to:
+  /// **'Endpoint origin'**
+  String get mcpOrigin;
+
+  /// No description provided for @mcpConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration source'**
+  String get mcpConfiguration;
+
+  /// No description provided for @mcpHarnessScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Harness'**
+  String get mcpHarnessScope;
+
+  /// No description provided for @mcpProjectScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get mcpProjectScope;
+
+  /// No description provided for @mcpSessionScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get mcpSessionScope;
+
+  /// No description provided for @mcpTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovered tools'**
+  String get mcpTools;
+
+  /// No description provided for @mcpNoTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery succeeded with no tools.'**
+  String get mcpNoTools;
+
+  /// No description provided for @mcpToolsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool discovery information is unavailable.'**
+  String get mcpToolsUnavailable;
+
+  /// No description provided for @mcpToolsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool discovery failed.'**
+  String get mcpToolsFailed;
+
+  /// No description provided for @mcpConnectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed'**
+  String get mcpConnectionFailed;
+
+  /// No description provided for @mcpPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get mcpPending;
+
+  /// No description provided for @mcpConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting'**
+  String get mcpConnecting;
+
+  /// No description provided for @mcpConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get mcpConnected;
+
+  /// No description provided for @mcpDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get mcpDisabled;
+
+  /// No description provided for @mcpConfigurationAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration access'**
+  String get mcpConfigurationAccess;
+
+  /// No description provided for @mcpUserManaged.
+  ///
+  /// In en, this message translates to:
+  /// **'User managed'**
+  String get mcpUserManaged;
+
+  /// No description provided for @mcpReadOnlyConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'Read only'**
+  String get mcpReadOnlyConfiguration;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

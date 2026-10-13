@@ -8,6 +8,7 @@ class const HarnessSettingsDetailView({
   required final VoidCallback onBack,
   required final VoidCallback onClose,
   required final Widget? connectionBanner,
+  required final VoidCallback onShowMcp,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -44,6 +45,21 @@ class const HarnessSettingsDetailView({
                 install: state.installs[pluginId],
                 scanning: state.scanningPluginIds.contains(pluginId),
                 scanRejection: state.scanRejections[pluginId],
+              ),
+            if (plugin != null)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xl),
+                child: PregoGroupedRows(
+                  color: context.prego.colors.bgSurface2,
+                  children: [
+                    PregoGroupedRow(
+                      icon: TablerRegular.plug,
+                      title: Text(context.loc.mcpTitle),
+                      trailing: const Icon(TablerRegular.chevron_right, size: PregoIconSize.sm),
+                      onTap: onShowMcp,
+                    ),
+                  ],
+                ),
               )
             else
               switch (state) {

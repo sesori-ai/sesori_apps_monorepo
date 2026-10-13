@@ -127,6 +127,7 @@ void main() {
                 onOpenHarness: ({required pluginId}) => opened.add(pluginId),
               )
             : HarnessSettingsDetailView(
+                onShowMcp: () {},
                 chrome: chrome,
                 pluginId: detailId,
                 connectionBanner: null,

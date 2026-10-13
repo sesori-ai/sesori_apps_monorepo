@@ -5,8 +5,9 @@
 Backend-neutral inventory contracts describe configured servers and offered
 connectors. The optional plugin read interface and shared wire models are
 implemented. `POST /mcp/inventory` reads Claude Code inventory from an existing
-resident session. The shared client has a typed loading lifecycle; client views
-and management actions are not yet exposed.
+resident session. Phone and desktop expose a shared read-only inventory and
+server-details view backed by the typed loading lifecycle. Management actions
+are not yet exposed.
 Existing permission flows remain separate. Read-only inventory may inspect an
 archived session if its native process remains live; it grants no session mutation.
 
@@ -51,11 +52,24 @@ archived session if its native process remains live; it grants no session mutati
 - Unrecognized inventory results are explicit read states, never loaded catalogs.
   An unrecognized refresh preserves the last readable snapshot.
 
+- Session menus request the session scope; harness settings request harness scope.
+  Unsupported scope/integration messages do not imply empty inventory.
+- The inventory opens above the underlying session/settings page. Server details
+  use a separate presentation layer; closing either returns to the previous view.
+- Refresh feedback occupies a stable header area. Existing inventory remains
+  scrollable, with stable target keys and no offset reset during refresh failure.
+- Archived and sub-agent sessions retain the read-only MCP menu entry; session mutations stay hidden.
+- Unknown entries show an upgrade hint instead of claiming an empty available catalog.
+- Offline refresh controls are disabled. Server details retain the fixed refresh
+  status header and distinguish a removed server from a failed inventory read.
+- Connection, authentication, configuration origin/access, and tools are shown
+  separately. Endpoint origins are plain text, not browser-launch actions.
+
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Read a live Claude session through the headless route; compare with native status. |
+| L1 Smoke | Read a live Claude session through the headless route; compare its servers/tools with native status and inspect them from a client session menu. |
 | L2 Routine | Automated codec, adapter/route, and client lifecycle coverage described below. |
 | L3 Release | No additional coverage. |
 | L4 Extended | No additional coverage. |
@@ -101,3 +115,4 @@ Automated adapter/route coverage:
 - `bridge/app/test/bridge/routing/post_mcp_inventory_handler_test.dart`
 - `client/module_core/test/services/mcp_service_test.dart`
 - `client/module_core/test/repositories/mcp_repository_test.dart`
+- `client/module_app_ui/test/features/mcp/mcp_inventory_view_test.dart`
