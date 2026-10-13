@@ -375,8 +375,9 @@ total. No artificial compatibility scaffolding between steps.
 
 Every production PR updates the relevant `docs/regression/` documents and `docs/HARNESS_CAPABILITIES.md` with the
 behavior that lands in that PR. Record each harness as implemented, not implemented, or not supported for each partial
-capability; do not defer these records to step 12. Create `mcp-management.md` with the first supported behavior in
-step 3 and extend it as actions, UI, and additional adapters land. Step 12 is final reconciliation only.
+capability; do not defer these records to step 12. Create `mcp-management.md` in step 3 for the inventory codec/API
+contracts and their automated coverage. Add the first live inventory behavior in step 4, then extend it as actions,
+UI, and additional adapters land. Step 12 is final reconciliation only.
 
 | Step | Outcome | Planned diff |
 |---|---|---:|

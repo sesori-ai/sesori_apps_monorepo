@@ -159,7 +159,7 @@ node --test tool/mcp-contracts/fixture.test.mjs \
 | Codex minimum | Exit 0; 19 native exchanges; all assertions passed |
 | Codex target | Exit 0; 19 native exchanges; all assertions passed |
 | Released peer | Exit 0; four event-order/settlement cases plus snapshot passed |
-| Tooling tests | Exit 0; three tests passed |
+| Tooling tests | Exit 0; four tests passed |
 
 The Codex reruns include app scope and explicit `never`-policy form/URL decline.
 They assert stdio OAuth rejection and an empty successful unauthenticated
