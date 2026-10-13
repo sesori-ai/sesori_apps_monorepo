@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/copper-heron`, `55c7d4cbba`.
+- Branch/base: `sesori/mcp-approvals-issue`, `55c7d4cbba`, in the provided `copper-heron` worktree.
 - Current step: 1/12, reviewed and ready for publication. Implementation has not started.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path for later server creation without implementing it now.
 - Plan PR: the step-1 PR containing this tracker; publication reference will be recorded at the next execution update.
@@ -44,5 +44,5 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Verification log
 
-- Step 1: Markdown local links, 12 exact series titles, tracker order, user scope/future-creation boundaries, and whitespace checks passed. Final staged `git diff --check` will run before publication.
+- Step 1: Markdown local links, 12 exact series titles, tracker order, user scope/future-creation boundaries, and staged `git diff --check` passed. The publication diff is 250 authored lines; no generated files or production files changed.
 - Production tests and implementation qualification are not part of this planning-only change and remain **Not run**.

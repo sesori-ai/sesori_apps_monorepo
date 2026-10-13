@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-- Date: 2026-10-13. Planning base: `55c7d4cbba` on `sesori/copper-heron`.
+- Date: 2026-10-13. Planning base: `55c7d4cbba` on `sesori/mcp-approvals-issue` in the provided `copper-heron` worktree.
 - Status: architecture-reviewed plan only; production implementation and live authentication qualification have not started.
 - Priority: deliver Claude Code and Codex before expanding the other harnesses.
 - User-confirmed first version: manage existing MCP servers and harness-offered connectors.
@@ -199,4 +199,4 @@ Step 11 reconciles the full supported contract. Step 12 records versions, builds
 
 For step 1: validate Markdown links, series numbering/dependencies, ownership and scope consistency, `git diff --check`, and architecture plan review. No Dart/Flutter suites are needed for planning documents. Publish the plan PR under the normal repository workflow; implementation remains pending a later instruction.
 
-Architecture plan review on 2026-10-13: **approved**, with the specificity gate passed and no architectural findings. This establishes the design boundaries, not native feasibility or authentication qualification. Local document/link/series checks passed; final Git whitespace validation runs before publication.
+Architecture plan review on 2026-10-13: **approved**, with the specificity gate passed and no architectural findings. This establishes the design boundaries, not native feasibility or authentication qualification. Local document/link/series checks and staged Git whitespace validation passed before publication.
