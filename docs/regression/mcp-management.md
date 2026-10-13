@@ -87,9 +87,10 @@ archived session if its native process remains live; it grants no session mutati
 
 The shared authentication wire contract carries one attempt's ID, plugin and
 server target, native cancellation availability, and sealed current states.
-Only callback-challenge state carries authorization/callback URLs; those values
-are intended for request-scoped delivery, never SSE replay or persistence.
-Continue and cancel requests carry the matching attempt ID. Unknown response,
+Callback-challenge state carries the authorization and expected callback URLs;
+the continue request carries the submitted `callbackUrl` and matching attempt ID.
+These URL values are request-scoped, never SSE replay or persistence. The cancel
+request also carries the matching attempt ID. Unknown response,
 state and enum values degrade explicitly. Callback request presentation and
 malformed-body errors do not reflect credential input, while errors retain a
 typed original cause. Codec and privacy coverage lives in

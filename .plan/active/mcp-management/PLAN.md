@@ -373,7 +373,8 @@ into controls (7.a, ordinal 7), its canonical archive follow-up (ordinal 8),
 native authentication (7.b.1, ordinal 9), typed authentication wire (7.b.2.a,
 ordinal 10), and its headless owner (7.b.2.b, ordinal 11). The measured wire models alone require about 900 generated
 lines, so the owner/routes remain a separate coherent PR. The series now has 18
-PRs. Published PR titles use the current total; PR #1940 is titled `[step 1/18]`, while historical squash commits remain unchanged.
+PRs. Published PR titles use the current total; PR #1940 is titled `[step 1/18]`,
+while historical squash commits remain unchanged.
 
 All implementation PRs are independently valid and update this tracker. Estimates include tests/docs/generated output;
 separate authored/generated churn at each push. Target below 1,500 changed lines, and lower for authentication/lifecycle

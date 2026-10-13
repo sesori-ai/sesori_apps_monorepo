@@ -544,7 +544,15 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 
 [pr-1954]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1954
 
-- Authentication wire validation on the local successor above `bcfcd8e9f3`:
+- Authentication wire validation ran in the provided worktree with parent HEAD
+  `bcfcd8e9f3752fc1bf790439e1381f519b78c6bf`. The validated shared source/test
+  snapshot is captured by commit `9770290513` and tree
+  `9244e84847d5aff6d4bba2b53229c3d6b3b1c4a7`; those shared files are byte-identical
+  to published head `5627fb32fc` (`git diff 9770290513 5627fb32fc -- shared/sesori_shared` is empty).
+  Working directory:
+  `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/copper-heron/shared/sesori_shared`.
+  Executable: `/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.5-stable/bin/cache/dart-sdk/bin/dart`.
+  Results:
   five new privacy/binding/round-trip/forward-unknown tests and seven existing MCP
   codec tests pass (12 total), and shared analysis is clean. Exact pinned SDK
   commands from `shared/sesori_shared`:
@@ -582,4 +590,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 
 - PR #1954 merged after current-head CI, Cubic approval and completed Codex review.
   The wire successor was rebased onto squash `64617e92bb` without contract changes.
-  Its final measured diff is 900 generated lines plus focused authored code/docs.
+  Published diff measurement pins base `64617e92bb` and head `5627fb32fc`:
+  `git diff --numstat 64617e92bb 5627fb32fc` reports 1,264 additions and 64 deletions,
+  1,328 changed lines in nine files, including this tracker. Generated codec files
+  contribute 900 lines; the remaining 428 are authored code, tests and docs.
+  This measurement precedes the documentation-only review correction.
