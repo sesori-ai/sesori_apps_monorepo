@@ -233,4 +233,5 @@ jobs:
   sign-linux:
     needs: build
     uses: ./.github/workflows/_reusable-linux-cli-signing.yml
+    # Environment-only credentials resolve inside the called job, not this caller.
     secrets: inherit

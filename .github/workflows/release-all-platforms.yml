@@ -274,6 +274,8 @@ jobs:
                 fi
               done
 
+          # Core owns archive replacement on reruns. Refresh signatures with those bytes;
+          # append-only bootstrap ownership is deliberately separate.
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release for ${TAG} already exists — uploading assets idempotently"
             gh release upload "$TAG" artifacts/*.tar.gz artifacts/*.zip \
@@ -293,7 +295,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          python3 .github/scripts/publish_bridge_linux_signatures.py publish \
+          python3 .github/scripts/publish_bridge_linux_signatures.py verify \
             --repository "$GITHUB_REPOSITORY" --tag "$RELEASE_TAG" --root artifacts
 
       - name: Summary

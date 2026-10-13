@@ -33,13 +33,17 @@ client's update steps shown wherever a feature needs a newer bridge.
   helper actions come from the workflow revision, including when production
   submissions rebuild an older source commit.
 - Both Linux CLI archives get detached OpenPGP signatures through the main-only
-  `linux-signing` environment after the native builds. Secrets enter only the
-  network-disabled signing container, with a pinned primary fingerprint and public-only
-  verification. Internal/production releases include both `.tar.gz.asc` files and the
-  public key; anonymous retrieval must match the signed archive and signature bytes.
+  `linux-signing` environment after the native builds. Secrets are scoped to the signing
+  step's runner environment and passed into its network-disabled container, with a pinned
+  primary fingerprint and public-only verification. Internal/production releases include
+  both `.tar.gz.asc` files and the public key; anonymous retrieval must match the signed
+  archive and signature bytes.
   The one-off existing-release action preserves archive/checksum bytes and release
   metadata, refuses changed inputs/conflicting assets, and can retry a failed publishing
-  job using its original signatures. Installers/updaters still verify SHA-256, not OpenPGP.
+  job using its original signatures. Core release owners retain their existing replacement
+  and promotion behavior; their read-only delivery check never uploads or repairs assets.
+  Installers/updaters still verify SHA-256, not OpenPGP. Partial delivery fails manual
+  signature verification; it does not introduce a new stable-release promotion gate.
 - TestFlight and Play internal notes list commit subjects since the nearest
   `v*` release tag on the build's first-parent history, newest first, and retain
   the build SHA. Failed attempts do not reset this range. With no release tag,

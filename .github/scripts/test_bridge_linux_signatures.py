@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+from urllib.error import HTTPError
 from urllib.parse import urlparse
 
 import linux_signing as keys
@@ -64,13 +65,24 @@ class BridgeLinuxSignaturesTests(unittest.TestCase):
 
     def public_hash(self, *, url):
         self.assertTrue(url.startswith(f"https://github.com/{REPOSITORY}/releases/download/{TAG}/"))
-        return hashlib.sha256(self.assets[Path(urlparse(url).path).name]).hexdigest()
+        name = Path(urlparse(url).path).name
+        if name not in self.assets:
+            raise HTTPError(url, 404, "Not Found", None, None)
+        return hashlib.sha256(self.assets[name]).hexdigest()
 
     def publish(self):
         with mock.patch.object(publication, "github", side_effect=self.github), \
                 mock.patch.object(publication, "public_sha256", side_effect=self.public_hash), \
                 contextlib.redirect_stdout(io.StringIO()):
             publication.publish(repository=REPOSITORY, tag=TAG, root=self.output)
+
+    def verify(self):
+        with mock.patch.object(publication, "github", side_effect=self.github), \
+                mock.patch.object(publication, "public_sha256", side_effect=self.public_hash), \
+                mock.patch("sys.argv", ["signatures", "verify", "--repository", REPOSITORY,
+                                        "--tag", TAG, "--root", str(self.output)]), \
+                contextlib.redirect_stdout(io.StringIO()):
+            publication.main()
 
     def test_downloads_exact_public_bytes_and_matches_index_and_checksums(self):
         urls = []
@@ -110,6 +122,21 @@ class BridgeLinuxSignaturesTests(unittest.TestCase):
         self.calls.clear()
         self.publish()
         self.assertEqual(len(self.calls), 1)  # Release read only; no reuploads.
+
+    def test_core_delivery_verification_never_repairs_missing_or_conflicting_assets(self):
+        for name in publication.SIGNING_ASSETS:
+            self.assets[name] = (self.output / name).read_bytes()
+        self.verify()
+        name = signing.ARCHIVES[0] + ".asc"
+        self.assets[name] = b"mismatched signature"
+        with self.assertRaisesRegex(ValueError, "refusing replacement"):
+            self.verify()
+        self.assertEqual(self.assets[name], b"mismatched signature")
+        del self.assets[name]
+        with self.assertRaises(HTTPError):
+            self.verify()
+        self.assertNotIn(name, self.assets)
+        self.assertTrue(all(call[0] == "api" for call in self.calls))
 
     def test_failed_publish_job_can_retry_with_the_original_signatures(self):
         original = self.github
@@ -185,14 +212,20 @@ class BridgeLinuxSignaturesTests(unittest.TestCase):
         self.assertLess(workflow.index("Build signing tools without secrets"),
                         workflow.index("Sign unchanged archives"))
         bridge = (WORKFLOWS / "_reusable-bridge-build.yml").read_text()
-        self.assertIn("sign-linux:\n    needs: build\n"
-                      "    uses: ./.github/workflows/_reusable-linux-cli-signing.yml", bridge)
+        linux_call = bridge.split("  sign-linux:\n", 1)[1]
+        self.assertIn("needs: build\n    uses: ./.github/workflows/_reusable-linux-cli-signing.yml", linux_call)
+        self.assertIn("secrets: inherit", linux_call)
+        self.assertNotIn("secrets.LINUX_GPG_", linux_call)
         for filename in ("release-all-platforms.yml", "submit-release.yml"):
             release = (WORKFLOWS / filename).read_text()
             self.assertIn("artifacts/*.asc", release)
             self.assertIn("Verify public Linux archive signatures", release)
-            self.assertIn('publish_bridge_linux_signatures.py publish', release)
+            self.assertIn('publish_bridge_linux_signatures.py verify', release)
+            self.assertNotIn('publish_bridge_linux_signatures.py publish', release)
         bootstrap = (WORKFLOWS / "sign-linux-release.yml").read_text()
+        self.assertIn("secrets: inherit", bootstrap)
+        self.assertNotIn("secrets.LINUX_GPG_", bootstrap)
+        self.assertIn('publish_bridge_linux_signatures.py publish', bootstrap)
         self.assertNotIn("store-production", bootstrap)
         self.assertNotIn("gh release create", bootstrap)
         self.assertNotIn("--clobber", bootstrap)

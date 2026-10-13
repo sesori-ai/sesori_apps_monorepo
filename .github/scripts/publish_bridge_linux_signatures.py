@@ -1,4 +1,4 @@
-"""Bootstrap signatures for an existing public shared release, without replacing its assets."""
+"""Verify core-owned signature delivery, or bootstrap missing signatures without replacement."""
 
 import argparse
 import json
@@ -10,6 +10,8 @@ from urllib.request import urlopen
 from github_release_assets import github, public_sha256
 from linux_signing import PUBLIC_KEY, sha256
 from sign_bridge_linux import ARCHIVES
+
+SIGNING_ASSETS = (PUBLIC_KEY, *(archive + ".asc" for archive in ARCHIVES))
 
 
 def public_release(*, repository: str, tag: str) -> dict:
@@ -47,8 +49,7 @@ def download(*, repository: str, tag: str, root: Path) -> None:
             raise ValueError(f"Archive differs from the published Bridge checksums: {name}")
 
 
-def publish(*, repository: str, tag: str, root: Path) -> None:
-    release = public_release(repository=repository, tag=tag)
+def verify_archive_bytes(*, repository: str, tag: str, root: Path) -> None:
     report = json.loads((root / "signing.json").read_text(encoding="utf-8"))
     rows = report["artifacts"]
     if sorted(row["name"] for row in rows) != sorted(ARCHIVES) or report["publicKeyFile"] != PUBLIC_KEY:
@@ -59,29 +60,44 @@ def publish(*, repository: str, tag: str, root: Path) -> None:
         actual = public_sha256(url=public_url(repository=repository, tag=tag, name=row["name"]))
         if actual != row["sha256"]:
             raise ValueError(f"Public archive changed after signing: {row['name']}")
+
+
+def verify_signing_asset(*, repository: str, tag: str, path: Path) -> None:
+    actual = public_sha256(url=public_url(repository=repository, tag=tag, name=path.name))
+    if actual != sha256(path=path):
+        raise ValueError(f"Conflicting public signing asset; refusing replacement: {path.name}")
+    print(f"Verified public signing asset: {path.name} sha256:{actual}")
+
+
+def verify(*, repository: str, tag: str, root: Path) -> None:
+    # Core release owners already uploaded their archive/signature set. No repair writes here.
+    public_release(repository=repository, tag=tag)
+    verify_archive_bytes(repository=repository, tag=tag, root=root)
+    for name in SIGNING_ASSETS:
+        verify_signing_asset(repository=repository, tag=tag, path=root / name)
+
+
+def publish(*, repository: str, tag: str, root: Path) -> None:
+    # The standalone bootstrap owns only missing signatures, never existing release assets.
+    release = public_release(repository=repository, tag=tag)
+    verify_archive_bytes(repository=repository, tag=tag, root=root)
     existing = {asset["name"] for asset in release["assets"]}
-    for name in (PUBLIC_KEY, *(archive + ".asc" for archive in ARCHIVES)):
+    for name in SIGNING_ASSETS:
         path = root / name
-        expected = sha256(path=path)
         if name not in existing:
             github(arguments=["release", "upload", tag, str(path), "--repo", repository])
-        actual = public_sha256(url=public_url(repository=repository, tag=tag, name=name))
-        if actual != expected:
-            raise ValueError(f"Conflicting public signing asset; refusing replacement: {name}")
-        print(f"Verified public signing asset: {name} sha256:{actual}")
+        verify_signing_asset(repository=repository, tag=tag, path=path)
 
 
 def main() -> None:
+    operations = {"download": download, "publish": publish, "verify": verify}
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("download", "publish"))
+    parser.add_argument("operation", choices=operations)
     parser.add_argument("--repository", required=True)
     parser.add_argument("--tag", required=True)
     parser.add_argument("--root", type=Path, required=True)
     args = parser.parse_args()
-    if args.operation == "download":
-        download(repository=args.repository, tag=args.tag, root=args.root)
-    else:
-        publish(repository=args.repository, tag=args.tag, root=args.root)
+    operations[args.operation](repository=args.repository, tag=args.tag, root=args.root)
 
 
 if __name__ == "__main__":

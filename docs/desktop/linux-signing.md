@@ -161,6 +161,18 @@ release/tag ownership and the npm archive filters remain unchanged. These are **
 archives, not desktop DEB/RPM packages. Installers and automatic updaters still enforce
 SHA-256 checksums; adding signatures does not silently add OpenPGP enforcement to them.
 
+Core release owners retain their existing archive-replacement and promotion behavior.
+On a rerun/rebuild, they refresh signatures with their archive set, then use a read-only
+`verify` command to check delivery. The upload is not atomic: assets may be visible
+before the job completes. Missing or mismatched signatures fail manual verification;
+this change does not add a stable-release promotion/rollback gate.
+
+Trusted callers retain `secrets: inherit` for environment-only credential resolution;
+they cannot map values from an environment bound only inside the called job. The earlier
+[macOS cutover](../../.plan/completed/macos-signing-environment/PLAN.md)
+records the failed declaration-only runs and successful inheritance correction. Only
+the two GPG secrets are exposed to the signing step and passed into its container.
+
 For an existing public release without signatures, set `TAG` to its exact shared tag:
 
 ```bash

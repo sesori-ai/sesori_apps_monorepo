@@ -18,6 +18,8 @@ jobs:
     uses: ./.github/workflows/_reusable-linux-cli-signing.yml
     with:
       release_tag: ${{ inputs.tag }}
+    # Callers cannot resolve linux-signing's environment-only values. Keep the
+    # proven inheritance contract; the called signing step exposes only the two GPG secrets.
     secrets: inherit
   publish:
     needs: sign
