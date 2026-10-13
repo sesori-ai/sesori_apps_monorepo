@@ -83,7 +83,12 @@ void main() {
       );
     });
     tearDown(() async {
-      await repository.dispose();
+      final expectedCleanupFailure = host.process.stdin.closeFailure;
+      if (expectedCleanupFailure == null) {
+        await repository.dispose();
+      } else {
+        await expectLater(repository.dispose(), throwsA(same(expectedCleanupFailure)));
+      }
       await factory.dispose();
     });
 
@@ -309,6 +314,44 @@ void main() {
       expect(host.executable, isNull);
     });
 
+    for (final expired in [false, true]) {
+      test("native and cleanup failures retain both causes (expired: $expired)", () async {
+        const cleanup = FormatException("fixture-private-callback");
+        host.process.stdin.closeFailure = cleanup;
+        final operation = await ClaudeMcpAuthenticationService(
+          repository: _UnusedLogoutRepository(),
+          resolveContext: ({required target}) async => _context,
+          createLogin: ({required context}) => repository,
+          urlBudget: expired ? const Duration(milliseconds: 10) : const Duration(seconds: 90),
+          overallBudget: const Duration(minutes: 10),
+        ).begin(target: _target);
+        final done = operation.events.toList();
+        if (!expired) {
+          await _pump();
+          host.process.output.add(utf8.encode("$_authorization\n"));
+          await _pump();
+          host.process.finish(code: 7);
+        }
+        final failed = (await done).last as PluginMcpAuthenticationFailed;
+        expect(
+          failed.reason,
+          expired ? PluginMcpAuthenticationFailureReason.expired : PluginMcpAuthenticationFailureReason.nativeFailure,
+        );
+        final cause = failed.cause as ClaudeMcpAuthenticationCleanupException;
+        final primary = (cause.innerError as ClaudeMcpAuthenticationException).innerError;
+        expect(
+          primary,
+          expired
+              ? isA<TimeoutException>()
+              : isA<ClaudeMcpCommandExitedException>().having((e) => e.exitCode, "exitCode", 7),
+        );
+        expect(cause.innerStackTrace, same(failed.causeStackTrace));
+        expect(cause.cleanupError.innerError, same(cleanup));
+        expect(cause.cleanupStackTrace.toString(), contains("_Input.close"));
+        expect(cause.toString(), isNot(contains("fixture-private-callback")));
+      });
+    }
+
     test("URL deadline expires and releases the native child", () async {
       final operation = await ClaudeMcpAuthenticationService(
         repository: _UnusedLogoutRepository(),
@@ -423,6 +466,7 @@ class _Process() implements SpawnedProcess {
 class _Input() implements IOSink {
   final List<int> bytes = [];
   final Completer<void> closed = Completer();
+  Exception? closeFailure;
   @override
   void add(List<int> data) => bytes.addAll(data);
   @override
@@ -431,6 +475,8 @@ class _Input() implements IOSink {
   Future<void> get done => closed.future;
   @override
   Future<void> close() async {
+    final failure = closeFailure;
+    if (failure != null) throw failure;
     if (!closed.isCompleted) closed.complete();
   }
 

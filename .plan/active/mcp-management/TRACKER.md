@@ -504,3 +504,25 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   analysis passed after this correction; the other 68 passing focused tests and
   interface analysis are unchanged. Native fixture evidence above is from
   `3aa6bbd887`; this local change only shares context-error presentation.
+
+- Current-head Codex review found cleanup could replace an existing native failure.
+  Two regressions first reproduced lost native exit/timeout causes and expiry
+  classification. Settlement now retains both failures and both stack traces,
+  preserves the primary classification, and disables the stream's cancellation
+  callback after disposal so stream close cannot repeat a handled cleanup failure.
+  All 19 native authentication tests pass; the other 68 focused tests and interface
+  analysis remain unchanged. The Claude analyzer caught one const declaration in
+  the new fixture, now corrected; final analyzer is clean.
+- The separate macOS `script -F` argument finding is invalid on the supported
+  helper. Installed usage is `script [-aeFkpqr] [-t time] [file [command ...]]`;
+  `/usr/share/man/man1/script.1` identifies `-F` as immediate flushing. Apple
+  `shell_cmds-234` parses `adFkpqrt:` and its F branch sets `Fflg`, with no argument.
+  Primary source was re-read through GitHub API after web fetching failed; the
+  existing source link and both pinned production OAuth fixtures agree. No flag
+  rewrite or typescript destination change is made.
+
+- Final settlement-change fixture passed both exact Claude pins again on macOS
+  arm64: completion, reconnect/tools, cancellation (109/108 ms child-stop
+  observation), logout and unchanged MCP server definitions. The remaining
+  qualification matrix is unchanged; the new double-failure tests exercise a
+  failure seam that normal native success cannot manufacture.

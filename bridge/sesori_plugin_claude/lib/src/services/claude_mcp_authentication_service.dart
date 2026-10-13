@@ -29,6 +29,17 @@ typedef ClaudeMcpLoginRepositoryFactory = ClaudeMcpLoginRepository Function({
   required ClaudeMcpAuthenticationContext context,
 });
 
+/// Sequential native and cleanup failures retain both causes and stack traces.
+final class const ClaudeMcpAuthenticationCleanupException({
+  required final Exception innerError,
+  required final StackTrace innerStackTrace,
+  required final ClaudeMcpAuthenticationException cleanupError,
+  required final StackTrace cleanupStackTrace,
+}) implements Exception {
+  @override
+  String toString() => "$innerError; $cleanupError during native cleanup";
+}
+
 final class ClaudeMcpAuthenticationService({
   required final ClaudeMcpAuthenticationRepository _repository,
   required final ClaudeMcpAuthenticationContextResolver _resolveContext,
@@ -135,16 +146,33 @@ final class _ClaudeMcpLoginService({
     try {
       await _repository.dispose();
     } on Object catch (error, stackTrace) {
-      final failure = ClaudeMcpAuthenticationException(innerError: error);
-      outcome = PluginMcpAuthenticationFailed(
-        reason: PluginMcpAuthenticationFailureReason.nativeFailure,
-        cause: failure,
-        causeStackTrace: stackTrace,
-      );
+      final cleanup = ClaudeMcpAuthenticationException(innerError: error);
+      final failure = switch (outcome) {
+        PluginMcpAuthenticationFailed(:final reason, :final cause, :final causeStackTrace) =>
+          PluginMcpAuthenticationFailed(
+            reason: reason,
+            cause: ClaudeMcpAuthenticationCleanupException(
+              innerError: cause,
+              innerStackTrace: causeStackTrace,
+              cleanupError: cleanup,
+              cleanupStackTrace: stackTrace,
+            ),
+            causeStackTrace: causeStackTrace,
+          ),
+        _ => PluginMcpAuthenticationFailed(
+          reason: PluginMcpAuthenticationFailureReason.nativeFailure,
+          cause: cleanup,
+          causeStackTrace: stackTrace,
+        ),
+      };
+      outcome = failure;
       if (_termination is _ClaudeMcpLoginCancelled) {
-        Log.w("[claude] MCP authentication cleanup failed", failure, stackTrace);
+        Log.w("[claude] MCP authentication cleanup failed", failure.cause, failure.causeStackTrace);
       }
     }
+    // Terminal settlement already attempted disposal; closing the stream must
+    // not repeat a failed cleanup through its cancellation callback.
+    events.onCancel = null;
     if (_termination is! _ClaudeMcpLoginCancelled) events.add(outcome);
     unawaited(events.close());
   }

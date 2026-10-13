@@ -99,7 +99,8 @@ remain pending.
   invalid callbacks without writing to the child; provider denial stops it.
 - URL/completion deadlines and cancellation, including an in-flight spawn, stop
   the owned child and release subscriptions. Errors retain their causes without
-  printing authentication URLs or callbacks.
+  printing authentication URLs or callbacks. A simultaneous native and cleanup
+  failure retains both causes/stacks and the original failure classification.
 - Credential clearing uses the native CLI and leaves MCP server definitions
   unchanged. It does not disable or remove a server.
 - macOS arm64 is qualified with both pins. Linux qualification, Windows terminal
