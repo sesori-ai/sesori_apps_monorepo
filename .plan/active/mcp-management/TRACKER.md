@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-inventory-contracts`, `2c70025d8f`, in the provided `copper-heron` worktree.
-- Current step: 3/13, inventory foundation in PR review (#1947).
+- Current step: 4/13, Claude inventory API verified and ready for PR.
   Adapter work is preserved for step 4. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
@@ -19,7 +19,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 |---|---|---|---|
 | 1/13 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
 | 2/13 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/13 | Inventory foundation (original 3.a) | PR review | [#1947][pr-1947]; six codec tests |
+| 3/13 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
 | 4/13 | Claude scoped inventory and bridge read (original 3.b) | Local verification passed | Not published |
 | 5/13 | Shared phone/desktop inventory and details | Not started | — |
 | 6/13 | Claude actions and native authentication | Not started | — |
@@ -167,3 +167,9 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   The bridge route also proves readable offered connectors survive server-section
   failure and retain bridge-owned target scope. Claude tests remain 17 passing,
   route tests are now 7 passing, and affected analysis is clean.
+
+- Step 3 merged as #1947 after both current-head reviews completed with no
+  remaining findings and required CI passed. Step 4 rebased onto `a708a3a84e`;
+  owning bridge/Claude package contents on main match the reviewed foundation
+  base, so focused verification remains applicable. No prior cache, route,
+  persistence or runtime owner is superseded by this additive read flow.
