@@ -648,12 +648,18 @@ boundaries, using isolated stdio/HTTP/OAuth and deterministic model fixtures:
 
 | Harness/version | Native capability | Verified limit |
 |---|---|---|
-| Claude 2.1.221 / 2.1.291 | Resident inventory, toggle, reconnect, typed forms, terminal CLI OAuth | Toggle is session-process state; tool descriptions are absent from status. Plain-pipe login does not expose the no-browser URL/paste journey. |
-| Claude 2.1.221 | URL elicitation: not supported in stream-json | Native rejects URL mode before forwarding; no Sesori dialog can answer it. |
-| Claude 2.1.291 | URL elicitation: supported natively, not implemented in Sesori | Separate typed native request, independent of tool approval. |
-| Codex 0.139.0 / 0.160.1 | Scoped/paginated inventory, typed forms/URL requests, fixture OAuth | Native MCP login has no attempt ID or completion/cancel RPC; server completion must be correlated by the adapter. |
-| Codex 0.139.0 | Inventory: supported natively, not implemented in Sesori | No connection-state, tool-discovery-error, or safe-origin fields in the status DTO. |
-| Codex 0.160.1 | Richer inventory: supported natively, not implemented in Sesori | Native runtime status, discovery error, and safe origin are available. |
+| Claude, both pins | Inventory, toggle, reconnect, forms, CLI OAuth | Terminal login; session toggle |
+| Claude 2.1.221 | URL elicitation not supported | Native rejects before forwarding |
+| Claude 2.1.291 | URL elicitation native support | Separate from tool permission |
+| Codex, both pins | Inventory, forms/URL, fixture OAuth | No MCP attempt ID or completion/cancel RPC |
+| Codex 0.139.0 | Basic native inventory | No runtime/discovery-error/origin fields |
+| Codex 0.160.1 | Richer native inventory | Runtime status, discovery error, safe origin |
+
+Claude's toggle changes the resident process, not persisted configuration.
+Its status omits tool descriptions. Plain-pipe login does not expose the
+no-browser URL/paste journey. Codex completion must be correlated by the
+adapter; a browser open does not confirm success. All native-supported rows
+remain **not implemented** as Sesori management actions at this checkpoint.
 
 Unauthenticated Codex `app/list` returned an empty catalog; this does not prove
 authenticated connector setup. Other harness management remains **not

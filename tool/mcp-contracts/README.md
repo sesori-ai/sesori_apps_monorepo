@@ -33,11 +33,14 @@ node tool/mcp-contracts/released-peer.mjs /absolute/path/to/dart
 
 This executes the public v1.9.0/build 970 SSE parsing methods directly from Git,
 with fixture transport/log sinks. It first checks that the six question/SSE
-model and generated codec files are byte-identical to that release, then tests
+model and generated codec files match that release after LF/CRLF normalization, then tests
 unknown typed events, additive notice fields, both event orders, legacy
 completion/cancellation, and snapshot decoding. It fails on decoder drift rather
 than silently testing a current decoder as an older peer. Native mixed-client
 ownership and competing-reply tests belong with the production pending owner.
+
+Focused tooling tests: `node --test tool/mcp-contracts/*.test.mjs`. HTTP fixtures
+advertise only the echo tool; form/URL elicitation is exercised through stdio.
 
 Versioned results and the remaining qualification boundaries are in
 [the contract evidence](../../.plan/active/mcp-management/evidence/native-contracts.md).

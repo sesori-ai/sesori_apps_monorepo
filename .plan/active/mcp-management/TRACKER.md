@@ -4,7 +4,8 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-contract-evidence`, `c03b588d9e`, in the provided `copper-heron` worktree.
-- Current step: 2/12, native probes complete; preparing publication. Execution authorized on 2026-10-13.
+- Current step: 2/12, [PR #1945](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1945) in review.
+  Step-3 inventory foundations are preserved locally. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
 - Plan PR: [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940).
@@ -17,8 +18,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
 | 1/12 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/12 | Freeze priority native contracts and capability evidence | Preparing PR | [Native evidence](evidence/native-contracts.md) |
-| 3/12 | Claude scoped inventory and bridge contract | Not started | — |
+| 2/12 | Freeze priority native contracts and capability evidence | PR review | [#1945](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1945); [evidence](evidence/native-contracts.md) |
+| 3/12 | Claude scoped inventory and bridge contract | Local foundations in progress | Not published |
 | 4/12 | Shared phone/desktop inventory and details | Not started | — |
 | 5/12 | Claude actions and native authentication | Not started | — |
 | 6/12 | Shared authentication and external-action presentation | Not started | — |
@@ -34,13 +35,15 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 - 2026-10-13: inspected current plugin contracts, Claude process/control ownership, Codex approvals, shared
   question/permission models, client browser auth ownership, bridge routing, harness capabilities, and regression proof
   rules.
-- Verified local CLI identities: Claude Code 2.1.296 and Codex 0.162.1. Only version/help and schema generation were
-  run; no user MCP server was queried, connected, installed, or authorized.
-- Repository target/minimum versions differ from the installed CLIs. Native target/minimum captures, real OAuth,
-  packaged clients, and end-to-end checks are **Not run** and belong to implementation/qualification.
+- Step-1 checks identified local Claude Code 2.1.296 and Codex 0.162.1 with version/help and schema generation only;
+  those installed runtimes did not qualify the repository pins. Step 2 now probes the exact pins using isolated fixtures.
+  No user MCP server was queried, connected, installed, or authorized.
+- Exact target/minimum native fixture captures have passed in step 2. Real-provider OAuth, packaged clients,
+  cross-host and complete bridge/relay/client checks remain **Not run** and belong to qualification.
 - External documentation links and their scope are recorded in the plan. Claude terminal requirements, native
-  elicitation frames, Codex callback completion, connector setup contracts, and executable old-client event handling
-  remain explicit step-2 gates. The source-only released-client check is recorded in the verification log below.
+  elicitation frames, Codex callback completion, and executable released-client parsing have now been checked in step 2.
+  Authenticated connector setup, production terminal support, and real mixed-client ownership remain later gates.
+  The earlier source-only released-client check is retained as the step-1 checkpoint below.
 - Additional product analytics events are deferred; existing screen reporting applies. No server/tool/connector
   identities enter analytics.
 - No reduction of the retirement matrix has been requested or accepted.
@@ -98,3 +101,6 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 - Production tests and implementation qualification are not part of this planning-only change and remain **Not run**.
 - Step 2: four native probe commands passed their protocol assertions; native Codex JSON schemas were generated for
   both pins. The released-peer runner passed on the repository's exact Dart 3.13.4 SDK. No production source changed.
+- Step-2 review rerun at probe revision `1446909afb`: both Claude probes passed 12 exchanges; both Codex probes passed
+  19, including app scope and `never` policy. Released-peer decoding and three focused tooling tests passed. Exact
+  command/cwd/source provenance and remaining qualification gaps are recorded in the linked native evidence.

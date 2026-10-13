@@ -1,6 +1,7 @@
 # Priority MCP contract evidence
 
 Date: 2026-10-13. Implementation base: `c03b588d9e`. Host: macOS arm64.
+Measured executable probe revision: `1446909afb` (rerun after review fixes).
 This record establishes native protocol behavior, not released Sesori support.
 
 ## Exact executables
@@ -68,7 +69,8 @@ boundary needs a terminal-capable native process; Python is not that boundary.
 Any new PTY dependency and supported-host behavior must be qualified in step 5.
 
 Codex paginated status returns every configured fixture exactly once when each
-page requests one server. Minimum status has no connection-state/discovery-error
+page requests one server. A separate no-thread read returns the same configured
+server names. Minimum status has no connection-state/discovery-error
 fields: do not infer that an empty tool map means an empty successful catalog.
 Target adds `runtimeStatus`, `toolsError`, `httpOrigin`, and server capabilities.
 The minimum login request accepts a server name; target adds optional thread
@@ -99,8 +101,8 @@ catalog; no test installs a plugin or uses the under-development install APIs.
 ## Released-client boundary
 
 Public v1.9.0/build 970, commit `ffa5935c8363c6429fdf2e3c3fb95b3a906f5ab5`:
-the released SSE parsing methods were executed with byte-identical question and
-SSE model/generated codecs. Four combinations of typed-first/legacy-first and
+the released SSE parsing methods were executed with matching question and
+SSE model/generated codecs (LF/CRLF normalized). Four combinations of typed-first/legacy-first and
 completion/cancel passed, plus pending snapshot notice decoding. Unknown typed
 events are skipped; additive notice fields are ignored; legacy question text,
 custom-disabled behavior, attribution, and settlement IDs remain intact.
@@ -109,6 +111,49 @@ This is an executable wire-parser fixture, not a packaged old app or production
 mixed-client proof. Steps 6/7 must test one canonical native pending owner,
 modern/legacy presentation, competing replies, cancellation, and snapshot
 recovery after the real typed interactions exist.
+
+## Reproduction and measured results
+
+Run from the repository root at probe revision `1446909afb`; dependencies were
+resolved in `shared/sesori_shared` using Dart 3.13.4. Native fixture subprocess
+cwd is a fresh temporary directory chosen by `mkdtemp`, not the checkout or the
+developer's project. The released-peer Dart cwd is `shared/sesori_shared`.
+The following exact commands used the temporary executables hashed above:
+
+```sh
+node tool/mcp-contracts/probe.mjs claude \
+  /private/tmp/copper-heron-mcp-runtimes/claude-2.1.221/claude \
+  /private/tmp/copper-heron-mcp-runtimes/claude-min.json
+node tool/mcp-contracts/probe.mjs claude \
+  /private/tmp/copper-heron-mcp-runtimes/claude-2.1.291/claude \
+  /private/tmp/copper-heron-mcp-runtimes/claude-target.json
+node tool/mcp-contracts/probe.mjs codex \
+  /private/tmp/copper-heron-mcp-runtimes/codex-0.139.0/codex \
+  /private/tmp/copper-heron-mcp-runtimes/codex-min.json
+node tool/mcp-contracts/probe.mjs codex \
+  /private/tmp/copper-heron-mcp-runtimes/codex-0.160.1/codex \
+  /private/tmp/copper-heron-mcp-runtimes/codex-target.json
+node tool/mcp-contracts/released-peer.mjs \
+  /private/tmp/copper-heron-mcp-runtimes/dart-sdk/bin/dart
+node --test tool/mcp-contracts/fixture.test.mjs \
+  tool/mcp-contracts/released-peer.test.mjs tool/mcp-contracts/terminal.test.mjs
+```
+
+| Command | Result at measured revision |
+|---|---|
+| Claude minimum | Exit 0; 12 native exchanges; all assertions passed |
+| Claude target | Exit 0; 12 native exchanges; all assertions passed |
+| Codex minimum | Exit 0; 19 native exchanges; all assertions passed |
+| Codex target | Exit 0; 19 native exchanges; all assertions passed |
+| Released peer | Exit 0; four event-order/settlement cases plus snapshot passed |
+| Tooling tests | Exit 0; three tests passed |
+
+The Codex reruns include app scope and explicit `never`-policy form/URL decline.
+They assert stdio OAuth rejection and an empty successful unauthenticated
+catalog. Claude asserts unknown-server reconnect rejection and the ten-second
+plain-pipe timeout without a URL. HTTP fixtures advertise only echo; form/URL
+elicitation and exact typed replies are exercised through stdio. None of these
+checks establish HTTP elicitation support or real external provider behavior.
 
 ## Remaining qualification
 
