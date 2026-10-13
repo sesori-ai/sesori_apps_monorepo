@@ -120,7 +120,7 @@ be restored in an isolated GnuPG home. Do not weaken filesystem permissions or u
 After verifying the complete backup, keep the primary key only offline. The public
 key and fingerprint may be shared; neither the secret export nor revocation certificate may.
 
-## 4. Qualify signed packages after the PR merges
+## 4. Qualify signed packages from main
 
 ```bash
 gh workflow run desktop-qualification.yml \
@@ -144,3 +144,19 @@ DEB bytes remain unchanged. No private key, passphrase or keyring is uploaded.
 This workflow never publishes a release, enables Linux admission, uploads to stores,
 or creates cloud resources. A successful disposable-key CI fixture proves the signer
 mechanics, not production-key access or native application behavior.
+
+## Verified private qualification
+
+[Run 38372268594](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38372268594)
+qualified both native CPUs on 2026-10-13 after #1941 merged. Private `1.9.1+147` RPMs
+received native signatures; signed checksums covered both formats, leaving DEB bytes
+unchanged. All six native container package fixtures passed. Independent downloaded
+hashes and public-key-pinned checksum
+signatures matched. See [the acceptance record](../../.plan/active/desktop-distribution/steps/step-09.md)
+for the exact source tree, measured checkout cwd, immutable workflow revision,
+expanded native job logs/commands, fingerprint and package-file hashes.
+
+This proves the configured signing path works. It does not admit public repository
+publication or establish GUI/account/keyring/tray behavior or real N→N+1 upgrades.
+Qualification build 147 is not a shared bridge/mobile release number; future public
+integration must align source/build/channel with that release cycle.

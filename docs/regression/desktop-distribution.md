@@ -117,6 +117,14 @@ proof; new tooling alone does not relabel them. Public repositories, shared-cycl
 publication and N→N+1/desktop-session checks remain pending.
 See [key setup and backup guidance](../desktop/linux-signing.md).
 
+Signed native run `38372268594` qualified x64 and arm64 at source
+`de53cafb2483d76e9350a28d014b4d3906ee0fe0`, private build `1.9.1+147`, using the
+configured production signing key. All six distribution fixtures passed. Independent
+archive/package-file hashes, source identities, empty source patches and public-key-pinned
+checksum signatures matched. This establishes real credential access and signed
+package mechanics, not public repositories, GUI/account behavior or N→N+1 updates.
+The manual workflow's build number is not the shared release sequence.
+
 ## Shared release cycle and private preparation
 
 Private `macos-packaging` accepts optional immutable `source_sha` and `build_number`
