@@ -60,9 +60,43 @@ anonymous public-byte verification in both release channels. A separate main-onl
 bootstrap attaches signatures to existing matching archives without rebuilding or
 replacing release assets/metadata. Its failed publication job reuses the original
 signature artifact; re-signing is not assumed to produce identical bytes.
-Local focused contracts pass; real disposable-key fixtures run in CI. Actual
-production-key signing/public verification of the existing release remains a
-post-merge operation, not evidence claimed by these local tests.
+### Step 11.c verification checkpoints (2026-10-13)
+
+- Local review-fix source: `a9293b206b6db1ad1fd2c01855ad8a55704a6c5a`,
+  tree `7bdf7b7f96f4a9afeea37076d6d1401ff0b0318e`. Cwd is the Git checkout root (`.`);
+  the local record retains the host-specific absolute cwd. Python 3.13.16 completed
+  **26 tests, zero skips, exit 0** in 1.753s at 12:33:29 UTC. Exact command:
+
+  ```bash
+  PYTHONPATH=.github/scripts /opt/homebrew/bin/python3.13 -m unittest \
+    test_bridge_linux_signatures test_publish_desktop_release
+  ```
+
+  These cover read-only delivery checks, append-only bootstrap, unchanged core
+  publication/retention and the environment-secret inheritance contract. Actionlint
+  (with ShellCheck) also passed for the four changed caller workflows. Local records:
+  `build/bridge-linux-signing/review-validation-a9293b2.json` and
+  `build/bridge-linux-signing/review-fixes-a9293b2.log`; these are not public artifacts.
+- Real-tool signer checkpoint: PR head `fef42563d4be12bcacb09f9708a58977d022083a`;
+  [Fedora job 115276279835](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38391541309/job/115276279835)
+  checked out merge commit `28ee521f8711f2dba54f2ef04bb7cc984291b27c`, whose tree
+  `474f10c159fc1b970e70f496fedf2a30e0aaf156` equals that PR head's tree. Host cwd:
+  `/home/runner/work/sesori_apps_monorepo/sesori_apps_monorepo`; container cwd: `/workspace`.
+  **13 tests passed, zero skips**, in 4.491s, with disposable keys only. Exact commands:
+
+  ```bash
+  docker build --file .github/scripts/Dockerfile.linux-signing --tag sesori-linux-signing .github/scripts
+  docker run --rm --network none -v "$GITHUB_WORKSPACE:/workspace:ro" \
+    -e SESORI_LINUX_SIGNING_TEST_REQUIRED=1 sesori-linux-signing \
+    python3 -m unittest discover -s .github/scripts -p 'test_sign_desktop_linux.py'
+  ```
+
+  Retrieve the expanded log with `gh run view 38391541309 --job 115276279835 --log`
+  from this repository. This checkpoint proves the shared signer and public-only
+  verification mechanics, not the later read-only delivery-command change.
+
+Actual production-key signing/public verification of an existing public release
+remains a post-merge operation, not evidence claimed by either checkpoint.
 
 ## Completed macOS website continuation (2026-09-26)
 
