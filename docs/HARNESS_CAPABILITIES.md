@@ -645,6 +645,8 @@ Dedicated MCP inventory and connection UI are **not implemented** in Sesori yet.
 The backend-neutral inventory wire models and optional plugin read interface
 are implemented. Claude implements session inventory through its resident
 process status control request, exposed headlessly by `POST /mcp/inventory`.
+The shared client API, repository, per-view loading service, and cubit are
+implemented, including reconnect and refresh failure state; no UI exposes them yet.
 Project/harness inventory and offered-connector discovery remain **not implemented**
 for Claude. The other harness adapters, client presentation, and management actions
 remain **not implemented**. Reads never start an integration or agent session.

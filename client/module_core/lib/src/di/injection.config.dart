@@ -30,6 +30,7 @@ import 'package:sesori_dart_core/src/api/feedback_prompt_config_api.dart'
 import 'package:sesori_dart_core/src/api/filesystem_api.dart' as _i1068;
 import 'package:sesori_dart_core/src/api/installed_app_build_api.dart' as _i258;
 import 'package:sesori_dart_core/src/api/legal_api.dart' as _i835;
+import 'package:sesori_dart_core/src/api/mcp_api.dart' as _i187;
 import 'package:sesori_dart_core/src/api/message_image_api.dart' as _i938;
 import 'package:sesori_dart_core/src/api/notification_api.dart' as _i400;
 import 'package:sesori_dart_core/src/api/notification_preferences_api.dart'
@@ -130,6 +131,7 @@ import 'package:sesori_dart_core/src/repositories/installed_app_build_repository
     as _i507;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
     as _i933;
+import 'package:sesori_dart_core/src/repositories/mcp_repository.dart' as _i349;
 import 'package:sesori_dart_core/src/repositories/message_image_repository.dart'
     as _i531;
 import 'package:sesori_dart_core/src/repositories/notification_preferences_repository.dart'
@@ -178,6 +180,7 @@ import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
     as _i285;
+import 'package:sesori_dart_core/src/services/mcp_service.dart' as _i948;
 import 'package:sesori_dart_core/src/services/message_thumbnail_cache_service.dart'
     as _i72;
 import 'package:sesori_dart_core/src/services/new_session_options_service.dart'
@@ -552,6 +555,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1068.FilesystemApi>(
       () => _i1068.FilesystemApi(client: gh<_i857.RelayHttpApiClient>()),
     );
+    gh.lazySingleton<_i187.McpApi>(
+      () => _i187.McpApi(client: gh<_i857.RelayHttpApiClient>()),
+    );
     gh.lazySingleton<_i231.PermissionApi>(
       () => _i231.PermissionApi(client: gh<_i857.RelayHttpApiClient>()),
     );
@@ -696,11 +702,20 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i679.PermissionRepository>(
       () => _i679.PermissionRepository(api: gh<_i231.PermissionApi>()),
     );
+    gh.lazySingleton<_i349.McpRepository>(
+      () => _i349.McpRepository(api: gh<_i187.McpApi>()),
+    );
     gh.lazySingleton<_i80.ProjectRepository>(
       () => _i80.ProjectRepository(
         api: gh<_i733.ProjectApi>(),
         filesystemApi: gh<_i1068.FilesystemApi>(),
         sessionApi: gh<_i603.SessionApi>(),
+      ),
+    );
+    gh.factory<_i948.McpService>(
+      () => _i948.McpService(
+        repository: gh<_i349.McpRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
       ),
     );
     gh.lazySingleton<_i177.NewSessionPluginService>(
