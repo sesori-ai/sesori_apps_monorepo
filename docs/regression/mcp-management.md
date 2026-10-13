@@ -85,6 +85,17 @@ archived session if its native process remains live; it grants no session mutati
 
 ## Native authentication boundary
 
+The shared authentication wire contract carries one attempt's ID, plugin and
+server target, native cancellation availability, and sealed current states.
+Only callback-challenge state carries authorization/callback URLs; those values
+are intended for request-scoped delivery, never SSE replay or persistence.
+Continue and cancel requests carry the matching attempt ID. Unknown response,
+state and enum values degrade explicitly. Callback request presentation and
+malformed-body errors do not reflect credential input, while errors retain a
+typed original cause. Codec and privacy coverage lives in
+`shared/sesori_shared/test/models/mcp_authentication_test.dart`.
+This codec foundation adds no authentication routes or UI action.
+
 The optional plugin API can sign in to an existing live Claude session's
 native-configured HTTP server and clear its native credentials. This is a
 plugin-level boundary; headless authentication routes and client action UI

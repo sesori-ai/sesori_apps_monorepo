@@ -50,6 +50,7 @@ export "src/models/sesori/health_response.dart";
 export "src/models/sesori/mark_session_seen_request.dart";
 export "src/models/sesori/mcp.dart";
 export "src/models/sesori/mcp_action.dart";
+export "src/models/sesori/mcp_authentication.dart";
 export "src/models/sesori/message.dart";
 export "src/models/sesori/message_part.dart";
 export "src/models/sesori/message_with_parts.dart";
