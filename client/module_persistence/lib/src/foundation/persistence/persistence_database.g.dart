@@ -3,7 +3,8 @@
 part of 'persistence_database.dart';
 
 // ignore_for_file: type=lint
-class $StringValuesTable extends StringValues with TableInfo<$StringValuesTable, StringValue> {
+class $StringValuesTable extends StringValues
+    with TableInfo<$StringValuesTable, StringValue> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -120,7 +121,8 @@ class StringValue extends DataClass implements Insertable<StringValue> {
     };
   }
 
-  StringValue copyWith({String? key, String? value}) => StringValue(key: key ?? this.key, value: value ?? this.value);
+  StringValue copyWith({String? key, String? value}) =>
+      StringValue(key: key ?? this.key, value: value ?? this.value);
   StringValue copyWithCompanion(StringValuesCompanion data) {
     return StringValue(
       key: data.key.present ? data.key.value : this.key,
@@ -141,7 +143,10 @@ class StringValue extends DataClass implements Insertable<StringValue> {
   int get hashCode => Object.hash(key, value);
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is StringValue && other.key == this.key && other.value == this.value);
+      identical(this, other) ||
+      (other is StringValue &&
+          other.key == this.key &&
+          other.value == this.value);
 }
 
 class StringValuesCompanion extends UpdateCompanion<StringValue> {
@@ -151,7 +156,9 @@ class StringValuesCompanion extends UpdateCompanion<StringValue> {
     this.key = const Value.absent(),
     this.value = const Value.absent(),
   });
-  StringValuesCompanion.insert({required String key, required String value}) : key = Value(key), value = Value(value);
+  StringValuesCompanion.insert({required String key, required String value})
+    : key = Value(key),
+      value = Value(value);
   static Insertable<StringValue> custom({
     Expression<String>? key,
     Expression<String>? value,
@@ -191,7 +198,8 @@ class StringValuesCompanion extends UpdateCompanion<StringValue> {
   }
 }
 
-class $BoolValuesTable extends BoolValues with TableInfo<$BoolValuesTable, BoolValue> {
+class $BoolValuesTable extends BoolValues
+    with TableInfo<$BoolValuesTable, BoolValue> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -311,7 +319,8 @@ class BoolValue extends DataClass implements Insertable<BoolValue> {
     };
   }
 
-  BoolValue copyWith({String? key, bool? value}) => BoolValue(key: key ?? this.key, value: value ?? this.value);
+  BoolValue copyWith({String? key, bool? value}) =>
+      BoolValue(key: key ?? this.key, value: value ?? this.value);
   BoolValue copyWithCompanion(BoolValuesCompanion data) {
     return BoolValue(
       key: data.key.present ? data.key.value : this.key,
@@ -332,7 +341,10 @@ class BoolValue extends DataClass implements Insertable<BoolValue> {
   int get hashCode => Object.hash(key, value);
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is BoolValue && other.key == this.key && other.value == this.value);
+      identical(this, other) ||
+      (other is BoolValue &&
+          other.key == this.key &&
+          other.value == this.value);
 }
 
 class BoolValuesCompanion extends UpdateCompanion<BoolValue> {
@@ -342,7 +354,9 @@ class BoolValuesCompanion extends UpdateCompanion<BoolValue> {
     this.key = const Value.absent(),
     this.value = const Value.absent(),
   });
-  BoolValuesCompanion.insert({required String key, required bool value}) : key = Value(key), value = Value(value);
+  BoolValuesCompanion.insert({required String key, required bool value})
+    : key = Value(key),
+      value = Value(value);
   static Insertable<BoolValue> custom({
     Expression<String>? key,
     Expression<bool>? value,
@@ -382,7 +396,8 @@ class BoolValuesCompanion extends UpdateCompanion<BoolValue> {
   }
 }
 
-class $EncryptedValuesTable extends EncryptedValues with TableInfo<$EncryptedValuesTable, EncryptedValue> {
+class $EncryptedValuesTable extends EncryptedValues
+    with TableInfo<$EncryptedValuesTable, EncryptedValue> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -504,14 +519,17 @@ class EncryptedValue extends DataClass implements Insertable<EncryptedValue> {
     };
   }
 
-  EncryptedValue copyWith({String? key, Uint8List? ciphertext}) => EncryptedValue(
-    key: key ?? this.key,
-    ciphertext: ciphertext ?? this.ciphertext,
-  );
+  EncryptedValue copyWith({String? key, Uint8List? ciphertext}) =>
+      EncryptedValue(
+        key: key ?? this.key,
+        ciphertext: ciphertext ?? this.ciphertext,
+      );
   EncryptedValue copyWithCompanion(EncryptedValuesCompanion data) {
     return EncryptedValue(
       key: data.key.present ? data.key.value : this.key,
-      ciphertext: data.ciphertext.present ? data.ciphertext.value : this.ciphertext,
+      ciphertext: data.ciphertext.present
+          ? data.ciphertext.value
+          : this.ciphertext,
     );
   }
 
@@ -596,7 +614,8 @@ abstract class _$PersistenceDatabase extends GeneratedDatabase {
     this,
   );
   @override
-  Iterable<TableInfo<Table, Object?>> get allTables => allSchemaEntities.whereType<TableInfo<Table, Object?>>();
+  Iterable<TableInfo<Table, Object?>> get allTables =>
+      allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     stringValues,
