@@ -300,8 +300,12 @@ function assertContracts(harness, result) {
     assert.match(unknownServer.frame.response.error, /Server not found/);
     assert.equal(result.approvals.length, 3, 'Each tool needs native permission');
     for (const [index, approval] of result.approvals.entries()) {
-      assert.equal(approval.request.mcp_server.name, 'stdio_fixture');
-      assert.equal(approval.request.mcp_server.source, 'dynamic');
+      if (result.version.startsWith('2.1.291 ')) {
+        assert.equal(approval.request.mcp_server.name, 'stdio_fixture');
+        assert.equal(approval.request.mcp_server.source, 'dynamic');
+      } else if (result.version.startsWith('2.1.221 ')) {
+        assert.equal(approval.request.mcp_server, undefined, 'Minimum omits explicit server context');
+      }
       assert.equal(approval.request.tool_name, `mcp__stdio_fixture__${['echo', 'form', 'url'][index]}`);
     }
     const form = result.elicitations.find(x => x.request.mode === 'form');
