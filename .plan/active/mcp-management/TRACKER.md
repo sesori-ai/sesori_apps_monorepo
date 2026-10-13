@@ -109,3 +109,6 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 - Step-2 attribution review: target Claude and both Codex pins passed at `2c291ba091`; minimum Claude passed at
   `b84d837e65` after the new assertion exposed its absent `mcp_server` field. Native tool names, target server context,
   Codex elicitation ownership, and target inventory/error/origin/capability fields are now asserted. Three tooling tests passed.
+- Step-2 pagination/payload review: both Codex native probes passed at `c7cd246fbb` with three-page termination,
+  exact URL elicitation mode/destination/identifier, and URL-only OAuth response assertions. Claude assertions are
+  unchanged; its observed initial pending status is explicitly not a guaranteed startup state.

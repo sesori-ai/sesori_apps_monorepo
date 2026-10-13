@@ -1,8 +1,9 @@
 # Priority MCP contract evidence
 
 Date: 2026-10-13. Implementation base: `c03b588d9e`. Host: macOS arm64.
-Measured probe revisions: `2c291ba091` (target Claude and both Codex pins) and
-`b84d837e65` (minimum Claude after asserting its omitted server context).
+Measured probe revisions: `2c291ba091` (target Claude), `b84d837e65`
+(minimum Claude after asserting its omitted server context), and `c7cd246fbb`
+(both Codex pins after bounded pagination and exact OAuth/URL payload checks).
 This record establishes native protocol behavior, not released Sesori support.
 
 ## Exact executables
@@ -123,7 +124,7 @@ recovery after the real typed interactions exist.
 
 ## Reproduction and measured results
 
-Run from the repository root at probe revision `b84d837e65`; dependencies were
+Run from the repository root at probe revision `c7cd246fbb`; dependencies were
 resolved in `shared/sesori_shared` using Dart 3.13.4. Native fixture subprocess
 cwd is a fresh temporary directory chosen by `mkdtemp`, not the checkout or the
 developer's project. The released-peer Dart cwd is `shared/sesori_shared`.
