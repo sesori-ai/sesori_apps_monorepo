@@ -40,6 +40,11 @@ void main() {
     }
   });
 
+  test("an unrecognized wire result stays distinct from a successful inventory", () async {
+    api.response = SuccessResponse(McpInventoryResult.fromJson({"type": "future-result"}));
+    expect(await repository.getInventory(request: request), isA<McpReadUnrecognized>());
+  });
+
   test("authorization and transport failures preserve their original typed error", () async {
     final error = ApiError.nonSuccessCode(errorCode: 403, rawErrorString: "Not authorized");
     api.response = ErrorResponse(error);

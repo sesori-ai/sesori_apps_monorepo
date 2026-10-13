@@ -9,6 +9,7 @@ import "models/mcp_read_result.dart";
 class McpRepository({required final McpApi _api}) {
   Future<McpReadResult> getInventory({required McpInventoryRequest request}) async =>
       switch (await _api.getInventory(request: request)) {
+        SuccessResponse(data: McpInventoryUnknown()) => const McpReadUnrecognized(),
         SuccessResponse(:final McpInventoryUnavailable data)
             when data.reason == McpInventoryUnavailableReason.readFailed =>
           McpReadInventoryFailed(cause: data),

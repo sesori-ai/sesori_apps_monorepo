@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-inventory-ui`, `120a438770`, in the provided `copper-heron` worktree.
-- Current step: 5/14, shared client inventory lifecycle ready for PR.
+- Current step: 5/14, shared client inventory lifecycle in PR review (#1949).
   Claude inventory API merged as #1948. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
@@ -21,8 +21,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 2/14 | Native contracts | Merged | [#1945][pr-1945] |
 | 3/14 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
 | 4/14 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/14 | Client inventory lifecycle (original 5.a) | Ready for PR | Not published |
-| 6/14 | Shared phone/desktop inventory and details (original 5.b) | Not started | — |
+| 5/14 | Client inventory lifecycle (original 5.a) | PR review | [#1949][pr-1949] |
+| 6/14 | Shared phone/desktop inventory and details (original 5.b) | Local implementation | Not published |
 | 7/14 | Claude actions and native authentication | Not started | — |
 | 8/14 | Shared authentication and external-action presentation | Not started | — |
 | 9/14 | Claude approvals and form/URL elicitation | Not started | — |
@@ -195,7 +195,10 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   swallowing unrelated StateError bugs. Focused Claude tests passed (48);
   Claude analysis passed. Original step 5 is now two PRs, with total 14.
 
-- Step 5.a local verification: 12 focused client service/repository tests pass;
+- Step 5.a local verification was an uncommitted run on `53f16cb004` plus
+  the client changes later committed as `f7acf6da27` (before the main rebase).
+  Commands: the two focused files via `dart test` from `client/module_core`,
+  and `dart analyze` from core, mobile, and desktop. Twelve tests passed;
   core, mobile, and desktop analyze cleanly on Flutter 3.47.5 / Dart 3.13.4.
   Full core DI generation changed only the intended registrations. Per-view
   service ownership avoids a shared inventory cache; no prior persistence,
@@ -208,5 +211,16 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 
 - Step 4 merged as #1948 after current-head Codex completed without new findings,
   Cubic approved, and all 32 required checks passed. Step 5.a rebased onto
-  `120a438770`; client package contents are unchanged from the validated base,
+  `120a438770`; client package contents are unchanged from the uncommitted run above,
   so the focused tests, code generation, and downstream analysis remain applicable.
+
+[pr-1949]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1949
+
+- Step 5.a review verification was uncommitted on `d668256344`: 19 focused
+  service/repository tests and core analysis passed from `client/module_core`.
+  HTTP 404 and unrecognized refreshes preserve readable snapshots with distinct
+  states. Two single-signal failure tests prove reconnect re-arms reads without
+  another stale signal; failed state remains visible without scheduled polling.
+  The original verification provenance is now explicitly recorded above.
+- Step 5.a second architecture review: **approved** against `120a438770`
+  through `d668256344` plus these uncommitted fixes; no architectural findings.

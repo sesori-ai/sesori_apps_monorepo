@@ -49,7 +49,10 @@ class McpService({
 
   Future<void> refresh() async {
     final request = _request;
-    if (_state.isClosed || request == null || _connection is! ConnectionConnected || _readingGeneration == _generation) {
+    if (_state.isClosed ||
+        request == null ||
+        _connection is! ConnectionConnected ||
+        _readingGeneration == _generation) {
       return;
     }
     final generation = _generation;
@@ -64,6 +67,7 @@ class McpService({
       McpInventoryInitial() ||
       McpInventoryWaitingForConnection() ||
       McpInventoryLoading() ||
+      McpInventoryUnrecognized() ||
       McpInventoryNotFound() ||
       McpInventoryReadFailed() ||
       McpInventoryFailed() => const McpInventoryLoading(),
@@ -82,7 +86,32 @@ class McpService({
         inventory: inventory,
         refresh: const McpInventoryRefreshIdle(),
       ),
-      McpReadNotFound(:final cause) => McpInventoryNotFound(cause: cause),
+      McpReadNotFound(:final cause) => switch (previous) {
+        McpInventoryReady(:final inventory) => McpInventoryReady(
+          inventory: inventory,
+          refresh: McpInventoryRefreshNotFound(cause: cause),
+        ),
+        McpInventoryInitial() ||
+        McpInventoryWaitingForConnection() ||
+        McpInventoryLoading() ||
+        McpInventoryUnrecognized() ||
+        McpInventoryNotFound() ||
+        McpInventoryReadFailed() ||
+        McpInventoryFailed() => McpInventoryNotFound(cause: cause),
+      },
+      McpReadUnrecognized() => switch (previous) {
+        McpInventoryReady(:final inventory) => McpInventoryReady(
+          inventory: inventory,
+          refresh: const McpInventoryRefreshUnrecognized(),
+        ),
+        McpInventoryInitial() ||
+        McpInventoryWaitingForConnection() ||
+        McpInventoryLoading() ||
+        McpInventoryUnrecognized() ||
+        McpInventoryNotFound() ||
+        McpInventoryReadFailed() ||
+        McpInventoryFailed() => const McpInventoryUnrecognized(),
+      },
       McpReadInventoryFailed(:final cause) => switch (previous) {
         McpInventoryReady(:final inventory) => McpInventoryReady(
           inventory: inventory,
@@ -91,6 +120,7 @@ class McpService({
         McpInventoryInitial() ||
         McpInventoryWaitingForConnection() ||
         McpInventoryLoading() ||
+        McpInventoryUnrecognized() ||
         McpInventoryNotFound() ||
         McpInventoryReadFailed() ||
         McpInventoryFailed() => McpInventoryReadFailed(cause: cause),
@@ -103,13 +133,15 @@ class McpService({
         McpInventoryInitial() ||
         McpInventoryWaitingForConnection() ||
         McpInventoryLoading() ||
+        McpInventoryUnrecognized() ||
         McpInventoryNotFound() ||
         McpInventoryReadFailed() ||
         McpInventoryFailed() => McpInventoryFailed(cause: cause),
       },
     });
     // A signal received during the read still needs its own authoritative result.
-    // Failures remain visible/stale; retry only for a newer signal or explicit intent.
+    // A failed result remains stale in state; reconnect or explicit refresh re-arms
+    // the read without a second stale signal. Do not poll a failed native process.
     if (_staleVersion > staleVersion) unawaited(refresh());
   }
 
@@ -133,6 +165,7 @@ class McpService({
         McpInventoryInitial() ||
         McpInventoryWaitingForConnection() ||
         McpInventoryLoading() ||
+        McpInventoryUnrecognized() ||
         McpInventoryNotFound() ||
         McpInventoryReadFailed() ||
         McpInventoryFailed() => const McpInventoryWaitingForConnection(),

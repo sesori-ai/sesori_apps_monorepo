@@ -219,6 +219,74 @@ void main() {
     expect(repository.pending, hasLength(3));
   });
 
+  test("404 on refresh retains details and its distinct original cause", () async {
+    final original = await load();
+    final refresh = service.refresh();
+    final cause = NonSuccessCodeError(errorCode: 404, rawErrorString: "Missing route or session");
+    repository.pending.last.complete(McpReadNotFound(cause: cause));
+    await refresh;
+    final state = service.currentState as McpInventoryReady;
+    expect(state.inventory, same(original.inventory));
+    expect((state.refresh as McpInventoryRefreshNotFound).cause, same(cause));
+  });
+
+  test("initial 404 remains distinct from a retained refresh failure", () async {
+    service.bind(request: _request);
+    final cause = NonSuccessCodeError(errorCode: 404, rawErrorString: "Missing route or session");
+    repository.pending.last.complete(McpReadNotFound(cause: cause));
+    final state = await service.states.firstWhere((state) => state is McpInventoryNotFound) as McpInventoryNotFound;
+    expect(state.cause, same(cause));
+  });
+
+  test("unrecognized initial inventory is not a ready snapshot", () async {
+    service.bind(request: _request);
+    repository.pending.last.complete(const McpReadUnrecognized());
+    await service.states.firstWhere((state) => state is McpInventoryUnrecognized);
+    expect(service.currentState, isNot(isA<McpInventoryReady>()));
+  });
+
+  test("unrecognized refresh preserves the last readable snapshot", () async {
+    final original = await load();
+    final refresh = service.refresh();
+    repository.pending.last.complete(const McpReadUnrecognized());
+    await refresh;
+    final state = service.currentState as McpInventoryReady;
+    expect(state.inventory, same(original.inventory));
+    expect(state.refresh, isA<McpInventoryRefreshUnrecognized>());
+  });
+
+  for (final failure in [
+    McpReadFailed(cause: ApiError.generic()),
+    const McpReadInventoryFailed(
+      cause: McpInventoryUnavailable(
+        scope: McpSessionScope(sessionId: "session-a"),
+        reason: McpInventoryUnavailableReason.readFailed,
+        message: "Read failed",
+      ),
+    ),
+  ]) {
+    test("one failed stale read re-arms on reconnect without a second signal: ${failure.runtimeType}", () async {
+      final original = await load();
+      connection.stale.add(null);
+      await _pump();
+      repository.pending.last.complete(failure);
+      await _pump();
+      expect(repository.pending, hasLength(2));
+      expect((service.currentState as McpInventoryReady).inventory, same(original.inventory));
+      connection.statuses.add(const ConnectionReconnecting(config: _config));
+      await _pump();
+      connection.statuses.add(const ConnectionConnected(config: _config, health: _health));
+      await _pump();
+      expect(repository.pending, hasLength(3));
+      repository.pending.last.complete(McpReadSuccess(inventory: original.inventory));
+      await service.states.firstWhere(
+        (state) => state is McpInventoryReady && state.refresh is McpInventoryRefreshIdle,
+      );
+      await _pump();
+      expect(repository.pending, hasLength(3));
+    });
+  }
+
   test("closing the view fences a pending read", () async {
     final other = McpService(repository: repository, connectionService: connection);
     other.bind(request: _request);

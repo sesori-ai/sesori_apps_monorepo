@@ -46,7 +46,10 @@ archived session if its native process remains live; it grants no session mutati
 - A staleness signal arriving during a read still triggers a follow-up read, even
   if the first read fails. Closing the view cancels listeners and fences its read.
 - HTTP 404 retains a missing-route-or-entity result; it does not assert that the
-  bridge is old. Native read failures remain distinct from unsupported inventory.
+  bridge is old. A 404 refresh preserves readable inventory with a distinct
+  refresh result. Native read failures remain distinct from unsupported inventory.
+- Unrecognized inventory results are explicit read states, never loaded catalogs.
+  An unrecognized refresh preserves the last readable snapshot.
 
 ## Regression Levels
 
