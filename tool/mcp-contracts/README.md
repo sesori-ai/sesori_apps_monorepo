@@ -12,7 +12,9 @@ node tool/mcp-contracts/probe.mjs codex /absolute/path/to/codex /tmp/codex-captu
 
 The probe asserts inventory, pagination where applicable, native failure replies,
 typed form round trips, URL decline/unsupported behavior, and fixture OAuth
-completion. Both harnesses use allow-listed child environments and explicit
+completion. It rejects versions outside the declared minimum/target pins before
+opening fixture servers. Claude additionally checks wrong-state rejection with
+no token exchange before a fresh valid login. Both harnesses use allow-listed child environments and explicit
 temporary configuration. Claude runs in manual permission mode with a strict
 fixture MCP list. Its terminal probe requires POSIX Python 3; the fixture helper
 is tooling, not a production dependency. Closing the helper reaps its native

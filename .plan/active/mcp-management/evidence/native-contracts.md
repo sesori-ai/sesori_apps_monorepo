@@ -1,10 +1,8 @@
 # Priority MCP contract evidence
 
 Date: 2026-10-13. Implementation base: `c03b588d9e`. Host: macOS arm64.
-Measured probe revisions: `2c291ba091` (target Claude), `b84d837e65`
-(minimum Claude after asserting its omitted server context), and `c7cd246fbb`
-(both Codex pins after bounded pagination and exact OAuth/URL payload checks).
-This record establishes native protocol behavior, not released Sesori support.
+Measured executable probe revision: `992af36665` (all four pins passed final
+version, ownership, URL, pagination, and OAuth-state assertions).
 
 ## Exact executables
 
@@ -73,7 +71,11 @@ elicitation requests”; the bridge cannot present a request it never receives.
 Claude project `.mcp.json` login fails explicitly while awaiting trust approval.
 After explicit native setup of only the fixture server, `mcp login --no-browser`
 in a pseudo-terminal prints a URL, accepts the pasted native callback, and exits
-successfully on both versions. A plain pipe emits only startup text and remains
+successfully on both versions. Both require nonempty OAuth state. A separate
+mismatched-state paste exchanges no token: minimum exits with an explicit state
+mismatch error; target reports that the URL does not belong to this sign-in and
+reprompts until the bounded probe cancels it. A fresh correct-state login exchanges
+a token and completes on both. A plain pipe emits only startup text and remains
 blocked through the bounded ten-second check. The production authentication
 boundary needs a terminal-capable native process; Python is not that boundary.
 Any new PTY dependency and supported-host behavior must be qualified in step 5.
@@ -124,7 +126,7 @@ recovery after the real typed interactions exist.
 
 ## Reproduction and measured results
 
-Run from the repository root at probe revision `c7cd246fbb`; dependencies were
+Run from the repository root at probe revision `992af36665`; dependencies were
 resolved in `shared/sesori_shared` using Dart 3.13.4. Native fixture subprocess
 cwd is a fresh temporary directory chosen by `mkdtemp`, not the checkout or the
 developer's project. The released-peer Dart cwd is `shared/sesori_shared`.
@@ -146,7 +148,8 @@ node tool/mcp-contracts/probe.mjs codex \
 node tool/mcp-contracts/released-peer.mjs \
   /private/tmp/copper-heron-mcp-runtimes/dart-sdk/bin/dart
 node --test tool/mcp-contracts/fixture.test.mjs \
-  tool/mcp-contracts/released-peer.test.mjs tool/mcp-contracts/terminal.test.mjs
+  tool/mcp-contracts/released-peer.test.mjs tool/mcp-contracts/terminal.test.mjs \
+  tool/mcp-contracts/probe.test.mjs
 ```
 
 | Command | Result at measured revision |

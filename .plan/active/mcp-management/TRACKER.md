@@ -123,3 +123,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   flow is split into step 4. No persistence, runtime lifecycle, or user-visible behavior changes in step 3.
 - Step-3 architecture implementation review: **approved** against staged HEAD `2412bcd3da`, applying Bridge and
   Shared rules. No findings; optional plugin ownership and backend-neutral contracts were preserved.
+- Step-2 final review at `992af36665`: all four native pins passed; unexpected version is rejected before fixture
+  servers open, target Claude URL/identifier are asserted, and both Claude pins reject wrong-state callbacks without
+  exchanging a token before a fresh valid login succeeds. Minimum exits; target rejects and reprompts until bounded
+  cancellation. Four tooling tests passed. Split metadata is now published in step 2 to match its 13-step PR title.
