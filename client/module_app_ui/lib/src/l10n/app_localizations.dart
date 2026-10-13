@@ -5377,6 +5377,12 @@ abstract class AppLocalizations {
   /// **'MCP servers and connectors'**
   String get mcpTitle;
 
+  /// No description provided for @mcpMenuLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get mcpMenuLabel;
+
   /// No description provided for @mcpRefresh.
   ///
   /// In en, this message translates to:
@@ -5533,6 +5539,12 @@ abstract class AppLocalizations {
   /// **'Server details'**
   String get mcpServerDetails;
 
+  /// No description provided for @mcpServerNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This server is no longer in the inventory.'**
+  String get mcpServerNotFound;
+
   /// No description provided for @mcpConnection.
   ///
   /// In en, this message translates to:
@@ -5650,7 +5662,7 @@ abstract class AppLocalizations {
   /// No description provided for @mcpConfigurationAccess.
   ///
   /// In en, this message translates to:
-  /// **'Configuration ownership'**
+  /// **'Configuration access'**
   String get mcpConfigurationAccess;
 
   /// No description provided for @mcpUserManaged.

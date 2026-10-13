@@ -58,14 +58,17 @@ archived session if its native process remains live; it grants no session mutati
   use a separate presentation layer; closing either returns to the previous view.
 - Refresh feedback occupies a stable header area. Existing inventory remains
   scrollable, with stable target keys and no offset reset during refresh failure.
-- Connection, authentication, configuration origin/ownership, and tools are shown
+- Archived sessions retain the read-only MCP menu entry; session mutations stay hidden.
+- Offline refresh controls are disabled. Server details retain the fixed refresh
+  status header and distinguish a removed server from a failed inventory read.
+- Connection, authentication, configuration origin/access, and tools are shown
   separately. Endpoint origins are plain text, not browser-launch actions.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Read a live Claude session through the headless route; inspect its servers/tools from a client session menu. |
+| L1 Smoke | Read a live Claude session through the headless route; compare its servers/tools with native status and inspect them from a client session menu. |
 | L2 Routine | Automated codec, adapter/route, and client lifecycle coverage described below. |
 | L3 Release | No additional coverage. |
 | L4 Extended | No additional coverage. |

@@ -36,37 +36,7 @@ class const McpInventoryView({super.key}) extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // This fixed slot changes independently of the reader's scroll area.
-        SizedBox(
-          height: MediaQuery.textScalerOf(context).scale(64),
-          child: Row(
-            children: [
-              Expanded(
-                child: Semantics(
-                  liveRegion: true,
-                  child: Text(
-                    _status(state: state, loc: loc),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-              const SizedBox(width: PregoSpacing.sm),
-              PregoButtonsSolid(
-                label: loc.mcpRefresh,
-                leadingIcon: TablerRegular.refresh,
-                hierarchy: PregoButtonsSolidHierarchy.secondary,
-                size: PregoButtonsSolidSize.sm,
-                onPressed:
-                    state is McpInventoryLoading ||
-                        state is McpInventoryWaitingForConnection ||
-                        state is McpInventoryReady && state.refresh is McpInventoryRefreshing
-                    ? null
-                    : cubit.refresh,
-              ),
-            ],
-          ),
-        ),
+        const _InventoryHeader(),
         Expanded(
           child: switch (state) {
             McpInventoryReady(:final McpInventorySnapshot inventory) => _Catalog(inventory: inventory),
@@ -82,6 +52,47 @@ class const McpInventoryView({super.key}) extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+class const _InventoryHeader() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.watch<McpCubit>();
+    final state = cubit.state;
+    final loc = context.loc;
+    // This fixed slot changes independently of either reader's scroll area.
+    return SizedBox(
+      height: MediaQuery.textScalerOf(context).scale(64),
+      child: Row(
+        children: [
+          Expanded(
+            child: Semantics(
+              liveRegion: true,
+              child: Text(
+                _status(state: state, loc: loc),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          const SizedBox(width: PregoSpacing.sm),
+          PregoButtonsSolid(
+            label: loc.mcpRefresh,
+            leadingIcon: TablerRegular.refresh,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.sm,
+            onPressed:
+                state is McpInventoryLoading ||
+                    state is McpInventoryWaitingForConnection ||
+                    state is McpInventoryReady &&
+                        (state.refresh is McpInventoryRefreshing || state.refresh is McpInventoryRefreshOffline)
+                ? null
+                : cubit.refresh,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -212,6 +223,18 @@ class const _ServerDetails({required final McpServerTarget target}) extends Stat
   @override
   Widget build(BuildContext context) {
     final state = context.watch<McpCubit>().state;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const _InventoryHeader(),
+        Expanded(
+          child: _details(context: context, state: state),
+        ),
+      ],
+    );
+  }
+
+  Widget _details({required BuildContext context, required McpInventoryState state}) {
     final inventory = switch (state) {
       McpInventoryReady(:final McpInventorySnapshot inventory) => inventory,
       McpInventoryReady() ||
@@ -228,7 +251,22 @@ class const _ServerDetails({required final McpServerTarget target}) extends Stat
         .where((entry) => entry.serverTarget == target)
         .firstOrNull;
     final loc = context.loc;
-    if (server == null) return _Message(message: loc.mcpUnavailable);
+    if (server == null) {
+      return _Message(
+        message: switch (state) {
+          McpInventoryReady(inventory: McpInventorySnapshot()) => loc.mcpServerNotFound,
+          McpInventoryReady(:final McpInventoryUnavailable inventory) => _unavailable(
+            reason: inventory.reason,
+            loc: loc,
+          ),
+          McpInventoryReady(inventory: McpInventoryUnknown()) || McpInventoryUnrecognized() => loc.mcpUnknownResponse,
+          McpInventoryInitial() || McpInventoryLoading() => loc.mcpLoading,
+          McpInventoryWaitingForConnection() => loc.mcpWaiting,
+          McpInventoryNotFound() => loc.mcpNotFound,
+          McpInventoryReadFailed() || McpInventoryFailed() => loc.mcpReadFailed,
+        },
+      );
+    }
     return ListView(
       padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
       children: [

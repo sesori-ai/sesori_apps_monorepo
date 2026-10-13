@@ -3071,6 +3071,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpTitle => 'MCP servers and connectors';
 
   @override
+  String get mcpMenuLabel => 'MCP';
+
+  @override
   String get mcpRefresh => 'Refresh';
 
   @override
@@ -3153,6 +3156,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpServerDetails => 'Server details';
 
   @override
+  String get mcpServerNotFound => 'This server is no longer in the inventory.';
+
+  @override
   String get mcpConnection => 'Connection';
 
   @override
@@ -3210,7 +3216,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpDisabled => 'Disabled';
 
   @override
-  String get mcpConfigurationAccess => 'Configuration ownership';
+  String get mcpConfigurationAccess => 'Configuration access';
 
   @override
   String get mcpUserManaged => 'User managed';

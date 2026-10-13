@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-inventory-presentation`, `d3a4dfb8e7`, in the provided `copper-heron` worktree.
-- Current step: 6/14, shared inventory UI under local verification.
+- Current step: 6/14, shared inventory UI in PR [#1950][pr-1950], addressing review findings.
   Client loading merged as #1949; Claude inventory API merged as #1948. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
@@ -22,8 +22,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 3/14 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
 | 4/14 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
 | 5/14 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/14 | Shared phone/desktop inventory and details (original 5.b) | Local implementation | Not published |
-| 7/14 | Claude actions and native authentication | Not started | — |
+| 6/14 | Shared phone/desktop inventory and details (original 5.b) | In review | [#1950][pr-1950] |
+| 7/14 | Claude actions and native authentication | Local native-boundary research | Successor branch `sesori/claude-mcp-actions`; no implementation yet |
 | 8/14 | Shared authentication and external-action presentation | Not started | — |
 | 9/14 | Claude approvals and form/URL elicitation | Not started | — |
 | 10/14 | Codex inventory/actions/authentication | Not started | — |
@@ -228,14 +228,15 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Step 5.a merged as #1949 after current-head Codex completed without new
   findings, Cubic approved, and all required checks passed. Step 6 rebased onto
   `d3a4dfb8e7`; the client contents match the validated parent.
-- Step 6 verification is uncommitted on `d3a4dfb8e7`: five focused MCP widget
+- Step 6 initial verification was uncommitted on `d3a4dfb8e7`, later committed
+  as `f1fd4bce10`: five focused MCP widget
   tests pass, including unknown states, stable refresh scroll position, and
   phone width at 2x text. The unchanged harness settings suite passed 28 tests
   earlier in this step. Shared UI/mobile/desktop analyzers are clean.
   The account-free native fixture builds on macOS 27.0.1 / Xcode 27.0 with
   Flutter 3.47.5. Its generated bundle has a unique identity and no URL schemes.
   Initial automation was blocked by macOS authentication; the user confirmed
-  it is finished, and native visual checks are resuming.
+  it is finished, and the native visual checks below passed.
 - Step 6 architecture implementation review: **approved** for the new shared
   presentation and shell composition against `d3a4dfb8e7`; no findings.
 - Native step-6 fixture checks passed after unlock: inventory opening, server
@@ -253,3 +254,43 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Public step-6 media is on `pr-media` at `1e829e0f9a` under
   `sesori/mcp-inventory-presentation/`: closed/open/details PNGs and a 21.3-second
   cropped GIF. The complete public artifact was visually checked before upload.
+
+[pr-1950]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1950
+
+- Step-6 review fixes are uncommitted on `f1fd4bce10`: archived mobile sessions
+  retain read-only inventory, offline Refresh is disabled, details show refresh
+  status and distinguish a removed server from a failed read. Eight focused MCP
+  widget tests pass; shared UI, mobile and desktop analyze cleanly. The second
+  and final architecture implementation review approved these changes.
+- Reproducible step-6 commands (all paths relative to this worktree):
+  - SDK: `/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.5-stable/bin/flutter`
+    (`flutter` below), with bundled `bin/cache/dart-sdk/bin/dart` (`dart` below).
+  - `client/module_app_ui`: `flutter gen-l10n`;
+    `flutter test test/features/mcp/mcp_inventory_view_test.dart --no-pub --reporter expanded`
+    (eight passing after review fixes). Initial five-test run used the same test
+    file; `flutter test test/features/settings/harnesses_settings_view_test.dart`
+    passed 28 tests before the review fixes; that settings implementation is unchanged.
+  - `client/module_app_ui`, `client/app`, `client/desktop`:
+    `dart analyze --fatal-infos` (all clean after review fixes).
+  - `client/desktop`: `flutter build macos --debug --target tool/mcp_inventory_fixture.dart --no-pub`.
+    Before launch, generated bundle metadata is assigned the fixture-only identity
+    `ai.sesori.fixture.mcp.copper-heron` and its URL schemes are removed;
+    `codesign --force --deep --sign - --preserve-metadata=entitlements build/macos/Build/Products/Debug/Sesori.app`
+    and `codesign --verify --deep --strict build/macos/Build/Products/Debug/Sesori.app`.
+  - Worktree root: `open -na <absolute-worktree>/client/desktop/build/macos/Build/Products/Debug/Sesori.app`;
+    `agent-device open ai.sesori.fixture.mcp.copper-heron --platform macos --surface app --foreground --session mcp-copper-heron --json`.
+    `agent-device screenshot <private-png> --session mcp-copper-heron --json`
+    captures fixture-only states; `peekaboo click --app ai.sesori.fixture.mcp.copper-heron --at <window-coordinates> --foreground --input-strategy synthOnly --json --no-remote`
+    and `peekaboo press Escape --app ai.sesori.fixture.mcp.copper-heron --foreground --input-strategy synthOnly --json --no-remote`
+    exercise the flow. Artifacts remain private; inspected app crops alone are published.
+
+- Native review-fix verification passed for the revised detail header, failed
+  refresh retaining content, returning to inventory and closing both layers.
+  The underlying reading area is pixel-identical after closing; the entry button
+  differs only by hover feedback. Intermittent native automation refusal required
+  observing before retry; no refused action is counted as success. The fixture
+  and recording were closed; original Sesori PID 7903 remains alive.
+- Revised synthetic detail PNGs and the 2.4-second refresh GIF are published on
+  `pr-media` at `9591e31107`. Every GIF frame was inspected. Full-display raw
+  recordings include unrelated surfaces and remain private; only the verified
+  app crop from the stable interval was published.

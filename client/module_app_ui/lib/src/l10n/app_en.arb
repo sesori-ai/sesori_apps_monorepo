@@ -2138,9 +2138,9 @@
   "bridgeUpdateDesktopStepQuit": "2. Quit Sesori Desktop (closing the window may not quit it).",
   "bridgeUpdateDesktopStepInstall": "3. Install the new version, then open Sesori Desktop again.",
   "@bridgeUpdateDesktopStepInstall": {"description": "Platform-neutral: macOS replaces the app, Windows runs an installer, Linux uses the package manager."},
-  "bridgeUpdateCopyLink": "Copy link"
-,
+  "bridgeUpdateCopyLink": "Copy link",
   "mcpTitle": "MCP servers and connectors",
+  "mcpMenuLabel": "MCP",
   "mcpRefresh": "Refresh",
   "mcpReadOnly": "Server and tool information",
   "mcpRefreshing": "Refreshing…",
@@ -2167,6 +2167,7 @@
   "mcpCatalogNotSupported": "This integration does not support this catalog.",
   "mcpCatalogUnavailable": "This catalog is currently unavailable.",
   "mcpServerDetails": "Server details",
+  "mcpServerNotFound": "This server is no longer in the inventory.",
   "mcpConnection": "Connection",
   "mcpAuthorization": "Authentication",
   "mcpAuthNotRequired": "Not required",
@@ -2186,7 +2187,7 @@
   "mcpConnecting": "Connecting",
   "mcpConnected": "Connected",
   "mcpDisabled": "Disabled",
-  "mcpConfigurationAccess": "Configuration ownership",
+  "mcpConfigurationAccess": "Configuration access",
   "mcpUserManaged": "User managed",
   "mcpReadOnlyConfiguration": "Read only"
 }

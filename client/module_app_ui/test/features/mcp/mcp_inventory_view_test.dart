@@ -72,6 +72,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Connected"), findsWidgets);
     expect(find.text("Unknown"), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text("Discovery succeeded with no tools."),
+      150,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text("Discovery succeeded with no tools."), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -126,6 +131,61 @@ void main() {
     expect(find.text("Sign in"), findsNothing);
     await tester.tap(find.byType(PregoButtonsSolid));
     verify(() => cubit.refresh()).called(1);
+  });
+  testWidgets("offline inventory disables refresh and keeps its servers readable", (tester) async {
+    states.add(_ready(entries: [_server], refresh: const McpInventoryRefreshOffline()));
+    await tester.pumpWidget(app(scale: 1));
+    await tester.pumpAndSettle();
+    expect(tester.widget<PregoButtonsSolid>(find.byType(PregoButtonsSolid)).onPressed, isNull);
+    expect(find.text("Fixture server"), findsOneWidget);
+    await tester.tap(find.text("Fixture server"));
+    await tester.pumpAndSettle();
+    expect(find.text("Offline. Showing the last inventory."), findsWidgets);
+    expect(tester.widget<PregoButtonsSolid>(find.byType(PregoButtonsSolid).last).onPressed, isNull);
+    verifyNever(() => cubit.refresh());
+  });
+
+  testWidgets("details distinguish removed servers and failed reads", (tester) async {
+    await tester.pumpWidget(app(scale: 1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Fixture server"));
+    await tester.pumpAndSettle();
+    states.add(_ready(entries: [], refresh: const McpInventoryRefreshIdle()));
+    await tester.pumpAndSettle();
+    expect(find.text("This server is no longer in the inventory."), findsOneWidget);
+    states.add(
+      const McpInventoryReadFailed(
+        cause: McpInventoryUnavailable(
+          scope: _scope,
+          reason: McpInventoryUnavailableReason.readFailed,
+          message: "Unavailable",
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text("Could not read inventory. Try refreshing."), findsWidgets);
+    expect(find.text("This server is no longer in the inventory."), findsNothing);
+    expect(find.text("Inventory is unavailable."), findsNothing);
+  });
+
+  testWidgets("failed refresh remains visible above retained server details", (tester) async {
+    await tester.pumpWidget(app(scale: 1));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Fixture server"));
+    await tester.pumpAndSettle();
+    final scroll = tester.state<ScrollableState>(find.byType(Scrollable).last);
+    final offset = scroll.position.pixels;
+    states.add(
+      _ready(
+        entries: [_server],
+        refresh: McpInventoryRefreshFailed(cause: ApiError.generic()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text("Could not refresh. Showing the last inventory."), findsWidgets);
+    expect(find.text("Connected"), findsWidgets);
+    expect(scroll.position.pixels, offset);
+    expect(tester.takeException(), isNull);
   });
   testWidgets("unrecognized inventory asks for a newer app without a false empty catalog", (tester) async {
     states.add(const McpInventoryUnrecognized());

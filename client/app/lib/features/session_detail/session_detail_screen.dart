@@ -153,33 +153,31 @@ class const _MobileSessionDetailBody({
                 ),
               ),
         pageChrome: null,
-        // An archived session is read through its own flow, whose list cubit
-        // holds archived sessions only, so the audit view offers no actions.
-        menuEntriesBuilder: auditView
-            ? null
-            : ({required context, required session}) => [
-                PregoMenuItem(
-                  leadingIcon: TablerRegular.plug,
-                  title: context.loc.mcpTitle,
-                  subtitle: null,
-                  isSelected: false,
-                  shortcutLabel: null,
-                  onTap: () => showMcpInventory(
-                    context: context,
-                    request: McpInventoryRequest(
-                      pluginId: session.pluginId,
-                      scope: McpSessionScope(sessionId: session.id),
-                    ),
-                    createService: getIt.call<McpService>,
-                  ),
-                ),
-                ..._sessionActions.sessionMenuEntries(
-                  context: context,
-                  cubit: context.read<SessionListCubit>()..updateActionSession(session: session),
-                  session: session,
-                  readEntry: SessionReadMenuEntry.markUnread,
-                ),
-              ],
+        // Audit views retain read-only inventory without session mutations.
+        menuEntriesBuilder: ({required context, required session}) => [
+          PregoMenuItem(
+            leadingIcon: TablerRegular.plug,
+            title: context.loc.mcpMenuLabel,
+            subtitle: null,
+            isSelected: false,
+            shortcutLabel: null,
+            onTap: () => showMcpInventory(
+              context: context,
+              request: McpInventoryRequest(
+                pluginId: session.pluginId,
+                scope: McpSessionScope(sessionId: session.id),
+              ),
+              createService: getIt.call<McpService>,
+            ),
+          ),
+          if (!auditView)
+            ..._sessionActions.sessionMenuEntries(
+              context: context,
+              cubit: context.read<SessionListCubit>()..updateActionSession(session: session),
+              session: session,
+              readEntry: SessionReadMenuEntry.markUnread,
+            ),
+        ],
         bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>
             MobileSessionDetailComposerControls(
               projectId: projectId,

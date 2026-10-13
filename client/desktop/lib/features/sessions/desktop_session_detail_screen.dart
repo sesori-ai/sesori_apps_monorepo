@@ -257,7 +257,7 @@ class const DesktopSessionDetailView({
               : [
                   PregoMenuItem(
                     leadingIcon: TablerRegular.plug,
-                    title: loc.mcpTitle,
+                    title: loc.mcpMenuLabel,
                     subtitle: null,
                     isSelected: false,
                     shortcutLabel: null,
