@@ -109,16 +109,18 @@ async function probeClaudeLogin(binary, root, oauth) {
 }
 
 async function probeClaudeTerminal({ binary, options, oauth, wrongState }) {
+  const tokensBefore = oauth.tokenRequests;
   const child = spawn('python3', [terminalPath, binary, 'mcp', 'login', 'oauth_fixture', '--no-browser'],
     { ...options, stdio: ['pipe', 'pipe', 'pipe'] });
-  let stdout = '', stderr = '', callbackSent = false, validationError;
+  let stdout = '', stderr = '', callbackSent = false, timedOut = false, validationError;
   const exited = new Promise((resolve, reject) => {
     child.on('error', reject);
     child.on('exit', (status, signal) => resolve({ status, signal }));
   });
   child.stdout.on('data', chunk => {
     stdout += chunk;
-    const urlText = stdout.match(/https?:\/\/[^\s\x1b]+/g)?.find(text => text.includes('/authorize?'));
+    const urlText = stdout.match(/https?:\/\/[^\s\x1b\x07]+(?=[\s\x1b\x07])/g)
+      ?.find(text => text.includes('/authorize?'));
     if (!callbackSent && urlText) {
       try {
         const auth = new URL(urlText);
@@ -135,11 +137,11 @@ async function probeClaudeTerminal({ binary, options, oauth, wrongState }) {
     }
   });
   child.stderr.on('data', chunk => { stderr += chunk; });
-  const timer = setTimeout(() => child.kill('SIGTERM'), 20000);
+  const timer = setTimeout(() => { timedOut = true; child.kill('SIGTERM'); }, 20000);
   try {
     const result = await exited;
     assert.ifError(validationError);
-    return { ...result, callbackSent, stdout, stderr };
+    return { ...result, callbackSent, timedOut, tokenRequests: oauth.tokenRequests - tokensBefore, stdout, stderr };
   } finally { clearTimeout(timer); child.stdin.end(); }
 }
 
@@ -284,7 +286,8 @@ async function main() {
   const model = await startModelFixture();
   try {
     const result = await (harness === 'claude' ? probeClaude : probeCodex)(resolve(binary), root, http, oauth, model, nativeVersion);
-    assertContracts(harness, result);
+    try { assertContracts(harness, result); }
+    catch (error) { await writeFile(`${output}.failed.json`, JSON.stringify(result, null, 2)); throw error; }
     // All input is fixture-owned. Replace temporary paths, ports and native thread ids in captures.
     let text = JSON.stringify(result, null, 2).replaceAll(root, '<fixture-root>')
       .replaceAll(fixturePath, '<fixture-server>').replaceAll(process.execPath, '<fixture-node>')
@@ -357,9 +360,11 @@ function assertContracts(harness, result) {
       /https?:\/\//, 'Plain-pipe login must not expose a URL');
     assert.equal(result.login.terminal.status, 0, 'Terminal OAuth must complete');
     assert.equal(result.login.terminal.callbackSent, true);
+    assert.ok(result.login.terminal.tokenRequests > 0, 'Valid callback must exchange a token');
     assert.equal(result.login.wrongState.callbackSent, true);
-    assert.equal(result.login.wrongState.status, 1, 'Mismatched OAuth state must fail');
-    assert.match(result.login.wrongState.stdout + result.login.wrongState.stderr, /state/i);
+    assert.notEqual(result.login.wrongState.status, 0, 'Mismatched OAuth state must not complete');
+    assert.equal(result.login.wrongState.tokenRequests, 0, 'Mismatched state must not exchange a token');
+    assert.match(result.login.wrongState.stdout + result.login.wrongState.stderr, /state mismatch/i);
   } else {
     for (const exchange of exchanges) {
       const errorExpected = exchange.method === 'mcp_unknown_fixture' ||

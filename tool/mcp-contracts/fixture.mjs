@@ -66,6 +66,7 @@ function createMcpPeer(send, { elicitations = true } = {}) {
 
 export async function startHttpFixture({ oauth = false } = {}) {
   let origin;
+  let tokenRequests = 0;
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, origin);
     if (oauth && url.pathname.startsWith('/.well-known/')) {
@@ -85,6 +86,7 @@ export async function startHttpFixture({ oauth = false } = {}) {
       return;
     }
     if (oauth && url.pathname === '/token') {
+      tokenRequests++;
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ access_token: 'fixture-access', token_type: 'Bearer', expires_in: 3600,
         refresh_token: 'fixture-refresh' }));
@@ -108,7 +110,8 @@ export async function startHttpFixture({ oauth = false } = {}) {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   origin = `http://127.0.0.1:${server.address().port}`;
-  return { origin, close: () => new Promise(resolve => server.close(resolve)) };
+  return { origin, get tokenRequests() { return tokenRequests; },
+    close: () => new Promise(resolve => server.close(resolve)) };
 }
 
 // Deterministic local Anthropic protocol fixture. No model or provider account is used.
