@@ -364,7 +364,15 @@ function assertContracts(harness, result) {
     assert.equal(result.login.wrongState.callbackSent, true);
     assert.notEqual(result.login.wrongState.status, 0, 'Mismatched OAuth state must not complete');
     assert.equal(result.login.wrongState.tokenRequests, 0, 'Mismatched state must not exchange a token');
-    assert.match(result.login.wrongState.stdout + result.login.wrongState.stderr, /state mismatch/i);
+    const rejectedOutput = result.login.wrongState.stdout + result.login.wrongState.stderr;
+    if (result.version.startsWith('2.1.221 ')) {
+      assert.equal(result.login.wrongState.status, 1);
+      assert.match(rejectedOutput, /state mismatch/i);
+    } else {
+      assert.equal(result.login.wrongState.timedOut, true, 'Target stays open for another pasted callback');
+      assert.equal(result.login.wrongState.status, 143);
+      assert.match(rejectedOutput, /redirect URL for this sign-in/);
+    }
   } else {
     for (const exchange of exchanges) {
       const errorExpected = exchange.method === 'mcp_unknown_fixture' ||
