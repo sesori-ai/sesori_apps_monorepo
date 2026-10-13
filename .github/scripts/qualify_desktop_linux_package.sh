@@ -9,8 +9,9 @@ arch="$4"
 evidence="$5"
 script="${6:-$(dirname "$(realpath "$0")")/package_desktop_linux.py}"
 
-# Verify only public material before installing. DEB trust here is detached signed
-# checksums, not an APT repository or an embedded dpkg signature.
+# The preceding signer pins the key before producing this same-job bundle. This is
+# an install fixture, not an external-download trust boundary. Verify public material
+# before installing; DEB trust is detached checksums, not APT or a dpkg signature.
 signed_dir="$(dirname "$package")"
 verification_home="$(mktemp -d)"
 trap 'rm -rf "$verification_home"' EXIT

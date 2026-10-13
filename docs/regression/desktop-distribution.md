@@ -109,8 +109,10 @@ signature failures refuse completion. No private key material enters artifacts/l
 
 The final RPM digest differs from its unsigned source report; `signing.json` records
 both. DEB checksums are detached artifact authentication, not an APT `InRelease`
-claim. Main-only native runs establish production-key access separately from PR CI's
-disposable-key crypto fixtures. Historical unsigned package runs remain unsigned
+claim. PR CI's disposable-key fixtures also check GPGV and DNF's signature-required
+install/reinstall/remove flow in an isolated install root, including unsigned-RPM refusal.
+Main-only native runs establish production-key access separately. These fixtures do
+not run the real application. Historical unsigned package runs remain unsigned
 proof; new tooling alone does not relabel them. Public repositories, shared-cycle
 publication and N→N+1/desktop-session checks remain pending.
 See [key setup and backup guidance](../desktop/linux-signing.md).

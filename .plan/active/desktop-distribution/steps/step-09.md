@@ -27,7 +27,8 @@ PR title: `🚧 [desktop-distribution] Sign private native Linux packages [step 
   They still do not launch the GUI/helper or establish a real N→N+1 update.
 - Local unit/source contracts and actionlint/ShellCheck cover boundaries. PR CI uses
   a disposable certification key plus signing-only export to exercise real GPG/RPM
-  signatures, wrong key/passphrase refusal and tampering. The fixtures never receive
+  signatures, wrong key/passphrase refusal, tampering and isolated DNF signed-package
+  install/reinstall/remove versus unsigned refusal. The fixtures never receive
   production keys. Actual signed x64/arm64 qualification runs only after merge.
 
 Complexity: approximately 700–1,000 authored lines, no generated/application changes.

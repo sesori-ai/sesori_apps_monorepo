@@ -72,7 +72,7 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 | D7 | GitHub Releases hosts downloadable installers; static GCS hosts signed Linux repositories. No new backend release service. Linux repositories also host their package payloads, rather than relying on cross-origin package-manager redirects. |
 | D8 | Selected 2026-09-25: share the bridge/mobile release cycle; retain platform gates and macOS-first delivery. |
 | D9 | 2026-09-26: retire Gate C with accepted QA gaps; admit macOS publication through the shared cycle. |
-| D10 | User-directed continuation: Linux before Windows because Windows signing is blocked. Prepare private signed Linux builds while the user provisions an OpenPGP signing subkey. No cloud provisioning/publication or Linux QA reduction is implied. |
+| D10 | User-directed order: Linux before Windows; private signing now, public repositories separately. |
 
 ### User-retired QA gate and macOS admission — 2026-09-26
 
@@ -414,7 +414,7 @@ history and keeps lifecycle changes out of the package-signing review.
 | 6 | ⚙️ [desktop-distribution] Prepare isolated desktop release channels [step 8/14] | Private preparation. |
 | 7 | 🚧 [desktop-distribution] Qualify private per-user Windows installers [step 9/14] | After 3.b and Windows qualification. Independent private unsigned x64/arm64 installers, complete helper bundle, shortcuts, mutex refusal and isolated install/uninstall fixtures. Signing, timestamp/publisher verification and public delivery remain gated, including the prior macOS ship gate. High installer risk; no shared CLI data deletion or database change. |
 | 8 | ⚙️ [desktop-distribution] Deliver manual Windows updates and winget discovery [step 10/14] | After 6 and 7. Settings download action, signed N→N+1 manual replacement, channel-specific downloads, winget manifests and Windows ship gate. Medium integration risk; no embedded updater, forced helper shutdown or automatic restart. No database change. |
-| 9 | ⚙️ [desktop-distribution] Qualify private native DEB and RPM packages [step 11/14] | Private mechanics merged. D10 proceeds with signed-package continuation below, independently of Windows. Public APT/RPM repositories and Linux-specific ship gates remain separate. No updater, home cleanup or database change. |
+| 9 | ⚙️ [desktop-distribution] Qualify private native DEB and RPM packages [step 11/14] | See below. |
 | 10 | 🌿 [desktop-distribution] Offer shipped desktop downloads during onboarding [step 12/14] | After all platform gates. Shared mobile installation guidance and published links, preserve CLI alternative and truthful platform/CPU choices. Low/medium onboarding regression risk; focused UI/link tests and existing analytics assessment. New installation choice, no database change. |
 | 11 | 🌿 Private regression reconciliation (13/14) | Scope and exact PR title below. |
 | 12 | ⚙️ Release verification and retirement (14/14) | Scope and exact PR title below. |

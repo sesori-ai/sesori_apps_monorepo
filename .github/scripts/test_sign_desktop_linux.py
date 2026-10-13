@@ -107,8 +107,46 @@ class LinuxSigningTests(unittest.TestCase):
         self.assertEqual(output.getvalue(), "")
         self.assertFalse((self.output / "signing.json").exists())
 
+    def test_cleanup_failure_retains_primary_error_and_removes_key_home(self):
+        observed = []
+
+        def fake_run(*, command, **kwargs):
+            observed.append(command)
+            if command[0] == "gpgconf":
+                raise subprocess.CalledProcessError(2, command)
+            return ""
+
+        with mock.patch.dict(os.environ, self.secrets), mock.patch.object(signing, "run", side_effect=fake_run):
+            with self.assertRaises(subprocess.CalledProcessError) as caught:
+                signing.sign_packages(root=self.root, output=self.output, fingerprint=FINGERPRINT)
+        self.assertIsInstance(caught.exception.__context__, ValueError)
+        self.assertIn("does not match", str(caught.exception.__context__))
+        self.assertFalse(Path(observed[-1][2]).parent.exists())
+        self.assertFalse((self.output / "signing.json").exists())
+
+    def test_documented_failed_export_never_updates_github_or_leaves_secret_file(self):
+        docs = (WORKFLOW.parents[2] / "docs/desktop/linux-signing.md").read_text()
+        setup = docs.split("## 2.", 1)[1].split("```bash\n", 1)[1].split("```", 1)[0]
+        tools, temporary = self.root / "bin", self.root / "temporary"
+        tools.mkdir()
+        temporary.mkdir()
+        calls = self.root / "github-calls"
+        for name, body in (("gpg", "printf 'partial fixture export'; exit 1"),
+                           ("gh", f"touch '{calls}'")):
+            command = tools / name
+            command.write_text(f"#!/bin/sh\n{body}\n")
+            command.chmod(0o700)
+        env = {**os.environ, "PATH": f"{tools}:{os.defpath}", "TMPDIR": str(temporary),
+               "KEY_HOME": str(self.root / "unused"), "KEY_FPR": FINGERPRINT}
+        result = subprocess.run(["/bin/bash", "-c", setup], env=env, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(calls.exists())
+        self.assertEqual(list(temporary.iterdir()), [])
+        self.assertNotIn("partial fixture export", result.stdout + result.stderr)
+
     def test_workflow_is_main_only_secret_scoped_and_uploads_only_signed_outputs(self):
         workflow = WORKFLOW.read_text()
+        self.assertEqual(workflow.count("FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:"), 1)
         linux = workflow.split("  linux-distribution:\n", 1)[1].split("\n  tooling:", 1)[0]
         self.assertIn("environment: linux-signing", linux)
         guard = '[[ "$GITHUB_REF" == refs/heads/main ]]'
@@ -135,7 +173,7 @@ class LinuxSigningTests(unittest.TestCase):
 class LinuxSigningIntegrationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        for tool in ("gpg", "gpgconf", "rpm", "rpmsign", "rpmkeys", "rpmbuild", "sha256sum"):
+        for tool in ("gpg", "gpgv", "gpgconf", "rpm", "rpmsign", "rpmkeys", "rpmbuild", "sha256sum", "dnf"):
             if shutil.which(tool) is None:
                 raise RuntimeError(f"Required signing integration tool missing: {tool}")
         cls.temporary = tempfile.TemporaryDirectory(prefix="sesori-signing-fixture-")
@@ -210,6 +248,39 @@ class LinuxSigningIntegrationTests(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             signing.verify_rpm(package=rpm, public_key=self.output / signing.PUBLIC_KEY,
                                database=self.input / "verify-rpmdb", env=self.env)
+
+    def test_dnf_refuses_unsigned_and_installs_reinstalls_removes_signed_rpm(self):
+        with mock.patch.dict(os.environ, self.secrets):
+            signing.sign_packages(root=self.input, output=self.output, fingerprint=self.fingerprint)
+        public_home = self.input / "public-verification"
+        public_home.mkdir(mode=0o700)
+        public_env = {**os.environ, "GNUPGHOME": str(public_home), "LC_ALL": "C"}
+        try:
+            signing.run(command=["gpg", "--batch", "--dearmor", "--output", str(public_home / "public.gpg"),
+                                 str(self.output / signing.PUBLIC_KEY)], env=public_env)
+            signing.run(command=["gpgv", "--keyring", str(public_home / "public.gpg"),
+                                 str(self.output / f"{signing.CHECKSUMS}.asc"),
+                                 str(self.output / signing.CHECKSUMS)], env=public_env)
+            install_root = self.input / "install-root"
+            install_root.mkdir()
+            signing.run(command=["rpm", "--root", str(install_root), "--initdb"], env=public_env)
+            signing.run(command=["rpmkeys", "--root", str(install_root), "--import",
+                                 str(self.output / signing.PUBLIC_KEY)], env=public_env)
+            dnf = ["dnf", "--installroot", str(install_root), "--releasever=44", "--disable-repo=*",
+                   "--setopt=localpkg_gpgcheck=True", "--assumeyes"]
+            name = "Sesori-linux-x64-9.8.7-42.rpm"
+            with self.assertRaises(subprocess.CalledProcessError):
+                signing.run(command=[*dnf, "install", str(self.input / "rpm" / name)], env=public_env)
+            payload = install_root / "opt/sesori-desktop/fixture.txt"
+            self.assertFalse(payload.exists())
+            signing.run(command=[*dnf, "install", str(self.output / name)], env=public_env)
+            self.assertEqual(payload.read_text(), "fixture payload")
+            signing.run(command=[*dnf, "reinstall", str(self.output / name)], env=public_env)
+            self.assertEqual(payload.read_text(), "fixture payload")
+            signing.run(command=[*dnf, "remove", "sesori-desktop"], env=public_env)
+            self.assertFalse(payload.exists())
+        except subprocess.CalledProcessError as error:
+            self.fail(f"Disposable-key package-manager fixture failed: {error.stdout}\n{error.stderr}")
 
     def test_wrong_key_and_wrong_passphrase_never_complete(self):
         with mock.patch.dict(os.environ, self.secrets):

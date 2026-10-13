@@ -94,6 +94,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # One native Fedora 44 pin for packaging, install fixtures and signing tests.
+  FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:61beafd34111e1cb85fb49377ceadeee0a53622dbc20670ed8ca303f0e17ed9c
+
 concurrency:
   group: desktop-qualification-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -702,8 +706,6 @@ jobs:
       # Base filesystem indexes are pinned for both native CPUs. apt/dnf repositories remain rolling.
       UBUNTU_IMAGE: docker.io/library/ubuntu@sha256:69cecf4bbf72d2d44a9eef1b71fb98c7fb973d78af11399deccef19beb008ad9
       DEBIAN_IMAGE: docker.io/library/debian@sha256:f324c7ff54321e8d9c588493a20244965938ce0aa50bbd1022d38010e9ffc4b1
-      # Fedora 44 was current stable when checked against official releases.json.
-      FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:61beafd34111e1cb85fb49377ceadeee0a53622dbc20670ed8ca303f0e17ed9c
     defaults:
       run:
         shell: bash
@@ -864,8 +866,6 @@ jobs:
           python-version: '3.13'
       - run: python -m unittest discover -s .github/scripts -p 'test_*desktop*.py'
       - name: Verify real Linux signatures with a disposable subkey
-        env:
-          FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:61beafd34111e1cb85fb49377ceadeee0a53622dbc20670ed8ca303f0e17ed9c
         run: |
           set -euo pipefail
           docker build --build-arg FEDORA_IMAGE="$FEDORA_IMAGE" \

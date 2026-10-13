@@ -57,23 +57,35 @@ introduced: this environment protects private qualification credentials, not pub
 Run in the same terminal where `KEY_HOME` and `KEY_FPR` are set:
 
 ```bash
-set -o pipefail
-REPO="sesori-ai/sesori_apps_monorepo"
+(
+  set -euo pipefail
+  umask 077
+  REPO="sesori-ai/sesori_apps_monorepo"
+  key_export="$(mktemp)"
+  trap 'rm -f "$key_export"' EXIT
 
-gpg --homedir "$KEY_HOME" --armor --export-secret-subkeys "$KEY_FPR" |
-  gh secret set LINUX_GPG_PRIVATE_KEY --repo "$REPO" --env linux-signing
+  gpg --homedir "$KEY_HOME" --armor --export-secret-subkeys "$KEY_FPR" > "$key_export"
+  test -s "$key_export"
+  gh secret set LINUX_GPG_PRIVATE_KEY --repo "$REPO" --env linux-signing < "$key_export"
 
-gh secret set LINUX_GPG_PASSPHRASE --repo "$REPO" --env linux-signing
+  gh secret set LINUX_GPG_PASSPHRASE --repo "$REPO" --env linux-signing
 
-gh variable set LINUX_GPG_FINGERPRINT \
-  --repo "$REPO" --env linux-signing --body "$KEY_FPR"
+  gh variable set LINUX_GPG_FINGERPRINT \
+    --repo "$REPO" --env linux-signing --body "$KEY_FPR"
+)
 ```
 
-The **“Paste your secret”** prompt for `LINUX_GPG_PASSPHRASE` wants the key's
-passphrase, not the armored key or a GitHub token. Paste it into your terminal and
-press Enter; never paste it into chat or put it in a command argument. The private-key
-command receives its input from the pipe and should not require manual pasting. If
-that command prompts instead, cancel and investigate the GnuPG export error.
+The subshell stops on failure without changing your interactive shell options. The
+private export must succeed before any GitHub setting changes; its temporary file is
+removed on exit, including failure.
+
+The **“Paste your secret”** prompt from `gh secret set LINUX_GPG_PASSPHRASE` wants
+the key's passphrase, not the armored key or a GitHub token. Paste it into your terminal
+and press Enter; never paste it into chat or put it in a command argument. The
+`LINUX_GPG_PRIVATE_KEY` command receives file input and must not ask you to paste a key.
+Separately, **GnuPG pinentry may legitimately ask for the passphrase during export**
+when its agent cache has expired. Enter the same key passphrase and let export finish;
+that GnuPG unlock prompt is not a GitHub secret prompt or an export failure.
 
 Only secret **names**, the public fingerprint and environment policy should be
 inspected through GitHub metadata. Never retrieve or log secret values for debugging.
