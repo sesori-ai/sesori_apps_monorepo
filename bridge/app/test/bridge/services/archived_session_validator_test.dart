@@ -1,4 +1,5 @@
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/foundation/session_archived_read_only_exception.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
 import "package:sesori_shared/sesori_shared.dart";

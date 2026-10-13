@@ -653,7 +653,8 @@ Project/harness inventory and offered-connector discovery remain **not implement
 for Claude. Claude live-session reconnect, enable and disable are **implemented**
 headlessly through `POST /mcp/entry/action`, with authoritative refresh and scoped
 client invalidation. They change the live process only, with no persistent
-configuration write or implicit session launch; archived mutations are rejected.
+configuration write or implicit session launch. Archived mutations return the
+canonical structured 409 rejection before native access.
 Each declared control includes its effect scope. Native MCP authentication,
 client action UI and the other harness adapters remain **not implemented**.
 Reads never start an integration or agent session.

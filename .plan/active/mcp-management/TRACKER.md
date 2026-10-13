@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/claude-mcp-actions`, `fa9717350c`, in the provided `copper-heron` worktree.
-- Current step: 7/15, live Claude controls in PR [#1952][pr-1952];
-  step 6 merged as [#1950][pr-1950].
+- Branch/base: `sesori/mcp-archive-rejection`, `0ed5a42b81`, in the provided `copper-heron` worktree.
+- Current step: 8/16, canonical archived-control rejection in PR [#1953][pr-1953];
+  live Claude controls merged as [#1952][pr-1952].
   Client loading merged as #1949; Claude inventory API merged as #1948. Execution authorized on 2026-10-13.
 - User decisions: Claude Code and Codex first; existing servers and offered connectors only; preserve an extension path
   for later server creation without implementing it now.
@@ -18,21 +18,22 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/15 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/15 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/15 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/15 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/15 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/15 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/15 | Claude live-server controls (original 7.a) | In review | [#1952][pr-1952] |
-| 8/15 | Claude native authentication (original 7.b) | Native-boundary research | No implementation yet |
-| 9/15 | Shared authentication and external-action presentation | Not started | — |
-| 10/15 | Claude approvals and form/URL elicitation | Not started | — |
-| 11/15 | Codex inventory/actions/authentication | Not started | — |
-| 12/15 | Codex forms and offered connectors | Not started | — |
-| 13/15 | Secondary harness support and explicit gaps | Not started | — |
-| 14/15 | Reconcile regression/capability documents | Not started | — |
-| 15/15 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/16 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/16 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/16 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/16 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/16 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/16 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/16 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/16 | Canonical archived-control rejection | In review | [#1953][pr-1953] |
+| 9/16 | Claude native authentication (original 7.b) | Draft paused | Native terminal/login draft preserved in stash |
+| 10/16 | Shared authentication and external-action presentation | Not started | — |
+| 11/16 | Claude approvals and form/URL elicitation | Not started | — |
+| 12/16 | Codex inventory/actions/authentication | Not started | — |
+| 13/16 | Codex forms and offered connectors | Not started | — |
+| 14/16 | Secondary harness support and explicit gaps | Not started | — |
+| 15/16 | Reconcile regression/capability documents | Not started | — |
+| 16/16 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -59,7 +60,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   bridge/relay ownership, client presentation, or the final L4 matrix. Those gates remain active.
 - Public release check still identifies v1.9.0/build 970 as latest production; newer v1.9.1 builds are prereleases.
   The released SSE parser plus byte-identical codecs passed four event-order/settlement fixtures and a snapshot fixture.
-  Actual mixed-client/native-owner tests remain required in steps 9/10.
+  Actual mixed-client/native-owner tests remain required in steps 10/11.
 
 ## Review record
 
@@ -87,7 +88,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   executable runtime compatibility remains an implementation gate.
 - Further review clarifications: separated the existing non-pending catalog setup result from native session consent
   requests; settings setup does not fabricate session ownership. Required capability and regression updates in each
-  production PR, retaining step 14 for reconciliation. Added the dated source-only verification record below.
+  production PR, retaining step 15 for reconciliation. Added the dated source-only verification record below.
 
 ## Verification log
 
@@ -373,3 +374,40 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Second/final architecture review approved the full branch and working fixes.
   Latest public v1.9.0 has no MCP inventory contract; no unpublished-peer default
   is retained. Controls smoke inputs and production control logic are unchanged.
+
+- Step 7 merged as #1952, squash `0ed5a42b81`, with a byte-identical tree to
+  verified head `83ef69a6ed`. A delayed Codex finding arrived after merge:
+  archived MCP controls returned plain-text 409 instead of the canonical JSON
+  archive rejection. Added a small ordinal-8 follow-up; the series now has 16
+  PRs. Native authentication is ordinal 9 and its draft remains preserved.
+
+- Ordinal-8 verification: 45 tests passed across MCP inventory/control routing,
+  archive validation, prompt routing and queued-prompt cancellation. Bridge
+  `dart analyze --fatal-infos` is clean. The MCP archive regression now asserts
+  JSON content type and the exact canonical session ID/reason, with no native
+  action, inventory read or invalidation event. No new state or duplicate query.
+- Ordinal-8 architecture implementation review approved the exception ownership
+  move and canonical repository rejection; no client/shared changes.
+
+[pr-1953]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1953
+
+- Ordinal-8 reproducibility: published commit `63ab0f6975da69b84cbab8d6977e28b7d6afe638`,
+  tree `8f7faddc5e47fc080b4c5604e29735bd0edc3709`, in the dedicated worktree.
+  Tests were rechecked on that published snapshot after the import and assertion
+  nullability cleanup. The clean analyzer used byte-identical Dart source before
+  publication. Subsequent changes only update plan/tracker text.
+  Working directory for both commands:
+  `/Users/alexandrudochioiu/sesori-ai/sesori_apps_monorepo/.worktrees/copper-heron/bridge/app`.
+  Executable for both commands:
+  `/Users/alexandrudochioiu/.asdf/installs/flutter/3.47.5-stable/bin/cache/dart-sdk/bin/dart`.
+
+  ```sh
+  dart test test/bridge/routing/post_mcp_inventory_handler_test.dart \
+    test/bridge/services/archived_session_validator_test.dart \
+    test/bridge/routing/send_prompt_handler_test.dart \
+    test/bridge/routing/cancel_queued_prompt_handler_test.dart --reporter expanded
+  dart analyze --fatal-infos
+  ```
+
+  Outcomes: 45 tests passed and no analyzer issues. The `dart` label above means
+  the exact pinned executable, not a PATH-resolved installation.

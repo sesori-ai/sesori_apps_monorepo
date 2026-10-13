@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/database/daos/projects_dao.dart";
 import "../api/database/daos/session_dao.dart";
+import "../foundation/session_archived_read_only_exception.dart";
 import "../runtime/plugin_runtime.dart";
 import "mappers/mcp_mapper.dart";
 import "models/mcp_control_result.dart";
@@ -133,7 +134,9 @@ class McpRepository({
           );
         }
         if (operation == McpOperation.executeAction && session.archivedAt != null) {
-          throw PluginOperationException(operation.name, message: "Archived sessions are read only.", statusCode: 409);
+          throw SessionArchivedReadOnlyException(
+            rejection: SessionArchivedRejection(sessionId: sessionId, reason: SessionArchivedReason.archivedReadOnly),
+          );
         }
         return PluginMcpSessionScope(sessionId: session.backendSessionId);
     }
