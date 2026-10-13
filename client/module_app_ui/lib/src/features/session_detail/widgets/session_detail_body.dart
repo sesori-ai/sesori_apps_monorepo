@@ -701,12 +701,17 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
               ),
               ?banner,
               // The header sits above the transcript, so nothing scrolls behind a
-              // bar and the transcript needs no top inset for one.
+              // bar and the transcript needs no top inset for one. Clipped, so a
+              // pinned prompt pushed out over the top edge, and its halo, slide
+              // under the header as they slide under the phone's glass bar,
+              // instead of painting over it.
               Expanded(
-                child: PregoTopBarInsetScope(
-                  baseInset: 0,
-                  bannerHeight: const AlwaysStoppedAnimation<double>(0),
-                  child: content,
+                child: ClipRect(
+                  child: PregoTopBarInsetScope(
+                    baseInset: 0,
+                    bannerHeight: const AlwaysStoppedAnimation<double>(0),
+                    child: content,
+                  ),
                 ),
               ),
             ],
