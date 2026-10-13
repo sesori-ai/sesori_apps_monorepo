@@ -28,12 +28,15 @@ try:
             else:
                 data = os.read(sys.stdin.fileno(), 65536)
                 if not data:
-                    child.terminate()
-                    break
+                    sys.exit(143)
                 os.write(master, data)
     sys.exit(child.wait())
 finally:
     if child.poll() is None:
         child.terminate()
-        child.wait()
+        try:
+            child.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            child.kill()
+            child.wait()
     os.close(master)

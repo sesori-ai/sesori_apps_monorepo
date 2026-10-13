@@ -17,7 +17,8 @@ const source = path => {
 for (const name of ['question', 'sesori_sse_event']) {
   for (const suffix of ['dart', 'g.dart', 'freezed.dart']) {
     const path = `shared/sesori_shared/lib/src/models/sesori/${name}.${suffix}`;
-    assert.equal(await readFile(join(root, path), 'utf8'), source(path), `Released codec drift: ${path}`);
+    assert.equal((await readFile(join(root, path), 'utf8')).replaceAll('\r\n', '\n'),
+      source(path).replaceAll('\r\n', '\n'), `Released codec drift: ${path}`);
   }
 }
 const connection = source('client/module_core/lib/src/capabilities/server_connection/connection_service.dart');
@@ -32,6 +33,7 @@ const dart = process.argv[2];
 assert.ok(dart, 'Usage: node released-peer.mjs <dart-executable>; run shared dart pub get first');
 const result = spawnSync(dart, ['--packages=.dart_tool/package_config.json', output],
   { cwd: packageRoot, encoding: 'utf8' });
-process.stdout.write(result.stdout);
-process.stderr.write(result.stderr);
+if (result.error) throw result.error;
+process.stdout.write(result.stdout ?? '');
+process.stderr.write(result.stderr ?? '');
 assert.equal(result.status, 0, 'Released-peer fixture must pass');

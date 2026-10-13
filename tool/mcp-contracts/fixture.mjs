@@ -19,7 +19,7 @@ const tools = ['echo', 'form', 'url'].map(name => ({
 }));
 
 // This fixture never reads the host environment, launches tools, or contacts a provider.
-function createMcpPeer(send) {
+function createMcpPeer(send, { elicitations = true } = {}) {
   const pending = new Map();
   let nextId = 1000;
   return async frame => {
@@ -37,11 +37,15 @@ function createMcpPeer(send) {
           serverInfo: { name: 'sesori-contract-fixture', version: '1.0.0', title: 'Sesori MCP fixture' } });
         break;
       case 'ping': reply({}); break;
-      case 'tools/list': reply({ tools }); break;
+      case 'tools/list': reply({ tools: elicitations ? tools : tools.filter(tool => tool.name === 'echo') }); break;
       case 'resources/list': reply({ resources: [] }); break;
       case 'resources/templates/list': reply({ resourceTemplates: [] }); break;
       case 'prompts/list': reply({ prompts: [] }); break;
       case 'tools/call': {
+        if (!elicitations && frame.params.name !== 'echo') {
+          send({ jsonrpc: '2.0', id: frame.id, error: { code: -32601, message: 'Fixture tool unavailable' } });
+          break;
+        }
         let value = { fixture: 'echo' };
         if (frame.params.name !== 'echo') {
           const id = nextId++;
@@ -99,7 +103,7 @@ export async function startHttpFixture({ oauth = false } = {}) {
     const session = req.headers['mcp-session-id'] ?? 'fixture-session';
     res.setHeader('mcp-session-id', session);
     res.setHeader('Content-Type', 'application/json');
-    const receive = createMcpPeer(result => res.end(JSON.stringify(result)));
+    const receive = createMcpPeer(result => res.end(JSON.stringify(result)), { elicitations: false });
     await receive(frame);
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));

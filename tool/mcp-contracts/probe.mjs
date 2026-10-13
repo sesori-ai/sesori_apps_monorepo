@@ -75,8 +75,8 @@ function environment(root, harness) {
       : { CODEX_HOME: join(root, 'config') }) };
 }
 
-function version(binary) {
-  const result = spawnSync(binary, ['--version'], { encoding: 'utf8' });
+function version(binary, root, harness) {
+  const result = spawnSync(binary, ['--version'], { encoding: 'utf8', env: environment(root, harness) });
   assert.equal(result.status, 0, 'Native executable must run');
   return result.stdout.trim();
 }
@@ -122,7 +122,8 @@ async function probeClaudeLogin(binary, root, oauth) {
   try {
     const result = await exited;
     return { untrusted: { status: untrusted.status, stdout: untrusted.stdout, stderr: untrusted.stderr },
-      piped: { status: piped.status, stdout: piped.stdout, stderr: piped.stderr },
+      piped: { status: piped.status, timedOut: piped.error?.code === 'ETIMEDOUT',
+        stdout: piped.stdout, stderr: piped.stderr },
       terminal: { ...result, callbackSent, stdout, stderr } };
   } finally { clearTimeout(timer); child.stdin.end(); }
 }
@@ -174,7 +175,7 @@ async function probeClaude(binary, root, http, oauth, model) {
       .flatMap(frame => Array.isArray(frame.message?.content) ? frame.message.content : [])
       .filter(block => block.type === 'tool_result');
     const login = await probeClaudeLogin(binary, root, oauth);
-    return { version: version(binary), captures, elicitations, approvals, toolResults, login,
+    return { version: version(binary, root, 'claude'), captures, elicitations, approvals, toolResults, login,
       loginHelp: { status: help.status, stdout: help.stdout } };
   } catch (error) {
     await writeFile(join(root, 'failed-probe.json'), JSON.stringify({ captures, frames: peer.frames, stderr: peer.stderr }));
@@ -205,6 +206,7 @@ async function probeCodex(binary, root, http, oauth) {
     await capture('initialize', { clientInfo: { name: 'sesori-mcp-contract-fixture', version: '1.0.0' },
       capabilities: { experimentalApi: true } });
     peer.send({ method: 'initialized' });
+    await capture('mcpServerStatus/list', { limit: 100, detail: 'toolsAndAuthOnly' });
     const thread = await capture('thread/start', { cwd: root, ephemeral: true, approvalPolicy: 'on-request' });
     const threadId = thread.result?.thread?.id;
     assert.ok(threadId, 'Native thread start must return an id');
@@ -218,6 +220,15 @@ async function probeCodex(binary, root, http, oauth) {
     for (const tool of ['echo', 'form', 'url']) {
       await capture('mcpServer/tool/call', { threadId, server: 'stdio_fixture', tool, arguments: {} });
     }
+    const neverThread = await capture('thread/start', { cwd: root, ephemeral: true, approvalPolicy: 'never' });
+    const beforeNever = elicitations.length;
+    for (const tool of ['form', 'url']) {
+      const frame = await capture('mcpServer/tool/call', {
+        threadId: neverThread.result.thread.id, server: 'stdio_fixture', tool, arguments: {},
+      });
+      assert.equal(JSON.parse(frame.result.content[0].text).result.action, 'decline');
+    }
+    assert.equal(elicitations.length, beforeNever, 'Never-policy elicitation must not reach the client');
     await capture('config/mcpServer/reload', null);
     await capture('mcpServer/oauth/login', { name: 'stdio_fixture', timeoutSecs: 1 });
     const login = await capture('mcpServer/oauth/login', { name: 'oauth_fixture', timeoutSecs: 2 });
@@ -235,7 +246,7 @@ async function probeCodex(binary, root, http, oauth) {
     }
     await capture('app/list', { threadId, limit: 1, forceRefetch: false });
     await capture('mcp_unknown_fixture', {});
-    return { version: version(binary), captures, elicitations,
+    return { version: version(binary, root, 'codex'), captures, elicitations,
       notifications: peer.frames.filter(frame => frame.method?.startsWith('mcpServer/') && frame.id === undefined) };
   } finally { await peer.close(); }
 }
@@ -257,8 +268,8 @@ async function main() {
       .replaceAll(fixturePath, '<fixture-server>').replaceAll(process.execPath, '<fixture-node>')
       .replaceAll(http.origin, 'http://127.0.0.1:<fixture-port>')
       .replaceAll(oauth.origin, 'http://127.0.0.1:<oauth-fixture-port>');
-    for (const frame of result.captures.filter(x => x.method === 'thread/start')) {
-      text = text.replaceAll(frame.frame.result.thread.id, '<fixture-thread>');
+    for (const [index, frame] of result.captures.filter(x => x.method === 'thread/start').entries()) {
+      text = text.replaceAll(frame.frame.result.thread.id, `<fixture-thread-${index + 1}>`);
     }
     await writeFile(output, `${text}\n`);
     console.log(`${harness}: ${result.version}; ${result.captures.length} native exchanges captured`);
@@ -274,6 +285,9 @@ function assertContracts(harness, result) {
     assert.deepEqual(connected.map(x => x.status), ['connected', 'connected']);
     assert.deepEqual(connected[0].tools.map(x => x.name), ['echo', 'form', 'url']);
     assert.equal(exchanges.find(x => x.method === 'mcp_unknown_fixture').frame.response.subtype, 'error');
+    const unknownServer = exchanges.find(x => x.method === 'mcp_reconnect' && x.params.serverName === 'unknown_fixture');
+    assert.equal(unknownServer.frame.response.subtype, 'error');
+    assert.match(unknownServer.frame.response.error, /Server not found/);
     assert.equal(result.approvals.length, 3, 'Each tool needs native permission');
     const form = result.elicitations.find(x => x.request.mode === 'form');
     assert.deepEqual(form.request.requested_schema, formSchema);
@@ -287,6 +301,8 @@ function assertContracts(harness, result) {
       assert.match(urlReply.error.message, /does not support URL-mode/);
     }
     assert.match(result.login.untrusted.stderr, /awaiting approval/);
+    assert.equal(result.login.piped.timedOut, true, 'Plain-pipe login must remain blocked');
+    assert.doesNotMatch(result.login.piped.stdout, /https?:\/\//, 'Plain-pipe login must not expose a URL');
     assert.equal(result.login.terminal.status, 0, 'Terminal OAuth must complete');
     assert.equal(result.login.terminal.callbackSent, true);
   } else {
@@ -294,6 +310,8 @@ function assertContracts(harness, result) {
     assert.ok(inventory.some(x => x.frame.result.nextCursor), 'Pagination must be exercised');
     const names = inventory.slice(1).flatMap(x => x.frame.result.data.map(server => server.name));
     assert.deepEqual(names, ['http_fixture', 'oauth_fixture', 'stdio_fixture']);
+    const appInventory = exchanges.find(x => x.method === 'mcpServerStatus/list' && x.params.threadId === undefined);
+    assert.deepEqual(appInventory.frame.result.data.map(server => server.name), names);
     assert.equal(exchanges.find(x => x.method === 'mcp_unknown_fixture').frame.error.code, -32600);
     assert.equal(result.elicitations.length, 2, 'Form and URL requests must reach the client');
     assert.deepEqual(result.elicitations[0].params.requestedSchema, formSchema);
@@ -302,6 +320,10 @@ function assertContracts(harness, result) {
     assert.deepEqual(formReply, { action: 'accept', content: { approved: true, count: 2, plan: 'pro', tags: ['b'] } });
     assert.equal(JSON.parse(returned[2].frame.result.content[0].text).result.action, 'decline');
     assert.equal(result.notifications.find(x => x.method === 'mcpServer/oauthLogin/completed').params.success, true);
+    const stdioLogin = exchanges.find(x => x.method === 'mcpServer/oauth/login' && x.params.name === 'stdio_fixture');
+    assert.equal(stdioLogin.frame.error.code, -32600);
+    assert.match(stdioLogin.frame.error.message, /only supported for streamable HTTP/);
+    assert.deepEqual(exchanges.find(x => x.method === 'app/list').frame.result, { data: [], nextCursor: null });
   }
 }
 
