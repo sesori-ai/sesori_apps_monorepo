@@ -521,6 +521,10 @@ void main() {
       final toolbar = tester.getRect(find.byType(DesktopPageToolbar));
       final list = tester.widget<SessionDetailMessageList>(find.byType(SessionDetailMessageList));
       expect(tester.getRect(find.byType(SessionDetailLoadedView)).top, toolbar.bottom);
+      // A pinned prompt pushed out over the transcript's top edge slides under
+      // the toolbar rather than painting over it.
+      final clip = find.ancestor(of: find.byType(SessionDetailLoadedView), matching: find.byType(ClipRect)).first;
+      expect(tester.getRect(clip).top, toolbar.bottom);
       expect(list.topInset, 0);
       // The transcript reads in its own, wider column; the composer keeps the
       // narrower one, both centred in the same pane.
