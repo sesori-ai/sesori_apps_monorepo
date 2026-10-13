@@ -661,7 +661,9 @@ boundaries, using isolated stdio/HTTP/OAuth and deterministic model fixtures:
 | Codex 0.160.1 | Richer native inventory | Runtime status, discovery error, safe origin |
 
 Claude's toggle changes the resident process, not persisted configuration.
-Its status omits tool descriptions. Plain-pipe login does not expose the
+Its status omits tool descriptions. Approval frames name the tool at both pins;
+explicit `mcp_server` context is absent at 2.1.221 and present at 2.1.291.
+Plain-pipe login does not expose the
 no-browser URL/paste journey. Codex completion must be correlated by the
 adapter; a browser open does not confirm success. All native-supported rows
 remain **not implemented** as Sesori management actions at this checkpoint.
