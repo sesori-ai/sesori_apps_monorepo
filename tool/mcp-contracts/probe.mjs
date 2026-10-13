@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { appendFile, mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
@@ -54,7 +54,8 @@ class Peer {
         timer = setTimeout(() => { this.pending.delete(id); reject(new Error(`Timed out: ${method}`)); }, 20000);
         this.send(this.protocol === 'claude'
           ? { type: 'control_request', request_id: id, request: { subtype: method, ...params } }
-          : { jsonrpc: '2.0', id, method, params });
+          // Codex's app-server protocol deliberately omits the JSON-RPC marker.
+          : { id, method, params });
       });
     } finally { clearTimeout(timer); }
   }
@@ -171,6 +172,7 @@ async function probeClaude(binary, root, http, oauth, model, nativeVersion) {
       ['initialize', { elicitation: {} }], ['mcp_status', {}],
       ['mcp_toggle', { serverName: 'stdio_fixture', enabled: false }], ['mcp_status', {}],
       ['mcp_toggle', { serverName: 'stdio_fixture', enabled: true }],
+      ['mcp_status', {}],
       ['mcp_reconnect', { serverName: 'stdio_fixture' }], ['mcp_status', {}],
       ['mcp_reconnect', { serverName: 'unknown_fixture' }], ['mcp_unknown_fixture', {}],
     ]) {
@@ -248,8 +250,33 @@ async function probeCodex(binary, root, http, oauth, model, nativeVersion) {
       assert.equal(JSON.parse(frame.result.content[0].text).result.action, 'decline');
     }
     assert.equal(elicitations.length, beforeNever, 'Never-policy elicitation must not reach the client');
+    await appendFile(join(root, 'config', 'config.toml'),
+      `\n[mcp_servers.reload_fixture]\ncommand = ${JSON.stringify(process.execPath)}\n` +
+      `args = [${JSON.stringify(fixturePath)}, "--stdio"]\n`);
     await capture('config/mcpServer/reload', null);
+    for (const params of [{ limit: 100 }, { threadId, limit: 100 }]) {
+      const reloaded = await capture('mcpServerStatus/list', params);
+      assert.ok(reloaded.result.data.some(server => server.name === 'reload_fixture'),
+        `Reload must expose changed configuration: ${params.threadId ? 'live thread' : 'app'}`);
+    }
     await capture('mcpServer/oauth/login', { name: 'stdio_fixture', timeoutSecs: 1 });
+    const tokensBefore = oauth.tokenRequests;
+    const negativeCompleted = peer.waitFor(frame => frame.method === 'mcpServer/oauthLogin/completed');
+    const negativeLogin = await capture('mcpServer/oauth/login', { name: 'oauth_fixture', timeoutSecs: 1,
+      ...(nativeVersion === 'codex-cli 0.160.1' ? { threadId } : {}) });
+    const negativeAuth = new URL(negativeLogin.result.authorizationUrl);
+    assert.equal(negativeAuth.origin, oauth.origin);
+    const negativeState = negativeAuth.searchParams.get('state');
+    assert.ok(negativeState?.trim());
+    const negativeCallback = new URL(negativeAuth.searchParams.get('redirect_uri'));
+    assert.ok(['localhost', '127.0.0.1'].includes(negativeCallback.hostname));
+    negativeCallback.searchParams.set('code', 'fixture-code');
+    negativeCallback.searchParams.set('state', `${negativeState}-wrong`);
+    const negativeResponse = await fetch(negativeCallback);
+    const negativeNotification = await negativeCompleted;
+    assert.equal(negativeNotification.params.success, false, 'Wrong state must not authenticate');
+    assert.equal(oauth.tokenRequests, tokensBefore, 'Wrong state must not exchange a token');
+    assert.equal(negativeNotification.params.name, 'oauth_fixture');
     const login = await capture('mcpServer/oauth/login', { name: 'oauth_fixture', timeoutSecs: 2,
       ...(nativeVersion === 'codex-cli 0.160.1' ? { threadId } : {}) });
     if (login.result) {
@@ -270,6 +297,7 @@ async function probeCodex(binary, root, http, oauth, model, nativeVersion) {
     await capture('app/list', { threadId, limit: 1, forceRefetch: false });
     await capture('mcp_unknown_fixture', {});
     return { version: nativeVersion, captures, elicitations,
+      rejectedOAuthCallbackStatus: negativeResponse.status,
       notifications: peer.frames.filter(frame => frame.method?.startsWith('mcpServer/') && frame.id === undefined) };
   } finally { await peer.close(); }
 }
@@ -314,6 +342,8 @@ function assertContracts(harness, result) {
     }
     const statuses = exchanges.filter(x => x.method === 'mcp_status');
     assert.equal(statuses[1].frame.response.response.mcpServers[0].status, 'disabled');
+    const enabled = statuses[2].frame.response.response.mcpServers.find(server => server.name === 'stdio_fixture');
+    assert.notEqual(enabled.status, 'disabled', 'Enablement must take effect before reconnect');
     const connected = statuses.at(-1).frame.response.response.mcpServers;
     assert.deepEqual(connected.map(x => x.status), ['connected', 'connected']);
     assert.deepEqual(connected[0].tools.map(x => x.name), ['echo', 'form', 'url']);
@@ -427,7 +457,7 @@ function assertContracts(harness, result) {
     const formReply = JSON.parse(returned[1].frame.result.content[0].text).result;
     assert.deepEqual(formReply, { action: 'accept', content: { approved: true, count: 2, plan: 'pro', tags: ['b'] } });
     assert.equal(JSON.parse(returned[2].frame.result.content[0].text).result.action, 'decline');
-    const completion = result.notifications.find(x => x.method === 'mcpServer/oauthLogin/completed').params;
+    const completion = result.notifications.find(x => x.method === 'mcpServer/oauthLogin/completed' && x.params.success).params;
     assert.equal(completion.success, true);
     assert.equal(completion.name, 'oauth_fixture', 'Completion must name the requested server');
     const refreshed = exchanges.filter(x => x.method === 'mcpServerStatus/list').at(-1)
@@ -438,7 +468,7 @@ function assertContracts(harness, result) {
       assert.equal(refreshed.runtimeStatus, 'connected');
       assert.equal(refreshed.toolsError, null);
     }
-    const login = exchanges.find(x => x.method === 'mcpServer/oauth/login' && x.params.name === 'oauth_fixture');
+    const login = exchanges.filter(x => x.method === 'mcpServer/oauth/login' && x.params.name === 'oauth_fixture').at(-1);
     if (login.params.threadId !== undefined) assert.equal(completion.threadId, login.params.threadId);
     assert.deepEqual(exchanges.find(x => x.method === 'config/mcpServer/reload').frame.result, {});
     const stdioLogin = exchanges.find(x => x.method === 'mcpServer/oauth/login' && x.params.name === 'stdio_fixture');
