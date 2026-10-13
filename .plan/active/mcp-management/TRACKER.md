@@ -106,3 +106,6 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   command/cwd/source provenance and remaining qualification gaps are recorded in the linked native evidence.
 - Step-2 second review rerun at `a4d4929325` passed the same matrix with expected outcomes for every exchange, target
   URL forwarding, failed untrusted login, successful reload, and server/thread-attributed Codex OAuth completion.
+- Step-2 attribution review: target Claude and both Codex pins passed at `2c291ba091`; minimum Claude passed at
+  `b84d837e65` after the new assertion exposed its absent `mcp_server` field. Native tool names, target server context,
+  Codex elicitation ownership, and target inventory/error/origin/capability fields are now asserted. Three tooling tests passed.

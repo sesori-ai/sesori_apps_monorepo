@@ -1,7 +1,8 @@
 # Priority MCP contract evidence
 
 Date: 2026-10-13. Implementation base: `c03b588d9e`. Host: macOS arm64.
-Measured executable probe revision: `a4d4929325` (rerun after review fixes).
+Measured probe revisions: `2c291ba091` (target Claude and both Codex pins) and
+`b84d837e65` (minimum Claude after asserting its omitted server context).
 This record establishes native protocol behavior, not released Sesori support.
 
 ## Exact executables
@@ -26,13 +27,16 @@ Packages: `@anthropic-ai/claude-code-darwin-arm64@<version>` and
 
 All four native probes passed assertions using isolated stdio and HTTP servers.
 Claude additionally used a deterministic local Anthropic protocol fixture; no
-prompt was sent to a model provider. Codex direct MCP calls needed no model turn.
+prompt was sent to a model provider. Codex direct MCP calls needed no model turn. Both elicitation modes assert the
+fixture server, interactive thread, and null turn ID. Target inventory asserts
+connected versus authentication-required state, discovery errors/capabilities,
+and distinct HTTP origins with no path; minimum fields remain absent.
 
 | Native boundary | Claude 2.1.221 | Claude 2.1.291 | Codex 0.139.0 | Codex 0.160.1 |
 |---|---|---|---|---|
 | Scoped inventory | Resident process | Resident process | Thread or app | Thread or app |
 | Tool discovery | Names/annotations | Names/annotations | Full tool metadata | Full tool metadata |
-| Connection state | Native status | Native status | Not in status DTO | Native `runtimeStatus` |
+| Connection state | Native status | Native status | Not in status DTO | Asserted `runtimeStatus`, `toolsError`, and `serverCapabilities` |
 | Safe HTTP origin | Must derive from native config | Must derive from native config | Not in status DTO | `httpOrigin` |
 | Enable/disable | Live-process `mcp_toggle` | Same | No dedicated RPC | No dedicated RPC |
 | Reconnect | `mcp_reconnect` | Same | Whole-config reload RPC | Same |
@@ -51,8 +55,11 @@ configuration enablement. Unknown server and unknown subtype return control
 errors. Native status tools lack descriptions even when the fixture advertises
 them; absence must remain honest.
 
-Claude sends `can_use_tool` with `mcp_server`, tool name, input, and native
-permission suggestions. Both versions independently ask before all three tools.
+Claude sends `can_use_tool` with tool name, input, and native permission
+suggestions. The target also supplies `mcp_server` with the fixture name and
+dynamic source; the minimum omits that field. Assertions check the exact native
+tool name for each approval and the version-specific server context. Both versions
+independently ask before all three tools.
 Forms use `subtype: elicitation`, `mcp_server_name`, `requested_schema`, and typed
 `{action, content}` responses. The boolean, integer, choice value distinct from
 its label, optional-field omission, and bounded string-array values round-trip
@@ -114,7 +121,7 @@ recovery after the real typed interactions exist.
 
 ## Reproduction and measured results
 
-Run from the repository root at probe revision `a4d4929325`; dependencies were
+Run from the repository root at probe revision `b84d837e65`; dependencies were
 resolved in `shared/sesori_shared` using Dart 3.13.4. Native fixture subprocess
 cwd is a fresh temporary directory chosen by `mkdtemp`, not the checkout or the
 developer's project. The released-peer Dart cwd is `shared/sesori_shared`.
