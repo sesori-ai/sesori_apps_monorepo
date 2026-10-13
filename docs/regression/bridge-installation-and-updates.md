@@ -40,10 +40,11 @@ client's update steps shown wherever a feature needs a newer bridge.
   archive and signature bytes.
   The one-off existing-release action preserves archive/checksum bytes and release
   metadata, refuses changed inputs/conflicting assets, and can retry a failed publishing
-  job using its original signatures. Core release owners retain their existing replacement
-  and promotion behavior; their read-only delivery check never uploads or repairs assets.
+  job using its original signatures. Signing failure fails the Bridge build and blocks
+  core release creation. Core release owners retain their existing replacement and
+  promotion behavior; their later read-only delivery check never uploads or repairs assets.
   Installers/updaters still verify SHA-256, not OpenPGP. Partial delivery fails manual
-  signature verification; it does not introduce a new stable-release promotion gate.
+  signature verification. Delivery verification does not stage, promote or roll back releases.
 - TestFlight and Play internal notes list commit subjects since the nearest
   `v*` release tag on the build's first-parent history, newest first, and retain
   the build SHA. Failed attempts do not reset this range. With no release tag,
