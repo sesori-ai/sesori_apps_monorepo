@@ -137,6 +137,7 @@ import "routing/patch_bridge_settings_handler.dart";
 import "routing/patch_plugin_idle_timeout_handler.dart";
 import "routing/plugin_authentication_handlers.dart";
 import "routing/post_agents_handler.dart";
+import "routing/post_mcp_entry_action_handler.dart";
 import "routing/post_mcp_inventory_handler.dart";
 import "routing/post_plugin_lifecycle_command_handler.dart";
 import "routing/post_session_options_handler.dart";
@@ -165,6 +166,7 @@ import "services/chat_history_reconcile_service.dart";
 import "services/chat_history_service.dart";
 import "services/current_project_service.dart";
 import "services/deleted_session_storage_cleanup_service.dart";
+import "services/mcp_service.dart";
 import "services/pending_interaction_service.dart";
 import "services/permission_auto_approval_service.dart";
 import "services/plugin_lifecycle_service.dart";
@@ -465,6 +467,7 @@ class Orchestrator({
       sessionDao: _database.sessionDao,
       projectsDao: _database.projectsDao,
     );
+    final mcpService = McpService(repository: mcpRepository);
     final pendingInteractionSupport = PendingInteractionSupport(sessionDao: _database.sessionDao);
     final permissionRepository = PermissionRepository(
       runtime: _pluginRuntime,
@@ -691,6 +694,7 @@ class Orchestrator({
           pluginWarmupSettingsService: pluginWarmupSettingsService,
         ),
         PostMcpInventoryHandler(mcpRepository: mcpRepository),
+        PostMcpEntryActionHandler(mcpService: mcpService),
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService, bridgeIdProvider: _bridgeRegistrationService),
@@ -799,6 +803,7 @@ class Orchestrator({
       pluginManagementSnapshotTokens: _pluginLifecycleService.managementSnapshotTokens,
       pluginInstallProgress: _pluginLifecycleService.installProgress,
       pluginAuthenticationProgress: _pluginLifecycleService.authenticationProgress,
+      mcpService: mcpService,
       localWireEventsController: localWireEventsController,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
@@ -913,6 +918,7 @@ class OrchestratorSession._({
   required final SessionPromptService _sessionPromptService,
   required final SessionContinuationService _sessionContinuationService,
   required final SessionContinuationTimerListener _sessionContinuationTimer,
+  required final McpService _mcpService,
   required Stream<CatalogImportProgress> catalogImportProgress,
   required Stream<SessionOptionsCacheUpdate> sessionOptionsCacheUpdates,
   required Stream<String> pluginManagementSnapshotTokens,
@@ -985,6 +991,11 @@ class OrchestratorSession._({
                 }),
               );
           }
+        })
+        .addTo(_subscriptions);
+    _mcpService.inventoryChanges
+        .listen((change) {
+          _enqueueWireEvent(SesoriSseEvent.mcpInventoryChanged(pluginId: change.pluginId, scope: change.scope));
         })
         .addTo(_subscriptions);
     catalogImportProgress
@@ -1287,6 +1298,7 @@ class OrchestratorSession._({
     Log.v("[shutdown] event producers cancelled (+${teardownSw.elapsedMilliseconds}ms)");
     await Future.wait([attempt(_routedRequestDispatcher.drain), attempt(_drainRelayCompletions)]);
     await Future.wait([
+      attempt(_mcpService.dispose),
       attempt(_currentProjectService.dispose),
       attempt(_projectGlossaryPopulationService.dispose),
     ]);

@@ -2,6 +2,54 @@ import 'package:sesori_shared/sesori_shared.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('server actions reject connector targets and retain authoritative read results', () {
+    const request = McpEntryActionRequest(
+      pluginId: 'fixture',
+      action: McpServerEntryAction(
+        target: McpServerTarget(
+          scope: McpSessionScope(sessionId: 'session'),
+          serverKey: 'server',
+        ),
+        action: McpServerAction.reconnect,
+      ),
+    );
+    expect(McpEntryActionRequest.fromJson(request.toJson()), request);
+    for (final type in [null, 'future', 'connectorSetup']) {
+      final json = request.action.toJson()..['type'] = type;
+      expect(() => McpEntryAction.fromJson(json), throwsA(isA<FormatException>()));
+    }
+    expect(
+      () => McpEntryAction.fromJson({
+        'type': 'server',
+        'action': 'enable',
+        'target': {
+          'type': 'connectorOffer',
+          'scope': {'type': 'harness'},
+          'offerKey': 'offer',
+          'serverKey': 'server',
+        },
+      }),
+      throwsA(isA<FormatException>()),
+    );
+    const result = McpActionCompleted(
+      inventory: McpInventoryUnavailable(
+        scope: McpSessionScope(sessionId: 'session'),
+        reason: McpInventoryUnavailableReason.readFailed,
+        message: 'Unavailable',
+      ),
+    );
+    expect(McpEntryActionResult.fromJson(result.toJson()), result);
+    expect(McpEntryActionResult.fromJson({'type': 'future'}), const McpActionUnknown());
+    final event = SesoriSseEvent.mcpInventoryChanged(
+      pluginId: request.pluginId,
+      scope: const McpSessionScope(sessionId: 'session'),
+    );
+    expect(SesoriSseEvent.fromJson(event.toJson()), event);
+    final unknown = McpServerActionCapability.fromJson({'action': 'future', 'effectScope': 'future'});
+    expect(unknown.action, McpServerAction.unknown);
+    expect(unknown.effectScope, McpActionEffectScope.unknown);
+  });
+
   test('wire targets distinguish a server from an equal-key connector offer', () {
     final server = McpEntryTarget.fromJson({
       'type': 'server', 'serverKey': 'opaque-key',
@@ -36,6 +84,7 @@ void main() {
   test('server authorization does not grant a tool permission or create configuration fields', () {
     final server = McpInventoryEntry.fromJson({
       'type': 'server',
+      'actions': <String>[],
       'target': {'type': 'server', 'scope': {'type': 'harness'}, 'serverKey': 'fixture'},
       'name': 'Fixture server',
       'connection': {'type': 'status', 'phase': 'connected'},
@@ -45,6 +94,7 @@ void main() {
     expect(server, isA<McpServerSnapshot>());
     expect(server.toJson(), {
       'type': 'server',
+      'actions': <String>[],
       'target': {'type': 'server', 'scope': {'type': 'harness'}, 'serverKey': 'fixture'},
       'name': 'Fixture server',
       'connection': {'type': 'status', 'phase': 'connected'},
@@ -59,6 +109,7 @@ void main() {
       'entries': [
         {
           'type': 'server',
+          'actions': <String>[],
           'target': {'type': 'server', 'scope': {'type': 'project', 'projectId': 'project-1'}, 'serverKey': 'fixture'},
           'name': 'Fixture server',
           'connection': {'type': 'status', 'phase': 'connected'},
@@ -92,7 +143,7 @@ void main() {
     }) as McpInventoryUnavailable;
     expect(unknownReason.reason, McpInventoryUnavailableReason.unknown);
     final server = McpInventoryEntry.fromJson({
-      'type': 'server', 'target': {'type': 'server', 'scope': {'type': 'harness'}, 'serverKey': 'fixture'},
+      'type': 'server', 'actions': <String>[], 'target': {'type': 'server', 'scope': {'type': 'harness'}, 'serverKey': 'fixture'},
       'name': 'Fixture', 'connection': {'type': 'future'}, 'authorization': 'future',
       'configuration': {'scope': 'future', 'mutability': 'future'}, 'tools': {'type': 'future'},
     }) as McpServerSnapshot;

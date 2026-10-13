@@ -19,6 +19,36 @@ final class const PluginMcpConnectorOfferTarget({required super.scope, required 
 
 enum PluginMcpConnectionPhase() { unknown, pending, connecting, connected, authenticationRequired, disabled }
 
+/// These controls affect the target's native scope, not configuration ownership.
+enum PluginMcpServerAction() {
+  reconnect,
+  enable,
+  disable,
+}
+
+enum PluginMcpActionEffectScope() { harness, project, session }
+
+final class const PluginMcpServerActionCapability({
+  required final PluginMcpServerAction action,
+  required final PluginMcpActionEffectScope effectScope,
+});
+
+enum PluginMcpActionUnavailableReason() {
+  unsupportedScope,
+  liveSessionRequired,
+  targetNotFound,
+}
+
+sealed class const PluginMcpActionResult();
+
+final class const PluginMcpActionCompleted() extends PluginMcpActionResult;
+
+final class const PluginMcpActionUnavailable({required final PluginMcpActionUnavailableReason reason})
+    extends PluginMcpActionResult;
+
+final class const PluginMcpActionFailed({required final Exception cause, required final StackTrace causeStackTrace})
+    extends PluginMcpActionResult;
+
 sealed class const PluginMcpConnectionState();
 
 final class const PluginMcpConnectionStatus({required final PluginMcpConnectionPhase phase})
@@ -62,6 +92,7 @@ final class const PluginMcpServerSnapshot({
   required final PluginMcpAuthorizationState authorization,
   required final PluginMcpConfigurationSource? configuration,
   required final PluginMcpToolInventory tools,
+  required final List<PluginMcpServerActionCapability> actions,
 }) extends PluginMcpInventoryEntry;
 
 final class const PluginMcpConnectorOfferSnapshot({

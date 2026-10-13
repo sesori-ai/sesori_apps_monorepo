@@ -171,6 +171,41 @@ McpToolsFailed _$McpToolsFailedFromJson(Map json) => McpToolsFailed(
 Map<String, dynamic> _$McpToolsFailedToJson(McpToolsFailed instance) =>
     <String, dynamic>{'message': instance.message, 'type': instance.$type};
 
+_McpServerActionCapability _$McpServerActionCapabilityFromJson(Map json) =>
+    _McpServerActionCapability(
+      action: $enumDecode(
+        _$McpServerActionEnumMap,
+        json['action'],
+        unknownValue: McpServerAction.unknown,
+      ),
+      effectScope: $enumDecode(
+        _$McpActionEffectScopeEnumMap,
+        json['effectScope'],
+        unknownValue: McpActionEffectScope.unknown,
+      ),
+    );
+
+Map<String, dynamic> _$McpServerActionCapabilityToJson(
+  _McpServerActionCapability instance,
+) => <String, dynamic>{
+  'action': _$McpServerActionEnumMap[instance.action]!,
+  'effectScope': _$McpActionEffectScopeEnumMap[instance.effectScope]!,
+};
+
+const _$McpServerActionEnumMap = {
+  McpServerAction.unknown: 'unknown',
+  McpServerAction.reconnect: 'reconnect',
+  McpServerAction.enable: 'enable',
+  McpServerAction.disable: 'disable',
+};
+
+const _$McpActionEffectScopeEnumMap = {
+  McpActionEffectScope.unknown: 'unknown',
+  McpActionEffectScope.harness: 'harness',
+  McpActionEffectScope.project: 'project',
+  McpActionEffectScope.session: 'session',
+};
+
 McpUnknownInventoryEntry _$McpUnknownInventoryEntryFromJson(Map json) =>
     McpUnknownInventoryEntry($type: json['type'] as String?);
 
@@ -179,8 +214,8 @@ Map<String, dynamic> _$McpUnknownInventoryEntryToJson(
 ) => <String, dynamic>{'type': instance.$type};
 
 McpServerSnapshot _$McpServerSnapshotFromJson(Map json) => McpServerSnapshot(
-  serverTarget: McpServerTarget.fromJson(
-    Map<String, dynamic>.from(json['target'] as Map),
+  serverTarget: McpEntryTarget.serverFromJson(
+    json['target'] as Map<String, dynamic>,
   ),
   name: json['name'] as String,
   description: json['description'] as String?,
@@ -201,6 +236,13 @@ McpServerSnapshot _$McpServerSnapshotFromJson(Map json) => McpServerSnapshot(
   tools: McpToolInventory.fromJson(
     Map<String, dynamic>.from(json['tools'] as Map),
   ),
+  actions: (json['actions'] as List<dynamic>)
+      .map(
+        (e) => McpServerActionCapability.fromJson(
+          Map<String, dynamic>.from(e as Map),
+        ),
+      )
+      .toList(),
   $type: json['type'] as String?,
 );
 
@@ -214,6 +256,7 @@ Map<String, dynamic> _$McpServerSnapshotToJson(McpServerSnapshot instance) =>
       'authorization': _$McpAuthorizationStateEnumMap[instance.authorization]!,
       'configuration': ?instance.configuration?.toJson(),
       'tools': instance.tools.toJson(),
+      'actions': instance.actions.map((e) => e.toJson()).toList(),
       'type': instance.$type,
     };
 

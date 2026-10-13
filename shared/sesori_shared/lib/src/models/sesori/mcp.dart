@@ -18,6 +18,12 @@ sealed class McpEntryTarget with _$McpEntryTarget {
   const factory connectorOffer({required McpScope scope, required String offerKey}) = McpConnectorOfferTarget;
 
   factory fromJson(Map<String, dynamic> json) => _$McpEntryTargetFromJson(json);
+
+  // ignore: no_slop_linter/prefer_specific_type, decoded JSON target boundary
+  static McpServerTarget serverFromJson(Map<String, dynamic> json) => switch (McpEntryTarget.fromJson(json)) {
+    final McpServerTarget target => target,
+    McpConnectorOfferTarget() => throw const FormatException("Expected an MCP server target."),
+  };
 }
 
 enum McpConnectionPhase() { unknown, pending, connecting, connected, authenticationRequired, disabled }
@@ -66,11 +72,25 @@ sealed class McpToolInventory with _$McpToolInventory {
 
 enum McpConnectorOfferAvailability() { unknown, available, setupRequired, unavailable }
 
+enum McpServerAction() { unknown, reconnect, enable, disable }
+
+enum McpActionEffectScope() { unknown, harness, project, session }
+
+@Freezed(copyWith: false, fromJson: true, toJson: true)
+sealed class McpServerActionCapability with _$McpServerActionCapability {
+  const factory({
+    @JsonKey(unknownEnumValue: McpServerAction.unknown) required McpServerAction action,
+    @JsonKey(unknownEnumValue: McpActionEffectScope.unknown) required McpActionEffectScope effectScope,
+  }) = _McpServerActionCapability;
+
+  factory fromJson(Map<String, dynamic> json) => _$McpServerActionCapabilityFromJson(json);
+}
+
 @Freezed(unionKey: "type", fallbackUnion: "unknown", copyWith: false, fromJson: true, toJson: true)
 sealed class McpInventoryEntry with _$McpInventoryEntry {
   const factory unknown() = McpUnknownInventoryEntry;
   const factory server({
-    @JsonKey(name: "target") required McpServerTarget serverTarget,
+    @JsonKey(name: "target", fromJson: McpEntryTarget.serverFromJson) required McpServerTarget serverTarget,
     required String name,
     required String? description,
     required String? endpointOrigin,
@@ -78,6 +98,7 @@ sealed class McpInventoryEntry with _$McpInventoryEntry {
     @JsonKey(unknownEnumValue: McpAuthorizationState.unknown) required McpAuthorizationState authorization,
     required McpConfigurationSource? configuration,
     required McpToolInventory tools,
+    required List<McpServerActionCapability> actions,
   }) = McpServerSnapshot;
 
   const factory connectorOffer({

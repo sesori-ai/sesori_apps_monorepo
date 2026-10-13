@@ -84,6 +84,7 @@ final _inventory = McpInventorySnapshot(
   entries: [
     for (var i = 0; i < 24; i++)
       McpServerSnapshot(
+        actions: const [],
         serverTarget: McpServerTarget(scope: _scope, serverKey: "fixture-$i"),
         name: i == 0 ? "Project tools" : "Fixture server $i",
         description: "Synthetic MCP server",

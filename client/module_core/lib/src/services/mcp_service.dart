@@ -21,6 +21,17 @@ class McpService({
     _subscriptions
       ..add(_connectionService.status.listen(_onConnectionStatus))
       ..add(
+        _connectionService.events.listen((event) {
+          if (event.data case SesoriMcpInventoryChanged(:final pluginId, :final scope)) {
+            final request = _request;
+            if (request != null && request.pluginId == pluginId && request.scope == scope) {
+              _staleVersion++;
+              unawaited(refresh());
+            }
+          }
+        }),
+      )
+      ..add(
         _connectionService.dataMayBeStale.listen((_) {
           _staleVersion++;
           unawaited(refresh());

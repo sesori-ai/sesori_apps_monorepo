@@ -16,6 +16,18 @@ class ClaudeControlException({required final String subtype, required final Stri
   String toString() => "ClaudeControlException($subtype, $message)";
 }
 
+/// Native status decoding failed; presentation excludes the native payload.
+sealed class const ClaudeMcpStatusDecodeException() implements Exception {
+  @override
+  String toString() => "Claude MCP status could not be decoded";
+}
+
+final class const ClaudeMcpStatusFormatException({required final FormatException innerError})
+    extends ClaudeMcpStatusDecodeException;
+
+final class const ClaudeMcpStatusTypeException({required final TypeError innerError})
+    extends ClaudeMcpStatusDecodeException;
+
 /// Speaks the stream-json protocol to exactly one `claude` process.
 ///
 /// One process serves one session. The process stays alive only while its stdin
@@ -186,7 +198,23 @@ class ClaudeStreamClient({
   /// Inspects this resident process without sending a turn or changing configuration.
   Future<ClaudeMcpStatusDto> getMcpStatus() async {
     final response = await sendControlRequest(subtype: "mcp_status", params: const {});
-    return ClaudeMcpStatusDto.fromJson(response);
+    try {
+      return ClaudeMcpStatusDto.fromJson(response);
+    } on FormatException catch (error, stackTrace) {
+      Error.throwWithStackTrace(ClaudeMcpStatusFormatException(innerError: error), stackTrace);
+    // Generated DTO casts can fail when the native JSON shape changes.
+    // ignore: avoid_catching_errors
+    } on TypeError catch (error, stackTrace) {
+      Error.throwWithStackTrace(ClaudeMcpStatusTypeException(innerError: error), stackTrace);
+    }
+  }
+
+  Future<void> reconnectMcpServer({required String serverName}) async {
+    await sendControlRequest(subtype: "mcp_reconnect", params: {"serverName": serverName});
+  }
+
+  Future<void> setMcpServerEnabled({required String serverName, required bool enabled}) async {
+    await sendControlRequest(subtype: "mcp_toggle", params: {"serverName": serverName, "enabled": enabled});
   }
 
   /// Sends a control request and awaits its response payload.

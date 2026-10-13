@@ -6,8 +6,9 @@ Backend-neutral inventory contracts describe configured servers and offered
 connectors. The optional plugin read interface and shared wire models are
 implemented. `POST /mcp/inventory` reads Claude Code inventory from an existing
 resident session. Phone and desktop expose a shared read-only inventory and
-server-details view backed by the typed loading lifecycle. Management actions
-are not yet exposed.
+server-details view backed by the typed loading lifecycle. `POST /mcp/entry/action`
+exposes explicit live-session Claude reconnect, enable and disable controls to
+headless consumers. Product UI controls and MCP authentication remain pending.
 Existing permission flows remain separate. Read-only inventory may inspect an
 archived session if its native process remains live; it grants no session mutation.
 
@@ -35,6 +36,19 @@ archived session if its native process remains live; it grants no session mutati
   execute a tool, or write configuration. The optional API declares this contract;
   Claude reads only the named resident process and reports live-session-required
   when none exists. The bridge uses active lifecycle access without starting a plugin.
+- Each server declares supported controls and their effect scope separately from
+  configuration source/access. Claude controls affect only the resident session;
+  they do not rewrite configuration or grant authentication/tool permission.
+- Action requests carry a server target; connector targets are rejected even with
+  equal key text. The bridge validates stored session ownership and rejects archived
+  mutations. Unsupported/inactive scopes do not activate a plugin or agent session.
+- Completed controls return an authoritative inventory read. A failed read after
+  completion remains read-failed; an acknowledgement never implies connection.
+  Known native control failures keep original causes/stacks in local logs and
+  produce a typed failure without raw native error data on the wire.
+- The bridge emits `mcp.inventory.changed` after native completion. Open client
+  views refresh only when the selected plugin and scope match, using their existing
+  reconnect/coalescing lifecycle. No background polling or configuration writer.
 - Session requests must name the owning integration; the bridge resolves the
   native session ID from its durable binding. Project reads resolve the current
   catalog path; missing IDs never become native paths. Claude supports session
@@ -69,11 +83,15 @@ archived session if its native process remains live; it grants no session mutati
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Read a live Claude session through the headless route; compare its servers/tools with native status and inspect them from a client session menu. |
+| L1 Smoke | Inspect live Claude MCP inventory and exercise controls without changing persisted configuration. |
 | L2 Routine | Automated codec, adapter/route, and client lifecycle coverage described below. |
 | L3 Release | No additional coverage. |
 | L4 Extended | No additional coverage. |
 | L5 Full | No additional coverage. |
+
+For L1, read a live Claude session through the headless route, compare its
+servers/tools with native status, and inspect them from a client session menu.
+Exercise explicit live-session controls and confirm persisted configuration is unchanged.
 
 Automated codec checks preserve distinct targets, empty/unavailable/failed tool
 states, authorization without grants, independent section availability, and

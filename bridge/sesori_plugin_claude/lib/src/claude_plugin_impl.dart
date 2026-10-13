@@ -62,6 +62,12 @@ final class ClaudePlugin({
       _processes.getMcpInventory(scope: scope);
 
   @override
+  Future<PluginMcpActionResult> executeMcpServerAction({
+    required PluginMcpServerTarget target,
+    required PluginMcpServerAction action,
+  }) => _processes.executeMcpServerAction(target: target, action: action);
+
+  @override
   String get launchDirectory => _launchDirectory;
 
   @override

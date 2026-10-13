@@ -643,15 +643,20 @@ can initiate login, and managed installation does **not** authenticate a harness
 
 Read-only MCP inventory and server details are **implemented** in the shared
 phone/desktop UI, opened from session menus and harness settings. Connection
-actions and authentication UI remain **not implemented**.
+action UI and authentication UI remain **not implemented**.
 The backend-neutral inventory wire models and optional plugin read interface
 are implemented. Claude implements session inventory through its resident
 process status control request, exposed headlessly by `POST /mcp/inventory`.
 The shared client API, repository, per-view loading service, and cubit are
 implemented, including reconnect and refresh failure state.
 Project/harness inventory and offered-connector discovery remain **not implemented**
-for Claude. The other harness adapters and management actions
-remain **not implemented**. Reads never start an integration or agent session.
+for Claude. Claude live-session reconnect, enable and disable are **implemented**
+headlessly through `POST /mcp/entry/action`, with authoritative refresh and scoped
+client invalidation. They change the live process only, with no persistent
+configuration write or implicit session launch; archived mutations are rejected.
+Each declared control includes its effect scope. Native MCP authentication,
+client action UI and the other harness adapters remain **not implemented**.
+Reads never start an integration or agent session.
 Connection, authorization and discovery state remain distinct; only a safe HTTP(S)
 endpoint origin crosses the wire. See
 [MCP management regression coverage](regression/mcp-management.md).
@@ -673,8 +678,10 @@ Its status omits tool descriptions. Approval frames name the tool at both pins;
 explicit `mcp_server` context is absent at 2.1.221 and present at 2.1.291.
 Plain-pipe login does not expose the
 no-browser URL/paste journey. Codex completion must be correlated by the
-adapter; a browser open does not confirm success. All native-supported rows
-remain **not implemented** as Sesori management actions at this checkpoint.
+adapter; a browser open does not confirm success. Claude live-session reconnect
+and enable/disable are **implemented** as Sesori management actions. Authentication,
+elicitation and the remaining native-supported management rows are **not implemented**
+at this checkpoint.
 
 Unauthenticated Codex `app/list` returned an empty catalog; this does not prove
 authenticated connector setup. Other harness management remains **not

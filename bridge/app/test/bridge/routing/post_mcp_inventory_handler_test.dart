@@ -3,7 +3,9 @@ import "dart:convert";
 import "package:drift/drift.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/mcp_repository.dart";
+import "package:sesori_bridge/src/routing/post_mcp_entry_action_handler.dart";
 import "package:sesori_bridge/src/routing/post_mcp_inventory_handler.dart";
+import "package:sesori_bridge/src/services/mcp_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -18,6 +20,9 @@ void main() {
   late _InventoryPlugin plugin;
   late TestPluginRuntime runtime;
   late PostMcpInventoryHandler handler;
+  late McpService service;
+  late PostMcpEntryActionHandler actionHandler;
+  final changes = <McpInventoryRequest>[];
 
   setUp(() async {
     db = createTestDatabase();
@@ -30,6 +35,12 @@ void main() {
         projectsDao: db.projectsDao,
       ),
     );
+    service = McpService(
+      repository: McpRepository(runtime: runtime, sessionDao: db.sessionDao, projectsDao: db.projectsDao),
+    );
+    actionHandler = PostMcpEntryActionHandler(mcpService: service);
+    changes.clear();
+    service.inventoryChanges.listen(changes.add);
     await recordSessionBinding(
       database: db,
       sessionId: "bridge-session",
@@ -43,6 +54,7 @@ void main() {
     );
   });
   tearDown(() async {
+    await service.dispose();
     await runtime.dispose();
     await db.close();
   });
@@ -57,6 +69,162 @@ void main() {
   McpInventoryResult decode(RelayResponse response) => McpInventoryResult.fromJson(
     jsonDecode(response.body!) as Map<String, dynamic>,
   );
+
+  Future<RelayResponse> act({required String pluginId, required McpScope scope, required McpServerAction action}) =>
+      actionHandler.routeForTest(
+        makeRequest(
+          "POST",
+          "/mcp/entry/action",
+          body: jsonEncode(
+            McpEntryActionRequest(
+              pluginId: pluginId,
+              action: McpServerEntryAction(
+                target: McpServerTarget(scope: scope, serverKey: "opaque-server"),
+                action: action,
+              ),
+            ),
+          ),
+        ),
+      );
+
+  test("unknown action variants reject before native mutation", () async {
+    for (final type in [null, "future", "connectorSetup"]) {
+      final body = const McpEntryActionRequest(
+        pluginId: "fixture",
+        action: McpServerEntryAction(
+          target: McpServerTarget(
+            scope: McpSessionScope(sessionId: "bridge-session"),
+            serverKey: "opaque-server",
+          ),
+          action: McpServerAction.enable,
+        ),
+      ).toJson();
+      (body["action"] as Map<String, dynamic>)["type"] = type;
+      final response = await actionHandler.routeForTest(
+        makeRequest("POST", "/mcp/entry/action", body: jsonEncode(body)),
+      );
+      expect(response.status, 400);
+    }
+    expect(plugin.actions, isEmpty);
+    expect(plugin.scopes, isEmpty);
+    expect(changes, isEmpty);
+  });
+
+  test("controls resolve native identity, refresh authoritatively and invalidate their bridge scope", () async {
+    final response = await act(
+      pluginId: "fixture",
+      scope: const McpSessionScope(sessionId: "bridge-session"),
+      action: McpServerAction.reconnect,
+    );
+    expect(response.status, 200);
+    final result =
+        McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>) as McpActionCompleted;
+    final (target, action) = plugin.actions.single;
+    expect((target.scope as PluginMcpSessionScope).sessionId, "native-session");
+    expect(action, PluginMcpServerAction.reconnect);
+    expect((result.inventory as McpInventorySnapshot).scope, const McpSessionScope(sessionId: "bridge-session"));
+    final server = (result.inventory as McpInventorySnapshot).entries.single as McpServerSnapshot;
+    expect(server.actions.single.action, McpServerAction.reconnect);
+    expect(server.actions.single.effectScope, McpActionEffectScope.session);
+    expect(
+      changes.single,
+      const McpInventoryRequest(
+        pluginId: "fixture",
+        scope: McpSessionScope(sessionId: "bridge-session"),
+      ),
+    );
+  });
+
+  test("controls reject wrong owner, missing and archived sessions before native access", () async {
+    expect(
+      (await act(
+        pluginId: "another",
+        scope: const McpSessionScope(sessionId: "bridge-session"),
+        action: McpServerAction.reconnect,
+      )).status,
+      400,
+    );
+    expect(
+      (await act(
+        pluginId: "fixture",
+        scope: const McpSessionScope(sessionId: "missing"),
+        action: McpServerAction.reconnect,
+      )).status,
+      404,
+    );
+    await (db.update(
+      db.sessionTable,
+    )..where((row) => row.sessionId.equals("bridge-session"))).write(const SessionTableCompanion(archivedAt: Value(1)));
+    expect(
+      (await act(
+        pluginId: "fixture",
+        scope: const McpSessionScope(sessionId: "bridge-session"),
+        action: McpServerAction.reconnect,
+      )).status,
+      409,
+    );
+    expect(plugin.actions, isEmpty);
+    expect(plugin.scopes, isEmpty);
+    expect(changes, isEmpty);
+  });
+
+  test("native control failure retains diagnostics locally without refreshing or exporting errors", () async {
+    plugin.actionResult = PluginMcpActionFailed(
+      cause: Exception("fixture-secret"),
+      causeStackTrace: StackTrace.current,
+    );
+    final response = await act(
+      pluginId: "fixture",
+      scope: const McpSessionScope(sessionId: "bridge-session"),
+      action: McpServerAction.reconnect,
+    );
+    expect(McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>), isA<McpActionFailed>());
+    expect(response.body, isNot(contains("fixture-secret")));
+    expect(plugin.scopes, isEmpty);
+    expect(changes, isEmpty);
+  });
+
+  test("completed controls do not turn a failed authoritative refresh into connected state", () async {
+    plugin.nextResult = PluginMcpInventoryReadFailed(
+      cause: Exception("fixture-secret"),
+      causeStackTrace: StackTrace.current,
+    );
+    final response = await act(
+      pluginId: "fixture",
+      scope: const McpSessionScope(sessionId: "bridge-session"),
+      action: McpServerAction.enable,
+    );
+    final result =
+        McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>) as McpActionCompleted;
+    expect(
+      result.inventory,
+      isA<McpInventoryUnavailable>().having((r) => r.reason, "reason", McpInventoryUnavailableReason.readFailed),
+    );
+    expect(changes, hasLength(1));
+  });
+
+  test("inactive integrations and unknown controls never start a runtime", () async {
+    runtime.stoppedPluginIds.add("fixture");
+    final response = await act(
+      pluginId: "fixture",
+      scope: const McpSessionScope(sessionId: "bridge-session"),
+      action: McpServerAction.reconnect,
+    );
+    expect(
+      McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>),
+      isA<McpActionUnavailable>().having((r) => r.reason, "reason", McpActionUnavailableReason.pluginInactive),
+    );
+    expect(
+      (await act(
+        pluginId: "fixture",
+        scope: const McpSessionScope(sessionId: "bridge-session"),
+        action: McpServerAction.unknown,
+      )).status,
+      400,
+    );
+    expect(plugin.actions, isEmpty);
+    expect(changes, isEmpty);
+  });
 
   test("maps bridge session IDs to native IDs and rebinds returned server targets", () async {
     final response = await read(
@@ -143,9 +311,13 @@ void main() {
 
   test("native read failures return typed state without native error payloads", () async {
     plugin.nextResult = PluginMcpInventoryReadFailed(
-      cause: Exception("https://fixture.test/private?token=fixture-secret"), causeStackTrace: StackTrace.current,
+      cause: Exception("https://fixture.test/private?token=fixture-secret"),
+      causeStackTrace: StackTrace.current,
     );
-    final response = await read(pluginId: "fixture", scope: const McpSessionScope(sessionId: "bridge-session"));
+    final response = await read(
+      pluginId: "fixture",
+      scope: const McpSessionScope(sessionId: "bridge-session"),
+    );
     expect(response.status, 200);
     expect((decode(response) as McpInventoryUnavailable).reason, McpInventoryUnavailableReason.readFailed);
     expect(response.body, isNot(contains("fixture-secret")));
@@ -156,7 +328,10 @@ void main() {
     await (db.update(db.sessionTable)..where((row) => row.sessionId.equals("bridge-session"))).write(
       const SessionTableCompanion(archivedAt: Value(1)),
     );
-    final response = await read(pluginId: "fixture", scope: const McpSessionScope(sessionId: "bridge-session"));
+    final response = await read(
+      pluginId: "fixture",
+      scope: const McpSessionScope(sessionId: "bridge-session"),
+    );
     expect(response.status, 200);
     expect(decode(response), isA<McpInventorySnapshot>());
     expect((plugin.scopes.single as PluginMcpSessionScope).sessionId, "native-session");
@@ -216,6 +391,17 @@ void main() {
 
 class _InventoryPlugin() extends FakeDerivedBridgePlugin implements McpManagementPluginApi {
   this : super(id: "fixture", launchDirectory: "/fixture", allSessions: const []);
+  @override
+  Future<PluginMcpActionResult> executeMcpServerAction({
+    required PluginMcpServerTarget target,
+    required PluginMcpServerAction action,
+  }) async {
+    actions.add((target, action));
+    return actionResult;
+  }
+
+  PluginMcpActionResult actionResult = const PluginMcpActionCompleted();
+  final actions = <(PluginMcpServerTarget, PluginMcpServerAction)>[];
   final List<PluginMcpScope> scopes = [];
   PluginMcpInventoryResult? nextResult;
 
@@ -227,6 +413,12 @@ class _InventoryPlugin() extends FakeDerivedBridgePlugin implements McpManagemen
       servers: const PluginMcpCatalogAvailable(),
       entries: List.unmodifiable([
         PluginMcpServerSnapshot(
+          actions: const [
+            PluginMcpServerActionCapability(
+              action: PluginMcpServerAction.reconnect,
+              effectScope: PluginMcpActionEffectScope.session,
+            ),
+          ],
           target: PluginMcpServerTarget(scope: scope, serverKey: "opaque-server"),
           name: "Fixture",
           description: null,
