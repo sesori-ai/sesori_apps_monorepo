@@ -11,6 +11,11 @@ sealed class NotificationData with _$NotificationData {
     @JsonKey(unknownEnumValue: NotificationEventType.unknown) required NotificationEventType? eventType,
     required String? sessionId,
     required String? projectId,
+    // The computer the session runs on, so tapping the push opens that computer.
+    // Null when the bridge was not registered as it sent the push (after a
+    // revocation, until it re-registers) or is a v1.9.1 bridge that predates
+    // the field; such a push opens on the current computer.
+    required String? bridgeId,
   }) = _NotificationData;
 
   factory fromJson(Map<String, dynamic> json) => _$NotificationDataFromJson(json);

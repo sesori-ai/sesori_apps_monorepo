@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/platform/local_notification_client.dart";
 import "package:sesori_dart_core/src/platform/notification_open_request.dart";
 import "package:sesori_dart_core/src/platform/push_messaging_source.dart";
@@ -9,7 +10,9 @@ import "package:sesori_dart_core/src/platform/push_notification_message.dart";
 import "package:sesori_dart_core/src/platform/route_dispatcher.dart";
 import "package:sesori_dart_core/src/platform/route_source.dart";
 import "package:sesori_dart_core/src/routing/app_routes.dart";
+import "package:sesori_dart_core/src/routing/computer_switch_dispatcher.dart";
 import "package:sesori_dart_core/src/routing/notification_open_dispatcher.dart";
+import "package:sesori_dart_core/src/services/selected_computer_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -22,6 +25,7 @@ void main() {
     late FakeLocalNotificationClient localNotificationClient;
     late RecordingRouteDispatcher routeDispatcher;
     late FakeRouteSource routeSource;
+    late RecordingSelectedComputerService selectedComputerService;
     late NotificationOpenDispatcher dispatcher;
 
     setUp(() {
@@ -30,12 +34,19 @@ void main() {
       localNotificationClient = FakeLocalNotificationClient();
       routeDispatcher = RecordingRouteDispatcher();
       routeSource = FakeRouteSource();
+      selectedComputerService = RecordingSelectedComputerService(routeDispatcher: routeDispatcher)
+        ..target = "br_current";
       dispatcher = NotificationOpenDispatcher(
         authSession: authSession,
         pushMessagingSource: pushMessagingSource,
         localNotificationClient: localNotificationClient,
         routeDispatcher: routeDispatcher,
         routeSource: routeSource,
+        selectedComputerService: selectedComputerService,
+        computerSwitchDispatcher: ComputerSwitchDispatcher(
+          selectedComputerService: selectedComputerService,
+          routeDispatcher: routeDispatcher,
+        ),
       );
     });
 
@@ -52,6 +63,7 @@ void main() {
         sessionId: "session-1",
         sessionTitle: "Weekly planning",
         accountId: null,
+        bridgeId: null,
       );
 
       await dispatcher.start();
@@ -78,6 +90,71 @@ void main() {
       );
     });
 
+    test("a push for the current computer opens without switching", () async {
+      pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
+        projectId: "project-1",
+        sessionId: "session-1",
+        sessionTitle: "Weekly planning",
+        accountId: null,
+        bridgeId: "br_current",
+      );
+
+      await dispatcher.start();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(selectedComputerService.selections, isEmpty);
+      expect(routeDispatcher.replacedStacks.single.paths.last, contains("session-1"));
+    });
+
+    test("a push for another computer switches to it, then opens the session", () async {
+      // The session on top has the same id on the previous computer; it must
+      // not keep the app there.
+      routeSource.currentLocation = "/projects/project-1/sessions/session-1";
+      pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
+        projectId: "project-1",
+        sessionId: "session-1",
+        sessionTitle: "Weekly planning",
+        accountId: null,
+        bridgeId: "br_other",
+      );
+
+      await dispatcher.start();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(selectedComputerService.selections, [(bridgeId: "br_other", source: ComputerSwitchSource.notification)]);
+      // The switch lands on Projects before it retargets, and the session
+      // stack is built only after the retarget.
+      expect(selectedComputerService.stacksBeforeSelect, [1]);
+      expect(routeDispatcher.replacedStacks, hasLength(2));
+      expect(routeDispatcher.replacedStacks.first.paths, [const AppRoute.projects().buildPath()]);
+      expect(
+        routeDispatcher.replacedStacks.last.paths.last,
+        const AppRoute.sessionDetail(
+          projectId: "project-1",
+          projectName: null,
+          sessionId: "session-1",
+          sessionTitle: "Weekly planning",
+          readOnly: false,
+          fromLaunch: false,
+        ).buildPath(),
+      );
+    });
+
+    test("a push without a computer id opens on the current computer", () async {
+      pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
+        projectId: "project-1",
+        sessionId: "session-1",
+        sessionTitle: "Weekly planning",
+        accountId: null,
+        bridgeId: null,
+      );
+
+      await dispatcher.start();
+
+      expect(selectedComputerService.selections, isEmpty);
+      expect(routeDispatcher.replacedStacks, hasLength(1));
+    });
+
     test("leaves the stack alone when that session detail is already on top", () async {
       // Display-only query parameters differ from what the notification would
       // build; they must not defeat the match.
@@ -87,6 +164,7 @@ void main() {
         sessionId: "session-1",
         sessionTitle: "Weekly planning",
         accountId: null,
+        bridgeId: null,
       );
 
       await dispatcher.start();
@@ -106,6 +184,7 @@ void main() {
         sessionId: "session-1",
         sessionTitle: "Weekly planning",
         accountId: null,
+        bridgeId: null,
       );
 
       await dispatcher.start();
@@ -120,6 +199,7 @@ void main() {
         sessionId: "session-1",
         sessionTitle: "Weekly planning",
         accountId: null,
+        bridgeId: null,
       );
 
       await dispatcher.start();
@@ -134,6 +214,7 @@ void main() {
         sessionId: "session-1",
         sessionTitle: "Weekly planning",
         accountId: null,
+        bridgeId: null,
       );
 
       await dispatcher.start();
@@ -153,6 +234,7 @@ void main() {
           sessionId: "session-1",
           sessionTitle: "First title",
           accountId: null,
+          bridgeId: null,
         ),
       );
       await startFuture;
@@ -163,6 +245,7 @@ void main() {
           sessionId: "session-2",
           sessionTitle: "Latest title",
           accountId: null,
+          bridgeId: null,
         ),
       );
       await Future<void>.delayed(Duration.zero);
@@ -194,6 +277,7 @@ void main() {
         sessionId: "session-1",
         sessionTitle: "Weekly planning",
         accountId: null,
+        bridgeId: null,
       );
       pushMessagingSource.emitOpen(request);
       pushMessagingSource.emitOpen(request);
@@ -227,6 +311,7 @@ void main() {
           sessionId: "session-1",
           sessionTitle: "Late title",
           accountId: null,
+          bridgeId: null,
         ),
       );
       await startFuture;
@@ -314,6 +399,7 @@ class FakeLocalNotificationClient() implements LocalNotificationClient {
     required String? projectId,
     required String? sessionTitle,
     required String? accountId,
+    required String? bridgeId,
   }) async {}
 
   @override
@@ -332,6 +418,32 @@ class RecordingRouteDispatcher() implements RouteDispatcher {
   void replaceStack({required RouteStack stack}) {
     replacedStacks.add(stack);
   }
+}
+
+class RecordingSelectedComputerService({required final RecordingRouteDispatcher _routeDispatcher})
+    implements SelectedComputerService {
+  String? target;
+  final List<({String bridgeId, ComputerSwitchSource source})> selections = [];
+  final List<int> stacksBeforeSelect = [];
+
+  @override
+  Future<String?> targetBridgeId() async => target;
+
+  @override
+  Future<void> select({required String bridgeId, required ComputerSwitchSource source}) async {
+    stacksBeforeSelect.add(_routeDispatcher.replacedStacks.length);
+    selections.add((bridgeId: bridgeId, source: source));
+    target = bridgeId;
+  }
+
+  @override
+  Future<void> ensureInitialTarget({required String? localBridgeId}) async {}
+
+  @override
+  Future<void> followLocalComputer({required String bridgeId}) async {}
+
+  @override
+  void forgetPick() {}
 }
 
 class FakeRouteSource() implements RouteSource {

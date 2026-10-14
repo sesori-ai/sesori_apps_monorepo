@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../auth/bridge_id_provider.dart";
 import "../auth/token_refresh_exception.dart";
 import "push_notification_client.dart";
 import "push_notification_content_builder.dart";
@@ -15,6 +16,7 @@ class PushDispatcher({
   required final PushRateLimiter _rateLimiter,
   required final PushSessionStateTracker _tracker,
   required final PushNotificationContentBuilder _contentBuilder,
+  required final BridgeIdProvider _bridgeIdProvider,
 }) {
   void dispatchImmediateIfApplicable(SesoriSseEvent event) {
     _sendImmediateNotificationIfApplicable(event);
@@ -99,6 +101,8 @@ class PushDispatcher({
       sessionId: sessionId,
       collapseKey: collapseKey,
       projectId: projectId,
+      // Names this computer, so tapping the push opens it on the phone.
+      bridgeId: _bridgeIdProvider.bridgeId,
     );
 
     unawaited(

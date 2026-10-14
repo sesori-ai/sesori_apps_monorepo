@@ -52,6 +52,11 @@ external.
   valid session can be restored, and routes it only when its account binding matches the restored account. Missing or
   mismatched bindings and every open after an account-ending transition are discarded rather than inherited by a later
   login.
+- A mobile session push names the computer it came from. Tapping one for another computer switches to that computer
+  (the computer switch, reported with source `notification`), lands on Projects, and then opens the session, which loads
+  once the new computer's connection is up. A push for the current computer, or one without a computer id (from an
+  older bridge), opens on the current computer as before. A foreground push keeps its computer id in the local
+  notification it renders.
 - Desktop attention listens directly to relay SSE without registering a push token. A permission-asked or
   question-asked event uses `displaySessionId` when present, resolves that session's title/project, and shows only while
   the desktop window is hidden or unfocused and the desktop-owned Settings → Notifications switch is enabled.
@@ -70,7 +75,8 @@ external.
   service subscribes before Linux initialization can emit launch callbacks and retries a transient initialization
   failure on a later eligible attention request. A failed title lookup or native notification operation is logged and
   cannot fail session work or desktop startup.
-- Mobile payloads carry category, event type, session and project identity, and user-visible event content. Question and
+- Mobile payloads carry category, event type, session, project, and computer (bridge id) identity, and user-visible
+  event content. Question and
   permission bodies use backend text; update bodies may include the version; completion uses the bounded session title
   and up to ten whitespace-delimited words of the latest assistant text. The completion title is read from the stored
   session at send time, so a session whose in-memory push state was pruned for idleness or lost to a bridge restart
@@ -82,12 +88,12 @@ external.
 |---|---|
 | L1 Smoke | Not included because external notification delivery is not a product heartbeat. |
 | L2 Routine | Bridge-push, Codex lifecycle, and desktop attention coverage detailed below. |
-| L3 Release | Mobile client end to end on the release-target platform with a fake messaging source: registration including the device ID, token refresh, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral, cancellation on open. Desktop automated coverage: hidden/unfocused local alert, click-to-focus/session navigation, resolve cancellation, toggle silence, logout isolation, and no push registration. |
-| L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, disabling a category on one device suppressing its remote delivery there while another device still receives it, completion from another production plugin, account switch and logout isolation, a child prompt opening its root. |
+| L3 Release | Mobile client end to end on the release-target platform with a fake messaging source: registration including the device ID, token refresh, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral and a switch to another computer, cancellation on open. Desktop automated coverage: hidden/unfocused local alert, click-to-focus/session navigation, resolve cancellation, toggle silence, logout isolation, and no push registration. |
+| L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, disabling a category on one device suppressing its remote delivery there while another device still receives it, completion from another production plugin, account switch and logout isolation, a child prompt opening its root, a tap on another computer's push opening that computer and its session. |
 | L5 Full | Both mobile platforms end to end: OS permission denied then granted, collapse and replace across repeated notifications for one session, system-update notifications, and long-run maintenance pruning under many sessions. |
 
 L2 bridge-push coverage uses automated and headless bridge tests, a representative plugin, and a fake push client:
-current event-to-payload content mapping, collapse identity, project attribution, completion debounce,
+current event-to-payload content mapping, collapse identity, project attribution, the computer id, completion debounce,
 pending-interaction blocking, abort suppression, completion cooldowns, rapid permission/question sends sharing a display
 session, and maintenance step isolation.
 
@@ -126,6 +132,8 @@ provider because current payload content leaves the encrypted channel.
   completion for cancelled work, or a Codex root completes while a tracked
   child still runs or completes twice when its deferred idle is released.
 - Notifications for one session do not collapse, or a tap opens the wrong session or a child instead of its root.
+- A tap on another computer's push opens the session on the current computer, fails to load it because the session
+  screen started before the switch, or a push without a computer id switches computers.
 - A question or permission is suppressed by an earlier interaction or completion cooldown.
 - Delivery continues after logout, or a new account receives the prior account's notifications. Desktop registers a
   push token, alerts while focused or disabled, fails to reconsider still-pending attention after a gate opens, leaks
@@ -155,6 +163,8 @@ provider because current payload content leaves the encrypted channel.
   title, an assistant-response prefix, an update version, and a project identity
   that may be a local path. The ten-word completion limit has no character bound
   for one long token. This is a known privacy limitation, not the desired target.
+- Desktop attention alerts carry no computer id. One clicked after the desktop switched to another computer opens on
+  the computer now viewed.
 - Fakes cannot prove background or terminated-app handling, OS permission behavior, or collapse rendering.
 - macOS DarkWake classification is best effort. Startup during an existing DarkWake and missed native callbacks remain
   unclassifiable. Real sleep, canceled sleep, maintenance wake, clamshell, and display-only sleep tests were not run on
@@ -162,10 +172,12 @@ provider because current payload content leaves the encrypted channel.
 
 ## Sources
 
-`bridge/app/test/push/`, `shared/sesori_shared/test/notifications/`, `client/module_core/test/services/`,
+`bridge/app/test/push/`, `shared/sesori_shared/test/notifications/`,
+`shared/sesori_shared/test/models/notification_data_test.dart`, `client/module_core/test/services/`,
 `client/module_core/test/routing/`, `client/app/test/core/platform/`, `client/module_desktop_core/test/services/`, and
 `client/desktop/test/core/platform/`; production code under `bridge/app/lib/src/push/`,
-`client/module_core/lib/src/services/`, `client/module_desktop_core/lib/src/services/`, and
+`client/module_core/lib/src/services/`, `client/module_core/lib/src/routing/`,
+`client/module_desktop_core/lib/src/services/`, and
 `client/desktop/lib/core/platform/`. macOS notification policy: `bridge/app/native/macos_power_observer.c`,
 `bridge/app/lib/src/repositories/system_power_event_repository.dart`,
 `bridge/app/lib/src/api/macos_system_power_observer_api.dart`,

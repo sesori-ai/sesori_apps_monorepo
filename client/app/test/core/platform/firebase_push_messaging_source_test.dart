@@ -35,6 +35,7 @@ void main() {
           "eventType": "question_asked",
           "projectId": "proj_1",
           "sessionId": "ses_1",
+          "bridgeId": "br_workstation",
         },
         notification: RemoteNotification(
           title: "Session title",
@@ -48,6 +49,7 @@ void main() {
       expect(request!.projectId, equals("proj_1"));
       expect(request.sessionId, equals("ses_1"));
       expect(request.sessionTitle, equals("Session title"));
+      expect(request.bridgeId, equals("br_workstation"));
     });
 
     test("returns null when projectId is missing", () {

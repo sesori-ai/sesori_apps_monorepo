@@ -3,13 +3,16 @@ import "dart:async";
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart";
 
+import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../logging/logging.dart";
 import "../platform/local_notification_client.dart";
 import "../platform/notification_open_request.dart";
 import "../platform/push_messaging_source.dart";
 import "../platform/route_dispatcher.dart";
 import "../platform/route_source.dart";
+import "../services/selected_computer_service.dart";
 import "app_routes.dart";
+import "computer_switch_dispatcher.dart";
 
 @lazySingleton
 class NotificationOpenDispatcher({
@@ -18,6 +21,8 @@ class NotificationOpenDispatcher({
   required final LocalNotificationClient _localNotificationClient,
   required final RouteDispatcher _routeDispatcher,
   required final RouteSource _routeSource,
+  required final SelectedComputerService _selectedComputerService,
+  required final ComputerSwitchDispatcher _computerSwitchDispatcher,
 }) {
   StreamSubscription<AuthState>? _authSubscription;
   StreamSubscription<NotificationOpenRequest>? _pushOpenSubscription;
@@ -83,7 +88,7 @@ class NotificationOpenDispatcher({
       return;
     }
 
-    _dispatch(request);
+    unawaited(_dispatch(request));
   }
 
   void _onAuthStateChanged(AuthState state) {
@@ -94,13 +99,13 @@ class NotificationOpenDispatcher({
           return;
         }
         _pendingOpenRequest = null;
-        _dispatch(pendingOpenRequest);
+        unawaited(_dispatch(pendingOpenRequest));
       case AuthInitial() || AuthUnauthenticated() || AuthAuthenticating() || AuthFailed():
         return;
     }
   }
 
-  void _dispatch(NotificationOpenRequest request) {
+  Future<void> _dispatch(NotificationOpenRequest request) async {
     final sessionDetail = AppRouteSessionDetail(
       projectId: request.projectId,
       projectName: null,
@@ -110,15 +115,24 @@ class NotificationOpenDispatcher({
       fromLaunch: false,
     );
 
-    // Replacing the stack tears down the live session detail screen and builds
-    // a new one, whose cubit starts from `loading` and refetches the whole
-    // session before any prompt can be shown. When that screen is already the
-    // one on top, the notification asks for something the user is looking at:
-    // the mounted screen surfaces the prompt through its own event stream, so
-    // navigating again only costs a reload.
-    final location = _routeSource.currentLocation;
-    if (location != null && sessionDetail.showsEditableLocation(location: Uri.parse(location))) {
-      return;
+    final bridgeId = request.bridgeId;
+    if (bridgeId != null && bridgeId != await _selectedComputerService.targetBridgeId()) {
+      // The switch returns to Projects and retargets the connection before the
+      // session screen below is built, so that screen waits for the new
+      // computer's connection and loads the session there, as after a cold
+      // launch. Whatever is on top belongs to the previous computer.
+      await _computerSwitchDispatcher.switchTo(bridgeId: bridgeId, source: ComputerSwitchSource.notification);
+    } else {
+      // Replacing the stack tears down the live session detail screen and builds
+      // a new one, whose cubit starts from `loading` and refetches the whole
+      // session before any prompt can be shown. When that screen is already the
+      // one on top, the notification asks for something the user is looking at:
+      // the mounted screen surfaces the prompt through its own event stream, so
+      // navigating again only costs a reload.
+      final location = _routeSource.currentLocation;
+      if (location != null && sessionDetail.showsEditableLocation(location: Uri.parse(location))) {
+        return;
+      }
     }
 
     _routeDispatcher.replaceStack(

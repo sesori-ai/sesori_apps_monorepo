@@ -63,6 +63,7 @@ void main() {
             eventType: NotificationEventType.questionAsked,
             sessionId: "session-a",
             projectId: null,
+            bridgeId: "br_this_computer",
           ),
         ),
       );
@@ -79,6 +80,7 @@ void main() {
           "category": "ai_interaction",
           "eventType": "question_asked",
           "sessionId": "session-a",
+          "bridgeId": "br_this_computer",
           // projectId omitted: null keys are dropped from wire payloads.
         },
       });
@@ -103,6 +105,7 @@ void main() {
               eventType: NotificationEventType.questionAsked,
               sessionId: null,
               projectId: null,
+              bridgeId: null,
             ),
           ),
         ),
@@ -142,6 +145,7 @@ void main() {
             eventType: NotificationEventType.questionAsked,
             sessionId: null,
             projectId: null,
+            bridgeId: null,
           ),
         ),
       );
@@ -190,6 +194,7 @@ void main() {
             eventType: NotificationEventType.questionAsked,
             sessionId: null,
             projectId: null,
+            bridgeId: null,
           ),
         ),
       );
@@ -236,6 +241,7 @@ void main() {
               eventType: NotificationEventType.questionAsked,
               sessionId: null,
               projectId: null,
+              bridgeId: null,
             ),
           ),
         ),
@@ -277,6 +283,7 @@ void main() {
               eventType: NotificationEventType.questionAsked,
               sessionId: null,
               projectId: null,
+              bridgeId: null,
             ),
           ),
         ),
@@ -319,6 +326,7 @@ void main() {
               eventType: NotificationEventType.questionAsked,
               sessionId: null,
               projectId: null,
+              bridgeId: null,
             ),
           ),
         ),

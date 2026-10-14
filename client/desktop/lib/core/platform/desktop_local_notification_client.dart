@@ -103,6 +103,7 @@ class DesktopLocalNotificationClient({required final FlutterLocalNotificationsPl
         sessionId: sessionId,
         sessionTitle: tapEvent.sessionTitle,
         accountId: accountId,
+        bridgeId: tapEvent.bridgeId,
       );
     } on Object catch (error, stackTrace) {
       logw("Failed to parse desktop local-notification payload", error, stackTrace);
@@ -126,6 +127,7 @@ class DesktopLocalNotificationClient({required final FlutterLocalNotificationsPl
     required String? projectId,
     required String? sessionTitle,
     required String? accountId,
+    required String? bridgeId,
   }) async {
     final id = sessionId == null
         ? DateTime.now().millisecondsSinceEpoch.remainder(2147483647)
@@ -136,6 +138,7 @@ class DesktopLocalNotificationClient({required final FlutterLocalNotificationsPl
         projectId: projectId,
         sessionTitle: sessionTitle,
         accountId: accountId,
+        bridgeId: bridgeId,
       ).toJson(),
     );
     await _plugin.show(

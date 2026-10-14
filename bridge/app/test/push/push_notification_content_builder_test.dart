@@ -55,6 +55,7 @@ void main() {
         collapseKey: "${data.category.id}-${sessionId ?? "global"}",
         sessionId: sessionId,
         projectId: null,
+        bridgeId: "br_this_computer",
       );
 
       expect(payload.title, equals("Question requires input"));
@@ -63,6 +64,7 @@ void main() {
       expect(payload.data?.sessionId, equals("session-a"));
       expect(payload.data?.category, equals(NotificationCategory.aiInteraction));
       expect(payload.data?.eventType, equals(NotificationEventType.questionAsked));
+      expect(payload.data?.bridgeId, equals("br_this_computer"));
     });
 
     test("omits session data for non-session events", () {
@@ -78,6 +80,7 @@ void main() {
         collapseKey: "${data.category.id}-${sessionId ?? "global"}",
         sessionId: sessionId,
         projectId: null,
+        bridgeId: "br_this_computer",
       );
 
       expect(payload.collapseKey, equals("system_update-global"));
