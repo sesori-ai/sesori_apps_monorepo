@@ -11,13 +11,48 @@ DesktopReleaseChannel parseDesktopReleaseChannel({required String value}) => Des
 String desktopBundleDefines({required DesktopBundleIdentity identity, required DesktopReleaseChannel channel}) =>
     "${DesktopBundleIdentity.defineName}=${identity.encode()}\n${DesktopReleaseChannel.defineName}=${channel.name}\n";
 
+enum DesktopBundleBuildMode() {
+  native,
+  gui,
+  probe,
+  assemble,
+}
+
 ArgParser desktopBundleArgumentParser() => ArgParser()
+  ..addOption(
+    "mode",
+    allowed: DesktopBundleBuildMode.values.map((mode) => mode.name),
+    defaultsTo: DesktopBundleBuildMode.native.name,
+  )
+  ..addOption("architecture", allowed: DesktopBundleArchitecture.values.map((architecture) => architecture.name))
+  ..addOption("gui-input", help: "Prepared macOS GUI directory, required by assemble mode.")
+  ..addOption("source-root", help: "Committed product checkout; defaults to this tool's checkout.")
   ..addOption("build-number", help: "Required positive desktop build number.")
   ..addOption("channel", allowed: DesktopReleaseChannel.values.map((channel) => channel.name), defaultsTo: "stable")
   ..addOption("output", help: "Required new output directory; existing directories are never replaced.");
 
-/// Builds both components from this checkout and stages an unsigned native
-/// desktop bundle. Signing/installers remain platform-specific subsequent steps.
+DesktopBundleArchitecture desktopBuildArchitecture({
+  required DesktopBundleBuildMode mode,
+  required DesktopBundleArchitecture nativeArchitecture,
+  required String? targetArchitecture,
+}) {
+  switch (mode) {
+    case DesktopBundleBuildMode.gui || DesktopBundleBuildMode.probe:
+      if (targetArchitecture == null) throw ArgumentError("GUI/probe builds require --architecture");
+      return DesktopBundleArchitecture.values.byName(targetArchitecture);
+    case DesktopBundleBuildMode.native || DesktopBundleBuildMode.assemble:
+      if (targetArchitecture != null) throw ArgumentError("Helper builds must use the native host architecture");
+      return nativeArchitecture;
+  }
+}
+
+String macosXcodeArchitecture({required DesktopBundleArchitecture architecture}) => switch (architecture) {
+  DesktopBundleArchitecture.x64 => "x86_64",
+  DesktopBundleArchitecture.arm64 => "arm64",
+};
+
+/// Builds a complete native bundle, or hands macOS GUI/probe builds from an ARM
+/// compiler to a native helper/packaging host. No operation signs or installs.
 Future<void> main(List<String> arguments) async {
   final ArgParser parser = desktopBundleArgumentParser();
   try {
@@ -26,6 +61,12 @@ Future<void> main(List<String> arguments) async {
     final String? outputOption = options.option("output");
     if (numberOption == null || outputOption == null) {
       throw ArgumentError("Both --build-number and --output are required");
+    }
+    final DesktopBundleBuildMode mode = DesktopBundleBuildMode.values.byName(
+      options.option("mode") ?? DesktopBundleBuildMode.native.name,
+    );
+    if (mode != DesktopBundleBuildMode.native && !Platform.isMacOS) {
+      throw UnsupportedError("Split GUI builds are macOS-only");
     }
     final DesktopReleaseChannel channel = parseDesktopReleaseChannel(
       value: options.option("channel") ?? DesktopReleaseChannel.stable.name,
@@ -38,8 +79,11 @@ Future<void> main(List<String> arguments) async {
     if (output.existsSync()) {
       throw StateError("Output already exists: ${output.path}. Choose a new staging directory.");
     }
-    final Directory desktop = File(Platform.script.toFilePath()).parent.parent;
-    final Directory root = desktop.parent.parent;
+    final String? sourceOption = options.option("source-root");
+    final Directory root = sourceOption == null
+        ? File(Platform.script.toFilePath()).parent.parent.parent.parent
+        : Directory(path.absolute(sourceOption));
+    final Directory desktop = Directory(path.join(root.path, "client", "desktop"));
     final Directory bridge = Directory(path.join(root.path, "bridge", "app"));
     await validateDesktopBundleSource(root: root);
     final String version = _version(pubspec: File(path.join(desktop.path, "pubspec.yaml")));
@@ -51,7 +95,11 @@ Future<void> main(List<String> arguments) async {
       buildNumber: buildNumber,
       sourceSha: await _capture(executable: "git", arguments: ["rev-parse", "HEAD"], directory: root),
       os: DesktopBundleOs.values.byName(Platform.operatingSystem),
-      architecture: DesktopBundleArchitecture.fromAbi(abi: Abi.current()),
+      architecture: desktopBuildArchitecture(
+        mode: mode,
+        nativeArchitecture: DesktopBundleArchitecture.fromAbi(abi: Abi.current()),
+        targetArchitecture: options.option("architecture"),
+      ),
     );
     await output.create(recursive: true);
     // A dotenv file avoids shell-dependent escaping of JSON in Flutter's command
@@ -66,57 +114,35 @@ Future<void> main(List<String> arguments) async {
       File(Platform.resolvedExecutable).parent.parent.parent.parent.path,
       Platform.isWindows ? "flutter.bat" : "flutter",
     );
-    await _build(
-      executable: Platform.resolvedExecutable,
-      arguments: ["pub", "get", "--enforce-lockfile"],
-      directory: bridge.parent,
-    );
-    await _build(executable: flutter, arguments: ["pub", "get", "--enforce-lockfile"], directory: desktop.parent);
-    await _build(
-      executable: Platform.resolvedExecutable,
-      arguments: ["build", "cli", "-o", "build/cli"],
-      directory: bridge,
-    );
-    final Directory helper = Directory(path.join(bridge.path, "build", "cli", "bundle"));
-    final String bridgeName = identity.os == DesktopBundleOs.windows ? "bridge.exe" : "bridge";
-    final String helperVersion = await _capture(
-      executable: path.join(helper.path, "bin", bridgeName),
-      arguments: ["--version"],
-      directory: root,
-    );
-    if (helperVersion != version) {
-      throw StateError("Built helper reports $helperVersion, expected $version");
+    final Directory gui;
+    if (mode == DesktopBundleBuildMode.assemble) {
+      final String? input = options.option("gui-input");
+      if (input == null) throw ArgumentError("Assembly requires --gui-input");
+      gui = await preparedDesktopGui(directory: Directory(path.absolute(input)), identity: identity, channel: channel);
+    } else {
+      if (options.wasParsed("gui-input")) throw ArgumentError("--gui-input is only valid for assembly");
+      gui = await _buildGui(
+        desktop: desktop,
+        flutter: flutter,
+        identity: identity,
+        defines: defines,
+        platformProbe: mode == DesktopBundleBuildMode.probe,
+      );
     }
-    await _build(
-      executable: flutter,
-      arguments: [
-        "build",
-        identity.os.name,
-        "--release",
-        "--build-name=$version",
-        "--build-number=$buildNumber",
-        "--dart-define-from-file=${defines.path}",
-      ],
-      directory: desktop,
+    final Directory stagedGui = Directory(
+      path.join(output.path, identity.os == DesktopBundleOs.macos ? "Sesori.app" : "bundle"),
     );
+    switch (mode) {
+      case DesktopBundleBuildMode.gui || DesktopBundleBuildMode.probe:
+        await _copyDirectory(source: gui, destination: stagedGui);
+      case DesktopBundleBuildMode.native || DesktopBundleBuildMode.assemble:
+        final Directory helper = await _buildHelper(bridge: bridge, identity: identity);
+        await stageDesktopBundle(gui: gui, helper: helper, destination: stagedGui, identity: identity);
+    }
     await _capture(
       executable: "git",
       arguments: ["diff", "--exit-code", "--", "bridge/pubspec.lock", "client/pubspec.lock"],
       directory: root,
-    );
-    final String guiRelativePath = switch (identity.os) {
-      DesktopBundleOs.macos => "macos/Build/Products/Release/Sesori.app",
-      DesktopBundleOs.windows => "windows/${identity.architecture.name}/runner/Release",
-      DesktopBundleOs.linux => "linux/${identity.architecture.name}/release/bundle",
-    };
-    final Directory stagedGui = Directory(
-      path.join(output.path, identity.os == DesktopBundleOs.macos ? "Sesori.app" : "bundle"),
-    );
-    await stageDesktopBundle(
-      gui: Directory(path.join(desktop.path, "build", guiRelativePath)),
-      helper: helper,
-      destination: stagedGui,
-      identity: identity,
     );
     // Flutter may regenerate tracked native project files on a host. Keep the
     // actual diff, not just a dirty bit; do not call this a clean signed release.
@@ -135,8 +161,90 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-/// Preserves the GUI and complete CLI bundle, including native libraries and
-/// framework symlinks. The caller builds both with [identity] from one checkout.
+/// A same-run GUI must match the native assembler's committed source and channel.
+/// No new manifest schema: compare the exact typed defines passed to Flutter.
+Future<Directory> preparedDesktopGui({
+  required Directory directory,
+  required DesktopBundleIdentity identity,
+  required DesktopReleaseChannel channel,
+}) async {
+  final String defines = await File(path.join(directory.path, "dart-defines.env")).readAsString(encoding: utf8);
+  if (defines != desktopBundleDefines(identity: identity, channel: channel)) {
+    throw StateError("Prepared GUI identity/channel differs from the selected product: ${directory.path}");
+  }
+  final String changes = await File(path.join(directory.path, "build-source-changes.patch"))
+      .readAsString(encoding: utf8);
+  if (changes.isNotEmpty) throw StateError("Prepared GUI contains build-generated source changes: ${directory.path}");
+  return Directory(path.join(directory.path, "Sesori.app"));
+}
+
+Future<Directory> _buildGui({
+  required Directory desktop,
+  required String flutter,
+  required DesktopBundleIdentity identity,
+  required File defines,
+  required bool platformProbe,
+}) async {
+  await _build(
+    executable: flutter,
+    arguments: ["pub", "get", "--enforce-lockfile"],
+    directory: desktop.parent,
+    environment: {},
+  );
+  await _build(
+    executable: flutter,
+    arguments: [
+      "build",
+      identity.os.name,
+      "--release",
+      "--no-pub",
+      "--build-name=${identity.version}",
+      "--build-number=${identity.buildNumber}",
+      "--dart-define-from-file=${defines.path}",
+      if (platformProbe) ...["--target", "test/native/packaged_platform_probe.dart"],
+    ],
+    directory: desktop,
+    environment: {
+      if (identity.os == DesktopBundleOs.macos)
+        "FLUTTER_XCODE_ARCHS": macosXcodeArchitecture(architecture: identity.architecture),
+    },
+  );
+  final String guiRelativePath = switch (identity.os) {
+    DesktopBundleOs.macos => "macos/Build/Products/Release/Sesori.app",
+    DesktopBundleOs.windows => "windows/${identity.architecture.name}/runner/Release",
+    DesktopBundleOs.linux => "linux/${identity.architecture.name}/release/bundle",
+  };
+  return Directory(path.join(desktop.path, "build", guiRelativePath));
+}
+
+Future<Directory> _buildHelper({required Directory bridge, required DesktopBundleIdentity identity}) async {
+  await _build(
+    executable: Platform.resolvedExecutable,
+    arguments: ["pub", "get", "--enforce-lockfile"],
+    directory: bridge.parent,
+    environment: {},
+  );
+  await _build(
+    executable: Platform.resolvedExecutable,
+    arguments: ["build", "cli", "-o", "build/cli"],
+    directory: bridge,
+    environment: {},
+  );
+  final Directory helper = Directory(path.join(bridge.path, "build", "cli", "bundle"));
+  final String bridgeName = identity.os == DesktopBundleOs.windows ? "bridge.exe" : "bridge";
+  final String helperVersion = await _capture(
+    executable: path.join(helper.path, "bin", bridgeName),
+    arguments: ["--version"],
+    directory: bridge,
+  );
+  if (helperVersion != identity.version) {
+    throw StateError("Built helper reports $helperVersion, expected ${identity.version}");
+  }
+  return helper;
+}
+
+/// Preserves the GUI and complete native CLI bundle, including native libraries
+/// and framework symlinks. The compiled GUI and helper share [identity].
 Future<void> stageDesktopBundle({
   required Directory gui,
   required Directory helper,
@@ -232,11 +340,17 @@ Future<String> _capture({
   return result.stdout.toString().trim();
 }
 
-Future<void> _build({required String executable, required List<String> arguments, required Directory directory}) async {
+Future<void> _build({
+  required String executable,
+  required List<String> arguments,
+  required Directory directory,
+  required Map<String, String> environment,
+}) async {
   final Process process = await Process.start(
     executable,
     arguments,
     workingDirectory: directory.path,
+    environment: environment,
     mode: ProcessStartMode.inheritStdio,
     runInShell: Platform.isWindows,
   );

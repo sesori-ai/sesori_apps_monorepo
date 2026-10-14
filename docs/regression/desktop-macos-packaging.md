@@ -15,15 +15,24 @@ packaging capability does not imply public downloads or an updater have shipped.
   targets and package-native helper checks. Missing pinned Xcode must fail setup rather
   than silently use another installed compiler. The same selection applies to desktop
   CI/probes, reusable bridge builds and iOS TestFlight builds.
-- Native qualification/package builds select only the package CPU through Flutter's
-  Xcode `ARCHS` override, including the separate platform-probe app. Run SDK bootstrap,
-  locked dependency resolution, product staging and probe compilation in separate steps
-  so job environment exports take effect and their costs remain separately observable.
-  Native build inspection requires single-CPU app and Dart AOT framework binaries;
-  prebuilt frameworks may remain universal. Keep both native runners, signing, installed
-  probes and existing acceptance checks; this is not cross-compilation or reduced QA.
-- Build from committed source with the pinned native SDK. Reject a nonempty
-  build-recorded source patch before supplying signing credentials. Preserve framework
+- ARM `xcode-27` jobs compile both x64 and arm64 GUI/platform-probe payloads, selecting
+  only the target CPU through each Flutter build's Xcode `ARCHS` override. Native build
+  inspection requires single-CPU app and Dart AOT framework binaries; prebuilt frameworks
+  may remain universal. Bridge helper compilation, signing, notarization, extracted-helper
+  E2E and installed probes stay on the package's native CPU. No Rosetta is used.
+- Transfer same-run GUI/probe payloads in tar archives to preserve framework links and
+  executable modes. Native assembly requires the exact source/version/build/OS/CPU/channel
+  defines and a clean GUI source patch before building the helper or supplying signing
+  credentials. Record ARM compiler CPU/toolchain separately from the target/native-helper
+  host; GUI header inspection never executes cross-target code. GUI artifacts are not
+  complete packages and have no signing environment or signing-secret inputs.
+- Keep SDK bootstrap, locked dependency resolution, GUI, probe and native assembly costs
+  separately visible. Windows/Linux native qualification must not wait on macOS GUI jobs.
+  Preflight and existing-package replay must still run when the GUI producer is skipped.
+- Build from committed source with its pinned SDK. Workflow-owned staging tools use the
+  selected product's explicit package configuration and source root, including exact older
+  main-ancestor rebuilds; never silently compile the workflow checkout instead. Reject a
+  nonempty build-recorded source patch before supplying signing credentials. Preserve framework
   symlinks, native CPU support and the complete `Contents/Helpers/bridge/bin`–`lib`
   relationship. The packaged identity continues to control helper admission from
   `Contents/Resources/desktop-bundle.json`; keep JSON out of the code-only Helpers
@@ -89,6 +98,11 @@ restoration or authorization; those require new source-bound native evidence.
 | L3 | Client end to end; installed macOS x64 + arm64; representative production plugin | Download and install the signed app into Applications without a security bypass. Verify actual GUI startup, browser login/return, token write/read/relaunch restoration, helper control, runtime launch and user-approved filesystem/TCC behavior. |
 | L4 | Packaged/client end to end; both Mac CPUs | Private helper-Off replacement plus the full coverage below. |
 | L5 | Packaged/client end to end; both Mac CPUs | Include the declared minimum OS and clean-host cases. Combine with the distribution plan's full platform/public ship gate; missing hosts or credentials remain Blocked, not Pass. |
+
+L1 also covers GUI handoff identity/channel/source-patch refusal, explicit product-root
+staging, ARM compiler versus target evidence, native-helper admission, and workflow
+ordering/credential boundaries. Credential-free native CI checks both assembled Mac
+CPUs and relocated helpers; it does not substitute for the signed L2 installed probes.
 
 At L4, install strictly increasing signed DMGs, exercise real tray Quit, reject
 relaunch/orphans and preserve bounded desktop/shared-state and login-registration
