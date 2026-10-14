@@ -125,7 +125,22 @@ def bootstrap(*, sdk: Path, target_os: str, arch: str) -> None:
     )
     with Path(os.environ["GITHUB_PATH"]).open("a", encoding="utf-8") as stream:
         stream.write(str(sdk / "bin") + "\n")
+    if target_os == "macos":
+        # Each package already has a native-only helper. Do not compile both GUI slices on both hosts.
+        # Flutter forwards FLUTTER_XCODE_* to xcodebuild; later steps include the separate platform probe.
+        xcode_arch = {"x64": "x86_64", "arm64": "arm64"}[arch]
+        with Path(os.environ["GITHUB_ENV"]).open("a", encoding="utf-8") as stream:
+            stream.write(f"FLUTTER_XCODE_ARCHS={xcode_arch}\n")
     print(f"Bootstrapped official Flutter {release['version']} at {revision}, native Dart {arch}")
+
+
+def require_macos_build_architecture(*, gui: Path, arch: str) -> None:
+    # Check compiled product outputs, not prebuilt universal frameworks or previously released packages.
+    for relative in ("Contents/MacOS/Sesori", "Contents/Frameworks/App.framework/App"):
+        binary = gui / relative
+        native = native_arch(path=binary)
+        if native != ("Mach-O", [arch]):
+            raise ValueError(f"Expected single-architecture macos/{arch} build at {binary}, found {native}")
 
 
 def inspect(*, target_os: str, arch: str, gui: Path) -> None:
@@ -136,6 +151,8 @@ def inspect(*, target_os: str, arch: str, gui: Path) -> None:
     for required in (gui / entry, helper / "bin" / bridge_name, helper / "lib"):
         if not required.exists():
             raise ValueError(f"Required bundle entry missing: {required}")
+    if target_os == "macos":
+        require_macos_build_architecture(gui=gui, arch=arch)
     binaries = {"gui": inventory(root=gui, target_os=target_os, arch=arch),
                 "helper": inventory(root=helper, target_os=target_os, arch=arch)}
     # Relocate the complete bundle, including native assets; the space is intentional.

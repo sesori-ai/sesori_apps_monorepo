@@ -157,23 +157,33 @@ jobs:
       - name: Set up native Xcode
         uses: ./.ci-workflow/.github/actions/setup-xcode
 
-      - name: Bootstrap pinned native SDK and stage committed source
+      - name: Bootstrap pinned native SDK
         if: inputs.mode == 'macos-packaging'
         env:
           SDK_DIR: ${{ runner.temp }}/desktop-qualification-flutter
-          BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
-          CHANNEL: ${{ inputs.channel }}
         run: |
           set -euo pipefail
           mkdir -p build/desktop-qualification
           python .github/scripts/qualify_desktop.py bootstrap --arch '${{ matrix.arch }}' --sdk-dir "$SDK_DIR" \
             2>&1 | tee build/desktop-qualification/bootstrap.log
-          # GITHUB_PATH additions take effect in the next step; use this SDK explicitly here.
-          export PATH="$SDK_DIR/bin:$PATH"
-          # The workflow-owned action checkout is not part of the committed product source.
-          printf '%s\n' '/.ci-workflow/' >> "$(git rev-parse --git-path info/exclude)"
+
+      # GITHUB_PATH and the native FLUTTER_XCODE_ARCHS take effect after bootstrap.
+      - name: Resolve locked workspaces
+        if: inputs.mode == 'macos-packaging'
+        run: |
+          set -euo pipefail
           (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
           (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+
+      - name: Build and stage native desktop bundle
+        if: inputs.mode == 'macos-packaging'
+        env:
+          BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          set -euo pipefail
+          # The workflow-owned action checkout is not part of the committed product source.
+          printf '%s\n' '/.ci-workflow/' >> "$(git rev-parse --git-path info/exclude)"
           (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
             --build-number "$BUILD_NUMBER" --channel "$CHANNEL" \
             --output '${{ github.workspace }}/build/desktop-bundle') \
@@ -182,6 +192,11 @@ jobs:
             echo 'Commit build-generated source changes before signing; see build-source-changes.patch.' >&2
             exit 1
           fi
+
+      - name: Build separate native platform probe
+        if: inputs.mode == 'macos-packaging'
+        run: |
+          set -euo pipefail
           # Separate release fixture: never replace the staged product or upload this as a package.
           (cd client/desktop && flutter build macos --release --no-pub \
             --target test/native/packaged_platform_probe.dart) \

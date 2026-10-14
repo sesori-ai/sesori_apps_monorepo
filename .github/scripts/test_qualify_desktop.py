@@ -29,6 +29,12 @@ def macho(*, machine: int) -> bytes:
     return b"\xcf\xfa\xed\xfe" + struct.pack("<I", machine) + bytes(56)
 
 
+def universal_macho() -> bytes:
+    return (b"\xca\xfe\xba\xbe" + struct.pack(">I", 2)
+            + struct.pack(">IIIII", 0x01000007, 0, 0, 0, 0)
+            + struct.pack(">IIIII", 0x0100000C, 0, 0, 0, 0))
+
+
 class NativeInventoryTest(unittest.TestCase):
     def test_reads_all_six_native_targets(self) -> None:
         cases = [(elf(machine=62), "ELF", "x64"), (elf(machine=183), "ELF", "arm64"),
@@ -45,10 +51,29 @@ class NativeInventoryTest(unittest.TestCase):
     def test_universal_macos_is_reported_honestly(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "App"
-            path.write_bytes(b"\xca\xfe\xba\xbe" + struct.pack(">I", 2)
-                             + struct.pack(">IIIII", 0x01000007, 0, 0, 0, 0)
-                             + struct.pack(">IIIII", 0x0100000C, 0, 0, 0, 0))
+            path.write_bytes(universal_macho())
             self.assertEqual(qualification.native_arch(path=path), ("Mach-O", ["arm64", "x64"]))
+
+    def test_compiled_macos_targets_are_thin_but_prebuilt_frameworks_may_be_universal(self) -> None:
+        compiled = ("Contents/MacOS/Sesori", "Contents/Frameworks/App.framework/App")
+        for arch, machine in (("x64", 0x01000007), ("arm64", 0x0100000C)):
+            with self.subTest(arch=arch), tempfile.TemporaryDirectory() as directory:
+                gui = Path(directory)
+                for relative in compiled:
+                    binary = gui / relative
+                    binary.parent.mkdir(parents=True, exist_ok=True)
+                    binary.write_bytes(macho(machine=machine))
+                engine = gui / "Contents/Frameworks/FlutterMacOS.framework/FlutterMacOS"
+                engine.parent.mkdir(parents=True)
+                engine.write_bytes(universal_macho())
+                qualification.require_macos_build_architecture(gui=gui, arch=arch)
+                self.assertEqual(len(qualification.inventory(root=gui, target_os="macos", arch=arch)), 3)
+                for relative in compiled:
+                    binary = gui / relative
+                    binary.write_bytes(universal_macho())
+                    with self.assertRaisesRegex(ValueError, f"Expected single-architecture macos/{arch}"):
+                        qualification.require_macos_build_architecture(gui=gui, arch=arch)
+                    binary.write_bytes(macho(machine=machine))
 
     def test_rejects_x64_library_in_arm64_bundle(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -157,6 +182,54 @@ class NativeInventoryTest(unittest.TestCase):
         with patch.object(qualification.subprocess, "check_output", return_value="") as command:
             self.assertEqual(qualification.run(command=["git", "diff", "--name-status", "HEAD"], merge_stderr=False), "")
         self.assertIsNone(command.call_args.kwargs["stderr"])
+
+    def test_bootstrap_exports_native_xcode_architecture_only_on_macos(self) -> None:
+        cases = (("macos", "x64", macho(machine=0x01000007), "x86_64"),
+                 ("macos", "arm64", macho(machine=0x0100000C), "arm64"),
+                 ("linux", "x64", elf(machine=62), None),
+                 ("linux", "arm64", elf(machine=183), None),
+                 ("windows", "x64", pe(machine=0x8664), None),
+                 ("windows", "arm64", pe(machine=0xAA64), None))
+        for target_os, arch, executable, xcode_arch in cases:
+            with self.subTest(target_os=target_os, arch=arch), tempfile.TemporaryDirectory() as directory:
+                output = Path(directory)
+                sdk = output / "sdk"
+                dart = sdk / "bin/cache/dart-sdk/bin" / ("dart.exe" if target_os == "windows" else "dart")
+                dart.parent.mkdir(parents=True)
+                dart.write_bytes(executable)
+                environment = output / "github-env"
+                environment.write_text("EXISTING=value\n", encoding="utf-8")
+                release = {"version": "3.47.5", "revision": "test-revision"}
+                version = {"frameworkRevision": "test-revision"}
+                with patch.dict(qualification.os.environ, {
+                    "GITHUB_ACTIONS": "true", "GITHUB_ENV": str(environment),
+                    "GITHUB_PATH": str(output / "github-path"),
+                }), patch.object(qualification, "OUTPUT", output), \
+                     patch.object(qualification, "resolve_flutter", return_value=release), \
+                     patch.object(qualification, "run", side_effect=["", "test-revision", "", json.dumps(version)]), \
+                     patch.object(qualification.sys, "stdout", new_callable=StringIO):
+                    qualification.bootstrap(sdk=sdk, target_os=target_os, arch=arch)
+                expected = "EXISTING=value\n"
+                if xcode_arch is not None:
+                    expected += f"FLUTTER_XCODE_ARCHS={xcode_arch}\n"
+                self.assertEqual(environment.read_text(encoding="utf-8"), expected)
+                self.assertEqual((output / "github-path").read_text(encoding="utf-8"), str(sdk / "bin") + "\n")
+
+    def test_macos_packaging_separates_bootstrap_from_compilation(self) -> None:
+        workflow = (qualification.ROOT / ".github/workflows/desktop-qualification.yml").read_text(encoding="utf-8")
+        macos = workflow.split("  macos-distribution:\n", 1)[1].split("\n  macos-upgrade:", 1)[0]
+        names = ("Bootstrap pinned native SDK", "Resolve locked workspaces",
+                 "Build and stage native desktop bundle", "Build separate native platform probe")
+        positions = [macos.index(f"      - name: {name}\n") for name in names]
+        self.assertEqual(positions, sorted(positions))
+        for name in names:
+            step = macos.split(f"      - name: {name}\n", 1)[1].split("\n      - ", 1)[0]
+            self.assertIn("if: inputs.mode == 'macos-packaging'", step)
+        bootstrap = macos[positions[0]:positions[1]]
+        self.assertNotIn("flutter build", bootstrap)
+        self.assertNotIn("stage_desktop_bundle.dart", bootstrap)
+        self.assertNotIn('export PATH="$SDK_DIR/bin:$PATH"', macos)
+        self.assertLess(positions[-1], macos.index("      - name: Use existing credentials"))
 
     def test_bootstrap_cannot_replace_local_sdk(self) -> None:
         with patch.dict(qualification.os.environ, {"GITHUB_ACTIONS": "false"}):
