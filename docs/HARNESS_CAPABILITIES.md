@@ -661,8 +661,8 @@ client invalidation. They change the live process only, with no persistent
 configuration write or implicit session launch. Archived mutations return the
 canonical structured 409 rejection before native access.
 Each declared control includes its effect scope. Claude native plugin HTTP
-authentication is implemented as described below. Headless authentication routes,
-client action UI and the other harness adapters remain **not implemented**.
+authentication and its headless read/start/continue/cancel routes are implemented
+as described below. Client action UI and the other harness adapters remain **not implemented**.
 Reads never start an integration or agent session.
 Connection, authorization and discovery state remain distinct; only a safe HTTP(S)
 endpoint origin crosses the wire. See

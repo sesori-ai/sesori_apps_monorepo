@@ -667,3 +667,19 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 
 - Owner architecture implementation review pass 1 approved the complete diff
   against `8bfeda9416`, including client invalidation and shared SSE boundaries.
+
+- Owner PR review found preparation waiting on native readiness, late disposal
+  relative to routed drain, repeat cancellation, callback-outcome uncertainty,
+  and stale capability prose. The fixes cancel read-only preparation promptly,
+  activate native work after known cancellation capability, interrupt ownership
+  before route drain, memoize native cancellation and preserve uncertain callback
+  settlement. Explicit cancellation remains available after callback submission;
+  duplicate cancellation alone returns the existing settling state.
+- Twenty-seven owner route/lifecycle tests pass after the review corrections.
+  The unchanged runtime/client/shared suites retain their earlier evidence. The
+  final native owner fixture also passed both pins: a SIGSTOP-suspended resident's
+  read-only preparation cancelled in 2/1 ms, resumed status never started the
+  discarded login helper, and the full HTTPS fixture journey passed. Native
+  children disappeared within 123/124 ms in the bounded one-second observation.
+  This remains fixture/in-memory-adapter qualification, with the full final
+  provider/relay/client/platform matrix still required.

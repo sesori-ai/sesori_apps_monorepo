@@ -3,8 +3,10 @@ import "package:sesori_shared/sesori_shared.dart";
 
 sealed class const McpAuthenticationUpdate();
 
-final class const McpAuthenticationStarted({required final PluginMcpAuthenticationOperation operation})
-    extends McpAuthenticationUpdate;
+final class const McpAuthenticationStarted({
+  required final PluginMcpAuthenticationOperation operation,
+  required final void Function() activate,
+}) extends McpAuthenticationUpdate;
 
 final class const McpAuthenticationNativeEvent({required final PluginMcpAuthenticationEvent event})
     extends McpAuthenticationUpdate;
@@ -26,4 +28,14 @@ final class const McpAuthenticationCancellationException({required final Object 
 final class const McpAuthenticationDestinationException() implements Exception {
   @override
   String toString() => "MCP authentication requires an absolute HTTPS authorization destination without user info";
+}
+
+final class const McpAuthenticationCleanupException({
+  required final Object innerError,
+  required final StackTrace innerStackTrace,
+  required final Object cleanupError,
+  required final StackTrace cleanupStackTrace,
+}) implements Exception {
+  @override
+  String toString() => "MCP authentication failed with a native cleanup failure";
 }

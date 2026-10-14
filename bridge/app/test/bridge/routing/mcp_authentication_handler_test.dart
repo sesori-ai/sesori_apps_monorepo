@@ -195,6 +195,109 @@ void main() {
     expect(plugin.targets, isEmpty);
   });
 
+  test("preparation can be cancelled before a stalled native status read returns", () async {
+    plugin.beginGate = Completer<void>();
+    final starting = service.start(request: _request);
+    await _pump();
+    final attempt = (state() as McpAuthenticationStarting).attempt;
+    final cancelled = await service
+        .cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId))
+        .timeout(const Duration(seconds: 1));
+    expect((cancelled as McpAuthenticationStateResult).state, isA<McpAuthenticationCancelled>());
+    expect((await starting as McpAuthenticationStateResult).state, isA<McpAuthenticationCancelled>());
+    expect(plugin.wasListened, isFalse);
+    plugin.beginGate!.complete();
+    await _pump();
+    expect(plugin.wasListened, isFalse);
+    expect(plugin.cancelCount, 1);
+  });
+
+  test("discarded preparation starts no work for a native API without cancellation", () async {
+    plugin.cancelable = false;
+    plugin.beginGate = Completer<void>();
+    final starting = service.start(request: _request);
+    await _pump();
+    final attempt = (state() as McpAuthenticationStarting).attempt;
+    await service
+        .cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId))
+        .timeout(const Duration(seconds: 1));
+    await starting;
+    plugin.beginGate!.complete();
+    await _pump();
+    expect(plugin.wasListened, isFalse);
+    expect(plugin.cancelCount, 0);
+  });
+
+  test("cancel does not depend on the native stream emitting done", () async {
+    plugin.cancelClosesEvents = false;
+    await service.start(request: _request);
+    final attempt = (state() as McpAuthenticationStarting).attempt;
+    final result = await service
+        .cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId))
+        .timeout(const Duration(seconds: 1));
+    expect((result as McpAuthenticationStateResult).state, isA<McpAuthenticationCancelled>());
+    expect(plugin.cancelCount, 1);
+  });
+
+  test("duplicate cancel returns settling without repeating native cancellation", () async {
+    await service.start(request: _request);
+    final attempt = (state() as McpAuthenticationStarting).attempt;
+    plugin.cancelGate = Completer<void>();
+    final first = service.cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId));
+    await _pump();
+    final second = await service.cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId));
+    expect((second as McpAuthenticationStateResult).state, isA<McpAuthenticationSettling>());
+    expect(plugin.cancelCount, 1);
+    plugin.cancelGate!.complete();
+    await first;
+  });
+
+  test("callback submission can still be cancelled while native delivery is in flight", () async {
+    await service.start(request: _request);
+    await challenge(destination: "https://provider.test/auth");
+    final attempt = (state() as McpAuthenticationCallbackChallenge).attempt;
+    plugin.callbackGate = Completer<void>();
+    final submitted = service.continueAuthentication(
+      request: McpAuthenticationContinueRequest(
+        attemptId: attempt.attemptId,
+        callbackUrl: "http://localhost/?code=fixture-private",
+      ),
+    );
+    await _pump();
+    expect(state(), isA<McpAuthenticationSettling>());
+    final cancellation = await service.cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId));
+    expect((cancellation as McpAuthenticationStateResult).state, isA<McpAuthenticationCancelled>());
+    plugin.callbackGate!.complete();
+    expect((await submitted as McpAuthenticationStateResult).state, isA<McpAuthenticationCancelled>());
+  });
+
+  for (final error in [StateError("fixture-private"), const FormatException("fixture-private")]) {
+    test("unknown native callback error retains settlement instead of inviting retry: ${error.runtimeType}", () async {
+      await service.start(request: _request);
+      await challenge(destination: "https://provider.test/auth");
+      final attempt = (state() as McpAuthenticationCallbackChallenge).attempt;
+      plugin.callbackError = error;
+      final result = await service.continueAuthentication(
+        request: McpAuthenticationContinueRequest(
+          attemptId: attempt.attemptId,
+          callbackUrl: "http://localhost/?code=fixture-private",
+        ),
+      );
+      expect((result as McpAuthenticationStateResult).state, isA<McpAuthenticationSettling>());
+      expect(state(), isA<McpAuthenticationSettling>());
+      await complete();
+      expect(state(), isA<McpAuthenticationCompleted>());
+    });
+  }
+
+  test("invalid destination attempts native cancellation once even when it throws", () async {
+    await service.start(request: _request);
+    plugin.cancelError = StateError("fixture-private");
+    await challenge(destination: "http://provider.test/auth");
+    expect(state(), isA<McpAuthenticationFailed>());
+    expect(plugin.cancelCount, 1);
+  });
+
   test("native settlement without cancellation remains owned until completion", () async {
     plugin.cancelable = false;
     await service.start(request: _request);
@@ -324,6 +427,9 @@ class _AuthenticationPlugin() extends FakeDerivedBridgePlugin implements McpAuth
   bool wasListened = false;
   final List<PluginMcpServerTarget> targets = [];
   final List<Uri> callbacks = [];
+  Object? callbackError;
+  Completer<void>? callbackGate;
+  bool cancelClosesEvents = true;
   Object? cancelError;
   bool cancelable = true;
   bool rejectCallback = false;
@@ -339,6 +445,8 @@ class _AuthenticationPlugin() extends FakeDerivedBridgePlugin implements McpAuth
         throw const PluginMcpAuthenticationCallbackRejectedException(innerError: FormatException("fixture-private"));
       }
       callbacks.add(callbackUri);
+      await callbackGate?.future;
+      if (callbackError case final error?) throw error;
     }
 
     return cancelable
@@ -349,7 +457,7 @@ class _AuthenticationPlugin() extends FakeDerivedBridgePlugin implements McpAuth
             cancel: () async {
               cancelCount++;
               await cancelGate?.future;
-              unawaited(authEvents.close());
+              if (cancelClosesEvents) unawaited(authEvents.close());
               if (cancelError case final error?) throw error;
             },
           )

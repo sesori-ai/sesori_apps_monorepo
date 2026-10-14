@@ -9,8 +9,8 @@ resident session. Phone and desktop expose a shared read-only inventory and
 server-details view backed by the typed loading lifecycle. `POST /mcp/entry/action`
 exposes explicit live-session Claude reconnect, enable and disable controls to
 headless consumers. Claude native plugin authentication is implemented for
-existing configured HTTP servers. Product action UI and headless authentication
-routes remain pending.
+existing configured HTTP servers. Headless read/start/continue/cancel routes are
+implemented; product action UI remains pending.
 Existing permission flows remain separate. Read-only inventory may inspect an
 archived session if its native process remains live; it grants no session mutation.
 
@@ -195,12 +195,20 @@ Automated adapter/route coverage:
   rejected before any challenge reaches a client. Native callbacks are distinct
   and validated by the owning plugin; they are never arbitrary HTTP forwarding.
 - A callback needs the active attempt ID and current challenge. Rejected native
-  callbacks preserve the challenge for retry. Submitted callbacks enter settling;
+  callbacks preserve the challenge for retry. Unexpected native submission errors
+  retain settling because delivery may have occurred. Submitted callbacks enter settling;
   a browser return alone does not complete authentication.
-- Cancellation waits for native resource cleanup and stream settlement. An API
+- Read-only preparation can be cancelled without waiting for a stalled native
+  status request. A late prepared operation is discarded without subscribing,
+  and native effects start only after the owner knows cancellation availability.
+- Cancellation waits for native resource cleanup and releases the leased stream;
+  it does not depend on the native stream voluntarily emitting done. Duplicate
+  cancel requests return settling, while cancellation after callback submission
+  remains available when the native API supports it. An API
   without cancellation returns an explicit unavailable result and retains the
   attempt until native settlement; dismissing client UI does not cancel it.
-  Forced runtime/bridge teardown interrupts the owner without claiming native
+  Forced runtime/bridge teardown interrupts the owner before routed request drain,
+  resolves request waiters even on cleanup failure, and does not claim native
   cancellation on such APIs.
 - Native completion invalidates the declared affected inventory. Harness-wide
   credential changes refresh open session inventories for that plugin. Connection

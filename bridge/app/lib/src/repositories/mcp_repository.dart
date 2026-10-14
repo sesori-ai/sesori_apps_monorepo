@@ -1,3 +1,6 @@
+import "dart:async";
+
+import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -41,38 +44,136 @@ class McpRepository({
   Stream<McpAuthenticationUpdate> _authenticate({
     required BridgePluginApi plugin,
     required PluginMcpServerTarget target,
-  }) async* {
-    if (plugin is! McpAuthenticationPluginApi) {
-      throw const McpAuthenticationUnavailableException(reason: McpAuthenticationUnavailableReason.unsupportedHarness);
+  }) {
+    late final StreamController<McpAuthenticationUpdate> controller;
+    _PreparedMcpAuthentication? prepared;
+    var cancelled = false;
+    Future<void>? termination;
+    McpAuthenticationDestinationException? invalidDestination;
+
+    Future<void> finish({required bool cancelNative, required Object? error, required StackTrace? stackTrace}) {
+      return termination ??= () async {
+        // A synchronous native stream can finish before its subscription is added.
+        await Future<void>.value();
+        final native = prepared;
+        ({Object error, StackTrace stackTrace})? cleanup;
+        try {
+          if (cancelNative && native != null) await native.cancel();
+        } on Object catch (failure, failureStack) {
+          cleanup = (error: failure, stackTrace: failureStack);
+        }
+        try {
+          await native?.cancelSubscription();
+        } on Object catch (failure, failureStack) {
+          cleanup = (
+            error: cleanup == null
+                ? failure
+                : McpAuthenticationCleanupException(
+                    innerError: cleanup.error,
+                    innerStackTrace: cleanup.stackTrace,
+                    cleanupError: failure,
+                    cleanupStackTrace: failureStack,
+                  ),
+            stackTrace: cleanup?.stackTrace ?? failureStack,
+          );
+        }
+        if (cleanup case (error: final cleanupError, stackTrace: final cleanupStack)) {
+          final failure = error == null
+              ? cleanupError
+              : McpAuthenticationCleanupException(
+                  innerError: error,
+                  innerStackTrace: stackTrace!,
+                  cleanupError: cleanupError,
+                  cleanupStackTrace: cleanupStack,
+                );
+          final failureStack = stackTrace ?? cleanupStack;
+          if (cancelled) Error.throwWithStackTrace(failure, failureStack);
+          controller.addError(failure, failureStack);
+          unawaited(controller.close());
+          return;
+        }
+        if (error != null && !cancelled) controller.addError(error, stackTrace);
+        if (!cancelled) unawaited(controller.close());
+      }();
     }
-    final operation = await (plugin as McpAuthenticationPluginApi).beginMcpAuthentication(target: target);
-    var settled = false;
-    var invalidDestination = false;
-    try {
-      yield McpAuthenticationStarted(operation: operation);
-      yield* operation.events
-          .asyncMap((event) async {
-            if (event case PluginMcpAuthenticationChallenge(:final authorizationUri)) {
-              if (authorizationUri.scheme != "https" ||
-                  authorizationUri.host.isEmpty ||
-                  authorizationUri.userInfo.isNotEmpty) {
-                invalidDestination = true;
-                if (operation case PluginMcpCancelableAuthentication(:final cancel)) {
-                  await cancel();
-                }
-              }
-            }
-            return event;
-          })
-          .where((_) => !invalidDestination)
-          .map((event) => McpAuthenticationNativeEvent(event: event));
-      settled = true;
-      if (invalidDestination) throw const McpAuthenticationDestinationException();
-    } finally {
-      if (!settled) {
-        if (operation case PluginMcpCancelableAuthentication(:final cancel)) await cancel();
+
+    Future<void> prepare() async {
+      try {
+        if (plugin is! McpAuthenticationPluginApi) {
+          throw const McpAuthenticationUnavailableException(
+            reason: McpAuthenticationUnavailableReason.unsupportedHarness,
+          );
+        }
+        final operation = await (plugin as McpAuthenticationPluginApi).beginMcpAuthentication(target: target);
+        final native = _PreparedMcpAuthentication(operation: operation);
+        if (cancelled) {
+          // Preparation is read-only. A discarded operation is never subscribed.
+          await native.cancel();
+          return;
+        }
+        prepared = native;
+        void activate() {
+          if (cancelled) return;
+          try {
+            operation.events
+                .listen(
+                  (event) {
+                    if (event case PluginMcpAuthenticationChallenge(:final authorizationUri)) {
+                      if (authorizationUri.scheme != "https" ||
+                          authorizationUri.host.isEmpty ||
+                          authorizationUri.userInfo.isNotEmpty) {
+                        invalidDestination = const McpAuthenticationDestinationException();
+                        if (operation is PluginMcpCancelableAuthentication) {
+                          unawaited(
+                            finish(cancelNative: true, error: invalidDestination, stackTrace: StackTrace.current),
+                          );
+                        }
+                        return;
+                      }
+                    }
+                    if (invalidDestination == null && termination == null) {
+                      controller.add(McpAuthenticationNativeEvent(event: event));
+                    }
+                  },
+                  onError: (Object error, StackTrace stackTrace) =>
+                      unawaited(finish(cancelNative: true, error: error, stackTrace: stackTrace)),
+                  onDone: () => unawaited(
+                    finish(
+                      cancelNative: false,
+                      error: invalidDestination,
+                      stackTrace: invalidDestination == null ? null : StackTrace.current,
+                    ),
+                  ),
+                )
+                .addTo(native.subscriptions);
+          } on Object catch (error, stackTrace) {
+            unawaited(finish(cancelNative: true, error: error, stackTrace: stackTrace));
+          }
+        }
+
+        controller.add(McpAuthenticationStarted(operation: native.ownedOperation, activate: activate));
+      } on Object catch (error, stackTrace) {
+        if (cancelled) {
+          Log.w(
+            "MCP authentication preparation/cleanup failed after cancellation for ${plugin.id} on $target",
+            error,
+            stackTrace,
+          );
+        } else {
+          await finish(cancelNative: true, error: error, stackTrace: stackTrace);
+        }
       }
     }
+
+    controller = StreamController<McpAuthenticationUpdate>(
+      onListen: () => unawaited(prepare()),
+      onCancel: () {
+        cancelled = true;
+        // Do not wait for a read-only native status request that cannot be aborted.
+        return prepared == null ? Future<void>.value() : finish(cancelNative: true, error: null, stackTrace: null);
+      },
+    );
+    return controller.stream;
   }
 
   Future<McpInventoryResult> getInventory({required String pluginId, required McpScope scope}) async {
@@ -200,4 +301,30 @@ class McpRepository({
         return PluginMcpSessionScope(sessionId: session.backendSessionId);
     }
   }
+}
+
+/// Owns the one native cancellation attempt across explicit cancel and teardown.
+class _PreparedMcpAuthentication({required final PluginMcpAuthenticationOperation operation}) {
+  final CompositeSubscription subscriptions = CompositeSubscription();
+  Future<void>? _cancellation;
+
+  PluginMcpAuthenticationOperation get ownedOperation => switch (operation) {
+    PluginMcpCancelableAuthentication(:final effectScope, :final events, :final submitCallback) =>
+      PluginMcpCancelableAuthentication(
+        effectScope: effectScope,
+        events: events,
+        submitCallback: submitCallback,
+        cancel: cancel,
+      ),
+    PluginMcpNativeSettlementAuthentication() => operation,
+  };
+
+  Future<void> cancelSubscription() => subscriptions.cancel();
+
+  Future<void> cancel() => _cancellation ??= Future<void>.sync(
+    () => switch (operation) {
+      PluginMcpCancelableAuthentication(:final cancel) => cancel(),
+      PluginMcpNativeSettlementAuthentication() => Future<void>.value(),
+    },
+  );
 }

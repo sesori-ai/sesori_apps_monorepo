@@ -61,20 +61,23 @@ class McpAuthenticationService({required final McpRepository _repository}) {
     if (owner.done.isCompleted || owner.state is! McpAuthenticationCallbackChallenge) {
       return const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.attemptNotFound);
     }
+    final Uri callbackUri;
+    try {
+      callbackUri = Uri.parse(request.callbackUrl);
+    } on FormatException {
+      return const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.callbackRejected);
+    }
     final operation = (owner.native as _RunningMcpAuthentication).operation;
     _publish(
       owner: owner,
       state: McpAuthenticationSettling(attempt: owner.attempt),
     );
     try {
-      await operation.submitCallback(callbackUri: Uri.parse(request.callbackUrl));
+      await operation.submitCallback(callbackUri: callbackUri);
     } on PluginMcpAuthenticationCallbackRejectedException {
       if (!owner.done.isCompleted && !owner.cancelRequested) {
         _publish(owner: owner, state: challenge);
       }
-      return const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.callbackRejected);
-    } on FormatException {
-      if (!owner.done.isCompleted && !owner.cancelRequested) _publish(owner: owner, state: challenge);
       return const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.callbackRejected);
     } on Object catch (error, stackTrace) {
       Log.w(
@@ -82,10 +85,9 @@ class McpAuthenticationService({required final McpRepository _repository}) {
         McpAuthenticationCallbackException(innerError: error),
         stackTrace,
       );
-      if (!owner.done.isCompleted && !owner.cancelRequested) _publish(owner: owner, state: challenge);
-      return const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.callbackRejected);
+      // Delivery is uncertain; keep waiting for native truth rather than retrying.
     }
-    return current;
+    return McpAuthenticationStateResult(state: owner.state);
   }
 
   Future<McpAuthenticationResult> cancel({required McpAuthenticationCancelRequest request}) async {
@@ -93,9 +95,18 @@ class McpAuthenticationService({required final McpRepository _repository}) {
     if (owner == null) {
       return const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.attemptNotFound);
     }
-    final ready = await owner.ready.future;
-    if (ready is McpAuthenticationUnavailable) return ready;
-    if (owner.done.isCompleted) return current;
+    if (owner.cancelRequested) return McpAuthenticationStateResult(state: owner.state);
+    if (owner.native is _PreparingMcpAuthentication) {
+      owner.cancelRequested = true;
+      await owner.dispose();
+      _publish(
+        owner: owner,
+        state: McpAuthenticationCancelled(attempt: owner.attempt),
+      );
+      if (!owner.ready.isCompleted) owner.ready.complete(McpAuthenticationStateResult(state: owner.state));
+      if (!owner.done.isCompleted) owner.done.complete();
+      return McpAuthenticationStateResult(state: owner.state);
+    }
     switch ((owner.native as _RunningMcpAuthentication).operation) {
       case PluginMcpNativeSettlementAuthentication():
         return const McpAuthenticationUnavailable(
@@ -109,6 +120,7 @@ class McpAuthenticationService({required final McpRepository _repository}) {
         );
         try {
           await cancel();
+          await owner.dispose();
         } on Object catch (error, stackTrace) {
           final failure = McpAuthenticationFailed(
             attempt: owner.attempt,
@@ -118,8 +130,14 @@ class McpAuthenticationService({required final McpRepository _repository}) {
           if (owner.done.isCompleted) _publish(owner: owner, state: failure);
           Error.throwWithStackTrace(McpAuthenticationCancellationException(innerError: error), stackTrace);
         }
-        await owner.done.future;
-        return current;
+        if (!owner.done.isCompleted) {
+          _publish(
+            owner: owner,
+            state: owner.terminal ?? McpAuthenticationCancelled(attempt: owner.attempt),
+          );
+          owner.done.complete();
+        }
+        return McpAuthenticationStateResult(state: owner.state);
     }
   }
 
@@ -130,7 +148,7 @@ class McpAuthenticationService({required final McpRepository _repository}) {
 
   void _receive({required _OwnedMcpAuthentication owner, required McpAuthenticationUpdate update}) {
     switch (update) {
-      case McpAuthenticationStarted(:final operation):
+      case McpAuthenticationStarted(:final operation, :final activate):
         final attempt = McpAuthenticationAttempt(
           attemptId: owner.attempt.attemptId,
           pluginId: owner.attempt.pluginId,
@@ -146,6 +164,7 @@ class McpAuthenticationService({required final McpRepository _repository}) {
           state: McpAuthenticationStarting(attempt: owner.attempt),
         );
         owner.ready.complete(McpAuthenticationStateResult(state: owner.state));
+        activate();
       case McpAuthenticationNativeEvent(:final event):
         switch (event) {
           case PluginMcpAuthenticationChallenge(:final authorizationUri, :final expectedCallbackUri):
@@ -206,7 +225,17 @@ class McpAuthenticationService({required final McpRepository _repository}) {
       }
       return;
     }
-    Log.w("MCP authentication stream failed for ${owner.attempt.pluginId}", error, stackTrace);
+    if (error case McpAuthenticationCleanupException(
+      :final innerError,
+      :final innerStackTrace,
+      :final cleanupError,
+      :final cleanupStackTrace,
+    )) {
+      Log.w("MCP authentication stream failed for ${owner.attempt.pluginId}", innerError, innerStackTrace);
+      Log.w("MCP authentication cleanup failed for ${owner.attempt.pluginId}", cleanupError, cleanupStackTrace);
+    } else {
+      Log.w("MCP authentication stream failed for ${owner.attempt.pluginId}", error, stackTrace);
+    }
     owner.terminal = McpAuthenticationFailed(
       attempt: owner.attempt,
       reason: McpAuthenticationFailureReason.nativeFailure,
@@ -242,23 +271,25 @@ class McpAuthenticationService({required final McpRepository _repository}) {
 
   void _publish({required _OwnedMcpAuthentication owner, required McpAuthenticationState state}) {
     owner.state = state;
-    _changes.add(null);
+    if (!_changes.isClosed) _changes.add(null);
   }
 
   Future<void> dispose() async {
     _disposed = true;
     final owner = _current;
-    if (owner != null && !owner.done.isCompleted) {
-      await owner.dispose();
-      owner.state = McpAuthenticationFailed(attempt: owner.attempt, reason: McpAuthenticationFailureReason.interrupted);
-      if (!owner.ready.isCompleted) {
-        owner.ready.complete(
-          const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.pluginInactive),
+    try {
+      if (owner != null && !owner.done.isCompleted) await owner.dispose();
+    } finally {
+      if (owner != null && !owner.done.isCompleted) {
+        owner.state = McpAuthenticationFailed(
+          attempt: owner.attempt,
+          reason: McpAuthenticationFailureReason.interrupted,
         );
+        if (!owner.ready.isCompleted) owner.ready.complete(McpAuthenticationStateResult(state: owner.state));
+        owner.done.complete();
       }
-      if (!owner.done.isCompleted) owner.done.complete();
+      await Future.wait([_changes.close(), _inventoryChanges.close()]);
     }
-    await Future.wait([_changes.close(), _inventoryChanges.close()]);
   }
 }
 

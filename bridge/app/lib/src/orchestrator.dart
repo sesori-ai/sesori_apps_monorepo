@@ -1308,6 +1308,7 @@ class OrchestratorSession._({
     );
     await Future.wait([
       attempt(_subscriptions.cancel),
+      attempt(_mcpAuthenticationService.dispose),
       attempt(_pluginEventListener.dispose),
       attempt(_sessionContinuationTimer.dispose),
       attempt(_sessionBindingCommitListener.dispose),
@@ -1320,7 +1321,6 @@ class OrchestratorSession._({
     await Future.wait([attempt(_routedRequestDispatcher.drain), attempt(_drainRelayCompletions)]);
     await Future.wait([
       attempt(_mcpService.dispose),
-      attempt(_mcpAuthenticationService.dispose),
       attempt(_currentProjectService.dispose),
       attempt(_projectGlossaryPopulationService.dispose),
     ]);
