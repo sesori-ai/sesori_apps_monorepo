@@ -407,6 +407,24 @@ void main() {
       expect(statusOf(service: service, id: "new"), BridgeRegistrationStatus.active);
     });
 
+    test("refetch after a running fetch that may predate the link", () async {
+      final fetch = Completer<ApiResponse<List<BridgeSummary>>>();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer((_) => fetch.future);
+      final service = build();
+      final pending = service.getRegisteredBridges();
+
+      connectionService.emitBridgePresence(bridgeId: "new", online: true);
+      await _settle();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary(id: "a"), testBridgeSummary(id: "new")]),
+      );
+      fetch.complete(ApiResponse.success([testBridgeSummary(id: "a")]));
+      await pending;
+      await _settle();
+
+      expect(service.bridges.value.map((bridge) => bridge.id), containsAll(["a", "new"]));
+    });
+
     test("win over a fetch that started before them", () async {
       final fetch = Completer<ApiResponse<List<BridgeSummary>>>();
       when(() => bridgeRepository.getRegisteredBridges()).thenAnswer((_) => fetch.future);

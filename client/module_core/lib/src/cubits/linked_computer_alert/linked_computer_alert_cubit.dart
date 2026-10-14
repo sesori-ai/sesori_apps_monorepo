@@ -14,7 +14,8 @@ import "linked_computer_alert.dart";
 /// the first list after launch or sign-in holds nothing new, and the account's
 /// first computer arrives through onboarding. This surface's own computer is
 /// never announced, since the surface already works on it. When several
-/// computers arrive in one list, the most recently seen one is announced.
+/// computers arrive in one list, the most recently seen one is announced. An
+/// emptied list (sign-out) withdraws the announcement, back to `null`.
 class LinkedComputerAlertCubit({
   required final RegisteredBridgesService _registeredBridgesService,
   required final ActiveBridgeLocality _activeBridgeLocality,
@@ -31,6 +32,10 @@ class LinkedComputerAlertCubit({
   void _onBridges(List<BridgeSummary> bridges) {
     final previousIds = _knownIds;
     _knownIds = _idsOf(bridges: bridges);
+    if (bridges.isEmpty) {
+      if (state != null) emit(null);
+      return;
+    }
     if (previousIds.isEmpty) return;
     final localId = _activeBridgeLocality.localBridgeId;
     final linked = bridges.where((bridge) => !previousIds.contains(bridge.id) && bridge.id != localId).firstOrNull;

@@ -51,6 +51,33 @@ void main() {
     expect(alerts.map((alert) => (alert?.bridgeId, alert?.name)), [("br_workstation", "workstation")]);
   });
 
+  test("announces the most recently seen of several computers gained at once", () async {
+    final gpuBox = testBridgeSummary(id: "br_gpu", name: "gpu-box");
+    final alerts = await alertsAfter(
+      lists: [
+        // The service publishes the list most recently seen first.
+        [laptop],
+        [gpuBox, workstation, laptop],
+      ],
+      localBridgeId: null,
+    );
+
+    expect(alerts.map((alert) => alert?.bridgeId), ["br_gpu"]);
+  });
+
+  test("withdraws a shown announcement at sign-out", () async {
+    final alerts = await alertsAfter(
+      lists: [
+        [laptop],
+        [workstation, laptop],
+        [],
+      ],
+      localBridgeId: null,
+    );
+
+    expect(alerts.map((alert) => alert?.bridgeId), ["br_workstation", null]);
+  });
+
   test("announces nothing for the first list, which holds the account's computers", () async {
     final alerts = await alertsAfter(
       lists: [

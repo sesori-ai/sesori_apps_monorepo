@@ -44,13 +44,14 @@ and render above the current route, below the top navigation bar.
   switches through the shared computer switch flow with source `alert`. The alert
   stays eight seconds. The first list after launch or sign-in, status-only
   changes, and the desktop's own computer are never announced; when several
-  computers appear at once, only the most recently seen one is.
+  computers appear at once, only the most recently seen one is. Signing out
+  dismisses a linked-computer alert still on screen.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: the owning widget suite proves each visual variant, placement below navigation, following a banner that appears or hides while the alert is visible (from a context inside or above the scaffold and from an explicit overlay), placement after the source screen is closed, auto-dismiss, close-on-tap, upward-swipe dismissal, replacement including replacement during dismissal, interrupted entrance, entry/exit direction and responsiveness, fade-only reduced motion and live preference changes, live-region semantics, sizing for short and long text and for action-bearing alerts, and overlay inset behavior when a modal strips top padding. Automated: the linked-computer cubit and widget suites prove which list changes announce a computer, the Switch action and its source, and the eight-second stay. |
+| L1 Smoke | Automated: the owning widget suite proves each visual variant, placement below navigation, following a banner that appears or hides while the alert is visible (from a context inside or above the scaffold and from an explicit overlay), placement after the source screen is closed, auto-dismiss, close-on-tap, upward-swipe dismissal, replacement including replacement during dismissal, interrupted entrance, entry/exit direction and responsiveness, fade-only reduced motion and live preference changes, live-region semantics, sizing for short and long text and for action-bearing alerts, and overlay inset behavior when a modal strips top padding. Automated: the linked-computer cubit and widget suites prove which list changes announce a computer (including the most recently seen of several added at once), sign-out withdrawing it, the Switch action and its source, and the eight-second stay. |
 | L2 Routine | Client end to end on the release-target client platform: an alert raised by a real asynchronous operation survives removal of its source row or modal, and renders above a modal or full-screen image viewer. |
 | L3 Release | Client end to end: a session-attributed backend alert appears on the matching session detail or diffs route and stays suppressed elsewhere, while an unattributed backend alert shows app-wide. |
 | L4 Extended | Client end to end at accessibility text sizes: supporting text and actions expand the card without clipping. |

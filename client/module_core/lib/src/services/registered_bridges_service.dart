@@ -238,8 +238,18 @@ class RegisteredBridgesService({
       return;
     }
     // A computer linked since the last fetch: only the auth server can name it.
-    _bridgesCurrent = false;
-    unawaited(getRegisteredBridges());
+    _refetchForUnknownBridge();
+  }
+
+  void _refetchForUnknownBridge() {
+    final running = _activeFetch;
+    if (running == null) {
+      _bridgesCurrent = false;
+      unawaited(getRegisteredBridges());
+      return;
+    }
+    // The running fetch may predate the link, so fetch again once it settles.
+    unawaited(running.then<void>((_) {}, onError: (Object _) {}).whenComplete(_refetchForUnknownBridge));
   }
 
   void _onConnectionStatusChanged(ConnectionStatus status) {

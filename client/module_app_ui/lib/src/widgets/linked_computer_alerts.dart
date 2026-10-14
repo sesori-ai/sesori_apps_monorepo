@@ -49,7 +49,13 @@ class const LinkedComputerAlerts({
   @override
   Widget build(BuildContext context) => BlocListener<LinkedComputerAlertCubit, LinkedComputerAlert?>(
     listener: (context, alert) {
-      if (alert != null) _show(context: context, alert: alert);
+      switch (alert) {
+        case final alert?:
+          _show(context: context, alert: alert);
+        // Signed out: the previous account's Switch must not linger.
+        case null:
+          _presenter(context: context)?.dismiss();
+      }
     },
     child: child,
   );
