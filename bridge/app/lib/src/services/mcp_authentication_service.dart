@@ -136,7 +136,7 @@ class McpAuthenticationService({required final McpRepository _repository}) {
             reason: McpAuthenticationFailureReason.nativeFailure,
           );
           owner.terminal = failure;
-          if (owner.done.isCompleted) _publish(owner: owner, state: failure);
+          _publish(owner: owner, state: failure);
           Error.throwWithStackTrace(McpAuthenticationCancellationException(innerError: error), stackTrace);
         }
         if (!owner.done.isCompleted) {

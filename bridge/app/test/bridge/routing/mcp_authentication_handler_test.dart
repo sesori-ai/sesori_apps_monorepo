@@ -195,6 +195,33 @@ void main() {
     expect(plugin.targets, isEmpty);
   });
 
+  test("failed native cancellation remains visible while the stream is still owned", () async {
+    await service.start(request: _request);
+    final attempt = (state() as McpAuthenticationStarting).attempt;
+    plugin.cancelClosesEvents = false;
+    plugin.cancelError = StateError("fixture-private cancellation failure");
+    await expectLater(
+      service.cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId)),
+      throwsA(isA<McpAuthenticationCancellationException>()),
+    );
+    expect(state(), isA<McpAuthenticationFailed>());
+    final recovered = await GetMcpAuthenticationHandler(service: service)
+        .routeForTest(makeRequest("GET", "/mcp/authentication"));
+    expect(recovered.body, contains("nativeFailure"));
+    expect(recovered.body, isNot(contains("fixture-private")));
+    expect(
+      (await service.cancel(
+        request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId),
+      ) as McpAuthenticationStateResult).state,
+      isA<McpAuthenticationFailed>(),
+    );
+    expect(plugin.cancelCount, 1);
+    expect(await service.start(request: _request), isA<McpAuthenticationBusy>());
+    await plugin.authEvents.close();
+    await _pump();
+    expect(state(), isA<McpAuthenticationFailed>());
+  });
+
   test("preparation cleanup failure settles its owner and retains the cause", () async {
     final cause = StateError("fixture-private preparation cleanup");
     final failingService = McpAuthenticationService(repository: _PreparationCleanupFailureRepository(cause: cause));
@@ -233,7 +260,16 @@ void main() {
     plugin.beginGate = Completer<void>();
     final starting = service.start(request: _request);
     await _pump();
-    final attempt = (state() as McpAuthenticationStarting).attempt;
+    final recovered = await GetMcpAuthenticationHandler(service: service)
+        .routeForTest(makeRequest("GET", "/mcp/authentication"));
+    expect(recovered.status, 200);
+    final recoveredState =
+        (McpAuthenticationResult.fromJson(
+              jsonDecode(recovered.body!) as Map<String, dynamic>,
+            ) as McpAuthenticationStateResult).state
+            as McpAuthenticationStarting;
+    expect(recoveredState.attempt.cancellation, McpAuthenticationCancellation.unknown);
+    final attempt = recoveredState.attempt;
     final cancelled = await service
         .cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId))
         .timeout(const Duration(seconds: 1));
