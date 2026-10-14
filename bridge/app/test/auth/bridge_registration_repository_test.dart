@@ -9,7 +9,7 @@ import "package:sesori_bridge/src/auth/machine_id_api.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PlatformOs;
 import "package:test/test.dart";
 
-import "../helpers/fake_command_process_runner.dart";
+import "../helpers/fake_command_executor.dart";
 
 void main() {
   group("BridgeRegistrationRepository.hostKeyFor", () {
@@ -25,8 +25,8 @@ void main() {
 
   group("BridgeRegistrationRepository.register", () {
     test("sends the host key, never the raw machine id, and reads the id once", () async {
-      final runner = FakeCommandProcessRunner(
-        results: {"cat /etc/machine-id": processOutput(stdout: "abc123\n")},
+      final runner = FakeCommandExecutor(
+        results: {"cat /etc/machine-id": commandOutput(stdout: "abc123\n")},
       );
       final bodies = <String?>[];
       final repository = _repository(runner: runner, bodies: bodies);
@@ -43,7 +43,7 @@ void main() {
     test("omits the host key when the machine id cannot be read", () async {
       final bodies = <String?>[];
       final repository = _repository(
-        runner: FakeCommandProcessRunner(results: {}),
+        runner: FakeCommandExecutor(results: {}),
         bodies: bodies,
       );
 
@@ -55,7 +55,7 @@ void main() {
 }
 
 BridgeRegistrationRepository _repository({
-  required FakeCommandProcessRunner runner,
+  required FakeCommandExecutor runner,
   required List<String?> bodies,
 }) {
   final client = http.Client();
@@ -81,6 +81,6 @@ BridgeRegistrationRepository _repository({
             );
           },
     ),
-    machineIdApi: MachineIdApi.forPlatform(platform: PlatformOs.linux, processRunner: runner),
+    machineIdApi: MachineIdApi.forPlatform(platform: PlatformOs.linux, commandExecutor: runner),
   );
 }

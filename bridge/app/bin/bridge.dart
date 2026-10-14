@@ -393,7 +393,10 @@ Future<void> _unregisterBridgeRegistration({
     final registrationService = BridgeRegistrationService(
       repository: BridgeRegistrationRepository(
         api: authApi,
-        machineIdApi: MachineIdApi.forPlatform(platform: PlatformTarget.current().os, processRunner: ProcessRunner()),
+        machineIdApi: MachineIdApi.forPlatform(
+          platform: PlatformTarget.current().os,
+          commandExecutor: ProcessRunnerCommandExecutor(processRunner: ProcessRunner()),
+        ),
       ),
       tokenRefresher: tokenService,
       bridgeIdStorage: bridgeIdStorage,

@@ -1140,7 +1140,7 @@ class const BridgeRuntimeRunner._() {
         api: authApi,
         machineIdApi: MachineIdApi.forPlatform(
           platform: PlatformOs.fromOperatingSystem(operatingSystem: io.Platform.operatingSystem),
-          processRunner: processRunner,
+          commandExecutor: ProcessRunnerCommandExecutor(processRunner: processRunner),
         ),
       ),
       tokenRefresher: tokenRefresher,

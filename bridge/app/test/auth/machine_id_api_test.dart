@@ -1,18 +1,16 @@
-import "dart:io";
-
 import "package:sesori_bridge/src/auth/machine_id_api.dart";
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PlatformOs;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show CommandResult, PlatformOs;
 import "package:test/test.dart";
 
-import "../helpers/fake_command_process_runner.dart";
+import "../helpers/fake_command_executor.dart";
 
 const _ioreg = "/usr/sbin/ioreg -rd1 -c IOPlatformExpertDevice";
 const _reg = r"reg query HKLM\SOFTWARE\Microsoft\Cryptography /v MachineGuid /reg:64";
 
-Future<String?> _read({required PlatformOs platform, required Map<String, ProcessResult> results}) {
+Future<String?> _read({required PlatformOs platform, required Map<String, CommandResult> results}) {
   return MachineIdApi.forPlatform(
     platform: platform,
-    processRunner: FakeCommandProcessRunner(results: results),
+    commandExecutor: FakeCommandExecutor(results: results),
   ).readMachineId();
 }
 
@@ -22,7 +20,7 @@ void main() {
       final id = await _read(
         platform: PlatformOs.macos,
         results: {
-          _ioreg: processOutput(
+          _ioreg: commandOutput(
             stdout:
                 '+-o J316sAP  <class IOPlatformExpertDevice>\n'
                 '    "IOPlatformSerialNumber" = "SERIAL"\n'
@@ -37,14 +35,14 @@ void main() {
       expect(
         await _read(
           platform: PlatformOs.macos,
-          results: {_ioreg: processOutput(stdout: "no uuid here")},
+          results: {_ioreg: commandOutput(stdout: "no uuid here")},
         ),
         isNull,
       );
       expect(
         await _read(
           platform: PlatformOs.macos,
-          results: {_ioreg: processOutput(stdout: '"IOPlatformUUID" = " "')},
+          results: {_ioreg: commandOutput(stdout: '"IOPlatformUUID" = " "')},
         ),
         isNull,
       );
@@ -53,7 +51,10 @@ void main() {
     test("returns null when ioreg fails or exits non-zero", () async {
       expect(await _read(platform: PlatformOs.macos, results: {}), isNull);
       expect(
-        await _read(platform: PlatformOs.macos, results: {_ioreg: ProcessResult(1, 1, "", "boom")}),
+        await _read(
+          platform: PlatformOs.macos,
+          results: {_ioreg: const CommandResult(exitCode: 1, stdout: "", stderr: "boom")},
+        ),
         isNull,
       );
     });
@@ -61,20 +62,20 @@ void main() {
 
   group("Linux", () {
     test("reads and trims /etc/machine-id", () async {
-      final runner = FakeCommandProcessRunner(results: {"cat /etc/machine-id": processOutput(stdout: "abc123\n")});
-      final id = await MachineIdApi.forPlatform(platform: PlatformOs.linux, processRunner: runner).readMachineId();
+      final runner = FakeCommandExecutor(results: {"cat /etc/machine-id": commandOutput(stdout: "abc123\n")});
+      final id = await MachineIdApi.forPlatform(platform: PlatformOs.linux, commandExecutor: runner).readMachineId();
       expect(id, "abc123");
       expect(runner.commands, ["cat /etc/machine-id"]);
     });
 
     test("falls back to the D-Bus machine id when /etc/machine-id is missing or blank", () async {
-      final dbus = processOutput(stdout: "dbus456\n");
+      final dbus = commandOutput(stdout: "dbus456\n");
       expect(await _read(platform: PlatformOs.linux, results: {"cat /var/lib/dbus/machine-id": dbus}), "dbus456");
       expect(
         await _read(
           platform: PlatformOs.linux,
           results: {
-            "cat /etc/machine-id": processOutput(stdout: "\n"),
+            "cat /etc/machine-id": commandOutput(stdout: "\n"),
             "cat /var/lib/dbus/machine-id": dbus,
           },
         ),
@@ -86,7 +87,9 @@ void main() {
       expect(
         await _read(
           platform: PlatformOs.linux,
-          results: {"cat /etc/machine-id": ProcessResult(1, 1, "", "No such file or directory")},
+          results: {
+            "cat /etc/machine-id": const CommandResult(exitCode: 1, stdout: "", stderr: "No such file or directory"),
+          },
         ),
         isNull,
       );
@@ -98,7 +101,7 @@ void main() {
       final id = await _read(
         platform: PlatformOs.windows,
         results: {
-          _reg: processOutput(
+          _reg: commandOutput(
             stdout:
                 "\r\nHKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\r\n"
                 "    MachineGuid    REG_SZ    9f8e7d6c-0000-1111-2222-333344445555\r\n\r\n",
@@ -112,7 +115,7 @@ void main() {
       expect(
         await _read(
           platform: PlatformOs.windows,
-          results: {_reg: processOutput(stdout: "")},
+          results: {_reg: commandOutput(stdout: "")},
         ),
         isNull,
       );
