@@ -372,7 +372,9 @@ This document and `TRACKER.md`. Verification: Markdown only.
 
 - Files: the desktop projects pane header (`desktop_home_pane.dart`), `SelectedComputerService.ensureInitialTarget`
   wiring at desktop start-up, the recovery view branching (phone-style offline body for a remote target, supervised
-  start only for the local one), tests; `docs/regression/desktop-cockpit-shell.md`.
+  start only for the local one), the `desktopBridgeTakenOver` copy (“Another bridge currently owns this account
+  connection.” now only happens for the same bridge id, e.g. a cloned machine), tests;
+  `docs/regression/desktop-cockpit-shell.md`.
 - Estimate: ~250 lines.
 - Verification: `dart test` in `module_desktop_core`; desktop screenshots; manual check that the local bridge keeps
   serving a phone while the desktop views a remote computer.
