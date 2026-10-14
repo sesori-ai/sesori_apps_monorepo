@@ -18,7 +18,7 @@ sealed class RegisterBridgeRequest with _$RegisterBridgeRequest {
     required String name,
     required String platform,
     @JsonKey(includeIfNull: false) required String? bridgeId,
-    @JsonKey(includeIfNull: false) required String? hostKey,
+    required String? hostKey,
   }) = _RegisterBridgeRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$RegisterBridgeRequestFromJson(json);

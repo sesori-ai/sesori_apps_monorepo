@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$RegisterBridgeRequest {
 
- String get name; String get platform;@JsonKey(includeIfNull: false) String? get bridgeId;@JsonKey(includeIfNull: false) String? get hostKey;
+ String get name; String get platform;@JsonKey(includeIfNull: false) String? get bridgeId; String? get hostKey;
 /// Create a copy of RegisterBridgeRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -54,7 +54,7 @@ abstract mixin class $RegisterBridgeRequestCopyWith<$Res>  {
   factory $RegisterBridgeRequestCopyWith(RegisterBridgeRequest value, $Res Function(RegisterBridgeRequest) _then) = _$RegisterBridgeRequestCopyWithImpl;
 @useResult
 $Res call({
- String name, String platform,@JsonKey(includeIfNull: false) String? bridgeId,@JsonKey(includeIfNull: false) String? hostKey
+ String name, String platform,@JsonKey(includeIfNull: false) String? bridgeId, String? hostKey
 });
 
 
@@ -89,13 +89,13 @@ as String?,
 @JsonSerializable()
 
 class _RegisterBridgeRequest implements RegisterBridgeRequest {
-  const _RegisterBridgeRequest({required this.name, required this.platform, @JsonKey(includeIfNull: false) required this.bridgeId, @JsonKey(includeIfNull: false) required this.hostKey});
+  const _RegisterBridgeRequest({required this.name, required this.platform, @JsonKey(includeIfNull: false) required this.bridgeId, required this.hostKey});
   factory _RegisterBridgeRequest.fromJson(Map<String, dynamic> json) => _$RegisterBridgeRequestFromJson(json);
 
 @override final  String name;
 @override final  String platform;
 @override@JsonKey(includeIfNull: false) final  String? bridgeId;
-@override@JsonKey(includeIfNull: false) final  String? hostKey;
+@override final  String? hostKey;
 
 /// Create a copy of RegisterBridgeRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -132,7 +132,7 @@ abstract mixin class _$RegisterBridgeRequestCopyWith<$Res> implements $RegisterB
   factory _$RegisterBridgeRequestCopyWith(_RegisterBridgeRequest value, $Res Function(_RegisterBridgeRequest) _then) = __$RegisterBridgeRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String platform,@JsonKey(includeIfNull: false) String? bridgeId,@JsonKey(includeIfNull: false) String? hostKey
+ String name, String platform,@JsonKey(includeIfNull: false) String? bridgeId, String? hostKey
 });
 
 
