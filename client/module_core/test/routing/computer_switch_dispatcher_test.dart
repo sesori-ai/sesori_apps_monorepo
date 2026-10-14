@@ -18,7 +18,7 @@ class _RecordingRouteDispatcher({required final List<String> _calls}) implements
 }
 
 void main() {
-  test("a switch selects the computer, then returns to the Projects root", () async {
+  test("a switch returns to the Projects root, then selects the computer", () async {
     final calls = <String>[];
     final selectedComputer = _MockSelectedComputerService();
     final routes = _RecordingRouteDispatcher(calls: calls);
@@ -31,7 +31,7 @@ void main() {
       routeDispatcher: routes,
     ).switchTo(bridgeId: "br_b", source: ComputerSwitchSource.menu);
 
-    expect(calls, ["select", "navigate"]);
+    expect(calls, ["navigate", "select"]);
     expect(routes.stacks.single.paths, [const AppRoute.projects().buildPath()]);
   });
 }
