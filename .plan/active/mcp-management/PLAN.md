@@ -335,9 +335,12 @@ terminal UI output.
 | Typed form/external-action payloads | Existing plugin pending-input owners; the native process is waiting for a response. Reuse their request map and cancellation lifecycle. |
 | Browser owner handle and typed busy result | Existing client browser service's single active operation; prevent provider and MCP flows from cancelling each other. No new registry or queue. |
 | Form draft, submission state, and field errors | Client `PendingFormCubit`; invalid input must remain editable until accepted or settled. Drafts stay in memory only. |
-| Current inventory/refresh and one per-view action snapshot | Client `McpService`; one additional action subject retains the request/target and outcome. Reuse its generation/staleness fencing; no action map, queue, extra version or persistent inventory. |
+| Per-view inventory, refresh and action snapshot | Client `McpService`; reuse generation/staleness fencing. |
 | One shared client MCP auth observation and accepted browser handle | Client `McpAuthenticationService`; connection/bridge epoch, observation/mutation versions and one in-flight read preserve authoritative recovery while POST waits. Reuse management's bridge identity; no native request registry, callback queue, timer or persistence. Cubits observe without owning cancellation. |
 | Native subscriptions | Existing plugin connection/process owner, held in its existing composite subscription where applicable. No new watcher framework. |
+
+The per-view action subject retains its request/target and outcome. It adds no action map, queue, extra version
+or persistent inventory.
 
 Persistent additions: **none in Sesori**. Explicit native enablement, sign-in, and sign-out can change the harness's own
 configuration or credentials; each action must explain that effect. A later server-creation feature will use that same
@@ -380,8 +383,9 @@ ordinal 10), and its headless owner (7.b.2.b, ordinal 11). The measured wire mod
 lines, so the owner/routes remain a separate coherent PR. Original step 8's client
 and external-action scope is split into browser ownership (8.a, ordinal 12), client
 lifecycle (8.b, ordinal 13), authentication declarations/credential forgetting (8.c.1, ordinal 14),
-client action lifecycle (8.c.2.a, ordinal 15), visible controls (8.c.2.b, ordinal 16), and session external actions (8.d, ordinal 17). These have separate provider/callback, transport, motion
-and native pending-request review boundaries. The series now has 23 PRs.
+client action lifecycle (8.c.2.a, ordinal 15), visible controls (8.c.2.b, ordinal 16), and session external actions
+(8.d, ordinal 17). These have separate provider/callback, transport, motion and native pending-request review boundaries.
+The series now has 23 PRs.
 Published PR titles use the current total; PR #1940 is titled `[step 1/23]`,
 while historical squash commits remain unchanged.
 
@@ -568,8 +572,8 @@ Exact PR titles and scope:
     Execute the recorded matrix, record privacy-safe evidence, and move to completed only after passing. No intended
     production/database change.
 
-Steps depend on the preceding step. The Claude milestone is steps 2–16; Codex
-follows immediately in 17–18. Step 2 verifies both from the start so Claude-first
+Steps depend on the preceding step. The Claude milestone is steps 2–18; Codex
+follows immediately in 19–20. Step 2 verifies both from the start so Claude-first
 implementation does not bake in incompatible Codex assumptions. Do not spend the
 priority milestone implementing secondary harnesses.
 

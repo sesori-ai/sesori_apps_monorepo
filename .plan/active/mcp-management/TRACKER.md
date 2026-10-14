@@ -6,7 +6,7 @@
 - Branch/base: `sesori/mcp-client-actions`, `235ff86970`, in the provided `copper-heron` worktree.
 - Current step: 11/23 merged as [#1957][pr-1957];
   steps 12/23 and 13/23 merged as [#1962][pr-1962] and [#1964][pr-1964];
-  step 14/23 merged as [#1966][pr-1966]; step 15/23 is implementing the client connection-action lifecycle;
+  step 14/23 merged as [#1966][pr-1966]; step 15/23 is in review as [#1969][pr-1969];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -35,8 +35,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 11/23 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
 | 12/23 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
 | 13/23 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
-| 14/23 | Authentication availability and credential forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests and native fixture |
-| 15/23 | Shared connection-action lifecycle (8.c.2.a) | In progress | Typed action state and authoritative refresh |
+| 14/23 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
+| 15/23 | Shared action lifecycle (8.c.2.a) | In review | [#1969][pr-1969]; focused tests, architecture approval |
 | 16/23 | Visible authentication and controls (8.c.2.b) | Deferred draft | Resume after Step 15 publication |
 | 17/23 | Session external actions (8.d) | Not started | — |
 | 18/23 | Claude approvals and form/URL elicitation | Not started | — |
@@ -904,3 +904,14 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Step-15 tested source is captured in `91b9c1b240` against `235ff86970`: 509 additions and 93 deletions
   (602 changed) across 20 files, all authored, below the soft cap. No generated output or visible
   product layout changed; the separate UI draft remains preserved for the next presentation PR.
+
+[pr-1969]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1969
+
+- Step 15 review: corrected unknown action inventory without a readable snapshot,
+  restored idle actions after same-configuration reconnect, and re-armed an
+  in-flight read after an uncertain mutation without resending the action. Mobile
+  read-only sessions retain inspection only. Entry actions use a bounded 210-second
+  management request budget; ordinary reads retain their existing budget.
+  Four failure probes failed before these fixes and pass afterward; 33 focused
+  cases pass (27 service, five repository, one slow-action API case). Core/mobile
+  analyzers pass. Earlier shared UI/desktop analyzer evidence is unchanged.

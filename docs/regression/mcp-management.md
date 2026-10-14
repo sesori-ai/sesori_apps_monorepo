@@ -110,9 +110,14 @@ archived session if its native process remains live; it grants no session mutati
 The shared client entry-action API/repository and per-view owner expose native
 server controls and credential forgetting without visible controls yet. Shell
 composition supplies the read-only posture. Pending actions retain inventory;
-completed results apply the native read and supersede earlier GET results.
+completed results apply the native read and supersede earlier inventory requests.
 Staleness received during an action still requires a fresh read. API failure
-retains the original cause and requests inventory without resending the action.
+retains the original cause and requires a fresh inventory read, including when an
+earlier read is still in flight, without resending the action. Reconnecting the
+same bridge restores idle actions while inventory refreshes. An unrecognized
+result retains a readable snapshot or reports an unrecognized inventory when
+there is no snapshot. Entry actions have a bounded 210-second request budget for
+native management and its subsequent inventory discovery.
 Late responses after connection replacement, disconnect or view disposal cannot
 replace the current snapshot. Result state retains its request/target so later
 presentation can distinguish actions on different servers in one inventory view.
@@ -120,7 +125,8 @@ The action Cubit observes the inventory owner and does not dispose it. Closing
 the inventory view sends no native action cancellation. No action registry,
 queue, timer, configuration writer or credential store is added. Focused cases:
 `client/module_core/test/services/mcp_service_test.dart` and
-`client/module_core/test/repositories/mcp_repository_test.dart`.
+`client/module_core/test/repositories/mcp_repository_test.dart` and
+`client/module_core/test/api/mcp_api_test.dart`.
 
 The shared authentication wire contract carries one attempt's ID, plugin and
 server target, native cancellation availability, and sealed current states.

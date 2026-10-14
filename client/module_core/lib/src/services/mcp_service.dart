@@ -87,6 +87,7 @@ class McpService({
     switch (response) {
       case McpActionRequestFailed(:final cause):
         _actions.add(McpActionUncertain(request: operation, cause: cause));
+        _staleVersion++;
         unawaited(refresh());
       case McpActionReceived(:final result):
         _actions.add(McpActionReceivedState(request: operation, result: result));
@@ -102,13 +103,16 @@ class McpService({
                 inventory: previous.inventory,
                 refresh: McpInventoryRefreshUnavailable(cause: inventory),
               ),
-            McpInventoryUnknown() when previous is McpInventoryReady => McpInventoryReady(
-              inventory: previous.inventory,
-              refresh: const McpInventoryRefreshUnrecognized(),
+            McpInventoryUnknown() when previous is McpInventoryReady && previous.inventory is McpInventorySnapshot =>
+              McpInventoryReady(
+                inventory: previous.inventory,
+                refresh: const McpInventoryRefreshUnrecognized(),
+              ),
+            McpInventoryUnknown() => const McpInventoryUnrecognized(),
+            McpInventorySnapshot() || McpInventoryUnavailable() => McpInventoryReady(
+              inventory: inventory,
+              refresh: const McpInventoryRefreshIdle(),
             ),
-            McpInventorySnapshot() ||
-            McpInventoryUnavailable() ||
-            McpInventoryUnknown() => McpInventoryReady(inventory: inventory, refresh: const McpInventoryRefreshIdle()),
           });
           if (_staleVersion > staleVersion) unawaited(refresh());
         }
@@ -241,7 +245,10 @@ class McpService({
         McpInventoryFailed() => const McpInventoryWaitingForConnection(),
       });
     }
-    if (isConnected && (!wasConnected || oldConfig != nextConfig)) unawaited(refresh());
+    if (isConnected && (!wasConnected || oldConfig != nextConfig)) {
+      if (currentAction is McpActionOffline) _actions.add(const McpActionIdle());
+      unawaited(refresh());
+    }
   }
 
   ServerConnectionConfig? _config({required ConnectionStatus status}) => switch (status) {
