@@ -25,7 +25,7 @@ class const ComputerSettingsEntry({
     final currentId = state.currentId;
     final computer = state.computers.where((computer) => computer.id == currentId).firstOrNull;
     return AnimatedSize(
-      duration: const Duration(milliseconds: 200),
+      duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
       curve: Curves.easeOut,
       alignment: AlignmentDirectional.topStart,
       child: computer == null

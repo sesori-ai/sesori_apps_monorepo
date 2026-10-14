@@ -70,7 +70,7 @@ participates.
 - Log out asks first on both apps; only its confirmation starts logout, and
   Cancel or dismissal leaves the session untouched.
 - Mobile Settings runs Account, Bridge, Preferences, Appearance, Support,
-  Legal; there is no Sessions section. Bridge opens with the current computer's entry (platform,
+  Legal. Bridge opens with the current computer's entry (platform,
   name, presence) above the computer-scoped card, which leads with Harnesses;
   Preferences holds Notifications and Default input. The entry opens the same
   computer menu as Projects, and picking another computer lands on its Projects
