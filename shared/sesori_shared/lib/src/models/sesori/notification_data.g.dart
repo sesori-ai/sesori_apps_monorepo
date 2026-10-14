@@ -19,6 +19,7 @@ _NotificationData _$NotificationDataFromJson(Map json) => _NotificationData(
   ),
   sessionId: json['sessionId'] as String?,
   projectId: json['projectId'] as String?,
+  bridgeId: json['bridgeId'] as String?,
 );
 
 Map<String, dynamic> _$NotificationDataToJson(_NotificationData instance) =>
@@ -27,6 +28,7 @@ Map<String, dynamic> _$NotificationDataToJson(_NotificationData instance) =>
       'eventType': ?_$NotificationEventTypeEnumMap[instance.eventType],
       'sessionId': ?instance.sessionId,
       'projectId': ?instance.projectId,
+      'bridgeId': ?instance.bridgeId,
     };
 
 const _$NotificationCategoryEnumMap = {

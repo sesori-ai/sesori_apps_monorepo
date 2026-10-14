@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/multi-computer-plan` from `origin/main` `6a4a42e7a5`, in the provided `brown-dingo` worktree.
-- Current step: 12/15 in PR.
+- Current step: 13/15 in PR.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-14 over two review rounds.
 - Plan PR: #1959, merged 2026-10-14.
 - Architecture plan review: rejected on 2026-10-14 (17 findings); all applied in the same revision. Per `AGENTS.md`
@@ -27,8 +27,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 9/15 | monorepo | Offline screen lists other online computers (shared body) | Done | #1968 (merged 2026-10-14) |
 | 10/15 | monorepo | Settings restructured around the computer entry | Done | #1970 (merged 2026-10-14) |
 | 11/15 | monorepo | Desktop views a remote computer | Done | #1972 (merged 2026-10-14) |
-| 12/15 | monorepo | Presence handling and linked-computer alert | In PR | — |
-| 13/15 | monorepo | Computer id in session pushes; tap opens the right computer | Not started | — |
+| 12/15 | monorepo | Presence handling and linked-computer alert | Done | #1973 (merged 2026-10-14) |
+| 13/15 | monorepo | Computer id in session pushes; tap opens the right computer | In PR | — |
 | 14/15 | monorepo | Reconcile regression documents | Not started | — |
 | 15/15 | monorepo | Run L4 matrix; retire; open computer-management plan | Not started | — |
 
@@ -89,6 +89,12 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   most recently seen one when several arrive. Accepted: a notice for an unknown computer while a fetch is already in
   flight joins that older fetch, so the new computer can wait for the next fetch; an offline notice does not update
   "last seen" until the next fetch.
+- 2026-10-14, step 13: the bridge reads its id from `BridgeIdProvider` at send time, so a re-registration after
+  revocation names the new id. A push for another computer awaits `ComputerSwitchDispatcher.switchTo` (Projects root,
+  then `select`, whose retarget detaches the old socket and moves the status to reconnecting) and only then replaces
+  the stack with the session, so the session screen starts on the new computer's connection and waits for it. The id
+  travels through the phone's local-notification payload for foreground pushes. Desktop attention alerts carry no id
+  and open on the viewed computer (accepted: low damage, the desktop open path is separate).
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record

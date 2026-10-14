@@ -12,6 +12,7 @@ _LocalNotificationPayload _$LocalNotificationPayloadFromJson(Map json) =>
       projectId: json['projectId'] as String?,
       sessionTitle: json['sessionTitle'] as String?,
       accountId: json['accountId'] as String?,
+      bridgeId: json['bridgeId'] as String?,
     );
 
 Map<String, dynamic> _$LocalNotificationPayloadToJson(
@@ -21,4 +22,5 @@ Map<String, dynamic> _$LocalNotificationPayloadToJson(
   'projectId': ?instance.projectId,
   'sessionTitle': ?instance.sessionTitle,
   'accountId': ?instance.accountId,
+  'bridgeId': ?instance.bridgeId,
 };

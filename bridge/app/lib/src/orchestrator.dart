@@ -378,6 +378,7 @@ class Orchestrator({
       rateLimiter: pushRateLimiter,
       tracker: pushTracker,
       contentBuilder: const PushNotificationContentBuilder(),
+      bridgeIdProvider: _bridgeRegistrationService,
     );
     const pushContentBuilder = PushNotificationContentBuilder();
     final completionListener = CompletionPushListener(

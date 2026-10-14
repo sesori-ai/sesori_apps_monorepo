@@ -15,6 +15,7 @@ sealed class LocalNotificationPayload with _$LocalNotificationPayload {
     required String? projectId,
     required String? sessionTitle,
     required String? accountId,
+    required String? bridgeId,
   }) = _LocalNotificationPayload;
 
   factory fromJson(Map<String, dynamic> json) => _$LocalNotificationPayloadFromJson(json);

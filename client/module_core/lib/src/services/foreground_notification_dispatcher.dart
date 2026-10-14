@@ -66,6 +66,7 @@ class ForegroundNotificationDispatcher({
       projectId: notificationData.projectId,
       sessionTitle: notificationData.sessionId == null ? null : title,
       accountId: null,
+      bridgeId: notificationData.bridgeId,
     );
   }
 

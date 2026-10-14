@@ -416,6 +416,8 @@ class DesktopAttentionService({
         projectId: session.projectID,
         sessionTitle: session.title,
         accountId: authState.user.id,
+        // The desktop opens attention notifications on the computer it views.
+        bridgeId: null,
       );
     } on Object catch (error, stackTrace) {
       logw("Failed to show a desktop attention notification", error, stackTrace);

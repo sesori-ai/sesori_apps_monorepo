@@ -364,15 +364,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i274.AnalyticsRepository>(
       () => _i274.AnalyticsRepository(api: gh<_i727.AnalyticsApi>()),
     );
-    gh.lazySingleton<_i516.NotificationOpenDispatcher>(
-      () => _i516.NotificationOpenDispatcher(
-        authSession: gh<_i442.AuthSession>(),
-        pushMessagingSource: gh<_i330.PushMessagingSource>(),
-        localNotificationClient: gh<_i1037.LocalNotificationClient>(),
-        routeDispatcher: gh<_i951.RouteDispatcher>(),
-        routeSource: gh<_i366.RouteSource>(),
-      ),
-    );
     gh.lazySingleton<_i958.PluginPreferenceApi>(
       () =>
           _i958.PluginPreferenceApi(persister: gh<_i903.PersisterRepository>()),
@@ -812,6 +803,17 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i1033.BridgeSettingsService(
         repository: gh<_i102.BridgeSettingsRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
+      ),
+    );
+    gh.lazySingleton<_i516.NotificationOpenDispatcher>(
+      () => _i516.NotificationOpenDispatcher(
+        authSession: gh<_i442.AuthSession>(),
+        pushMessagingSource: gh<_i330.PushMessagingSource>(),
+        localNotificationClient: gh<_i1037.LocalNotificationClient>(),
+        routeDispatcher: gh<_i951.RouteDispatcher>(),
+        routeSource: gh<_i366.RouteSource>(),
+        selectedComputerService: gh<_i370.SelectedComputerService>(),
+        computerSwitchDispatcher: gh<_i433.ComputerSwitchDispatcher>(),
       ),
     );
     gh.lazySingleton<_i72.MessageThumbnailCacheService>(

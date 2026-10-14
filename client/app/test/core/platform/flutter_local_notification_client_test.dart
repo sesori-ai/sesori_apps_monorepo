@@ -169,6 +169,7 @@ void main() {
         projectId: null,
         sessionTitle: null,
         accountId: null,
+        bridgeId: null,
       );
 
       verify(
@@ -193,6 +194,7 @@ void main() {
         projectId: null,
         sessionTitle: null,
         accountId: null,
+        bridgeId: null,
       );
       await Future<void>.delayed(const Duration(milliseconds: 2));
       await client.show(
@@ -203,6 +205,7 @@ void main() {
         projectId: null,
         sessionTitle: null,
         accountId: null,
+        bridgeId: null,
       );
 
       final capturedIds = verify(
@@ -230,6 +233,7 @@ void main() {
         projectId: "p1",
         sessionTitle: "Session Title",
         accountId: null,
+        bridgeId: "br_workstation",
       );
 
       final captured = verify(
@@ -248,6 +252,7 @@ void main() {
       expect(decoded["sessionId"], equals("s1"));
       expect(decoded["projectId"], equals("p1"));
       expect(decoded["sessionTitle"], equals("Session Title"));
+      expect(decoded["bridgeId"], equals("br_workstation"));
     });
   });
 
@@ -258,6 +263,7 @@ void main() {
         projectId: "proj_1",
         sessionTitle: "Title",
         accountId: null,
+        bridgeId: null,
       );
 
       expect(
@@ -289,6 +295,7 @@ void main() {
           "sessionId": "ses_123",
           "projectId": "proj_456",
           "sessionTitle": "Warm title",
+          "bridgeId": "br_workstation",
         }),
       );
 
@@ -296,6 +303,7 @@ void main() {
       expect(request!.sessionId, equals("ses_123"));
       expect(request.projectId, equals("proj_456"));
       expect(request.sessionTitle, equals("Warm title"));
+      expect(request.bridgeId, equals("br_workstation"));
     });
 
     test("accepts legacy payloads without sessionTitle", () {
