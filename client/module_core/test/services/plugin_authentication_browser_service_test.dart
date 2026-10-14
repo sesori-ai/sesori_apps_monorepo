@@ -111,6 +111,59 @@ final _mcpOwner = PluginAuthenticationBrowserOwner(
 );
 
 void main() {
+  test("reserves the owner before notifying synchronous phase observers", () {
+    fakeAsync((async) {
+      final session = _FakeLoopbackSession();
+      final browser = _FakeBrowser(returnsToApp: false)
+        ..actions.add(
+          ({required authorizationUri, required callbackScheme}) async => const PluginAuthenticationBrowserOpened(),
+        )
+        ..actions.add(
+          ({required authorizationUri, required callbackScheme}) async => const PluginAuthenticationBrowserOpened(),
+        );
+      final service = PluginAuthenticationBrowserService(
+        loopbackServer: _ImmediateLoopbackServer(session: session),
+        browser: browser,
+      );
+      final challenge = PluginAuthenticationBrowserChallenge(
+        authorizationUri: Uri.parse("https://fixture.example/authorize"),
+        expectedCallbackUri: session.expectedCallbackUri,
+      );
+      PluginAuthenticationBrowserFlowResult? competing;
+      unawaited(
+        service.authenticate(
+          owner: _owner,
+          challenge: challenge,
+          isLocalBridge: true,
+          reuseActiveListener: false,
+          onPhase: (_) {
+            unawaited(
+              service
+                  .authenticate(
+                    owner: _mcpOwner,
+                    challenge: challenge,
+                    isLocalBridge: true,
+                    reuseActiveListener: false,
+                    onPhase: (_) {},
+                    onDetachedFailure: (_) {},
+                  )
+                  .then((result) => competing = result),
+            );
+          },
+          onDetachedFailure: (_) {},
+        ),
+      );
+      async.flushMicrotasks();
+      try {
+        expect(competing, isA<PluginAuthenticationBrowserBusy>());
+        expect(browser.opens, 1);
+      } finally {
+        async.elapse(const Duration(minutes: 6));
+        async.flushMicrotasks();
+      }
+    });
+  });
+
   for (final (firstOwner, secondOwner) in [(_owner, _mcpOwner), (_mcpOwner, _owner)]) {
     test("${firstOwner.purpose.name} then ${secondOwner.purpose.name} preserves the first callback", () async {
       final session = _FakeLoopbackSession();

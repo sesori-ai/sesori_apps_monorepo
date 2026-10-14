@@ -386,6 +386,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   visible with “Finish the current sign-in first” and an explicit retry; it neither cancels the other flow nor queues consent.
   Scoped cancellation/disposal cannot close another owner's listener. Local direct browser flows retain ownership until
   native settlement or the existing five-minute expiry; pending listener cleanup retains ownership until closure completes.
+  Provider disposal waits for owned listener cleanup already started by settlement or connection invalidation.
   Cover provider-then-MCP and MCP-then-provider overlap, foreign retry/cancel, surviving callback delivery, and busy retry.
   The shared sign-in sheet eases height changes between retry, browser progress and terminal feedback; reduced motion
   presents the same states directly. Native recordings should show no abrupt layout snap during retry or cancellation.

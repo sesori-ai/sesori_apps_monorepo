@@ -74,8 +74,6 @@ class PluginAuthenticationBrowserService({
     if (active != null && (!identical(active.owner, owner) || !reuseActiveListener || active.finishing != null)) {
       return const PluginAuthenticationBrowserBusy();
     }
-    onPhase(PluginAuthenticationBrowserPhase.opening);
-
     late final _PluginAuthenticationBrowserOperation operation;
     if (reuseActiveListener) {
       final active = _active;
@@ -107,6 +105,7 @@ class PluginAuthenticationBrowserService({
       _active = operation;
       operation.timer = Timer(_operationLifetime, () => _expire(operation: operation));
     }
+    onPhase(PluginAuthenticationBrowserPhase.opening);
 
     if (isLocalBridge) {
       final result = await _openDirect(operation: operation);

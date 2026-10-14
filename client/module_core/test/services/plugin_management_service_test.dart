@@ -111,6 +111,57 @@ void main() {
   });
 
   group("authentication orchestration", () {
+    test("disposal waits for browser cleanup already started by terminal progress", () async {
+      final challenge = PluginAuthenticationBrowserChallenge(
+        authorizationUri: Uri.parse("https://provider.example/authorize"),
+        expectedCallbackUri: Uri.parse("http://127.0.0.1:43120/callback"),
+      );
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge))
+        ..queueLoad(_supported(_response(token: "terminal")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final browserService = _MockPluginAuthenticationBrowserService();
+      final cleanup = Completer<PluginAuthenticationBrowserFlowFailed?>();
+      when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((_) => cleanup.future);
+      when(
+        () => browserService.authenticate(
+          owner: any(named: "owner"),
+          challenge: any(named: "challenge"),
+          isLocalBridge: any(named: "isLocalBridge"),
+          reuseActiveListener: any(named: "reuseActiveListener"),
+          onPhase: any(named: "onPhase"),
+          onDetachedFailure: any(named: "onDetachedFailure"),
+        ),
+      ).thenAnswer((invocation) {
+        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+          PluginAuthenticationBrowserPhase.opening,
+        );
+        return Completer<PluginAuthenticationBrowserFlowResult>().future;
+      });
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+        authenticationBrowserService: browserService,
+        activeBridgeLocality: const _RemoteBridgeLocality(),
+      );
+      await _waitFor(() => service.snapshots.hasValue);
+      await service.startAuthentication(pluginId: "one");
+      connection.emitAuthenticationProgress(pluginId: "one", progress: const PluginAuthenticationProgress.completed());
+      await _pump();
+      var disposed = false;
+      final disposal = service.onDispose().then((_) => disposed = true);
+      await _pump();
+      try {
+        expect(disposed, isFalse);
+      } finally {
+        cleanup.complete(null);
+        await disposal;
+        await connection.dispose();
+      }
+    });
+
     test("busy browser retains the new challenge and leaves the first callback owner intact", () async {
       final challenge = PluginAuthenticationBrowserChallenge(
         authorizationUri: Uri.parse("https://provider.example/authorize"),

@@ -5,7 +5,7 @@
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-client-authentication`, `067380c981`, in the provided `copper-heron` worktree.
 - Current step: 11/21 merged as [#1957][pr-1957];
-  step 12/21 scopes browser ownership and is ready for publication after native visual verification;
+  step 12/21 is in [#1962][pr-1962], with shared client lifecycle drafted locally as its sole successor;
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -32,8 +32,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 9/21 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
 | 10/21 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
 | 11/21 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/21 | Browser ownership (8.a) | In progress | Provider/MCP handles and busy behavior |
-| 13/21 | Shared client authentication lifecycle (8.b) | Not started | — |
+| 12/21 | Browser ownership (8.a) | In review | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
+| 13/21 | Shared client authentication lifecycle (8.b) | In progress | Local API/repository/owner/Cubit draft |
 | 14/21 | Visible authentication and controls (8.c) | Not started | — |
 | 15/21 | Session external actions (8.d) | Not started | — |
 | 16/21 | Claude approvals and form/URL elicitation | Not started | — |
@@ -724,7 +724,9 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   identity handles, typed busy, matching retry/cancel/disposal, accepted-provider
   ownership, retained blocked challenge and explicit retry. Architecture review
   pass 1 approved the new production boundaries against `f6da8d1151`; subsequent
-  changes are fixture/test/documentation only.
+  changes include the local shared-sheet height transition found during native
+  QA. That method-level UI change introduces no new architectural boundary;
+  its owning widget suite, analyzer and native recording passed afterward.
 - Browser focused evidence is 198 tests: 169 core transport/provider/Cubit plus
   29 shared harness widget tests. The overlap regression failed before the fix.
   Core/shared UI and downstream mobile/desktop analyzers pass. Presentation and
@@ -769,3 +771,17 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   905 authored lines. No prior registry, persisted state or database schema
   is superseded; unscoped browser cancellation and replacement were removed
   from every live in-repository consumer.
+
+- Immutable initial publication measurement: `git diff --numstat 067380c981 1ec19cc9b7`
+  reports 859 additions and 77 deletions (936 changed), including the six-line
+  measurement record above: 25 generated and 911 authored lines across 19 files.
+  The preceding pre-record measurement remains its labeled historical snapshot.
+- Step-12 review reproductions failed before their fixes: owner reservation now
+  precedes synchronous phase notification, and provider cleanup keeps its owner
+  handle until closure so disposal joins the same cancellation. No cleanup
+  future registry, queue or additional mutable coordination field was added.
+- Both changed core suites pass 95 tests after those fixes; the unchanged
+  Cubit suite retains 76 passing tests, for 171 core plus 29 UI tests (200 total).
+  Core analysis is clean. The production UI is unchanged from its native recording.
+
+[pr-1962]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1962

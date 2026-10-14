@@ -840,10 +840,18 @@ class PluginManagementService({
   Future<void> _cancelOwnedBrowserCapture({required String pluginId}) async {
     final active = _activeAuthenticationBrowser;
     if (active == null || active.pluginId != pluginId) return;
-    _activeAuthenticationBrowser = null;
     _authenticationBrowserGeneration++;
-    final failure = await _authenticationBrowserService.cancel(owner: active.owner);
-    if (failure != null) _recordBrowserFailure(failure: failure);
+    try {
+      // Keep the handle while the transport closes. Disposal joins the same
+      // owner-scoped cancellation future rather than losing the cleanup owner.
+      final failure = await _authenticationBrowserService.cancel(owner: active.owner);
+      if (identical(_activeAuthenticationBrowser?.owner, active.owner)) {
+        _activeAuthenticationBrowser = null;
+        if (failure != null) _recordBrowserFailure(failure: failure);
+      }
+    } finally {
+      if (identical(_activeAuthenticationBrowser?.owner, active.owner)) _activeAuthenticationBrowser = null;
+    }
   }
 
   void _publishAuthenticationBrowserState({
@@ -941,13 +949,10 @@ class PluginManagementService({
     _heldAuthenticationProgress.clear();
     _authenticationBrowserGeneration++;
     final activeBrowser = _activeAuthenticationBrowser;
-    _activeAuthenticationBrowser = null;
     if (cancelBrowser && activeBrowser != null) {
-      unawaited(
-        _authenticationBrowserService.cancel(owner: activeBrowser.owner).then((failure) {
-          if (failure != null) _recordBrowserFailure(failure: failure);
-        }),
-      );
+      _runOwnedBrowserCaptureCancellation(pluginId: activeBrowser.pluginId);
+    } else {
+      _activeAuthenticationBrowser = null;
     }
     if (!_disposed && !_authenticationBrowserStates.isClosed && _authenticationBrowserStates.value.isNotEmpty) {
       _authenticationBrowserStates.add(const {});
@@ -1335,8 +1340,7 @@ class PluginManagementService({
     _disposed = true;
     final activeBrowser = _activeAuthenticationBrowser;
     if (activeBrowser != null) {
-      final cleanupFailure = await _authenticationBrowserService.cancel(owner: activeBrowser.owner);
-      if (cleanupFailure != null) _recordBrowserFailure(failure: cleanupFailure);
+      await _cancelOwnedBrowserCapture(pluginId: activeBrowser.pluginId);
     }
     _clearAuthentications(cancelBrowser: false);
     await _subscriptions.dispose();
