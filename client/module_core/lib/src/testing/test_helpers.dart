@@ -375,11 +375,18 @@ class FakeFeedbackPromptService() extends Fake implements FeedbackPromptService 
 
 class MockConnectionService() extends Mock implements ConnectionService {
   final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();
+  final StreamController<BridgePresenceMessage> _bridgePresence = StreamController<BridgePresenceMessage>.broadcast();
 
   @override
   Stream<void> get dataMayBeStale => _dataMayBeStale.stream;
 
   void emitDataMayBeStale() => _dataMayBeStale.add(null);
+
+  @override
+  Stream<BridgePresenceMessage> get bridgePresence => _bridgePresence.stream;
+
+  void emitBridgePresence({required String bridgeId, required bool online}) =>
+      _bridgePresence.add(BridgePresenceMessage(bridgeId: bridgeId, online: online));
 }
 
 class MockRouteSource({

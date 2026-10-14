@@ -103,6 +103,7 @@ export "src/widgets/computer_menu.dart";
 export "src/widgets/computer_offline_heading.dart";
 export "src/widgets/connection_banner.dart";
 export "src/widgets/defer_until_route_open.dart";
+export "src/widgets/linked_computer_alerts.dart";
 export "src/widgets/markdown_styles.dart";
 export "src/widgets/other_computers_card.dart";
 export "src/widgets/pending_archive_alerts.dart";

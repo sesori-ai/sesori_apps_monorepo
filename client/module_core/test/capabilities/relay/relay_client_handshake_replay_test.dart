@@ -109,6 +109,45 @@ void main() {
     verifyNever(roomKeyStorage.clearRoomKey);
   });
 
+  test("surfaces presence notices for any of the account's bridges", () async {
+    final roomKey = Uint8List.fromList(List<int>.generate(32, (index) => index));
+    final roomKeyStorage = _MockRoomKeyStorage();
+    when(roomKeyStorage.getRoomKey).thenAnswer((_) async => roomKey);
+    final socket = _FakeWebSocket();
+    final client = RelayClient.withChannelConnector(
+      relayHost: "relay.example.com",
+      cryptoService: RelayCryptoService(),
+      roomKeyStorage: roomKeyStorage,
+      authToken: null,
+      channelConnector: (_) => socket.channel,
+      boundedJsonEncoder: null,
+      maxPlaintextMessageBytes: RelayProtocol.maxPlaintextMessageBytes,
+      bridgeId: "br_test1234",
+    );
+    final outgoing = StreamIterator<Object?>(socket.outgoing);
+    addTearDown(() async {
+      await outgoing.cancel();
+      await client.disconnect();
+      await socket.close();
+    });
+    final resumeReady = outgoing.moveNext();
+    final connectFuture = client.connect();
+    expect(await resumeReady.timeout(const Duration(seconds: 1)), isTrue);
+    final encryptor = RelayCryptoService().createSessionEncryptor(SecretKey(roomKey));
+    socket.serverSink.add(
+      await frame(utf8.encode(jsonEncode(const RelayMessage.resumeAck().toJson())), encryptor: encryptor),
+    );
+    await connectFuture.timeout(const Duration(seconds: 1));
+
+    final presence = client.bridgePresence.first;
+    socket.serverSink.add('{"type":"bridge_presence","bridgeId":"br_other5678","online":false}');
+
+    expect(
+      await presence.timeout(const Duration(seconds: 1)),
+      const BridgePresenceMessage(bridgeId: "br_other5678", online: false),
+    );
+  });
+
   test("request envelope bounded encoding preserves exact bytes and yields", () async {
     final roomKey = Uint8List.fromList(List<int>.generate(32, (index) => index));
     final roomKeyStorage = _MockRoomKeyStorage();

@@ -37,7 +37,9 @@ import "../repositories/registered_bridges_store.dart";
 ///
 /// The account's bridge list itself is published on [bridges]. A live
 /// connection marks it stale without emitting, so the next
-/// [getRegisteredBridges] refetches while consumers keep the last list.
+/// [getRegisteredBridges] refetches while consumers keep the last list. The
+/// relay's presence notices update a listed bridge's status in place, and a
+/// notice for a bridge the list does not know refetches it.
 ///
 /// [RegisteredBridgesStore] is the Layer-2 persistence/cache repository (a
 /// data-access role); this service is the Layer-3 orchestrator that adds the network tier,
@@ -73,6 +75,14 @@ class RegisteredBridgesService({
   /// connection, so [getRegisteredBridges] can answer without the network.
   bool _bridgesCurrent = false;
 
+  /// The latest presence notice per bridge id on the live connection. It wins
+  /// over every fetched list, because the relay reports a change to the auth
+  /// server asynchronously: a fetch that started before a notice, or the
+  /// refetch a notice triggered, can still carry the older status. Cleared
+  /// when the connection drops, since notices sent meanwhile are missed and
+  /// the next fetch is then the better answer.
+  final Map<String, bool> _presence = {};
+
   /// Auth generation, bumped on every logout. An asynchronous read, lookup, or
   /// connection-driven latch captures this when it starts; if a logout bumps
   /// it while the operation is in flight, the operation must not write the old
@@ -83,12 +93,14 @@ class RegisteredBridgesService({
 
   StreamSubscription<ConnectionStatus>? _statusSubscription;
   StreamSubscription<AuthState>? _authSubscription;
+  StreamSubscription<BridgePresenceMessage>? _presenceSubscription;
 
   this {
     // Seed the reactive latch from the persisted answer (no network) so
     // consumers see the right value immediately, independent of connection state.
     unawaited(_seedFromStore());
     _statusSubscription = connectionService.status.listen(_onConnectionStatusChanged);
+    _presenceSubscription = connectionService.bridgePresence.listen(_onPresence);
     _authSubscription = authSession.authStateStream.listen((state) {
       // Logout: bump the generation so any in-flight lookup/latch retires
       // instead of writing the old account's answer, then drop the reactive
@@ -175,7 +187,7 @@ class RegisteredBridgesService({
           // write, so reporting the bridges here would still leak the old
           // account's answer to the caller. Retire the result to match.
           if (generation != _authGeneration) return const [];
-          final sorted = List<BridgeSummary>.unmodifiable(_sortedByRecency(bridges: data));
+          final sorted = _withPresence(bridges: _sortedByRecency(bridges: data));
           _bridgesCurrent = true;
           _emitBridges(bridges: sorted);
           return sorted;
@@ -207,6 +219,39 @@ class RegisteredBridgesService({
     });
   }
 
+  /// The bridges with the latest presence each one reported on this connection.
+  List<BridgeSummary> _withPresence({required List<BridgeSummary> bridges}) => List<BridgeSummary>.unmodifiable([
+    for (final bridge in bridges)
+      switch (_presence[bridge.id]) {
+        null => bridge,
+        final online => bridge.copyWith(
+          status: online ? BridgeRegistrationStatus.active : BridgeRegistrationStatus.inactive,
+        ),
+      },
+  ]);
+
+  void _onPresence(BridgePresenceMessage presence) {
+    _presence[presence.bridgeId] = presence.online;
+    final bridges = _bridges.value;
+    if (bridges.any((bridge) => bridge.id == presence.bridgeId)) {
+      _emitBridges(bridges: _withPresence(bridges: bridges));
+      return;
+    }
+    // A computer linked since the last fetch: only the auth server can name it.
+    _refetchForUnknownBridge();
+  }
+
+  void _refetchForUnknownBridge() {
+    final running = _activeFetch;
+    if (running == null) {
+      _bridgesCurrent = false;
+      unawaited(getRegisteredBridges());
+      return;
+    }
+    // The running fetch may predate the link, so fetch again once it settles.
+    unawaited(running.then<void>((_) {}, onError: (Object _) {}).whenComplete(_refetchForUnknownBridge));
+  }
+
   void _onConnectionStatusChanged(ConnectionStatus status) {
     switch (status) {
       // A live E2E connection proves a bridge exists — latch without a lookup.
@@ -217,11 +262,12 @@ class RegisteredBridgesService({
       // overlay — gets the right answer. Coalesced, and a no-op once latched.
       case ConnectionBridgeOffline():
         unawaited(hasRegisteredBridges());
-      // Pre-connection / transient states carry no registration signal.
+      // Pre-connection / transient states carry no registration signal. The
+      // socket is gone, so presence notices start missing.
       case ConnectionDisconnected():
       case ConnectionReconnecting():
       case ConnectionLost():
-        break;
+        _presence.clear();
     }
   }
 
@@ -261,6 +307,7 @@ class RegisteredBridgesService({
 
   void _reset() {
     _bridgesCurrent = false;
+    _presence.clear();
     if (_bridges.value.isNotEmpty) _emitBridges(bridges: const []);
     if (!_isRegistered.isClosed && _isRegistered.value) _isRegistered.add(false);
   }
@@ -269,8 +316,10 @@ class RegisteredBridgesService({
   Future<void> dispose() async {
     await _statusSubscription?.cancel();
     await _authSubscription?.cancel();
+    await _presenceSubscription?.cancel();
     _statusSubscription = null;
     _authSubscription = null;
+    _presenceSubscription = null;
     await _isRegistered.close();
     await _bridges.close();
   }

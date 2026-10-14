@@ -71,6 +71,7 @@ class ConnectionService(
   final BehaviorSubject<ConnectionStatus> _status = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
   final StreamController<SseEvent> _events = StreamController<SseEvent>.broadcast();
   final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();
+  final StreamController<BridgePresenceMessage> _bridgePresence = StreamController<BridgePresenceMessage>.broadcast();
 
   final _compositeSubscription = CompositeSubscription();
 
@@ -78,6 +79,7 @@ class ConnectionService(
   RelayClient? _connectingRelayClient;
   StreamSubscription<RelaySseEvent>? _relaySseSubscription;
   StreamSubscription<BridgeStatus>? _bridgeStatusSubscription;
+  StreamSubscription<BridgePresenceMessage>? _bridgePresenceSubscription;
   StreamSubscription<void>? _socketClosedSubscription;
   Timer? _reconnectTimer;
   Completer<void>? _reconnectDelayCompleter;
@@ -206,6 +208,11 @@ class ConnectionService(
   Stream<SseEvent> get events => _events.stream;
 
   Stream<void> get dataMayBeStale => _dataMayBeStale.stream;
+
+  /// The relay's account-wide notices that one of the account's computers
+  /// connected or disconnected, from whichever socket is live. Notices sent
+  /// while no socket is live are missed.
+  Stream<BridgePresenceMessage> get bridgePresence => _bridgePresence.stream;
 
   /// Filtered stream of events scoped to [sessionId], already typed as
   /// [SesoriSessionEvent]. Enables exhaustive switching in session cubits
@@ -342,6 +349,7 @@ class ConnectionService(
             config: committedConfig,
             health: bridgeOfflineHealth,
           );
+          _forwardBridgePresence(relayClient: relayClient);
           _watchSocketClosedWhileBridgeOffline(relayClient);
         } catch (error, stackTrace) {
           loge("Failed to set up watchers after bridge-absent relay connect", error, stackTrace);
@@ -428,6 +436,7 @@ class ConnectionService(
           config: committedConfig,
           health: health,
         );
+        _forwardBridgePresence(relayClient: relayClient);
       } catch (error, stackTrace) {
         loge("Failed to setup SSE streams after successful relay connect", error, stackTrace);
         await _disconnectRelayClient();
@@ -608,6 +617,15 @@ class ConnectionService(
     );
   }
 
+  void _forwardBridgePresence({required RelayClient relayClient}) {
+    _bridgePresenceSubscription = relayClient.bridgePresence.listen(
+      _bridgePresence.add,
+      onError: (Object error, StackTrace stackTrace) {
+        loge("Bridge presence stream error", error, stackTrace);
+      },
+    );
+  }
+
   /// While parked in [ConnectionBridgeOffline] with no SSE stream (the bridge
   /// never came online, so there is no room key and no SSE subscription), the
   /// SSE drop handler that normally detects a dead socket is absent. Watch the
@@ -727,6 +745,13 @@ class ConnectionService(
       loge("Failed to cancel bridge status subscription", error, stackTrace);
     }
     _bridgeStatusSubscription = null;
+
+    try {
+      await _bridgePresenceSubscription?.cancel();
+    } catch (error, stackTrace) {
+      loge("Failed to cancel bridge presence subscription", error, stackTrace);
+    }
+    _bridgePresenceSubscription = null;
 
     try {
       await _socketClosedSubscription?.cancel();
@@ -987,6 +1012,7 @@ class ConnectionService(
     unawaited(_disconnectRelayClient());
     _compositeSubscription.dispose();
     _dataMayBeStale.close();
+    _bridgePresence.close();
     _events.close();
     _status.close();
     _lastHealth.close();

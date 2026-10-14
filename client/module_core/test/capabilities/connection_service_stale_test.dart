@@ -288,6 +288,7 @@ void main() {
       );
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => relayClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(relayClient.disconnect).thenAnswer((_) async {});
       // The group-level pending token holds the now-immediate post-resume reconnect
       // at the refresh step, right after the eager teardown — letting us assert the

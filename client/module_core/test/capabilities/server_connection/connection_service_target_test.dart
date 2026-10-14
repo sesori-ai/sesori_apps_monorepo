@@ -66,6 +66,7 @@ _MockRelayClient _connectedClient({
   ).thenAnswer((_) async => RelayResponse(id: "h", status: 200, body: jsonEncode(_health.toJson()), headers: const {}));
   when(() => client.subscribeSse(any())).thenAnswer((_) => sse);
   when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+  when(() => client.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
   when(client.disconnect).thenAnswer((_) async {});
   return client;
 }
@@ -134,6 +135,23 @@ void main() {
 
     expect(factory.bridgeIds, ["b"]);
     expect(service.currentStatus.targetBridgeId, "b");
+  });
+
+  test("forwards presence notices about other computers from the live socket", () async {
+    await targetStorage.write(bridgeId: "b");
+    final notices = StreamController<BridgePresenceMessage>.broadcast();
+    addTearDown(notices.close);
+    final client = _connectedClient(sse: NeverStream(), reportedBridgeId: "b");
+    when(() => client.bridgePresence).thenAnswer((_) => notices.stream);
+    final service = buildService(factory: _RecordingRelayClientFactory([client]));
+    auth.add(const AuthState.authenticated(user: _user));
+    await service.status.firstWhere((status) => status is ConnectionConnected);
+
+    final forwarded = service.bridgePresence.first;
+    notices.add(const BridgePresenceMessage(bridgeId: "c", online: true));
+
+    expect(await forwarded, const BridgePresenceMessage(bridgeId: "c", online: true));
+    expect(service.currentStatus, isA<ConnectionConnected>(), reason: "presence never changes the connection");
   });
 
   test("signing out clears the stored target", () async {

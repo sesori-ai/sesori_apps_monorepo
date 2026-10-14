@@ -249,7 +249,9 @@ state.
   known, the first one, which the relay serves). Picking the current computer only closes the menu. Picking
   another closes it, returns to the Projects root, shows the shimmer loading list under the new name, and loads
   that computer's projects as a first load does, with no rows from the previous computer. Each switch reports
-  `computer_switched` with its `source` (`menu` here) and whether the target was online.
+  `computer_switched` with its `source` (`menu` here) and whether the target was online. A computer's online
+  status in the menu, the offline card and Settings follows the relay's presence notices live, and that same
+  status is what `computer_switched` reports.
 - With the picked computer offline, phone Projects heads its body "<name> is offline" ("Bridge offline" while the
   name is unknown) over when it was last seen. Below that, an "Other computers" card lists up to two of the
   account's other online computers, most recently seen first, as one-tap switches; with more online, a

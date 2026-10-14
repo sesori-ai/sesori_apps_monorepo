@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/multi-computer-plan` from `origin/main` `6a4a42e7a5`, in the provided `brown-dingo` worktree.
-- Current step: 11/15 in PR.
+- Current step: 12/15 in PR.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-14 over two review rounds.
 - Plan PR: #1959, merged 2026-10-14.
 - Architecture plan review: rejected on 2026-10-14 (17 findings); all applied in the same revision. Per `AGENTS.md`
@@ -26,8 +26,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 8/15 | monorepo | Computer menu, switch dispatcher, and flow on Projects | Done | #1967 (merged 2026-10-14) |
 | 9/15 | monorepo | Offline screen lists other online computers (shared body) | Done | #1968 (merged 2026-10-14) |
 | 10/15 | monorepo | Settings restructured around the computer entry | Done | #1970 (merged 2026-10-14) |
-| 11/15 | monorepo | Desktop views a remote computer | In PR | — |
-| 12/15 | monorepo | Presence handling and linked-computer alert | Not started | — |
+| 11/15 | monorepo | Desktop views a remote computer | Done | #1972 (merged 2026-10-14) |
+| 12/15 | monorepo | Presence handling and linked-computer alert | In PR | — |
 | 13/15 | monorepo | Computer id in session pushes; tap opens the right computer | Not started | — |
 | 14/15 | monorepo | Reconcile regression documents | Not started | — |
 | 15/15 | monorepo | Run L4 matrix; retire; open computer-management plan | Not started | — |
@@ -81,6 +81,14 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   The home header is hidden while the account's only computer is this one. The offline heading moved to the
   shared `ComputerOfflineHeading` (module_app_ui) used by the phone and the desktop remote-offline body; the
   phone's CLI command box is not reused (app-shell widgets), a line asks to start the bridge on that computer.
+- 2026-10-14, step 12: presence lands as a per-computer overlay in `RegisteredBridgesService` applied over every
+  fetched list and cleared on a connection drop and on logout, so the menu, offline card, Settings and desktop header
+  update live and `computer_switched` reports the freshest status with no further code; a notice beats a fetch that
+  started before it. An unknown id refetches the list. The alert (success, 8 s, Switch with source `alert`) skips
+  the first list after launch or sign-in, status-only changes and the desktop's own computer, and names only the
+  most recently seen one when several arrive. Accepted: a notice for an unknown computer while a fetch is already in
+  flight joins that older fetch, so the new computer can wait for the next fetch; an offline notice does not update
+  "last seen" until the next fetch.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record

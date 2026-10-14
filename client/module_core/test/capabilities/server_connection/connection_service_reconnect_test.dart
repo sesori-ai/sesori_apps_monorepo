@@ -280,6 +280,7 @@ void main() {
       when(() => relayClient.connectionState).thenReturn(RelayClientConnectionState.connected);
       when(relayClient.disconnect).thenAnswer((_) async {});
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => relayClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
 
       final factory = _TestRelayClientFactory(
         ({
@@ -320,6 +321,7 @@ void main() {
       when(() => relayClient.didResume).thenReturn(true);
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => relayClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(relayClient.disconnect).thenAnswer((_) async {});
       const desktopHealth = HealthResponse(
         healthy: true,
@@ -383,6 +385,7 @@ void main() {
         when(() => client.connectionState).thenReturn(RelayClientConnectionState.connected);
         when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
         when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+        when(() => client.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
         when(client.connect).thenAnswer((_) async {});
         when(client.disconnect).thenAnswer((_) async {});
       }
@@ -469,6 +472,7 @@ void main() {
           when(() => client.connectionState).thenReturn(RelayClientConnectionState.connected);
           when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
           when(() => client.bridgeStatus).thenAnswer((_) => bridgeStatuses.stream);
+          when(() => client.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
           when(client.connect).thenAnswer((_) async {});
           when(client.disconnect).thenAnswer((_) async {});
         }
@@ -540,6 +544,7 @@ void main() {
         when(() => client.connectionState).thenReturn(RelayClientConnectionState.connected);
         when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
         when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+        when(() => client.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
         when(client.connect).thenAnswer((_) async {});
         when(client.disconnect).thenAnswer((_) async {});
         // Both are fresh-DH connects (no resume), so each re-probes /health.
@@ -620,6 +625,7 @@ void main() {
       );
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => relayClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(relayClient.disconnect).thenAnswer((_) async {});
 
       final factory = _TestRelayClientFactory(
@@ -676,6 +682,7 @@ void main() {
         );
         when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
         when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+        when(() => relayClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
         when(relayClient.disconnect).thenAnswer((_) async {});
 
         var now = DateTime(2025, 1, 1, 12, 0, 0);
@@ -756,6 +763,7 @@ void main() {
       );
       when(() => connectedClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => connectedClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => connectedClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(connectedClient.disconnect).thenAnswer((_) async {});
 
       final clients = <MockRelayClient>[firstFailedClient, secondFailedClient, connectedClient];
@@ -862,6 +870,7 @@ void main() {
       );
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => relayClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(relayClient.disconnect).thenAnswer((_) async {});
 
       // Attempt 1's token refresh is held pending; Attempt 2's resolves
@@ -952,6 +961,7 @@ void main() {
         );
         when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
         when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+        when(() => client.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
         when(client.disconnect).thenAnswer((_) async {});
       }
       when(initialClient.connect).thenAnswer((_) async {});
@@ -1040,6 +1050,7 @@ void main() {
         );
         when(() => client.subscribeSse(any())).thenAnswer((_) => sseController.stream);
         when(() => client.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+        when(() => client.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
         when(client.disconnect).thenAnswer((_) async {});
       }
       when(initialClient.connect).thenAnswer((_) async {});
@@ -1103,6 +1114,7 @@ void main() {
       when(() => relayClient.isConnected).thenReturn(false);
       when(() => relayClient.connectionState).thenReturn(RelayClientConnectionState.connected);
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => relayClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(() => relayClient.onSocketClosed).thenAnswer((_) => const Stream<void>.empty());
       when(relayClient.disconnect).thenAnswer((_) async {});
 
@@ -1150,6 +1162,7 @@ void main() {
       when(() => parkedClient.isConnected).thenReturn(false);
       when(() => parkedClient.connectionState).thenReturn(RelayClientConnectionState.connected);
       when(() => parkedClient.bridgeStatus).thenAnswer((_) => bridgeStatusController.stream);
+      when(() => parkedClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(() => parkedClient.onSocketClosed).thenAnswer((_) => const Stream<void>.empty());
       when(parkedClient.disconnect).thenAnswer((_) async {});
 
@@ -1170,6 +1183,7 @@ void main() {
       );
       when(() => connectedClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => connectedClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => connectedClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(() => connectedClient.onSocketClosed).thenAnswer((_) => const Stream<void>.empty());
       when(connectedClient.disconnect).thenAnswer((_) async {});
 
@@ -1230,6 +1244,7 @@ void main() {
       );
       when(() => initialClient.subscribeSse(any())).thenAnswer((_) => initialSseController.stream);
       when(() => initialClient.bridgeStatus).thenAnswer((_) => bridgeStatusController.stream);
+      when(() => initialClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(initialClient.disconnect).thenAnswer((_) async {});
 
       final replacementSseController = StreamController<RelaySseEvent>.broadcast();
@@ -1241,6 +1256,7 @@ void main() {
       when(() => replacementClient.didResume).thenReturn(true);
       when(() => replacementClient.subscribeSse(any())).thenAnswer((_) => replacementSseController.stream);
       when(() => replacementClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => replacementClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(replacementClient.disconnect).thenAnswer((_) async {});
 
       final clients = <MockRelayClient>[initialClient, replacementClient];
@@ -1301,6 +1317,7 @@ void main() {
       when(() => parkedClient.isConnected).thenReturn(false);
       when(() => parkedClient.connectionState).thenReturn(RelayClientConnectionState.connected);
       when(() => parkedClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => parkedClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(() => parkedClient.onSocketClosed).thenAnswer((_) => socketClosedController.stream);
       when(() => parkedClient.lastCloseCode).thenReturn(null);
       when(parkedClient.disconnect).thenAnswer((_) async {});
@@ -1310,6 +1327,7 @@ void main() {
       when(() => reparkedClient.isConnected).thenReturn(false);
       when(() => reparkedClient.connectionState).thenReturn(RelayClientConnectionState.connected);
       when(() => reparkedClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => reparkedClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(() => reparkedClient.onSocketClosed).thenAnswer((_) => const Stream<void>.empty());
       when(reparkedClient.disconnect).thenAnswer((_) async {});
 
