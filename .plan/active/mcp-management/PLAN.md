@@ -505,7 +505,7 @@ Exact PR titles and scope:
 
 14. `🚧 [mcp-management] Declare MCP authentication and expose native credential forgetting [step 14/22]`
 
-    Original step 8.c.1: independent per-server authentication and credential-forgetting
+    Substep 8.c.1, derived from original 8.c: independent per-server authentication and credential-forgetting
     availability/effect scopes, normalized Claude declarations, and a headless credential-forgetting
     action. The existing native owner reserves either login or credential forgetting so they cannot
     overlap; forgetting preserves native server definitions and returns authoritative inventory.
@@ -513,7 +513,7 @@ Exact PR titles and scope:
 
 15. `🚧 [mcp-management] Present MCP connection and authentication controls [step 15/22]`
 
-    Original step 8.c.2: client actions, shared visible controls/authentication presentation,
+    Substep 8.c.2, derived from original 8.c: client actions, shared visible controls/authentication presentation,
     fixture-proven browser return and native credential forgetting where declared.
     Preserve readable inventory and fixed refresh/status layers through transitions. No Sesori database change.
 
@@ -606,7 +606,7 @@ Affected documents: new `docs/regression/mcp-management.md`; update `questions-a
 regression index, and `docs/HARNESS_CAPABILITIES.md`. Update browser-return packaging documents only where this
 implementation changes their supported behavior. Keep provider-account authentication distinct from MCP authentication.
 
-Step 21 reconciles the full supported contract. Step 21 records versions, builds, platforms, plugins, boundaries,
+Step 21 reconciles the full supported contract. Step 22 records versions, builds, platforms, plugins, boundaries,
 outcomes, limitations, cleanup, and privacy-safe evidence references in `TRACKER.md`. Retire only when this matrix
 passes. Any reduction requires explicit user acceptance recorded here; verified native limitations must be explicit
 product limitations rather than unfinished promised behavior.

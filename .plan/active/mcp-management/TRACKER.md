@@ -33,7 +33,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 10/22 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
 | 11/22 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
 | 12/22 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
-| 13/22 | Shared client authentication lifecycle (8.b) | In review | [#1964][pr-1964]; 36 tests and architecture approval |
+| 13/22 | Shared client authentication lifecycle (8.b) | In review | [#1964][pr-1964]; 38 tests and architecture approval |
 | 14/22 | Authentication availability and credential forgetting (8.c.1) | In progress | Native declarations and headless control |
 | 15/22 | Visible authentication and controls (8.c.2) | Not started | — |
 | 16/22 | Session external actions (8.d) | Not started | — |
