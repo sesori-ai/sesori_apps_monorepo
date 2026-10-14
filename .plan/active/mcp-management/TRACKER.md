@@ -866,3 +866,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   `bff0055e47`, applying Client/Bridge/Shared rules with no findings. Pass 2 includes the newly verified public
   v1.9.1 wire omission defaults; plugin-internal constructors remain required and no native ownership changes
   were introduced by that adjustment. Markdown title ordering, final qualification ownership and diff checks pass.
+- Step-14 tested source is captured in `acefd5513a` against `bff0055e47`: 1,231 additions and 131 deletions
+  (1,362 changed) across 34 files, with 375 generated and 987 authored lines, below the soft cap.
+  The native flow was exercised before the additive omission defaults; changed shared serialization/decoding then
+  passed its updated codec suite and exact public v1.9.1 parser fixture. Native ownership/plugin logic was unchanged.
