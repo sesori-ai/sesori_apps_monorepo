@@ -55,7 +55,7 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   leaves voice input available without an updated glossary.
 - The preference defaults to voice-first, persists, and falls back to voice-first on a corrupt or unknown stored
   value.
-- Mobile Settings groups Harnesses and Default input under Sessions. The keyboard row shows the live
+- Mobile Settings lists Default input under Preferences. The keyboard row shows the live
   Voice/Text value and opens a dedicated page rather than selecting a mode inline.
   Desktop's composer always leads with text, so General does not expose this ineffective preference.
 - Desktop click-to-talk: the mic click starts listening without moving keyboard focus out of the composer; while

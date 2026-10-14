@@ -8,6 +8,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../support/support_links.dart";
+import "../../widgets/computer_menu.dart";
 import "widgets/account_row.dart";
 import "widgets/appearance_picker.dart";
 import "widgets/bridge_settings_section.dart";
@@ -40,6 +41,9 @@ class const SettingsView({
   required final VoidCallback onOpenHarnesses,
   required final VoidCallback onOpenDefaultInput,
   required final VoidCallback onOpenRateSesori,
+
+  /// Switches to a computer picked from the Bridge section's computer entry.
+  required final ComputerSwitchCallback onSwitchComputer,
   required final Widget? additionalSettings,
   required final Future<void> Function({required Uri url}) openSupportLink,
   required final Future<void> Function({required LegalDocument document}) openLegalDocument,
@@ -111,18 +115,24 @@ class const SettingsView({
                   ),
                 ),
                 const SizedBox(height: PregoSpacing.xl),
-                BridgeSettingsSection(title: loc.settingsSectionBridge, description: null),
+                BridgeSettingsSection(
+                  title: loc.settingsSectionBridge,
+                  description: null,
+                  onOpenHarnesses: onOpenHarnesses,
+                  onSwitchComputer: onSwitchComputer,
+                ),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(
-                  title: loc.settingsSectionSessions,
+                  title: loc.settingsSectionPreferences,
                   child: PregoGroupedRows(
                     children: [
-                      PregoGroupedRow(
-                        icon: TablerRegular.plug,
-                        title: Text(loc.settingsHarnessesTitle),
-                        trailing: const Icon(TablerRegular.chevron_right),
-                        onTap: onOpenHarnesses,
-                      ),
+                      if (onOpenNotifications != null)
+                        PregoGroupedRow(
+                          icon: TablerRegular.bell,
+                          title: Text(loc.settingsNotificationsTitle),
+                          trailing: const Icon(TablerRegular.chevron_right),
+                          onTap: onOpenNotifications,
+                        ),
                       PregoGroupedRow(
                         icon: TablerRegular.keyboard,
                         title: Text(loc.settingsDefaultInputTitle),
@@ -147,22 +157,6 @@ class const SettingsView({
                     ],
                   ),
                 ),
-                if (onOpenNotifications != null) ...[
-                  const SizedBox(height: PregoSpacing.xl),
-                  SettingsSection(
-                    title: loc.settingsSectionPreferences,
-                    child: PregoGroupedRows(
-                      children: [
-                        PregoGroupedRow(
-                          icon: TablerRegular.bell,
-                          title: Text(loc.settingsNotificationsTitle),
-                          trailing: const Icon(TablerRegular.chevron_right),
-                          onTap: onOpenNotifications,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
                 if (additionalSettings != null) ...[
                   const SizedBox(height: PregoSpacing.xl),
                   additionalSettings,

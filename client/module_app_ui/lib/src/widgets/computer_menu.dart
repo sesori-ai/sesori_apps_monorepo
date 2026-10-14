@@ -35,7 +35,7 @@ class const ComputerMenu({
           PregoMenuItem(
             key: ValueKey("computer-menu-${computer.id}"),
             title: computer.name,
-            subtitle: _presence(context: context, computer: computer),
+            subtitle: presenceLabel(context: context, computer: computer),
             leadingIcon: platformIcon(platform: computer.platform),
             isSelected: computer.id == currentId,
             shortcutLabel: null,
@@ -47,7 +47,8 @@ class const ComputerMenu({
     );
   }
 
-  static String _presence({required BuildContext context, required BridgeSummary computer}) {
+  /// "Online", or "Offline" with the last-seen time when one is known.
+  static String presenceLabel({required BuildContext context, required BridgeSummary computer}) {
     final loc = context.loc;
     if (computer.status == BridgeRegistrationStatus.active) return loc.computerMenuOnline;
     final lastSeenAt = computer.lastSeenAt;

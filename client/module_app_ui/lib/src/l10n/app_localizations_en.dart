@@ -983,9 +983,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAppearanceSystem => 'System';
 
   @override
-  String get settingsSectionSessions => 'Sessions';
-
-  @override
   String get settingsSectionPreferences => 'Preferences';
 
   @override
