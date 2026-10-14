@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-authentication-owner`, `3361d6b95f`, in the provided `copper-heron` worktree.
+- Branch/base: `sesori/mcp-authentication-owner`, `8bfeda9416`, in the provided `copper-heron` worktree.
 - Current step: 11/18 implements the headless owner and routes;
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
@@ -30,7 +30,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 8/18 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
 | 9/18 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
 | 10/18 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/18 | Headless authentication owner and routes (original 7.b.2.b) | In progress | Single native attempt and request-scoped URLs |
+| 11/18 | Headless authentication owner and routes (original 7.b.2.b) | Ready for PR | 169 tests, native fixture and architecture approval |
 | 12/18 | Shared authentication and external-action presentation | Not started | — |
 | 13/18 | Claude approvals and form/URL elicitation | Not started | — |
 | 14/18 | Codex inventory/actions/authentication | Not started | — |
@@ -641,3 +641,29 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   client or relay E2E qualification is added by these unit/route tests. The final
   plan matrix remains required. Native cancellation errors preserve a typed cause
   and failure state rather than claiming successful cancellation.
+
+- The passing owner code/test snapshot is commit `e56fa43a4e` (recorded before
+  the clean rebase) and current immutable head `8613b4674dc0dd3644af0d424902db6ea1f01cfb`,
+  tree `67d97e44a27c3c77b1eea697c648ec3652ede9ef`. Source/test files are identical
+  across that rebase. Package working directories are the provided worktree's
+  `bridge/app`, `client/module_core` and `shared/sesori_shared`.
+- The production owner/repository/handlers plus native Claude service fixture
+  passed both exact pins on macOS arm64 from `8613b4674d`: live target binding,
+  request-only HTTPS challenge recovery, busy second start, matching callback,
+  native completion, harness invalidation, explicit cancellation and unchanged
+  server definitions after native logout. Each pin made one token request.
+  Native children disappeared within 103/104 ms in a bounded one-second
+  observation. The fixture used isolated native configuration and fixture
+  credentials, a local OAuth issuer advertising an HTTPS fixture destination,
+  and an in-memory catalog/runtime test adapter. Runtime lease semantics were
+  verified separately in the production runtime suite. This is not a real
+  provider/browser, relay, full running bridge or packaged-client qualification.
+  Early fixture failures assumed synchronous invalidation delivery and immediate
+  child disappearance; those overstrict assertions were corrected to await the
+  stream notification and use the existing bounded child observation.
+- Immutable pre-evidence-update line budget: `git diff --numstat 8bfeda9416 8613b4674d`
+  reports 1,084 additions and 16 deletions (1,100 changed lines, 27 files), including
+  the tracker. Generated SSE codec changes are 51 lines; authored churn is 1,049.
+
+- Owner architecture implementation review pass 1 approved the complete diff
+  against `8bfeda9416`, including client invalidation and shared SSE boundaries.
