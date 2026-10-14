@@ -72,6 +72,11 @@ participates.
 - Auth-server URLs behave identically with or without trailing slashes, and
   deadline expiry actively aborts registration and token-refresh transport,
   including response-body consumption.
+- Bridge registration sends a host key, a salted SHA-256 of the operating
+  system's machine identifier (never the raw identifier), so a reinstall on the
+  same computer that lost its stored bridge id reuses that computer's existing
+  entry instead of adding a duplicate. Without a readable identifier the bridge
+  registers as before; the failure is logged.
 - With no bridge, mobile Projects shows install/start commands, the explainer and support links; copy/share
   hand off the command unchanged. Desktop home instead offers supervised local bridge recovery.
   Connected with no projects shows the add-project call to action on either surface.
@@ -99,7 +104,7 @@ participates.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Signed-in launch restores the local session and reaches Projects with no network work at splash; the macOS desktop restores a shared-store token using its classic-Keychain master; a bridge start reaches readiness. Client end to end plus headless bridge; no plugin. |
-| L2 Routine | One provider through sign-in and logout on the release-target client platform, including an in-flight restore/refresh race and definitive refresh rejection, plus the prompt decision for marker-present, already-registered, and absent accounts. Client end to end plus headless bridge; no plugin. Automated: browser sign-in cancel, reopen, failed launch, resume, declined and expired outcomes, and last-method recording through logout in the auth manager and login cubit; the shared email form and the phone's waiting line; the desktop's layouts, handoff card, countdown, notices, stale-failure switches and "Last used" marker; and the gate bringing the window forward only after a sign-in from the login screen. |
+| L2 Routine | One provider through sign-in and logout on the release-target client platform, including an in-flight restore/refresh race and definitive refresh rejection, plus the prompt decision for marker-present, already-registered, and absent accounts. Client end to end plus headless bridge; no plugin. Automated: browser sign-in cancel, reopen, failed launch, resume, declined and expired outcomes, and last-method recording through logout in the auth manager and login cubit; the shared email form and the phone's waiting line; the desktop's layouts, handoff card, countdown, notices, stale-failure switches and "Last used" marker; the gate bringing the window forward only after a sign-in from the login screen; and the bridge registration host key, hashed with its salt as lowercase hex, omitted from the request when no machine id is readable, and never carrying the raw machine id. |
 | L3 Release | Every sign-in option on the release-target client platform and on the macOS desktop, both empty-Projects states, and prompt ordering proved by a real client joining, completing key exchange, and issuing a request while the prompt shows. On the macOS desktop, also Cancel then another provider, Open again, Copy link finished in another browser, a declined page, expiry at five minutes, a browser that fails to open (launcher stubbed in a dev build), "Last used" after sign-out, the window coming forward, both layouts across 820 points and at 560×480, and dragging the window by its top band. Client end to end plus relay integration; no plugin. |
 | L4 Extended | Android native storage failure without an automatic data reset, background/resume mid sign-in, unreachable or rejecting auth server, expiry refresh, logout while connected, logout during restore/login persistence, refresh rejection followed by relaunch, withheld push registration, delayed status check, second mobile platform including the shared email form and one browser provider. Windows and Linux desktops: Apple and one other provider through the browser, and Copy link; the folded layout on Windows, and Copy link without a working browser opener on Linux. Client end to end where the app observes it, headless where the bridge owns it. |
 | L5 Full | Store builds: native Apple sign-in on a real device, email flow, legal and analytics-preference surfaces, marker rewrite after a fresh install, and the status-endpoint-unavailable path against an older auth deployment. Packaged or external; no plugin. |
@@ -139,6 +144,8 @@ and how the wait goes: reopened, copied, confirmed, cancelled, declined or expir
   already has the app, or driving repeated status requests.
 - Relay availability or key exchange waiting on push registration or the check.
 - The bridge-offline banner alarming an account with no registered bridge.
+- Deleting the bridge id file and restarting the bridge adding a second entry
+  for the same computer, or a registration body carrying the raw machine id.
 - One tap on Log out signing the user out without the confirmation.
 - The "Last used" marker on a method other than this device's last sign-in,
   gone after logout, or showing or storing anything beyond the provider, such as
@@ -158,6 +165,9 @@ and how the wait goes: reopened, copied, confirmed, cancelled, declined or expir
 - Once the provider has used a link, Open again shows an error page instead of
   the sign-in; Cancel starts over.
 - "Last used" records only the method, so it cannot tell which account used it.
+- Cloned machine images share a machine identifier, so a fresh install on a
+  clone joins the original computer's entry and the two displace each other;
+  containers without an identifier keep one entry per install.
 
 ## Sources
 
@@ -165,5 +175,7 @@ and how the wait goes: reopened, copied, confirmed, cancelled, declined or expir
 - Desktop sign-in: `client/desktop/lib/features/login/`, `AuthGateCubit`,
   `LastSignInStorage`, and `client/desktop/test/features/login/login_view_test.dart`.
 - Bridge app-client onboarding service and runtime runner, plus their owning tests.
+- Bridge registration: `bridge/app/lib/src/auth/machine_id_api.dart`,
+  `bridge_registration_repository.dart`, and their tests.
 - Plan: `.plan/active/desktop-sign-in/PLAN.md` (decisions, approved copy, regression matrix).
 - Historical: `.plan/completed/bridge-ready-onboarding/`

@@ -1450,11 +1450,13 @@ class OrchestratorSession._({
         await _bridgeRegistrationService.handleBridgeRevoked();
       }
 
-      // Another bridge on this account took the single relay slot. Reconnect
-      // only on a long backoff so two always-on bridges don't tight-loop
-      // kicking each other (ADR A22); headless/VM failover is preserved
-      // because we still retry, just slowly. The GUI is told separately via
-      // ControlStatusNotifier (it observes the same replaced-close on the
+      // Another bridge with this bridge's id took over its relay connection.
+      // Bridges with different ids never displace this one, but a copy
+      // elsewhere sharing this id (a copied data directory or a cloned
+      // machine) can, so reconnect only on a long backoff so the two
+      // always-on copies don't tight-loop kicking each other (ADR A22);
+      // headless/VM failover is preserved because we still retry, just
+      // slowly. The GUI is told separately via ControlStatusNotifier (it observes the same replaced-close on the
       // connection-state stream); this loop owns only the backoff policy.
       final takenOver = RelayCloseCodes.isBridgeReplaced(
         closeCode: _client.closeCode(connection: connection),
@@ -1462,8 +1464,8 @@ class OrchestratorSession._({
       );
       if (takenOver) {
         Console.warning(
-          "Another bridge for this account has taken over the relay connection. "
-          "Retrying on a long backoff — stop the other bridge to reclaim this slot.",
+          "Another bridge with this bridge's id (for example on a cloned machine) "
+          "took over the relay connection. Retrying on a long backoff — stop the other copy to reclaim it.",
         );
       }
 

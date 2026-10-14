@@ -4,9 +4,9 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/multi-computer-plan` from `origin/main` `6a4a42e7a5`, in the provided `brown-dingo` worktree.
-- Current step: 1/15, plan PR open.
+- Current step: 5/15 in PR; 3/15 in progress.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-14 over two review rounds.
-- Plan PR: pending.
+- Plan PR: #1959, merged 2026-10-14.
 - Architecture plan review: rejected on 2026-10-14 (17 findings); all applied in the same revision. Per `AGENTS.md`
   the applied fixes are not re-reviewed.
 
@@ -16,11 +16,11 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Repository | Outcome | State | PR/evidence |
 |---|---|---|---|---|
-| 1/15 | monorepo | Publish reviewed plan | In progress | — |
-| 2/15 | relay | Phones routed to a named bridge | Not started | — |
-| 3/15 | relay | Presence fan-out; ids in connect notices | Not started | — |
-| 4/15 | auth | Status in summaries; host-key matching; named status pushes | Not started | — |
-| 5/15 | monorepo | Bridge sends a stable host key | Not started | — |
+| 1/15 | monorepo | Publish reviewed plan | Done | #1959 (merged 2026-10-14) |
+| 2/15 | relay | Phones routed to a named bridge | Done | sesori_relay_server#12 (merged 2026-10-14) |
+| 3/15 | relay | Presence fan-out; ids in connect notices | In progress | — |
+| 4/15 | auth | Status in summaries; host-key matching; named status pushes | Done | sesori_auth_server#95 (merged 2026-10-14) |
+| 5/15 | monorepo | Bridge sends a stable host key | In PR | — |
 | 6/15 | monorepo | Shared contracts: registration status, platform, presence; list stream | Not started | — |
 | 7/15 | monorepo | Target owner in the connection; resets on retarget | Not started | — |
 | 8/15 | monorepo | Computer menu, switch dispatcher, and flow on Projects | Not started | — |
@@ -39,6 +39,20 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   registered-bridges code, the project list and offline views on phone and desktop, the shared settings view, and
   the Prego menu/alert components. Findings are in `PLAN.md` under “Current behavior”.
 - 2026-10-14: UX agreed with the user over two review rounds; no open questions remain.
+- 2026-10-14, step 2: the relay caps an account at 10 connected bridges with `4005`, which the bridge treats as
+  “do not reconnect”, so an eleventh computer stays offline until restarted (accepted with the plan’s reuse of the
+  account-full path). Connect/disconnect notices are written outside the group lock and can reorder when two
+  bridges change at the same instant; the bridge only logs `phone_connected` (accepted). A phone’s
+  `bridge_connection_observed` racing a default change can be attributed to the new default (declined: worst case is
+  one skipped online push to an open app).
+- 2026-10-14, step 4: the FCM `collapseKey` stays shared (`connection_status`; FCM stores at most four collapse keys
+  per offline device); only the tray replacement is per computer through the Android notification tag and the APNs
+  collapse id `connection_status:<bridgeId>`. A rename inside the offline debounce keeps the old name in that push
+  (declined, cosmetic).
+- 2026-10-14, step 5: the misleading takeover wording was the orchestrator’s `4007` console warning, not
+  `bridge_replace_prompt.dart` (a local-process prompt, already correct). `MachineIdApi` has no unsupported variant
+  because `PlatformOs` covers only macOS, Linux, and Windows. The desktop string `desktopBridgeTakenOver` has the same
+  wording problem and moves to step 11.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record

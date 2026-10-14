@@ -8,7 +8,7 @@ import "package:test/test.dart";
 
 void main() {
   group("AuthApi.registerBridge", () {
-    test("posts name, platform and bridgeId with bearer token and parses a 200 response", () async {
+    test("posts name, platform, bridgeId and hostKey with bearer token and parses a 200 response", () async {
       final server = await _BridgesTestServer.start(statusCode: 200);
       addTearDown(server.close);
 
@@ -17,6 +17,7 @@ void main() {
         name: "dev-laptop",
         platform: "macos",
         bridgeId: "br_existing01",
+        hostKey: _hostKey,
         accessToken: "access-token",
       );
 
@@ -29,11 +30,11 @@ void main() {
       expect(request.authorization, equals("Bearer access-token"));
       expect(
         jsonDecode(request.body),
-        equals({"name": "dev-laptop", "platform": "macos", "bridgeId": "br_existing01"}),
+        equals({"name": "dev-laptop", "platform": "macos", "bridgeId": "br_existing01", "hostKey": _hostKey}),
       );
     });
 
-    test("omits bridgeId from the body when null and accepts a 201 response", () async {
+    test("omits bridgeId and hostKey from the body when null and accepts a 201 response", () async {
       final server = await _BridgesTestServer.start(statusCode: 201);
       addTearDown(server.close);
 
@@ -42,6 +43,7 @@ void main() {
         name: "dev-laptop",
         platform: "linux",
         bridgeId: null,
+        hostKey: null,
         accessToken: "access-token",
       );
 
@@ -56,7 +58,13 @@ void main() {
       final api = _createApi(server);
 
       await expectLater(
-        api.registerBridge(name: "dev-laptop", platform: "macos", bridgeId: null, accessToken: "access-token"),
+        api.registerBridge(
+          name: "dev-laptop",
+          platform: "macos",
+          bridgeId: null,
+          hostKey: null,
+          accessToken: "access-token",
+        ),
         throwsA(isA<BridgeRegistrationException>().having((e) => e.statusCode, "statusCode", 500)),
       );
     });
@@ -101,6 +109,8 @@ void main() {
     });
   });
 }
+
+const _hostKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 AuthApi _createApi(_BridgesTestServer server) {
   final client = http.Client();
