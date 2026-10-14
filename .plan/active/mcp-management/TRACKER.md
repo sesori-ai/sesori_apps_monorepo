@@ -4,9 +4,9 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-visible-controls`, `c3716bfce5`, in the provided `copper-heron` worktree.
-- Current step: 11/23 merged as [#1957][pr-1957];
-  steps 12/23 and 13/23 merged as [#1962][pr-1962] and [#1964][pr-1964];
-  step 14/23 merged as [#1966][pr-1966]; step 15/23 merged as [#1969][pr-1969]; Step 16/23 continues locally;
+- Current step: 11/24 merged as [#1957][pr-1957];
+  steps 12/24 and 13/24 merged as [#1962][pr-1962] and [#1964][pr-1964];
+  step 14/24 merged as [#1966][pr-1966]; step 15/24 merged as [#1969][pr-1969]; Step 16/24 is draft [#1971][pr-1971];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -22,29 +22,30 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/23 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/23 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/23 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/23 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/23 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/23 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/23 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
-| 8/23 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
-| 9/23 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
-| 10/23 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/23 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/23 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
-| 13/23 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
-| 14/23 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
-| 15/23 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
-| 16/23 | Visible auth and controls (8.c.2.b) | In progress | Shared layers and native fixture |
-| 17/23 | Session external actions (8.d) | Not started | — |
-| 18/23 | Claude approvals and form/URL elicitation | Not started | — |
-| 19/23 | Codex inventory/actions/authentication | Not started | — |
-| 20/23 | Codex forms and offered connectors | Not started | — |
-| 21/23 | Secondary harness support and explicit gaps | Not started | — |
-| 22/23 | Reconcile regression/capability documents | Not started | — |
-| 23/23 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/24 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/24 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/24 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/24 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/24 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/24 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/24 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/24 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
+| 9/24 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
+| 10/24 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
+| 11/24 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
+| 12/24 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
+| 13/24 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
+| 14/24 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
+| 15/24 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
+| 16/24 | Visible auth and controls (8.c.2.b) | Draft | [#1971][pr-1971]; native recording pending |
+| 17/24 | External-action transport (8.d.1) | Local draft | 61 shared cases and architecture approval |
+| 18/24 | Session external-action routing (8.d.2) | Not started | — |
+| 19/24 | Claude approvals and form/URL elicitation | Not started | — |
+| 20/24 | Codex inventory/actions/authentication | Not started | — |
+| 21/24 | Codex forms and offered connectors | Not started | — |
+| 22/24 | Secondary harness support and explicit gaps | Not started | — |
+| 23/24 | Reconcile regression/capability documents | Not started | — |
+| 24/24 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -937,3 +938,27 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   cases and shared UI/desktop analyzers pass on this parent. Native qualification
   still awaits a usable CUA window; the fixture artifact has an isolated bundle
   ID and app name and uses no account, bridge, browser or native credentials.
+
+- Step 16 native capture update: the user confirmed the laptop had been locked.
+  After unlock and an owned-fixture restart, full native screenshots and CUA
+  accessibility navigation work. Inspection-only details hide management;
+  mutable details open the separate controls layer. Explicit sign-in retains
+  its challenge through busy-browser retry without automatic browser launch.
+  The server-title pixel band is identical between idle and browser-busy captures.
+- Inspected, cropped synthetic comparison PNGs (54/59 KB) are published on
+  `pr-media` at `06c61fd6beb390d0ff20cdf23255aeb6636d51b0` under
+  `sesori/mcp-visible-controls/`. They compare two fixture modes of the same
+  native build, not separate production binaries. Production PID 7903 is untouched.
+  The recording tool then reported the GUI session locked again. Remaining
+  close/reopen, cancellation, forgetting and silent motion evidence are pending;
+  the PR remains draft and is not qualified for merge.
+
+[pr-1971]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1971
+
+- Series bookkeeping: original 8.d splits into wire transport (ordinal 17) and
+  native integration (ordinal 18), keeping one current total of 24. The wire
+  successor is preserved locally in `6d625712f5`; it remains unpublished until
+  this controls parent merges. Published titles and forward planning are
+  synchronized. Historical evidence/squash titles and the final matrix are unchanged.
+  A read-only console check confirms `CGSSessionScreenIsLocked: true`; do not
+  send more UI actions until the GUI session is unlocked.
