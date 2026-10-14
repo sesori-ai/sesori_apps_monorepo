@@ -116,8 +116,10 @@ Checked against the code on 2026-10-14; relay and auth claims against each repos
   displaces anyone. Bound connected bridges per account with a small constant (10) using the existing
   `4005 CloseAccountFull` path.
 - New account-wide control message `bridge_presence {type, bridgeId, online}` fanned out to every phone in the group
-  whenever a bridge connects or disconnects (the auth server keeps owning push debouncing). Older apps log an unknown
-  type and continue.
+  whenever a bridge connects or disconnects (the auth server keeps owning push debouncing). The offline notice is sent
+  only when the closing connection is still the current entry for its id, the same rule that already skips
+  `bridge_disconnected` for a displaced connection, so a quick same-id reconnect never reads as offline. Older apps log
+  an unknown type and continue.
 - Status reports to the auth server are unchanged in shape and already per `bridgeId`.
 - Tests: extend `account_group_test.go`, `handler_test.go`, and `control_reports_test.go` for two bridges and two
   phones: pinning, default selection and change, presence fan-out, same-id replacement, cap, frames never crossing
@@ -127,10 +129,11 @@ Checked against the code on 2026-10-14; relay and auth claims against each repos
 
 - `BridgeSummary` gains `status: "active" | "inactive"` from the persisted document field (no new state).
 - `registerBridgeBodySchema` gains optional `hostKey` (64 hex characters). `registerForUser`: an id match behaves as
-  today and additionally stores the supplied `hostKey`; without an id match, a non-revoked bridge of the same user with
-  the same `hostKey` is updated in place and returned with 200 (most recently seen first if duplicates predate this
-  feature); otherwise a new bridge is minted with the key. Partial index `{userId, hostKey}` in
-  `src/db/mongo-db-accessor.ts`.
+  today and additionally stores the supplied `hostKey`; without an id match and with a supplied non-null `hostKey`, a
+  non-revoked bridge of the same user with the same `hostKey` is updated in place and returned with 200 (most recently
+  seen first if duplicates exist); otherwise a new bridge is minted, with the key when one was supplied. An absent or
+  null key never matches anything. Non-unique partial index `{userId, hostKey}` (only documents with a key) in
+  `src/db/mongo-db-accessor.ts`; a unique index would turn the accepted cloned-image case into failed registrations.
 - Status pushes name the bridge: `recordStatusChange` returns the bridge name alongside its flags, `recordStatusReport`
   passes it to the tracker’s pending entry, and the texts become “<name> is online” and “<name> went offline. AI
   sessions there are paused.” The collapse key becomes per bridge. Status-push data stays as it is (no consumer needs
@@ -177,7 +180,9 @@ Checked against the code on 2026-10-14; relay and auth claims against each repos
   `BridgeIdentityCubit` names the target computer from the registered list by id, with `pending`/`unnamed` unchanged.
 - **Registered list.** `RegisteredBridgesService` gains `ValueStream<List<BridgeSummary>> bridges`, applies `online`
   from `bridge_presence` locally (avoiding the race with the relay’s asynchronous status POST), and refetches only for
-  unknown ids and explicit refreshes.
+  unknown ids and explicit refreshes. It keeps the latest presence per id seen on the current connection and applies
+  it over every fetched list, so a fetch that started before a notice, or the refetch a notice itself triggered, never
+  overwrites it; the map clears when the connection is re-established.
 - **Cubits (Layer 4).** `ComputerSwitcherCubit` exposes `{computers, targetId}` for the menu, the offline card, the
   Settings row, and the desktop header. `LinkedComputerAlertCubit` watches the list stream and emits a typed
   `LinkedComputerAlert{bridgeId, name}` when the list gains an id while the previous list was non-empty.
@@ -264,7 +269,7 @@ regression document(s) it affects; step 14 only reconciles.
 Dependencies: 2 → 3; 4 is independent; 5 after 4 (the older server silently strips the key, so order is for
 behavior, not safety); 6 after 3 and 4 for the contracts it models; 7 after 2 and 6; 8, 9, 10 after 7; 11 after 8
 and 9; 12 after 3 and 7; 13 after 4 and 7; 14 after every implementation step; 15 last. Steps 2–5 are invisible to
-users and can land in any order relative to each other.
+users; the relay pair (2, 3) and the auth/bridge pair (4, 5) proceed in parallel, each pair in its own order.
 
 ### Step 1 — Publish the plan (🌱, monorepo)
 
@@ -290,7 +295,7 @@ This document and `TRACKER.md`. Verification: Markdown only.
   to `bridge_connected`/`bridge_disconnected` (per-bridge marshalled instead of the pre-marshalled constants).
 - Estimate: ~80 production lines, ~150 test lines.
 - Verification: `go test ./...`; presence received by phones on other bridges and by unpinned phones; connect notices
-  carry the id.
+  carry the id; no offline presence when a same-id reconnect displaces the previous connection.
 
 ### Step 4 — Expose bridge status, match host keys, and name status pushes (⚙️, auth)
 
