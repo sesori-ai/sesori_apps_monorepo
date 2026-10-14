@@ -127,6 +127,7 @@ class PluginManagementCubit({
         }
         _setAuthentication(
           PluginAuthenticationPresentationState.browserLaunchFailed(
+            reason: PluginAuthenticationBrowserRetryReason.launchFailed,
             pluginId: challenge.pluginId,
             challenge: challenge.challenge,
           ),
@@ -874,7 +875,13 @@ PluginAuthenticationPresentationState _browserPresentation({
     pluginId: pluginId,
     challenge: challenge,
   ),
+  PluginAuthenticationBrowserBlocked() => PluginAuthenticationPresentationState.browserLaunchFailed(
+    reason: PluginAuthenticationBrowserRetryReason.busy,
+    pluginId: pluginId,
+    challenge: challenge,
+  ),
   PluginAuthenticationBrowserRetryableFailure() => PluginAuthenticationPresentationState.browserLaunchFailed(
+    reason: PluginAuthenticationBrowserRetryReason.launchFailed,
     pluginId: pluginId,
     challenge: challenge,
   ),

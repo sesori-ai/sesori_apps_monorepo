@@ -1447,6 +1447,12 @@ abstract class AppLocalizations {
   /// **'The bridge returned an invalid login website. Check the bridge logs for details.'**
   String get harnessAuthenticationInvalidChallenge;
 
+  /// No description provided for @harnessAuthenticationBrowserBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish the current sign-in first, then try again.'**
+  String get harnessAuthenticationBrowserBusy;
+
   /// No description provided for @harnessAuthenticationBrowserFailed.
   ///
   /// In en, this message translates to:

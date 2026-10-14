@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-authentication-owner`, `8bfeda9416`, in the provided `copper-heron` worktree.
-- Current step: 11/21 is in [#1957][pr-1957];
-  local successor 12/21 scopes browser ownership;
+- Branch/base: `sesori/mcp-client-authentication`, `067380c981`, in the provided `copper-heron` worktree.
+- Current step: 11/21 merged as [#1957][pr-1957];
+  step 12/21 is in [#1962][pr-1962], with shared client lifecycle drafted locally as its sole successor;
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -31,9 +31,9 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 8/21 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
 | 9/21 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
 | 10/21 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/21 | Headless auth owner/routes | In review | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/21 | Browser ownership (8.a) | In progress | Planning only: provider/MCP handles and busy behavior |
-| 13/21 | Shared client authentication lifecycle (8.b) | Not started | — |
+| 11/21 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
+| 12/21 | Browser ownership (8.a) | In review | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
+| 13/21 | Shared client authentication lifecycle (8.b) | In progress | Local API/repository/owner/Cubit draft |
 | 14/21 | Visible authentication and controls (8.c) | Not started | — |
 | 15/21 | Session external actions (8.d) | Not started | — |
 | 16/21 | Claude approvals and form/URL elicitation | Not started | — |
@@ -719,3 +719,69 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   starting attempt during read-only preparation, and explicit cancellation stays
   prompt. The route recovery assertion covers that contract. Focused evidence
   is now 179 tests: 29 owner + 77 runtime + 17 client inventory + 56 shared codec.
+
+- Browser ownership step 12 is implemented locally: bridge/connection/purpose
+  identity handles, typed busy, matching retry/cancel/disposal, accepted-provider
+  ownership, retained blocked challenge and explicit retry. Architecture review
+  pass 1 approved the new production boundaries against `f6da8d1151`; subsequent
+  changes include the local shared-sheet height transition found during native
+  QA. That method-level UI change introduces no new architectural boundary;
+  its owning widget suite, analyzer and native recording passed afterward.
+- Browser focused evidence is 198 tests: 169 core transport/provider/Cubit plus
+  29 shared harness widget tests. The overlap regression failed before the fix.
+  Core/shared UI and downstream mobile/desktop analyzers pass. Presentation and
+  localization generators ran; no unrelated generated output was retained.
+- The debug macOS synthetic visual fixture builds and starts with Metal/Impeller,
+  without account, bridge, browser or persistence initialization. Computer Use
+  initially blocked interaction; after the user enabled its permissions, native
+  busy/retry/cancellation checks ran. The recording exposed a status-layout snap;
+  the shared sheet now eases height changes over 200 ms and honors reduced motion.
+  The 29 owning widget tests and shared UI analyzer passed after that local fix.
+  The existing production app PID 7903 remains untouched.
+- Additional callback qualification on Claude 2.1.221/2.1.291 verifies the owning
+  native helper PID binds the expected loopback port and a fixture HTTP browser
+  return completes authentication without stdin forwarding. Each pin made one
+  fixture token request; explicit cancellation stopped children within 96 ms in
+  the bounded one-second observation, and logout preserved server definitions.
+  The tested owner source is `94c80bcc3a`, with the in-memory catalog/runtime
+  adapter and isolated fixture credentials. This qualifies direct loopback
+  return, not system-browser launch, real-provider policy, relay or packaged UI.
+
+- Step 11 merged at accepted head `94c80bcc3a` with all 33 checks passing;
+  current-head Codex review completed and Cubic approved. The reserved-start
+  contract feedback was explicitly declined with its GET recovery/cancellation
+  evidence; all actionable feedback was addressed. Step 12 rebased unpublished
+  onto the merge at `067380c981`, retaining its focused test provenance.
+- Step-12 native UI qualification passed on macOS 27.0.1 / Xcode 27.0 with
+  Flutter 3.47.5, debug/Metal/Impeller, source captured in `8149858f03`.
+  Computer Use exercised busy, retry, opening, waiting, cancellation and Close.
+  The final window-only recording confirms intermediate height positions during
+  the 200-ms transitions. The fixture uses the product router and synthetic
+  service state; no website, account, bridge, relay or credential store was used.
+  This is presentation qualification, not the final provider/package matrix.
+  Owned fixture PID 74617 exited; production PID 7903 remains running unchanged.
+- Reviewed synthetic media is on `pr-media` at `44764241f2`, under
+  `sesori/mcp-client-authentication/`: cropped existing launch-failure and new
+  busy presentations, plus a silent 19.6-second retry/cancel/close GIF (700 KB).
+  Screenshots compare states rendered by the fixture, rather than claiming a
+  separate old-binary run. Original recordings stay private.
+
+- Step-12 pre-publication measurement before this record: 19 files,
+  853 additions and 77 deletions (930 changed), with 25 generated and
+  905 authored lines. No prior registry, persisted state or database schema
+  is superseded; unscoped browser cancellation and replacement were removed
+  from every live in-repository consumer.
+
+- Immutable initial publication measurement: `git diff --numstat 067380c981 1ec19cc9b7`
+  reports 859 additions and 77 deletions (936 changed), including the six-line
+  measurement record above: 25 generated and 911 authored lines across 19 files.
+  The preceding pre-record measurement remains its labeled historical snapshot.
+- Step-12 review reproductions failed before their fixes: owner reservation now
+  precedes synchronous phase notification, and provider cleanup keeps its owner
+  handle until closure so disposal joins the same cancellation. No cleanup
+  future registry, queue or additional mutable coordination field was added.
+- Both changed core suites pass 95 tests after those fixes; the unchanged
+  Cubit suite retains 76 passing tests, for 171 core plus 29 UI tests (200 total).
+  Core analysis is clean. The production UI is unchanged from its native recording.
+
+[pr-1962]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1962

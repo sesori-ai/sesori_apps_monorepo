@@ -340,13 +340,21 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final content = _buildContent(context: context);
     return BlocListener<PluginManagementCubit, PluginManagementState>(
       listenWhen: (previous, current) =>
           _authenticationChallenge(state: previous) != null && _authenticationChallenge(state: current) == null,
       listener: (context, _) {
         if (ModalRoute.of(context)?.isCurrent ?? false) context.pop();
       },
-      child: _buildContent(context: context),
+      child: context.isReducedMotion
+          ? content
+          : AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: content,
+            ),
     );
   }
 
@@ -431,7 +439,10 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
       PluginAuthenticationPresentationBrowserOpening() => loc.harnessAuthenticationOpening,
       PluginAuthenticationPresentationBrowserWaiting() => loc.harnessAuthenticationWaitingForBrowser,
       PluginAuthenticationPresentationBrowserFinalizing() => loc.harnessAuthenticationFinalizing,
-      PluginAuthenticationPresentationBrowserLaunchFailedState() => loc.harnessAuthenticationBrowserFailed,
+      PluginAuthenticationPresentationBrowserLaunchFailedState(:final reason) => switch (reason) {
+        PluginAuthenticationBrowserRetryReason.busy => loc.harnessAuthenticationBrowserBusy,
+        PluginAuthenticationBrowserRetryReason.launchFailed => loc.harnessAuthenticationBrowserFailed,
+      },
       PluginAuthenticationPresentationCancellingUncertain() => loc.harnessAuthenticationCancellingUncertain,
       PluginAuthenticationPresentationCancelling() => loc.harnessAuthenticationCancelling,
       PluginAuthenticationPresentationChallenge() => loc.harnessAuthenticationWaiting,

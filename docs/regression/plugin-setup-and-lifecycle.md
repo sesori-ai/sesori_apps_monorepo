@@ -381,6 +381,15 @@ credentials; a completed helper must not hide failed load, replay or teardown.
 - Authentication ownership and challenge state are fenced to the current connection epoch
   and bridge identity and clear on reconnect, identity change, or disposal. External
   operations still update shared management metadata without claiming local presentation.
+- Browser start/retry/cancel requires an opaque owner bound to the bridge connection and provider/MCP purpose.
+  A different owner receives busy without replacing the active callback listener. The blocked provider challenge remains
+  visible with “Finish the current sign-in first” and an explicit retry; it neither cancels the other flow nor queues consent.
+  Scoped cancellation/disposal cannot close another owner's listener. Local direct browser flows retain ownership until
+  native settlement or the existing five-minute expiry; pending listener cleanup retains ownership until closure completes.
+  Provider disposal waits for owned listener cleanup already started by settlement or connection invalidation.
+  Cover provider-then-MCP and MCP-then-provider overlap, foreign retry/cancel, surviving callback delivery, and busy retry.
+  The shared sign-in sheet eases height changes between retry, browser progress and terminal feedback; reduced motion
+  presents the same states directly. Native recordings should show no abrupt layout snap during retry or cancellation.
 - Mobile and desktop show login only for authentication-required harnesses that declare the
   capability. Their shared device-code sheet keeps anti-phishing guidance and the
   selectable/copyable one-time code visible, opens the external browser only on explicit

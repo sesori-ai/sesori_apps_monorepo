@@ -68,11 +68,17 @@ void main() {
       loopbackServer: PluginAuthenticationLoopbackServer(),
       browser: browser,
     );
+    final owner = PluginAuthenticationBrowserOwner(
+      bridgeId: "fixture",
+      connectionEpoch: 1,
+      purpose: PluginAuthenticationBrowserPurpose.provider,
+    );
     final phases = <PluginAuthenticationBrowserPhase>[];
     final detachedFailures = <PluginAuthenticationBrowserFlowFailed>[];
 
     try {
       final result = await browserService.authenticate(
+        owner: owner,
         challenge: PluginAuthenticationBrowserChallenge(
           authorizationUri: authorizeUri,
           expectedCallbackUri: callbackUri,
@@ -104,7 +110,7 @@ void main() {
         expect(callbackUri.fragment, isEmpty);
       }
     } finally {
-      await browserService.cancelActive();
+      await browserService.cancel(owner: owner);
       await authorizationSubscription.cancel();
       await authorizationServer.close(force: true);
     }

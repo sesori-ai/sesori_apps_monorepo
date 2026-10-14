@@ -1671,9 +1671,10 @@ as PluginAuthenticationBrowserChallenge,
 
 
 class PluginAuthenticationPresentationBrowserLaunchFailedState implements PluginAuthenticationPresentationState {
-  const PluginAuthenticationPresentationBrowserLaunchFailedState({required this.pluginId, required this.challenge});
+  const PluginAuthenticationPresentationBrowserLaunchFailedState({required this.reason, required this.pluginId, required this.challenge});
   
 
+ final  PluginAuthenticationBrowserRetryReason reason;
  final  String pluginId;
  final  PluginAuthenticationChallenge challenge;
 
@@ -1687,18 +1688,18 @@ $PluginAuthenticationPresentationBrowserLaunchFailedStateCopyWith<PluginAuthenti
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationBrowserLaunchFailedState&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationBrowserLaunchFailedState&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,pluginId,challenge);
+    return Object.hash(runtimeType,reason,pluginId,challenge);
 }
 
 @override
 String toString() {
-    return 'PluginAuthenticationPresentationState.browserLaunchFailed(pluginId: $pluginId, challenge: $challenge)';
+    return 'PluginAuthenticationPresentationState.browserLaunchFailed(reason: $reason, pluginId: $pluginId, challenge: $challenge)';
 }
 
 
@@ -1709,7 +1710,7 @@ abstract mixin class $PluginAuthenticationPresentationBrowserLaunchFailedStateCo
   factory $PluginAuthenticationPresentationBrowserLaunchFailedStateCopyWith(PluginAuthenticationPresentationBrowserLaunchFailedState value, $Res Function(PluginAuthenticationPresentationBrowserLaunchFailedState) _then) = _$PluginAuthenticationPresentationBrowserLaunchFailedStateCopyWithImpl;
 @useResult
 $Res call({
- String pluginId, PluginAuthenticationChallenge challenge
+ PluginAuthenticationBrowserRetryReason reason, String pluginId, PluginAuthenticationChallenge challenge
 });
 
 
@@ -1726,9 +1727,10 @@ class _$PluginAuthenticationPresentationBrowserLaunchFailedStateCopyWithImpl<$Re
 
 /// Create a copy of PluginAuthenticationPresentationState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? pluginId = null,Object? challenge = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? reason = null,Object? pluginId = null,Object? challenge = null,}) {
   return _then(PluginAuthenticationPresentationBrowserLaunchFailedState(
-pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
+reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
+as PluginAuthenticationBrowserRetryReason,pluginId: null == pluginId ? _self.pluginId : pluginId // ignore: cast_nullable_to_non_nullable
 as String,challenge: null == challenge ? _self.challenge : challenge // ignore: cast_nullable_to_non_nullable
 as PluginAuthenticationChallenge,
   ));
