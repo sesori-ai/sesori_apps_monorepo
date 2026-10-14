@@ -69,6 +69,16 @@ participates.
   then sign in once; new-store logout does not revoke the old build's session.
 - Log out asks first on both apps; only its confirmation starts logout, and
   Cancel or dismissal leaves the session untouched.
+- Mobile Settings runs Account, Bridge, Preferences, Appearance, Support,
+  Legal. Bridge opens with the current computer's entry (platform,
+  name, presence) above the computer-scoped card, which leads with Harnesses;
+  Preferences holds Notifications and Default input. The entry opens the same
+  computer menu as Projects, and picking another computer lands on its Projects
+  root; picking the current one only closes the menu. The entry appears only once
+  the computer list names the current computer and grows in without a jump.
+  Offline, the YOLO, warm-up and refresh rows dim while Harnesses stays reachable.
+- The desktop Bridge settings tab shows the same entry above its description;
+  switching closes the settings window and then switches.
 - Auth-server URLs behave identically with or without trailing slashes, and
   deadline expiry actively aborts registration and token-refresh transport,
   including response-body consumption.
@@ -148,6 +158,9 @@ and how the wait goes: reopened, copied, confirmed, cancelled, declined or expir
 - Deleting the bridge id file and restarting the bridge adding a second entry
   for the same computer, or a registration body carrying the raw machine id.
 - One tap on Log out signing the user out without the confirmation.
+- A Settings computer switch leaving Settings on top of the old computer's
+  pages, the entry naming a computer other than the target, or the Bridge
+  section jumping when the entry appears.
 - The "Last used" marker on a method other than this device's last sign-in,
   gone after logout, or showing or storing anything beyond the provider, such as
   an email address or account name.

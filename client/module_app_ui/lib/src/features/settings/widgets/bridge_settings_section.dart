@@ -9,73 +9,96 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/bridge_update_sheet.dart";
+import "../../../widgets/computer_menu.dart";
 import "../../session_detail/widgets/yolo_chip.dart";
+import "computer_settings_entry.dart";
 import "settings_section.dart";
 
 /// How far the rows dim while no bridge is connected.
 const double _offlineRowsOpacity = 0.4;
 
+/// The computer the app works on, followed by the settings that apply to that
+/// computer only.
 class const BridgeSettingsSection({
   super.key,
   required final String title,
 
-  /// A quiet sentence between the header and the card, or null for none.
+  /// A quiet sentence between the computer entry and the settings card, or
+  /// null for none.
   required final String? description,
+
+  /// Opens harness management, or null where the surface gives harnesses a
+  /// place of their own.
+  required final VoidCallback? onOpenHarnesses,
+
+  /// Switches to a computer picked from the computer entry's menu.
+  required final ComputerSwitchCallback onSwitchComputer,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BridgeSettingsCubit>().state;
-    final rows = PregoGroupedRows(
-      children: [
-        const _YoloSettingsRow(),
-        const _PluginWarmupSettingsRow(),
-        PregoGroupedRow(
-          key: const Key("pull_request_refresh_interval"),
-          icon: TablerRegular.refresh,
-          title: Text(context.loc.settingsPullRequestRefreshTitle),
-          subtitle: Text(_description(context: context, state: state)),
-          trailing: _trailing(context: context, state: state),
-          onTap: switch (state) {
-            BridgeSettingsReady(:final pullRequestRefreshMutation)
-                when pullRequestRefreshMutation is! PullRequestRefreshMutationInProgress &&
-                    pullRequestRefreshMutation is! PullRequestRefreshMutationUncertain &&
-                    pullRequestRefreshMutation is! PullRequestRefreshMutationUnsupported &&
-                    (state is! BridgeSettingsReadyFull ||
-                        (state.yoloMutation is! YoloMutationInProgress &&
-                            state.pluginWarmupMutation is! PluginWarmupMutationInProgress)) =>
-              () => unawaited(_editInterval(context: context, state: state)),
-            BridgeSettingsUnsupported() ||
-            BridgeSettingsReady(
-              pullRequestRefreshMutation: PullRequestRefreshMutationUnsupported(),
-            ) => () => unawaited(showBridgeUpdateSheet(context: context)),
-            BridgeSettingsLoading() ||
-            BridgeSettingsDisconnected() ||
-            BridgeSettingsFailure() ||
-            BridgeSettingsReady() => null,
-          },
-        ),
-      ],
-    );
-    // Offline, one line above the group says why every row is dimmed, in
-    // place of the rows each saying it.
+    final onOpenHarnesses = this.onOpenHarnesses;
+    final bridgeRows = <Widget>[
+      const _YoloSettingsRow(),
+      const _PluginWarmupSettingsRow(),
+      PregoGroupedRow(
+        key: const Key("pull_request_refresh_interval"),
+        icon: TablerRegular.refresh,
+        title: Text(context.loc.settingsPullRequestRefreshTitle),
+        subtitle: Text(_description(context: context, state: state)),
+        trailing: _trailing(context: context, state: state),
+        onTap: switch (state) {
+          BridgeSettingsReady(:final pullRequestRefreshMutation)
+              when pullRequestRefreshMutation is! PullRequestRefreshMutationInProgress &&
+                  pullRequestRefreshMutation is! PullRequestRefreshMutationUncertain &&
+                  pullRequestRefreshMutation is! PullRequestRefreshMutationUnsupported &&
+                  (state is! BridgeSettingsReadyFull ||
+                      (state.yoloMutation is! YoloMutationInProgress &&
+                          state.pluginWarmupMutation is! PluginWarmupMutationInProgress)) =>
+            () => unawaited(_editInterval(context: context, state: state)),
+          BridgeSettingsUnsupported() ||
+          BridgeSettingsReady(
+            pullRequestRefreshMutation: PullRequestRefreshMutationUnsupported(),
+          ) => () => unawaited(showBridgeUpdateSheet(context: context)),
+          BridgeSettingsLoading() ||
+          BridgeSettingsDisconnected() ||
+          BridgeSettingsFailure() ||
+          BridgeSettingsReady() => null,
+        },
+      ),
+    ];
+    // Offline, one line above the group says why the bridge-owned rows are
+    // dimmed, in place of the rows each saying it. Harnesses stays reachable;
+    // its own page says what it cannot load.
     final offline = state is BridgeSettingsDisconnected;
     final description = offline ? context.loc.settingsBridgeOffline : this.description;
-    final group = offline ? Opacity(opacity: _offlineRowsOpacity, child: rows) : rows;
     return SettingsSection(
       title: title,
-      child: description == null
-          ? group
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              spacing: PregoSpacing.md,
-              children: [
-                Text(
-                  description,
-                  style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textTertiary),
-                ),
-                group,
-              ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ComputerSettingsEntry(onSwitchComputer: onSwitchComputer),
+          if (description != null) ...[
+            Text(
+              description,
+              style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textTertiary),
             ),
+            const SizedBox(height: PregoSpacing.md),
+          ],
+          PregoGroupedRows(
+            children: [
+              if (onOpenHarnesses != null)
+                PregoGroupedRow(
+                  icon: TablerRegular.plug,
+                  title: Text(context.loc.settingsHarnessesTitle),
+                  trailing: const Icon(TablerRegular.chevron_right),
+                  onTap: onOpenHarnesses,
+                ),
+              for (final row in bridgeRows) Opacity(opacity: offline ? _offlineRowsOpacity : 1, child: row),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

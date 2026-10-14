@@ -11,6 +11,7 @@ import "package:package_info_plus/package_info_plus.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/desktop_update_configuration.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
@@ -37,6 +38,7 @@ class _MockPluginManagementService() extends Mock implements PluginManagementSer
 class _MockCatalogRescanService() extends Mock implements CatalogRescanService;
 class _MockDesktopAttentionService() extends Mock implements DesktopAttentionService;
 class _MockUrlLauncher() extends Mock implements UrlLauncher;
+class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
 
 const AuthUser _user = AuthUser(
   id: "user-1",
@@ -99,6 +101,7 @@ void main() {
     registerFallbackValue(AppearanceMode.system);
     registerFallbackValue(ChatInputMode.voiceFirst);
     registerFallbackValue(DesktopAttentionPreference.enabled);
+    registerFallbackValue(ComputerSwitchSource.settings);
   });
 
   late _MockAuthGateCubit authGateCubit;
@@ -120,6 +123,8 @@ void main() {
   late BehaviorSubject<CatalogRescanState> catalogScanStates;
   late int logoutCompletions;
   late _MockFileAccessCubit fileAccess;
+  late MockRegisteredBridgesService registeredBridges;
+  late _MockComputerSwitchDispatcher computerSwitchDispatcher;
 
   setUp(() async {
     await getIt.reset();
@@ -212,6 +217,17 @@ void main() {
     getIt.registerSingleton<PluginManagementService>(pluginService);
     getIt.registerSingleton<CatalogRescanService>(catalogRescanService);
     getIt.registerSingleton<UrlLauncher>(_MockUrlLauncher());
+    registeredBridges = MockRegisteredBridgesService();
+    getIt.registerSingleton<RegisteredBridgesService>(registeredBridges);
+    getIt.registerSingleton<SelectedComputerService>(FakeSelectedComputerService());
+    computerSwitchDispatcher = _MockComputerSwitchDispatcher();
+    when(
+      () => computerSwitchDispatcher.switchTo(
+        bridgeId: any(named: "bridgeId"),
+        source: any(named: "source"),
+      ),
+    ).thenAnswer((_) async {});
+    getIt.registerSingleton<ComputerSwitchDispatcher>(computerSwitchDispatcher);
   });
 
   tearDown(() async {
@@ -444,6 +460,46 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(Dialog), findsNothing);
     expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
+  });
+
+  testWidgets("Bridge opens with the computer entry, and a switch closes the window", (tester) async {
+    registeredBridges.emitBridges(
+      bridges: [
+        BridgeSummary(
+          id: "a",
+          name: "studio-mac",
+          platform: BridgePlatform.macos,
+          status: BridgeRegistrationStatus.active,
+          addedAt: DateTime.utc(2026),
+          lastSeenAt: DateTime.utc(2026, 7),
+        ),
+        BridgeSummary(
+          id: "b",
+          name: "build-box",
+          platform: BridgePlatform.linux,
+          status: BridgeRegistrationStatus.inactive,
+          addedAt: DateTime.utc(2026),
+          lastSeenAt: null,
+        ),
+      ],
+    );
+    await open(tester: tester, tab: DesktopSettingsTab.bridge);
+    final entry = find.byKey(const Key("computer_settings_entry"));
+    expect(find.descendant(of: entry, matching: find.text("studio-mac")), findsOneWidget);
+    expect(tester.getTopLeft(find.text("Connected bridge")).dy, lessThan(tester.getTopLeft(entry).dy));
+    expect(tester.getBottomLeft(entry).dy, lessThan(tester.getTopLeft(find.text("YOLO mode")).dy));
+    // Harnesses has a tab of its own, so the section does not repeat it.
+    expect(
+      find.descendant(of: find.byKey(const Key("desktop-settings-modal")), matching: find.text("Harnesses")),
+      findsOneWidget,
+    );
+
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("build-box"));
+    await tester.pumpAndSettle();
+    verify(() => computerSwitchDispatcher.switchTo(bridgeId: "b", source: ComputerSwitchSource.settings)).called(1);
+    expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
   });
 
   testWidgets("Notifications uses desktop attention and Account retains supervised logout", (tester) async {
