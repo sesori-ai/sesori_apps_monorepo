@@ -812,3 +812,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   connection and bridge ID, epoch, observation/staleness/mutation versions,
   in-flight read epoch, and the one accepted browser record. These cover current
   recovery/ownership; no per-attempt map, queue, timer or durable state is added.
+
+- Step-13 source/test evidence was uncommitted on `5c47d7532f`, captured
+  unchanged in `641be7dc77`. Immutable measurement against that base is
+  1,114 additions and five deletions (1,119 changed) across 16 files:
+  11 generated DI lines and 1,108 authored lines, before this evidence record.
