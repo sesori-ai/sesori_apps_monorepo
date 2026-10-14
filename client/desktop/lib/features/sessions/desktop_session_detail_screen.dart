@@ -268,6 +268,11 @@ class const DesktopSessionDetailView({
                         scope: McpSessionScope(sessionId: session.id),
                       ),
                       createService: getIt.call<McpService>,
+                      mutationsAllowed:
+                          !readOnly &&
+                          session.parentID == null &&
+                          session.time?.archived == null &&
+                          !(state is SessionDetailLoaded && state.isArchived),
                     ),
                   ),
                   if (!readOnly &&

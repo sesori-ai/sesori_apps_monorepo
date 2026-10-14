@@ -168,6 +168,7 @@ class const _MobileSessionDetailBody({
                 scope: McpSessionScope(sessionId: session.id),
               ),
               createService: getIt.call<McpService>,
+              mutationsAllowed: !readOnly && !auditView && session.parentID == null && session.time?.archived == null,
             ),
           ),
           if (!auditView && session.parentID == null)

@@ -7,8 +7,10 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/repositories/mcp_repository.dart";
+import "package:sesori_dart_core/src/repositories/models/mcp_action_response.dart";
 import "package:sesori_dart_core/src/repositories/models/mcp_read_result.dart";
 import "package:sesori_dart_core/src/services/mcp_service.dart";
+import "package:sesori_dart_core/src/services/models/mcp_action_client_state.dart";
 import "package:sesori_dart_core/src/services/models/mcp_inventory_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -35,7 +37,7 @@ void main() {
   });
 
   Future<McpInventoryReady> load() async {
-    service.bind(request: _request);
+    service.bind(request: _request, mutationsAllowed: true);
     repository.pending.first.complete(
       McpReadSuccess(
         inventory: _snapshot(scope: _request.scope, name: "Fixture"),
@@ -43,6 +45,258 @@ void main() {
     );
     return await service.states.firstWhere((state) => state is McpInventoryReady) as McpInventoryReady;
   }
+
+  const action = McpServerEntryAction(
+    target: McpServerTarget(
+      scope: McpSessionScope(sessionId: "session-a"),
+      serverKey: "fixture",
+    ),
+    action: McpServerAction.reconnect,
+  );
+
+  test("pending action retains inventory, rejects a duplicate and supersedes an older read", () async {
+    final original = await load();
+    final read = service.refresh();
+    final older = repository.pending.last;
+    final operation = service.executeAction(action: action);
+    expect((service.currentState as McpInventoryReady).inventory, same(original.inventory));
+    expect(service.currentAction, isA<McpActionPending>());
+    await service.executeAction(action: action);
+    expect(repository.actionRequests, hasLength(1));
+    expect(repository.actionRequests.single.pluginId, _request.pluginId);
+    repository.actions.single.complete(
+      McpActionReceived(
+        result: McpActionCompleted(
+          inventory: _snapshot(scope: _request.scope, name: "After action"),
+        ),
+      ),
+    );
+    await operation;
+    older.complete(
+      McpReadSuccess(
+        inventory: _snapshot(scope: _request.scope, name: "Older read"),
+      ),
+    );
+    await read;
+    expect(
+      ((service.currentState as McpInventoryReady).inventory as McpInventorySnapshot).entries.single,
+      isA<McpServerSnapshot>().having((s) => s.name, "name", "After action"),
+    );
+  });
+
+  test("a lost action response retains its cause and reads truth without resending the action", () async {
+    await load();
+    final operation = service.executeAction(action: action);
+    final cause = ApiError.generic();
+    repository.actions.single.complete(McpActionRequestFailed(cause: cause));
+    await operation;
+    expect((service.currentAction as McpActionUncertain).cause, same(cause));
+    expect((service.currentAction as McpActionUncertain).request, repository.actionRequests.single);
+    expect(repository.actionRequests, hasLength(1));
+    expect(repository.requests, hasLength(2));
+    repository.pending.last.complete(
+      McpReadSuccess(
+        inventory: _snapshot(scope: _request.scope, name: "Recovered"),
+      ),
+    );
+    await _pump();
+    expect(service.currentAction, isA<McpActionUncertain>());
+  });
+
+  test("an inventory change during action completion is not lost with its superseded read", () async {
+    await load();
+    final olderRead = service.refresh();
+    final older = repository.pending.last;
+    final operation = service.executeAction(action: action);
+    connection.eventController.add(
+      SseEvent(
+        data: const SesoriMcpInventoryChanged(pluginId: "fixture", scope: McpHarnessScope()),
+      ),
+    );
+    await _pump();
+    repository.actions.single.complete(
+      McpActionReceived(
+        result: McpActionCompleted(
+          inventory: _snapshot(scope: _request.scope, name: "After action"),
+        ),
+      ),
+    );
+    await operation;
+    expect(repository.requests, hasLength(3));
+    older.complete(
+      McpReadSuccess(
+        inventory: _snapshot(scope: _request.scope, name: "Older"),
+      ),
+    );
+    await olderRead;
+    repository.pending.last.complete(
+      McpReadSuccess(
+        inventory: _snapshot(scope: _request.scope, name: "Latest signal"),
+      ),
+    );
+    await _pump();
+    expect(
+      ((service.currentState as McpInventoryReady).inventory as McpInventorySnapshot).entries.single,
+      isA<McpServerSnapshot>().having((s) => s.name, "name", "Latest signal"),
+    );
+  });
+
+  test("a lost action response re-arms an inventory read already in flight", () async {
+    await load();
+    final olderRead = service.refresh();
+    final older = repository.pending.last;
+    final operation = service.executeAction(action: action);
+    final cause = ApiError.generic();
+    repository.actions.single.complete(McpActionRequestFailed(cause: cause));
+    await operation;
+    expect(repository.requests, hasLength(2));
+    older.complete(
+      McpReadSuccess(
+        inventory: _snapshot(scope: _request.scope, name: "Before action"),
+      ),
+    );
+    await olderRead;
+    expect(repository.requests, hasLength(3));
+    repository.pending.last.complete(
+      McpReadSuccess(
+        inventory: _snapshot(scope: _request.scope, name: "Recovered after action"),
+      ),
+    );
+    await _pump();
+    final current = service.currentState as McpInventoryReady;
+    expect(
+      (current.inventory as McpInventorySnapshot).entries.single,
+      isA<McpServerSnapshot>().having((server) => server.name, "name", "Recovered after action"),
+    );
+    expect((service.currentAction as McpActionUncertain).cause, same(cause));
+    expect((service.currentAction as McpActionUncertain).request, repository.actionRequests.single);
+    expect(repository.actionRequests, hasLength(1));
+  });
+
+  test("an unrecognized action inventory without a snapshot fences the earlier initial read", () async {
+    service.bind(request: _request, mutationsAllowed: true);
+    final operation = service.executeAction(action: action);
+    repository.actions.single.complete(
+      const McpActionReceived(result: McpActionCompleted(inventory: McpInventoryUnknown())),
+    );
+    await operation;
+    expect(service.currentState, isA<McpInventoryUnrecognized>());
+    repository.pending.single.complete(
+      McpReadSuccess(
+        inventory: _snapshot(scope: _request.scope, name: "Before action"),
+      ),
+    );
+    await _pump();
+    expect(service.currentState, isA<McpInventoryUnrecognized>());
+  });
+
+  test("an unrecognized action inventory retains an existing readable snapshot", () async {
+    final previous = await load();
+    final operation = service.executeAction(action: action);
+    repository.actions.single.complete(
+      const McpActionReceived(result: McpActionCompleted(inventory: McpInventoryUnknown())),
+    );
+    await operation;
+    final current = service.currentState as McpInventoryReady;
+    expect(current.inventory, same(previous.inventory));
+    expect(current.refresh, isA<McpInventoryRefreshUnrecognized>());
+  });
+
+  test("an old bridge's action response cannot replace the new bridge inventory", () async {
+    await load();
+    final operation = service.executeAction(action: action);
+    connection.statuses.add(
+      const ConnectionConnected(
+        config: ServerConnectionConfig(
+          relayHost: "wss://fixture.test/b",
+          authToken: "fixture-b",
+          bridgeId: "fixture-b",
+        ),
+        health: _health,
+      ),
+    );
+    await _pump();
+    repository.pending.last.complete(
+      McpReadSuccess(
+        inventory: _snapshot(scope: _request.scope, name: "New bridge"),
+      ),
+    );
+    await _pump();
+    repository.actions.single.complete(
+      McpActionReceived(
+        result: McpActionCompleted(
+          inventory: _snapshot(scope: _request.scope, name: "Old bridge"),
+        ),
+      ),
+    );
+    await operation;
+    expect(
+      ((service.currentState as McpInventoryReady).inventory as McpInventorySnapshot).entries.single,
+      isA<McpServerSnapshot>().having((s) => s.name, "name", "New bridge"),
+    );
+    expect(service.currentAction, isA<McpActionIdle>());
+  });
+
+  test("read-only surfaces and disconnected connections never dispatch a mutation", () async {
+    service.bind(request: _request, mutationsAllowed: false);
+    repository.pending.single.complete(
+      McpReadSuccess(
+        inventory: _snapshot(scope: _request.scope, name: "Read only"),
+      ),
+    );
+    await _pump();
+    await service.executeAction(action: action);
+    expect(service.currentAction, isA<McpActionsReadOnly>());
+    expect(repository.actions, isEmpty);
+    service.bind(
+      request: const McpInventoryRequest(
+        pluginId: "fixture",
+        scope: McpSessionScope(sessionId: "another"),
+      ),
+      mutationsAllowed: true,
+    );
+    repository.pending.last.complete(
+      McpReadSuccess(
+        inventory: _snapshot(scope: _request.scope, name: "Another"),
+      ),
+    );
+    await _pump();
+    connection.statuses.add(const ConnectionLost(config: _config));
+    await _pump();
+    await service.executeAction(action: action);
+    expect(service.currentAction, isA<McpActionOffline>());
+    expect(repository.actions, isEmpty);
+  });
+
+  test("native completion with a failed inventory read retains the readable snapshot", () async {
+    final previous = await load();
+    final operation = service.executeAction(action: action);
+    const failure = McpInventoryUnavailable(
+      scope: McpSessionScope(sessionId: "session-a"),
+      reason: McpInventoryUnavailableReason.readFailed,
+      message: "Unavailable",
+    );
+    repository.actions.single.complete(const McpActionReceived(result: McpActionCompleted(inventory: failure)));
+    await operation;
+    final current = service.currentState as McpInventoryReady;
+    expect(current.inventory, same(previous.inventory));
+    expect((current.refresh as McpInventoryRefreshUnavailable).cause, same(failure));
+  });
+
+  test("disposing the inventory view fences its pending action response", () async {
+    await load();
+    final operation = service.executeAction(action: action);
+    await service.dispose();
+    repository.actions.single.complete(
+      McpActionReceived(
+        result: McpActionCompleted(
+          inventory: _snapshot(scope: _request.scope, name: "Late"),
+        ),
+      ),
+    );
+    await operation;
+    expect(repository.actionRequests, hasLength(1));
+  });
 
   test("refresh failure retains the readable snapshot and original error", () async {
     final original = await load();
@@ -146,7 +400,7 @@ void main() {
   test("blocked staleness waits for connection without querying or polling", () async {
     connection.statuses.add(const ConnectionDisconnected());
     await _pump();
-    service.bind(request: _request);
+    service.bind(request: _request, mutationsAllowed: true);
     connection.stale.add(null);
     connection.stale.add(null);
     await _pump();
@@ -166,12 +420,12 @@ void main() {
   });
 
   test("a changed scope fences an older read", () async {
-    service.bind(request: _request);
+    service.bind(request: _request, mutationsAllowed: true);
     const next = McpInventoryRequest(
       pluginId: "fixture",
       scope: McpSessionScope(sessionId: "session-b"),
     );
-    service.bind(request: next);
+    service.bind(request: next, mutationsAllowed: true);
     expect(repository.requests, [_request, next]);
     repository.pending.first.complete(
       McpReadSuccess(
@@ -197,6 +451,7 @@ void main() {
     final offline = service.currentState as McpInventoryReady;
     expect(offline.inventory, same(original.inventory));
     expect(offline.refresh, isA<McpInventoryRefreshOffline>());
+    expect(service.currentAction, isA<McpActionOffline>());
     repository.pending[1].complete(
       McpReadSuccess(
         inventory: _snapshot(scope: _request.scope, name: "Old refresh"),
@@ -207,6 +462,7 @@ void main() {
     connection.statuses.add(const ConnectionConnected(config: _config, health: _health));
     await _pump();
     expect(repository.pending, hasLength(3));
+    expect(service.currentAction, isA<McpActionIdle>());
     expect((service.currentState as McpInventoryReady).inventory, same(original.inventory));
     repository.pending.last.complete(
       McpReadSuccess(
@@ -225,7 +481,11 @@ void main() {
   test("a changed connection configuration clears old details before reading its inventory", () async {
     await load();
     final refresh = service.refresh();
-    const next = ServerConnectionConfig(relayHost: "wss://fixture.test/b", authToken: "fixture-b", bridgeId: null);
+    const next = ServerConnectionConfig(
+      relayHost: "wss://fixture.test/b",
+      authToken: "fixture-b",
+      bridgeId: null,
+    );
     connection.statuses.add(const ConnectionReconnecting(config: next));
     await _pump();
     expect(service.currentState, isA<McpInventoryWaitingForConnection>());
@@ -282,7 +542,7 @@ void main() {
   });
 
   test("initial 404 remains distinct from a retained refresh failure", () async {
-    service.bind(request: _request);
+    service.bind(request: _request, mutationsAllowed: true);
     final cause = NonSuccessCodeError(errorCode: 404, rawErrorString: "Missing route or session");
     repository.pending.last.complete(McpReadNotFound(cause: cause));
     final state = await service.states.firstWhere((state) => state is McpInventoryNotFound) as McpInventoryNotFound;
@@ -290,7 +550,7 @@ void main() {
   });
 
   test("unrecognized initial inventory is not a ready snapshot", () async {
-    service.bind(request: _request);
+    service.bind(request: _request, mutationsAllowed: true);
     repository.pending.last.complete(const McpReadUnrecognized());
     await service.states.firstWhere((state) => state is McpInventoryUnrecognized);
     expect(service.currentState, isNot(isA<McpInventoryReady>()));
@@ -340,7 +600,7 @@ void main() {
 
   test("closing the view fences a pending read", () async {
     final other = McpService(repository: repository, connectionService: connection);
-    other.bind(request: _request);
+    other.bind(request: _request, mutationsAllowed: true);
     await other.dispose();
     repository.pending.first.complete(
       McpReadSuccess(
@@ -384,6 +644,16 @@ class _Repository() implements McpRepository {
   Object? noSuchMethod(Invocation invocation) => throw UnimplementedError();
   final List<McpInventoryRequest> requests = [];
   final List<Completer<McpReadResult>> pending = [];
+  final actionRequests = <McpEntryActionRequest>[];
+  final actions = <Completer<McpActionResponse>>[];
+  @override
+  Future<McpActionResponse> executeAction({required McpEntryActionRequest request}) {
+    actionRequests.add(request);
+    final result = Completer<McpActionResponse>();
+    actions.add(result);
+    return result.future;
+  }
+
   @override
   Future<McpReadResult> getInventory({required McpInventoryRequest request}) {
     requests.add(request);

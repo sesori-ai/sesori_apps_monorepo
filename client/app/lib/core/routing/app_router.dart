@@ -541,6 +541,7 @@ ShellRoute buildHarnessSettingsRoute() {
                   context: context,
                   request: McpInventoryRequest(pluginId: route.pluginId, scope: const McpHarnessScope()),
                   createService: getIt.call<McpService>,
+                  mutationsAllowed: true,
                 ),
                 chrome: _harnessChrome(presentation: route.presentation),
                 connectionBanner: ConnectionBanner.maybeFor(context),
