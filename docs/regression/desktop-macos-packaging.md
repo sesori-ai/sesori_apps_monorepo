@@ -11,10 +11,17 @@ packaging capability does not imply public downloads or an updater have shipped.
 - Apple CI selects Xcode through `.github/actions/setup-xcode`: stable 27.0 on the
   ARM64 `xcode-27` hosted image and 26.6 on `macos-26-intel`. GitHub's Xcode 27 image
   is in public preview; `macos-latest` does not supply this toolchain. Xcode 27 requires
-  an Apple silicon host, not an ARM64-only app target: preserve the existing deployment
-  targets, universal GUI and package-native helper checks. Missing pinned Xcode must
-  fail setup rather than silently use another installed compiler. The same selection
-  applies to desktop CI/probes, reusable bridge builds and iOS TestFlight builds.
+  an Apple silicon host, not an ARM64-only app target. Preserve the existing deployment
+  targets and package-native helper checks. Missing pinned Xcode must fail setup rather
+  than silently use another installed compiler. The same selection applies to desktop
+  CI/probes, reusable bridge builds and iOS TestFlight builds.
+- Native qualification/package builds select only the package CPU through Flutter's
+  Xcode `ARCHS` override, including the separate platform-probe app. Run SDK bootstrap,
+  locked dependency resolution, product staging and probe compilation in separate steps
+  so job environment exports take effect and their costs remain separately observable.
+  Native build inspection requires single-CPU app and Dart AOT framework binaries;
+  prebuilt frameworks may remain universal. Keep both native runners, signing, installed
+  probes and existing acceptance checks; this is not cross-compilation or reduced QA.
 - Build from committed source with the pinned native SDK. Reject a nonempty
   build-recorded source patch before supplying signing credentials. Preserve framework
   symlinks, native CPU support and the complete `Contents/Helpers/bridge/bin`–`lib`
@@ -47,8 +54,8 @@ packaging capability does not imply public downloads or an updater have shipped.
   from `main`; accept package sources only from `origin/main` or an exact pinned
   retained baseline. Verify clean producers, notarization receipts, exact DMG digests,
   Developer ID identity, tickets and Gatekeeper before
-  installation. The universal GUI must include the selected CPU while the bundled
-  helper must be exactly package-native. On a fresh host, install from the prior DMG,
+  installation. The GUI must support the selected CPU while the bundled helper must
+  be exactly package-native. On a fresh host, install from the prior DMG,
   allow a bounded visible-window readiness interval while the process remains alive,
   require AXPress capability, validate and click the small process-owned menu-bar frame,
   then use system-wide z-order hit testing beside it. Require exact PID ownership and frame anchoring, then
