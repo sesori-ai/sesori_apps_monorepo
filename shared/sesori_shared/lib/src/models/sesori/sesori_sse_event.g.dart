@@ -438,6 +438,13 @@ SesoriQuestionAsked _$SesoriQuestionAskedFromJson(Map json) =>
             (e) => QuestionInfo.fromJson(Map<String, dynamic>.from(e as Map)),
           )
           .toList(),
+      interactionKind:
+          $enumDecodeNullable(
+            _$QuestionInteractionKindEnumMap,
+            json['interactionKind'],
+            unknownValue: QuestionInteractionKind.unknown,
+          ) ??
+          QuestionInteractionKind.question,
       $type: json['type'] as String?,
     );
 
@@ -448,7 +455,16 @@ Map<String, dynamic> _$SesoriQuestionAskedToJson(
   'sessionID': instance.sessionID,
   'displaySessionId': ?instance.displaySessionId,
   'questions': instance.questions.map((e) => e.toJson()).toList(),
+  'interactionKind':
+      _$QuestionInteractionKindEnumMap[instance.interactionKind]!,
   'type': instance.$type,
+};
+
+const _$QuestionInteractionKindEnumMap = {
+  QuestionInteractionKind.question: 'question',
+  QuestionInteractionKind.form: 'form',
+  QuestionInteractionKind.externalAction: 'externalAction',
+  QuestionInteractionKind.unknown: 'unknown',
 };
 
 SesoriQuestionReplied _$SesoriQuestionRepliedFromJson(Map json) =>

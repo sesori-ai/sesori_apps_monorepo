@@ -3,9 +3,10 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-visible-controls`, `c3716bfce5`, in the provided `copper-heron` worktree.
+- Branch/base: `sesori/mcp-session-external-actions`, `533093e0e2`, in the provided `copper-heron` worktree.
 - Current step: 16/24 is in review [#1971][pr-1971]; latest merged step: 15/24 as [#1969][pr-1969].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
+  Step 17/24 prepares the wire boundary locally;
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -990,3 +991,31 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   reconnect/enable/disable controls remain available. Capability/regression docs
   now describe the implemented presentation consistently. Native motion evidence
   predates these wording and mobile-gating fixes; desktop layout is unchanged.
+
+- Step 16 published as draft [#1971][pr-1971], source `182b1e8519`, against
+  merged parent `c3716bfce5`: 1,358 changed lines, 958 authored and 400 generated
+  localization lines. Native CUA interactions and visual evidence were pending at publication.
+- Original 8.d splits into transport (8.d.1, ordinal 17) and native session
+  integration (8.d.2, ordinal 18). The snapshot codecs alone add 571 generated
+  lines. The series has 24 steps; final L4/native/provider/package requirements
+  are unchanged. The integration retains validation, canonical ownership,
+  modern filtering, legacy cancellation and UI qualification together.
+- Step 17 production baseline refreshed on 2026-10-14: latest non-prerelease
+  remains v1.9.1 at `8bfeda9416c96ea5de70ffc701a36b738f24eff7`, published
+  08:56:26 UTC. Exact archived public snapshot and SSE question codecs accept
+  both additive form/external-action markers while retaining original session,
+  display parent and cancel-only custom-disabled notices. This is codec proof,
+  not mixed-client or native cancellation qualification.
+- Local wire draft: 61 focused shared cases pass (five external/marker cases and
+  56 SSE cases), and the shared analyzer is clean. Destinations are excluded
+  from generated presentation. No producer, route, modern filter, UI, native
+  reply or database change is claimed by the codec foundation.
+
+- Step 17 architecture implementation pass 1 approved all 15 staged paths
+  against `182b1e8519` (B-Shared only); no findings. All sixteen published PR
+  titles are synchronized to the 24-step plan. Historical squash titles and
+  prior tracker evidence remain unchanged. The wire successor remains local
+  until the controls parent completes native/visual qualification and merges.
+- Earlier draft controls CI reported 19/19 passing. GitHub rejected that
+  auto-merge attempt because the PR was draft. Native presentation qualification
+  subsequently passed; the current controls head is in review.
