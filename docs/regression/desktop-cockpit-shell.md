@@ -260,14 +260,17 @@ The main pane hosts one full-width routed page.
   opens its session, and a session started from home opens in the picked project. Empty inventory offers
   Add/Open Project. Loading is labelled and failures retry the shared inventory. A disconnected home branches on
   the computer being viewed: this computer's own bridge (or an unknown target) offers supervised recovery without
-  CLI setup; another computer shows the phone's offline body instead, "<computer> is offline" with its last-seen
-  time, a line to start the bridge on that computer, and the shared Other computers card, with no Start button.
+  CLI setup; another computer shows the phone's offline body instead: "<computer> is offline" (the generic
+  "Bridge offline" until the list names it), its last-seen time when the list has one, a line to start the
+  bridge on that computer, and the shared Other computers card, with no Start button.
 - Home opens with a "Viewing: <computer> ▾" header ("Viewing: This computer" for the local one) whose anchored
   menu switches computers through the shared switch flow (source `menu`). It is hidden while the account's only
   computer is this one, grows into place when the list says otherwise, and stays put while the body below changes
-  state. The desktop starts on the stored pick, else this computer, and follows this computer's supervised bridge
-  when its id appears or changes (a fresh install, a new login, a re-registration) unless the user picked another
-  computer in this sign-in; picking this computer, or signing out, ends that. The local bridge keeps running while another computer is viewed.
+  state. The desktop starts on the stored pick, else this computer when its bridge id is known; a fresh install
+  connects to the relay's default computer until its helper registers. Each sign-in pins this computer again when
+  nothing is stored. The desktop follows this computer's supervised bridge when its id appears or changes (a fresh
+  install, a new login, a re-registration) unless the user picked another computer in this sign-in; picking this
+  computer, or signing out, ends that. The local bridge keeps running while another computer is viewed.
   Shared Prego text styles and Material themes resolve the bundled package font.
 - Connection status floats over the main pane without changing its bounds.
   Reconnecting appears after the shared grace period; connection lost retains

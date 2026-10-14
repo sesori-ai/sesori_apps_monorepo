@@ -90,4 +90,22 @@ void main() {
 
     verify(selection.forgetPick).called(1);
   });
+
+  test("a sign-in pins this computer again", () async {
+    await start(persistedBridgeId: "local");
+    clearInteractions(selection);
+
+    authStates.add(const AuthState.unauthenticated());
+    authStates.add(const AuthState.authenticated(user: _user));
+    await pumpEventQueue();
+
+    verify(() => selection.ensureInitialTarget(localBridgeId: "local")).called(1);
+  });
 }
+
+const AuthUser _user = AuthUser(
+  id: "account-a",
+  provider: AuthProvider.github,
+  providerUserId: "github-a",
+  providerUsername: "account-a",
+);

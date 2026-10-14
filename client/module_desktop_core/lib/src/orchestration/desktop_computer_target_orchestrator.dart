@@ -26,9 +26,19 @@ class DesktopComputerTargetOrchestrator({
   /// dispatcher has started) and before the relay connects.
   Future<void> start() async {
     // The tracker's id does not reliably clear at sign-out (it stays when the
-    // server could not unregister the bridge), so the auth state marks it.
-    _authSubscription = _authSession.authStateStream.listen((state) {
-      if (state is AuthUnauthenticated) _selectedComputerService.forgetPick();
+    // server could not unregister the bridge), so the auth state marks it. A
+    // sign-out also clears the stored target, so each sign-in pins this
+    // computer again; the stored target makes that a no-op otherwise.
+    // skip(1): the state known now is the start-up one resolved below.
+    _authSubscription = _authSession.authStateStream.skip(1).listen((state) {
+      switch (state) {
+        case AuthUnauthenticated():
+          _selectedComputerService.forgetPick();
+        case AuthAuthenticated():
+          unawaited(_selectedComputerService.ensureInitialTarget(localBridgeId: _statusTracker.status.bridgeId));
+        case AuthInitial() || AuthAuthenticating() || AuthFailed():
+          break;
+      }
     });
     // skip(1): the id known now is the one ensureInitialTarget uses.
     _localIdSubscription = _statusTracker.statusStream
