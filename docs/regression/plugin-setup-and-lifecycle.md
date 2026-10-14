@@ -387,6 +387,8 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   Scoped cancellation/disposal cannot close another owner's listener. Local direct browser flows retain ownership until
   native settlement or the existing five-minute expiry; pending listener cleanup retains ownership until closure completes.
   Cover provider-then-MCP and MCP-then-provider overlap, foreign retry/cancel, surviving callback delivery, and busy retry.
+  The shared sign-in sheet eases height changes between retry, browser progress and terminal feedback; reduced motion
+  presents the same states directly. Native recordings should show no abrupt layout snap during retry or cancellation.
 - Mobile and desktop show login only for authentication-required harnesses that declare the
   capability. Their shared device-code sheet keeps anti-phishing guidance and the
   selectable/copyable one-time code visible, opens the external browser only on explicit

@@ -4,6 +4,7 @@ library;
 import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:go_router/go_router.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 import "package:rxdart/rxdart.dart";
@@ -46,8 +47,13 @@ class _FixtureState() extends State<_Fixture> {
     catalogRescanService: _scan,
   );
 
+  late final _router = GoRouter(
+    routes: [GoRoute(path: "/", builder: (context, state) => _page())],
+  );
+
   @override
   void dispose() {
+    _router.dispose();
     unawaited(_cubit.close());
     unawaited(_service.onDispose());
     unawaited(_scan.onDispose());
@@ -59,46 +65,48 @@ class _FixtureState() extends State<_Fixture> {
     mode: PregoInteractionMode.pointer,
     child: BlocProvider.value(
       value: _cubit,
-      child: MaterialApp(
+      child: MaterialApp.router(
         debugShowCheckedModeBanner: false,
         theme: buildPregoThemeData(brightness: Brightness.light),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: HarnessSettingsFlowView(
-            child: Builder(
-              builder: (context) => Padding(
-                padding: const EdgeInsets.all(PregoSpacing.xl),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(_title, style: context.prego.textTheme.textLg.medium),
-                    const SizedBox(height: PregoSpacing.lg),
-                    PregoButtonsSolid(
-                      hierarchy: PregoButtonsSolidHierarchy.secondary,
-                      size: PregoButtonsSolidSize.sm,
-                      label: "Launch failure",
-                      onPressed: () {
-                        _service.blocked = false;
-                        unawaited(_cubit.startAuthentication(pluginId: "fixture"));
-                      },
-                    ),
-                    const SizedBox(height: PregoSpacing.lg),
-                    PregoButtonsSolid(
-                      hierarchy: PregoButtonsSolidHierarchy.secondary,
-                      size: PregoButtonsSolidSize.sm,
-                      label: "Busy browser",
-                      onPressed: () {
-                        _service.blocked = true;
-                        unawaited(_cubit.startAuthentication(pluginId: "fixture"));
-                      },
-                    ),
-                    const SizedBox(height: PregoSpacing.lg),
-                    const Text(_description),
-                  ],
-                ),
+        routerConfig: _router,
+      ),
+    ),
+  );
+
+  Widget _page() => Scaffold(
+    body: HarnessSettingsFlowView(
+      child: Builder(
+        builder: (context) => Padding(
+          padding: const EdgeInsets.all(PregoSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(_title, style: context.prego.textTheme.textLg.medium),
+              const SizedBox(height: PregoSpacing.lg),
+              PregoButtonsSolid(
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.sm,
+                label: "Launch failure",
+                onPressed: () {
+                  _service.blocked = false;
+                  unawaited(_cubit.startAuthentication(pluginId: "fixture"));
+                },
               ),
-            ),
+              const SizedBox(height: PregoSpacing.lg),
+              PregoButtonsSolid(
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.sm,
+                label: "Busy browser",
+                onPressed: () {
+                  _service.blocked = true;
+                  unawaited(_cubit.startAuthentication(pluginId: "fixture"));
+                },
+              ),
+              const SizedBox(height: PregoSpacing.lg),
+              const Text(_description),
+            ],
           ),
         ),
       ),

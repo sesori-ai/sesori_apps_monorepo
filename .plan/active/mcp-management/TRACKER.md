@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-client-authentication`, `94c80bcc3a`, in the provided `copper-heron` worktree.
-- Current step: 11/21 is in [#1957][pr-1957];
-  local successor 12/21 scopes browser ownership;
+- Branch/base: `sesori/mcp-client-authentication`, `067380c981`, in the provided `copper-heron` worktree.
+- Current step: 11/21 merged as [#1957][pr-1957];
+  step 12/21 scopes browser ownership and is completing native visual verification;
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -31,7 +31,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 8/21 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
 | 9/21 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
 | 10/21 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/21 | Headless auth owner/routes | In review | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
+| 11/21 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
 | 12/21 | Browser ownership (8.a) | In progress | Provider/MCP handles and busy behavior |
 | 13/21 | Shared client authentication lifecycle (8.b) | Not started | — |
 | 14/21 | Visible authentication and controls (8.c) | Not started | — |
@@ -730,10 +730,12 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Core/shared UI and downstream mobile/desktop analyzers pass. Presentation and
   localization generators ran; no unrelated generated output was retained.
 - The debug macOS synthetic visual fixture builds and starts with Metal/Impeller,
-  without account, bridge, browser or persistence initialization. Native UI
-  interaction is pending Computer Use permissions; this is not a visual pass.
-  The user requested setup instructions, supplied from current official OpenAI
-  documentation. The existing production app PID 7903 remains untouched.
+  without account, bridge, browser or persistence initialization. Computer Use
+  initially blocked interaction; after the user enabled its permissions, native
+  busy/retry/cancellation checks ran. The recording exposed a status-layout snap;
+  the shared sheet now eases height changes over 200 ms and honors reduced motion.
+  The 29 owning widget tests and shared UI analyzer passed after that local fix.
+  The existing production app PID 7903 remains untouched.
 - Additional callback qualification on Claude 2.1.221/2.1.291 verifies the owning
   native helper PID binds the expected loopback port and a fixture HTTP browser
   return completes authentication without stdin forwarding. Each pin made one
@@ -742,3 +744,9 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   The tested owner source is `94c80bcc3a`, with the in-memory catalog/runtime
   adapter and isolated fixture credentials. This qualifies direct loopback
   return, not system-browser launch, real-provider policy, relay or packaged UI.
+
+- Step 11 merged at accepted head `94c80bcc3a` with all 33 checks passing;
+  current-head Codex review completed and Cubic approved. The reserved-start
+  contract feedback was explicitly declined with its GET recovery/cancellation
+  evidence; all actionable feedback was addressed. Step 12 rebased unpublished
+  onto the merge at `067380c981`, retaining its focused test provenance.
