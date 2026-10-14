@@ -6,6 +6,9 @@ import "client/relay_http_client.dart";
 
 @lazySingleton
 class McpApi({required final RelayHttpApiClient _client}) {
+  Future<ApiResponse<McpEntryActionResult>> executeAction({required McpEntryActionRequest request}) =>
+      _client.post("/mcp/entry/action", body: request.toJson(), fromJson: McpEntryActionResult.fromJson);
+
   Future<ApiResponse<McpAuthenticationResult>> getAuthentication() => _client.get(
     "/mcp/authentication",
     fromJson: McpAuthenticationResult.fromJson,

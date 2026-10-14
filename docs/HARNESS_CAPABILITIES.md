@@ -655,6 +655,12 @@ API/repository/connection-fenced lifecycle are implemented. The observing Cubit
 does not cancel on view closure. Request-scoped recovery never auto-launches a
 browser; busy retains the challenge, and reconnect fences callbacks to the old
 bridge. Visible client controls and other native adapters remain **not implemented**.
+The shared entry-action API/repository, per-view request owner and observing Cubit
+are implemented for reconnect, enable/disable and credential forgetting. Shells
+provide the read-only posture; pending requests retain readable inventory, late
+responses are connection-fenced, and native completion supplies inventory truth.
+API failures retain their causes and trigger a read rather than an automatic
+action retry. Visible management controls remain the next presentation step.
 The backend-neutral inventory wire models and optional plugin read interface
 are implemented. Claude implements session inventory through its resident
 process status control request, exposed headlessly by `POST /mcp/inventory`.

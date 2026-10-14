@@ -3,12 +3,19 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../api/mcp_api.dart";
+import "models/mcp_action_response.dart";
 import "models/mcp_authentication_response.dart";
 import "models/mcp_read_result.dart";
 import "models/plugin_management_result.dart";
 
 @lazySingleton
 class McpRepository({required final McpApi _api}) {
+  Future<McpActionResponse> executeAction({required McpEntryActionRequest request}) async =>
+      switch (await _api.executeAction(request: request)) {
+        SuccessResponse(:final data) => McpActionReceived(result: data),
+        ErrorResponse(:final error) => McpActionRequestFailed(cause: error),
+      };
+
   Future<McpAuthenticationResponse> getAuthentication() => _authenticationResponse(response: _api.getAuthentication());
 
   Future<McpAuthenticationResponse> startAuthentication({required McpAuthenticationStartRequest request}) =>

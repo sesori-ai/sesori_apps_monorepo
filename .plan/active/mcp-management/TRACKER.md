@@ -3,10 +3,10 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-connection-controls`, `bff0055e47`, in the provided `copper-heron` worktree.
-- Current step: 11/22 merged as [#1957][pr-1957];
-  steps 12/22 and 13/22 merged as [#1962][pr-1962] and [#1964][pr-1964];
-  step 14/22 is implementing authentication availability and credential forgetting;
+- Branch/base: `sesori/mcp-client-actions`, `235ff86970`, in the provided `copper-heron` worktree.
+- Current step: 11/23 merged as [#1957][pr-1957];
+  steps 12/23 and 13/23 merged as [#1962][pr-1962] and [#1964][pr-1964];
+  step 14/23 merged as [#1966][pr-1966]; step 15/23 is implementing the client connection-action lifecycle;
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -22,28 +22,29 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/22 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/22 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/22 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/22 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/22 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/22 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/22 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
-| 8/22 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
-| 9/22 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
-| 10/22 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/22 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/22 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
-| 13/22 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
-| 14/22 | Authentication availability and credential forgetting (8.c.1) | In progress | Native declarations and headless control |
-| 15/22 | Visible authentication and controls (8.c.2) | Not started | — |
-| 16/22 | Session external actions (8.d) | Not started | — |
-| 17/22 | Claude approvals and form/URL elicitation | Not started | — |
-| 18/22 | Codex inventory/actions/authentication | Not started | — |
-| 19/22 | Codex forms and offered connectors | Not started | — |
-| 20/22 | Secondary harness support and explicit gaps | Not started | — |
-| 21/22 | Reconcile regression/capability documents | Not started | — |
-| 22/22 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/23 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/23 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/23 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/23 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/23 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/23 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/23 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/23 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
+| 9/23 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
+| 10/23 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
+| 11/23 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
+| 12/23 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
+| 13/23 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
+| 14/23 | Authentication availability and credential forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests and native fixture |
+| 15/23 | Shared connection-action lifecycle (8.c.2.a) | In progress | Typed action state and authoritative refresh |
+| 16/23 | Visible authentication and controls (8.c.2.b) | Deferred draft | Resume after Step 15 publication |
+| 17/23 | Session external actions (8.d) | Not started | — |
+| 18/23 | Claude approvals and form/URL elicitation | Not started | — |
+| 19/23 | Codex inventory/actions/authentication | Not started | — |
+| 20/23 | Codex forms and offered connectors | Not started | — |
+| 21/23 | Secondary harness support and explicit gaps | Not started | — |
+| 22/23 | Reconcile regression/capability documents | Not started | — |
+| 23/23 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -876,3 +877,27 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   together. The changed bridge suites pass 51 tests and Claude resident tests pass with explicit scope assertions,
   for 149 unique focused tests overall. Interface/Claude/bridge analyzers pass; no new owner or lifecycle is added.
   Regression prose now says capability fields are decoded, since visible controls remain step 15.
+
+[pr-1966]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1966
+
+- Step 14 merged at accepted head `704c5ca515`, squash `235ff86970`: all 32 pre-merge checks passed, Cubic
+  approved the current head and both actionable threads were resolved. Codex review was unavailable because
+  of the account usage limit; no Codex coverage is claimed for this PR. The terminal report included a newly
+  running post-merge check, not proof that it passed.
+- The former visible-control step 15 draft measured 1,592 changed lines before final docs/native UI fixes.
+  It is split into client action lifecycle (8.c.2.a, ordinal 15) and visible controls/presentation (8.c.2.b,
+  ordinal 16). Both are independently valid; the preserved UI draft resumes only after Step 15 opens.
+  Current total is 23, subsequent ordinals shift once, and final qualification remains ordinal 23 with its
+  unchanged L4/native/provider/package scope. Published titles synchronize without rewriting squash history.
+- Step 15 adds typed entry-action API/repository operations, one per-view action state subject and an observational
+  Cubit. Request/target attribution survives completion and API failure. Native inventory supersedes earlier reads;
+  queued staleness triggers a fresh read. Read-only/offline posture, duplicate prevention, connection replacement,
+  failed authoritative reads and view disposal are covered. No visible controls or database effect yet.
+- Step-15 focused verification: 24 inventory/action service and five repository tests pass (29 total). Core,
+  shared UI, mobile and desktop analyzers pass. DI constructors are unchanged and require no generated update.
+  Mutable inventory-owner budget is eight fields, including the one new action subject; no extra generation,
+  request map, timer, callback owner or queue. All 14 published titles now match the 23-step delivery table;
+  Markdown ordering and final qualification ownership validate. The complete retirement matrix remains active.
+- Step-15 architecture implementation review pass 1 **approved** the 20 staged paths against `235ff86970`,
+  applying Client rules. No findings; the existing view service owns action state/disposal and the new Cubit
+  observes it without duplicating lifecycle. The deferred controls draft is outside this foundation review.

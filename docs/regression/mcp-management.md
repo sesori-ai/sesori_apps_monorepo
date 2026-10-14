@@ -107,6 +107,21 @@ archived session if its native process remains live; it grants no session mutati
 
 ## Native authentication boundary
 
+The shared client entry-action API/repository and per-view owner expose native
+server controls and credential forgetting without visible controls yet. Shell
+composition supplies the read-only posture. Pending actions retain inventory;
+completed results apply the native read and supersede earlier GET results.
+Staleness received during an action still requires a fresh read. API failure
+retains the original cause and requests inventory without resending the action.
+Late responses after connection replacement, disconnect or view disposal cannot
+replace the current snapshot. Result state retains its request/target so later
+presentation can distinguish actions on different servers in one inventory view.
+The action Cubit observes the inventory owner and does not dispose it. Closing
+the inventory view sends no native action cancellation. No action registry,
+queue, timer, configuration writer or credential store is added. Focused cases:
+`client/module_core/test/services/mcp_service_test.dart` and
+`client/module_core/test/repositories/mcp_repository_test.dart`.
+
 The shared authentication wire contract carries one attempt's ID, plugin and
 server target, native cancellation availability, and sealed current states.
 Callback-challenge state carries the authorization and expected callback URLs;

@@ -60,6 +60,7 @@ class const _Fixture() extends StatelessWidget {
                       context: context,
                       request: const McpInventoryRequest(pluginId: "fixture", scope: _scope),
                       createService: _FixtureService.new,
+                      mutationsAllowed: false,
                     ),
                   ),
                 ),
@@ -109,13 +110,15 @@ final _inventory = McpInventorySnapshot(
 );
 
 class _FixtureService() implements McpService {
+  @override
+  Object? noSuchMethod(Invocation invocation) => throw UnimplementedError();
   final _states = BehaviorSubject<McpInventoryState>.seeded(const McpInventoryInitial());
   @override
   ValueStream<McpInventoryState> get states => _states.stream;
   @override
   McpInventoryState get currentState => _states.value;
   @override
-  void bind({required McpInventoryRequest request}) =>
+  void bind({required McpInventoryRequest request, required bool mutationsAllowed}) =>
       _states.add(McpInventoryReady(inventory: _inventory, refresh: const McpInventoryRefreshIdle()));
   @override
   Future<void> refresh() async {

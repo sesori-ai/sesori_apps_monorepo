@@ -14,6 +14,7 @@ Future<void> showMcpInventory({
   required BuildContext context,
   required McpInventoryRequest request,
   required McpService Function() createService,
+  required bool mutationsAllowed,
 }) async {
   await showPregoModal<void>(
     context: context,
@@ -21,7 +22,7 @@ Future<void> showMcpInventory({
     width: PregoModalWidth.browser,
     bodySize: PregoBottomSheetBodySize.seventyPercent,
     builder: (_) => BlocProvider(
-      create: (_) => McpCubit(service: createService(), request: request),
+      create: (_) => McpCubit(service: createService(), request: request, mutationsAllowed: mutationsAllowed),
       child: const McpInventoryView(),
     ),
   );

@@ -8,7 +8,9 @@ import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../capabilities/server_connection/server_connection_config.dart";
 import "../repositories/mcp_repository.dart";
+import "../repositories/models/mcp_action_response.dart";
 import "../repositories/models/mcp_read_result.dart";
+import "models/mcp_action_client_state.dart";
 import "models/mcp_inventory_state.dart";
 
 /// One view's inventory lifecycle. Factory DI keeps simultaneous views independent.
@@ -42,6 +44,7 @@ class McpService({
   }
 
   final BehaviorSubject<McpInventoryState> _state = BehaviorSubject.seeded(const McpInventoryInitial());
+  final BehaviorSubject<McpActionClientState> _actions = BehaviorSubject.seeded(const McpActionsReadOnly());
   final CompositeSubscription _subscriptions = CompositeSubscription();
   ConnectionStatus _connection = _connectionService.currentStatus;
   McpInventoryRequest? _request;
@@ -51,13 +54,65 @@ class McpService({
 
   ValueStream<McpInventoryState> get states => _state.stream;
   McpInventoryState get currentState => _state.value;
+  ValueStream<McpActionClientState> get actions => _actions.stream;
+  McpActionClientState get currentAction => _actions.value;
 
-  void bind({required McpInventoryRequest request}) {
+  void bind({required McpInventoryRequest request, required bool mutationsAllowed}) {
     if (_state.isClosed || request == _request) return;
     _generation++;
     _request = request;
+    _actions.add(mutationsAllowed ? const McpActionIdle() : const McpActionsReadOnly());
     _state.add(const McpInventoryWaitingForConnection());
     unawaited(refresh());
+  }
+
+  Future<void> executeAction({required McpEntryAction action}) async {
+    final request = _request;
+    if (_actions.isClosed ||
+        request == null ||
+        currentAction is McpActionsReadOnly ||
+        currentAction is McpActionPending) {
+      return;
+    }
+    if (_connection is! ConnectionConnected) {
+      _actions.add(const McpActionOffline());
+      return;
+    }
+    final generation = _generation;
+    final staleVersion = _staleVersion;
+    final operation = McpEntryActionRequest(pluginId: request.pluginId, action: action);
+    _actions.add(McpActionPending(request: operation));
+    final response = await _repository.executeAction(request: operation);
+    if (_actions.isClosed || generation != _generation) return;
+    switch (response) {
+      case McpActionRequestFailed(:final cause):
+        _actions.add(McpActionUncertain(request: operation, cause: cause));
+        unawaited(refresh());
+      case McpActionReceived(:final result):
+        _actions.add(McpActionReceivedState(request: operation, result: result));
+        if (result case McpActionCompleted(:final inventory)) {
+          // The action's native read supersedes any earlier inventory request.
+          _generation++;
+          _readingGeneration = null;
+          final previous = currentState;
+          _state.add(switch (inventory) {
+            McpInventoryUnavailable()
+                when previous is McpInventoryReady && previous.inventory is McpInventorySnapshot =>
+              McpInventoryReady(
+                inventory: previous.inventory,
+                refresh: McpInventoryRefreshUnavailable(cause: inventory),
+              ),
+            McpInventoryUnknown() when previous is McpInventoryReady => McpInventoryReady(
+              inventory: previous.inventory,
+              refresh: const McpInventoryRefreshUnrecognized(),
+            ),
+            McpInventorySnapshot() ||
+            McpInventoryUnavailable() ||
+            McpInventoryUnknown() => McpInventoryReady(inventory: inventory, refresh: const McpInventoryRefreshIdle()),
+          });
+          if (_staleVersion > staleVersion) unawaited(refresh());
+        }
+    }
   }
 
   Future<void> refresh() async {
@@ -167,9 +222,11 @@ class McpService({
     _connection = next;
     if (oldConfig != nextConfig) {
       _generation++;
+      if (currentAction is! McpActionsReadOnly) _actions.add(const McpActionIdle());
       if (_request != null) _state.add(const McpInventoryWaitingForConnection());
     } else if (wasConnected && !isConnected) {
       _generation++;
+      if (currentAction is! McpActionsReadOnly) _actions.add(const McpActionOffline());
       _state.add(switch (currentState) {
         McpInventoryReady(:final inventory) => McpInventoryReady(
           inventory: inventory,
@@ -198,6 +255,6 @@ class McpService({
   Future<void> dispose() async {
     _generation++;
     await _subscriptions.cancel();
-    await _state.close();
+    await Future.wait([_state.close(), _actions.close()]);
   }
 }
