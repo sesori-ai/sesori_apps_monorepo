@@ -185,6 +185,7 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i945.DesktopComputerTargetOrchestrator(
         statusTracker: gh<_i227.BridgeStatusTracker>(),
         selectedComputerService: gh<_i948.SelectedComputerService>(),
+        authSession: gh<_i948.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
     );

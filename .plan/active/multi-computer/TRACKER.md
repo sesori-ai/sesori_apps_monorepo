@@ -72,12 +72,15 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   Picks from the "+ n others" menu report `offline_screen`, where the switch started.
 - 2026-10-14, step 11: `DesktopComputerTargetOrchestrator` (module_desktop_core, Layer 4) replaces the direct
   `ensureInitialTarget` call at desktop start-up and follows the supervised bridge id when it appears or changes;
-  `SelectedComputerService.select` sets the only new state, a "picked since start-up" flag that makes
-  `followLocalComputer` a no-op. Accepted: the flag lives for the process, so a pick before a logout still holds
-  after the next login in the same run; and a stored remote pick from an earlier run gives way to this computer
-  only when the local id itself changes. The home header is hidden while the account's only computer is this
-  one. The desktop remote-offline body reuses the phone's heading strings and `OtherComputersCard`, but not the
-  phone's CLI command box (app-shell widgets); a line asks to start the bridge on that computer instead.
+  `SelectedComputerService.select` sets the only new state, a "picked another computer" flag (set only when the
+  pick is not this computer) that makes `followLocalComputer` a no-op; the orchestrator clears it on sign-out
+  (`AuthUnauthenticated`, since the tracker keeps the bridge id when the server unregister fails). Accepted: a
+  stored remote pick from an earlier run gives way to this computer only when the local id itself changes.
+  `ActiveBridgeLocality` gained `localBridgeIdStream`, and `ComputerSwitcherState` carries `localId` and
+  `viewsAnotherComputer` (a missing target counts as this computer), which both the home header and body read.
+  The home header is hidden while the account's only computer is this one. The offline heading moved to the
+  shared `ComputerOfflineHeading` (module_app_ui) used by the phone and the desktop remote-offline body; the
+  phone's CLI command box is not reused (app-shell widgets), a line asks to start the bridge on that computer.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record

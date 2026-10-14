@@ -34,7 +34,11 @@ void main() {
     whenListen(
       cubit,
       const Stream<ComputerSwitcherState>.empty(),
-      initialState: ComputerSwitcherState(computers: [_offline("target"), ...computers], targetId: "target"),
+      initialState: ComputerSwitcherState(
+        computers: [_offline("target"), ...computers],
+        targetId: "target",
+        localId: null,
+      ),
     );
     await tester.pumpWidget(
       MaterialApp(

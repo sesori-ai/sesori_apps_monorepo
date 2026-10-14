@@ -5,12 +5,13 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
+import "../../foundation/platform/active_bridge_locality.dart";
 import "../../services/registered_bridges_service.dart";
 import "../../services/selected_computer_service.dart";
 import "computer_switcher_state.dart";
 
-/// Feeds a computer switcher: the account's computers and the one the app
-/// works on.
+/// Feeds a computer switcher: the account's computers, the one the app works
+/// on, and this surface's own.
 ///
 /// Mirrors the registered list as its owner publishes it; the surface that
 /// names the computer (the Projects bar's identity) is what fetches it. A
@@ -20,24 +21,31 @@ class ComputerSwitcherCubit({
   required final RegisteredBridgesService _registeredBridgesService,
   required final ConnectionService _connectionService,
   required final SelectedComputerService _selectedComputerService,
+  required final ActiveBridgeLocality _activeBridgeLocality,
 }) extends Cubit<ComputerSwitcherState> {
   late final StreamSubscription<List<BridgeSummary>> _bridgesSubscription;
   late final StreamSubscription<ConnectionStatus> _statusSubscription;
+  late final StreamSubscription<String?> _localIdSubscription;
 
   this
     : super(
         ComputerSwitcherState(
           computers: _registeredBridgesService.bridges.value,
           targetId: _connectionService.currentStatus.targetBridgeId,
+          localId: _activeBridgeLocality.localBridgeId,
         ),
       ) {
     // skip(1): the replayed current values are already in the initial state.
     _bridgesSubscription = _registeredBridgesService.bridges.skip(1).listen((computers) {
-      emit(ComputerSwitcherState(computers: computers, targetId: state.targetId));
+      emit(ComputerSwitcherState(computers: computers, targetId: state.targetId, localId: state.localId));
     });
     _statusSubscription = _connectionService.status
         .skip(1)
         .listen((status) => _adoptTarget(targetId: status.targetBridgeId));
+    _localIdSubscription = _activeBridgeLocality.localBridgeIdStream.listen((localId) {
+      if (localId == state.localId) return;
+      emit(ComputerSwitcherState(computers: state.computers, targetId: state.targetId, localId: localId));
+    });
     // Before any connection names a target, the stored pick is the target.
     if (state.targetId == null) unawaited(_readStoredTarget());
   }
@@ -51,13 +59,14 @@ class ComputerSwitcherCubit({
   void _adoptTarget({required String? targetId}) {
     // A status without a target (disconnected) does not unpick the computer.
     if (targetId == null || targetId == state.targetId) return;
-    emit(ComputerSwitcherState(computers: state.computers, targetId: targetId));
+    emit(ComputerSwitcherState(computers: state.computers, targetId: targetId, localId: state.localId));
   }
 
   @override
   Future<void> close() async {
     await _bridgesSubscription.cancel();
     await _statusSubscription.cancel();
+    await _localIdSubscription.cancel();
     await super.close();
   }
 }

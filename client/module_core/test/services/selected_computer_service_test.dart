@@ -10,6 +10,9 @@ class _Locality({required final String? _localBridgeId}) implements ActiveBridge
   String? get localBridgeId => _localBridgeId;
 
   @override
+  Stream<String?> get localBridgeIdStream => const Stream.empty();
+
+  @override
   bool isLocalBridge({required String bridgeId}) => bridgeId == _localBridgeId;
 }
 
@@ -74,19 +77,19 @@ void main() {
   });
 
   test("a stored target wins over the local computer", () async {
-    await build(stored: "remote", local: "local").ensureInitialTarget();
+    await build(stored: "remote", local: null).ensureInitialTarget(localBridgeId: "local");
 
     verifyNever(() => connection.retarget(bridgeId: any(named: "bridgeId")));
   });
 
   test("without a stored target the local computer is pinned", () async {
-    await build(stored: null, local: "local").ensureInitialTarget();
+    await build(stored: null, local: null).ensureInitialTarget(localBridgeId: "local");
 
     verify(() => connection.retarget(bridgeId: "local")).called(1);
   });
 
   test("without a stored target or a local computer nothing is pinned", () async {
-    await build(stored: null, local: null).ensureInitialTarget();
+    await build(stored: null, local: null).ensureInitialTarget(localBridgeId: null);
 
     verifyNever(() => connection.retarget(bridgeId: any(named: "bridgeId")));
   });
@@ -97,13 +100,33 @@ void main() {
     verify(() => connection.retarget(bridgeId: "local")).called(1);
   });
 
-  test("a computer picked since start-up is never replaced by the local one", () async {
-    final service = build(stored: null, local: null);
+  test("another computer picked in this sign-in is never replaced by the local one", () async {
+    final service = build(stored: null, local: "local");
     await service.select(bridgeId: "remote", source: ComputerSwitchSource.menu);
 
-    await service.followLocalComputer(bridgeId: "local");
+    await service.followLocalComputer(bridgeId: "local-new");
 
-    verifyNever(() => connection.retarget(bridgeId: "local"));
+    verifyNever(() => connection.retarget(bridgeId: "local-new"));
+  });
+
+  test("picking this computer keeps following it", () async {
+    final service = build(stored: null, local: "local");
+    await service.select(bridgeId: "remote", source: ComputerSwitchSource.menu);
+    await service.select(bridgeId: "local", source: ComputerSwitchSource.menu);
+
+    await service.followLocalComputer(bridgeId: "local-new");
+
+    verify(() => connection.retarget(bridgeId: "local-new")).called(1);
+  });
+
+  test("a sign-out forgets the pick, so the next sign-in follows this computer", () async {
+    final service = build(stored: null, local: "local");
+    await service.select(bridgeId: "remote", source: ComputerSwitchSource.menu);
+
+    service.forgetPick();
+    await service.followLocalComputer(bridgeId: "local-new");
+
+    verify(() => connection.retarget(bridgeId: "local-new")).called(1);
   });
 
   test("the target is the live connection's, else the stored one", () async {

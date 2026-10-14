@@ -21,6 +21,7 @@ void main() {
   late _MockProjectListCubit projects;
   late MockRegisteredBridgesService bridges;
   late BehaviorSubject<ConnectionStatus> statuses;
+  late BehaviorSubject<String?> localIds;
   late _MockComputerSwitchDispatcher switches;
   late _MockFileAccessCubit fileAccess;
 
@@ -44,6 +45,9 @@ void main() {
     getIt.registerSingleton<RegisteredBridgesService>(bridges);
     getIt.registerSingleton<ConnectionService>(connection);
     getIt.registerSingleton<SelectedComputerService>(_ConnectionTargetSelection(statuses: statuses));
+    localIds = BehaviorSubject<String?>.seeded(null);
+    addTearDown(localIds.close);
+    getIt.registerSingleton<ActiveBridgeLocality>(_Locality(localIds: localIds));
     switches = _MockComputerSwitchDispatcher();
     when(
       () => switches.switchTo(
@@ -175,33 +179,22 @@ void main() {
     final remote = _computer(id: "remote", name: "workstation", status: BridgeRegistrationStatus.inactive);
     final gpu = _computer(id: "gpu", name: "gpu-box", status: BridgeRegistrationStatus.active);
 
-    void arrange({required List<BridgeSummary> computers, required String targetId}) {
+    void arrange({required List<BridgeSummary> computers, required String? targetId, required String? localId}) {
       when(bridges.hasRegisteredBridges).thenAnswer((_) async => true);
       when(bridges.getRegisteredBridges).thenAnswer((_) async => computers);
       bridges.emitBridges(bridges: computers);
-      statuses.add(
-        ConnectionStatus.reconnecting(
-          config: ServerConnectionConfig(relayHost: "relay", authToken: "token", bridgeId: targetId),
-        ),
-      );
-      whenListen(
-        bridgeControlCubit,
-        const Stream<BridgeControlState>.empty(),
-        initialState: BridgeControlState(
-          trayAvailability: _bridgeControlState.trayAvailability,
-          activity: _bridgeControlState.activity,
-          statusLabel: _bridgeControlState.statusLabel,
-          processState: _bridgeControlState.processState,
-          desiredState: _bridgeControlState.desiredState,
-          toggleTarget: _bridgeControlState.toggleTarget,
-          launchAtLoginEnabled: _bridgeControlState.launchAtLoginEnabled,
-          controlStatus: BridgeControlStatus.offline.copyWith(bridgeId: local.id),
-        ),
-      );
+      if (targetId != null) {
+        statuses.add(
+          ConnectionStatus.reconnecting(
+            config: ServerConnectionConfig(relayHost: "relay", authToken: "token", bridgeId: targetId),
+          ),
+        );
+      }
+      localIds.add(localId);
     }
 
     testWidgets("an offline remote computer offers switching, never a supervised start", (tester) async {
-      arrange(computers: [local, remote, gpu], targetId: remote.id);
+      arrange(computers: [local, remote, gpu], targetId: remote.id, localId: local.id);
       await pumpHome(tester: tester, state: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true));
       await tester.pumpAndSettle();
 
@@ -216,7 +209,7 @@ void main() {
     });
 
     testWidgets("this computer offline keeps the supervised start", (tester) async {
-      arrange(computers: [local, remote], targetId: local.id);
+      arrange(computers: [local, remote], targetId: local.id, localId: local.id);
       await pumpHome(tester: tester, state: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true));
       await tester.pumpAndSettle();
 
@@ -226,8 +219,20 @@ void main() {
       verify(bridgeControlCubit.recoverConnection).called(1);
     });
 
+    testWidgets("before this computer's id is known, header and body both treat it as this computer", (tester) async {
+      // A fresh install: no target yet, the helper has not registered, and the
+      // account already lists other computers.
+      arrange(computers: [remote, gpu], targetId: null, localId: null);
+      await pumpHome(tester: tester, state: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Viewing: This computer"), findsOneWidget);
+      expect(find.text("Viewing: workstation"), findsNothing);
+      expect(find.text("Start the bridge"), findsOneWidget);
+    });
+
     testWidgets("the header's menu switches to another computer", (tester) async {
-      arrange(computers: [local, remote, gpu], targetId: remote.id);
+      arrange(computers: [local, remote, gpu], targetId: remote.id, localId: local.id);
       await pumpHome(
         tester: tester,
         state: const ProjectListState.loaded(projects: []),
@@ -243,7 +248,7 @@ void main() {
     });
 
     testWidgets("the header stays hidden while this computer is the account's only one", (tester) async {
-      arrange(computers: [local], targetId: local.id);
+      arrange(computers: [local], targetId: local.id, localId: local.id);
       await pumpHome(
         tester: tester,
         state: const ProjectListState.loaded(projects: []),
@@ -637,3 +642,14 @@ Session _session({required String id, required String projectId, required int up
   lastUserActivityAt: null,
   unseen: false,
 );
+
+class _Locality({required final BehaviorSubject<String?> _localIds}) implements ActiveBridgeLocality {
+  @override
+  String? get localBridgeId => _localIds.value;
+
+  @override
+  Stream<String?> get localBridgeIdStream => _localIds.stream;
+
+  @override
+  bool isLocalBridge({required String bridgeId}) => bridgeId == _localIds.value;
+}

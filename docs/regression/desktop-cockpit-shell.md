@@ -266,8 +266,8 @@ The main pane hosts one full-width routed page.
   menu switches computers through the shared switch flow (source `menu`). It is hidden while the account's only
   computer is this one, grows into place when the list says otherwise, and stays put while the body below changes
   state. The desktop starts on the stored pick, else this computer, and follows this computer's supervised bridge
-  when its id appears or changes (a fresh install, a new login, a re-registration) unless the user picked a
-  computer since start-up. The local bridge keeps running while another computer is viewed.
+  when its id appears or changes (a fresh install, a new login, a re-registration) unless the user picked another
+  computer in this sign-in; picking this computer, or signing out, ends that. The local bridge keeps running while another computer is viewed.
   Shared Prego text styles and Material themes resolve the bundled package font.
 - Connection status floats over the main pane without changing its bounds.
   Reconnecting appears after the shared grace period; connection lost retains
@@ -358,7 +358,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   with 100%/200%/250% text. Use packaged fonts for geometry checks; preserve the requested text scaler.
 - Home computer header shown, hidden for a lone local computer, and switching from its menu; disconnected home
   for a remote target (offline body, other computers, no Start) versus this computer (supervised Start); the
-  desktop target following a new or changed supervised bridge id unless a computer was picked since start-up.
+  desktop target following a new or changed supervised bridge id unless another computer was picked in this
+  sign-in; header and body agreeing on "this computer" before the supervised id is known.
 - Root-popup activity visibility across nested navigators; notification popup dismissal,
   same-page/Back preservation, different-session replacement, readiness and logged-failure ordering.
 - Popover scope/contextual actions, locks/live updates, explicit Stop intent, expanded/compact anchoring,

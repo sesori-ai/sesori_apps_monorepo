@@ -31,7 +31,8 @@ class const DesktopHomePane({
     return MultiBlocProvider(
       providers: [
         // Not lazy: besides naming the computer, it fetches the account's
-        // computers whenever the relay is reachable, which the header lists.
+        // computers whenever the relay is reachable. The header relies on that
+        // eager fetch, as nothing else on the home loads the list.
         BlocProvider(
           lazy: false,
           create: (_) => BridgeIdentityCubit(
@@ -45,6 +46,7 @@ class const DesktopHomePane({
             registeredBridgesService: getIt<RegisteredBridgesService>(),
             connectionService: getIt<ConnectionService>(),
             selectedComputerService: getIt<SelectedComputerService>(),
+            activeBridgeLocality: getIt<ActiveBridgeLocality>(),
           ),
         ),
       ],
@@ -111,8 +113,7 @@ class const DesktopHomePane({
       BridgeIdentityNamed(:final bridge) => bridge,
       BridgeIdentityPending() || BridgeIdentityUnnamed() => null,
     };
-    final targetId = context.select((ComputerSwitcherCubit cubit) => cubit.state.targetId);
-    if (_isRemote(computerId: targetId, localId: _localBridgeId(context))) {
+    if (context.select((ComputerSwitcherCubit cubit) => cubit.state.viewsAnotherComputer)) {
       return DesktopRemoteComputerOfflineView(bridge: bridge, onSwitchComputer: _switchComputer);
     }
     return DesktopBridgeRecoveryView(
@@ -136,15 +137,6 @@ class const DesktopHomePane({
   }
 }
 
-/// This computer's supervised bridge id, kept while its helper is offline: the
-/// value `ActiveBridgeLocality.localBridgeId` reads, watched for changes.
-String? _localBridgeId(BuildContext context) =>
-    context.select((BridgeControlCubit cubit) => cubit.state.controlStatus.bridgeId);
-
-/// Whether [computerId] is a computer other than this one. An unknown computer
-/// counts as this one: the desktop pins its own bridge whenever it knows it.
-bool _isRemote({required String? computerId, required String? localId}) => computerId != null && computerId != localId;
-
 /// "Viewing: …" above the home: which computer's projects the desktop shows,
 /// and the menu to switch. Hidden while the account's only computer is this
 /// one, where there is nothing to tell apart or switch to; it grows into
@@ -154,14 +146,12 @@ class const _DesktopComputerHeader({required final ComputerSwitchCallback onSwit
   Widget build(BuildContext context) {
     final state = context.watch<ComputerSwitcherCubit>().state;
     final current = state.computers.where((computer) => computer.id == state.currentId).firstOrNull;
-    final localId = _localBridgeId(context);
-    final remote = current != null && _isRemote(computerId: current.id, localId: localId);
-    final shown = current != null && (remote || state.computers.length > 1);
+    final remote = state.viewsAnotherComputer;
     return AnimatedSize(
       duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
       curve: Curves.easeInOut,
       alignment: AlignmentDirectional.topStart,
-      child: current == null || !shown
+      child: current == null || !(remote || state.computers.length > 1)
           ? const SizedBox(width: double.infinity)
           : Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.lg, PregoSpacing.md, PregoSpacing.lg, 0),
@@ -237,11 +227,7 @@ class const DesktopRemoteComputerOfflineView({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final loc = context.loc;
     final prego = context.prego;
-    final bridge = this.bridge;
-    final lastSeenAt = bridge?.lastSeenAt;
-    final title = bridge == null ? loc.projectsBridgeOfflineTitle : loc.projectsBridgeOfflineComputerTitle(bridge.name);
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 420),
@@ -254,27 +240,10 @@ class const DesktopRemoteComputerOfflineView({
               // An illustration, not a glyph: no icon token applies.
               Icon(TablerRegular.device_desktop_off, size: 48, color: prego.colors.textTertiary),
               const SizedBox(height: PregoSpacing.lg),
-              // Cross-fades when the list names the computer.
-              AnimatedSwitcher(
-                duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
-                child: Text(
-                  title,
-                  key: ValueKey(title),
-                  textAlign: TextAlign.center,
-                  style: prego.textTheme.textLg.bold,
-                ),
-              ),
-              if (lastSeenAt != null) ...[
-                const SizedBox(height: PregoSpacing.xs),
-                Text(
-                  loc.projectsBridgeOfflineLastSeen(context.formatTimestamp(lastSeenAt.millisecondsSinceEpoch)),
-                  textAlign: TextAlign.center,
-                  style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
-                ),
-              ],
+              ComputerOfflineHeading(bridge: bridge),
               const SizedBox(height: PregoSpacing.xl),
               Text(
-                loc.projectsDesktopRemoteOfflineInfo,
+                context.loc.projectsDesktopRemoteOfflineInfo,
                 textAlign: TextAlign.center,
                 style: prego.textTheme.textSm.regular,
               ),

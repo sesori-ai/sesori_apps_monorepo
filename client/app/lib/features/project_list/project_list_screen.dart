@@ -59,6 +59,7 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
               registeredBridgesService: getIt<RegisteredBridgesService>(),
               connectionService: getIt<ConnectionService>(),
               selectedComputerService: getIt<SelectedComputerService>(),
+              activeBridgeLocality: getIt<ActiveBridgeLocality>(),
             ),
           ),
         ],

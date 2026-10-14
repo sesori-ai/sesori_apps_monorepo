@@ -170,10 +170,11 @@ Checked against the code on 2026-10-14; relay and auth claims against each repos
   adopted into storage without a reconnect when no target is stored. The connection status exposes the effective
   target id so consumers can observe a change without a second stream. The single `relayRoomKey` stays: a different
   bridge is handled by the existing resume → `rekey_required` → fresh exchange path.
-- **Selection (Layer 3).** `SelectedComputerService` holds no state of its own: `select({required String bridgeId,
-  required ComputerSwitchSource source})` emits the analytics event and calls `retarget`; `ensureInitialTarget()`
-  resolves stored target → `ActiveBridgeLocality.localBridgeId` (new nullable getter on the existing interface; the
-  desktop implementation reads the supervised bridge id, the phone returns `null`) → no pin. The registered list is
+- **Selection (Layer 3).** `SelectedComputerService` holds only whether the user picked another computer in this
+  sign-in: `select({required String bridgeId, required ComputerSwitchSource source})` emits the analytics event and
+  calls `retarget`; `ensureInitialTarget({required String? localBridgeId})` resolves stored target → the supervised
+  bridge id (`ActiveBridgeLocality.localBridgeId`, a nullable getter on the existing interface; the desktop
+  implementation reads the supervised bridge id, the phone returns `null`) → no pin. The registered list is
   used only to name computers, never to choose the target.
 - **Resets.** The bridge-scoped caches above already react to `ConnectionService.status`; they clear when the status’s
   target id changes, in the same subscription, so no second trigger races the teardown of the old connection.
@@ -373,7 +374,7 @@ This document and `TRACKER.md`. Verification: Markdown only.
 - Files: the desktop projects pane header (`desktop_home_pane.dart`), `SelectedComputerService.ensureInitialTarget`
   wiring at desktop start-up (landed in step 7) plus a retarget to the local computer when the supervised bridge id
   appears or changes (fresh install, a new login, or a re-registration: the connection otherwise adopts the relay's
-  default or keeps a stale id), skipped when the user has picked a computer since start-up, the recovery view branching (phone-style offline body for a remote target, supervised
+  default or keeps a stale id), skipped when the user has picked another computer in this sign-in, the recovery view branching (phone-style offline body for a remote target, supervised
   start only for the local one), the `desktopBridgeTakenOver` copy (“Another bridge currently owns this account
   connection.” now only happens for the same bridge id, e.g. a cloned machine), tests;
   `docs/regression/desktop-cockpit-shell.md`.

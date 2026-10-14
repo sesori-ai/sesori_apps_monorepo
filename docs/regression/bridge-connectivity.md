@@ -81,7 +81,8 @@ presents.
   on a fresh install the id is unknown until the helper first registers, so the
   first connection follows the relay's default computer, and the desktop retargets to
   its own bridge once that id appears. It does the same when the id changes (a new
-  login or a re-registration), unless the user picked a computer since start-up.
+  login or a re-registration), unless the user picked another computer in this
+  sign-in.
   Retargeting stores the id,
   detaches the previous computer's socket before announcing the new target, and
   reconnects; the single room key either resumes or is cleared by

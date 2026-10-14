@@ -46,6 +46,7 @@ class const SettingsScreen({super.key}) extends StatelessWidget {
             registeredBridgesService: getIt<RegisteredBridgesService>(),
             connectionService: getIt<ConnectionService>(),
             selectedComputerService: getIt<SelectedComputerService>(),
+            activeBridgeLocality: getIt<ActiveBridgeLocality>(),
           ),
         ),
       ],
