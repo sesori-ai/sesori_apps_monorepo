@@ -128,6 +128,7 @@ class McpAuthenticationService({
   Future<void> start({required McpAuthenticationStartRequest request}) async {
     if (currentState.request is McpAuthenticationRequestPending) return;
     if (_bridgeId == null) await _managementService.refresh();
+    if (currentState.request is McpAuthenticationRequestPending) return;
     await _mutate(
       kind: McpAuthenticationRequestKind.start,
       send: () => _repository.startAuthentication(request: request),
@@ -144,6 +145,7 @@ class McpAuthenticationService({
         native.state is McpAuthenticationFailed) {
       return;
     }
+    if (attempt.cancellation == McpAuthenticationCancellation.nativeSettlement) return;
     if (currentState.request case McpAuthenticationRequestPending(kind: McpAuthenticationRequestKind.cancellation)) {
       return;
     }

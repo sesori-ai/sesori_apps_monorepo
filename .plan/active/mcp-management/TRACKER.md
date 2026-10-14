@@ -4,8 +4,8 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-authentication-lifecycle`, `5c47d7532f`, in the provided `copper-heron` worktree.
-- Current step: 11/21 merged as [#1957][pr-1957];
-  step 12/21 merged as [#1962][pr-1962], and step 13/21 implements the shared client lifecycle;
+- Current step: 11/22 merged as [#1957][pr-1957];
+  step 12/22 merged as [#1962][pr-1962], and step 13/22 is in [#1964][pr-1964], with local successor 14/22 declaring authentication/credential forgetting;
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -21,27 +21,28 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/21 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/21 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/21 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/21 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/21 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/21 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/21 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
-| 8/21 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
-| 9/21 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
-| 10/21 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/21 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/21 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
-| 13/21 | Shared client authentication lifecycle (8.b) | In progress | Local API/repository/owner/Cubit draft |
-| 14/21 | Visible authentication and controls (8.c) | Not started | — |
-| 15/21 | Session external actions (8.d) | Not started | — |
-| 16/21 | Claude approvals and form/URL elicitation | Not started | — |
-| 17/21 | Codex inventory/actions/authentication | Not started | — |
-| 18/21 | Codex forms and offered connectors | Not started | — |
-| 19/21 | Secondary harness support and explicit gaps | Not started | — |
-| 20/21 | Reconcile regression/capability documents | Not started | — |
-| 21/21 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/22 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/22 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/22 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/22 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/22 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/22 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/22 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/22 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
+| 9/22 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
+| 10/22 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
+| 11/22 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
+| 12/22 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
+| 13/22 | Shared client authentication lifecycle (8.b) | In review | [#1964][pr-1964]; 36 tests and architecture approval |
+| 14/22 | Authentication availability and credential forgetting (8.c.1) | In progress | Native declarations and headless control |
+| 15/22 | Visible authentication and controls (8.c.2) | Not started | — |
+| 16/22 | Session external actions (8.d) | Not started | — |
+| 17/22 | Claude approvals and form/URL elicitation | Not started | — |
+| 18/22 | Codex inventory/actions/authentication | Not started | — |
+| 19/22 | Codex forms and offered connectors | Not started | — |
+| 20/22 | Secondary harness support and explicit gaps | Not started | — |
+| 21/22 | Reconcile regression/capability documents | Not started | — |
+| 22/22 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -817,3 +818,23 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   unchanged in `641be7dc77`. Immutable measurement against that base is
   1,114 additions and five deletions (1,119 changed) across 16 files:
   11 generated DI lines and 1,108 authored lines, before this evidence record.
+
+- Original visible-control step 8.c is split into 8.c.1 (ordinal 14: native
+  declarations and headless credential forgetting) and 8.c.2 (ordinal 15: client
+  controls/presentation). Generated inventory contracts and native ownership
+  changes are reviewed separately from motion/UI. Current total is 22; subsequent
+  ordinals shift once, and published titles are synchronized without rewriting
+  historical squash commits. The final qualification matrix remains unchanged.
+
+[pr-1964]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1964
+
+- Client-lifecycle review corrections reproduced before fixing: starts now
+  recheck pending work after identity refresh, and native-settlement-only mode
+  cannot post cancellation or release its browser. Unknown cancellation during
+  read-only preparation remains cancellable. The stale regression status now
+  distinguishes the implemented lifecycle from pending visible controls.
+- The changed auth service suite passes 15 tests after review, with unknown-mode
+  preparation cancellation checked separately after strengthening its assertion.
+  Combined focused evidence is now 38 tests; core analysis is clean. Architecture
+  approval remains for `641be7dc77` source: follow-up guards change ordinary method
+  behavior, with no new class, dependency or lifecycle boundary.

@@ -244,5 +244,6 @@ Automated adapter/route coverage:
 
 The existing browser transport now accepts bridge/connection/purpose-bound owner handles and returns typed busy for a
 competing flow. Matching retry/cancel protects provider and MCP callback listeners in both start orders. Provider busy
-presentation retains its issued challenge for explicit retry. This transport seam is implemented; MCP client lifecycle
-and visible MCP authentication controls remain pending. The headless owner and final qualification matrix are unchanged.
+presentation retains its issued challenge for explicit retry. The transport seam and shared MCP client lifecycle are
+implemented, including request-scoped recovery and explicit browser intent. Visible MCP authentication controls remain
+pending. The headless owner and final qualification matrix are unchanged.

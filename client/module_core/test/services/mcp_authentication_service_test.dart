@@ -74,6 +74,7 @@ void main() {
   late _Repository repository;
   late _Browser browser;
   late _Locality locality;
+  late _Management manager;
   late McpAuthenticationService service;
   late BehaviorSubject<ConnectionStatus> statuses;
   late BehaviorSubject<PluginManagementLoadResult> management;
@@ -113,7 +114,7 @@ void main() {
     repository = _Repository();
     browser = _Browser();
     final connection = _Connection();
-    final manager = _Management();
+    manager = _Management();
     statuses = BehaviorSubject.seeded(_connected);
     management = BehaviorSubject.seeded(_management(bridgeId: "bridge-a"));
     events = StreamController.broadcast();
@@ -196,19 +197,70 @@ void main() {
   }
 
   test("GET recovery and cancellation work while the original start POST waits", () async {
+    const preparing = McpAuthenticationAttempt(
+      attemptId: "attempt",
+      pluginId: "fixture",
+      target: _target,
+      cancellation: McpAuthenticationCancellation.unknown,
+    );
     final starting = service.start(request: _start);
     events.add(SseEvent(data: const SesoriMcpAuthenticationChanged()));
     await _pump();
-    reads.last.complete(_native(state: const McpAuthenticationStarting(attempt: _attempt)));
+    reads.last.complete(_native(state: const McpAuthenticationStarting(attempt: preparing)));
     await _pump();
     final cancelling = service.cancel();
     await _pump();
     verify(() => repository.cancelAuthentication(request: any(named: "request"))).called(1);
     cancellation.complete(_native(state: const McpAuthenticationCancelled(attempt: _attempt)));
     await cancelling;
-    start.complete(_native(state: const McpAuthenticationStarting(attempt: _attempt)));
+    start.complete(_native(state: const McpAuthenticationStarting(attempt: preparing)));
     await starting;
     expect((service.currentState.observation as McpAuthenticationObserved).state, isA<McpAuthenticationCancelled>());
+  });
+  test("overlapping starts share identity refresh but issue only one native start", () async {
+    statuses.add(const ConnectionLost(config: _config));
+    await _pump();
+    statuses.add(_connected);
+    await _pump();
+    final identity = Completer<void>();
+    when(manager.refresh).thenAnswer((_) => identity.future);
+    final first = service.start(request: _start);
+    final second = service.start(request: _start);
+    management.add(_management(bridgeId: "bridge-a"));
+    await _pump();
+    identity.complete();
+    await _pump();
+    try {
+      verify(() => repository.startAuthentication(request: any(named: "request"))).called(1);
+    } finally {
+      start.complete(_native(state: _challenge));
+      await Future.wait([first, second]);
+    }
+  });
+  test("native-settlement-only mode does not post a cancellation or release its browser", () async {
+    const attempt = McpAuthenticationAttempt(
+      attemptId: "native-only",
+      pluginId: "fixture",
+      target: _target,
+      cancellation: McpAuthenticationCancellation.nativeSettlement,
+    );
+    await observe(
+      state: const McpAuthenticationCallbackChallenge(
+        attempt: attempt,
+        authorizationUrl: "https://fixture.example/authorize",
+        expectedCallbackUrl: "http://127.0.0.1:43120/callback",
+      ),
+    );
+    await service.openBrowser();
+    final cancelling = service.cancel();
+    await _pump();
+    try {
+      verifyNever(() => repository.cancelAuthentication(request: any(named: "request")));
+      verifyNever(() => browser.cancel(owner: any(named: "owner")));
+    } finally {
+      cancellation.complete(_native(state: const McpAuthenticationSettling(attempt: attempt)));
+      await cancelling;
+    }
   });
   test("a GET begun before a mutation cannot overwrite the mutation response", () async {
     final reading = service.refresh();
