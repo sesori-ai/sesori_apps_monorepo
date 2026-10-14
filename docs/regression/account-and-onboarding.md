@@ -86,11 +86,11 @@ participates.
   system's machine identifier (never the raw identifier), so a reinstall on the
   same computer that lost its stored bridge id reuses that computer's existing
   entry instead of adding a duplicate. Without a readable identifier the bridge
-  registers as before; the failure is logged.
+  registers without a host key and logs the failure.
 - With no bridge, mobile Projects shows install/start commands, the explainer and support links; copy/share
   hand off the command unchanged. Desktop home instead offers supervised local bridge recovery.
   Connected with no projects shows the add-project call to action on either surface.
-- With a registered bridge offline, mobile Projects names the computer in the
+- With the target computer offline, mobile Projects names the computer in the
   bar's bridge line and in a "<name> is offline" heading when the name is known
   ("Bridge offline" otherwise), with when it was last seen when that is known,
   then the account's other online computers ([projects](projects-and-sessions.md)),

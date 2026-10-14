@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/multi-computer-plan` from `origin/main` `6a4a42e7a5`, in the provided `brown-dingo` worktree.
-- Current step: 13/15 in PR.
+- Current step: 14/15 in PR.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-14 over two review rounds.
 - Plan PR: #1959, merged 2026-10-14.
 - Architecture plan review: rejected on 2026-10-14 (17 findings); all applied in the same revision. Per `AGENTS.md`
@@ -28,8 +28,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 10/15 | monorepo | Settings restructured around the computer entry | Done | #1970 (merged 2026-10-14) |
 | 11/15 | monorepo | Desktop views a remote computer | Done | #1972 (merged 2026-10-14) |
 | 12/15 | monorepo | Presence handling and linked-computer alert | Done | #1973 (merged 2026-10-14) |
-| 13/15 | monorepo | Computer id in session pushes; tap opens the right computer | In PR | — |
-| 14/15 | monorepo | Reconcile regression documents | Not started | — |
+| 13/15 | monorepo | Computer id in session pushes; tap opens the right computer | Done | #1974 (merged 2026-10-14) |
+| 14/15 | monorepo | Reconcile regression documents | In PR | — |
 | 15/15 | monorepo | Run L4 matrix; retire; open computer-management plan | Not started | — |
 
 ## Evidence and decisions

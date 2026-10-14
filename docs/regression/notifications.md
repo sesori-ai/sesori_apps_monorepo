@@ -11,8 +11,8 @@ external.
 
 ## Required Behavior
 
-- Mobile Settings places the Notifications entry under Preferences, between Sessions and Appearance. Tapping it opens
-  the existing notification settings page without changing notification preferences.
+- Mobile Settings places the Notifications entry first under Preferences, above Default input. Tapping it opens the
+  existing notification settings page without changing notification preferences.
 - Immediate notifications exist only for question-asked, permission-asked, and installation-update events. Completion
   fires after a debounced busy-to-idle transition, is blocked while a question or permission is pending, and is
   suppressed for a user abort until the group is busy again. A Claude session
@@ -37,8 +37,11 @@ external.
   keeps its offline-notification eligibility when sleep suppression begins, while a socket established and disconnected
   wholly during DarkWake stays quiet; same-socket full wake promotes that DarkWake socket. Unsupported or failed
   detection keeps the conservative legacy debounce. A mobile device that restores E2E connectivity reports an observation
-  for the relay's current bridge and suppresses only its own pending online push; another phone or desktop surface cannot
+  for the computer it targets and suppresses only its own pending online push; another phone or desktop surface cannot
   suppress it. Repeated observations of the same ready connection are deduplicated.
+- Connection-status pushes come from the auth server and name the computer: "<name> is online" or "<name> went
+  offline" with "AI sessions there are paused.". Each computer's status push replaces only that computer's earlier one
+  in the tray.
 - The client registers when authenticated, re-registers on token refresh, unregisters before logout, restores
   registration if logout fails, and never re-registers while logout is in flight.
 - Registration sends the same device ID the preferences are stored under, so the server can associate this push token
@@ -52,7 +55,7 @@ external.
   valid session can be restored, and routes it only when its account binding matches the restored account. Missing or
   mismatched bindings and every open after an account-ending transition are discarded rather than inherited by a later
   login.
-- A mobile session push names the computer it came from. Tapping one for another computer switches to that computer
+- A mobile session push carries the id of the computer it came from. Tapping one for another computer switches to it
   (the computer switch, reported with source `notification`), lands on Projects, and then opens the session, which loads
   once the new computer's connection is up. A push for the current computer, or one without a computer id (from a
   v1.9.1 bridge, or sent while the bridge was not registered, such as between a revocation and its re-registration),

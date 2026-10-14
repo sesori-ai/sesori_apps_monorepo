@@ -59,9 +59,10 @@ presents.
   connected bridge. A reconnect with the same bridge id still replaces the
   previous connection, which closes with `4007`; a second start on the same
   computer resolves ownership explicitly, and an explicit restart hands off to
-  its successor cleanly.
+  its successor cleanly. The capability as a whole is in
+  [multi-computer](multi-computer.md).
 - The relay names the bridge in `bridge_connected` and, when it knows one, in
-  `bridge_disconnected`; older relays omit the id and the app behaves as before.
+  `bridge_disconnected`; the app still accepts either notice without an id.
   It also sends every app of the account `bridge_presence {bridgeId, online}`
   whenever any of the account's bridges connects or disconnects. The app
   decodes these notices into typed messages and still logs and ignores a notice
@@ -75,9 +76,10 @@ presents.
   keeps the last list, and logout empties it.
 - A `bridge_presence` notice updates that computer's status in the list at once,
   without a fetch, and a notice for a computer the list does not know refetches
-  the list, again after any fetch already running, which may predate the link. The latest notice per computer on the live connection wins over any
-  fetched list, including a fetch that started before the notice or the refetch
-  it triggered, because the auth server learns of the change asynchronously.
+  the list, again after any fetch already running, which may predate the link.
+  The latest notice per computer on the live connection wins over any fetched
+  list, including a fetch that started before the notice or the refetch it
+  triggered, because the auth server learns of the change asynchronously.
   Those notices are forgotten when the connection drops, so the next fetch
   decides. A notice never changes the app's own connection state.
 - The app owns one target computer. It names the stored target in its relay
@@ -107,10 +109,11 @@ presents.
   its relay-client state separately from helper relay status, and overlays a connection pill on the main pane
   without moving its contents. The sidebar's This computer popover describes only the supervised local helper.
   When project loading reports either no
-  registered bridge or a registered-but-offline bridge, desktop recovery asks
-  the supervisor to Start and establishes an authenticated relay client; it
-  never falls through to mobile CLI installation or relay-only reconnect
-  guidance.
+  registered bridge or a registered-but-offline bridge while the desktop views
+  this computer, desktop recovery asks the supervisor to Start and establishes an
+  authenticated relay client; it never falls through to mobile CLI installation
+  or relay-only reconnect guidance. Another computer that is offline gets the
+  offline body without Start.
 - Mobile inline connection alerts use a theme-aware rounded card: 16px outer and inner
   padding, 16px corners, a subtle border and status tint, and a readable medium
   title. The bridge-disconnected warning remains informational, with its
@@ -245,7 +248,7 @@ an id, and whether restart is explicit.
 - A bridge registering a network-derived numeric hostname as its machine name.
 - A clean shutdown producing reconnects, a cancelled handshake later sending auth, or an
   app stuck reconnecting after the bridge returns. A desktop disconnected
-  project surface offers mobile CLI setup/reconnect instead of supervised Start,
+  project surface for this computer offers mobile CLI setup/reconnect instead of supervised Start,
   Start applies toggle semantics and turns a desired-On bridge Off, or helper
   startup never establishes the desktop relay client.
 - A dead network path leaving the app claiming connected for minutes, or the

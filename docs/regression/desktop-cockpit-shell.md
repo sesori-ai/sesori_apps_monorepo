@@ -270,7 +270,8 @@ The main pane hosts one full-width routed page.
   connects to the relay's default computer until its helper registers. Each sign-in pins this computer again when
   nothing is stored. The desktop follows this computer's supervised bridge when its id appears or changes (a fresh
   install, a new login, a re-registration) unless the user picked another computer in this sign-in; picking this
-  computer, or signing out, ends that. The local bridge keeps running while another computer is viewed.
+  computer, or signing out, ends that. The local bridge keeps running while another computer is viewed. The
+  capability as a whole is in [multi-computer](multi-computer.md).
   Shared Prego text styles and Material themes resolve the bundled package font.
 - Connection status floats over the main pane without changing its bounds.
   Reconnecting appears after the shared grace period; connection lost retains
