@@ -3,6 +3,75 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  test("native login and forgetting declare the same qualified HTTP configuration boundary", () {
+    const mapper = ClaudeMcpMapper();
+    for (final nativeScope in ["user", "local", "project", "managed"]) {
+      final server = ClaudeMcpServerStatusDto.fromJson({
+        "name": "fixture",
+        "status": "connected",
+        "scope": nativeScope,
+        "config": {"type": "http", "url": "https://fixture.example/mcp"},
+      });
+      final capability = mapper.authenticationCapability(server: server, supportsAuthentication: true);
+      expect(
+        capability,
+        isA<PluginMcpAuthenticationCapabilityAvailable>().having(
+          (c) => c.effectScope,
+          "effect",
+          PluginMcpActionEffectScope.harness,
+        ),
+      );
+      expect(
+        mapper.authenticationCapability(server: server, supportsAuthentication: false),
+        isA<PluginMcpAuthenticationCapabilityUnavailable>().having(
+          (c) => c.reason,
+          "reason",
+          PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented,
+        ),
+      );
+    }
+    for (final (nativeScope, transport, url, expected) in [
+      (
+        null,
+        "http",
+        "https://fixture.example/mcp",
+        PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,
+      ),
+      (
+        "future",
+        "http",
+        "https://fixture.example/mcp",
+        PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,
+      ),
+      (
+        "dynamic",
+        "http",
+        "https://fixture.example/mcp",
+        PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,
+      ),
+      ("user", "stdio", null, PluginMcpAuthenticationCapabilityUnavailableReason.notSupported),
+      ("user", "sse", "https://fixture.example/mcp", PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented),
+      (
+        "user",
+        "future",
+        "https://fixture.example/mcp",
+        PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,
+      ),
+      ("user", "http", null, PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired),
+    ]) {
+      final server = ClaudeMcpServerStatusDto.fromJson({
+        "name": "fixture",
+        "status": "needs-auth",
+        "scope": nativeScope,
+        "config": {"type": transport, "url": url},
+      });
+      expect(
+        mapper.authenticationCapability(server: server, supportsAuthentication: true),
+        isA<PluginMcpAuthenticationCapabilityUnavailable>().having((c) => c.reason, "reason", expected),
+      );
+    }
+  });
+
   const scope = PluginMcpSessionScope(sessionId: "native-session");
   PluginMcpServerSnapshot map(Map<String, dynamic> server) =>
       const ClaudeMcpMapper()
@@ -11,6 +80,7 @@ void main() {
                   "mcpServers": [server],
                 }),
                 scope: scope,
+                supportsAuthentication: true,
               )
               .entries
               .single
@@ -38,6 +108,8 @@ void main() {
     expect(server.description, isNull);
     expect(server.endpointOrigin, "https://example.com:8443");
     expect(server.authorization, PluginMcpAuthorizationState.unknown);
+    expect(server.authentication, isA<PluginMcpAuthenticationCapabilityAvailable>());
+    expect(server.credentialForgetting, isA<PluginMcpAuthenticationCapabilityAvailable>());
     expect(server.configuration!.mutability, PluginMcpConfigurationMutability.readOnly);
     expect(server.actions.map((capability) => capability.action), PluginMcpServerAction.values);
     expect(server.actions.every((capability) => capability.effectScope == PluginMcpActionEffectScope.session), isTrue);
@@ -47,7 +119,12 @@ void main() {
 
   test("stdio credentials are not inferred from transport", () {
     final server = map({
-      "name": "fixture", "status": "connected", "config": {"type": "stdio", "env": {"TOKEN": "fixture-secret"}},
+      "name": "fixture",
+      "status": "connected",
+      "config": {
+        "type": "stdio",
+        "env": {"TOKEN": "fixture-secret"},
+      },
     });
     expect(server.authorization, PluginMcpAuthorizationState.unknown);
   });

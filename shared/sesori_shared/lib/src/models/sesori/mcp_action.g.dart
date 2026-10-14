@@ -12,13 +12,36 @@ McpServerEntryAction _$McpServerEntryActionFromJson(Map json) =>
         json['target'] as Map<String, dynamic>,
       ),
       action: $enumDecode(_$McpServerActionEnumMap, json['action']),
+      $type: json['type'] as String?,
     );
+
+Map<String, dynamic> _$McpServerEntryActionToJson(
+  McpServerEntryAction instance,
+) => <String, dynamic>{
+  'target': instance.target.toJson(),
+  'action': _$McpServerActionEnumMap[instance.action]!,
+  'type': instance.$type,
+};
 
 const _$McpServerActionEnumMap = {
   McpServerAction.unknown: 'unknown',
   McpServerAction.reconnect: 'reconnect',
   McpServerAction.enable: 'enable',
   McpServerAction.disable: 'disable',
+};
+
+McpForgetAuthenticationEntryAction _$McpForgetAuthenticationEntryActionFromJson(
+  Map json,
+) => McpForgetAuthenticationEntryAction(
+  target: McpEntryTarget.serverFromJson(json['target'] as Map<String, dynamic>),
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$McpForgetAuthenticationEntryActionToJson(
+  McpForgetAuthenticationEntryAction instance,
+) => <String, dynamic>{
+  'target': instance.target.toJson(),
+  'type': instance.$type,
 };
 
 _McpEntryActionRequest _$McpEntryActionRequestFromJson(Map json) =>
@@ -79,6 +102,11 @@ const _$McpActionUnavailableReasonEnumMap = {
   McpActionUnavailableReason.liveSessionRequired: 'liveSessionRequired',
   McpActionUnavailableReason.pluginInactive: 'pluginInactive',
   McpActionUnavailableReason.targetNotFound: 'targetNotFound',
+  McpActionUnavailableReason.busy: 'busy',
+  McpActionUnavailableReason.notSupported: 'notSupported',
+  McpActionUnavailableReason.notImplemented: 'notImplemented',
+  McpActionUnavailableReason.nativeConfigurationRequired:
+      'nativeConfigurationRequired',
 };
 
 McpActionFailed _$McpActionFailedFromJson(Map json) =>

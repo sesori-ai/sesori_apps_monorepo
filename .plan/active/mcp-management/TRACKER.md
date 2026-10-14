@@ -3,9 +3,10 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-authentication-lifecycle`, `5c47d7532f`, in the provided `copper-heron` worktree.
+- Branch/base: `sesori/mcp-connection-controls`, `bff0055e47`, in the provided `copper-heron` worktree.
 - Current step: 11/22 merged as [#1957][pr-1957];
-  step 12/22 merged as [#1962][pr-1962], and step 13/22 is in [#1964][pr-1964], with local successor 14/22 declaring authentication/credential forgetting;
+  steps 12/22 and 13/22 merged as [#1962][pr-1962] and [#1964][pr-1964];
+  step 14/22 is implementing authentication availability and credential forgetting;
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -33,7 +34,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 10/22 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
 | 11/22 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
 | 12/22 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
-| 13/22 | Shared client authentication lifecycle (8.b) | In review | [#1964][pr-1964]; 38 tests and architecture approval |
+| 13/22 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
 | 14/22 | Authentication availability and credential forgetting (8.c.1) | In progress | Native declarations and headless control |
 | 15/22 | Visible authentication and controls (8.c.2) | Not started | — |
 | 16/22 | Session external actions (8.d) | Not started | — |
@@ -67,7 +68,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   Details, method/version differences, and unexecuted external/packaged boundaries are in the native evidence.
 - The native probes do not qualify real accounts, credential persistence, connector entitlements, other native hosts,
   bridge/relay ownership, client presentation, or the final L4 matrix. Those gates remain active.
-- Public release check still identifies v1.9.0/build 970 as latest production; newer v1.9.1 builds are prereleases.
+- The step-2 release check identified v1.9.0/build 970 as latest production; v1.9.1 builds at that checkpoint were prereleases.
   The released SSE parser plus byte-identical codecs passed four event-order/settlement fixtures and a snapshot fixture.
   Actual mixed-client/native-owner tests remain required in steps 11/12.
 
@@ -838,3 +839,30 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Combined focused evidence is now 38 tests; core analysis is clean. Architecture
   approval remains for `641be7dc77` source: follow-up guards change ordinary method
   behavior, with no new class, dependency or lifecycle boundary.
+
+- Step 13 merged at accepted head `a5779e3eee`, squash `bff0055e47`: 20 pre-merge checks passed
+  (19 success, one skip), Cubic approved the current head and all six actionable inline threads were resolved.
+  Codex code/security review completed at initial head `74aadc0574`; subsequent review hit the account usage limit.
+  Current-head Codex review is not claimed. The merged report includes a newly running post-merge check, not proof
+  that the added check passed. Step 14 synchronized to the squash without rewriting published history.
+- Step-14 release refresh found public v1.9.1 published at 2026-10-14 08:56:26 UTC, commit `8bfeda9416`.
+  It contains MCP inventory/control/authentication wire models, replacing the earlier latest-production assumption.
+  Both new capability fields have dated omission defaults to unknown. The exact released MCP source/generated
+  codecs pass a private additive-field/control-tag fixture; the current decoder passes a released-shape snapshot.
+  The earlier v1.9.0 parser result remains historical evidence; final mixed-client qualification now includes v1.9.1.
+- Step 14 implements independent per-server authentication/forgetting declarations and one headless native owner
+  for either login or credential forgetting, with active-runtime leases, canonical archive/ownership checks, typed
+  gaps and authoritative refresh. Native effects determine invalidation. No new mutable field, queue, credential
+  store, configuration writer or database schema is introduced. The single-variant manual serializer is obsolete
+  and replaced by generated union serialization while retaining the existing server-action wire tag.
+- Step-14 focused evidence: 15 shared codec, 50 bridge route/owner, 53 Claude mapper/context/login, 21 client
+  inventory/repository and nine shared UI tests pass (148 unique tests). The unsupported-harness assertion passes
+  separately after its addition. Shared/interface/Claude/bridge/core/shared-UI/desktop analyzers pass.
+- The private native fixture passes Claude 2.1.221 and 2.1.291 on macOS arm64: production headless forgetting
+  returns resident inventory, emits harness invalidation and preserves server definitions. Preparation cancellation
+  takes 1 ms at both pins; native child shutdown is observed within 108/107 ms. This isolates synthetic credentials
+  and an in-memory catalog/runtime adapter; real provider, relay, packaged and other-host gates remain pending.
+- Step-14 architecture implementation reviews pass 1 and pass 2 **approved** the staged change against
+  `bff0055e47`, applying Client/Bridge/Shared rules with no findings. Pass 2 includes the newly verified public
+  v1.9.1 wire omission defaults; plugin-internal constructors remain required and no native ownership changes
+  were introduced by that adjustment. Markdown title ordering, final qualification ownership and diff checks pass.

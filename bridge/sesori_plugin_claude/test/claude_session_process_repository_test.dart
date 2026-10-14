@@ -15,6 +15,7 @@ void main() {
     setUp(() {
       harness = _ProcessHarness();
       repository = ClaudeSessionProcessRepository(
+        supportsMcpAuthentication: true,
         processFactory: harness.spawn,
         binaryPath: "claude",
         environment: const {},

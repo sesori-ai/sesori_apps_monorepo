@@ -42,6 +42,8 @@ class const McpMapper() {
         PluginMcpConnectionStatus(:final phase) => McpConnectionStatus(phase: _connectionPhase(phase: phase)),
       },
       authorization: _authorization(state: entry.authorization),
+      authentication: _authenticationCapability(capability: entry.authentication),
+      credentialForgetting: _authenticationCapability(capability: entry.credentialForgetting),
       configuration: switch (entry.configuration) {
         null => null,
         final source => McpConfigurationSource(
@@ -79,6 +81,27 @@ class const McpMapper() {
       availability: _offerAvailability(availability: entry.availability),
     ),
   };
+
+  McpAuthenticationCapability _authenticationCapability({required PluginMcpAuthenticationCapability capability}) =>
+      switch (capability) {
+        PluginMcpAuthenticationCapabilityAvailable(:final effectScope) => McpAuthenticationCapabilityAvailable(
+          effectScope: switch (effectScope) {
+            PluginMcpActionEffectScope.harness => McpActionEffectScope.harness,
+            PluginMcpActionEffectScope.project => McpActionEffectScope.project,
+            PluginMcpActionEffectScope.session => McpActionEffectScope.session,
+          },
+        ),
+        PluginMcpAuthenticationCapabilityUnavailable(:final reason) => McpAuthenticationCapabilityUnavailable(
+          reason: switch (reason) {
+            PluginMcpAuthenticationCapabilityUnavailableReason.notSupported =>
+              McpAuthenticationCapabilityUnavailableReason.notSupported,
+            PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented =>
+              McpAuthenticationCapabilityUnavailableReason.notImplemented,
+            PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired =>
+              McpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,
+          },
+        ),
+      };
 
   McpConnectionPhase _connectionPhase({required PluginMcpConnectionPhase phase}) => switch (phase) {
     PluginMcpConnectionPhase.unknown => McpConnectionPhase.unknown,

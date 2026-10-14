@@ -17,7 +17,14 @@ final class const PluginMcpServerTarget({required super.scope, required final St
 final class const PluginMcpConnectorOfferTarget({required super.scope, required final String offerKey})
     extends PluginMcpEntryTarget;
 
-enum PluginMcpConnectionPhase() { unknown, pending, connecting, connected, authenticationRequired, disabled }
+enum PluginMcpConnectionPhase() {
+  unknown,
+  pending,
+  connecting,
+  connected,
+  authenticationRequired,
+  disabled,
+}
 
 /// These controls affect the target's native scope, not configuration ownership.
 enum PluginMcpServerAction() {
@@ -26,7 +33,26 @@ enum PluginMcpServerAction() {
   disable,
 }
 
-enum PluginMcpActionEffectScope() { harness, project, session }
+enum PluginMcpActionEffectScope() {
+  harness,
+  project,
+  session,
+}
+
+enum PluginMcpAuthenticationCapabilityUnavailableReason() {
+  notSupported,
+  notImplemented,
+  nativeConfigurationRequired,
+}
+
+sealed class const PluginMcpAuthenticationCapability();
+
+final class const PluginMcpAuthenticationCapabilityAvailable({required final PluginMcpActionEffectScope effectScope})
+    extends PluginMcpAuthenticationCapability;
+
+final class const PluginMcpAuthenticationCapabilityUnavailable({
+  required final PluginMcpAuthenticationCapabilityUnavailableReason reason,
+}) extends PluginMcpAuthenticationCapability;
 
 final class const PluginMcpServerActionCapability({
   required final PluginMcpServerAction action,
@@ -56,11 +82,24 @@ final class const PluginMcpConnectionStatus({required final PluginMcpConnectionP
 
 final class const PluginMcpConnectionFailed({required final String message}) extends PluginMcpConnectionState;
 
-enum PluginMcpAuthorizationState() { unknown, notRequired, required, authenticated }
+enum PluginMcpAuthorizationState() {
+  unknown,
+  notRequired,
+  required,
+  authenticated,
+}
 
-enum PluginMcpConfigurationScope() { harness, project, session }
+enum PluginMcpConfigurationScope() {
+  harness,
+  project,
+  session,
+}
 
-enum PluginMcpConfigurationMutability() { unknown, userManaged, readOnly }
+enum PluginMcpConfigurationMutability() {
+  unknown,
+  userManaged,
+  readOnly,
+}
 
 /// Presentation metadata, never the native configuration itself.
 final class const PluginMcpConfigurationSource({
@@ -79,7 +118,12 @@ final class const PluginMcpToolsUnavailable() extends PluginMcpToolInventory;
 
 final class const PluginMcpToolsFailed({required final String message}) extends PluginMcpToolInventory;
 
-enum PluginMcpConnectorOfferAvailability() { unknown, available, setupRequired, unavailable }
+enum PluginMcpConnectorOfferAvailability() {
+  unknown,
+  available,
+  setupRequired,
+  unavailable,
+}
 
 sealed class const PluginMcpInventoryEntry();
 
@@ -90,6 +134,8 @@ final class const PluginMcpServerSnapshot({
   required final String? endpointOrigin,
   required final PluginMcpConnectionState connection,
   required final PluginMcpAuthorizationState authorization,
+  required final PluginMcpAuthenticationCapability authentication,
+  required final PluginMcpAuthenticationCapability credentialForgetting,
   required final PluginMcpConfigurationSource? configuration,
   required final PluginMcpToolInventory tools,
   required final List<PluginMcpServerActionCapability> actions,
@@ -110,7 +156,10 @@ final class const PluginMcpCatalogNotSupported() extends PluginMcpCatalogAvailab
 
 final class const PluginMcpCatalogUnavailable({required final String message}) extends PluginMcpCatalogAvailability;
 
-enum PluginMcpInventoryUnavailableReason() { unsupportedScope, liveSessionRequired }
+enum PluginMcpInventoryUnavailableReason() {
+  unsupportedScope,
+  liveSessionRequired,
+}
 
 sealed class const PluginMcpInventoryResult();
 

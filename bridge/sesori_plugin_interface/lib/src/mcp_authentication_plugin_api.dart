@@ -10,5 +10,6 @@ abstract interface class McpAuthenticationPluginApi() {
   Future<PluginMcpAuthenticationOperation> beginMcpAuthentication({required PluginMcpServerTarget target});
 
   /// Clears native credentials only. It does not disable or remove configuration.
-  Future<void> forgetMcpAuthentication({required PluginMcpServerTarget target});
+  /// Returns the native credential scope affected, for inventory invalidation.
+  Future<PluginMcpActionEffectScope> forgetMcpAuthentication({required PluginMcpServerTarget target});
 }

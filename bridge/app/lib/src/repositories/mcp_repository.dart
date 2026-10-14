@@ -236,7 +236,13 @@ class McpRepository({
           action: nativeAction,
         );
         return switch (native) {
-          PluginMcpActionCompleted() => const McpControlCompleted(),
+          PluginMcpActionCompleted() => McpControlCompleted(
+            effectScope: switch (target.scope) {
+              McpHarnessScope() => McpActionEffectScope.harness,
+              McpProjectScope() => McpActionEffectScope.project,
+              McpSessionScope() => McpActionEffectScope.session,
+            },
+          ),
           PluginMcpActionUnavailable(:final reason) => McpControlUnavailable(
             reason: switch (reason) {
               PluginMcpActionUnavailableReason.unsupportedScope => McpActionUnavailableReason.unsupportedScope,
@@ -251,6 +257,51 @@ class McpRepository({
             stackTrace: causeStackTrace,
           ),
         };
+      },
+    );
+    return result ?? const McpControlUnavailable(reason: McpActionUnavailableReason.pluginInactive);
+  }
+
+  Future<McpControlResult> forgetAuthentication({required String pluginId, required McpServerTarget target}) async {
+    final nativeScope = await _resolveScope(
+      pluginId: pluginId,
+      scope: target.scope,
+      operation: McpOperation.executeAction,
+    );
+    final result = await _runtime.useIfActive(
+      pluginId: pluginId,
+      operation: McpOperation.executeAction,
+      body: (plugin, _) async {
+        if (plugin is! McpAuthenticationPluginApi) {
+          return const McpControlUnavailable(reason: McpActionUnavailableReason.unsupportedHarness);
+        }
+        try {
+          final effectScope = await (plugin as McpAuthenticationPluginApi).forgetMcpAuthentication(
+            target: PluginMcpServerTarget(scope: nativeScope, serverKey: target.serverKey),
+          );
+          return McpControlCompleted(
+            effectScope: switch (effectScope) {
+              PluginMcpActionEffectScope.harness => McpActionEffectScope.harness,
+              PluginMcpActionEffectScope.project => McpActionEffectScope.project,
+              PluginMcpActionEffectScope.session => McpActionEffectScope.session,
+            },
+          );
+        } on PluginMcpAuthenticationUnavailableException catch (error) {
+          return McpControlUnavailable(
+            reason: switch (error.reason) {
+              PluginMcpAuthenticationUnavailableReason.unsupportedScope => McpActionUnavailableReason.unsupportedScope,
+              PluginMcpAuthenticationUnavailableReason.liveSessionRequired =>
+                McpActionUnavailableReason.liveSessionRequired,
+              PluginMcpAuthenticationUnavailableReason.targetNotFound => McpActionUnavailableReason.targetNotFound,
+              PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired =>
+                McpActionUnavailableReason.nativeConfigurationRequired,
+              PluginMcpAuthenticationUnavailableReason.notSupported => McpActionUnavailableReason.notSupported,
+              PluginMcpAuthenticationUnavailableReason.notImplemented => McpActionUnavailableReason.notImplemented,
+            },
+          );
+        } on Exception catch (error, stackTrace) {
+          return _actionFailed(pluginId: pluginId, target: target, cause: error, stackTrace: stackTrace);
+        }
       },
     );
     return result ?? const McpControlUnavailable(reason: McpActionUnavailableReason.pluginInactive);

@@ -5,6 +5,7 @@ import "package:drift/drift.dart" hide isNull;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/mcp_repository.dart";
 import "package:sesori_bridge/src/repositories/models/mcp_authentication_update.dart";
+import "package:sesori_bridge/src/repositories/models/mcp_control_result.dart";
 import "package:sesori_bridge/src/routing/get_mcp_authentication_handler.dart";
 import "package:sesori_bridge/src/routing/post_mcp_authentication_continue_handler.dart";
 import "package:sesori_bridge/src/routing/post_mcp_authentication_handler.dart";
@@ -124,6 +125,45 @@ void main() {
     expect(plugin.targets, hasLength(1));
     plugin.beginGate!.complete();
     expect(await first, isA<McpAuthenticationStateResult>());
+  });
+
+  test("credential forgetting cannot start during native login preparation", () async {
+    plugin.beginGate = Completer<void>();
+    final login = service.start(request: _request);
+    await _pump();
+    expect(
+      await service.forgetAuthentication(pluginId: _request.pluginId, target: _request.target),
+      isA<McpControlUnavailable>().having((r) => r.reason, "reason", McpActionUnavailableReason.busy),
+    );
+    expect(plugin.forgotten, isEmpty);
+    plugin.beginGate!.complete();
+    await login;
+  });
+
+  test("credential forgetting reserves ownership before native work and shutdown waits for settlement", () async {
+    plugin.forgettingGate = Completer<void>();
+    final forgetting = service.forgetAuthentication(pluginId: _request.pluginId, target: _request.target);
+    expect(service.current, isA<McpAuthenticationBusy>());
+    expect(await service.start(request: _request), isA<McpAuthenticationBusy>());
+    expect(
+      await service.forgetAuthentication(pluginId: _request.pluginId, target: _request.target),
+      isA<McpControlUnavailable>().having((r) => r.reason, "reason", McpActionUnavailableReason.busy),
+    );
+    await _pump();
+    expect(plugin.targets, isEmpty);
+    expect(plugin.forgotten, hasLength(1));
+    var disposed = false;
+    final closing = service.dispose().then((_) => disposed = true);
+    await _pump();
+    expect(disposed, isFalse);
+    plugin.forgettingGate!.complete();
+    expect(await forgetting, isA<McpControlCompleted>());
+    await closing;
+    expect(service.current, const McpAuthenticationStateResult(state: McpAuthenticationIdle()));
+    expect(
+      await service.start(request: _request),
+      const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.pluginInactive),
+    );
   });
 
   test("callback is bound to the active attempt and rejected callbacks retain the challenge", () async {
@@ -506,6 +546,8 @@ class _AuthenticationPlugin() extends FakeDerivedBridgePlugin implements McpAuth
   int cancelCount = 0;
   Completer<void>? beginGate;
   Completer<void>? cancelGate;
+  Completer<void>? forgettingGate;
+  final forgotten = <PluginMcpServerTarget>[];
   @override
   Future<PluginMcpAuthenticationOperation> beginMcpAuthentication({required PluginMcpServerTarget target}) async {
     targets.add(target);
@@ -539,7 +581,11 @@ class _AuthenticationPlugin() extends FakeDerivedBridgePlugin implements McpAuth
   }
 
   @override
-  Future<void> forgetMcpAuthentication({required PluginMcpServerTarget target}) => throw UnimplementedError();
+  Future<PluginMcpActionEffectScope> forgetMcpAuthentication({required PluginMcpServerTarget target}) async {
+    forgotten.add(target);
+    await forgettingGate?.future;
+    return PluginMcpActionEffectScope.harness;
+  }
 }
 
 class _PreparationCleanupFailureRepository({required final Object cause}) implements McpRepository {

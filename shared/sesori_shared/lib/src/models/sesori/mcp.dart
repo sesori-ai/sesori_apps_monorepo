@@ -26,30 +26,53 @@ sealed class McpEntryTarget with _$McpEntryTarget {
   };
 }
 
-enum McpConnectionPhase() { unknown, pending, connecting, connected, authenticationRequired, disabled }
+enum McpConnectionPhase() {
+  unknown,
+  pending,
+  connecting,
+  connected,
+  authenticationRequired,
+  disabled,
+}
 
 @Freezed(unionKey: "type", fallbackUnion: "unknown", copyWith: false, fromJson: true, toJson: true)
 sealed class McpConnectionState with _$McpConnectionState {
   const factory unknown() = McpConnectionUnknown;
-  const factory status({@JsonKey(unknownEnumValue: McpConnectionPhase.unknown) required McpConnectionPhase phase}) = McpConnectionStatus;
+  const factory status({@JsonKey(unknownEnumValue: McpConnectionPhase.unknown) required McpConnectionPhase phase}) =
+      McpConnectionStatus;
   const factory failed({required String message}) = McpConnectionFailed;
 
   factory fromJson(Map<String, dynamic> json) => _$McpConnectionStateFromJson(json);
 }
 
-enum McpAuthorizationState() { unknown, notRequired, required, authenticated }
+enum McpAuthorizationState() {
+  unknown,
+  notRequired,
+  required,
+  authenticated,
+}
 
-enum McpConfigurationScope() { unknown, harness, project, session }
+enum McpConfigurationScope() {
+  unknown,
+  harness,
+  project,
+  session,
+}
 
-enum McpConfigurationMutability() { unknown, userManaged, readOnly }
+enum McpConfigurationMutability() {
+  unknown,
+  userManaged,
+  readOnly,
+}
 
 /// Scope describes configuration origin; it grants no action or write access.
 /// Native configuration values and credentials never cross this boundary.
 @Freezed(unionKey: "type", copyWith: false, fromJson: true, toJson: true)
 sealed class McpConfigurationSource with _$McpConfigurationSource {
-  const factory({@JsonKey(unknownEnumValue: McpConfigurationScope.unknown) required McpConfigurationScope scope,
-    @JsonKey(unknownEnumValue: McpConfigurationMutability.unknown) required McpConfigurationMutability mutability})
-      = _McpConfigurationSource;
+  const factory({
+    @JsonKey(unknownEnumValue: McpConfigurationScope.unknown) required McpConfigurationScope scope,
+    @JsonKey(unknownEnumValue: McpConfigurationMutability.unknown) required McpConfigurationMutability mutability,
+  }) = _McpConfigurationSource;
 
   factory fromJson(Map<String, dynamic> json) => _$McpConfigurationSourceFromJson(json);
 }
@@ -70,11 +93,48 @@ sealed class McpToolInventory with _$McpToolInventory {
   factory fromJson(Map<String, dynamic> json) => _$McpToolInventoryFromJson(json);
 }
 
-enum McpConnectorOfferAvailability() { unknown, available, setupRequired, unavailable }
+enum McpConnectorOfferAvailability() {
+  unknown,
+  available,
+  setupRequired,
+  unavailable,
+}
 
-enum McpServerAction() { unknown, reconnect, enable, disable }
+enum McpServerAction() {
+  unknown,
+  reconnect,
+  enable,
+  disable,
+}
 
-enum McpActionEffectScope() { unknown, harness, project, session }
+enum McpActionEffectScope() {
+  unknown,
+  harness,
+  project,
+  session,
+}
+
+enum McpAuthenticationCapabilityUnavailableReason() {
+  unknown,
+  notSupported,
+  notImplemented,
+  nativeConfigurationRequired,
+}
+
+/// Availability is independent of authorization state and configuration writes.
+@Freezed(unionKey: "type", fallbackUnion: "unknown", copyWith: false, fromJson: true, toJson: true)
+sealed class McpAuthenticationCapability with _$McpAuthenticationCapability {
+  const factory unknown() = McpAuthenticationCapabilityUnknown;
+  const factory available({
+    @JsonKey(unknownEnumValue: McpActionEffectScope.unknown) required McpActionEffectScope effectScope,
+  }) = McpAuthenticationCapabilityAvailable;
+  const factory unavailable({
+    @JsonKey(unknownEnumValue: McpAuthenticationCapabilityUnavailableReason.unknown)
+    required McpAuthenticationCapabilityUnavailableReason reason,
+  }) = McpAuthenticationCapabilityUnavailable;
+
+  factory fromJson(Map<String, dynamic> json) => _$McpAuthenticationCapabilityFromJson(json);
+}
 
 @Freezed(copyWith: false, fromJson: true, toJson: true)
 sealed class McpServerActionCapability with _$McpServerActionCapability {
@@ -96,6 +156,12 @@ sealed class McpInventoryEntry with _$McpInventoryEntry {
     required String? endpointOrigin,
     required McpConnectionState connection,
     @JsonKey(unknownEnumValue: McpAuthorizationState.unknown) required McpAuthorizationState authorization,
+    // COMPATIBILITY 2026-10-14 (v1.9.1): Public v1.9.1 bridges omit sign-in availability.
+    // Retire this default when bridges without per-server authentication declarations are no longer supported.
+    @Default(McpAuthenticationCapabilityUnknown()) McpAuthenticationCapability authentication,
+    // COMPATIBILITY 2026-10-14 (v1.9.1): Public v1.9.1 bridges omit credential-forgetting availability.
+    // Retire this default when bridges without credential-forgetting declarations are no longer supported.
+    @Default(McpAuthenticationCapabilityUnknown()) McpAuthenticationCapability credentialForgetting,
     required McpConfigurationSource? configuration,
     required McpToolInventory tools,
     required List<McpServerActionCapability> actions,
@@ -105,7 +171,8 @@ sealed class McpInventoryEntry with _$McpInventoryEntry {
     @JsonKey(name: "target") required McpConnectorOfferTarget offerTarget,
     required String name,
     required String? description,
-    @JsonKey(unknownEnumValue: McpConnectorOfferAvailability.unknown) required McpConnectorOfferAvailability availability,
+    @JsonKey(unknownEnumValue: McpConnectorOfferAvailability.unknown)
+    required McpConnectorOfferAvailability availability,
   }) = McpConnectorOfferSnapshot;
 
   factory fromJson(Map<String, dynamic> json) => _$McpInventoryEntryFromJson(json);
@@ -121,7 +188,14 @@ sealed class McpCatalogAvailability with _$McpCatalogAvailability {
   factory fromJson(Map<String, dynamic> json) => _$McpCatalogAvailabilityFromJson(json);
 }
 
-enum McpInventoryUnavailableReason() { unknown, unsupportedHarness, unsupportedScope, liveSessionRequired, pluginInactive, readFailed }
+enum McpInventoryUnavailableReason() {
+  unknown,
+  unsupportedHarness,
+  unsupportedScope,
+  liveSessionRequired,
+  pluginInactive,
+  readFailed,
+}
 
 @Freezed(unionKey: "type", fallbackUnion: "unknown", copyWith: false, fromJson: true, toJson: true)
 sealed class McpInventoryResult with _$McpInventoryResult {

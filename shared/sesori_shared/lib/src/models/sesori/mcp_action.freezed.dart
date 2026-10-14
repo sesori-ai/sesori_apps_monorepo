@@ -15,35 +15,53 @@ T _$identity<T>(T value) => value;
 McpEntryAction _$McpEntryActionFromJson(
   Map<String, dynamic> json
 ) {
-    return McpServerEntryAction.fromJson(
-      json
-    );
+        switch (json['type']) {
+                  case 'server':
+          return McpServerEntryAction.fromJson(
+            json
+          );
+                case 'forgetAuthentication':
+          return McpForgetAuthenticationEntryAction.fromJson(
+            json
+          );
+        
+          default:
+            throw CheckedFromJsonException(
+  json,
+  'type',
+  'McpEntryAction',
+  'Invalid union type "${json['type']}"!'
+);
+        }
+      
 }
 
 /// @nodoc
 mixin _$McpEntryAction {
 
-@JsonKey(fromJson: McpEntryTarget.serverFromJson) McpServerTarget get target; McpServerAction get action;
+@JsonKey(fromJson: McpEntryTarget.serverFromJson) McpServerTarget get target;
 
+  /// Serializes this McpEntryAction to a JSON map.
+  Map<String, dynamic> toJson();
 
 
 @override
 bool operator ==(Object other) {
   final _this = this as McpEntryAction;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is McpEntryAction&&const DeepCollectionEquality().equals(other.target, _this.target)&&(identical(other.action, _this.action) || other.action == _this.action));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is McpEntryAction&&const DeepCollectionEquality().equals(other.target, _this.target));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as McpEntryAction;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.target),_this.action);
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.target));
 }
 
 @override
 String toString() {
   final _this = this as McpEntryAction;
-  return 'McpEntryAction(target: ${_this.target}, action: ${_this.action})';
+  return 'McpEntryAction(target: ${_this.target})';
 }
 
 
@@ -54,17 +72,24 @@ String toString() {
 
 
 /// @nodoc
-@JsonSerializable(createToJson: false)
+@JsonSerializable()
 
 class McpServerEntryAction extends McpEntryAction {
-  const McpServerEntryAction({@JsonKey(fromJson: McpEntryTarget.serverFromJson) required this.target, required this.action}): super._();
+  const McpServerEntryAction({@JsonKey(fromJson: McpEntryTarget.serverFromJson) required this.target, required this.action,  String? $type}): $type = $type ?? 'server',super._();
   factory McpServerEntryAction.fromJson(Map<String, dynamic> json) => _$McpServerEntryActionFromJson(json);
 
 @override@JsonKey(fromJson: McpEntryTarget.serverFromJson) final  McpServerTarget target;
-@override final  McpServerAction action;
+ final  McpServerAction action;
+
+@JsonKey(name: 'type')
+final String $type;
 
 
 
+@override
+Map<String, dynamic> toJson() {
+  return _$McpServerEntryActionToJson(this, );
+}
 
 @override
 bool operator ==(Object other) {
@@ -80,6 +105,47 @@ int get hashCode {
 @override
 String toString() {
     return 'McpEntryAction.server(target: $target, action: $action)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class McpForgetAuthenticationEntryAction extends McpEntryAction {
+  const McpForgetAuthenticationEntryAction({@JsonKey(fromJson: McpEntryTarget.serverFromJson) required this.target,  String? $type}): $type = $type ?? 'forgetAuthentication',super._();
+  factory McpForgetAuthenticationEntryAction.fromJson(Map<String, dynamic> json) => _$McpForgetAuthenticationEntryActionFromJson(json);
+
+@override@JsonKey(fromJson: McpEntryTarget.serverFromJson) final  McpServerTarget target;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$McpForgetAuthenticationEntryActionToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpForgetAuthenticationEntryAction&&const DeepCollectionEquality().equals(other.target, target));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(target));
+}
+
+@override
+String toString() {
+    return 'McpEntryAction.forgetAuthentication(target: $target)';
 }
 
 

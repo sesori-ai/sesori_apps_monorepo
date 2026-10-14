@@ -273,6 +273,7 @@ final class const ClaudePluginDescriptor({
       environment: host.environment,
     );
     final processes = ClaudeSessionProcessRepository(
+      supportsMcpAuthentication: processFactory.supportsTerminal,
       processFactory: (spec) => processFactory.spawn(spec.processLaunch),
       binaryPath: binaryPath,
       // The host factory already inherits this environment. Launch specs carry

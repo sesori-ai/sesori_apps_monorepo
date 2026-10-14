@@ -69,7 +69,10 @@ final class ClaudePlugin({
       _mcpAuthentication.begin(target: target);
 
   @override
-  Future<void> forgetMcpAuthentication({required PluginMcpServerTarget target}) => _mcpAuthentication.forget(target: target);
+  Future<PluginMcpActionEffectScope> forgetMcpAuthentication({required PluginMcpServerTarget target}) async {
+    await _mcpAuthentication.forget(target: target);
+    return PluginMcpActionEffectScope.harness;
+  }
 
   @override
   Future<PluginMcpActionResult> executeMcpServerAction({
