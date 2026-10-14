@@ -650,8 +650,11 @@ action UI and authentication UI remain **not implemented**.
 
 Backend-neutral authentication attempt/request/response codecs are implemented,
 including explicit native cancellation availability and private callback
-presentation. This is a shared contract foundation; bridge authentication routes
-and client actions remain not implemented for every harness.
+presentation. Claude's headless authentication routes and the shared client
+API/repository/connection-fenced lifecycle are implemented. The observing Cubit
+does not cancel on view closure. Request-scoped recovery never auto-launches a
+browser; busy retains the challenge, and reconnect fences callbacks to the old
+bridge. Visible client controls and other native adapters remain **not implemented**.
 The backend-neutral inventory wire models and optional plugin read interface
 are implemented. Claude implements session inventory through its resident
 process status control request, exposed headlessly by `POST /mcp/inventory`.
