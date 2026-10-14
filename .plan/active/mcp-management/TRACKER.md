@@ -6,7 +6,7 @@
 - Branch/base: `sesori/mcp-visible-controls`, `c3716bfce5`, in the provided `copper-heron` worktree.
 - Current step: 11/24 merged as [#1957][pr-1957];
   steps 12/24 and 13/24 merged as [#1962][pr-1962] and [#1964][pr-1964];
-  step 14/24 merged as [#1966][pr-1966]; step 15/24 merged as [#1969][pr-1969]; Step 16/24 is draft [#1971][pr-1971];
+  step 14/24 merged as [#1966][pr-1966]; step 15/24 merged as [#1969][pr-1969]; Step 16/24 is in review [#1971][pr-1971];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -37,7 +37,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 13/24 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
 | 14/24 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
 | 15/24 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
-| 16/24 | Visible auth and controls (8.c.2.b) | Draft | [#1971][pr-1971]; native recording pending |
+| 16/24 | Visible auth and controls (8.c.2.b) | In review | [#1971][pr-1971]; 17 widgets and native fixture flow |
 | 17/24 | External-action transport (8.d.1) | Local draft | 61 shared cases and architecture approval |
 | 18/24 | Session external-action routing (8.d.2) | Not started | — |
 | 19/24 | Claude approvals and form/URL elicitation | Not started | — |
@@ -949,9 +949,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   `pr-media` at `06c61fd6beb390d0ff20cdf23255aeb6636d51b0` under
   `sesori/mcp-visible-controls/`. They compare two fixture modes of the same
   native build, not separate production binaries. Production PID 7903 is untouched.
-  The recording tool then reported the GUI session locked again. Remaining
-  close/reopen, cancellation, forgetting and silent motion evidence are pending;
-  the PR remains draft and is not qualified for merge.
+  A locked-session recording failed before the user unlocked the Mac again;
+  the successful follow-up below completes the presentation checks.
 
 [pr-1971]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1971
 
@@ -960,5 +959,24 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   successor is preserved locally in `6d625712f5`; it remains unpublished until
   this controls parent merges. Published titles and forward planning are
   synchronized. Historical evidence/squash titles and the final matrix are unchanged.
-  A read-only console check confirms `CGSSessionScreenIsLocked: true`; do not
-  send more UI actions until the GUI session is unlocked.
+  The lock flag was verified before pausing input; no system settings changed.
+
+- Step 16 native presentation qualified on 2026-10-14 using implementation
+  `182b1e8519` with parent/localization synchronization at `c3716bfce5`. The
+  private fixture source SHA-256 is
+  `ffb6f0b24d9e8164816c713e55731b41419d18e54ed1b6413df7b6582d47fe6b`.
+  CUA inputs exercised explicit sign-in, busy-browser retry, controls
+  close/reopen retaining waiting state, explicit cancellation and settlement,
+  forgetting confirmation/cancel/confirm, and full inventory dismissal retaining
+  an active challenge. A synthetic native completion while the inventory was
+  closed appeared after reopening; Check sign-in retained authoritative state.
+  Cancelled confirmation sent no action; confirmed action progressed from pending
+  to completed without claiming disconnection or cleared native credentials.
+- Silent window-only capture retained genuine transition frames and observed
+  frame intervals. The inspected 560×589 GIF is 655,480 bytes and 36.96 seconds,
+  showing controls opening, explicit browser retry, close/reopen and cancellation.
+  Media commit `665794822475d3dbeeb2e57bf4225144036f2d80` publishes it under
+  `sesori/mcp-visible-controls/flow.gif`; all frames contain only fixture data.
+  Owned fixture PID 78941 was stopped; production PID 7903 was preserved. No
+  account, bridge, real browser, persistence or credential operation ran. These
+  checks qualify native presentation only; final L4/provider/package checks remain required.
