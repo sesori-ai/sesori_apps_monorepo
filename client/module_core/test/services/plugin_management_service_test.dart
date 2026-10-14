@@ -50,16 +50,22 @@ PluginManagementService _pluginManagementService({
   required ProductAnalyticsService productAnalyticsService,
 }) {
   final browserService = _MockPluginAuthenticationBrowserService();
-  when(browserService.cancelActive).thenAnswer((_) async => null);
+  when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((_) async => null);
   when(
     () => browserService.authenticate(
+      owner: any(named: "owner"),
       challenge: any(named: "challenge"),
       isLocalBridge: any(named: "isLocalBridge"),
       reuseActiveListener: any(named: "reuseActiveListener"),
       onPhase: any(named: "onPhase"),
       onDetachedFailure: any(named: "onDetachedFailure"),
     ),
-  ).thenAnswer((_) => Completer<PluginAuthenticationBrowserFlowResult>().future);
+  ).thenAnswer((invocation) {
+    (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+      PluginAuthenticationBrowserPhase.opening,
+    );
+    return Completer<PluginAuthenticationBrowserFlowResult>().future;
+  });
   return PluginManagementService(
     pluginRepository: pluginRepository,
     connectionService: connectionService,
@@ -74,6 +80,13 @@ void main() {
   late List<ProductAnalyticsEvent> reportedEvents;
 
   setUpAll(() {
+    registerFallbackValue(
+      PluginAuthenticationBrowserOwner(
+        bridgeId: "fixture",
+        connectionEpoch: 1,
+        purpose: PluginAuthenticationBrowserPurpose.provider,
+      ),
+    );
     registerFallbackValue(const ProductAnalyticsEvent.sessionAbortSucceeded());
     registerFallbackValue(
       PluginAuthenticationBrowserChallenge(
@@ -98,6 +111,78 @@ void main() {
   });
 
   group("authentication orchestration", () {
+    test("busy browser retains the new challenge and leaves the first callback owner intact", () async {
+      final challenge = PluginAuthenticationBrowserChallenge(
+        authorizationUri: Uri.parse("https://provider.example/authorize"),
+        expectedCallbackUri: Uri.parse("http://127.0.0.1:43120/callback"),
+      );
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge))
+        ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge))
+        ..queueAuthenticationContinuation(const PluginAuthenticationContinuationResult.applied());
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final browserService = _MockPluginAuthenticationBrowserService();
+      final firstReturn = Completer<PluginAuthenticationBrowserFlowResult>();
+      final acceptedOwners = <PluginAuthenticationBrowserOwner>[];
+      final retryModes = <bool>[];
+      final cancelledOwners = <PluginAuthenticationBrowserOwner>[];
+      var starts = 0;
+      when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((invocation) async {
+        cancelledOwners.add(invocation.namedArguments[#owner]! as PluginAuthenticationBrowserOwner);
+        return null;
+      });
+      when(
+        () => browserService.authenticate(
+          owner: any(named: "owner"),
+          challenge: any(named: "challenge"),
+          isLocalBridge: any(named: "isLocalBridge"),
+          reuseActiveListener: any(named: "reuseActiveListener"),
+          onPhase: any(named: "onPhase"),
+          onDetachedFailure: any(named: "onDetachedFailure"),
+        ),
+      ).thenAnswer((invocation) {
+        if (++starts == 2) return Future.value(const PluginAuthenticationBrowserBusy());
+        acceptedOwners.add(invocation.namedArguments[#owner]! as PluginAuthenticationBrowserOwner);
+        retryModes.add(invocation.namedArguments[#reuseActiveListener]! as bool);
+        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+          PluginAuthenticationBrowserPhase.opening,
+        );
+        return starts == 1 ? firstReturn.future : Future.value(const PluginAuthenticationBrowserDirect());
+      });
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+        authenticationBrowserService: browserService,
+        activeBridgeLocality: const _RemoteBridgeLocality(),
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+      await service.startAuthentication(pluginId: "one");
+      await service.startAuthentication(pluginId: "two");
+      await _waitFor(() => service.authenticationBrowserStates.value["two"] is PluginAuthenticationBrowserBlocked);
+      expect(service.authenticationChallenges.value["two"], same(challenge));
+      expect(service.authenticationBrowserStates.value["one"], isA<PluginAuthenticationBrowserOpening>());
+      expect(repository.authenticationCancelCalls, 0);
+      expect(cancelledOwners, isEmpty);
+      firstReturn.complete(
+        PluginAuthenticationBrowserCaptured(
+          callbackUri: challenge.expectedCallbackUri.replace(queryParameters: {"code": "fixture", "state": "fixture"}),
+        ),
+      );
+      await _waitFor(() => repository.authenticationRedirects.length == 1);
+      expect(service.authenticationBrowserStates.value["one"], isA<PluginAuthenticationBrowserFinalizing>());
+      await service.retryBrowserAuthentication(pluginId: "two");
+      expect(service.authenticationBrowserStates.value["two"], isA<PluginAuthenticationBrowserWaiting>());
+      expect(retryModes, [false, false]);
+      expect(acceptedOwners[1], isNot(same(acceptedOwners[0])));
+      expect(acceptedOwners[1].bridgeId, "br_a");
+      expect(acceptedOwners[1].purpose, PluginAuthenticationBrowserPurpose.provider);
+      await service.onDispose();
+      expect(cancelledOwners, [acceptedOwners[1]]);
+    });
+
     test("terminal progress for an unrelated plugin does not cancel the owned browser", () async {
       final browserResult = Completer<PluginAuthenticationBrowserFlowResult>();
       final challenge = PluginAuthenticationBrowserChallenge(
@@ -110,16 +195,22 @@ void main() {
         ..queueLoad(_supported(_response(token: "after-unrelated-terminal")));
       final connection = _FakeConnectionService(initialStatus: _connected);
       final browserService = _MockPluginAuthenticationBrowserService();
-      when(browserService.cancelActive).thenAnswer((_) async => null);
+      when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((_) async => null);
       when(
         () => browserService.authenticate(
+          owner: any(named: "owner"),
           challenge: any(named: "challenge"),
           isLocalBridge: any(named: "isLocalBridge"),
           reuseActiveListener: any(named: "reuseActiveListener"),
           onPhase: any(named: "onPhase"),
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
-      ).thenAnswer((_) => browserResult.future);
+      ).thenAnswer((invocation) {
+        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+          PluginAuthenticationBrowserPhase.opening,
+        );
+        return browserResult.future;
+      });
       final service = PluginManagementService(
         pluginRepository: repository,
         connectionService: connection,
@@ -137,7 +228,7 @@ void main() {
       );
       await _pump();
 
-      verifyNever(browserService.cancelActive);
+      verifyNever(() => browserService.cancel(owner: any(named: "owner")));
       expect(service.authenticationChallenges.value["one"], same(challenge));
       expect(service.authenticationChallenges.value, isNot(contains("two")));
     });
@@ -154,16 +245,22 @@ void main() {
         ..queueAuthenticationStart(startResult.future);
       final connection = _FakeConnectionService(initialStatus: _connected);
       final browserService = _MockPluginAuthenticationBrowserService();
-      when(browserService.cancelActive).thenAnswer((_) async => null);
+      when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((_) async => null);
       when(
         () => browserService.authenticate(
+          owner: any(named: "owner"),
           challenge: any(named: "challenge"),
           isLocalBridge: any(named: "isLocalBridge"),
           reuseActiveListener: any(named: "reuseActiveListener"),
           onPhase: any(named: "onPhase"),
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
-      ).thenAnswer((_) => browserResult.future);
+      ).thenAnswer((invocation) {
+        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+          PluginAuthenticationBrowserPhase.opening,
+        );
+        return browserResult.future;
+      });
       final service = PluginManagementService(
         pluginRepository: repository,
         connectionService: connection,
@@ -190,6 +287,7 @@ void main() {
 
       verify(
         () => browserService.authenticate(
+          owner: any(named: "owner"),
           challenge: challenge,
           isLocalBridge: false,
           reuseActiveListener: false,
@@ -214,17 +312,23 @@ void main() {
         ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge));
       final connection = _FakeConnectionService(initialStatus: _connected);
       final browserService = _MockPluginAuthenticationBrowserService();
-      when(browserService.cancelActive).thenAnswer((_) async => null);
+      when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((_) async => null);
       var calls = 0;
       when(
         () => browserService.authenticate(
+          owner: any(named: "owner"),
           challenge: any(named: "challenge"),
           isLocalBridge: any(named: "isLocalBridge"),
           reuseActiveListener: any(named: "reuseActiveListener"),
           onPhase: any(named: "onPhase"),
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
-      ).thenAnswer((_) async => calls++ == 0 ? failure : const PluginAuthenticationBrowserDirect());
+      ).thenAnswer((invocation) async {
+        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+          PluginAuthenticationBrowserPhase.opening,
+        );
+        return calls++ == 0 ? failure : const PluginAuthenticationBrowserDirect();
+      });
       final service = PluginManagementService(
         pluginRepository: repository,
         connectionService: connection,
@@ -247,6 +351,7 @@ void main() {
 
       verify(
         () => browserService.authenticate(
+          owner: any(named: "owner"),
           challenge: challenge,
           isLocalBridge: false,
           reuseActiveListener: false,
@@ -256,6 +361,7 @@ void main() {
       ).called(1);
       verify(
         () => browserService.authenticate(
+          owner: any(named: "owner"),
           challenge: challenge,
           isLocalBridge: false,
           reuseActiveListener: true,
@@ -282,16 +388,22 @@ void main() {
         ..queueAuthenticationCancel(const PluginAuthenticationCancelResult.success());
       final connection = _FakeConnectionService(initialStatus: _connected);
       final browserService = _MockPluginAuthenticationBrowserService();
-      when(browserService.cancelActive).thenAnswer((_) async => null);
+      when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((_) async => null);
       when(
         () => browserService.authenticate(
+          owner: any(named: "owner"),
           challenge: any(named: "challenge"),
           isLocalBridge: any(named: "isLocalBridge"),
           reuseActiveListener: any(named: "reuseActiveListener"),
           onPhase: any(named: "onPhase"),
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
-      ).thenAnswer((_) async => failure);
+      ).thenAnswer((invocation) async {
+        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+          PluginAuthenticationBrowserPhase.opening,
+        );
+        return failure;
+      });
       final service = PluginManagementService(
         pluginRepository: repository,
         connectionService: connection,
@@ -314,6 +426,7 @@ void main() {
       await service.retryBrowserAuthentication(pluginId: "one");
       verify(
         () => browserService.authenticate(
+          owner: any(named: "owner"),
           challenge: challenge,
           isLocalBridge: false,
           reuseActiveListener: false,
@@ -323,6 +436,7 @@ void main() {
       ).called(1);
       verifyNever(
         () => browserService.authenticate(
+          owner: any(named: "owner"),
           challenge: any(named: "challenge"),
           isLocalBridge: any(named: "isLocalBridge"),
           reuseActiveListener: true,
@@ -368,16 +482,22 @@ void main() {
           ..queueAuthenticationCancel(const PluginAuthenticationCancelResult.success());
         final connection = _FakeConnectionService(initialStatus: _connected);
         final browserService = _MockPluginAuthenticationBrowserService();
-        when(browserService.cancelActive).thenAnswer((_) async => null);
+        when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((_) async => null);
         when(
           () => browserService.authenticate(
+            owner: any(named: "owner"),
             challenge: any(named: "challenge"),
             isLocalBridge: any(named: "isLocalBridge"),
             reuseActiveListener: any(named: "reuseActiveListener"),
             onPhase: any(named: "onPhase"),
             onDetachedFailure: any(named: "onDetachedFailure"),
           ),
-        ).thenAnswer((_) async => diagnostic.failure);
+        ).thenAnswer((invocation) async {
+          (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+            PluginAuthenticationBrowserPhase.opening,
+          );
+          return diagnostic.failure;
+        });
         final service = PluginManagementService(
           pluginRepository: repository,
           connectionService: connection,
@@ -422,16 +542,22 @@ void main() {
         ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: replacementChallenge));
       final connection = _FakeConnectionService(initialStatus: _connected);
       final browserService = _MockPluginAuthenticationBrowserService();
-      when(browserService.cancelActive).thenAnswer((_) => cleanup.future);
+      when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((_) => cleanup.future);
       when(
         () => browserService.authenticate(
+          owner: any(named: "owner"),
           challenge: any(named: "challenge"),
           isLocalBridge: any(named: "isLocalBridge"),
           reuseActiveListener: any(named: "reuseActiveListener"),
           onPhase: any(named: "onPhase"),
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
-      ).thenAnswer((_) => browserResult.future);
+      ).thenAnswer((invocation) {
+        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+          PluginAuthenticationBrowserPhase.opening,
+        );
+        return browserResult.future;
+      });
       final service = PluginManagementService(
         pluginRepository: repository,
         connectionService: connection,
@@ -523,16 +649,22 @@ void main() {
           ..queueAuthenticationCancel(const PluginAuthenticationCancelResult.success());
         final connection = _FakeConnectionService(initialStatus: _connected);
         final browserService = _MockPluginAuthenticationBrowserService();
-        when(browserService.cancelActive).thenAnswer((_) async => null);
+        when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((_) async => null);
         when(
           () => browserService.authenticate(
+            owner: any(named: "owner"),
             challenge: any(named: "challenge"),
             isLocalBridge: any(named: "isLocalBridge"),
             reuseActiveListener: any(named: "reuseActiveListener"),
             onPhase: any(named: "onPhase"),
             onDetachedFailure: any(named: "onDetachedFailure"),
           ),
-        ).thenAnswer((_) => browser.future);
+        ).thenAnswer((invocation) {
+          (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+            PluginAuthenticationBrowserPhase.opening,
+          );
+          return browser.future;
+        });
         final service = PluginManagementService(
           pluginRepository: repository,
           connectionService: connection,
@@ -588,16 +720,22 @@ void main() {
           ..queueAuthenticationCancel(cancelResult);
         final connection = _FakeConnectionService(initialStatus: _connected);
         final browserService = _MockPluginAuthenticationBrowserService();
-        when(browserService.cancelActive).thenAnswer((_) async => null);
+        when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((_) async => null);
         when(
           () => browserService.authenticate(
+            owner: any(named: "owner"),
             challenge: any(named: "challenge"),
             isLocalBridge: any(named: "isLocalBridge"),
             reuseActiveListener: any(named: "reuseActiveListener"),
             onPhase: any(named: "onPhase"),
             onDetachedFailure: any(named: "onDetachedFailure"),
           ),
-        ).thenAnswer((_) async => const PluginAuthenticationBrowserFlowCancelled());
+        ).thenAnswer((invocation) async {
+          (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+            PluginAuthenticationBrowserPhase.opening,
+          );
+          return const PluginAuthenticationBrowserFlowCancelled();
+        });
         final service = PluginManagementService(
           pluginRepository: repository,
           connectionService: connection,
@@ -827,16 +965,22 @@ void main() {
         ..queueAuthenticationContinuation(Future.value(const PluginAuthenticationContinuationResult.applied()));
       final connection = _FakeConnectionService(initialStatus: _connected);
       final browserService = _MockPluginAuthenticationBrowserService();
-      when(browserService.cancelActive).thenAnswer((_) async => null);
+      when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((_) async => null);
       when(
         () => browserService.authenticate(
+          owner: any(named: "owner"),
           challenge: any(named: "challenge"),
           isLocalBridge: any(named: "isLocalBridge"),
           reuseActiveListener: any(named: "reuseActiveListener"),
           onPhase: any(named: "onPhase"),
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
-      ).thenAnswer((_) => callback.future);
+      ).thenAnswer((invocation) {
+        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+          PluginAuthenticationBrowserPhase.opening,
+        );
+        return callback.future;
+      });
       final service = PluginManagementService(
         pluginRepository: repository,
         connectionService: connection,
@@ -898,16 +1042,22 @@ void main() {
         ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge));
       final connection = _FakeConnectionService(initialStatus: _connected);
       final browserService = _MockPluginAuthenticationBrowserService();
-      when(browserService.cancelActive).thenAnswer((_) async => null);
+      when(() => browserService.cancel(owner: any(named: "owner"))).thenAnswer((_) async => null);
       when(
         () => browserService.authenticate(
+          owner: any(named: "owner"),
           challenge: any(named: "challenge"),
           isLocalBridge: any(named: "isLocalBridge"),
           reuseActiveListener: any(named: "reuseActiveListener"),
           onPhase: any(named: "onPhase"),
           onDetachedFailure: any(named: "onDetachedFailure"),
         ),
-      ).thenAnswer((_) => callback.future);
+      ).thenAnswer((invocation) {
+        (invocation.namedArguments[#onPhase]! as void Function(PluginAuthenticationBrowserPhase))(
+          PluginAuthenticationBrowserPhase.opening,
+        );
+        return callback.future;
+      });
       final service = PluginManagementService(
         pluginRepository: repository,
         connectionService: connection,

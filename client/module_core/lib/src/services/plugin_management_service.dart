@@ -41,6 +41,8 @@ sealed class const PluginAuthenticationBrowserState();
 
 final class const PluginAuthenticationBrowserOpening() extends PluginAuthenticationBrowserState;
 
+final class const PluginAuthenticationBrowserBlocked() extends PluginAuthenticationBrowserState;
+
 final class const PluginAuthenticationBrowserWaiting() extends PluginAuthenticationBrowserState;
 
 final class const PluginAuthenticationBrowserFinalizing() extends PluginAuthenticationBrowserState;
@@ -133,7 +135,7 @@ class PluginManagementService({
   final Map<String, Uri> _heldAuthenticationCallbacks = {};
   final Map<String, PluginAuthenticationProgress> _heldAuthenticationProgress = {};
   int _authenticationBrowserGeneration = 0;
-  String? _activeAuthenticationBrowserPluginId;
+  ({String pluginId, PluginAuthenticationBrowserOwner owner})? _activeAuthenticationBrowser;
 
   ValueStream<PluginManagementLoadResult> get snapshots => _snapshots.stream;
 
@@ -283,8 +285,12 @@ class PluginManagementService({
   }
 
   Future<void> retryBrowserAuthentication({required String pluginId}) async {
-    if (_authenticationBrowserStates.value[pluginId] is! PluginAuthenticationBrowserRetryableFailure) return;
-    await _beginBrowserAuthentication(pluginId: pluginId, reuseActiveListener: true);
+    final state = _authenticationBrowserStates.value[pluginId];
+    if (state is! PluginAuthenticationBrowserRetryableFailure && state is! PluginAuthenticationBrowserBlocked) return;
+    await _beginBrowserAuthentication(
+      pluginId: pluginId,
+      reuseActiveListener: state is PluginAuthenticationBrowserRetryableFailure,
+    );
   }
 
   void _runBrowserAuthentication({required String pluginId, required bool reuseActiveListener}) {
@@ -315,13 +321,32 @@ class PluginManagementService({
         bridgeId != _activeBridgeId) {
       return;
     }
-    final generation = reuseActiveListener ? _authenticationBrowserGeneration : ++_authenticationBrowserGeneration;
-    _activeAuthenticationBrowserPluginId = pluginId;
+    final activeBrowser = _activeAuthenticationBrowser;
+    final PluginAuthenticationBrowserOwner owner;
+    if (reuseActiveListener) {
+      if (activeBrowser == null || activeBrowser.pluginId != pluginId) return;
+      owner = activeBrowser.owner;
+    } else {
+      owner = PluginAuthenticationBrowserOwner(
+        bridgeId: bridgeId,
+        connectionEpoch: fence.connectionEpoch,
+        purpose: PluginAuthenticationBrowserPurpose.provider,
+      );
+    }
+    final generation = reuseActiveListener ? _authenticationBrowserGeneration : _authenticationBrowserGeneration + 1;
     final result = await _authenticationBrowserService.authenticate(
+      owner: owner,
       challenge: challenge,
       isLocalBridge: _activeBridgeLocality.isLocalBridge(bridgeId: bridgeId),
       reuseActiveListener: reuseActiveListener,
       onPhase: (phase) {
+        if (_disposed ||
+            !_selfStartedAuthentications.contains(pluginId) ||
+            !_isAuthenticationFenceCurrent(pluginId: pluginId)) {
+          return;
+        }
+        _authenticationBrowserGeneration = generation;
+        _activeAuthenticationBrowser = (pluginId: pluginId, owner: owner);
         if (!_ownsBrowserOperation(pluginId: pluginId, generation: generation)) return;
         _publishAuthenticationBrowserState(
           pluginId: pluginId,
@@ -335,8 +360,21 @@ class PluginManagementService({
         _runDetachedBrowserFailure(pluginId: pluginId, generation: generation, failure: failure);
       },
     );
+    if (result is PluginAuthenticationBrowserBusy) {
+      if (!_disposed &&
+          _selfStartedAuthentications.contains(pluginId) &&
+          _isAuthenticationFenceCurrent(pluginId: pluginId)) {
+        _publishAuthenticationBrowserState(
+          pluginId: pluginId,
+          browserState: const PluginAuthenticationBrowserBlocked(),
+        );
+      }
+      return;
+    }
     if (!_ownsBrowserOperation(pluginId: pluginId, generation: generation)) return;
     switch (result) {
+      case PluginAuthenticationBrowserBusy():
+        throw StateError("Busy browser result handled before ownership");
       case PluginAuthenticationBrowserDirect():
         _publishAuthenticationBrowserState(
           pluginId: pluginId,
@@ -369,7 +407,7 @@ class PluginManagementService({
   bool _ownsBrowserOperation({required String pluginId, required int generation}) =>
       !_disposed &&
       generation == _authenticationBrowserGeneration &&
-      _activeAuthenticationBrowserPluginId == pluginId &&
+      _activeAuthenticationBrowser?.pluginId == pluginId &&
       _selfStartedAuthentications.contains(pluginId);
 
   void _runDetachedBrowserFailure({
@@ -648,6 +686,7 @@ class PluginManagementService({
         PluginAuthenticationBrowserOpening() ||
         PluginAuthenticationBrowserWaiting() ||
         PluginAuthenticationBrowserFinalizing() ||
+        PluginAuthenticationBrowserBlocked() ||
         PluginAuthenticationBrowserRetryableFailure() ||
         null => false,
       };
@@ -799,10 +838,11 @@ class PluginManagementService({
   }
 
   Future<void> _cancelOwnedBrowserCapture({required String pluginId}) async {
-    if (_activeAuthenticationBrowserPluginId != pluginId) return;
-    _activeAuthenticationBrowserPluginId = null;
+    final active = _activeAuthenticationBrowser;
+    if (active == null || active.pluginId != pluginId) return;
+    _activeAuthenticationBrowser = null;
     _authenticationBrowserGeneration++;
-    final failure = await _authenticationBrowserService.cancelActive();
+    final failure = await _authenticationBrowserService.cancel(owner: active.owner);
     if (failure != null) _recordBrowserFailure(failure: failure);
   }
 
@@ -900,10 +940,11 @@ class PluginManagementService({
     _heldAuthenticationCallbacks.clear();
     _heldAuthenticationProgress.clear();
     _authenticationBrowserGeneration++;
-    _activeAuthenticationBrowserPluginId = null;
-    if (cancelBrowser) {
+    final activeBrowser = _activeAuthenticationBrowser;
+    _activeAuthenticationBrowser = null;
+    if (cancelBrowser && activeBrowser != null) {
       unawaited(
-        _authenticationBrowserService.cancelActive().then((failure) {
+        _authenticationBrowserService.cancel(owner: activeBrowser.owner).then((failure) {
           if (failure != null) _recordBrowserFailure(failure: failure);
         }),
       );
@@ -1292,8 +1333,11 @@ class PluginManagementService({
   Future<void> onDispose() async {
     if (_disposed) return;
     _disposed = true;
-    final cleanupFailure = await _authenticationBrowserService.cancelActive();
-    if (cleanupFailure != null) _recordBrowserFailure(failure: cleanupFailure);
+    final activeBrowser = _activeAuthenticationBrowser;
+    if (activeBrowser != null) {
+      final cleanupFailure = await _authenticationBrowserService.cancel(owner: activeBrowser.owner);
+      if (cleanupFailure != null) _recordBrowserFailure(failure: cleanupFailure);
+    }
     _clearAuthentications(cancelBrowser: false);
     await _subscriptions.dispose();
     await _refreshTail;

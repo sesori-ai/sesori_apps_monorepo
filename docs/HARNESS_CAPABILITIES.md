@@ -619,7 +619,10 @@ Codex uses the existing Sesori device-code UI; Antigravity implements automatic 
 clients use a system authentication browser and nonce-only app return; remote desktop uses exact loopback capture and
 a static return page, while desktop connected to its exact supervised bridge lets the bridge receive callback directly.
 Browser kickoff survives settings dismissal, retained phases replay on reopening, and the one callback-listener lifetime
-is bounded to five minutes; only launch failure can retry an issued challenge against that same live listener.
+is bounded to five minutes. Browser operations use identity handles bound to their bridge connection and provider/MCP
+purpose. A competing flow returns busy without replacing the first listener; retry and cleanup require its owner.
+A busy provider challenge remains available for explicit retry. Launch failure can reuse its own live listener;
+local direct-browser ownership lasts until native settlement or bounded expiry.
 Synthetic iOS Simulator and Android emulator coverage proves raw loopback-to-app return; real Google OAuth remains a
 manual verification gap. It permits personal Google OAuth only, suppresses
 the bridge host's browser, and uses the same isolated profile for login and live

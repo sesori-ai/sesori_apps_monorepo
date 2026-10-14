@@ -469,6 +469,7 @@
   "harnessAuthenticationConflict": "The harness is busy with another management action. Refresh before trying again.",
   "harnessAuthenticationUncertain": "The connection changed before the result could be confirmed. Refresh before trying again.",
   "harnessAuthenticationInvalidChallenge": "The bridge returned an invalid login website. Check the bridge logs for details.",
+  "harnessAuthenticationBrowserBusy": "Finish the current sign-in first, then try again.",
   "harnessAuthenticationBrowserFailed": "The secure website could not be opened. Try again.",
   "harnessAuthenticationRequestFailed": "Check your connection and try again.",
   "harnessAuthenticationPastedCodeInstructions": "Only continue if you started this login. Sesori will sign {harnessName} on the connected computer into your account. Open the sign-in page, verify its address, approve access, then paste the code shown after approval.",

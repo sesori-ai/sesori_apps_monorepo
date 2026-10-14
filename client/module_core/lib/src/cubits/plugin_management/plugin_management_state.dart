@@ -113,6 +113,11 @@ enum PluginAuthenticationCodeRetryReason() {
   notConfirmed,
 }
 
+enum PluginAuthenticationBrowserRetryReason() {
+  launchFailed,
+  busy,
+}
+
 @Freezed()
 sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPresentationState {
   const factory idle() = PluginAuthenticationPresentationIdle;
@@ -134,6 +139,7 @@ sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPr
     required PluginAuthenticationBrowserChallenge challenge,
   }) = PluginAuthenticationPresentationBrowserFinalizing;
   const factory browserLaunchFailed({
+    required PluginAuthenticationBrowserRetryReason reason,
     required String pluginId,
     required PluginAuthenticationChallenge challenge,
   }) = PluginAuthenticationPresentationBrowserLaunchFailedState;

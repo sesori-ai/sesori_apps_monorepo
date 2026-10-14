@@ -431,7 +431,10 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
       PluginAuthenticationPresentationBrowserOpening() => loc.harnessAuthenticationOpening,
       PluginAuthenticationPresentationBrowserWaiting() => loc.harnessAuthenticationWaitingForBrowser,
       PluginAuthenticationPresentationBrowserFinalizing() => loc.harnessAuthenticationFinalizing,
-      PluginAuthenticationPresentationBrowserLaunchFailedState() => loc.harnessAuthenticationBrowserFailed,
+      PluginAuthenticationPresentationBrowserLaunchFailedState(:final reason) => switch (reason) {
+        PluginAuthenticationBrowserRetryReason.busy => loc.harnessAuthenticationBrowserBusy,
+        PluginAuthenticationBrowserRetryReason.launchFailed => loc.harnessAuthenticationBrowserFailed,
+      },
       PluginAuthenticationPresentationCancellingUncertain() => loc.harnessAuthenticationCancellingUncertain,
       PluginAuthenticationPresentationCancelling() => loc.harnessAuthenticationCancelling,
       PluginAuthenticationPresentationChallenge() => loc.harnessAuthenticationWaiting,

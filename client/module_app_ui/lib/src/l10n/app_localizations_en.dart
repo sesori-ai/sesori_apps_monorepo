@@ -763,6 +763,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'The bridge returned an invalid login website. Check the bridge logs for details.';
 
   @override
+  String get harnessAuthenticationBrowserBusy => 'Finish the current sign-in first, then try again.';
+
+  @override
   String get harnessAuthenticationBrowserFailed => 'The secure website could not be opened. Try again.';
 
   @override

@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-authentication-owner`, `8bfeda9416`, in the provided `copper-heron` worktree.
+- Branch/base: `sesori/mcp-client-authentication`, `94c80bcc3a`, in the provided `copper-heron` worktree.
 - Current step: 11/21 is in [#1957][pr-1957];
   local successor 12/21 scopes browser ownership;
   authentication wire contracts merged as [#1956][pr-1956];
@@ -32,7 +32,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 9/21 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
 | 10/21 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
 | 11/21 | Headless auth owner/routes | In review | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/21 | Browser ownership (8.a) | In progress | Planning only: provider/MCP handles and busy behavior |
+| 12/21 | Browser ownership (8.a) | In progress | Provider/MCP handles and busy behavior |
 | 13/21 | Shared client authentication lifecycle (8.b) | Not started | — |
 | 14/21 | Visible authentication and controls (8.c) | Not started | — |
 | 15/21 | Session external actions (8.d) | Not started | — |
@@ -719,3 +719,26 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   starting attempt during read-only preparation, and explicit cancellation stays
   prompt. The route recovery assertion covers that contract. Focused evidence
   is now 179 tests: 29 owner + 77 runtime + 17 client inventory + 56 shared codec.
+
+- Browser ownership step 12 is implemented locally: bridge/connection/purpose
+  identity handles, typed busy, matching retry/cancel/disposal, accepted-provider
+  ownership, retained blocked challenge and explicit retry. Architecture review
+  pass 1 approved the new production boundaries against `f6da8d1151`; subsequent
+  changes are fixture/test/documentation only.
+- Browser focused evidence is 198 tests: 169 core transport/provider/Cubit plus
+  29 shared harness widget tests. The overlap regression failed before the fix.
+  Core/shared UI and downstream mobile/desktop analyzers pass. Presentation and
+  localization generators ran; no unrelated generated output was retained.
+- The debug macOS synthetic visual fixture builds and starts with Metal/Impeller,
+  without account, bridge, browser or persistence initialization. Native UI
+  interaction is pending Computer Use permissions; this is not a visual pass.
+  The user requested setup instructions, supplied from current official OpenAI
+  documentation. The existing production app PID 7903 remains untouched.
+- Additional callback qualification on Claude 2.1.221/2.1.291 verifies the owning
+  native helper PID binds the expected loopback port and a fixture HTTP browser
+  return completes authentication without stdin forwarding. Each pin made one
+  fixture token request; explicit cancellation stopped children within 96 ms in
+  the bounded one-second observation, and logout preserved server definitions.
+  The tested owner source is `94c80bcc3a`, with the in-memory catalog/runtime
+  adapter and isolated fixture credentials. This qualifies direct loopback
+  return, not system-browser launch, real-provider policy, relay or packaged UI.

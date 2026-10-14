@@ -217,3 +217,10 @@ Automated adapter/route coverage:
   `bridge/app/test/bridge/routing/mcp_authentication_handler_test.dart`; active-only
   lease coverage is in the runtime suite and harness-wide client invalidation is
   covered by `client/module_core/test/services/mcp_service_test.dart`.
+
+### Client browser sharing
+
+The existing browser transport now accepts bridge/connection/purpose-bound owner handles and returns typed busy for a
+competing flow. Matching retry/cancel protects provider and MCP callback listeners in both start orders. Provider busy
+presentation retains its issued challenge for explicit retry. This transport seam is implemented; MCP client lifecycle
+and visible MCP authentication controls remain pending. The headless owner and final qualification matrix are unchanged.

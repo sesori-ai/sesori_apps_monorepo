@@ -17,7 +17,24 @@ enum PluginAuthenticationBrowserPhase() {
   waiting,
 }
 
+enum PluginAuthenticationBrowserPurpose() {
+  provider,
+  mcp,
+}
+
+/// An identity handle for one sign-in on one bridge connection. Retain it for retry and cleanup.
+final class PluginAuthenticationBrowserOwner({
+  required final String bridgeId,
+  required final int connectionEpoch,
+  required final PluginAuthenticationBrowserPurpose purpose,
+}) {
+  @override
+  String toString() => "PluginAuthenticationBrowserOwner";
+}
+
 sealed class const PluginAuthenticationBrowserFlowResult();
+
+final class const PluginAuthenticationBrowserBusy() extends PluginAuthenticationBrowserFlowResult;
 
 final class const PluginAuthenticationBrowserDirect() extends PluginAuthenticationBrowserFlowResult;
 
@@ -46,12 +63,17 @@ class PluginAuthenticationBrowserService({
   _PluginAuthenticationBrowserOperation? _active;
 
   Future<PluginAuthenticationBrowserFlowResult> authenticate({
+    required PluginAuthenticationBrowserOwner owner,
     required PluginAuthenticationBrowserChallenge challenge,
     required bool isLocalBridge,
     required bool reuseActiveListener,
     required void Function(PluginAuthenticationBrowserPhase phase) onPhase,
     required void Function(PluginAuthenticationBrowserFlowFailed failure) onDetachedFailure,
   }) async {
+    final active = _active;
+    if (active != null && (!identical(active.owner, owner) || !reuseActiveListener || active.finishing != null)) {
+      return const PluginAuthenticationBrowserBusy();
+    }
     onPhase(PluginAuthenticationBrowserPhase.opening);
 
     late final _PluginAuthenticationBrowserOperation operation;
@@ -65,11 +87,11 @@ class PluginAuthenticationBrowserService({
         );
       }
       operation = active
-        ..detachedAfterRetryableFailure = false
+        ..reportDetachedFailure = false
         ..onDetachedFailure = onDetachedFailure;
     } else {
-      final previous = _active;
       operation = _PluginAuthenticationBrowserOperation(
+        owner: owner,
         challenge: challenge,
         bounceUri: isLocalBridge
             ? null
@@ -84,20 +106,15 @@ class PluginAuthenticationBrowserService({
       );
       _active = operation;
       operation.timer = Timer(_operationLifetime, () => _expire(operation: operation));
-      if (previous != null) {
-        final previousResult = await _finish(
-          operation: previous,
-          result: const PluginAuthenticationBrowserFlowCancelled(),
-        );
-        if (operation.ended.isCompleted) return await operation.ended.future;
-        if (previousResult is PluginAuthenticationBrowserFlowFailed) {
-          return await _finish(operation: operation, result: previousResult);
-        }
-      }
     }
 
     if (isLocalBridge) {
       final result = await _openDirect(operation: operation);
+      if (result is PluginAuthenticationBrowserDirect && !operation.ended.isCompleted) {
+        // The native bridge owns this callback port. Its owner releases the browser on native settlement.
+        operation.reportDetachedFailure = true;
+        return result;
+      }
       return await _finish(operation: operation, result: result);
     }
 
@@ -108,7 +125,7 @@ class PluginAuthenticationBrowserService({
 
     final result = await _openRemote(operation: operation, onPhase: onPhase);
     if (result case PluginAuthenticationBrowserFlowFailed(retryableWithActiveListener: true)) {
-      operation.detachedAfterRetryableFailure = true;
+      operation.reportDetachedFailure = true;
       return result;
     }
     return await _finish(operation: operation, result: result);
@@ -297,9 +314,9 @@ class PluginAuthenticationBrowserService({
     operation.ended.future.then<_OperationWaitResult<T>>((result) => _OperationEnded(result: result)),
   ]);
 
-  Future<PluginAuthenticationBrowserFlowFailed?> cancelActive() async {
+  Future<PluginAuthenticationBrowserFlowFailed?> cancel({required PluginAuthenticationBrowserOwner owner}) async {
     final operation = _active;
-    if (operation == null) return null;
+    if (operation == null || !identical(operation.owner, owner)) return null;
     final result = await _finish(
       operation: operation,
       result: const PluginAuthenticationBrowserFlowCancelled(),
@@ -317,7 +334,7 @@ class PluginAuthenticationBrowserService({
         retryableWithActiveListener: false,
       ),
     );
-    if (operation.detachedAfterRetryableFailure && result is PluginAuthenticationBrowserFlowFailed) {
+    if (operation.reportDetachedFailure && result is PluginAuthenticationBrowserFlowFailed) {
       operation.onDetachedFailure(result);
     }
   }
@@ -337,10 +354,10 @@ class PluginAuthenticationBrowserService({
     required _PluginAuthenticationBrowserOperation operation,
     required PluginAuthenticationBrowserFlowResult result,
   }) async {
-    if (identical(_active, operation)) _active = null;
     operation.timer?.cancel();
     final session = operation.session;
     final closeFailure = session == null ? null : await _closeSession(session: session);
+    if (identical(_active, operation)) _active = null;
     final finalResult = closeFailure ?? result;
     if (!operation.ended.isCompleted) operation.ended.complete(finalResult);
     return finalResult;
@@ -363,6 +380,7 @@ class PluginAuthenticationBrowserService({
 }
 
 class _PluginAuthenticationBrowserOperation({
+  required final PluginAuthenticationBrowserOwner owner,
   required final PluginAuthenticationBrowserChallenge challenge,
   required final Uri? bounceUri,
   required void Function(PluginAuthenticationBrowserFlowFailed failure) onDetachedFailure,
@@ -371,7 +389,7 @@ class _PluginAuthenticationBrowserOperation({
   Timer? timer;
   final Completer<PluginAuthenticationBrowserFlowResult> ended = Completer();
   Future<PluginAuthenticationBrowserFlowResult>? finishing;
-  bool detachedAfterRetryableFailure = false;
+  bool reportDetachedFailure = false;
   void Function(PluginAuthenticationBrowserFlowFailed failure) onDetachedFailure = onDetachedFailure;
 }
 
