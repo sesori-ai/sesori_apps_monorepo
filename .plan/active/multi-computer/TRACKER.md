@@ -61,7 +61,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   retargets to the local computer when the supervised id appears or changes. A `retarget` during the very first
   connect only stores the id (adoption no longer overwrites it), so that connect still lands on the relay's pick and
   the switch takes effect on the next connect (accepted: switching is offered only once connected). Late answers
-  and mutations from the previous computer are fenced by detaching its socket, which fails its pending requests;
+  and mutations from the previous computer are fenced by detaching its socket, which fails its pending requests
+  locally (a mutation already sent may still apply on that computer, which is correct for its own state);
   a failed local read of the stored target falls back to unpinned (declined: local preference reads do not fail in
   practice).
 - No reduction of the retirement matrix has been requested or accepted.
