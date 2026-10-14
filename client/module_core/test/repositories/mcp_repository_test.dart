@@ -53,6 +53,8 @@ void main() {
 }
 
 class _Api() implements McpApi {
+  @override
+  Object? noSuchMethod(Invocation invocation) => throw UnimplementedError();
   ApiResponse<McpInventoryResult> response = SuccessResponse(const McpInventoryUnknown());
   @override
   Future<ApiResponse<McpInventoryResult>> getInventory({required McpInventoryRequest request}) async => response;

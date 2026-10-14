@@ -332,6 +332,7 @@ terminal UI output.
 | Browser owner handle and typed busy result | Existing client browser service's single active operation; prevent provider and MCP flows from cancelling each other. No new registry or queue. |
 | Form draft, submission state, and field errors | Client `PendingFormCubit`; invalid input must remain editable until accepted or settled. Drafts stay in memory only. |
 | Current visible inventory, refresh-in-flight marker, and auth presentation | Client service/cubit, scoped to the selected bridge/harness/context. Reuse connection fencing; no persistent inventory. |
+| One shared client MCP auth observation and accepted browser handle | Client `McpAuthenticationService`; connection/bridge epoch, observation/mutation versions and one in-flight read preserve authoritative recovery while POST waits. Reuse management's bridge identity; no native request registry, callback queue, timer or persistence. Cubits observe without owning cancellation. |
 | Native subscriptions | Existing plugin connection/process owner, held in its existing composite subscription where applicable. No new watcher framework. |
 
 Persistent additions: **none in Sesori**. Explicit native enablement, sign-in, and sign-out can change the harness's own

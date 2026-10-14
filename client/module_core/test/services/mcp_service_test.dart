@@ -378,6 +378,8 @@ McpInventorySnapshot _snapshot({required McpScope scope, required String name}) 
 );
 
 class _Repository() implements McpRepository {
+  @override
+  Object? noSuchMethod(Invocation invocation) => throw UnimplementedError();
   final List<McpInventoryRequest> requests = [];
   final List<Completer<McpReadResult>> pending = [];
   @override

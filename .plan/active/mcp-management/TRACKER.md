@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-client-authentication`, `067380c981`, in the provided `copper-heron` worktree.
+- Branch/base: `sesori/mcp-authentication-lifecycle`, `5c47d7532f`, in the provided `copper-heron` worktree.
 - Current step: 11/21 merged as [#1957][pr-1957];
-  step 12/21 is in [#1962][pr-1962], with shared client lifecycle drafted locally as its sole successor;
+  step 12/21 merged as [#1962][pr-1962], and step 13/21 implements the shared client lifecycle;
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -32,7 +32,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 9/21 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
 | 10/21 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
 | 11/21 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/21 | Browser ownership (8.a) | In review | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
+| 12/21 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
 | 13/21 | Shared client authentication lifecycle (8.b) | In progress | Local API/repository/owner/Cubit draft |
 | 14/21 | Visible authentication and controls (8.c) | Not started | — |
 | 15/21 | Session external actions (8.d) | Not started | — |
@@ -785,3 +785,30 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Core analysis is clean. The production UI is unchanged from its native recording.
 
 [pr-1962]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1962
+
+- Step 12 merged at accepted head `b4498eaae6`: all 20 pre-merge checks passed
+  (19 success, one skip), Cubic approved, and current-head Codex code/security
+  reviews completed. All four actionable bot threads were addressed and resolved.
+  The terminal merged report also observed a newly running post-merge check;
+  that report is not evidence that the added check had passed.
+- Step 13 is implemented locally on merged base `5c47d7532f`: typed API/repository,
+  one shared connection/bridge-fenced auth service, request-scoped recovery while
+  start POST waits, explicit browser intent, matching handle/challenge reuse,
+  busy retention, native settlement and observational Cubits. Existing management
+  supplies authoritative bridge identity; unsupported identity is explicit.
+  No provider state machine, native request registry, timer, persistence or
+  configuration writer was copied or added. No existing owner becomes obsolete.
+- Step-13 focused evidence: 13 auth service/Cubit and two auth repository tests
+  pass, plus 17 inventory and four repository regressions (36 total). Core, mobile
+  and desktop analyzers pass. DI generation adds 11 generated lines. Native truth,
+  request progress and browser presentation are separate typed states; source
+  errors retain causes, and callback destinations remain absent from logs/SSE.
+  This internal lifecycle has no new visible controls or database effect;
+  presentation/native-provider/relay/package qualification remains pending.
+
+- Step-13 architecture implementation review pass 1 **approved** the 16 staged
+  paths against `5c47d7532f`, applying Client rules. No architectural findings.
+  Mutable budget is ten fields: state subject, composite subscriptions, current
+  connection and bridge ID, epoch, observation/staleness/mutation versions,
+  in-flight read epoch, and the one accepted browser record. These cover current
+  recovery/ownership; no per-attempt map, queue, timer or durable state is added.
