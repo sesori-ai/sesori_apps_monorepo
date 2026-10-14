@@ -104,7 +104,8 @@ class FakeBridgeRegistrationRepository() implements BridgeRegistrationRepository
     return BridgeSummary(
       id: nextBridgeId,
       name: name,
-      platform: platform,
+      platform: BridgePlatform.macos,
+      status: BridgeRegistrationStatus.inactive,
       addedAt: DateTime.utc(2026, 6, 1),
       lastSeenAt: null,
     );

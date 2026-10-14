@@ -781,10 +781,8 @@ class RelayClient._({
   void _onTextFrame(String message) {
     try {
       final decoded = jsonDecodeMap(message);
-      final typeValue = decoded["type"];
-      final type = typeValue is String ? typeValue : null;
-      switch (type) {
-        case RelayProtocol.typeBridgeConnected:
+      switch (RelayNoticeMessage.fromJson(decoded)) {
+        case BridgeConnectedMessage():
           logd("Relay: bridge came online");
           // The first status describes the bridge present when this phone
           // joined. A later online status is a new bridge relay connection, so
@@ -795,7 +793,7 @@ class RelayClient._({
             _replayPendingHandshakeFrame();
           }
           _bridgeStatusController.add(BridgeStatus.online);
-        case RelayProtocol.typeBridgeDisconnected:
+        case BridgeDisconnectedMessage():
           logd("Relay: bridge went offline");
           _lastBridgeStatus = BridgeStatus.offline;
           final firstBinaryMessage = _firstBinaryMessage;
@@ -807,8 +805,10 @@ class RelayClient._({
             firstBinaryMessage.completeError(const _BridgeOfflineDuringHandshake());
           }
           _bridgeStatusController.add(BridgeStatus.offline);
-        default:
-          logw("Relay: unknown text frame type: ${type.toString()}");
+        case BridgePresenceMessage(:final bridgeId, :final online):
+          logd("Relay: bridge $bridgeId presence online=$online");
+        case UnknownRelayNoticeMessage():
+          logw("Relay: unknown text frame type: ${decoded["type"].toString()}");
       }
     } catch (error, stackTrace) {
       loge("Failed to parse relay text frame", error, stackTrace);

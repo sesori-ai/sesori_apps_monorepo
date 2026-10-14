@@ -4,6 +4,7 @@ import "dart:io";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/auth_api.dart";
 import "package:sesori_bridge/src/foundation/abortable_request.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -23,7 +24,8 @@ void main() {
 
       expect(summary.id, equals("br_server001"));
       expect(summary.name, equals("dev-laptop"));
-      expect(summary.platform, equals("macos"));
+      expect(summary.platform, equals(BridgePlatform.macos));
+      expect(summary.status, equals(BridgeRegistrationStatus.inactive));
       final request = server.requests.single;
       expect(request.method, equals("POST"));
       expect(request.path, equals("/auth/bridges"));
@@ -170,6 +172,7 @@ class _BridgesTestServer._(final HttpServer _server, final int _statusCode) {
           "id": "br_server001",
           "name": requested["name"],
           "platform": requested["platform"],
+          "status": "inactive",
           "addedAt": "2026-06-01T00:00:00.000Z",
           "lastSeenAt": null,
         }),

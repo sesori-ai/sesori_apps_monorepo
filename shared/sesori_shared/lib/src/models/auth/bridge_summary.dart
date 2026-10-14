@@ -10,10 +10,28 @@ sealed class BridgeSummary with _$BridgeSummary {
   const factory({
     required String id,
     required String name,
-    required String platform,
+    @JsonKey(unknownEnumValue: BridgePlatform.unknown) required BridgePlatform platform,
+    required BridgeRegistrationStatus status,
     required DateTime addedAt,
     required DateTime? lastSeenAt,
   }) = _BridgeSummary;
 
   factory fromJson(Map<String, dynamic> json) => _$BridgeSummaryFromJson(json);
+}
+
+/// The operating system a bridge registered from.
+enum BridgePlatform() {
+  macos,
+  windows,
+  linux,
+
+  /// A platform a newer server reports that this client does not know yet.
+  unknown,
+}
+
+/// The connectivity the relay last reported to the auth server for a bridge.
+/// Named apart from the relay socket's own bridge status.
+enum BridgeRegistrationStatus() {
+  active,
+  inactive,
 }

@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$BridgeSummary {
 
- String get id; String get name; String get platform; DateTime get addedAt; DateTime? get lastSeenAt;
+ String get id; String get name;@JsonKey(unknownEnumValue: BridgePlatform.unknown) BridgePlatform get platform; BridgeRegistrationStatus get status; DateTime get addedAt; DateTime? get lastSeenAt;
 /// Create a copy of BridgeSummary
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +30,20 @@ $BridgeSummaryCopyWith<BridgeSummary> get copyWith => _$BridgeSummaryCopyWithImp
 @override
 bool operator ==(Object other) {
   final _this = this as BridgeSummary;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeSummary&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.platform, _this.platform) || other.platform == _this.platform)&&(identical(other.addedAt, _this.addedAt) || other.addedAt == _this.addedAt)&&(identical(other.lastSeenAt, _this.lastSeenAt) || other.lastSeenAt == _this.lastSeenAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeSummary&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.platform, _this.platform) || other.platform == _this.platform)&&(identical(other.status, _this.status) || other.status == _this.status)&&(identical(other.addedAt, _this.addedAt) || other.addedAt == _this.addedAt)&&(identical(other.lastSeenAt, _this.lastSeenAt) || other.lastSeenAt == _this.lastSeenAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as BridgeSummary;
-  return Object.hash(runtimeType,_this.id,_this.name,_this.platform,_this.addedAt,_this.lastSeenAt);
+  return Object.hash(runtimeType,_this.id,_this.name,_this.platform,_this.status,_this.addedAt,_this.lastSeenAt);
 }
 
 @override
 String toString() {
   final _this = this as BridgeSummary;
-  return 'BridgeSummary(id: ${_this.id}, name: ${_this.name}, platform: ${_this.platform}, addedAt: ${_this.addedAt}, lastSeenAt: ${_this.lastSeenAt})';
+  return 'BridgeSummary(id: ${_this.id}, name: ${_this.name}, platform: ${_this.platform}, status: ${_this.status}, addedAt: ${_this.addedAt}, lastSeenAt: ${_this.lastSeenAt})';
 }
 
 
@@ -54,7 +54,7 @@ abstract mixin class $BridgeSummaryCopyWith<$Res>  {
   factory $BridgeSummaryCopyWith(BridgeSummary value, $Res Function(BridgeSummary) _then) = _$BridgeSummaryCopyWithImpl;
 @useResult
 $Res call({
- String id, String name, String platform, DateTime addedAt, DateTime? lastSeenAt
+ String id, String name,@JsonKey(unknownEnumValue: BridgePlatform.unknown) BridgePlatform platform, BridgeRegistrationStatus status, DateTime addedAt, DateTime? lastSeenAt
 });
 
 
@@ -71,12 +71,13 @@ class _$BridgeSummaryCopyWithImpl<$Res>
 
 /// Create a copy of BridgeSummary
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? platform = null,Object? addedAt = null,Object? lastSeenAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? name = null,Object? platform = null,Object? status = null,Object? addedAt = null,Object? lastSeenAt = freezed,}) {
   return _then(BridgeSummary(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,platform: null == platform ? _self.platform : platform // ignore: cast_nullable_to_non_nullable
-as String,addedAt: null == addedAt ? _self.addedAt : addedAt // ignore: cast_nullable_to_non_nullable
+as BridgePlatform,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as BridgeRegistrationStatus,addedAt: null == addedAt ? _self.addedAt : addedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,lastSeenAt: freezed == lastSeenAt ? _self.lastSeenAt : lastSeenAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
@@ -90,12 +91,13 @@ as DateTime?,
 @JsonSerializable()
 
 class _BridgeSummary implements BridgeSummary {
-  const _BridgeSummary({required this.id, required this.name, required this.platform, required this.addedAt, required this.lastSeenAt});
+  const _BridgeSummary({required this.id, required this.name, @JsonKey(unknownEnumValue: BridgePlatform.unknown) required this.platform, required this.status, required this.addedAt, required this.lastSeenAt});
   factory _BridgeSummary.fromJson(Map<String, dynamic> json) => _$BridgeSummaryFromJson(json);
 
 @override final  String id;
 @override final  String name;
-@override final  String platform;
+@override@JsonKey(unknownEnumValue: BridgePlatform.unknown) final  BridgePlatform platform;
+@override final  BridgeRegistrationStatus status;
 @override final  DateTime addedAt;
 @override final  DateTime? lastSeenAt;
 
@@ -112,18 +114,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.addedAt, addedAt) || other.addedAt == addedAt)&&(identical(other.lastSeenAt, lastSeenAt) || other.lastSeenAt == lastSeenAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.status, status) || other.status == status)&&(identical(other.addedAt, addedAt) || other.addedAt == addedAt)&&(identical(other.lastSeenAt, lastSeenAt) || other.lastSeenAt == lastSeenAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,name,platform,addedAt,lastSeenAt);
+    return Object.hash(runtimeType,id,name,platform,status,addedAt,lastSeenAt);
 }
 
 @override
 String toString() {
-    return 'BridgeSummary(id: $id, name: $name, platform: $platform, addedAt: $addedAt, lastSeenAt: $lastSeenAt)';
+    return 'BridgeSummary(id: $id, name: $name, platform: $platform, status: $status, addedAt: $addedAt, lastSeenAt: $lastSeenAt)';
 }
 
 
@@ -134,7 +136,7 @@ abstract mixin class _$BridgeSummaryCopyWith<$Res> implements $BridgeSummaryCopy
   factory _$BridgeSummaryCopyWith(_BridgeSummary value, $Res Function(_BridgeSummary) _then) = __$BridgeSummaryCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String name, String platform, DateTime addedAt, DateTime? lastSeenAt
+ String id, String name,@JsonKey(unknownEnumValue: BridgePlatform.unknown) BridgePlatform platform, BridgeRegistrationStatus status, DateTime addedAt, DateTime? lastSeenAt
 });
 
 
@@ -151,12 +153,13 @@ class __$BridgeSummaryCopyWithImpl<$Res>
 
 /// Create a copy of BridgeSummary
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? platform = null,Object? addedAt = null,Object? lastSeenAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? platform = null,Object? status = null,Object? addedAt = null,Object? lastSeenAt = freezed,}) {
   return _then(_BridgeSummary(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,platform: null == platform ? _self.platform : platform // ignore: cast_nullable_to_non_nullable
-as String,addedAt: null == addedAt ? _self.addedAt : addedAt // ignore: cast_nullable_to_non_nullable
+as BridgePlatform,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as BridgeRegistrationStatus,addedAt: null == addedAt ? _self.addedAt : addedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,lastSeenAt: freezed == lastSeenAt ? _self.lastSeenAt : lastSeenAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));

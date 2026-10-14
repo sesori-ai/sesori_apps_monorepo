@@ -31,7 +31,8 @@ BridgeSummary _bridge({required String name, DateTime? lastSeenAt}) {
   return BridgeSummary(
     id: "bridge-1",
     name: name,
-    platform: "macos",
+    platform: BridgePlatform.macos,
+    status: BridgeRegistrationStatus.active,
     addedAt: DateTime.utc(2026, 1, 1),
     lastSeenAt: lastSeenAt,
   );

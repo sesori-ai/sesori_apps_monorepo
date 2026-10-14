@@ -132,7 +132,8 @@ void main() {
         BridgeSummary(
           id: "bridge-1",
           name: "workstation.local",
-          platform: "macos",
+          platform: BridgePlatform.macos,
+          status: BridgeRegistrationStatus.active,
           addedAt: DateTime.utc(2026, 1, 1),
           lastSeenAt: DateTime.utc(2026, 9, 1),
         ),

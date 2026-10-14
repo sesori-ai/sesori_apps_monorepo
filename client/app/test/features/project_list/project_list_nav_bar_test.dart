@@ -123,7 +123,8 @@ void main() {
         BridgeSummary(
           id: "a",
           name: "Macbook-Pro.local",
-          platform: "macos",
+          platform: BridgePlatform.macos,
+          status: BridgeRegistrationStatus.active,
           addedAt: DateTime.utc(2026),
           lastSeenAt: DateTime.utc(2026, 7),
         ),
@@ -192,7 +193,8 @@ void main() {
     final macbook = BridgeSummary(
       id: "a",
       name: "Macbook-Pro.local",
-      platform: "macos",
+      platform: BridgePlatform.macos,
+      status: BridgeRegistrationStatus.active,
       addedAt: DateTime.utc(2026),
       lastSeenAt: DateTime.utc(2026, 7),
     );

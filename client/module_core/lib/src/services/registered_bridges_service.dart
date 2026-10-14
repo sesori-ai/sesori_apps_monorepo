@@ -35,6 +35,10 @@ import "../repositories/registered_bridges_store.dart";
 ///    is (re)resolved so a consumer that only listens to [isRegistered] — the
 ///    overlay — gets the right answer without driving the lookup itself.
 ///
+/// The account's bridge list itself is published on [bridges]. A live
+/// connection marks it stale without emitting, so the next
+/// [getRegisteredBridges] refetches while consumers keep the last list.
+///
 /// [RegisteredBridgesStore] is the Layer-2 persistence/cache repository (a
 /// data-access role); this service is the Layer-3 orchestrator that adds the network tier,
 /// the connection-driven latching, and the reactive stream on top of it. The
@@ -61,8 +65,13 @@ class RegisteredBridgesService({
   /// [getRegisteredBridges] callers onto a single network request.
   Future<List<BridgeSummary>>? _activeFetch;
 
-  /// Last successful bridge-list result, sorted in display order.
-  List<BridgeSummary>? _cachedBridges;
+  /// The latest fetched bridge list, sorted in display order. Seeded empty and
+  /// emptied on logout; a failed fetch keeps the last list.
+  final BehaviorSubject<List<BridgeSummary>> _bridges = BehaviorSubject<List<BridgeSummary>>.seeded(const []);
+
+  /// Whether [_bridges] holds a non-empty list fetched since the last live
+  /// connection, so [getRegisteredBridges] can answer without the network.
+  bool _bridgesCurrent = false;
 
   /// Auth generation, bumped on every logout. An asynchronous read, lookup, or
   /// connection-driven latch captures this when it starts; if a logout bumps
@@ -97,6 +106,10 @@ class RegisteredBridgesService({
   /// flips to `true` once known, and resets to `false` on logout. Never emits a
   /// definitive "no bridges" — `false` only means "not yet known".
   ValueStream<bool> get isRegistered => _isRegistered.stream;
+
+  /// The account's registered bridges, most recently seen first. Emits each
+  /// successful fetch; starts empty and returns to empty on logout.
+  ValueStream<List<BridgeSummary>> get bridges => _bridges.stream;
 
   /// Resolves whether the account has any registered bridge, latching a positive
   /// answer for the rest of the run. Concurrent calls are coalesced into a
@@ -138,8 +151,7 @@ class RegisteredBridgesService({
   /// throw (network timeout, deserialization) — rather than an ErrorResponse —
   /// would otherwise surface as an uncaught async error.
   Future<List<BridgeSummary>> getRegisteredBridges() {
-    final cached = _cachedBridges;
-    if (cached != null) return Future.value(cached);
+    if (_bridgesCurrent) return Future.value(_bridges.value);
     return _activeFetch ??= _fetchRegisteredBridges().whenComplete(() => _activeFetch = null);
   }
 
@@ -153,7 +165,10 @@ class RegisteredBridgesService({
       if (generation != _authGeneration) return const [];
       switch (response) {
         case SuccessResponse(:final data):
-          if (data.isEmpty) return const [];
+          if (data.isEmpty) {
+            if (_bridges.value.isNotEmpty) _emitBridges(bridges: const []);
+            return const [];
+          }
           // Latch the positive answer so future transitions skip the network.
           await _latch(generation);
           // A logout may have raced the latch: it abandons (and undoes) the
@@ -161,7 +176,8 @@ class RegisteredBridgesService({
           // account's answer to the caller. Retire the result to match.
           if (generation != _authGeneration) return const [];
           final sorted = List<BridgeSummary>.unmodifiable(_sortedByRecency(bridges: data));
-          _cachedBridges = sorted;
+          _bridgesCurrent = true;
+          _emitBridges(bridges: sorted);
           return sorted;
         case ErrorResponse(:final error):
           logw("Failed to fetch registered bridges: ${error.toString()}");
@@ -195,7 +211,7 @@ class RegisteredBridgesService({
     switch (status) {
       // A live E2E connection proves a bridge exists — latch without a lookup.
       case ConnectionConnected():
-        _cachedBridges = null;
+        _bridgesCurrent = false;
         unawaited(_latch());
       // Parked offline: (re)resolve so a consumer of [isRegistered] alone — the
       // overlay — gets the right answer. Coalesced, and a no-op once latched.
@@ -239,8 +255,13 @@ class RegisteredBridgesService({
     if (!_isRegistered.isClosed && !_isRegistered.value) _isRegistered.add(true);
   }
 
+  void _emitBridges({required List<BridgeSummary> bridges}) {
+    if (!_bridges.isClosed) _bridges.add(bridges);
+  }
+
   void _reset() {
-    _cachedBridges = null;
+    _bridgesCurrent = false;
+    if (_bridges.value.isNotEmpty) _emitBridges(bridges: const []);
     if (!_isRegistered.isClosed && _isRegistered.value) _isRegistered.add(false);
   }
 
@@ -251,5 +272,6 @@ class RegisteredBridgesService({
     _statusSubscription = null;
     _authSubscription = null;
     await _isRegistered.close();
+    await _bridges.close();
   }
 }

@@ -277,6 +277,96 @@ void main() {
     });
   });
 
+  group("bridges stream", () {
+    test("starts empty and emits each fetched list in display order", () async {
+      final older = testBridgeSummary(id: "a", lastSeenAt: DateTime.utc(2026, 6, 1));
+      final newer = testBridgeSummary(id: "b", lastSeenAt: DateTime.utc(2026, 7, 1));
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([older, newer]),
+      );
+      final service = build();
+      expect(service.bridges.value, isEmpty);
+
+      await service.getRegisteredBridges();
+
+      expect(service.bridges.value.map((b) => b.id), ["b", "a"]);
+    });
+
+    test("a live connection keeps the list until the next fetch replaces it", () async {
+      final oldBridge = testBridgeSummary(id: "old");
+      final newBridge = testBridgeSummary(id: "new", status: BridgeRegistrationStatus.inactive);
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([oldBridge]),
+      );
+      final service = build();
+      await service.getRegisteredBridges();
+      final emissions = <List<BridgeSummary>>[];
+      final sub = service.bridges.skip(1).listen(emissions.add);
+
+      statusSubject.add(_connected);
+      await _settle();
+      expect(service.bridges.value, [oldBridge], reason: "marked stale without emitting");
+
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([newBridge]),
+      );
+      await service.getRegisteredBridges();
+      await _settle();
+
+      expect(emissions, [
+        [newBridge],
+      ]);
+      await sub.cancel();
+    });
+
+    test("a fetch that finds no bridges emits an empty list", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary()]),
+      );
+      final service = build();
+      await service.getRegisteredBridges();
+      statusSubject.add(_connected);
+      await _settle();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success(const <BridgeSummary>[]),
+      );
+
+      await service.getRegisteredBridges();
+
+      expect(service.bridges.value, isEmpty);
+    });
+
+    test("a failed fetch keeps the last list", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary(id: "kept")]),
+      );
+      final service = build();
+      await service.getRegisteredBridges();
+      statusSubject.add(_connected);
+      await _settle();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.error(ApiError.generic()),
+      );
+
+      await service.getRegisteredBridges();
+
+      expect(service.bridges.value.map((b) => b.id), ["kept"]);
+    });
+
+    test("logout empties the list", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary()]),
+      );
+      final service = build();
+      await service.getRegisteredBridges();
+
+      authSubject.add(const AuthState.unauthenticated());
+      await _settle();
+
+      expect(service.bridges.value, isEmpty);
+    });
+  });
+
   group("reactive latch", () {
     test("seeds the stream from a persisted store latch at construction (no network)", () async {
       when(() => store.hasRegisteredBridges()).thenAnswer((_) async => true);

@@ -1,9 +1,5 @@
 /// Wire protocol constants shared with relay and bridge.
 abstract final class RelayProtocol() {
-  // Message types for bridge status control messages from relay
-  static const typeBridgeConnected = "bridge_connected";
-  static const typeBridgeDisconnected = "bridge_disconnected";
-
   // Auth message fields
   static const typeAuth = "auth";
   static const rolePhone = "phone";
