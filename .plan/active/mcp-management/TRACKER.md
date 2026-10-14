@@ -870,3 +870,9 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   (1,362 changed) across 34 files, with 375 generated and 987 authored lines, below the soft cap.
   The native flow was exercised before the additive omission defaults; changed shared serialization/decoding then
   passed its updated codec suite and exact public v1.9.1 parser fixture. Native ownership/plugin logic was unchanged.
+- Step-14 review correction: the harness-effect regression fails with the former request-derived scope mapping.
+  Native server-action completion now carries its required declared effect scope through the plugin/repository
+  boundary, matching credential forgetting. Claude reports session effects; all internal constructors update
+  together. The changed bridge suites pass 51 tests and Claude resident tests pass with explicit scope assertions,
+  for 149 unique focused tests overall. Interface/Claude/bridge analyzers pass; no new owner or lifecycle is added.
+  Regression prose now says capability fields are decoded, since visible controls remain step 15.

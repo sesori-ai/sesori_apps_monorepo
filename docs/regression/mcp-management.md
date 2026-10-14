@@ -152,7 +152,7 @@ remains pending.
   harness credential effects; stdio is unsupported, SSE/Windows are not implemented,
   and dynamic/unknown/missing configuration requires native setup.
 - Public v1.9.1 bridges omit these availability fields: current clients retain
-  inventory and render capability availability as unknown. Exact released
+  inventory and decode capability availability as unknown. Exact released
   v1.9.1 MCP codecs accept the added fields without losing existing inventory
   or server-control tags. Preserve both directions of this wire compatibility.
 - macOS arm64 is qualified with both pins. Linux qualification, Windows terminal

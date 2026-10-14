@@ -215,7 +215,7 @@ final class ClaudeSessionProcessRepository({
         case PluginMcpServerAction.disable:
           await process.client.setMcpServerEnabled(serverName: target.serverKey, enabled: false);
       }
-      return const PluginMcpActionCompleted();
+      return const PluginMcpActionCompleted(effectScope: PluginMcpActionEffectScope.session);
     } on ClaudeControlException catch (error, stackTrace) {
       return PluginMcpActionFailed(cause: error, causeStackTrace: stackTrace);
     } on TimeoutException catch (error, stackTrace) {

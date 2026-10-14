@@ -132,7 +132,7 @@ void main() {
           PluginMcpServerAction.disable => {"subtype": "mcp_toggle", "serverName": "fixture", "enabled": false},
         });
         process.emitControlResponse(requestId: request["request_id"]! as String, payload: {});
-        expect(await result, isA<PluginMcpActionCompleted>());
+        expect(await result, isA<PluginMcpActionCompleted>().having((value) => value.effectScope, "effect", PluginMcpActionEffectScope.session));
         expect(harness.specs, hasLength(1));
       });
     }

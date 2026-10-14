@@ -291,6 +291,18 @@ void main() {
     expect(changes, isEmpty);
   });
 
+  test("session-targeted controls invalidate their native declared harness effect", () async {
+    plugin.actionResult = const PluginMcpActionCompleted(effectScope: PluginMcpActionEffectScope.harness);
+    final response = await act(
+      pluginId: "fixture",
+      scope: const McpSessionScope(sessionId: "bridge-session"),
+      action: McpServerAction.reconnect,
+    );
+    expect(response.status, 200);
+    expect(changes.single.scope, const McpHarnessScope());
+    expect((plugin.scopes.single as PluginMcpSessionScope).sessionId, "native-session");
+  });
+
   test("native control failure retains diagnostics locally without refreshing or exporting errors", () async {
     plugin.actionResult = PluginMcpActionFailed(
       cause: Exception("fixture-secret"),
@@ -551,7 +563,7 @@ class _InventoryPlugin() extends FakeDerivedBridgePlugin implements McpManagemen
     return actionResult;
   }
 
-  PluginMcpActionResult actionResult = const PluginMcpActionCompleted();
+  PluginMcpActionResult actionResult = const PluginMcpActionCompleted(effectScope: PluginMcpActionEffectScope.session);
   final actions = <(PluginMcpServerTarget, PluginMcpServerAction)>[];
   final List<PluginMcpScope> scopes = [];
   PluginMcpInventoryResult? nextResult;

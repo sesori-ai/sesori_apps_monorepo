@@ -236,11 +236,11 @@ class McpRepository({
           action: nativeAction,
         );
         return switch (native) {
-          PluginMcpActionCompleted() => McpControlCompleted(
-            effectScope: switch (target.scope) {
-              McpHarnessScope() => McpActionEffectScope.harness,
-              McpProjectScope() => McpActionEffectScope.project,
-              McpSessionScope() => McpActionEffectScope.session,
+          PluginMcpActionCompleted(:final effectScope) => McpControlCompleted(
+            effectScope: switch (effectScope) {
+              PluginMcpActionEffectScope.harness => McpActionEffectScope.harness,
+              PluginMcpActionEffectScope.project => McpActionEffectScope.project,
+              PluginMcpActionEffectScope.session => McpActionEffectScope.session,
             },
           ),
           PluginMcpActionUnavailable(:final reason) => McpControlUnavailable(

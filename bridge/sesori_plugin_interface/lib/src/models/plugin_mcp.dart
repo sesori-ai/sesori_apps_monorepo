@@ -67,7 +67,9 @@ enum PluginMcpActionUnavailableReason() {
 
 sealed class const PluginMcpActionResult();
 
-final class const PluginMcpActionCompleted() extends PluginMcpActionResult;
+/// Reports the native action's declared effect, independent of inspection scope.
+final class const PluginMcpActionCompleted({required final PluginMcpActionEffectScope effectScope})
+    extends PluginMcpActionResult;
 
 final class const PluginMcpActionUnavailable({required final PluginMcpActionUnavailableReason reason})
     extends PluginMcpActionResult;
