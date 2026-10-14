@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/multi-computer-plan` from `origin/main` `6a4a42e7a5`, in the provided `brown-dingo` worktree.
-- Current step: 8/15 in PR.
+- Current step: 9/15 in PR.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-14 over two review rounds.
 - Plan PR: #1959, merged 2026-10-14.
 - Architecture plan review: rejected on 2026-10-14 (17 findings); all applied in the same revision. Per `AGENTS.md`
@@ -23,8 +23,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 5/15 | monorepo | Bridge sends a stable host key | Done | #1961 (merged 2026-10-14) |
 | 6/15 | monorepo | Shared contracts: registration status, platform, presence; list stream | Done | #1963 (merged 2026-10-14) |
 | 7/15 | monorepo | Target owner in the connection; resets on retarget | Done | #1965 (merged 2026-10-14) |
-| 8/15 | monorepo | Computer menu, switch dispatcher, and flow on Projects | In PR | — |
-| 9/15 | monorepo | Offline screen lists other online computers (shared body) | Not started | — |
+| 8/15 | monorepo | Computer menu, switch dispatcher, and flow on Projects | Done | #1967 (merged 2026-10-14) |
+| 9/15 | monorepo | Offline screen lists other online computers (shared body) | In PR | — |
 | 10/15 | monorepo | Settings restructured around the computer entry | Not started | — |
 | 11/15 | monorepo | Desktop views a remote computer | Not started | — |
 | 12/15 | monorepo | Presence handling and linked-computer alert | Not started | — |
@@ -65,6 +65,11 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   locally (a mutation already sent may still apply on that computer, which is correct for its own state);
   a failed local read of the stored target falls back to unpinned (declined: local preference reads do not fail in
   practice).
+- 2026-10-14, step 9: the shared `OtherComputersCard` lands with the phone offline screen only. The desktop
+  recovery view adopts it in step 11, which owns its local/remote branching (the card belongs only to the remote
+  branch, and the desktop offers no switch before step 11). An account with a single
+  computer shows no card (D6's "No other computers online" applies when other computers exist but none is online).
+  Picks from the "+ n others" menu report `offline_screen`, where the switch started.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record

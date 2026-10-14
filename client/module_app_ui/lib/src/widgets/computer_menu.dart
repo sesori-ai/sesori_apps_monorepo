@@ -36,7 +36,7 @@ class const ComputerMenu({
             key: ValueKey("computer-menu-${computer.id}"),
             title: computer.name,
             subtitle: _presence(context: context, computer: computer),
-            leadingIcon: _platformIcon(platform: computer.platform),
+            leadingIcon: platformIcon(platform: computer.platform),
             isSelected: computer.id == currentId,
             shortcutLabel: null,
             onTap: () {
@@ -55,7 +55,8 @@ class const ComputerMenu({
     return loc.computerMenuOfflineLastSeen(context.formatTimestamp(lastSeenAt.millisecondsSinceEpoch));
   }
 
-  static IconData _platformIcon({required BridgePlatform platform}) => switch (platform) {
+  /// The glyph every computer list shows for a computer's operating system.
+  static IconData platformIcon({required BridgePlatform platform}) => switch (platform) {
     BridgePlatform.macos => TablerRegular.brand_apple,
     BridgePlatform.windows => TablerRegular.brand_windows,
     BridgePlatform.linux => TablerRegular.terminal_2,

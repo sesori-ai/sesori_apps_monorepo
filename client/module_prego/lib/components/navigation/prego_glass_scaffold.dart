@@ -6,19 +6,6 @@ import "../../module_prego.dart";
 import "../../utils/color_extensions.dart";
 import "prego_top_bar_inset.dart" as top_bar;
 
-/// Where [PregoGlassScaffold] parks its
-/// [PregoGlassScaffold.floatingActionButton].
-enum PregoFloatingActionAlignment() {
-  /// Trailing edge — Flutter's [FloatingActionButtonLocation.endFloat], the
-  /// placement for a corner action such as add-project or new-session.
-  end,
-
-  /// Horizontally centred, at the same height — for an action the page
-  /// presents as its own call to action rather than a corner affordance (the
-  /// bridge onboarding's "Need help?" pill).
-  center,
-}
-
 /// A page scaffold with a glass top navigation bar and the iOS-style
 /// large-title collapse from the `liquid_glass_widgets` navigation showcase
 /// (its `_LargeTitleCollapseDemo`).
@@ -149,10 +136,6 @@ class const PregoGlassScaffold({
   /// Optional floating action button, hosted by the standalone [Scaffold].
   final Widget? floatingActionButton,
 
-  /// Where [floatingActionButton] sits horizontally. Defaults to the trailing
-  /// edge.
-  final PregoFloatingActionAlignment floatingActionAlignment = PregoFloatingActionAlignment.end,
-
   /// A full-screen overlay painted above the body but below the bar, so the
   /// bar (and its back button) stays interactive while it is shown. Use for a
   /// modal scrim such as a blocking loading indicator. Null shows nothing.
@@ -239,36 +222,6 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
     _scrollController.dispose();
     _bannerHeight.dispose();
     super.dispose();
-  }
-
-  /// The floating action handed to the standalone [Scaffold], positioned per
-  /// [PregoGlassScaffold.floatingActionAlignment].
-  ///
-  /// The [Scaffold] has no [FloatingActionButtonLocation], so the action always
-  /// lands on [FloatingActionButtonLocation.endFloat]. Rather than reimplement that
-  /// slot's vertical placement — which already clears the keyboard, the home
-  /// indicator and any snack bar — the centred variant widens the action to
-  /// the full content width and centres the caller's widget inside it.
-  /// `endFloat` then insets that box by the same margin on both sides, so its
-  /// child lands exactly on the page's centre line. The surrounding box is
-  /// empty, and an unfilled [Center] hit-tests only its child, so the widened
-  /// action swallows no taps.
-  Widget? get _floatingActionButton {
-    final fab = widget.floatingActionButton;
-    if (fab == null) return null;
-    return switch (widget.floatingActionAlignment) {
-      PregoFloatingActionAlignment.end => fab,
-      // Measured from the action's own loose constraints (the scaffold's size)
-      // rather than the window, so a narrow split-pane centres on the pane.
-      PregoFloatingActionAlignment.center => LayoutBuilder(
-        builder: (context, constraints) => SizedBox(
-          width: (constraints.maxWidth - 2 * kFloatingActionButtonMargin).clamp(0.0, double.infinity),
-          // heightFactor: 1 keeps the box the child's height; without it the
-          // Center would expand to the full scaffold height.
-          child: Center(heightFactor: 1, child: fab),
-        ),
-      ),
-    };
   }
 
   void _onBannerHeightChanged(double height) {
@@ -529,7 +482,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
       // GlassScaffold is resized above the keyboard, but iOS 26's rounded,
       // translucent keyboard exposes the area behind it around the corners.
       backgroundColor: backgroundColor,
-      floatingActionButton: _floatingActionButton,
+      floatingActionButton: widget.floatingActionButton,
       body: top_bar.PregoTopBarInsetScope(
         baseInset: geometry.baseInset,
         bannerHeight: _bannerHeight,
