@@ -31,6 +31,9 @@ class _Locality({required bool local}) implements ActiveBridgeLocality {
 
   @override
   String? get localBridgeId => null;
+
+  @override
+  Stream<String?> get localBridgeIdStream => const Stream.empty();
 }
 
 const _config = ServerConnectionConfig(relayHost: "wss://fixture.test", authToken: "fixture", bridgeId: null);

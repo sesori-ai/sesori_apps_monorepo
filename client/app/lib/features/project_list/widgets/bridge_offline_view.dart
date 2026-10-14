@@ -38,9 +38,6 @@ class _BridgeOfflineViewState() extends State<_BridgeOfflineView> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
-    final bridge = widget.bridge;
-    final lastSeenAt = bridge?.lastSeenAt;
-    final title = bridge == null ? loc.projectsBridgeOfflineTitle : loc.projectsBridgeOfflineComputerTitle(bridge.name);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
@@ -54,28 +51,8 @@ class _BridgeOfflineViewState() extends State<_BridgeOfflineView> {
           const SizedBox(height: 90),
           const ExcludeSemantics(child: Center(child: ConnectionGraphic.connectionOff())),
           const SizedBox(height: PregoSpacing.lg),
-          // Cross-fades when the lookup lands and the generic heading gives way
-          // to the computer's name.
-          AnimatedSwitcher(
-            duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
-            child: Text(
-              title,
-              key: ValueKey(title),
-              textAlign: TextAlign.center,
-              style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textPrimary),
-            ),
-          ),
-          // How long the bridge has been gone separates "I just closed the
-          // laptop lid" from "this has been down for days". Refreshed by the
-          // screen's minute ticker.
-          if (lastSeenAt != null) ...[
-            const SizedBox(height: PregoSpacing.xxs),
-            Text(
-              loc.projectsBridgeOfflineLastSeen(context.formatTimestamp(lastSeenAt.millisecondsSinceEpoch)),
-              textAlign: TextAlign.center,
-              style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
-            ),
-          ],
+          // The last-seen time is refreshed by the screen's minute ticker.
+          ComputerOfflineHeading(bridge: widget.bridge),
           OtherComputersCard(onSwitchComputer: widget.onSwitchComputer),
           const SizedBox(height: PregoSpacing.x5l),
           // Always visible: the bridge is already installed here, so the common

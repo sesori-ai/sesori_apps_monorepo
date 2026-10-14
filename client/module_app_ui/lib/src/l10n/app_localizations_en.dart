@@ -178,7 +178,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopSidebarRefreshFailed => 'Could not refresh projects and sessions';
 
   @override
-  String get desktopBridgeTakenOver => 'Another bridge currently owns this account connection.';
+  String get desktopBridgeTakenOver =>
+      'Another copy of this computer\'s bridge is running, here or on a cloned machine.';
 
   @override
   String get desktopBridgeTakeOver => 'Take over';
@@ -395,6 +396,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectsDesktopStartBridgeInfo => 'Start the local bridge to load your projects and sessions in Sesori.';
+
+  @override
+  String get projectsDesktopRemoteOfflineInfo =>
+      'Start the bridge on that computer to load its projects and sessions here.';
+
+  @override
+  String desktopViewingComputer(String name) {
+    return 'Viewing: $name';
+  }
+
+  @override
+  String get desktopViewingThisComputer => 'Viewing: This computer';
 
   @override
   String get connectionLostTitle => 'Connection lost';

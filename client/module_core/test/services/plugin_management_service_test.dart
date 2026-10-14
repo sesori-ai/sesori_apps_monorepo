@@ -45,6 +45,9 @@ class const _RemoteBridgeLocality() implements ActiveBridgeLocality {
 
   @override
   String? get localBridgeId => null;
+
+  @override
+  Stream<String?> get localBridgeIdStream => const Stream.empty();
 }
 
 PluginManagementService _pluginManagementService({

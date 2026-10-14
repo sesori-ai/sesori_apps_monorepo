@@ -16,4 +16,7 @@ class DesktopActiveBridgeLocality({required BridgeStatusTracker statusTracker}) 
   /// desktop can still target its own computer.
   @override
   String? get localBridgeId => _statusTracker.status.bridgeId;
+
+  @override
+  Stream<String?> get localBridgeIdStream => _statusTracker.statusStream.map((status) => status.bridgeId).distinct();
 }

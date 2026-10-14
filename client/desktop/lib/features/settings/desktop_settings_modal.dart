@@ -219,6 +219,7 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
             registeredBridgesService: getIt<RegisteredBridgesService>(),
             connectionService: getIt<ConnectionService>(),
             selectedComputerService: getIt<SelectedComputerService>(),
+            activeBridgeLocality: getIt<ActiveBridgeLocality>(),
           ),
         ),
       ],

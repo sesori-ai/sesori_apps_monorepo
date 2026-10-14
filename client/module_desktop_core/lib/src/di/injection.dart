@@ -11,6 +11,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
         ProductAnalyticsService,
         RouteDispatcher,
         RouteSource,
+        SelectedComputerService,
         SessionRepository;
 
 import "../foundation/platform/bridge_executable_path_resolver.dart";
@@ -39,6 +40,7 @@ import "injection.config.dart";
     ProductAnalyticsService,
     RouteDispatcher,
     RouteSource,
+    SelectedComputerService,
     SessionRepository,
     BridgeExecutablePathResolver,
     BridgeProcessEnvironment,

@@ -139,6 +139,10 @@ void _registerListServices({
     getIt.unregister<SelectedComputerService>();
   }
   getIt.registerSingleton<SelectedComputerService>(FakeSelectedComputerService());
+  if (getIt.isRegistered<ActiveBridgeLocality>()) {
+    getIt.unregister<ActiveBridgeLocality>();
+  }
+  getIt.registerSingleton<ActiveBridgeLocality>(const FakeActiveBridgeLocality());
   if (getIt.isRegistered<ProjectInventoryService>()) {
     getIt.unregister<ProjectInventoryService>();
   }

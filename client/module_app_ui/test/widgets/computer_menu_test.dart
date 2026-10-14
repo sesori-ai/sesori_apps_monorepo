@@ -45,6 +45,7 @@ void main() {
           _computer(id: "c", name: "old-tower", status: BridgeRegistrationStatus.inactive, lastSeenAt: null),
         ],
         targetId: "a",
+        localId: null,
       ),
     );
     await tester.pumpWidget(

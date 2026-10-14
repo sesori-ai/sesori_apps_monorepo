@@ -235,6 +235,7 @@ void main() {
     registeredBridges = MockRegisteredBridgesService();
     GetIt.instance.registerSingleton<RegisteredBridgesService>(registeredBridges);
     GetIt.instance.registerSingleton<SelectedComputerService>(FakeSelectedComputerService());
+    GetIt.instance.registerSingleton<ActiveBridgeLocality>(const FakeActiveBridgeLocality());
     computerSwitchDispatcher = _MockComputerSwitchDispatcher();
     when(
       () => computerSwitchDispatcher.switchTo(
