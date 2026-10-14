@@ -461,12 +461,19 @@ class ConnectionService(
   }) {
     final reportedBridgeId = relayClient.reportedBridgeId;
     if (config.bridgeId != null || reportedBridgeId == null) return config;
-    unawaited(
-      _targetBridgeStorage.write(bridgeId: reportedBridgeId).catchError((Object error, StackTrace stackTrace) {
-        loge("Failed to store the adopted target bridge id", error, stackTrace);
-      }),
-    );
+    unawaited(_storeAdoptedTarget(bridgeId: reportedBridgeId));
     return config.copyWith(bridgeId: reportedBridgeId);
+  }
+
+  /// A `retarget` made while this connection was still joining already stored
+  /// the computer the user chose; the relay's pick must not replace it.
+  Future<void> _storeAdoptedTarget({required String bridgeId}) async {
+    try {
+      if (await _targetBridgeStorage.read() != null) return;
+      await _targetBridgeStorage.write(bridgeId: bridgeId);
+    } on Object catch (error, stackTrace) {
+      loge("Failed to store the adopted target bridge id", error, stackTrace);
+    }
   }
 
   void _clearConnectingRelayClient(RelayClient relayClient) {

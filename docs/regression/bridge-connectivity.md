@@ -75,13 +75,17 @@ presents.
   keeps the last list, and logout empties it.
 - The app owns one target computer. It names the stored target in its relay
   `auth`, so reconnects stay on the same computer; with none stored it adopts
-  the bridge the relay reports at join without reconnecting. The desktop pins
-  its own supervised bridge when nothing is stored. Retargeting stores the id,
+  the bridge the relay reports at join without reconnecting, unless a
+  computer was chosen while that connection was joining. The desktop pins its
+  own supervised bridge when nothing is stored and that bridge's id is known;
+  on a fresh install the id is unknown until the helper first registers, so the
+  first connection follows the relay's default computer. Retargeting stores the id,
   detaches the previous computer's socket before announcing the new target, and
   reconnects; the single room key either resumes or is cleared by
   `rekey_required` and replaced through a fresh key exchange. Bridge-scoped
   caches (project list, recent sessions, live activity) reset from their
-  connection-status subscription on a target change, and a late answer from the
+  connection-status subscription when the target moves from one known computer
+  to another (learning the first target is not a change), and a late answer from the
   previous computer never repopulates them. The bar names the target by id from
   the registered list, or the list head while no target is known.
 - Bridge registration uses a stable machine name. On macOS, transient

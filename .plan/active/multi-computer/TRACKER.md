@@ -58,9 +58,12 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   wording problem and moves to step 11.
 - 2026-10-14, step 7: `select` arrives in step 8 with its `source` and analytics event. A fresh desktop install or a
   new login connects before the supervised bridge registers, so it adopts the relay's default computer; step 11
-  retargets to the local computer when the supervised id first appears. A `retarget` during the very first connect
-  only stores the id, so that connect still lands on the old target, and the switch takes effect on the next
-  connect (accepted: switching is offered only once connected).
+  retargets to the local computer when the supervised id appears or changes. A `retarget` during the very first
+  connect only stores the id (adoption no longer overwrites it), so that connect still lands on the relay's pick and
+  the switch takes effect on the next connect (accepted: switching is offered only once connected). Late answers
+  and mutations from the previous computer are fenced by detaching its socket, which fails its pending requests;
+  a failed local read of the stored target falls back to unpinned (declined: local preference reads do not fail in
+  practice).
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record

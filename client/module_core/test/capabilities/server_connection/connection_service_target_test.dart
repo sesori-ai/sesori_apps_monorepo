@@ -161,6 +161,20 @@ void main() {
     expect(factory.bridgeIds, [null]);
   });
 
+  test("adoption keeps a computer chosen while the unpinned connection was joining", () async {
+    final factory = _RecordingRelayClientFactory([
+      _connectedClient(sse: NeverStream(), reportedBridgeId: "a"),
+    ]);
+    final service = buildService(factory: factory);
+    final joining = service.connect(_config(bridgeId: null));
+
+    await service.retarget(bridgeId: "b");
+    await joining;
+    await pumpEventQueue();
+
+    expect(targetStorage.stored, "b");
+  });
+
   test("retarget stores the computer and reconnects to it", () async {
     final oldSse = StreamController<RelaySseEvent>.broadcast();
     addTearDown(oldSse.close);
