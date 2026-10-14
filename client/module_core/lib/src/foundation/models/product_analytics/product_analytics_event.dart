@@ -140,6 +140,15 @@ enum AnalyticsFeedbackInput({required final String wireValue}) {
   empty(wireValue: "empty");
 }
 
+/// Where a switch to another computer started.
+enum ComputerSwitchSource({required final String wireValue}) {
+  menu(wireValue: "menu"),
+  offlineScreen(wireValue: "offline_screen"),
+  settings(wireValue: "settings"),
+  alert(wireValue: "alert"),
+  notification(wireValue: "notification");
+}
+
 @immutable
 sealed class const ProductAnalyticsEvent() {
   const factory analyticsSchemaReady() = AnalyticsSchemaReadyEvent;
@@ -204,6 +213,10 @@ sealed class const ProductAnalyticsEvent() {
   const factory runCommandCopied({required OnboardingSurface surface}) = RunCommandCopiedEvent;
   const factory runCommandShared({required OnboardingSurface surface}) = RunCommandSharedEvent;
   const factory screenViewed({required AnalyticsScreen screen}) = ProductScreenViewedEvent;
+  const factory computerSwitched({
+    required ComputerSwitchSource source,
+    required bool targetOnline,
+  }) = ComputerSwitchedEvent;
 
   String get wireName;
   Map<String, String> get parameters;
@@ -483,6 +496,20 @@ final class const ProductScreenViewedEvent({required final AnalyticsScreen scree
 
   @override
   Map<String, String> get parameters => {"screen": screen.wireValue};
+}
+
+/// The app switched to another computer. Which computers were involved stays
+/// off the wire; only where the switch started and whether the computer picked
+/// was online.
+final class const ComputerSwitchedEvent({
+  required final ComputerSwitchSource source,
+  required final bool targetOnline,
+}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "computer_switched";
+
+  @override
+  Map<String, String> get parameters => {"source": source.wireValue, "target_online": targetOnline.toString()};
 }
 
 final class ProductAnalyticsEnvelope({required final ProductAnalyticsEvent event, required DateTime occurredAtUtc}) {

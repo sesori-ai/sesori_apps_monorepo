@@ -14,6 +14,8 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
+class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
+
 /// The Projects title, which is the same large title on every state: the page
 /// title over a subtitle row naming the machine this account is paired with.
 /// The bodies join the scaffold's page scroll rather than nesting one of their
@@ -146,6 +148,54 @@ void main() {
     final bodyBefore = tester.getTopLeft(find.text("Make sure the Bridge is running")).dy;
     await scrollPageUp(tester);
     expect(tester.getTopLeft(find.text("Make sure the Bridge is running")).dy, lessThan(bodyBefore));
+  });
+
+  testWidgets("the title and the machine row open the computer menu, which switches computers", (tester) async {
+    final dispatcher = _MockComputerSwitchDispatcher();
+    when(
+      () => dispatcher.switchTo(bridgeId: any(named: "bridgeId"), source: ComputerSwitchSource.menu),
+    ).thenAnswer((_) async {});
+    getIt.registerLazySingleton<ComputerSwitchDispatcher>(() => dispatcher);
+    final bridges = [
+      BridgeSummary(
+        id: "a",
+        name: "Macbook-Pro.local",
+        platform: BridgePlatform.macos,
+        status: BridgeRegistrationStatus.active,
+        addedAt: DateTime.utc(2026),
+        lastSeenAt: DateTime.utc(2026, 7),
+      ),
+      BridgeSummary(
+        id: "b",
+        name: "work-desktop",
+        platform: BridgePlatform.linux,
+        status: BridgeRegistrationStatus.inactive,
+        addedAt: DateTime.utc(2026),
+        lastSeenAt: null,
+      ),
+    ];
+    mockRegisteredBridgesService.emitBridges(bridges: bridges);
+    await pumpScreen(tester, hasRegisteredBridges: true, bridges: bridges);
+    expect(
+      find.descendant(of: find.byType(PregoNavSubtitle), matching: find.byIcon(TablerRegular.chevron_down)),
+      findsOneWidget,
+    );
+
+    // The title opens the menu; picking the current computer only closes it.
+    await tester.tap(largeTitle("Projects"));
+    await tester.pumpAndSettle();
+    expect(find.text("Online"), findsOneWidget);
+    await tester.tap(find.text("Online"));
+    await tester.pumpAndSettle();
+    expect(find.text("Online"), findsNothing);
+
+    // So does the machine row; picking another computer switches to it.
+    await tester.tap(find.text("Macbook-Pro.local"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("work-desktop"));
+    await tester.pumpAndSettle();
+    verify(() => dispatcher.switchTo(bridgeId: "b", source: ComputerSwitchSource.menu)).called(1);
+    verifyNever(() => dispatcher.switchTo(bridgeId: "a", source: ComputerSwitchSource.menu));
   });
 
   testWidgets("the connect onboarding keeps the large title over what it waits for", (tester) async {

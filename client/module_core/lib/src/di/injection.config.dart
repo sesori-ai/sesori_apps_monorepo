@@ -162,6 +162,8 @@ import 'package:sesori_dart_core/src/repositories/voice_repository.dart'
     as _i107;
 import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
     as _i888;
+import 'package:sesori_dart_core/src/routing/computer_switch_dispatcher.dart'
+    as _i433;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
 import 'package:sesori_dart_core/src/services/analytics_crawl_gate_service.dart'
@@ -435,12 +437,6 @@ extension GetItInjectableX on _i174.GetIt {
         source: gh<_i695.LegacyNativeStorageMigrationRepository>(),
         persister: gh<_i903.PersisterRepository>(),
         secrets: gh<_i903.SecureStorageRepository>(),
-      ),
-    );
-    gh.lazySingleton<_i370.SelectedComputerService>(
-      () => _i370.SelectedComputerService(
-        connectionService: gh<_i369.ConnectionService>(),
-        activeBridgeLocality: gh<_i1023.ActiveBridgeLocality>(),
       ),
     );
     gh.lazySingleton<_i894.AttachmentThumbnailStorage>(
@@ -761,6 +757,20 @@ extension GetItInjectableX on _i174.GetIt {
         managementService: gh<_i110.PluginManagementService>(),
         browserService: gh<_i674.PluginAuthenticationBrowserService>(),
         locality: gh<_i1023.ActiveBridgeLocality>(),
+      ),
+    );
+    gh.lazySingleton<_i370.SelectedComputerService>(
+      () => _i370.SelectedComputerService(
+        connectionService: gh<_i369.ConnectionService>(),
+        activeBridgeLocality: gh<_i1023.ActiveBridgeLocality>(),
+        registeredBridgesService: gh<_i699.RegisteredBridgesService>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+      ),
+    );
+    gh.lazySingleton<_i433.ComputerSwitchDispatcher>(
+      () => _i433.ComputerSwitchDispatcher(
+        selectedComputerService: gh<_i370.SelectedComputerService>(),
+        routeDispatcher: gh<_i951.RouteDispatcher>(),
       ),
     );
     gh.lazySingleton<_i888.AnalyticsRouteListener>(

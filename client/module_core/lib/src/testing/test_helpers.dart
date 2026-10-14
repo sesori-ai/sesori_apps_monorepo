@@ -337,7 +337,14 @@ class MockPluginPreferenceRepository() extends Mock implements PluginPreferenceR
 
 class MockRegisteredBridgesStore() extends Mock implements RegisteredBridgesStore;
 
-class MockRegisteredBridgesService() extends Mock implements RegisteredBridgesService;
+class MockRegisteredBridgesService() extends Mock implements RegisteredBridgesService {
+  final BehaviorSubject<List<BridgeSummary>> _bridges = BehaviorSubject.seeded(const []);
+
+  @override
+  ValueStream<List<BridgeSummary>> get bridges => _bridges.stream;
+
+  void emitBridges({required List<BridgeSummary> bridges}) => _bridges.add(bridges);
+}
 
 class MockFailureReporter() extends Mock implements FailureReporter;
 
@@ -837,6 +844,9 @@ class FakeSelectedComputerService() implements SelectedComputerService {
 
   @override
   Future<void> ensureInitialTarget() async {}
+
+  @override
+  Future<void> select({required String bridgeId, required ComputerSwitchSource source}) async {}
 }
 
 MessageWithParts testMessageWithParts({String? id = _noString}) {

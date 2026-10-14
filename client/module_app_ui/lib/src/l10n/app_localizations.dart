@@ -703,6 +703,30 @@ abstract class AppLocalizations {
   /// **'Last seen {lastSeen}'**
   String projectsBridgeOfflineLastSeen(String lastSeen);
 
+  /// State line under a computer's name in the computer menu opened from the name under 'Projects', when that computer's bridge is connected.
+  ///
+  /// In en, this message translates to:
+  /// **'Online'**
+  String get computerMenuOnline;
+
+  /// State line under a computer's name in the computer menu when that computer's bridge is not connected and has never reported a last-seen time.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get computerMenuOffline;
+
+  /// State line under a computer's name in the computer menu when that computer's bridge is not connected, e.g. 'Offline · last seen 5h ago'. The placeholder is already-formatted text from the app's shared relative-time vocabulary.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline · last seen {lastSeen}'**
+  String computerMenuOfflineLastSeen(String lastSeen);
+
+  /// Accessibility hint on the computer name under 'Projects', which opens the menu for switching to another computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch computer'**
+  String get computerMenuSwitchHint;
+
   /// Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands.
   ///
   /// In en, this message translates to:
