@@ -182,6 +182,8 @@ import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
     as _i285;
+import 'package:sesori_dart_core/src/services/mcp_authentication_service.dart'
+    as _i585;
 import 'package:sesori_dart_core/src/services/mcp_service.dart' as _i948;
 import 'package:sesori_dart_core/src/services/message_thumbnail_cache_service.dart'
     as _i72;
@@ -750,6 +752,15 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i763.SessionListService(
         repository: gh<_i80.ProjectRepository>(),
         activityCalculator: gh<_i84.SessionActivityCalculator>(),
+      ),
+    );
+    gh.lazySingleton<_i585.McpAuthenticationService>(
+      () => _i585.McpAuthenticationService(
+        repository: gh<_i349.McpRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        managementService: gh<_i110.PluginManagementService>(),
+        browserService: gh<_i674.PluginAuthenticationBrowserService>(),
+        locality: gh<_i1023.ActiveBridgeLocality>(),
       ),
     );
     gh.lazySingleton<_i888.AnalyticsRouteListener>(

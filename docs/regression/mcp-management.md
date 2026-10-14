@@ -11,11 +11,33 @@ exposes explicit live-session Claude reconnect, enable and disable controls to
 headless consumers. Claude native plugin authentication is implemented for
 existing configured HTTP servers. Headless read/start/continue/cancel routes are
 implemented; product action UI remains pending.
+The shared client authentication API, repository, connection-fenced owner and
+observing Cubit are implemented; the next presentation step exposes their intents.
 Existing permission flows remain separate. Read-only inventory may inspect an
 archived session if its native process remains live; it grants no session mutation.
 
 ## Required Behavior
 
+- Request-scoped GET recovers the current native attempt on identity establishment,
+  reconnect, explicit refresh and `mcp.authentication.changed`. SSE carries no
+  challenge or callback URL, and recovery never opens a browser automatically.
+- GET remains usable while the original start POST waits for preparation. The
+  reserved attempt can be cancelled; a late start acknowledgement cannot replace
+  a newer terminal read. Likewise, a read begun before a mutation cannot overwrite
+  that mutation's newer response. Transport uncertainty preserves its typed cause
+  and triggers recovery rather than asserting native rejection or success.
+- Native observation, request progress and browser presentation are independent.
+  Failed refreshes retain the known challenge. Browser busy retains it for explicit
+  retry; matching listener retry uses the exact accepted owner and challenge.
+- Browser callbacks are bound to the native attempt and connection epoch. A
+  disconnect or bridge replacement closes only the matching local owner and fences
+  old responses. Recovered attempts require explicit browser intent. Local direct
+  browser ownership lasts through native settlement. Closing a Cubit does not
+  cancel the shared operation; service disposal waits for already-started cleanup.
+- Missing bridge-identity support is an explicit limitation while connected;
+  missing authentication routes, unknown results and original API failures stay
+  distinct. Browser launch requires HTTPS without user info and an HTTP loopback
+  callback. No client credential store or server-configuration writer is added.
 - Harness, project, and session scopes are explicit variants. Plugin scope IDs
   are native bindings; shared scope IDs belong to the bridge catalog.
 - A configured server and an offered connector have distinct target types,
@@ -222,5 +244,6 @@ Automated adapter/route coverage:
 
 The existing browser transport now accepts bridge/connection/purpose-bound owner handles and returns typed busy for a
 competing flow. Matching retry/cancel protects provider and MCP callback listeners in both start orders. Provider busy
-presentation retains its issued challenge for explicit retry. This transport seam is implemented; MCP client lifecycle
-and visible MCP authentication controls remain pending. The headless owner and final qualification matrix are unchanged.
+presentation retains its issued challenge for explicit retry. The transport seam and shared MCP client lifecycle are
+implemented, including request-scoped recovery and explicit browser intent. Visible MCP authentication controls remain
+pending. The headless owner and final qualification matrix are unchanged.

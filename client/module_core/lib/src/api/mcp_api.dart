@@ -6,6 +6,26 @@ import "client/relay_http_client.dart";
 
 @lazySingleton
 class McpApi({required final RelayHttpApiClient _client}) {
+  Future<ApiResponse<McpAuthenticationResult>> getAuthentication() => _client.get(
+    "/mcp/authentication",
+    fromJson: McpAuthenticationResult.fromJson,
+  );
+
+  Future<ApiResponse<McpAuthenticationResult>> startAuthentication({required McpAuthenticationStartRequest request}) =>
+      _client.post("/mcp/authentication", body: request.toJson(), fromJson: McpAuthenticationResult.fromJson);
+
+  Future<ApiResponse<McpAuthenticationResult>> continueAuthentication({
+    required McpAuthenticationContinueRequest request,
+  }) => _client.post(
+    "/mcp/authentication/continue",
+    body: request.toJson(),
+    fromJson: McpAuthenticationResult.fromJson,
+  );
+
+  Future<ApiResponse<McpAuthenticationResult>> cancelAuthentication({
+    required McpAuthenticationCancelRequest request,
+  }) => _client.post("/mcp/authentication/cancel", body: request.toJson(), fromJson: McpAuthenticationResult.fromJson);
+
   Future<ApiResponse<McpInventoryResult>> getInventory({required McpInventoryRequest request}) => _client.post(
     "/mcp/inventory",
     body: request.toJson(),
