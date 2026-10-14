@@ -28,9 +28,12 @@ class _Locality({required bool local}) implements ActiveBridgeLocality {
   bool local = local;
   @override
   bool isLocalBridge({required String bridgeId}) => local;
+
+  @override
+  String? get localBridgeId => null;
 }
 
-const _config = ServerConnectionConfig(relayHost: "wss://fixture.test", authToken: "fixture");
+const _config = ServerConnectionConfig(relayHost: "wss://fixture.test", authToken: "fixture", bridgeId: null);
 const _connected = ConnectionConnected(
   config: _config,
   health: HealthResponse(healthy: true, version: "1.9.1", filesystemAccessDegraded: false),
