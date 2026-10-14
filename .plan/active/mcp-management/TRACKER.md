@@ -5,7 +5,7 @@
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-client-authentication`, `067380c981`, in the provided `copper-heron` worktree.
 - Current step: 11/21 merged as [#1957][pr-1957];
-  step 12/21 scopes browser ownership and is completing native visual verification;
+  step 12/21 scopes browser ownership and is ready for publication after native visual verification;
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -750,3 +750,22 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   contract feedback was explicitly declined with its GET recovery/cancellation
   evidence; all actionable feedback was addressed. Step 12 rebased unpublished
   onto the merge at `067380c981`, retaining its focused test provenance.
+- Step-12 native UI qualification passed on macOS 27.0.1 / Xcode 27.0 with
+  Flutter 3.47.5, debug/Metal/Impeller, source captured in `8149858f03`.
+  Computer Use exercised busy, retry, opening, waiting, cancellation and Close.
+  The final window-only recording confirms intermediate height positions during
+  the 200-ms transitions. The fixture uses the product router and synthetic
+  service state; no website, account, bridge, relay or credential store was used.
+  This is presentation qualification, not the final provider/package matrix.
+  Owned fixture PID 74617 exited; production PID 7903 remains running unchanged.
+- Reviewed synthetic media is on `pr-media` at `44764241f2`, under
+  `sesori/mcp-client-authentication/`: cropped existing launch-failure and new
+  busy presentations, plus a silent 19.6-second retry/cancel/close GIF (700 KB).
+  Screenshots compare states rendered by the fixture, rather than claiming a
+  separate old-binary run. Original recordings stay private.
+
+- Step-12 pre-publication measurement before this record: 19 files,
+  853 additions and 77 deletions (930 changed), with 25 generated and
+  905 authored lines. No prior registry, persisted state or database schema
+  is superseded; unscoped browser cancellation and replacement were removed
+  from every live in-repository consumer.
