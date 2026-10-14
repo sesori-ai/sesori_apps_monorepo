@@ -69,7 +69,8 @@ presents.
 - The registered-bridge list carries each bridge's `status` (`active` or
   `inactive`, the connectivity the relay last reported) and its `platform`. A
   platform the app does not know decodes as unknown instead of failing the
-  list. The app publishes the list as a stream, most recently seen first; a
+  list; a missing `status` fails the list, because the auth server ships it
+  before any app that reads it. The app publishes the list as a stream, most recently seen first; a
   live connection marks it stale so the next read refetches, a failed fetch
   keeps the last list, and logout empties it.
 - Bridge registration uses a stable machine name. On macOS, transient

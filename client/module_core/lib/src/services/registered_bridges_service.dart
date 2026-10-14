@@ -166,7 +166,7 @@ class RegisteredBridgesService({
       switch (response) {
         case SuccessResponse(:final data):
           if (data.isEmpty) {
-            if (_bridges.value.isNotEmpty) _emitBridges(bridges: const []);
+            _emitBridges(bridges: const []);
             return const [];
           }
           // Latch the positive answer so future transitions skip the network.
