@@ -98,13 +98,22 @@ class McpAuthenticationService({required final McpRepository _repository}) {
     if (owner.cancelRequested) return McpAuthenticationStateResult(state: owner.state);
     if (owner.native is _PreparingMcpAuthentication) {
       owner.cancelRequested = true;
-      await owner.dispose();
-      _publish(
-        owner: owner,
-        state: McpAuthenticationCancelled(attempt: owner.attempt),
-      );
-      if (!owner.ready.isCompleted) owner.ready.complete(McpAuthenticationStateResult(state: owner.state));
-      if (!owner.done.isCompleted) owner.done.complete();
+      try {
+        await owner.dispose();
+        _publish(
+          owner: owner,
+          state: McpAuthenticationCancelled(attempt: owner.attempt),
+        );
+      } on Object catch (error, stackTrace) {
+        _publish(
+          owner: owner,
+          state: McpAuthenticationFailed(attempt: owner.attempt, reason: McpAuthenticationFailureReason.nativeFailure),
+        );
+        Error.throwWithStackTrace(McpAuthenticationCancellationException(innerError: error), stackTrace);
+      } finally {
+        if (!owner.ready.isCompleted) owner.ready.complete(McpAuthenticationStateResult(state: owner.state));
+        if (!owner.done.isCompleted) owner.done.complete();
+      }
       return McpAuthenticationStateResult(state: owner.state);
     }
     switch ((owner.native as _RunningMcpAuthentication).operation) {

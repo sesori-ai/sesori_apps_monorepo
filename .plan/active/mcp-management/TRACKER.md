@@ -31,7 +31,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 8/21 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
 | 9/21 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
 | 10/21 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/21 | Headless authentication owner and routes (original 7.b.2.b) | In review | [#1957][pr-1957]; 177 tests, native fixture and architecture approval |
+| 11/21 | Headless auth owner/routes | In review | [#1957][pr-1957]; 178 tests, fixture, architecture approval |
 | 12/21 | Browser ownership (8.a) | In progress | Planning only: provider/MCP handles and busy behavior |
 | 13/21 | Shared client authentication lifecycle (8.b) | Not started | — |
 | 14/21 | Visible authentication and controls (8.c) | Not started | — |
@@ -700,6 +700,14 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   single native cancellation, callback settlement and disposal before route drain.
   The reviewed immutable diff is 1,439 changed lines across 28 files, including
   51 generated lines and 1,388 authored lines. Twenty-seven owner tests and the
-  owning analyzer pass; the unchanged runtime/client/shared evidence totals 177
-  focused tests. The final native fixture used the review-corrected source at
+  owning analyzer pass. Together with the unchanged 77 runtime, 17 client and
+  56 shared tests, that review-corrected snapshot totals 177 focused tests. The final native fixture used the review-corrected source at
   `76efbf4039` (only its subsequent lint brace adjustment was unrelated to behavior).
+
+- Owner review round 2: preparation cleanup failure now publishes native failure,
+  completes the original start, and releases the reservation while rethrowing the
+  typed cancellation cause with its stack trace. Its regression failed before
+  the fix; 28 owner tests now pass. Combined focused evidence is 178 tests
+  (28 owner + 77 runtime + 17 client inventory + 56 shared codec). The final
+  architecture approval remains for commit `76efbf4039`; this follow-up changes
+  local error handling, with no new ownership or architectural boundary.

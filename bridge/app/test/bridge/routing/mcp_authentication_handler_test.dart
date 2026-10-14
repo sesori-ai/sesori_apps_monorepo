@@ -195,6 +195,40 @@ void main() {
     expect(plugin.targets, isEmpty);
   });
 
+  test("preparation cleanup failure settles its owner and retains the cause", () async {
+    final cause = StateError("fixture-private preparation cleanup");
+    final failingService = McpAuthenticationService(repository: _PreparationCleanupFailureRepository(cause: cause));
+    final starting = failingService.start(request: _request);
+    final attempt =
+        ((failingService.current as McpAuthenticationStateResult).state as McpAuthenticationStarting).attempt;
+    try {
+      await expectLater(
+        failingService.cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId)),
+        throwsA(
+          isA<McpAuthenticationCancellationException>().having((error) => error.innerError, "cause", same(cause)),
+        ),
+      );
+      final failed = (failingService.current as McpAuthenticationStateResult).state;
+      expect(failed, isA<McpAuthenticationFailed>());
+      expect((failed as McpAuthenticationFailed).reason, McpAuthenticationFailureReason.nativeFailure);
+      expect((await starting.timeout(const Duration(seconds: 1)) as McpAuthenticationStateResult).state, same(failed));
+      expect(
+        await failingService.cancel(request: McpAuthenticationCancelRequest(attemptId: attempt.attemptId)),
+        isA<McpAuthenticationUnavailable>(),
+      );
+      final retry = failingService.start(request: _request);
+      expect(
+        ((failingService.current as McpAuthenticationStateResult).state as McpAuthenticationStarting).attempt.attemptId,
+        isNot(attempt.attemptId),
+      );
+      await failingService.dispose();
+      expect(await retry, isA<McpAuthenticationStateResult>());
+    } finally {
+      await failingService.dispose();
+      await starting;
+    }
+  });
+
   test("preparation can be cancelled before a stalled native status read returns", () async {
     plugin.beginGate = Completer<void>();
     final starting = service.start(request: _request);
@@ -470,4 +504,18 @@ class _AuthenticationPlugin() extends FakeDerivedBridgePlugin implements McpAuth
 
   @override
   Future<void> forgetMcpAuthentication({required PluginMcpServerTarget target}) => throw UnimplementedError();
+}
+
+class _PreparationCleanupFailureRepository({required final Object cause}) implements McpRepository {
+  int cancellations = 0;
+  @override
+  Stream<McpAuthenticationUpdate> authenticate({required McpAuthenticationStartRequest request}) =>
+      StreamController<McpAuthenticationUpdate>(
+        onCancel: () {
+          if (++cancellations == 1) throw cause;
+        },
+      ).stream;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
