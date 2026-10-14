@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../capabilities/server_connection/models/sse_event.dart";
+import "../capabilities/server_connection/target_bridge_change_tracker.dart";
 import "../logging/logging.dart";
 import "models/session_activity_info.dart";
 
@@ -65,7 +66,7 @@ class SseEventTracker(
   /// The latest project timestamp update map, synchronously available.
   Map<String, int> get currentProjectTimestampUpdates => _projectTimestampUpdates.value;
 
-  final TargetBridgeChangeDetector _targetChange = TargetBridgeChangeDetector(
+  final TargetBridgeChangeTracker _targetChange = TargetBridgeChangeTracker(
     initialStatus: _connectionService.currentStatus,
   );
 

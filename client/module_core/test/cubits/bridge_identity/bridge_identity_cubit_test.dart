@@ -7,6 +7,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/bridge_identity/bridge_identity_cubit.dart";
 import "package:sesori_dart_core/src/cubits/bridge_identity/bridge_identity_state.dart";
+import "package:sesori_dart_core/src/services/selected_computer_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -28,10 +29,14 @@ const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAcce
 const _connectedStatus = ConnectionStatus.connected(config: _connectionConfig, health: _health);
 const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(config: _connectionConfig, health: _health);
 
+class _MockSelectedComputerService() extends Mock implements SelectedComputerService;
+
 void main() {
   late MockRegisteredBridgesService mockRegisteredBridgesService;
   late MockConnectionService mockConnectionService;
   late BehaviorSubject<ConnectionStatus> statusController;
+  late _MockSelectedComputerService mockSelectedComputerService;
+  String? storedTarget;
 
   setUp(() {
     mockRegisteredBridgesService = MockRegisteredBridgesService();
@@ -42,7 +47,11 @@ void main() {
     // and starts its lookup immediately.
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
-    when(() => mockConnectionService.readTargetBridgeId()).thenAnswer((_) async => null);
+    storedTarget = null;
+    mockSelectedComputerService = _MockSelectedComputerService();
+    when(
+      () => mockSelectedComputerService.targetBridgeId(),
+    ).thenAnswer((_) async => statusController.value.targetBridgeId ?? storedTarget);
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
   });
@@ -54,6 +63,7 @@ void main() {
   BridgeIdentityCubit buildCubit() => BridgeIdentityCubit(
     registeredBridgesService: mockRegisteredBridgesService,
     connectionService: mockConnectionService,
+    selectedComputerService: mockSelectedComputerService,
   );
 
   test("starts pending: the lookup is a round trip, so nothing can be named yet", () {
@@ -102,7 +112,7 @@ void main() {
   blocTest<BridgeIdentityCubit, BridgeIdentityState>(
     "before connecting, names the stored target",
     build: () {
-      when(() => mockConnectionService.readTargetBridgeId()).thenAnswer((_) async => "b");
+      storedTarget = "b";
       when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => bridges);
       return buildCubit();
     },

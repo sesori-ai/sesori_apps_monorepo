@@ -63,6 +63,7 @@ class const DesktopHomePane({
                   create: (_) => BridgeIdentityCubit(
                     registeredBridgesService: getIt<RegisteredBridgesService>(),
                     connectionService: getIt<ConnectionService>(),
+                    selectedComputerService: getIt<SelectedComputerService>(),
                   ),
                   child: Builder(
                     builder: (context) => DesktopBridgeRecoveryView(

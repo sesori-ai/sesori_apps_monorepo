@@ -68,7 +68,6 @@ void main() {
 
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
-    when(mockConnectionService.readTargetBridgeId).thenAnswer((_) async => null);
     when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
     when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.error(ApiError.generic()),

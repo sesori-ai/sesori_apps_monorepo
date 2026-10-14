@@ -46,9 +46,16 @@ void main() {
     verifyNever(() => connection.retarget(bridgeId: any(named: "bridgeId")));
   });
 
-  test("select retargets the connection", () async {
-    await build(stored: null, local: null).select(bridgeId: "other");
+  test("the target is the live connection's, else the stored one", () async {
+    when(() => connection.currentStatus).thenReturn(const ConnectionStatus.disconnected());
+    final service = build(stored: "stored", local: null);
+    expect(await service.targetBridgeId(), "stored");
 
-    verify(() => connection.retarget(bridgeId: "other")).called(1);
+    when(() => connection.currentStatus).thenReturn(
+      const ConnectionStatus.reconnecting(
+        config: ServerConnectionConfig(relayHost: "relay", authToken: "t", bridgeId: "live"),
+      ),
+    );
+    expect(await service.targetBridgeId(), "live");
   });
 }

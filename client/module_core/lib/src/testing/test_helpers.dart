@@ -52,6 +52,7 @@ import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
 import "../services/project_viewing_service.dart";
 import "../services/registered_bridges_service.dart";
+import "../services/selected_computer_service.dart";
 import "../services/session_detail_load_service.dart";
 import "../services/session_launch_service.dart";
 import "../services/session_unseen_tracker.dart";
@@ -827,6 +828,15 @@ class FakeTargetBridgeStorage() implements TargetBridgeStorage {
 
   @override
   Future<void> clear() async => _stored = null;
+}
+
+/// [SelectedComputerService] with no known target computer.
+class FakeSelectedComputerService() implements SelectedComputerService {
+  @override
+  Future<String?> targetBridgeId() async => null;
+
+  @override
+  Future<void> ensureInitialTarget() async {}
 }
 
 MessageWithParts testMessageWithParts({String? id = _noString}) {

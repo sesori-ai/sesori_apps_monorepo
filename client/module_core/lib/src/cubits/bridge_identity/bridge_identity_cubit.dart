@@ -6,8 +6,10 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
+import "../../capabilities/server_connection/target_bridge_change_tracker.dart";
 import "../../logging/logging.dart";
 import "../../services/registered_bridges_service.dart";
+import "../../services/selected_computer_service.dart";
 import "bridge_identity_state.dart";
 
 /// Owns the identity of the computer the connection targets: the name the
@@ -23,9 +25,10 @@ import "bridge_identity_state.dart";
 class BridgeIdentityCubit({
   required final RegisteredBridgesService _registeredBridgesService,
   required final ConnectionService _connectionService,
+  required final SelectedComputerService _selectedComputerService,
 }) extends Cubit<BridgeIdentityState> {
   StreamSubscription<ConnectionStatus>? _statusSubscription;
-  final TargetBridgeChangeDetector _targetChange = TargetBridgeChangeDetector(
+  final TargetBridgeChangeTracker _targetChange = TargetBridgeChangeTracker(
     initialStatus: _connectionService.currentStatus,
   );
 
@@ -107,8 +110,7 @@ class BridgeIdentityCubit({
     }
     final bridges = await _registeredBridgesService.getRegisteredBridges();
     if (isClosed) return;
-    final targetBridgeId =
-        _connectionService.currentStatus.targetBridgeId ?? await _connectionService.readTargetBridgeId();
+    final targetBridgeId = await _selectedComputerService.targetBridgeId();
     if (isClosed) return;
     emit(_identityFor(bridges: bridges, targetBridgeId: targetBridgeId));
   }

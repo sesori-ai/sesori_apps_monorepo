@@ -39,9 +39,9 @@ void main() {
     addTearDown(statuses.close);
     when(() => connection.status).thenAnswer((_) => statuses);
     when(() => connection.currentStatus).thenAnswer((_) => statuses.value);
-    when(connection.readTargetBridgeId).thenAnswer((_) async => null);
     getIt.registerSingleton<RegisteredBridgesService>(bridges);
     getIt.registerSingleton<ConnectionService>(connection);
+    getIt.registerSingleton<SelectedComputerService>(FakeSelectedComputerService());
     final voice = MockVoiceTranscriptionService();
     stubVoiceTranscriptionService(service: voice);
     getIt.registerSingleton<VoiceTranscriptionService>(voice);

@@ -57,7 +57,6 @@ void main() {
 
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
-    when(mockConnectionService.readTargetBridgeId).thenAnswer((_) async => null);
     when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.success(const Projects(data: [])),
     );

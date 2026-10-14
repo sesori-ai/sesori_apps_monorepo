@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../capabilities/server_connection/models/sse_event.dart";
+import "../capabilities/server_connection/target_bridge_change_tracker.dart";
 import "../errors/api_error_remote_failure_x.dart";
 import "../logging/logging.dart";
 import "catalog_rescan_service.dart";
@@ -46,7 +47,7 @@ class RecentSessionInventoryService({
   // Retained until a snapshot covering this lifecycle generation is applied.
   final Map<String, int> _lifecycleChangeGenerations = {};
 
-  final TargetBridgeChangeDetector _targetChange = TargetBridgeChangeDetector(
+  final TargetBridgeChangeTracker _targetChange = TargetBridgeChangeTracker(
     initialStatus: _connectionService.currentStatus,
   );
 

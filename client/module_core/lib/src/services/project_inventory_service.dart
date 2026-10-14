@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
+import "../capabilities/server_connection/target_bridge_change_tracker.dart";
 import "../errors/api_error_remote_failure_x.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../logging/logging.dart";
@@ -274,7 +275,7 @@ class ProjectInventoryService({
     ConnectionConnected() || ConnectionReconnecting() || ConnectionLost() => false,
   };
 
-  final TargetBridgeChangeDetector _targetChange = TargetBridgeChangeDetector(
+  final TargetBridgeChangeTracker _targetChange = TargetBridgeChangeTracker(
     initialStatus: _connectionService.currentStatus,
   );
 

@@ -56,7 +56,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   `bridge_replace_prompt.dart` (a local-process prompt, already correct). `MachineIdApi` has no unsupported variant
   because `PlatformOs` covers only macOS, Linux, and Windows. The desktop string `desktopBridgeTakenOver` has the same
   wording problem and moves to step 11.
-- 2026-10-14, step 7: `select` gains its `source` with the analytics event in step 8. A fresh desktop install or a
+- 2026-10-14, step 7: `select` arrives in step 8 with its `source` and analytics event. A fresh desktop install or a
   new login connects before the supervised bridge registers, so it adopts the relay's default computer; step 11
   retargets to the local computer when the supervised id first appears. A `retarget` during the very first connect
   only stores the id, so that connect still lands on the old target, and the switch takes effect on the next
