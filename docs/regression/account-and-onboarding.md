@@ -72,6 +72,11 @@ participates.
 - Auth-server URLs behave identically with or without trailing slashes, and
   deadline expiry actively aborts registration and token-refresh transport,
   including response-body consumption.
+- Bridge registration sends a host key, a salted SHA-256 of the operating
+  system's machine identifier (never the raw identifier), so a reinstall on the
+  same computer that lost its stored bridge id reuses that computer's existing
+  entry instead of adding a duplicate. Without a readable identifier the bridge
+  registers as before; the failure is logged.
 - With no bridge, mobile Projects shows install/start commands, the explainer and support links; copy/share
   hand off the command unchanged. Desktop home instead offers supervised local bridge recovery.
   Connected with no projects shows the add-project call to action on either surface.
@@ -139,6 +144,8 @@ and how the wait goes: reopened, copied, confirmed, cancelled, declined or expir
   already has the app, or driving repeated status requests.
 - Relay availability or key exchange waiting on push registration or the check.
 - The bridge-offline banner alarming an account with no registered bridge.
+- Deleting the bridge id file and restarting the bridge adding a second entry
+  for the same computer, or a registration body carrying the raw machine id.
 - One tap on Log out signing the user out without the confirmation.
 - The "Last used" marker on a method other than this device's last sign-in,
   gone after logout, or showing or storing anything beyond the provider, such as
@@ -158,6 +165,9 @@ and how the wait goes: reopened, copied, confirmed, cancelled, declined or expir
 - Once the provider has used a link, Open again shows an error page instead of
   the sign-in; Cancel starts over.
 - "Last used" records only the method, so it cannot tell which account used it.
+- Cloned machine images share a machine identifier, so a fresh install on a
+  clone joins the original computer's entry and the two displace each other;
+  containers without an identifier keep one entry per install.
 
 ## Sources
 
@@ -165,5 +175,7 @@ and how the wait goes: reopened, copied, confirmed, cancelled, declined or expir
 - Desktop sign-in: `client/desktop/lib/features/login/`, `AuthGateCubit`,
   `LastSignInStorage`, and `client/desktop/test/features/login/login_view_test.dart`.
 - Bridge app-client onboarding service and runtime runner, plus their owning tests.
+- Bridge registration: `bridge/app/lib/src/auth/machine_id_api.dart`,
+  `bridge_registration_repository.dart`, and their tests.
 - Plan: `.plan/active/desktop-sign-in/PLAN.md` (decisions, approved copy, regression matrix).
 - Historical: `.plan/completed/bridge-ready-onboarding/`

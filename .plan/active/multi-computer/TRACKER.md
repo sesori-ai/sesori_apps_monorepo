@@ -4,9 +4,9 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/multi-computer-plan` from `origin/main` `6a4a42e7a5`, in the provided `brown-dingo` worktree.
-- Current step: 1/15, plan PR open.
+- Current step: 5/15, PR pending.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-14 over two review rounds.
-- Plan PR: pending.
+- Plan PR: #1959, merged 2026-10-14.
 - Architecture plan review: rejected on 2026-10-14 (17 findings); all applied in the same revision. Per `AGENTS.md`
   the applied fixes are not re-reviewed.
 
@@ -16,11 +16,11 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Repository | Outcome | State | PR/evidence |
 |---|---|---|---|---|
-| 1/15 | monorepo | Publish reviewed plan | In progress | — |
+| 1/15 | monorepo | Publish reviewed plan | Done | #1959 (merged 2026-10-14) |
 | 2/15 | relay | Phones routed to a named bridge | Not started | — |
 | 3/15 | relay | Presence fan-out; ids in connect notices | Not started | — |
 | 4/15 | auth | Status in summaries; host-key matching; named status pushes | Not started | — |
-| 5/15 | monorepo | Bridge sends a stable host key | Not started | — |
+| 5/15 | monorepo | Bridge sends a stable host key | In PR | — |
 | 6/15 | monorepo | Shared contracts: registration status, platform, presence; list stream | Not started | — |
 | 7/15 | monorepo | Target owner in the connection; resets on retarget | Not started | — |
 | 8/15 | monorepo | Computer menu, switch dispatcher, and flow on Projects | Not started | — |

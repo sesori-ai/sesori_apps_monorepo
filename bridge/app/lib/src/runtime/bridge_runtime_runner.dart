@@ -47,6 +47,7 @@ import "../auth/bridge_registration_service.dart";
 import "../auth/login_email_api.dart";
 import "../auth/login_email_repository.dart";
 import "../auth/login_oauth_service.dart";
+import "../auth/machine_id_api.dart";
 import "../auth/token.dart";
 import "../auth/token_refresher.dart";
 import "../auth/token_service.dart";
@@ -395,6 +396,7 @@ class const BridgeRuntimeRunner._() {
           tokenRefresher: controlChannelTokenService,
           bridgeIdStorage: bridgeIdStorage,
           machineName: machineName,
+          processRunner: processRunner,
         );
         shutdownCoordinator.add(disposable: supervisedRegistrationService.dispose);
         // Both GUI clean-stop commands share the same graceful teardown path;
@@ -583,6 +585,7 @@ class const BridgeRuntimeRunner._() {
           tokenRefresher: tokenRefresher,
           bridgeIdStorage: bridgeIdStorage,
           machineName: machineName,
+          processRunner: processRunner,
         );
         shutdownCoordinator.add(disposable: bridgeRegistrationService.dispose);
       }
@@ -1130,10 +1133,15 @@ class const BridgeRuntimeRunner._() {
     required TokenRefresher tokenRefresher,
     required BridgeIdStorage bridgeIdStorage,
     required String machineName,
+    required ProcessRunner processRunner,
   }) {
     return BridgeRegistrationService(
       repository: BridgeRegistrationRepository(
         api: authApi,
+        machineIdApi: MachineIdApi.forPlatform(
+          platform: PlatformOs.fromOperatingSystem(operatingSystem: io.Platform.operatingSystem),
+          processRunner: processRunner,
+        ),
       ),
       tokenRefresher: tokenRefresher,
       bridgeIdStorage: bridgeIdStorage,

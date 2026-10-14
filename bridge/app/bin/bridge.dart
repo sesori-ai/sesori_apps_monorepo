@@ -14,6 +14,7 @@ import 'package:sesori_bridge/src/auth/auth_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_id_storage.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_repository.dart';
 import 'package:sesori_bridge/src/auth/bridge_registration_service.dart';
+import 'package:sesori_bridge/src/auth/machine_id_api.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
 import 'package:sesori_bridge/src/auth/token_refresh_exception.dart';
 import 'package:sesori_bridge/src/auth/token_service.dart';
@@ -392,6 +393,7 @@ Future<void> _unregisterBridgeRegistration({
     final registrationService = BridgeRegistrationService(
       repository: BridgeRegistrationRepository(
         api: authApi,
+        machineIdApi: MachineIdApi.forPlatform(platform: PlatformTarget.current().os, processRunner: ProcessRunner()),
       ),
       tokenRefresher: tokenService,
       bridgeIdStorage: bridgeIdStorage,
