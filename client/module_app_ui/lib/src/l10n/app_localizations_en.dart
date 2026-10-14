@@ -349,6 +349,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get computerMenuOnline => 'Online';
+
+  @override
+  String get computerMenuOffline => 'Offline';
+
+  @override
+  String computerMenuOfflineLastSeen(String lastSeen) {
+    return 'Offline · last seen $lastSeen';
+  }
+
+  @override
+  String get computerMenuSwitchHint => 'Switch computer';
+
+  @override
   String get projectsBridgeOfflineInstallCommands => 'Install commands';
 
   @override

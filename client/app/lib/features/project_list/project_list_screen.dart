@@ -54,6 +54,13 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
               selectedComputerService: getIt<SelectedComputerService>(),
             ),
           ),
+          BlocProvider(
+            create: (_) => ComputerSwitcherCubit(
+              registeredBridgesService: getIt<RegisteredBridgesService>(),
+              connectionService: getIt<ConnectionService>(),
+              selectedComputerService: getIt<SelectedComputerService>(),
+            ),
+          ),
         ],
         child: ProjectListView(
           onAddProject: _showAddProject,
@@ -84,6 +91,8 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
           connectionBannerBuilder: ({required context}) => ConnectionBanner.maybeFor(context),
           onRefreshDisconnected: ({required context, required state}) =>
               context.read<ProjectListCubit>().reconnectBridge(),
+          onSwitchComputer: ({required bridgeId, required source}) =>
+              unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source)),
         ),
       ),
     );

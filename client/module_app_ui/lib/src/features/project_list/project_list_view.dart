@@ -8,6 +8,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../widgets/catalog_scan_row.dart";
+import "../../widgets/computer_menu.dart";
 import "../../widgets/list_search_field.dart";
 import "../../widgets/project_launch_rows_builder.dart";
 import "../../widgets/remote_failure_view.dart";
@@ -81,6 +82,9 @@ class const ProjectListView({
   required final ProjectListConnectedEmptyViewBuilder connectedEmptyViewBuilder,
   required final ProjectListConnectionBannerBuilder connectionBannerBuilder,
   required final ProjectListDisconnectedRefresh onRefreshDisconnected,
+
+  /// Switches to a computer picked in the menu under the title.
+  required final ComputerSwitchCallback onSwitchComputer,
 }) extends StatefulWidget {
   @override
   State<ProjectListView> createState() => _ProjectListViewState();
@@ -92,6 +96,10 @@ class _ProjectListViewState() extends State<ProjectListView> {
   /// The search field's text: it narrows project names and Activity's session
   /// titles to what the page already loaded.
   String _query = "";
+
+  /// Opens or closes the computer menu; set by its trigger, the subtitle row,
+  /// so the title above the row can open the same menu.
+  VoidCallback? _toggleComputerMenu;
 
   @override
   void initState() {
@@ -162,12 +170,14 @@ class _ProjectListViewState() extends State<ProjectListView> {
     final overlay = context.watch<ConnectionOverlayCubit>().state;
     final online = overlay is ConnectionOverlayHidden && overlay.connected;
     final floatingAction = _floatingAction(context: context, state: state);
+    final subtitle = _subtitle(context: context, state: state, identity: identity, online: online);
 
     return PregoGlassScaffold(
       title: loc.projectListTitle,
       // A top-level page, so it keeps the large title. The subtitle row names
       // the machine this account is paired with, in every state.
-      subtitle: _subtitle(context: context, state: state, identity: identity, online: online),
+      subtitle: subtitle,
+      onLargeTitleTap: subtitle is ComputerMenu ? () => _toggleComputerMenu?.call() : null,
       // A loaded list hosts the top-nav connection banner; the loading and
       // bridge-disconnected states own their messaging full-screen (setup
       // onboarding or the "turn on your bridge" design), so they suppress it.
@@ -216,6 +226,9 @@ class _ProjectListViewState() extends State<ProjectListView> {
   /// shimmering skeleton rather than being left out: the title block would
   /// otherwise re-lay-out around the name as it lands. A lookup that answered
   /// with nothing to name drops the row for good.
+  ///
+  /// A named computer's row is the computer menu's trigger, and the title
+  /// above it opens the same menu.
   Widget? _subtitle({
     required BuildContext context,
     required ProjectListState state,
@@ -237,10 +250,18 @@ class _ProjectListViewState() extends State<ProjectListView> {
     };
     return switch (identity) {
       BridgeIdentityPending() => const PregoNavSubtitleSkeleton(),
-      BridgeIdentityNamed(:final bridge) => PregoNavSubtitle(
-        text: bridge.name,
-        icon: TablerRegular.device_laptop,
-        status: status,
+      BridgeIdentityNamed(:final bridge) => ComputerMenu(
+        onSelect: ({required bridgeId}) =>
+            widget.onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
+        triggerBuilder: (context, toggle) {
+          _toggleComputerMenu = toggle;
+          return PregoNavSubtitle(
+            text: bridge.name,
+            icon: TablerRegular.device_laptop,
+            status: status,
+            action: PregoNavSubtitleAction(onTap: toggle, semanticsHint: context.loc.computerMenuSwitchHint),
+          );
+        },
       ),
       BridgeIdentityUnnamed() => null,
     };

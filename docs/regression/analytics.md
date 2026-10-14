@@ -35,6 +35,9 @@ with release-injected credentials. Desktop uses a no-op sink, the bridge is excl
 - Screens use the pinned route mapping with vendor automatic reporting disabled. Events fire at authoritative
   outcomes, not taps, capture occurrence time at their seam, and deferred candidates emit at most once, dropping on
   disable, logout, or account switch. Results state SDK acceptance, not delivery.
+- Switching computers reports `computer_switched` with a pinned `source` (`menu`, `offline_screen`, `settings`,
+  `alert`, `notification`) and `target_online`, never a computer name or identifier. It fires when the switch is
+  made, before the new connection's outcome is known.
 - A successful Android production submission publishes its exact build number to Firebase Remote Config as the
   analytics release cutoff before stable tagging can proceed. The publisher is callable only from the production
   submission workflow, verifies the immutable build tag, preserves unrelated Remote Config parameters, validates with

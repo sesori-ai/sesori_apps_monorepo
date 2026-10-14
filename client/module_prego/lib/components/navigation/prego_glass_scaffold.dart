@@ -108,6 +108,12 @@ class const PregoGlassScaffold({
   /// then appears as the title collapses rather than covering it at rest.
   final bool largeTitleInBar = false,
 
+  /// Runs when the large title is tapped, for a page whose [subtitle] opens
+  /// something: the title joins the subtitle's tap target so the control is
+  /// comfortably large. The subtitle stays the one control screen readers
+  /// announce. Collapsing mode only.
+  final VoidCallback? onLargeTitleTap,
+
   /// An inline alert hosted in the top-navigation area, below the status bar
   /// and above the bar row (e.g. a [PregoInlineAlertsNotifications]).
   ///
@@ -408,6 +414,7 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
           _LargeTitleSliver(
             title: widget.title,
             subtitle: widget.subtitle,
+            onTitleTap: widget.onLargeTitleTap,
             scrollController: _scrollController,
             inBar: titleInBar,
             onHeightChanged: _onLargeTitleHeightChanged,
@@ -686,6 +693,7 @@ class _RenderOverscrollPinnedBox(var ValueGetter<double> _pulledExtent) extends 
 class const _LargeTitleSliver({
   required final String title,
   required final Widget? subtitle,
+  required final VoidCallback? onTitleTap,
   required final ScrollController scrollController,
 
   /// Whether the title rests in the bar row: it then takes the bar's own
@@ -698,6 +706,7 @@ class const _LargeTitleSliver({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final subtitle = this.subtitle;
+    final onTitleTap = this.onTitleTap;
     final pulledExtent = this.pulledExtent;
     final horizontalInset = inBar ? PregoSpacing.xl : PregoSpacing.x3l;
 
@@ -722,12 +731,21 @@ class const _LargeTitleSliver({
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           );
-          final titleText = inBar
+          final titleBlock = inBar
               ? ConstrainedBox(
                   constraints: const BoxConstraints(minHeight: PregoTopNavigation.barHeight),
                   child: Align(alignment: AlignmentDirectional.centerStart, child: text),
                 )
               : text;
+          // Like the subtitle below, a title that has faded away takes no taps.
+          final titleText = onTitleTap == null || opacity == 0
+              ? titleBlock
+              : GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  excludeFromSemantics: true,
+                  onTap: onTitleTap,
+                  child: titleBlock,
+                );
           if (subtitle == null) return titleText;
 
           return Column(

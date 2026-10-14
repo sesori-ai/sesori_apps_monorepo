@@ -126,7 +126,7 @@ void main() {
     build: () {
       statusController.add(connectedTo(bridgeId: "a"));
       when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => bridges);
-      when(() => mockRegisteredBridgesService.bridges).thenAnswer((_) => BehaviorSubject.seeded(bridges));
+      mockRegisteredBridgesService.emitBridges(bridges: bridges);
       return buildCubit();
     },
     act: (cubit) async {

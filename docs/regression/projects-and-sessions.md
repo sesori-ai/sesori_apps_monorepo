@@ -240,6 +240,13 @@ state.
 - On the phone, only the top-level Projects and Settings pages show a large 36 bold title. Under the Projects
   title, a status row names the paired machine, holds a skeleton while the name loads, and says what onboarding
   waits for before any bridge is registered. The row is left out when the lookup finds no machine to name.
+- A named Projects status row ends in a chevron, and it and the title above it open an anchored computer menu
+  below the row. The menu lists the account's computers, most recently seen first, each with its platform icon,
+  name, and "Online", "Offline · last seen …" or "Offline", and checks the current one (before any target is
+  known, the first one, which the relay serves). Picking the current computer only closes the menu. Picking
+  another closes it, returns to the Projects root, shows the shimmer loading list under the new name, and loads
+  that computer's projects as a first load does, with no rows from the previous computer. Each switch reports
+  `computer_switched` with its `source` (`menu` here) and whether the target was online.
   Every other page, File Changes included, shows an 18 bold bar title, with a 12 tertiary subtitle when the
   page has one. A two-line bar title caps its text scale so it stays inside the bar; a title on its own scales
   fully.
@@ -568,6 +575,9 @@ started one. Restore harness eligibility afterwards.
 
 ## Failure Signals
 
+- The computer menu checks a computer other than the one the header names, a switch leaves the previous
+  computer's projects or a pushed page on screen, the header keeps the old name, or picking the current computer
+  reconnects.
 - Phone search asks the bridge for anything, misses a title for its case or word
   order, keeps chip counts from the unsearched list, or leaves a blank page
   instead of "No matches".

@@ -279,6 +279,28 @@
       }
     }
   },
+  "computerMenuOnline": "Online",
+  "@computerMenuOnline": {
+    "description": "State line under a computer's name in the computer menu opened from the name under 'Projects', when that computer's bridge is connected."
+  },
+  "computerMenuOffline": "Offline",
+  "@computerMenuOffline": {
+    "description": "State line under a computer's name in the computer menu when that computer's bridge is not connected and has never reported a last-seen time."
+  },
+  "computerMenuOfflineLastSeen": "Offline · last seen {lastSeen}",
+  "@computerMenuOfflineLastSeen": {
+    "description": "State line under a computer's name in the computer menu when that computer's bridge is not connected, e.g. 'Offline · last seen 5h ago'. The placeholder is already-formatted text from the app's shared relative-time vocabulary.",
+    "placeholders": {
+      "lastSeen": {
+        "type": "String",
+        "example": "5h ago"
+      }
+    }
+  },
+  "computerMenuSwitchHint": "Switch computer",
+  "@computerMenuSwitchHint": {
+    "description": "Accessibility hint on the computer name under 'Projects', which opens the menu for switching to another computer."
+  },
   "projectsBridgeOfflineInstallCommands": "Install commands",
   "@projectsBridgeOfflineInstallCommands": {
     "description": "Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands."

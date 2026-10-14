@@ -69,7 +69,8 @@ final class DeferredProductAnalyticsCandidates {
     InstallCommandSharedEvent() ||
     RunCommandCopiedEvent() ||
     RunCommandSharedEvent() ||
-    ProductScreenViewedEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
+    ProductScreenViewedEvent() ||
+    ComputerSwitchedEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
   };
 
   DeferredProductAnalyticsDrain drainNext() {
