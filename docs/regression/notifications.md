@@ -54,8 +54,9 @@ external.
   login.
 - A mobile session push names the computer it came from. Tapping one for another computer switches to that computer
   (the computer switch, reported with source `notification`), lands on Projects, and then opens the session, which loads
-  once the new computer's connection is up. A push for the current computer, or one without a computer id (from an
-  older bridge), opens on the current computer as before. A foreground push keeps its computer id in the local
+  once the new computer's connection is up. A push for the current computer, or one without a computer id (from a
+  v1.9.1 bridge, or sent while the bridge was not registered, such as between a revocation and its re-registration),
+  opens on the current computer as before. A foreground push keeps its computer id in the local
   notification it renders.
 - Desktop attention listens directly to relay SSE without registering a push token. A permission-asked or
   question-asked event uses `displaySessionId` when present, resolves that session's title/project, and shows only while
