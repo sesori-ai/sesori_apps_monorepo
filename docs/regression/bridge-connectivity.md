@@ -73,6 +73,13 @@ presents.
   before any app that reads it. The app publishes the list as a stream, most recently seen first; a
   live connection marks it stale so the next read refetches, a failed fetch
   keeps the last list, and logout empties it.
+- A `bridge_presence` notice updates that computer's status in the list at once,
+  without a fetch, and a notice for a computer the list does not know refetches
+  the list. The latest notice per computer on the live connection wins over any
+  fetched list, including a fetch that started before the notice or the refetch
+  it triggered, because the auth server learns of the change asynchronously.
+  Those notices are forgotten when the connection drops, so the next fetch
+  decides. A notice never changes the app's own connection state.
 - The app owns one target computer. It names the stored target in its relay
   `auth`, so reconnects stay on the same computer; with none stored it adopts
   the bridge the relay reports at join without reconnecting, unless a
@@ -191,7 +198,7 @@ presents.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | A started bridge reaches readiness and answers a health request; a connected client reports connected. Headless bridge plus relay integration for the client-visible state; no plugin. |
-| L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated minute-spaced startup outage recovery, cancellation, and definitive auth/protocol failure handling; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release; automated target ownership (stored target in `auth`, adoption without reconnect, retarget reconnect, logout clearing, initial-target precedence) and bridge-scoped cache resets that drop a late answer from the previous computer. No plugin. |
+| L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated minute-spaced startup outage recovery, cancellation, and definitive auth/protocol failure handling; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release; automated target ownership (stored target in `auth`, adoption without reconnect, retarget reconnect, logout clearing, initial-target precedence) and bridge-scoped cache resets that drop a late answer from the previous computer; automated presence notices updating a listed computer in place, refetching for an unknown one, winning over an older in-flight fetch, and being forgotten on a drop. No plugin. |
 | L3 Release | Session pages load through the relay for the new app with the new bridge (deflated), the new app with a v1.9.0 bridge (plain), and a v1.9.0 app with the new bridge (plain). The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
 | L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, several live bridges per account (per-app routing, presence notices, same-id replacement, the 10-bridge cap), and alternate client platforms; the cross-platform supervised E2E suite builds and runs a real helper against fake auth/relay/control endpoints for control authentication, token pulls, registration, restart sentinel 86, fresh respawn, unregister, and process cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, account-bound persisted registration, concurrent logout/stop ordering, token-only deletion verification, tray menu/status updates, Linux host detection, ordered Quit, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
 | L5 Full | Store-distributed app against a released bridge over production relay, older app against newer bridge and the reverse for the client/bridge wire contract, and a long-lived headless VM run over repeated reconnects. Packaged or external. |
@@ -227,6 +234,9 @@ an id, and whether restart is explicit.
 - A registered-bridge list that fails to load because a bridge reports an
   unrecognised platform, a `bridge_presence` notice changing the
   app's own connection state, or an old account's bridge list surviving logout.
+- A computer's status that lags a presence notice until the next fetch, a fetch
+  that started before a notice reverting the status it set, or a newly linked
+  computer missing from the list after its first presence notice.
 - A reconnect landing on a different computer than the one in use, a stored
   target surviving logout, a desktop launch with no stored target connecting to
   another computer while its own bridge is registered, or projects, recent
@@ -287,7 +297,7 @@ an id, and whether restart is explicit.
 - Bridge orchestrator, relay, key exchange, server ownership, auth, sleep, and control code.
 - Client relay and connection-overlay capabilities and their owning tests.
 - Shared contracts: `bridge_summary_test.dart`, `relay_notice_message_test.dart`;
-  `registered_bridges_service_test.dart` for the list stream.
+  `registered_bridges_service_test.dart` for the list stream and presence notices.
 - Deflate negotiation: `relay_plaintext_codec_test.dart`,
   `orchestrator_request_concurrency_test.dart`, `relay_request_test.dart`,
   `relay_http_client_test.dart`, and `relay_client_handshake_replay_test.dart`.

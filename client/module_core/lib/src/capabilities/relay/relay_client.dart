@@ -52,6 +52,8 @@ class RelayClient._({
   String? _reportedBridgeId;
 
   final StreamController<BridgeStatus> _bridgeStatusController = StreamController<BridgeStatus>.broadcast();
+  final StreamController<BridgePresenceMessage> _bridgePresenceController =
+      StreamController<BridgePresenceMessage>.broadcast();
   final StreamController<void> _socketClosedController = StreamController<void>.broadcast();
 
   RelayClientConnectionState _connectionState = RelayClientConnectionState.disconnected;
@@ -139,6 +141,10 @@ class RelayClient._({
 
   /// Stream of bridge online/offline events sent as text control frames by the relay.
   Stream<BridgeStatus> get bridgeStatus => _bridgeStatusController.stream;
+
+  /// Account-wide notices that any of the account's bridges connected or
+  /// disconnected, including bridges this socket is not routed to.
+  Stream<BridgePresenceMessage> get bridgePresence => _bridgePresenceController.stream;
 
   /// Fires once when the underlying socket closes unexpectedly (not via an
   /// explicit [disconnect]). Used by ConnectionService to detect a dropped
@@ -526,6 +532,7 @@ class RelayClient._({
     await _teardownChannelOnly();
     await _closeSseController();
     await _closeBridgeStatusController();
+    await _closeController(controller: _bridgePresenceController, context: "relay bridge presence");
     await _closeSocketClosedController();
     _completeAllPendingWithError(const RelayResponseLostException(message: "Relay disconnected"));
     _sessionEncryptor = null;
@@ -818,8 +825,9 @@ class RelayClient._({
             firstBinaryMessage.completeError(const _BridgeOfflineDuringHandshake());
           }
           _bridgeStatusController.add(BridgeStatus.offline);
-        case BridgePresenceMessage(:final bridgeId, :final online):
-          logd("Relay: bridge $bridgeId presence online=$online");
+        case final BridgePresenceMessage presence:
+          logd("Relay: bridge ${presence.bridgeId} presence online=${presence.online}");
+          _bridgePresenceController.add(presence);
         case UnknownRelayNoticeMessage():
           logw("Relay: unknown text frame type: ${decoded["type"].toString()}");
       }

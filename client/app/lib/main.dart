@@ -433,12 +433,24 @@ class const _SesoriAppShell() extends StatelessWidget {
                         BlocProvider(create: (_) => SessionLaunchCubit(launchService: getIt<SessionLaunchService>())),
                         // For each list's own launching rows.
                         RepositoryProvider<SessionLaunchService>.value(value: getIt<SessionLaunchService>()),
+                        BlocProvider(
+                          create: (_) => LinkedComputerAlertCubit(
+                            registeredBridgesService: getIt<RegisteredBridgesService>(),
+                            activeBridgeLocality: getIt<ActiveBridgeLocality>(),
+                          ),
+                        ),
                       ],
                       child: PendingArchiveAlerts(
                         navigatorKey: appRootNavigatorKey,
                         child: SessionLaunchFailureAlerts(
                           navigatorKey: appRootNavigatorKey,
-                          child: child ?? const SizedBox.shrink(),
+                          child: LinkedComputerAlerts(
+                            navigatorKey: appRootNavigatorKey,
+                            onSwitchComputer: ({required bridgeId, required source}) => unawaited(
+                              getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source),
+                            ),
+                            child: child ?? const SizedBox.shrink(),
+                          ),
                         ),
                       ),
                     ),

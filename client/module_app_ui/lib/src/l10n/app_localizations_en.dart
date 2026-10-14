@@ -383,6 +383,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String linkedComputerAlertTitle(String name) {
+    return '$name is now linked';
+  }
+
+  @override
+  String get linkedComputerAlertSwitch => 'Switch';
+
+  @override
   String get computerMenuSwitchHint => 'Switch computer';
 
   @override

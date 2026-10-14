@@ -46,6 +46,12 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
           // For each list's own launching rows.
           RepositoryProvider<SessionLaunchService>.value(value: getIt<SessionLaunchService>()),
           BlocProvider(
+            create: (_) => LinkedComputerAlertCubit(
+              registeredBridgesService: getIt<RegisteredBridgesService>(),
+              activeBridgeLocality: getIt<ActiveBridgeLocality>(),
+            ),
+          ),
+          BlocProvider(
             create: (context) => DesktopSidebarRefreshCubit(
               service: getIt<DesktopSidebarRefreshService>(
                 param1: context.read<ProjectInventoryService>(),
@@ -56,7 +62,15 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
         ],
         child: PendingArchiveAlerts(
           navigatorKey: null,
-          child: SessionLaunchFailureAlerts(navigatorKey: null, child: child),
+          child: SessionLaunchFailureAlerts(
+            navigatorKey: null,
+            child: LinkedComputerAlerts(
+              navigatorKey: null,
+              onSwitchComputer: ({required bridgeId, required source}) =>
+                  unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source)),
+              child: child,
+            ),
+          ),
         ),
       ),
     ),

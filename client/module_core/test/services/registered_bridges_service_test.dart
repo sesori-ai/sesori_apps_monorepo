@@ -367,6 +367,80 @@ void main() {
     });
   });
 
+  group("presence notices", () {
+    BridgeRegistrationStatus statusOf({required RegisteredBridgesService service, required String id}) =>
+        service.bridges.value.singleWhere((bridge) => bridge.id == id).status;
+
+    test("update a listed computer's status in place without fetching", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary(id: "a"), testBridgeSummary(id: "b")]),
+      );
+      final service = build();
+      await service.getRegisteredBridges();
+
+      connectionService.emitBridgePresence(bridgeId: "b", online: false);
+      await _settle();
+
+      expect(statusOf(service: service, id: "b"), BridgeRegistrationStatus.inactive);
+      expect(statusOf(service: service, id: "a"), BridgeRegistrationStatus.active);
+      verify(() => bridgeRepository.getRegisteredBridges()).called(1);
+    });
+
+    test("refetch the list for a computer it does not know", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary(id: "a")]),
+      );
+      final service = build();
+      await service.getRegisteredBridges();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([
+          testBridgeSummary(id: "a"),
+          testBridgeSummary(id: "new", status: BridgeRegistrationStatus.inactive),
+        ]),
+      );
+
+      connectionService.emitBridgePresence(bridgeId: "new", online: true);
+      await _settle();
+
+      expect(service.bridges.value.map((bridge) => bridge.id), containsAll(["a", "new"]));
+      // The auth server has not recorded the relay's report yet; the notice wins.
+      expect(statusOf(service: service, id: "new"), BridgeRegistrationStatus.active);
+    });
+
+    test("win over a fetch that started before them", () async {
+      final fetch = Completer<ApiResponse<List<BridgeSummary>>>();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer((_) => fetch.future);
+      final service = build();
+      final pending = service.getRegisteredBridges();
+
+      connectionService.emitBridgePresence(bridgeId: "a", online: false);
+      await _settle();
+      fetch.complete(ApiResponse.success([testBridgeSummary(id: "a")]));
+      final bridges = await pending;
+
+      expect(bridges.single.status, BridgeRegistrationStatus.inactive);
+      expect(statusOf(service: service, id: "a"), BridgeRegistrationStatus.inactive);
+    });
+
+    test("are forgotten when the connection drops, so the next fetch decides", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary(id: "a")]),
+      );
+      final service = build();
+      statusSubject.add(_connected);
+      await service.getRegisteredBridges();
+      connectionService.emitBridgePresence(bridgeId: "a", online: false);
+      await _settle();
+
+      statusSubject.add(const ConnectionStatus.reconnecting(config: _config));
+      statusSubject.add(_connected);
+      await _settle();
+      await service.getRegisteredBridges();
+
+      expect(statusOf(service: service, id: "a"), BridgeRegistrationStatus.active);
+    });
+  });
+
   group("reactive latch", () {
     test("seeds the stream from a persisted store latch at construction (no network)", () async {
       when(() => store.hasRegisteredBridges()).thenAnswer((_) async => true);

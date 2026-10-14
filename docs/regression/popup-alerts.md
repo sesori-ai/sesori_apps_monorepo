@@ -39,12 +39,18 @@ and render above the current route, below the top navigation bar.
   banner as it appears or hides, without jumping. An alert raised from a context
   above its screen's scaffold, or after its source screen was closed, is placed
   below the screen showing when it appears.
+- When a computer newly appears in the signed-in account's list, phone and
+  desktop announce it once with "<name> is now linked" and a Switch action that
+  switches through the shared computer switch flow with source `alert`. The alert
+  stays eight seconds. The first list after launch or sign-in, status-only
+  changes, and the desktop's own computer are never announced; when several
+  computers appear at once, only the most recently seen one is.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: the owning widget suite proves each visual variant, placement below navigation, following a banner that appears or hides while the alert is visible (from a context inside or above the scaffold and from an explicit overlay), placement after the source screen is closed, auto-dismiss, close-on-tap, upward-swipe dismissal, replacement including replacement during dismissal, interrupted entrance, entry/exit direction and responsiveness, fade-only reduced motion and live preference changes, live-region semantics, sizing for short and long text and for action-bearing alerts, and overlay inset behavior when a modal strips top padding. |
+| L1 Smoke | Automated: the owning widget suite proves each visual variant, placement below navigation, following a banner that appears or hides while the alert is visible (from a context inside or above the scaffold and from an explicit overlay), placement after the source screen is closed, auto-dismiss, close-on-tap, upward-swipe dismissal, replacement including replacement during dismissal, interrupted entrance, entry/exit direction and responsiveness, fade-only reduced motion and live preference changes, live-region semantics, sizing for short and long text and for action-bearing alerts, and overlay inset behavior when a modal strips top padding. Automated: the linked-computer cubit and widget suites prove which list changes announce a computer, the Switch action and its source, and the eight-second stay. |
 | L2 Routine | Client end to end on the release-target client platform: an alert raised by a real asynchronous operation survives removal of its source row or modal, and renders above a modal or full-screen image viewer. |
 | L3 Release | Client end to end: a session-attributed backend alert appears on the matching session detail or diffs route and stays suppressed elsewhere, while an unattributed backend alert shows app-wide. |
 | L4 Extended | Client end to end at accessibility text sizes: supporting text and actions expand the card without clipping. |
@@ -65,8 +71,14 @@ and render above the current route, below the top navigation bar.
 - Supporting text or actions clip at accessibility text sizes.
 - An alert jumps when dismissed during entrance, automatically slides or scales
   with reduced motion enabled, or is not announced by assistive technology.
+- A linked-computer alert appears at launch or sign-in for already-linked
+  computers, for the desktop's own computer, or for a status change, or its
+  Switch action does not switch to the named computer.
 
 ## Sources
 
 - `client/module_prego/lib/components/alerts/prego_popup_alerts_notifications.dart`
 - `client/module_prego/test/components/prego_popup_alerts_notifications_test.dart`
+- `client/module_core/lib/src/cubits/linked_computer_alert/` and its tests
+- `client/module_app_ui/lib/src/widgets/linked_computer_alerts.dart` and
+  `client/module_app_ui/test/widgets/linked_computer_alerts_test.dart`

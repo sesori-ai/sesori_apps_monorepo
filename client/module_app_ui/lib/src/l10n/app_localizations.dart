@@ -745,6 +745,18 @@ abstract class AppLocalizations {
   /// **'Offline · last seen {lastSeen}'**
   String computerMenuOfflineLastSeen(String lastSeen);
 
+  /// Popup alert shown while the app is open when a computer is newly linked to the account, e.g. 'workstation is now linked'. The name is the computer's name.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is now linked'**
+  String linkedComputerAlertTitle(String name);
+
+  /// Action on the 'is now linked' popup alert that switches the app to the newly linked computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get linkedComputerAlertSwitch;
+
   /// Accessibility hint on the computer name under 'Projects', which opens the menu for switching to another computer.
   ///
   /// In en, this message translates to:

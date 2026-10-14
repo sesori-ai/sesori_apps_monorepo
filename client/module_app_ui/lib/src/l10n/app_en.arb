@@ -325,6 +325,20 @@
       }
     }
   },
+  "linkedComputerAlertTitle": "{name} is now linked",
+  "@linkedComputerAlertTitle": {
+    "description": "Popup alert shown while the app is open when a computer is newly linked to the account, e.g. 'workstation is now linked'. The name is the computer's name.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "workstation"
+      }
+    }
+  },
+  "linkedComputerAlertSwitch": "Switch",
+  "@linkedComputerAlertSwitch": {
+    "description": "Action on the 'is now linked' popup alert that switches the app to the newly linked computer."
+  },
   "computerMenuSwitchHint": "Switch computer",
   "@computerMenuSwitchHint": {
     "description": "Accessibility hint on the computer name under 'Projects', which opens the menu for switching to another computer."
