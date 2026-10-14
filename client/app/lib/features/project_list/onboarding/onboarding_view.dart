@@ -102,8 +102,7 @@ class const _EmptyProjectsGraphic() extends StatelessWidget {
 /// then two numbered command steps — install the bridge, then start it — each
 /// introduced by a label carrying an "ⓘ" info popover, and a "Why is this
 /// needed?" explainer button. The "Need help?" support menu ([_NeedHelpMenu])
-/// is not part of this scroll flow — it rides the scaffold's floating-action
-/// slot.
+/// closes the page below this body (see [ProjectListView]).
 class const _ConnectBridgeChecklist() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -166,9 +165,6 @@ class const _ConnectBridgeChecklist() extends StatelessWidget {
         ),
         const SizedBox(height: PregoSpacing.xl),
         const _WhyBridgeButton(surface: OnboardingSurface.connectSetup),
-        // Bottom breathing room so the last command box can be scrolled clear
-        // of the "Need help?" button pinned centred at the bottom of the page.
-        const SizedBox(height: PregoSpacing.x6l),
       ],
     );
   }

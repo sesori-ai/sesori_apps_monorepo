@@ -80,10 +80,11 @@ participates.
 - With no bridge, mobile Projects shows install/start commands, the explainer and support links; copy/share
   hand off the command unchanged. Desktop home instead offers supervised local bridge recovery.
   Connected with no projects shows the add-project call to action on either surface.
-- With a registered bridge offline, mobile Projects names the computer once, in
-  the bar's bridge line when the name is known, under a "Bridge offline" heading
-  with when it was last seen when that is known, and keeps the start command above
-  quiet explainer, install and help links.
+- With a registered bridge offline, mobile Projects names the computer in the
+  bar's bridge line and in a "<name> is offline" heading when the name is known
+  ("Bridge offline" otherwise), with when it was last seen when that is known,
+  then the account's other online computers ([projects](projects-and-sessions.md)),
+  and keeps the start command above quiet explainer, install and help links.
 - Desktop first-run startup preferences and optional macOS file-access guidance follow the
   [cockpit contract](desktop-cockpit-shell.md) and [supervision contract](desktop-bridge-supervision.md).
   Dismissing guidance does not grant permission or block ordinary project navigation.

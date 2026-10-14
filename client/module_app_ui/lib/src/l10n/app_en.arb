@@ -267,15 +267,43 @@
   },
   "projectsBridgeOfflineTitle": "Bridge offline",
   "@projectsBridgeOfflineTitle": {
-    "description": "Heading of the bridge-offline Projects screen, under the connection graphic. The bar's bridge line above already names the computer."
+    "description": "Heading of the bridge-offline Projects screen, under the connection graphic, while the offline computer's name is not known."
+  },
+  "projectsBridgeOfflineComputerTitle": "{name} is offline",
+  "@projectsBridgeOfflineComputerTitle": {
+    "description": "Heading of the bridge-offline Projects screen, under the connection graphic, naming the computer the app is pointed at, e.g. 'dev-laptop is offline'.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "dev-laptop"
+      }
+    }
   },
   "projectsBridgeOfflineLastSeen": "Last seen {lastSeen}",
   "@projectsBridgeOfflineLastSeen": {
-    "description": "Quiet line under the 'Bridge offline' heading saying when the bridge was last seen, e.g. 'Last seen 5h ago'. Omitted when the bridge has never reported a last-seen time. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.",
+    "description": "Quiet line under the bridge-offline heading saying when the bridge was last seen, e.g. 'Last seen 5h ago'. Omitted when the bridge has never reported a last-seen time. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.",
     "placeholders": {
       "lastSeen": {
         "type": "String",
         "example": "5h ago"
+      }
+    }
+  },
+  "projectsBridgeOfflineOtherComputers": "Other computers",
+  "@projectsBridgeOfflineOtherComputers": {
+    "description": "Header of the card on the bridge-offline Projects screen that lists the account's other online computers, each a one-tap switch."
+  },
+  "projectsBridgeOfflineNoOtherComputersOnline": "No other computers online",
+  "@projectsBridgeOfflineNoOtherComputersOnline": {
+    "description": "Line in the 'Other computers' card on the bridge-offline Projects screen when none of the account's other computers is online."
+  },
+  "projectsBridgeOfflineMoreComputers": "{count, plural, =1{+ 1 other} other{+ {count} others}}",
+  "@projectsBridgeOfflineMoreComputers": {
+    "description": "Last row of the 'Other computers' card on the bridge-offline Projects screen when more computers are online than the card lists; it opens the computer menu. The count is how many online computers the card does not list.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
       }
     }
   },

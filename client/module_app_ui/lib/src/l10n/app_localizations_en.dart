@@ -344,8 +344,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsBridgeOfflineTitle => 'Bridge offline';
 
   @override
+  String projectsBridgeOfflineComputerTitle(String name) {
+    return '$name is offline';
+  }
+
+  @override
   String projectsBridgeOfflineLastSeen(String lastSeen) {
     return 'Last seen $lastSeen';
+  }
+
+  @override
+  String get projectsBridgeOfflineOtherComputers => 'Other computers';
+
+  @override
+  String get projectsBridgeOfflineNoOtherComputersOnline => 'No other computers online';
+
+  @override
+  String projectsBridgeOfflineMoreComputers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '+ $count others',
+      one: '+ 1 other',
+    );
+    return '$_temp0';
   }
 
   @override

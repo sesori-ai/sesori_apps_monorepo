@@ -691,17 +691,41 @@ abstract class AppLocalizations {
   /// **'Disconnected'**
   String get projectsBridgeOfflineDisconnected;
 
-  /// Heading of the bridge-offline Projects screen, under the connection graphic. The bar's bridge line above already names the computer.
+  /// Heading of the bridge-offline Projects screen, under the connection graphic, while the offline computer's name is not known.
   ///
   /// In en, this message translates to:
   /// **'Bridge offline'**
   String get projectsBridgeOfflineTitle;
 
-  /// Quiet line under the 'Bridge offline' heading saying when the bridge was last seen, e.g. 'Last seen 5h ago'. Omitted when the bridge has never reported a last-seen time. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.
+  /// Heading of the bridge-offline Projects screen, under the connection graphic, naming the computer the app is pointed at, e.g. 'dev-laptop is offline'.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is offline'**
+  String projectsBridgeOfflineComputerTitle(String name);
+
+  /// Quiet line under the bridge-offline heading saying when the bridge was last seen, e.g. 'Last seen 5h ago'. Omitted when the bridge has never reported a last-seen time. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.
   ///
   /// In en, this message translates to:
   /// **'Last seen {lastSeen}'**
   String projectsBridgeOfflineLastSeen(String lastSeen);
+
+  /// Header of the card on the bridge-offline Projects screen that lists the account's other online computers, each a one-tap switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Other computers'**
+  String get projectsBridgeOfflineOtherComputers;
+
+  /// Line in the 'Other computers' card on the bridge-offline Projects screen when none of the account's other computers is online.
+  ///
+  /// In en, this message translates to:
+  /// **'No other computers online'**
+  String get projectsBridgeOfflineNoOtherComputersOnline;
+
+  /// Last row of the 'Other computers' card on the bridge-offline Projects screen when more computers are online than the card lists; it opens the computer menu. The count is how many online computers the card does not list.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{+ 1 other} other{+ {count} others}}'**
+  String projectsBridgeOfflineMoreComputers(int count);
 
   /// State line under a computer's name in the computer menu opened from the name under 'Projects', when that computer's bridge is connected.
   ///

@@ -42,7 +42,7 @@ typedef ProjectListDisconnectedViewBuilder = Widget Function({
   required BridgeSummary? bridge,
 });
 
-typedef ProjectListDisconnectedActionBuilder = Widget? Function({
+typedef ProjectListDisconnectedActionBuilder = Widget Function({
   required BuildContext context,
   required ProjectListBridgeDisconnected state,
 });
@@ -116,38 +116,18 @@ class _ProjectListViewState() extends State<ProjectListView> {
     super.dispose();
   }
 
-  /// The scaffold's floating action for the current [state], with the
-  /// placement that action is designed for: the add-project FAB in the
-  /// trailing corner once projects exist, the onboarding "Need help?" support
-  /// menu centred on the disconnected surfaces, and nothing otherwise — the
+  /// The add-project FAB once projects exist, and nothing otherwise — the
   /// connected-but-empty state carries its own injected add-project call to
-  /// action, which a floating pill would only duplicate.
-  ({Widget? action, PregoFloatingActionAlignment alignment}) _floatingAction({
-    required BuildContext context,
-    required ProjectListState state,
-  }) {
-    if (state is ProjectListLoaded && state.projects.isNotEmpty) {
-      return (
-        action: PregoButtonsIconGlass(
-          icon: TablerRegular.folder_plus,
-          size: PregoButtonsIconGlassSize.xl,
-          iconSize: PregoIconSize.lg,
-          onPressed: () => widget.onAddProject(context: context),
-        ),
-        alignment: PregoFloatingActionAlignment.end,
-      );
-    }
-    // The onboarding/recovery surfaces get the same pill but report distinct
-    // analytics surfaces, so help-seeking is attributable to the funnel step.
-    // It reads as the page's own closing call to action rather than a corner
-    // affordance, so the design centres it under the setup steps.
-    if (state is ProjectListBridgeDisconnected) {
-      return (
-        action: widget.disconnectedActionBuilder(context: context, state: state),
-        alignment: PregoFloatingActionAlignment.center,
-      );
-    }
-    return (action: null, alignment: PregoFloatingActionAlignment.end);
+  /// action, which a floating pill would only duplicate, and the disconnected
+  /// surfaces end their page flow with their own "Need help?" action.
+  Widget? _floatingAction({required BuildContext context, required ProjectListState state}) {
+    if (state is! ProjectListLoaded || state.projects.isEmpty) return null;
+    return PregoButtonsIconGlass(
+      icon: TablerRegular.folder_plus,
+      size: PregoButtonsIconGlassSize.xl,
+      iconSize: PregoIconSize.lg,
+      onPressed: () => widget.onAddProject(context: context),
+    );
   }
 
   @override
@@ -169,7 +149,6 @@ class _ProjectListViewState() extends State<ProjectListView> {
     // on connection changes; [_bannerFor] watches the same cubit below.
     final overlay = context.watch<ConnectionOverlayCubit>().state;
     final online = overlay is ConnectionOverlayHidden && overlay.connected;
-    final floatingAction = _floatingAction(context: context, state: state);
     final subtitle = _subtitle(context: context, state: state, identity: identity, online: online);
 
     return PregoGlassScaffold(
@@ -189,11 +168,7 @@ class _ProjectListViewState() extends State<ProjectListView> {
           onPressed: () => widget.onOpenSettings(context: context),
         ),
       ],
-      // Floating action, resolved per state: the add-project FAB once projects
-      // exist, the "Need help?" support menu on the onboarding and
-      // bridge-offline surfaces, and nothing while loading/errored.
-      floatingActionButton: floatingAction.action,
-      floatingActionAlignment: floatingAction.alignment,
+      floatingActionButton: _floatingAction(context: context, state: state),
       onRefresh: _refreshFor(context: context, state: state),
       // Only the loaded list can scan: the disconnected states pull to
       // reconnect, and there is nothing to scan into until the list is there.
@@ -325,19 +300,32 @@ class _ProjectListViewState() extends State<ProjectListView> {
       // No bridge has ever been registered → setup onboarding; a bridge exists
       // but isn't running → ask to turn it on. Both join the page scroll rather
       // than nesting one of their own, so they scroll under the fixed bar.
-      // hasScrollBody: false lets a body shorter than the viewport sit still
-      // while a taller one — the offline view with its install commands
-      // expanded — scrolls the page. SafeArea(top: false) keeps the last box
-      // clear of the home indicator.
+      // The "Need help?" action closes the flow in the space left below the
+      // body: pinned to the bottom while the body is shorter than the
+      // viewport, right after the last control once it is taller — the offline
+      // view with its install commands expanded — so it never covers the
+      // body. Measured from the body's laid-out extent rather than its
+      // intrinsic height, so the disclosure's animated growth pushes the
+      // action down smoothly. SafeArea(top: false) keeps it clear of the home
+      // indicator.
       final ProjectListBridgeDisconnected disconnected => [
+        SliverToBoxAdapter(
+          child: widget.disconnectedViewBuilder(
+            context: context,
+            state: disconnected,
+            bridge: bridge,
+          ),
+        ),
         SliverFillRemaining(
           hasScrollBody: false,
           child: SafeArea(
             top: false,
-            child: widget.disconnectedViewBuilder(
-              context: context,
-              state: disconnected,
-              bridge: bridge,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.symmetric(vertical: PregoSpacing.xl),
+                child: widget.disconnectedActionBuilder(context: context, state: disconnected),
+              ),
             ),
           ),
         ),

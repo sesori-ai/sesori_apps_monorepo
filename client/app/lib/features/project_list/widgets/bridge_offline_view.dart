@@ -2,14 +2,14 @@ part of "../project_list_screen.dart";
 
 /// Shown when the account has a bridge registered but none is connected — the
 /// user already completed setup, so instead of the install onboarding they are
-/// asked to bring the bridge back up: the connection graphic over a "Bridge
-/// offline" heading and when the bridge was last seen, then the always-visible
-/// start-the-bridge command, and quiet "Why is this needed?" and "Install
-/// commands" links, the latter a disclosure for when the bridge needs to be
-/// (re)installed. The bar's bridge line already names the computer, so the
-/// body does not repeat it. The quiet "Need help?" support menu
-/// ([_NeedHelpMenu]) is not part of this scroll flow — it rides the scaffold's
-/// floating-action slot.
+/// asked to bring the bridge back up: the connection graphic over a heading
+/// that names the computer ("dev-laptop is offline") and when it was last
+/// seen, then the account's other online computers to switch to
+/// ([OtherComputersCard]), then the always-visible start-the-bridge command,
+/// and quiet "Why is this needed?" and "Install commands" links, the latter a
+/// disclosure for when the bridge needs to be (re)installed. The quiet
+/// "Need help?" support menu ([_NeedHelpMenu]) closes the page below this body
+/// (see [ProjectListView]).
 ///
 /// There is no reconnect button: reconnecting is what the page already does on
 /// its own and on pull-to-refresh, so the design spends the space on the
@@ -20,10 +20,11 @@ part of "../project_list_screen.dart";
 /// bar. Anchored to the top of that page at the design's offset; the enclosing
 /// sliver grows past the viewport once the body outgrows it.
 class const _BridgeOfflineView({
-  /// The machine the app is trying to reach — the account's most recently seen
-  /// registered bridge. Null while the lookup has no answer, or when it failed
-  /// (e.g. the phone itself is offline); the last-seen line is hidden then.
+  /// The computer the app is trying to reach. Null while the lookup has no
+  /// answer, or when it failed (e.g. the phone itself is offline); the heading
+  /// then says "Bridge offline" and the last-seen line is hidden.
   required final BridgeSummary? bridge,
+  required final ComputerSwitchCallback onSwitchComputer,
 }) extends StatefulWidget {
   @override
   State<_BridgeOfflineView> createState() => _BridgeOfflineViewState();
@@ -37,7 +38,9 @@ class _BridgeOfflineViewState() extends State<_BridgeOfflineView> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
-    final lastSeenAt = widget.bridge?.lastSeenAt;
+    final bridge = widget.bridge;
+    final lastSeenAt = bridge?.lastSeenAt;
+    final title = bridge == null ? loc.projectsBridgeOfflineTitle : loc.projectsBridgeOfflineComputerTitle(bridge.name);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
@@ -51,10 +54,16 @@ class _BridgeOfflineViewState() extends State<_BridgeOfflineView> {
           const SizedBox(height: 90),
           const ExcludeSemantics(child: Center(child: ConnectionGraphic.connectionOff())),
           const SizedBox(height: PregoSpacing.lg),
-          Text(
-            loc.projectsBridgeOfflineTitle,
-            textAlign: TextAlign.center,
-            style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textPrimary),
+          // Cross-fades when the lookup lands and the generic heading gives way
+          // to the computer's name.
+          AnimatedSwitcher(
+            duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
+            child: Text(
+              title,
+              key: ValueKey(title),
+              textAlign: TextAlign.center,
+              style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textPrimary),
+            ),
           ),
           // How long the bridge has been gone separates "I just closed the
           // laptop lid" from "this has been down for days". Refreshed by the
@@ -67,6 +76,7 @@ class _BridgeOfflineViewState() extends State<_BridgeOfflineView> {
               style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
             ),
           ],
+          OtherComputersCard(onSwitchComputer: widget.onSwitchComputer),
           const SizedBox(height: PregoSpacing.x5l),
           // Always visible: the bridge is already installed here, so the common
           // recovery is to (re)start it rather than reinstall.
@@ -120,10 +130,6 @@ class _BridgeOfflineViewState() extends State<_BridgeOfflineView> {
                 children: [
                   SizedBox(height: PregoSpacing.lg),
                   _InstallCommandBoxes(surface: OnboardingSurface.bridgeOffline),
-                  // Bottom breathing room so the last install box can be
-                  // scrolled clear of the "Need help?" button floating at the
-                  // bottom of the page.
-                  SizedBox(height: PregoSpacing.x6l),
                 ],
               ),
             ),
