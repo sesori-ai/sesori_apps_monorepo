@@ -472,8 +472,8 @@ class Orchestrator({
       sessionDao: _database.sessionDao,
       projectsDao: _database.projectsDao,
     );
-    final mcpService = McpService(repository: mcpRepository);
     final mcpAuthenticationService = McpAuthenticationService(repository: mcpRepository);
+    final mcpService = McpService(repository: mcpRepository, authenticationService: mcpAuthenticationService);
     final pendingInteractionSupport = PendingInteractionSupport(sessionDao: _database.sessionDao);
     final permissionRepository = PermissionRepository(
       runtime: _pluginRuntime,

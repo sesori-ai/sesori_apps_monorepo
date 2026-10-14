@@ -7,21 +7,40 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/mcp_repository.dart";
 import "../repositories/models/mcp_authentication_update.dart";
+import "../repositories/models/mcp_control_result.dart";
 import "../repositories/random_hex_id.dart";
 
-/// Owns one native attempt across client reconnects. No credentials are stored.
+/// Owns one native authentication or credential-forgetting operation across clients.
 class McpAuthenticationService({required final McpRepository _repository}) {
   final Random _random = Random.secure();
   final StreamController<void> _changes = StreamController.broadcast();
   final StreamController<McpInventoryRequest> _inventoryChanges = StreamController.broadcast();
-  _OwnedMcpAuthentication? _current;
+  _OwnedMcpNativeOperation? _current;
   bool _disposed = false;
 
   Stream<void> get changes => _changes.stream;
   Stream<McpInventoryRequest> get inventoryChanges => _inventoryChanges.stream;
-  McpAuthenticationResult get current => McpAuthenticationStateResult(
-    state: _current?.state ?? const McpAuthenticationIdle(),
-  );
+  McpAuthenticationResult get current => switch (_current) {
+    _OwnedMcpAuthentication(:final state) => McpAuthenticationStateResult(state: state),
+    _OwnedMcpCredentialForgetting(:final done) when !done.isCompleted => const McpAuthenticationBusy(),
+    _ => const McpAuthenticationStateResult(state: McpAuthenticationIdle()),
+  };
+
+  Future<McpControlResult> forgetAuthentication({required String pluginId, required McpServerTarget target}) async {
+    if (_disposed) return const McpControlUnavailable(reason: McpActionUnavailableReason.pluginInactive);
+    if (_current case final owner? when !owner.done.isCompleted) {
+      return const McpControlUnavailable(reason: McpActionUnavailableReason.busy);
+    }
+    final owner = _OwnedMcpCredentialForgetting();
+    _current = owner;
+    _changes.add(null);
+    try {
+      return await _repository.forgetAuthentication(pluginId: pluginId, target: target);
+    } finally {
+      owner.done.complete();
+      if (!_changes.isClosed) _changes.add(null);
+    }
+  }
 
   Future<McpAuthenticationResult> start({required McpAuthenticationStartRequest request}) async {
     if (_disposed) return const McpAuthenticationUnavailable(reason: McpAuthenticationUnavailableReason.pluginInactive);
@@ -152,7 +171,9 @@ class McpAuthenticationService({required final McpRepository _repository}) {
 
   _OwnedMcpAuthentication? _active({required String attemptId}) {
     final owner = _current;
-    return owner != null && owner.attempt.attemptId == attemptId && !owner.done.isCompleted ? owner : null;
+    return owner is _OwnedMcpAuthentication && owner.attempt.attemptId == attemptId && !owner.done.isCompleted
+        ? owner
+        : null;
   }
 
   void _receive({required _OwnedMcpAuthentication owner, required McpAuthenticationUpdate update}) {
@@ -289,7 +310,7 @@ class McpAuthenticationService({required final McpRepository _repository}) {
     try {
       if (owner != null && !owner.done.isCompleted) await owner.dispose();
     } finally {
-      if (owner != null && !owner.done.isCompleted) {
+      if (owner is _OwnedMcpAuthentication && !owner.done.isCompleted) {
         owner.state = McpAuthenticationFailed(
           attempt: owner.attempt,
           reason: McpAuthenticationFailureReason.interrupted,
@@ -302,7 +323,18 @@ class McpAuthenticationService({required final McpRepository _repository}) {
   }
 }
 
-class _OwnedMcpAuthentication({required McpAuthenticationAttempt initialAttempt}) {
+sealed class _OwnedMcpNativeOperation() {
+  final Completer<void> done = Completer();
+  Future<void> dispose();
+}
+
+final class _OwnedMcpCredentialForgetting() extends _OwnedMcpNativeOperation {
+  @override
+  Future<void> dispose() => done.future;
+}
+
+final class _OwnedMcpAuthentication({required McpAuthenticationAttempt initialAttempt})
+    extends _OwnedMcpNativeOperation {
   this {
     native = _PreparingMcpAuthentication(attempt: initialAttempt);
     state = McpAuthenticationStarting(attempt: initialAttempt);
@@ -311,11 +343,11 @@ class _OwnedMcpAuthentication({required McpAuthenticationAttempt initialAttempt}
   McpAuthenticationAttempt get attempt => native.attempt;
   late McpAuthenticationState state;
   final Completer<McpAuthenticationResult> ready = Completer();
-  final Completer<void> done = Completer();
   final CompositeSubscription subscriptions = CompositeSubscription();
   McpAuthenticationState? terminal;
   bool cancelRequested = false;
 
+  @override
   Future<void> dispose() => subscriptions.cancel();
 }
 

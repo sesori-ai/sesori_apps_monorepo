@@ -59,6 +59,10 @@ authentication success.
   non-prerelease published on 2026-09-24. Its connection service skips unknown SSE variants; its generated question
   parsers ignore additive fields, and its question API has pending/reply/reject routes. These source checks support the
   legacy notice below; step 2 still captures executable released-peer fixtures and checks any other supported release.
+- Release refresh on 2026-10-14: [public v1.9.1][public-mcp-release], commit `8bfeda9416`, now includes MCP inventory,
+  controls and authentication wire models. New capability fields must default to unknown when omitted by that bridge;
+  released clients must retain inventory while ignoring additive capability fields. Final mixed-client qualification
+  includes this baseline alongside the previously executed v1.9.0 legacy-notice parser fixture.
 
 Step 2 produces credential-free native captures at these baselines and records exact method support, scope, side
 effects, and response semantics. Cover local stdio and HTTP MCP fixtures, a fixture OAuth server, project trust
@@ -633,3 +637,4 @@ architecture review. This approves their ownership; released-peer and mixed-clie
 [claude-sdk-auth]: https://code.claude.com/docs/en/agent-sdk/mcp#oauth2-authentication
 [codex-app-server]: https://learn.chatgpt.com/docs/app-server
 [public-client-release]: https://github.com/sesori-ai/sesori_apps_monorepo/releases/tag/v1.9.0
+[public-mcp-release]: https://github.com/sesori-ai/sesori_apps_monorepo/releases/tag/v1.9.1

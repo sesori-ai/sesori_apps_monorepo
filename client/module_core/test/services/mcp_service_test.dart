@@ -364,6 +364,8 @@ McpInventorySnapshot _snapshot({required McpScope scope, required String name}) 
   connectors: const McpCatalogNotSupported(),
   entries: [
     McpServerSnapshot(
+      authentication: const McpAuthenticationCapabilityUnknown(),
+      credentialForgetting: const McpAuthenticationCapabilityUnknown(),
       actions: const [],
       serverTarget: McpServerTarget(scope: scope, serverKey: "fixture"),
       name: name,

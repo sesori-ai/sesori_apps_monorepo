@@ -4,21 +4,56 @@ import "../../api/models/claude_mcp_status_dto.dart";
 
 /// Projects only presentation-safe native inventory fields into the contract.
 class const ClaudeMcpMapper() {
-  PluginMcpInventorySnapshot map({required ClaudeMcpStatusDto status, required PluginMcpSessionScope scope}) {
+  PluginMcpInventorySnapshot map({
+    required ClaudeMcpStatusDto status,
+    required PluginMcpSessionScope scope,
+    required bool supportsAuthentication,
+  }) {
     final servers = status.mcpServers.toList(growable: false)..sort((a, b) => a.name.compareTo(b.name));
     return PluginMcpInventorySnapshot(
       servers: const PluginMcpCatalogAvailable(),
-      entries: List.unmodifiable(servers.map((server) => _server(server: server, scope: scope))),
+      entries: List.unmodifiable(
+        servers.map((server) => _server(server: server, scope: scope, supportsAuthentication: supportsAuthentication)),
+      ),
       connectors: const PluginMcpCatalogUnavailable(
         message: "This integration does not yet expose a connector catalog.",
       ),
     );
   }
 
-  PluginMcpServerSnapshot _server({required ClaudeMcpServerStatusDto server, required PluginMcpSessionScope scope}) {
+  PluginMcpAuthenticationCapability authenticationCapability({
+    required ClaudeMcpServerStatusDto server,
+    required bool supportsAuthentication,
+  }) {
+    final PluginMcpAuthenticationCapabilityUnavailableReason? reason;
+    if (server.scope == null ||
+        server.scope == ClaudeMcpConfigurationScope.unknown ||
+        server.scope == ClaudeMcpConfigurationScope.dynamic) {
+      reason = PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired;
+    } else if (server.config?.type == ClaudeMcpTransportType.stdio) {
+      reason = PluginMcpAuthenticationCapabilityUnavailableReason.notSupported;
+    } else if (server.config?.type == ClaudeMcpTransportType.sse || !supportsAuthentication) {
+      reason = PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented;
+    } else if (server.config?.type != ClaudeMcpTransportType.http || server.config?.url == null) {
+      reason = PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired;
+    } else {
+      reason = null;
+    }
+    return reason == null
+        ? const PluginMcpAuthenticationCapabilityAvailable(effectScope: PluginMcpActionEffectScope.harness)
+        : PluginMcpAuthenticationCapabilityUnavailable(reason: reason);
+  }
+
+  PluginMcpServerSnapshot _server({
+    required ClaudeMcpServerStatusDto server,
+    required PluginMcpSessionScope scope,
+    required bool supportsAuthentication,
+  }) {
     final title = _presentText(value: server.serverInfo?.title);
     return PluginMcpServerSnapshot(
       target: PluginMcpServerTarget(scope: scope, serverKey: server.name),
+      authentication: authenticationCapability(server: server, supportsAuthentication: supportsAuthentication),
+      credentialForgetting: authenticationCapability(server: server, supportsAuthentication: supportsAuthentication),
       actions: const [
         PluginMcpServerActionCapability(
           action: PluginMcpServerAction.reconnect,

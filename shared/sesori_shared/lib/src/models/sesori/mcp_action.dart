@@ -6,27 +6,23 @@ part "mcp_action.freezed.dart";
 part "mcp_action.g.dart";
 
 /// Server controls and future connector setup remain distinct target variants.
-@Freezed(unionKey: "type", copyWith: false, fromJson: true, toJson: false)
+@Freezed(unionKey: "type", copyWith: false, fromJson: true, toJson: true)
 sealed class const McpEntryAction._() with _$McpEntryAction {
   const factory server({
     @JsonKey(fromJson: McpEntryTarget.serverFromJson) required McpServerTarget target,
     required McpServerAction action,
   }) = McpServerEntryAction;
 
+  const factory forgetAuthentication({
+    @JsonKey(fromJson: McpEntryTarget.serverFromJson) required McpServerTarget target,
+  }) = McpForgetAuthenticationEntryAction;
+
   factory fromJson(Map<String, dynamic> json) {
-    if (json["type"] != "server") {
+    if (json["type"] != "server" && json["type"] != "forgetAuthentication") {
       throw const FormatException("Unsupported MCP action type");
     }
     return _$McpEntryActionFromJson(json);
   }
-
-  // Freezed omits union tags for a single variant. Keep this wire tag explicit
-  // so adding connector actions later cannot reinterpret an existing request.
-  Map<String, dynamic> toJson() => {
-    "type": "server",
-    "target": target.toJson(),
-    "action": action.name,
-  };
 }
 
 @Freezed(copyWith: false, fromJson: true, toJson: true)
@@ -43,6 +39,10 @@ enum McpActionUnavailableReason() {
   liveSessionRequired,
   pluginInactive,
   targetNotFound,
+  busy,
+  notSupported,
+  notImplemented,
+  nativeConfigurationRequired,
 }
 
 @Freezed(unionKey: "type", fallbackUnion: "unknown", copyWith: false, fromJson: true, toJson: true)

@@ -992,6 +992,7 @@ final class _ServiceHarness({final bool stdinCloseCompletes = true, final bool f
 
   this {
     repository = ClaudeSessionProcessRepository(
+      supportsMcpAuthentication: true,
       processFactory: _spawn,
       binaryPath: "claude",
       environment: const {},

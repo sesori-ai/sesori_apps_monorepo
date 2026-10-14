@@ -13,6 +13,8 @@ class _Cubit() extends Mock implements McpCubit;
 
 const _scope = McpSessionScope(sessionId: "fixture-session");
 const _server = McpServerSnapshot(
+  authentication: McpAuthenticationCapabilityUnknown(),
+  credentialForgetting: McpAuthenticationCapabilityUnknown(),
   actions: [],
   serverTarget: McpServerTarget(scope: _scope, serverKey: "fixture-server"),
   name: "Fixture server",
@@ -86,6 +88,8 @@ void main() {
     final entries = [
       for (var i = 0; i < 35; i++)
         McpServerSnapshot(
+          authentication: const McpAuthenticationCapabilityUnknown(),
+          credentialForgetting: const McpAuthenticationCapabilityUnknown(),
           actions: const [],
           serverTarget: McpServerTarget(scope: _scope, serverKey: "fixture-$i"),
           name: "Server $i",

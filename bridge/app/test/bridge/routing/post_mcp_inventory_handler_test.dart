@@ -1,10 +1,13 @@
+import "dart:async";
 import "dart:convert";
 
 import "package:drift/drift.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/mcp_repository.dart";
+import "package:sesori_bridge/src/repositories/models/mcp_control_result.dart";
 import "package:sesori_bridge/src/routing/post_mcp_entry_action_handler.dart";
 import "package:sesori_bridge/src/routing/post_mcp_inventory_handler.dart";
+import "package:sesori_bridge/src/services/mcp_authentication_service.dart";
 import "package:sesori_bridge/src/services/mcp_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -21,6 +24,7 @@ void main() {
   late TestPluginRuntime runtime;
   late PostMcpInventoryHandler handler;
   late McpService service;
+  late McpAuthenticationService authentication;
   late PostMcpEntryActionHandler actionHandler;
   final changes = <McpInventoryRequest>[];
 
@@ -35,7 +39,11 @@ void main() {
         projectsDao: db.projectsDao,
       ),
     );
+    authentication = McpAuthenticationService(
+      repository: McpRepository(runtime: runtime, sessionDao: db.sessionDao, projectsDao: db.projectsDao),
+    );
     service = McpService(
+      authenticationService: authentication,
       repository: McpRepository(runtime: runtime, sessionDao: db.sessionDao, projectsDao: db.projectsDao),
     );
     actionHandler = PostMcpEntryActionHandler(mcpService: service);
@@ -54,6 +62,7 @@ void main() {
     );
   });
   tearDown(() async {
+    await authentication.dispose();
     await service.dispose();
     await runtime.dispose();
     await db.close();
@@ -108,6 +117,117 @@ void main() {
     expect(plugin.actions, isEmpty);
     expect(plugin.scopes, isEmpty);
     expect(changes, isEmpty);
+  });
+
+  Future<RelayResponse> forget({required String pluginId, required McpServerTarget target}) =>
+      actionHandler.routeForTest(
+        makeRequest(
+          "POST",
+          "/mcp/entry/action",
+          body: jsonEncode(
+            McpEntryActionRequest(
+              pluginId: pluginId,
+              action: McpForgetAuthenticationEntryAction(target: target),
+            ),
+          ),
+        ),
+      );
+  const forgettingTarget = McpServerTarget(
+    scope: McpSessionScope(sessionId: "bridge-session"),
+    serverKey: "opaque-server",
+  );
+
+  test("credential forgetting binds the native target, invalidates its native scope and reads inventory", () async {
+    final response = await forget(pluginId: "fixture", target: forgettingTarget);
+    expect(response.status, 200);
+    final result =
+        McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>) as McpActionCompleted;
+    final server = (result.inventory as McpInventorySnapshot).entries.single as McpServerSnapshot;
+    expect(server.serverTarget, forgettingTarget);
+    expect(server.connection, const McpConnectionStatus(phase: McpConnectionPhase.connected));
+    expect(server.authorization, McpAuthorizationState.unknown);
+    expect(
+      server.authentication,
+      const McpAuthenticationCapabilityAvailable(effectScope: McpActionEffectScope.harness),
+    );
+    expect(
+      server.credentialForgetting,
+      const McpAuthenticationCapabilityAvailable(effectScope: McpActionEffectScope.harness),
+    );
+    expect((plugin.forgotten.single.scope as PluginMcpSessionScope).sessionId, "native-session");
+    expect(plugin.forgotten.single.serverKey, forgettingTarget.serverKey);
+    expect(plugin.actions, isEmpty);
+    expect(changes.single.scope, const McpHarnessScope());
+    expect((plugin.scopes.single as PluginMcpSessionScope).sessionId, "native-session");
+  });
+
+  test("forgetting uses the native declared scope rather than assuming a profile effect", () async {
+    plugin.forgettingScope = PluginMcpActionEffectScope.session;
+    await forget(pluginId: "fixture", target: forgettingTarget);
+    expect(changes.single.scope, forgettingTarget.scope);
+  });
+
+  test("missing, mismatched, archived and inactive targets never clear credentials", () async {
+    expect(
+      (await forget(
+        pluginId: "fixture",
+        target: const McpServerTarget(
+          scope: McpSessionScope(sessionId: "missing"),
+          serverKey: "opaque-server",
+        ),
+      )).status,
+      404,
+    );
+    expect((await forget(pluginId: "another", target: forgettingTarget)).status, 400);
+    await (db.update(
+      db.sessionTable,
+    )..where((row) => row.sessionId.equals("bridge-session"))).write(const SessionTableCompanion(archivedAt: Value(1)));
+    final archived = await forget(pluginId: "fixture", target: forgettingTarget);
+    expect(archived.status, 409);
+    expect(
+      SessionArchivedRejection.fromJson(jsonDecode(archived.body!) as Map<String, dynamic>).reason,
+      SessionArchivedReason.archivedReadOnly,
+    );
+    await (db.update(db.sessionTable)..where((row) => row.sessionId.equals("bridge-session"))).write(
+      const SessionTableCompanion(archivedAt: Value(null)),
+    );
+    runtime.stoppedPluginIds.add("fixture");
+    final inactive = await forget(pluginId: "fixture", target: forgettingTarget);
+    expect(
+      McpEntryActionResult.fromJson(jsonDecode(inactive.body!) as Map<String, dynamic>),
+      const McpActionUnavailable(reason: McpActionUnavailableReason.pluginInactive),
+    );
+    expect(plugin.forgotten, isEmpty);
+    expect(plugin.scopes, isEmpty);
+    expect(changes, isEmpty);
+  });
+
+  test("native capability gaps and failure remain explicit without inventing logout state", () async {
+    for (final (nativeReason, expected) in [
+      (PluginMcpAuthenticationUnavailableReason.unsupportedScope, McpActionUnavailableReason.unsupportedScope),
+      (PluginMcpAuthenticationUnavailableReason.liveSessionRequired, McpActionUnavailableReason.liveSessionRequired),
+      (PluginMcpAuthenticationUnavailableReason.targetNotFound, McpActionUnavailableReason.targetNotFound),
+      (
+        PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
+        McpActionUnavailableReason.nativeConfigurationRequired,
+      ),
+      (PluginMcpAuthenticationUnavailableReason.notSupported, McpActionUnavailableReason.notSupported),
+      (PluginMcpAuthenticationUnavailableReason.notImplemented, McpActionUnavailableReason.notImplemented),
+    ]) {
+      plugin.forgettingError = PluginMcpAuthenticationUnavailableException(reason: nativeReason);
+      final response = await forget(pluginId: "fixture", target: forgettingTarget);
+      expect(
+        McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>),
+        McpActionUnavailable(reason: expected),
+      );
+    }
+    plugin.forgettingError = Exception("fixture-private");
+    final failed = await forget(pluginId: "fixture", target: forgettingTarget);
+    expect(McpEntryActionResult.fromJson(jsonDecode(failed.body!) as Map<String, dynamic>), const McpActionFailed());
+    expect(failed.body, isNot(contains("fixture-private")));
+    expect(changes, isEmpty);
+    expect(plugin.scopes, isEmpty);
+    expect(authentication.current, const McpAuthenticationStateResult(state: McpAuthenticationIdle()));
   });
 
   test("controls resolve native identity, refresh authoritatively and invalidate their bridge scope", () async {
@@ -169,6 +289,18 @@ void main() {
     expect(plugin.actions, isEmpty);
     expect(plugin.scopes, isEmpty);
     expect(changes, isEmpty);
+  });
+
+  test("session-targeted controls invalidate their native declared harness effect", () async {
+    plugin.actionResult = const PluginMcpActionCompleted(effectScope: PluginMcpActionEffectScope.harness);
+    final response = await act(
+      pluginId: "fixture",
+      scope: const McpSessionScope(sessionId: "bridge-session"),
+      action: McpServerAction.reconnect,
+    );
+    expect(response.status, 200);
+    expect(changes.single.scope, const McpHarnessScope());
+    expect((plugin.scopes.single as PluginMcpSessionScope).sessionId, "native-session");
   });
 
   test("native control failure retains diagnostics locally without refreshing or exporting errors", () async {
@@ -372,6 +504,19 @@ void main() {
     );
     expect(response.status, 200);
     expect((decode(response) as McpInventoryUnavailable).reason, McpInventoryUnavailableReason.unsupportedHarness);
+    final unavailable =
+        await McpRepository(
+          runtime: unsupportedRuntime,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+        ).forgetAuthentication(
+          pluginId: "unsupported",
+          target: const McpServerTarget(scope: McpHarnessScope(), serverKey: "fixture"),
+        );
+    expect(
+      unavailable,
+      isA<McpControlUnavailable>().having((r) => r.reason, "reason", McpActionUnavailableReason.unsupportedHarness),
+    );
     await unsupportedRuntime.dispose();
   });
 
@@ -392,8 +537,23 @@ void main() {
   });
 }
 
-class _InventoryPlugin() extends FakeDerivedBridgePlugin implements McpManagementPluginApi {
+class _InventoryPlugin() extends FakeDerivedBridgePlugin implements McpManagementPluginApi, McpAuthenticationPluginApi {
   this : super(id: "fixture", launchDirectory: "/fixture", allSessions: const []);
+  final forgotten = <PluginMcpServerTarget>[];
+  Exception? forgettingError;
+  PluginMcpActionEffectScope forgettingScope = PluginMcpActionEffectScope.harness;
+
+  @override
+  Future<PluginMcpAuthenticationOperation> beginMcpAuthentication({required PluginMcpServerTarget target}) =>
+      throw UnimplementedError();
+
+  @override
+  Future<PluginMcpActionEffectScope> forgetMcpAuthentication({required PluginMcpServerTarget target}) async {
+    forgotten.add(target);
+    if (forgettingError case final error?) throw error;
+    return forgettingScope;
+  }
+
   @override
   Future<PluginMcpActionResult> executeMcpServerAction({
     required PluginMcpServerTarget target,
@@ -403,7 +563,7 @@ class _InventoryPlugin() extends FakeDerivedBridgePlugin implements McpManagemen
     return actionResult;
   }
 
-  PluginMcpActionResult actionResult = const PluginMcpActionCompleted();
+  PluginMcpActionResult actionResult = const PluginMcpActionCompleted(effectScope: PluginMcpActionEffectScope.session);
   final actions = <(PluginMcpServerTarget, PluginMcpServerAction)>[];
   final List<PluginMcpScope> scopes = [];
   PluginMcpInventoryResult? nextResult;
@@ -416,6 +576,12 @@ class _InventoryPlugin() extends FakeDerivedBridgePlugin implements McpManagemen
       servers: const PluginMcpCatalogAvailable(),
       entries: List.unmodifiable([
         PluginMcpServerSnapshot(
+          authentication: const PluginMcpAuthenticationCapabilityAvailable(
+            effectScope: PluginMcpActionEffectScope.harness,
+          ),
+          credentialForgetting: const PluginMcpAuthenticationCapabilityAvailable(
+            effectScope: PluginMcpActionEffectScope.harness,
+          ),
           actions: const [
             PluginMcpServerActionCapability(
               action: PluginMcpServerAction.reconnect,

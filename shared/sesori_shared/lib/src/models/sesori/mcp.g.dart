@@ -171,6 +171,66 @@ McpToolsFailed _$McpToolsFailedFromJson(Map json) => McpToolsFailed(
 Map<String, dynamic> _$McpToolsFailedToJson(McpToolsFailed instance) =>
     <String, dynamic>{'message': instance.message, 'type': instance.$type};
 
+McpAuthenticationCapabilityUnknown _$McpAuthenticationCapabilityUnknownFromJson(
+  Map json,
+) => McpAuthenticationCapabilityUnknown($type: json['type'] as String?);
+
+Map<String, dynamic> _$McpAuthenticationCapabilityUnknownToJson(
+  McpAuthenticationCapabilityUnknown instance,
+) => <String, dynamic>{'type': instance.$type};
+
+McpAuthenticationCapabilityAvailable
+_$McpAuthenticationCapabilityAvailableFromJson(Map json) =>
+    McpAuthenticationCapabilityAvailable(
+      effectScope: $enumDecode(
+        _$McpActionEffectScopeEnumMap,
+        json['effectScope'],
+        unknownValue: McpActionEffectScope.unknown,
+      ),
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$McpAuthenticationCapabilityAvailableToJson(
+  McpAuthenticationCapabilityAvailable instance,
+) => <String, dynamic>{
+  'effectScope': _$McpActionEffectScopeEnumMap[instance.effectScope]!,
+  'type': instance.$type,
+};
+
+const _$McpActionEffectScopeEnumMap = {
+  McpActionEffectScope.unknown: 'unknown',
+  McpActionEffectScope.harness: 'harness',
+  McpActionEffectScope.project: 'project',
+  McpActionEffectScope.session: 'session',
+};
+
+McpAuthenticationCapabilityUnavailable
+_$McpAuthenticationCapabilityUnavailableFromJson(Map json) =>
+    McpAuthenticationCapabilityUnavailable(
+      reason: $enumDecode(
+        _$McpAuthenticationCapabilityUnavailableReasonEnumMap,
+        json['reason'],
+        unknownValue: McpAuthenticationCapabilityUnavailableReason.unknown,
+      ),
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$McpAuthenticationCapabilityUnavailableToJson(
+  McpAuthenticationCapabilityUnavailable instance,
+) => <String, dynamic>{
+  'reason':
+      _$McpAuthenticationCapabilityUnavailableReasonEnumMap[instance.reason]!,
+  'type': instance.$type,
+};
+
+const _$McpAuthenticationCapabilityUnavailableReasonEnumMap = {
+  McpAuthenticationCapabilityUnavailableReason.unknown: 'unknown',
+  McpAuthenticationCapabilityUnavailableReason.notSupported: 'notSupported',
+  McpAuthenticationCapabilityUnavailableReason.notImplemented: 'notImplemented',
+  McpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired:
+      'nativeConfigurationRequired',
+};
+
 _McpServerActionCapability _$McpServerActionCapabilityFromJson(Map json) =>
     _McpServerActionCapability(
       action: $enumDecode(
@@ -199,13 +259,6 @@ const _$McpServerActionEnumMap = {
   McpServerAction.disable: 'disable',
 };
 
-const _$McpActionEffectScopeEnumMap = {
-  McpActionEffectScope.unknown: 'unknown',
-  McpActionEffectScope.harness: 'harness',
-  McpActionEffectScope.project: 'project',
-  McpActionEffectScope.session: 'session',
-};
-
 McpUnknownInventoryEntry _$McpUnknownInventoryEntryFromJson(Map json) =>
     McpUnknownInventoryEntry($type: json['type'] as String?);
 
@@ -228,6 +281,16 @@ McpServerSnapshot _$McpServerSnapshotFromJson(Map json) => McpServerSnapshot(
     json['authorization'],
     unknownValue: McpAuthorizationState.unknown,
   ),
+  authentication: json['authentication'] == null
+      ? const McpAuthenticationCapabilityUnknown()
+      : McpAuthenticationCapability.fromJson(
+          Map<String, dynamic>.from(json['authentication'] as Map),
+        ),
+  credentialForgetting: json['credentialForgetting'] == null
+      ? const McpAuthenticationCapabilityUnknown()
+      : McpAuthenticationCapability.fromJson(
+          Map<String, dynamic>.from(json['credentialForgetting'] as Map),
+        ),
   configuration: json['configuration'] == null
       ? null
       : McpConfigurationSource.fromJson(
@@ -254,6 +317,8 @@ Map<String, dynamic> _$McpServerSnapshotToJson(McpServerSnapshot instance) =>
       'endpointOrigin': ?instance.endpointOrigin,
       'connection': instance.connection.toJson(),
       'authorization': _$McpAuthorizationStateEnumMap[instance.authorization]!,
+      'authentication': instance.authentication.toJson(),
+      'credentialForgetting': instance.credentialForgetting.toJson(),
       'configuration': ?instance.configuration?.toJson(),
       'tools': instance.tools.toJson(),
       'actions': instance.actions.map((e) => e.toJson()).toList(),

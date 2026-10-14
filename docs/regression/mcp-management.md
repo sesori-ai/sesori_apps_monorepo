@@ -137,7 +137,24 @@ remains pending.
   printing authentication URLs or callbacks. A simultaneous native and cleanup
   failure retains both causes/stacks and the original failure classification.
 - Credential clearing uses the native CLI and leaves MCP server definitions
-  unchanged. It does not disable or remove a server.
+  unchanged. It does not disable or remove a server. The headless entry action
+  accepts only a server target, resolves catalog ownership/archive eligibility
+  before native access, and never activates an inactive integration.
+  Login and credential forgetting reserve the same native owner in both start
+  orders; GET reports busy during forgetting, and shutdown awaits native settlement.
+  Successful forgetting invalidates the native declared effect scope and returns
+  an authoritative inventory read. A resident may remain connected; no local
+  logged-out/disconnected state is invented.
+- Servers declare independent sign-in and credential-forgetting availability;
+  authorization and configuration mutability do not imply either capability.
+  Claude declarations and context resolution use the same eligibility mapping:
+  native-configured HTTP servers on terminal-supported hosts are available with
+  harness credential effects; stdio is unsupported, SSE/Windows are not implemented,
+  and dynamic/unknown/missing configuration requires native setup.
+- Public v1.9.1 bridges omit these availability fields: current clients retain
+  inventory and decode capability availability as unknown. Exact released
+  v1.9.1 MCP codecs accept the added fields without losing existing inventory
+  or server-control tags. Preserve both directions of this wire compatibility.
 - macOS arm64 is qualified with both pins. Linux qualification, Windows terminal
   integration and SSE authentication remain pending; retain explicit unavailable
   results until those boundaries land and pass their native checks.

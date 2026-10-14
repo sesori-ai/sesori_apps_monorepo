@@ -832,6 +832,178 @@ String toString() {
 
 
 
+McpAuthenticationCapability _$McpAuthenticationCapabilityFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['type']) {
+                  case 'available':
+          return McpAuthenticationCapabilityAvailable.fromJson(
+            json
+          );
+                case 'unavailable':
+          return McpAuthenticationCapabilityUnavailable.fromJson(
+            json
+          );
+        
+          default:
+            return McpAuthenticationCapabilityUnknown.fromJson(
+  json
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$McpAuthenticationCapability {
+
+
+
+  /// Serializes this McpAuthenticationCapability to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpAuthenticationCapability);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'McpAuthenticationCapability()';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class McpAuthenticationCapabilityUnknown implements McpAuthenticationCapability {
+  const McpAuthenticationCapabilityUnknown({ String? $type}): $type = $type ?? 'unknown';
+  factory McpAuthenticationCapabilityUnknown.fromJson(Map<String, dynamic> json) => _$McpAuthenticationCapabilityUnknownFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$McpAuthenticationCapabilityUnknownToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpAuthenticationCapabilityUnknown);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'McpAuthenticationCapability.unknown()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class McpAuthenticationCapabilityAvailable implements McpAuthenticationCapability {
+  const McpAuthenticationCapabilityAvailable({@JsonKey(unknownEnumValue: McpActionEffectScope.unknown) required this.effectScope,  String? $type}): $type = $type ?? 'available';
+  factory McpAuthenticationCapabilityAvailable.fromJson(Map<String, dynamic> json) => _$McpAuthenticationCapabilityAvailableFromJson(json);
+
+@JsonKey(unknownEnumValue: McpActionEffectScope.unknown) final  McpActionEffectScope effectScope;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$McpAuthenticationCapabilityAvailableToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpAuthenticationCapabilityAvailable&&(identical(other.effectScope, effectScope) || other.effectScope == effectScope));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,effectScope);
+}
+
+@override
+String toString() {
+    return 'McpAuthenticationCapability.available(effectScope: $effectScope)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class McpAuthenticationCapabilityUnavailable implements McpAuthenticationCapability {
+  const McpAuthenticationCapabilityUnavailable({@JsonKey(unknownEnumValue: McpAuthenticationCapabilityUnavailableReason.unknown) required this.reason,  String? $type}): $type = $type ?? 'unavailable';
+  factory McpAuthenticationCapabilityUnavailable.fromJson(Map<String, dynamic> json) => _$McpAuthenticationCapabilityUnavailableFromJson(json);
+
+@JsonKey(unknownEnumValue: McpAuthenticationCapabilityUnavailableReason.unknown) final  McpAuthenticationCapabilityUnavailableReason reason;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$McpAuthenticationCapabilityUnavailableToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpAuthenticationCapabilityUnavailable&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,reason);
+}
+
+@override
+String toString() {
+    return 'McpAuthenticationCapability.unavailable(reason: $reason)';
+}
+
+
+}
+
+
+
+
 
 /// @nodoc
 mixin _$McpServerActionCapability {
@@ -1000,7 +1172,7 @@ String toString() {
 @JsonSerializable()
 
 class McpServerSnapshot implements McpInventoryEntry {
-  const McpServerSnapshot({@JsonKey(name: "target", fromJson: McpEntryTarget.serverFromJson) required this.serverTarget, required this.name, required this.description, required this.endpointOrigin, required this.connection, @JsonKey(unknownEnumValue: McpAuthorizationState.unknown) required this.authorization, required this.configuration, required this.tools, required  List<McpServerActionCapability> actions,  String? $type}): _actions = actions,$type = $type ?? 'server';
+  const McpServerSnapshot({@JsonKey(name: "target", fromJson: McpEntryTarget.serverFromJson) required this.serverTarget, required this.name, required this.description, required this.endpointOrigin, required this.connection, @JsonKey(unknownEnumValue: McpAuthorizationState.unknown) required this.authorization, this.authentication = const McpAuthenticationCapabilityUnknown(), this.credentialForgetting = const McpAuthenticationCapabilityUnknown(), required this.configuration, required this.tools, required  List<McpServerActionCapability> actions,  String? $type}): _actions = actions,$type = $type ?? 'server';
   factory McpServerSnapshot.fromJson(Map<String, dynamic> json) => _$McpServerSnapshotFromJson(json);
 
 @JsonKey(name: "target", fromJson: McpEntryTarget.serverFromJson) final  McpServerTarget serverTarget;
@@ -1009,6 +1181,8 @@ class McpServerSnapshot implements McpInventoryEntry {
  final  String? endpointOrigin;
  final  McpConnectionState connection;
 @JsonKey(unknownEnumValue: McpAuthorizationState.unknown) final  McpAuthorizationState authorization;
+@JsonKey() final  McpAuthenticationCapability authentication;
+@JsonKey() final  McpAuthenticationCapability credentialForgetting;
  final  McpConfigurationSource? configuration;
  final  McpToolInventory tools;
  final  List<McpServerActionCapability> _actions;
@@ -1031,18 +1205,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpServerSnapshot&&const DeepCollectionEquality().equals(other.serverTarget, serverTarget)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.endpointOrigin, endpointOrigin) || other.endpointOrigin == endpointOrigin)&&(identical(other.connection, connection) || other.connection == connection)&&(identical(other.authorization, authorization) || other.authorization == authorization)&&(identical(other.configuration, configuration) || other.configuration == configuration)&&(identical(other.tools, tools) || other.tools == tools)&&const DeepCollectionEquality().equals(other.actions, _actions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpServerSnapshot&&const DeepCollectionEquality().equals(other.serverTarget, serverTarget)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.endpointOrigin, endpointOrigin) || other.endpointOrigin == endpointOrigin)&&(identical(other.connection, connection) || other.connection == connection)&&(identical(other.authorization, authorization) || other.authorization == authorization)&&(identical(other.authentication, authentication) || other.authentication == authentication)&&(identical(other.credentialForgetting, credentialForgetting) || other.credentialForgetting == credentialForgetting)&&(identical(other.configuration, configuration) || other.configuration == configuration)&&(identical(other.tools, tools) || other.tools == tools)&&const DeepCollectionEquality().equals(other.actions, _actions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(serverTarget),name,description,endpointOrigin,connection,authorization,configuration,tools,const DeepCollectionEquality().hash(_actions));
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(serverTarget),name,description,endpointOrigin,connection,authorization,authentication,credentialForgetting,configuration,tools,const DeepCollectionEquality().hash(_actions));
 }
 
 @override
 String toString() {
-    return 'McpInventoryEntry.server(serverTarget: $serverTarget, name: $name, description: $description, endpointOrigin: $endpointOrigin, connection: $connection, authorization: $authorization, configuration: $configuration, tools: $tools, actions: $actions)';
+    return 'McpInventoryEntry.server(serverTarget: $serverTarget, name: $name, description: $description, endpointOrigin: $endpointOrigin, connection: $connection, authorization: $authorization, authentication: $authentication, credentialForgetting: $credentialForgetting, configuration: $configuration, tools: $tools, actions: $actions)';
 }
 
 

@@ -18,6 +18,7 @@ void main() {
       spawned = [];
       specs = [];
       processes = ClaudeSessionProcessRepository(
+        supportsMcpAuthentication: true,
         processFactory: (spec) async {
           final process = FakeClaudeProcess();
           specs.add(spec);
@@ -99,6 +100,7 @@ void main() {
     ClaudeCatalogService serviceAnswering({required bool failOptIn}) {
       process = FakeClaudeProcess();
       processes = ClaudeSessionProcessRepository(
+        supportsMcpAuthentication: true,
         processFactory: (_) async {
           unawaited(_answerFastModeProbe(process, failOptIn: failOptIn));
           return process;
@@ -157,6 +159,7 @@ void main() {
     setUp(() async {
       process = FakeClaudeProcess();
       processes = ClaudeSessionProcessRepository(
+        supportsMcpAuthentication: true,
         processFactory: (_) async {
           unawaited(_answerCatalogControls(process, commandName: "review"));
           return process;

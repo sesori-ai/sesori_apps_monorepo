@@ -7,7 +7,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../api/claude_launch_spec.dart";
 import "../api/claude_process_factory.dart";
 import "../api/claude_stream_client.dart";
-import "../api/models/claude_mcp_status_dto.dart";
 import "../api/models/claude_stream_message.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_message_origin_kind.dart";
@@ -97,6 +96,7 @@ final class _ResidentProcess({
 /// Owns resident Claude processes and all transport-facing session state.
 final class ClaudeSessionProcessRepository({
   required final ClaudeProcessFactory _processFactory,
+  required final bool _supportsMcpAuthentication,
   required final String _binaryPath,
   required Map<String, String> environment,
 }) {
@@ -137,26 +137,20 @@ final class ClaudeSessionProcessRepository({
         reason: PluginMcpAuthenticationUnavailableReason.targetNotFound,
       );
     }
-    if (server.scope == null ||
-        server.scope == ClaudeMcpConfigurationScope.unknown ||
-        server.scope == ClaudeMcpConfigurationScope.dynamic) {
-      throw const PluginMcpAuthenticationUnavailableException(
-        reason: PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
-      );
-    }
-    if (server.config?.type == ClaudeMcpTransportType.stdio) {
-      throw const PluginMcpAuthenticationUnavailableException(
-        reason: PluginMcpAuthenticationUnavailableReason.notSupported,
-      );
-    }
-    if (server.config?.type == ClaudeMcpTransportType.sse) {
-      throw const PluginMcpAuthenticationUnavailableException(
-        reason: PluginMcpAuthenticationUnavailableReason.notImplemented,
-      );
-    }
-    if (server.config?.type != ClaudeMcpTransportType.http || server.config?.url == null) {
-      throw const PluginMcpAuthenticationUnavailableException(
-        reason: PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
+    if (const ClaudeMcpMapper().authenticationCapability(
+          server: server,
+          supportsAuthentication: _supportsMcpAuthentication,
+        )
+        case PluginMcpAuthenticationCapabilityUnavailable(:final reason)) {
+      throw PluginMcpAuthenticationUnavailableException(
+        reason: switch (reason) {
+          PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired =>
+            PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
+          PluginMcpAuthenticationCapabilityUnavailableReason.notSupported =>
+            PluginMcpAuthenticationUnavailableReason.notSupported,
+          PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented =>
+            PluginMcpAuthenticationUnavailableReason.notImplemented,
+        },
       );
     }
     return ClaudeMcpAuthenticationContext(serverName: server.name, workingDirectory: process.client.workingDirectory);
@@ -180,7 +174,11 @@ final class ClaudeSessionProcessRepository({
     }
     try {
       final status = await process.client.getMcpStatus();
-      return const ClaudeMcpMapper().map(status: status, scope: scope);
+      return const ClaudeMcpMapper().map(
+        status: status,
+        scope: scope,
+        supportsAuthentication: _supportsMcpAuthentication,
+      );
     } on ClaudeControlException catch (error, stackTrace) {
       return PluginMcpInventoryReadFailed(cause: error, causeStackTrace: stackTrace);
     } on TimeoutException catch (error, stackTrace) {
@@ -217,7 +215,7 @@ final class ClaudeSessionProcessRepository({
         case PluginMcpServerAction.disable:
           await process.client.setMcpServerEnabled(serverName: target.serverKey, enabled: false);
       }
-      return const PluginMcpActionCompleted();
+      return const PluginMcpActionCompleted(effectScope: PluginMcpActionEffectScope.session);
     } on ClaudeControlException catch (error, stackTrace) {
       return PluginMcpActionFailed(cause: error, causeStackTrace: stackTrace);
     } on TimeoutException catch (error, stackTrace) {
