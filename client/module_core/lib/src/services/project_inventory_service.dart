@@ -274,9 +274,22 @@ class ProjectInventoryService({
     ConnectionConnected() || ConnectionReconnecting() || ConnectionLost() => false,
   };
 
+  final TargetBridgeChangeDetector _targetChange = TargetBridgeChangeDetector(
+    initialStatus: _connectionService.currentStatus,
+  );
+
   void _onConnectionStatusChanged(ConnectionStatus status) {
     logd("[ProjectList] connection status: ${status.runtimeType}");
     if (_state.isClosed) return;
+    if (_targetChange.changed(status: status)) {
+      // Another computer: supersede reads from the previous one and load the
+      // new list exactly as a first load does, waiting for its connection.
+      _fetchGeneration++;
+      _loadedStateAnalyticsReporter.clearCurrentOccurrence();
+      _emit(state: const ProjectListState.loading());
+      unawaited(_loadInitialProjects());
+      return;
+    }
     switch (status) {
       case ConnectionConnected():
         // A reconnect driven by reconnectBridge (the onboarding pull-to-

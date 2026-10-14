@@ -1156,10 +1156,10 @@ void main() {
 
       for (final status in [
         const ConnectionStatus.connectionLost(
-          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
         ),
         const ConnectionStatus.reconnecting(
-          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
         ),
         connected,
       ]) {
@@ -2282,7 +2282,7 @@ void main() {
 
         connectionStatus.add(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
             health: testHealthResponse(),
           ),
         );
@@ -2371,7 +2371,7 @@ void main() {
 
       connectionStatus.add(
         ConnectionStatus.connected(
-          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
           health: testHealthResponse(),
         ),
       );
@@ -2466,7 +2466,7 @@ void main() {
         await _awaitLoaded(cubit);
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(
-            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
           ),
         );
         await cubit.sendMessage(
@@ -2509,7 +2509,7 @@ void main() {
         await _awaitLoaded(cubit);
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.reconnecting(
-            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
           ),
         );
         await cubit.sendMessage(
@@ -2704,7 +2704,7 @@ void main() {
         // Connection drops.
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(
-            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
           ),
         );
 
@@ -2770,7 +2770,7 @@ void main() {
         // Simulate disconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(
-            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
           ),
         );
 
@@ -2785,13 +2785,13 @@ void main() {
         // Simulate reconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
             health: testHealthResponse(),
           ),
         );
         connectionStatus.add(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
             health: testHealthResponse(),
           ),
         );
@@ -2841,7 +2841,7 @@ void main() {
 
       when(() => mockConnectionService.currentStatus).thenReturn(
         const ConnectionStatus.connectionLost(
-          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
         ),
       );
 
@@ -2859,13 +2859,13 @@ void main() {
 
       when(() => mockConnectionService.currentStatus).thenReturn(
         ConnectionStatus.connected(
-          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
           health: testHealthResponse(),
         ),
       );
       connectionStatus.add(
         ConnectionStatus.connected(
-          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
           health: testHealthResponse(),
         ),
       );
@@ -2933,7 +2933,7 @@ void main() {
       await _awaitLoaded(cubit);
 
       final connected = ConnectionStatus.connected(
-        config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+        config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
         health: testHealthResponse(),
       );
       connectionStatus.add(connected);
@@ -2941,7 +2941,7 @@ void main() {
 
       when(() => mockConnectionService.currentStatus).thenReturn(
         const ConnectionStatus.connectionLost(
-          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
         ),
       );
       await cubit.sendMessage(
@@ -3021,7 +3021,7 @@ void main() {
 
       when(() => mockConnectionService.currentStatus).thenReturn(
         const ConnectionStatus.connectionLost(
-          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
         ),
       );
       await cubit.sendMessage(
@@ -3033,13 +3033,13 @@ void main() {
 
       when(() => mockConnectionService.currentStatus).thenReturn(
         ConnectionStatus.connected(
-          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
           health: testHealthResponse(),
         ),
       );
       connectionStatus.add(
         ConnectionStatus.connected(
-          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+          config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
           health: testHealthResponse(),
         ),
       );
@@ -3155,7 +3155,7 @@ void main() {
         // Simulate disconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(
-            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
           ),
         );
 
@@ -3176,13 +3176,13 @@ void main() {
         // Simulate reconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
             health: testHealthResponse(),
           ),
         );
         connectionStatus.add(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
             health: testHealthResponse(),
           ),
         );
@@ -3247,7 +3247,7 @@ void main() {
         // Simulate disconnection.
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(
-            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
           ),
         );
 
@@ -3262,13 +3262,13 @@ void main() {
         // Simulate reconnection — triggers drain, but send will fail.
         when(() => mockConnectionService.currentStatus).thenReturn(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
             health: testHealthResponse(),
           ),
         );
         connectionStatus.add(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
             health: testHealthResponse(),
           ),
         );
@@ -3386,7 +3386,7 @@ void main() {
         final viewingService = stubbedSessionViewingService();
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(
-            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
           ),
         );
         final cubit = buildCubit(sessionViewingService: viewingService);
@@ -3408,13 +3408,13 @@ void main() {
         // so the deferred refresh must re-declare it once it renders.
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connected(
-            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
             health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: false),
           ),
         );
         connectionStatus.add(
           ConnectionStatus.connected(
-            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
             health: testHealthResponse(),
           ),
         );
@@ -3437,7 +3437,7 @@ void main() {
         when(management.refresh).thenAnswer((_) async {});
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connected(
-            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
             health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: false),
           ),
         );
@@ -3480,7 +3480,7 @@ void main() {
         final lifecycle = MockLifecycleSource();
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connected(
-            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
             health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: false),
           ),
         );
@@ -3710,7 +3710,7 @@ void _stubAllDefaults(
     () => connectionService.currentStatus,
   ).thenReturn(
     ConnectionStatus.connected(
-      config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+      config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
       health: testHealthResponse(),
     ),
   );

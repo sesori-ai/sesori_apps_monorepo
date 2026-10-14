@@ -232,14 +232,14 @@ void main() {
     _testConnectionService = mockConnectionService;
     connectionStatusController = BehaviorSubject<ConnectionStatus>.seeded(
       const ConnectionStatus.connected(
-        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
         health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
       ),
     );
     // Default: connected with no degraded filesystem access.
     stubConnectionStatus(
       const ConnectionStatus.connected(
-        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
         health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
       ),
     );
@@ -282,7 +282,7 @@ void main() {
     testWidgets("shows the limited-folder-access warning when the bridge reports degraded access", (tester) async {
       stubConnectionStatus(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
           health: HealthResponse(healthy: true, version: "1.0.0", filesystemAccessDegraded: true),
         ),
       );

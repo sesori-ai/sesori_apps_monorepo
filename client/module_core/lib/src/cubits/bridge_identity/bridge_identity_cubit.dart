@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:bloc/bloc.dart";
 import "package:collection/collection.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
@@ -9,7 +10,7 @@ import "../../logging/logging.dart";
 import "../../services/registered_bridges_service.dart";
 import "bridge_identity_state.dart";
 
-/// Owns the identity of the machine the app is paired with: the name the
+/// Owns the identity of the computer the connection targets: the name the
 /// Projects top navigation carries under its title, and the machine the
 /// bridge-offline recovery view says it is trying to reach.
 ///
@@ -21,9 +22,12 @@ import "bridge_identity_state.dart";
 /// instead of blinking back to a placeholder on every reload.
 class BridgeIdentityCubit({
   required final RegisteredBridgesService _registeredBridgesService,
-  required ConnectionService connectionService,
+  required final ConnectionService _connectionService,
 }) extends Cubit<BridgeIdentityState> {
   StreamSubscription<ConnectionStatus>? _statusSubscription;
+  final TargetBridgeChangeDetector _targetChange = TargetBridgeChangeDetector(
+    initialStatus: _connectionService.currentStatus,
+  );
 
   this : super(const BridgeIdentityState.pending()) {
     // Resolve immediately rather than waiting for a connection: the offline
@@ -32,7 +36,12 @@ class BridgeIdentityCubit({
     _scheduleResolve();
     // Then again whenever the relay becomes reachable. skip(1) drops the
     // replayed current status, which the resolve above covers.
-    _statusSubscription = connectionService.status.skip(1).listen((status) {
+    _statusSubscription = _connectionService.status.skip(1).listen((status) {
+      // A switch to another computer renames at once from the list already
+      // held; the connection that follows refreshes it as usual.
+      if (_targetChange.changed(status: status) && state is! BridgeIdentityPending) {
+        emit(_identityFor(bridges: _registeredBridgesService.bridges.value, targetBridgeId: status.targetBridgeId));
+      }
       switch (status) {
         // Both of these say the relay can be reached — the bridge is up, or it
         // is off with the relay connection alive — which is the precondition a
@@ -96,11 +105,22 @@ class BridgeIdentityCubit({
       emit(const BridgeIdentityState.unnamed());
       return;
     }
-    // Most recently seen first, and the account runs one bridge at a time, so
-    // the head is the machine to name.
-    final bridge = (await _registeredBridgesService.getRegisteredBridges()).firstOrNull;
+    final bridges = await _registeredBridgesService.getRegisteredBridges();
     if (isClosed) return;
-    emit(bridge == null ? const BridgeIdentityState.unnamed() : BridgeIdentityState.named(bridge: bridge));
+    final targetBridgeId =
+        _connectionService.currentStatus.targetBridgeId ?? await _connectionService.readTargetBridgeId();
+    if (isClosed) return;
+    emit(_identityFor(bridges: bridges, targetBridgeId: targetBridgeId));
+  }
+
+  /// Names the target computer by id. Without a target yet, the relay will
+  /// route to the most recently connected bridge, so the most recently seen
+  /// one (the list's head) is named.
+  BridgeIdentityState _identityFor({required List<BridgeSummary> bridges, required String? targetBridgeId}) {
+    final bridge = targetBridgeId == null
+        ? bridges.firstOrNull
+        : bridges.firstWhereOrNull((bridge) => bridge.id == targetBridgeId);
+    return bridge == null ? const BridgeIdentityState.unnamed() : BridgeIdentityState.named(bridge: bridge);
   }
 
   @override

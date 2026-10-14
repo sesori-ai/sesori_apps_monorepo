@@ -65,7 +65,18 @@ class SseEventTracker(
   /// The latest project timestamp update map, synchronously available.
   Map<String, int> get currentProjectTimestampUpdates => _projectTimestampUpdates.value;
 
+  final TargetBridgeChangeDetector _targetChange = TargetBridgeChangeDetector(
+    initialStatus: _connectionService.currentStatus,
+  );
+
   void _handleConnectionStatus(ConnectionStatus status) {
+    if (_targetChange.changed(status: status)) {
+      // Another computer: nothing the previous one reported applies anymore.
+      _projectActivity.add(const {});
+      _sessionActivity.add(const {});
+      _projectTimestampUpdates.add(const {});
+      return;
+    }
     switch (status) {
       case ConnectionDisconnected():
         if (_projectTimestampUpdates.value.isNotEmpty) {

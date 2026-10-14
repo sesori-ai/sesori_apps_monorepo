@@ -7,6 +7,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/connection_s
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
+import "package:sesori_dart_core/src/testing/test_helpers.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -34,6 +35,7 @@ class _RecordingRelayClientFactory(final _MockRelayClient Function() _produce) e
     required RelayCryptoService cryptoService,
     required RoomKeyStorage roomKeyStorage,
     required String? authToken,
+    required String? bridgeId,
   }) {
     callCount++;
     lastAuthToken = authToken;
@@ -105,6 +107,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -135,6 +138,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -163,6 +167,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -186,6 +191,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -195,7 +201,7 @@ void main() {
 
       service.emitStatusForTesting(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "t"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "t", bridgeId: null),
           health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: false),
         ),
       );

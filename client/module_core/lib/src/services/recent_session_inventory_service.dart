@@ -7,6 +7,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../capabilities/server_connection/connection_service.dart";
+import "../capabilities/server_connection/models/connection_status.dart";
 import "../capabilities/server_connection/models/sse_event.dart";
 import "../errors/api_error_remote_failure_x.dart";
 import "../logging/logging.dart";
@@ -45,15 +46,33 @@ class RecentSessionInventoryService({
   // Retained until a snapshot covering this lifecycle generation is applied.
   final Map<String, int> _lifecycleChangeGenerations = {};
 
+  final TargetBridgeChangeDetector _targetChange = TargetBridgeChangeDetector(
+    initialStatus: _connectionService.currentStatus,
+  );
+
   ValueStream<Map<String, RecentSessionsEntry>> get state => _state.stream;
 
   this {
+    _subscriptions.add(_connectionService.status.listen(_onConnectionStatus));
     _subscriptions.add(projectListService.listedProjects.listen(_admitProjects));
     _subscriptions.add(_connectionService.events.listen((event) => _onEvent(event: event)));
     _subscriptions.add(_sseEventTracker.sessionActivity.listen((_) => _projectLiveState()));
     _subscriptions.add(_sessionUnseenTracker.sessionUnseen.listen((_) => _projectLiveState()));
     _subscriptions.add(_connectionService.dataMayBeStale.listen((_) => _refreshKnownProjects()));
     _subscriptions.add(catalogRescanService.catalogChanged.listen((_) => _refreshKnownProjects()));
+  }
+
+  /// Another computer: drop every entry and retire in-flight reads, so a late
+  /// answer from the previous computer cannot repopulate the inventory. The new
+  /// computer's project list admits its own projects.
+  void _onConnectionStatus(ConnectionStatus status) {
+    if (_state.isClosed || !_targetChange.changed(status: status)) return;
+    for (final request in _latestReads.values) {
+      _completeRead(request: request, outcome: _RecentReadOutcome.superseded);
+    }
+    _latestReads.clear();
+    _lifecycleChangeGenerations.clear();
+    _state.add(const {});
   }
 
   void _admitProjects(List<ProjectSummary> projects) {

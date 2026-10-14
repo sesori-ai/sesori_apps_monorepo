@@ -11,4 +11,9 @@ class DesktopActiveBridgeLocality({required BridgeStatusTracker statusTracker}) 
     final status = _statusTracker.status;
     return status.helperOnline && status.bridgeId == bridgeId;
   }
+
+  /// The supervised bridge's id, kept while its helper is offline so the
+  /// desktop can still target its own computer.
+  @override
+  String? get localBridgeId => _statusTracker.status.bridgeId;
 }

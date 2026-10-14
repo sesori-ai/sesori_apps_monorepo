@@ -23,6 +23,7 @@ import "../../helpers/test_helpers.dart";
 const _connectionConfig = ServerConnectionConfig(
   relayHost: "relay.example.com",
   authToken: "test-token",
+  bridgeId: null,
 );
 const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 const _connectedStatus = ConnectionStatus.connected(config: _connectionConfig, health: _health);
@@ -56,6 +57,7 @@ void main() {
 
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
+    when(mockConnectionService.readTargetBridgeId).thenAnswer((_) async => null);
     when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.success(const Projects(data: [])),
     );

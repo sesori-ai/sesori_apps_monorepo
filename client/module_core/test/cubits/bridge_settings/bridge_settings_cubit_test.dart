@@ -302,7 +302,7 @@ void main() {
   });
 }
 
-const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null);
+const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null);
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _config, health: _health);
 

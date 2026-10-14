@@ -3147,7 +3147,7 @@ void main() {
     await tester.enterText(find.byType(EditableText), "before reconnect");
     final composer = tester.state(find.byType(PromptInput));
 
-    const config = ServerConnectionConfig(relayHost: "relay.example", authToken: null);
+    const config = ServerConnectionConfig(relayHost: "relay.example", authToken: null, bridgeId: null);
     for (final status in [
       const ConnectionStatus.connectionLost(config: config),
       const ConnectionStatus.reconnecting(config: config),

@@ -17,7 +17,7 @@ const _request = McpInventoryRequest(
   pluginId: "fixture",
   scope: McpSessionScope(sessionId: "session-a"),
 );
-const _config = ServerConnectionConfig(relayHost: "wss://fixture.test/a", authToken: "fixture-a");
+const _config = ServerConnectionConfig(relayHost: "wss://fixture.test/a", authToken: "fixture-a", bridgeId: null);
 const _health = HealthResponse(healthy: true, version: "1.9.1", filesystemAccessDegraded: false);
 
 void main() {
@@ -225,7 +225,7 @@ void main() {
   test("a changed connection configuration clears old details before reading its inventory", () async {
     await load();
     final refresh = service.refresh();
-    const next = ServerConnectionConfig(relayHost: "wss://fixture.test/b", authToken: "fixture-b");
+    const next = ServerConnectionConfig(relayHost: "wss://fixture.test/b", authToken: "fixture-b", bridgeId: null);
     connection.statuses.add(const ConnectionReconnecting(config: next));
     await _pump();
     expect(service.currentState, isA<McpInventoryWaitingForConnection>());

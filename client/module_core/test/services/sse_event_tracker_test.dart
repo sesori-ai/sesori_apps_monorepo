@@ -34,6 +34,7 @@ void main() {
       statusController = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
       when(() => mockConnectionService.events).thenAnswer((_) => eventController.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
+      when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -716,6 +717,46 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(closedStreamCount, 3);
+    });
+
+    test("switching to another computer clears what the previous one reported", () async {
+      const health = HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: false);
+      ServerConnectionConfig config({required String bridgeId}) =>
+          ServerConnectionConfig(relayHost: "relay", authToken: "t", bridgeId: bridgeId);
+      statusController.add(
+        ConnectionStatus.connected(
+          config: config(bridgeId: "a"),
+          health: health,
+        ),
+      );
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
+      eventController.add(
+        SseEvent(
+          data: const SesoriProjectsSummary(
+            projects: [
+              ProjectActivitySummary(
+                id: "/foo",
+                activeSessions: [
+                  ActiveSession(
+                    id: "s1",
+                    mainAgentRunning: true,
+                    childSessionIds: [],
+                    lastUserActivityAt: null,
+                    updatedAt: null,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+      await tracker.sessionActivity.firstWhere((activity) => activity.isNotEmpty);
+
+      statusController.add(ConnectionStatus.reconnecting(config: config(bridgeId: "b")));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(tracker.currentSessionActivity, isEmpty);
+      await tracker.onDispose();
     });
   });
 }

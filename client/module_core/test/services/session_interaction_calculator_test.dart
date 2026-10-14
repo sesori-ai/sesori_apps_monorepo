@@ -4,7 +4,7 @@ import "package:test/test.dart";
 
 void main() {
   const calculator = SessionInteractionCalculator();
-  const config = ServerConnectionConfig(relayHost: "relay.example", authToken: null);
+  const config = ServerConnectionConfig(relayHost: "relay.example", authToken: null, bridgeId: null);
   const health = HealthResponse(healthy: true, version: "1.8.0", filesystemAccessDegraded: false);
   const connected = ConnectionStatus.connected(config: config, health: health);
 

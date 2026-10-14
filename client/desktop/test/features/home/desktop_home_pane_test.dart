@@ -38,6 +38,8 @@ void main() {
     final statuses = BehaviorSubject<ConnectionStatus>.seeded(const ConnectionStatus.disconnected());
     addTearDown(statuses.close);
     when(() => connection.status).thenAnswer((_) => statuses);
+    when(() => connection.currentStatus).thenAnswer((_) => statuses.value);
+    when(connection.readTargetBridgeId).thenAnswer((_) async => null);
     getIt.registerSingleton<RegisteredBridgesService>(bridges);
     getIt.registerSingleton<ConnectionService>(connection);
     final voice = MockVoiceTranscriptionService();

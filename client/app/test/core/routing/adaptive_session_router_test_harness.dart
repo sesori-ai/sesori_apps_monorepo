@@ -350,7 +350,7 @@ class AdaptiveSessionRouterTestHarness() {
   }
 
   static const ConnectionStatus _connectedStatus = ConnectionStatus.connected(
-    config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+    config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
     health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
   );
 }

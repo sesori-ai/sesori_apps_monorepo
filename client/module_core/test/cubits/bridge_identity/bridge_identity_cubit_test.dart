@@ -19,7 +19,11 @@ import "../../helpers/test_helpers.dart";
 // retries on reconnect.
 // ---------------------------------------------------------------------------
 
-const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
+const _connectionConfig = ServerConnectionConfig(
+  relayHost: "relay.example.com",
+  authToken: "test-token",
+  bridgeId: null,
+);
 const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 const _connectedStatus = ConnectionStatus.connected(config: _connectionConfig, health: _health);
 const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(config: _connectionConfig, health: _health);
@@ -37,6 +41,8 @@ void main() {
     // Must be stubbed before any cubit is built — the constructor subscribes
     // and starts its lookup immediately.
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
+    when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
+    when(() => mockConnectionService.readTargetBridgeId()).thenAnswer((_) async => null);
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
   });
@@ -69,6 +75,62 @@ void main() {
     },
     expect: () => [
       isA<BridgeIdentityNamed>().having((s) => s.bridge.name, "named machine", "Macbook-Pro.local"),
+    ],
+  );
+
+  ConnectionStatus connectedTo({required String bridgeId}) => ConnectionStatus.connected(
+    config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token", bridgeId: bridgeId),
+    health: _health,
+  );
+  final bridges = [
+    testBridgeSummary(id: "a", name: "Macbook-Pro.local"),
+    testBridgeSummary(id: "b", name: "work-desktop"),
+  ];
+
+  blocTest<BridgeIdentityCubit, BridgeIdentityState>(
+    "names the computer the connection targets, not the list head",
+    build: () {
+      statusController.add(connectedTo(bridgeId: "b"));
+      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => bridges);
+      return buildCubit();
+    },
+    expect: () => [
+      isA<BridgeIdentityNamed>().having((s) => s.bridge.id, "named machine", "b"),
+    ],
+  );
+
+  blocTest<BridgeIdentityCubit, BridgeIdentityState>(
+    "before connecting, names the stored target",
+    build: () {
+      when(() => mockConnectionService.readTargetBridgeId()).thenAnswer((_) async => "b");
+      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => bridges);
+      return buildCubit();
+    },
+    expect: () => [
+      isA<BridgeIdentityNamed>().having((s) => s.bridge.id, "named machine", "b"),
+    ],
+  );
+
+  blocTest<BridgeIdentityCubit, BridgeIdentityState>(
+    "switching computers renames from the list already held",
+    build: () {
+      statusController.add(connectedTo(bridgeId: "a"));
+      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => bridges);
+      when(() => mockRegisteredBridgesService.bridges).thenAnswer((_) => BehaviorSubject.seeded(bridges));
+      return buildCubit();
+    },
+    act: (cubit) async {
+      await Future<void>.delayed(Duration.zero);
+      statusController.add(
+        const ConnectionStatus.reconnecting(
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token", bridgeId: "b"),
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+    },
+    expect: () => [
+      isA<BridgeIdentityNamed>().having((s) => s.bridge.id, "named machine", "a"),
+      isA<BridgeIdentityNamed>().having((s) => s.bridge.id, "named machine", "b"),
     ],
   );
 

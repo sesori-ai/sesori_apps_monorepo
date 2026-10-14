@@ -28,6 +28,7 @@ void main() {
       channelConnector: (_) => socket.channel,
       boundedJsonEncoder: null,
       maxPlaintextMessageBytes: RelayProtocol.maxPlaintextMessageBytes,
+      bridgeId: null,
     );
     final outgoing = StreamIterator<Object?>(socket.outgoing);
     addTearDown(() async {
@@ -71,6 +72,7 @@ void main() {
       channelConnector: (_) => socket.channel,
       boundedJsonEncoder: null,
       maxPlaintextMessageBytes: RelayProtocol.maxPlaintextMessageBytes,
+      bridgeId: null,
     );
     final outgoing = StreamIterator<Object?>(socket.outgoing);
     addTearDown(() async {
@@ -132,6 +134,7 @@ void main() {
         },
       ),
       maxPlaintextMessageBytes: RelayProtocol.maxPlaintextMessageBytes,
+      bridgeId: null,
     );
     final outgoing = StreamIterator<Object?>(socket.outgoing);
     addTearDown(() async {
@@ -196,6 +199,7 @@ void main() {
       channelConnector: (_) => socket.channel,
       boundedJsonEncoder: null,
       maxPlaintextMessageBytes: RelayProtocol.maxPlaintextMessageBytes,
+      bridgeId: null,
     );
     final outgoing = StreamIterator<Object?>(socket.outgoing);
     addTearDown(() async {
@@ -275,6 +279,7 @@ void main() {
         },
       ),
       maxPlaintextMessageBytes: RelayProtocol.maxPlaintextMessageBytes,
+      bridgeId: null,
     );
     final outgoing = StreamIterator<Object?>(socket.outgoing);
     addTearDown(() async {
@@ -333,6 +338,7 @@ void main() {
       channelConnector: (_) => socket.channel,
       boundedJsonEncoder: BoundedJsonEncoder(chunkSize: 8, yieldTurn: () async {}),
       maxPlaintextMessageBytes: expectedBytes.length - 1,
+      bridgeId: null,
     );
     final outgoing = StreamIterator<Object?>(socket.outgoing);
     addTearDown(() async {
@@ -372,6 +378,7 @@ void main() {
       channelConnector: (_) => socket.channel,
       boundedJsonEncoder: null,
       maxPlaintextMessageBytes: RelayProtocol.maxPlaintextMessageBytes,
+      bridgeId: null,
     );
     final outgoing = StreamIterator<Object?>(socket.outgoing);
     addTearDown(() async {

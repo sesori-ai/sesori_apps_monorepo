@@ -16,7 +16,7 @@ import "../../helpers/test_helpers.dart";
 /// Activity sits above the project list: sessions waiting on the user first,
 /// then running ones, each opening its session directly.
 void main() {
-  const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
+  const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token", bridgeId: null);
   const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
   const connected = ConnectionStatus.connected(config: config, health: health);
   final project = testProjectSummary(id: "project-1", name: "My App");

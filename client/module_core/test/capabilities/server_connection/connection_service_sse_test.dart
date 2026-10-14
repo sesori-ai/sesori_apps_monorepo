@@ -14,6 +14,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/logging/logging.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/connection_notification_observation_repository.dart";
+import "package:sesori_dart_core/src/testing/test_helpers.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -40,6 +41,7 @@ class _TestRelayClientFactory({required final RelayClient _client}) extends Rela
     required RelayCryptoService cryptoService,
     required RoomKeyStorage roomKeyStorage,
     required String? authToken,
+    required String? bridgeId,
   }) => _client;
 }
 
@@ -69,6 +71,7 @@ void main() {
     const config = ServerConnectionConfig(
       relayHost: "relay.example.com",
       authToken: "token",
+      bridgeId: null,
     );
     const health = HealthResponse(healthy: true, version: "1.0.0", filesystemAccessDegraded: false);
 
@@ -108,6 +111,7 @@ void main() {
       service = ConnectionService(
         _MockRelayCryptoService(),
         _MockRoomKeyStorage(),
+        FakeTargetBridgeStorage(),
         _MockAuthTokenProvider(),
         authSession,
         lifecycleSource,

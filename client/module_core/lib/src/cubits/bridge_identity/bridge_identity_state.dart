@@ -19,8 +19,8 @@ sealed class BridgeIdentityState with _$BridgeIdentityState {
   /// skeleton) in the row's place.
   const factory pending() = BridgeIdentityPending;
 
-  /// [bridge] is the machine to name — the account's most recently seen
-  /// registered bridge.
+  /// [bridge] is the machine to name — the registered bridge the connection
+  /// targets.
   const factory named({required BridgeSummary bridge}) = BridgeIdentityNamed;
 
   /// The lookup answered with no machine to name: the account has never

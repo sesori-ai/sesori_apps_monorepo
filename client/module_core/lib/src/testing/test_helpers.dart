@@ -14,6 +14,7 @@ import "../api/storage/composer_draft_storage.dart";
 import "../api/storage/session_launch_storage.dart";
 import "../capabilities/relay/relay_client.dart";
 import "../capabilities/relay/room_key_storage.dart";
+import "../capabilities/relay/target_bridge_storage.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/server_connection_config.dart";
 import "../capabilities/voice/voice_api.dart";
@@ -637,7 +638,7 @@ void stubSessionRepositoryGetSession({
 }
 
 void registerCoreFallbackValues() {
-  registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null));
+  registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null));
   registerFallbackValue(FakeUri());
   registerFallbackValue(StackTrace.empty);
   registerFallbackValue(testSession());
@@ -811,6 +812,22 @@ class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadSe
 }
 
 class MockRoomKeyStorage() extends Mock implements RoomKeyStorage;
+
+/// In-memory [TargetBridgeStorage]; [stored] is the persisted target.
+class FakeTargetBridgeStorage() implements TargetBridgeStorage {
+  String? _stored;
+
+  String? get stored => _stored;
+
+  @override
+  Future<String?> read() async => _stored;
+
+  @override
+  Future<void> write({required String bridgeId}) async => _stored = bridgeId;
+
+  @override
+  Future<void> clear() async => _stored = null;
+}
 
 MessageWithParts testMessageWithParts({String? id = _noString}) {
   final messageId = id ?? "msg-1";
