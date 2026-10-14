@@ -129,7 +129,8 @@ Checked against the code on 2026-10-14; relay and auth claims against each repos
 
 - `BridgeSummary` gains `status: "active" | "inactive"` from the persisted document field (no new state).
 - `registerBridgeBodySchema` gains optional `hostKey` (64 hex characters). `registerForUser`: an id match behaves as
-  today and additionally stores the supplied `hostKey`; without an id match and with a supplied non-null `hostKey`, a
+  today and additionally stores a supplied non-null `hostKey` (absent or null leaves the stored key unchanged, so a
+  one-off failure to read the machine identifier cannot break later reinstall matching); without an id match and with a supplied non-null `hostKey`, a
   non-revoked bridge of the same user with the same `hostKey` is updated in place and returned with 200 (most recently
   seen first if duplicates exist); otherwise a new bridge is minted, with the key when one was supplied. An absent or
   null key never matches anything. Non-unique partial index `{userId, hostKey}` (only documents with a key) in
