@@ -13,6 +13,7 @@ const _bridgesPayload = <String, dynamic>{
       "id": "br_abc12345",
       "name": "alex-macbook",
       "platform": "macos",
+      "status": "active",
       "addedAt": "2026-01-01T00:00:00.000Z",
       "lastSeenAt": null,
     },

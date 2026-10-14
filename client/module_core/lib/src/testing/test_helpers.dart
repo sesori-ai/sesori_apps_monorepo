@@ -758,11 +758,13 @@ BridgeSummary testBridgeSummary({
   String? name = _noString,
   DateTime? addedAt = _noDateTime,
   DateTime? lastSeenAt = _noDateTime,
+  BridgeRegistrationStatus status = BridgeRegistrationStatus.active,
 }) {
   return BridgeSummary(
     id: id ?? "br_test1234",
     name: name ?? "test-macbook",
-    platform: "macos",
+    platform: BridgePlatform.macos,
+    status: status,
     addedAt: addedAt ?? DateTime.utc(2026, 1, 1),
     lastSeenAt: lastSeenAt,
   );

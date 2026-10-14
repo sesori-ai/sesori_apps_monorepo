@@ -92,3 +92,28 @@ sealed class RelayMessage with _$RelayMessage {
 
   factory fromJson(Map<String, dynamic> json) => _$RelayMessageFromJson(json);
 }
+
+/// Plaintext control notices the relay itself sends to a phone as text frames.
+/// Unlike [RelayMessage] they are not end-to-end encrypted.
+@Freezed(unionKey: "type", unionValueCase: FreezedUnionCase.snake, fallbackUnion: "unknown")
+sealed class RelayNoticeMessage with _$RelayNoticeMessage {
+  /// The phone's target bridge came online, or the phone moved to another
+  /// bridge. Older relays omit [bridgeId].
+  @FreezedUnionValue("bridge_connected")
+  const factory bridgeConnected({required String? bridgeId}) = BridgeConnectedMessage;
+
+  /// The phone has no target bridge. [bridgeId] names the bridge it lost when
+  /// the relay knows one; older relays omit it.
+  @FreezedUnionValue("bridge_disconnected")
+  const factory bridgeDisconnected({required String? bridgeId}) = BridgeDisconnectedMessage;
+
+  /// One of the account's bridges connected or disconnected, whatever the
+  /// phone's own target.
+  @FreezedUnionValue("bridge_presence")
+  const factory bridgePresence({required String bridgeId, required bool online}) = BridgePresenceMessage;
+
+  /// A notice type this client does not know yet.
+  const factory unknown() = UnknownRelayNoticeMessage;
+
+  factory fromJson(Map<String, dynamic> json) => _$RelayNoticeMessageFromJson(json);
+}

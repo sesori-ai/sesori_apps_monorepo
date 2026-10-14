@@ -84,11 +84,12 @@ void main() {
     expect(await firstFrameReady.timeout(const Duration(seconds: 1)), isTrue);
     final firstFrame = Uint8List.fromList(outgoing.current! as List<int>);
 
-    socket.serverSink.add('{"type":"${RelayProtocol.typeBridgeConnected}"}');
+    // An older relay names no bridge; a newer relay adds the bridge id.
+    socket.serverSink.add('{"type":"bridge_connected"}');
     await Future<void>.delayed(Duration.zero);
 
     final replayReady = outgoing.moveNext();
-    socket.serverSink.add('{"type":"${RelayProtocol.typeBridgeConnected}"}');
+    socket.serverSink.add('{"type":"bridge_connected","bridgeId":"br_test1234"}');
     expect(await replayReady.timeout(const Duration(seconds: 1)), isTrue);
     final replayedFrame = Uint8List.fromList(outgoing.current! as List<int>);
     expect(replayedFrame, firstFrame);

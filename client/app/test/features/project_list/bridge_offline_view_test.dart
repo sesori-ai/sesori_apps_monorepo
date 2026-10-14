@@ -36,13 +36,14 @@ const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(
 BridgeSummary _bridge({
   required String id,
   required String name,
-  String platform = "macos",
+  BridgePlatform platform = BridgePlatform.macos,
   DateTime? lastSeenAt,
 }) {
   return BridgeSummary(
     id: id,
     name: name,
     platform: platform,
+    status: BridgeRegistrationStatus.active,
     addedAt: DateTime.utc(2026, 1, 1),
     lastSeenAt: lastSeenAt,
   );
@@ -139,7 +140,7 @@ void main() {
       when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
         (_) async => [
           _bridge(id: "a", name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1)),
-          _bridge(id: "b", name: "work-desktop", platform: "linux"),
+          _bridge(id: "b", name: "work-desktop", platform: BridgePlatform.linux),
         ],
       );
 
