@@ -846,6 +846,9 @@ class FakeSelectedComputerService() implements SelectedComputerService {
   Future<void> ensureInitialTarget() async {}
 
   @override
+  Future<void> followLocalComputer({required String bridgeId}) async {}
+
+  @override
   Future<void> select({required String bridgeId, required ComputerSwitchSource source}) async {}
 }
 

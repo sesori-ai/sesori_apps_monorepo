@@ -41,6 +41,8 @@ import 'package:sesori_desktop_core/src/foundation/platform/window_host.dart'
     as _i732;
 import 'package:sesori_desktop_core/src/orchestration/desktop_bridge_takeover_orchestrator.dart'
     as _i850;
+import 'package:sesori_desktop_core/src/orchestration/desktop_computer_target_orchestrator.dart'
+    as _i945;
 import 'package:sesori_desktop_core/src/orchestration/desktop_logout_orchestrator.dart'
     as _i165;
 import 'package:sesori_desktop_core/src/orchestration/desktop_startup_orchestrator.dart'
@@ -176,6 +178,13 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i948.AuthSession>(),
         statusTracker: gh<_i227.BridgeStatusTracker>(),
         promptTracker: gh<_i686.BridgePromptTracker>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i945.DesktopComputerTargetOrchestrator>(
+      () => _i945.DesktopComputerTargetOrchestrator(
+        statusTracker: gh<_i227.BridgeStatusTracker>(),
+        selectedComputerService: gh<_i948.SelectedComputerService>(),
       ),
       dispose: (i) => i.dispose(),
     );

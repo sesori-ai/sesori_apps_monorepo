@@ -12,9 +12,10 @@ import "../repositories/models/analytics_delivery_result.dart";
 import "product_analytics_service.dart";
 import "registered_bridges_service.dart";
 
-/// Chooses which computer the app works on. Holds no state of its own: the
-/// target lives in [ConnectionService], and the registered list only names
-/// computers, never chooses one.
+/// Chooses which computer the app works on. The target lives in
+/// [ConnectionService], and the registered list only names computers, never
+/// chooses one. The one thing held here is whether the user has picked a
+/// computer since start-up, which keeps [followLocalComputer] from undoing it.
 @lazySingleton
 class SelectedComputerService({
   required final ConnectionService _connectionService,
@@ -22,6 +23,8 @@ class SelectedComputerService({
   required final RegisteredBridgesService _registeredBridgesService,
   required final ProductAnalyticsService _productAnalyticsService,
 }) {
+  bool _pickedSinceStartUp = false;
+
   /// The computer the app works on: the live connection's target, else the
   /// stored one, else `null` when none is known yet.
   Future<String?> targetBridgeId() async =>
@@ -37,10 +40,20 @@ class SelectedComputerService({
     await _connectionService.retarget(bridgeId: localBridgeId);
   }
 
+  /// Points the app at this computer's own bridge, whose id [bridgeId] just
+  /// appeared or changed (a fresh install, a new login, or a re-registration),
+  /// unless the user has picked a computer since start-up. Without this the
+  /// connection keeps the relay's default computer or an id that is gone.
+  Future<void> followLocalComputer({required String bridgeId}) async {
+    if (_pickedSinceStartUp) return;
+    await _connectionService.retarget(bridgeId: bridgeId);
+  }
+
   /// Switches the app to the computer [bridgeId], reporting where the switch
   /// started. Navigation is the caller's: every switch goes through
   /// `ComputerSwitchDispatcher`, which also returns the app to Projects.
   Future<void> select({required String bridgeId, required ComputerSwitchSource source}) async {
+    _pickedSinceStartUp = true;
     final target = _registeredBridgesService.bridges.value.where((bridge) => bridge.id == bridgeId).firstOrNull;
     _reportSwitch(
       event: ProductAnalyticsEvent.computerSwitched(

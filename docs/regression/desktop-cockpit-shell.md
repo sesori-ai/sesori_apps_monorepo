@@ -258,8 +258,16 @@ The main pane hosts one full-width routed page.
   user picks another, each pick with its own draft), then Needs you, Running and Recent sections across projects.
   Recent holds the five newest sessions that are neither running nor waiting; empty sections are left out. A row
   opens its session, and a session started from home opens in the picked project. Empty inventory offers
-  Add/Open Project. Loading is labelled, failures retry the shared inventory,
-  and disconnected states offer supervised bridge recovery without CLI setup.
+  Add/Open Project. Loading is labelled and failures retry the shared inventory. A disconnected home branches on
+  the computer being viewed: this computer's own bridge (or an unknown target) offers supervised recovery without
+  CLI setup; another computer shows the phone's offline body instead, "<computer> is offline" with its last-seen
+  time, a line to start the bridge on that computer, and the shared Other computers card, with no Start button.
+- Home opens with a "Viewing: <computer> ▾" header ("Viewing: This computer" for the local one) whose anchored
+  menu switches computers through the shared switch flow (source `menu`). It is hidden while the account's only
+  computer is this one, grows into place when the list says otherwise, and stays put while the body below changes
+  state. The desktop starts on the stored pick, else this computer, and follows this computer's supervised bridge
+  when its id appears or changes (a fresh install, a new login, a re-registration) unless the user picked a
+  computer since start-up. The local bridge keeps running while another computer is viewed.
   Shared Prego text styles and Material themes resolve the bundled package font.
 - Connection status floats over the main pane without changing its bounds.
   Reconnecting appears after the shared grace period; connection lost retains
@@ -269,7 +277,8 @@ The main pane hosts one full-width routed page.
   short fade; reduced motion disables it. Departing content neither intercepts
   input nor remains in accessibility announcements.
 - The This computer row always exposes its supervised status through a dot and an
-  accessible description. Takeover, login, start failure and crash-give-up
+  accessible description. Takeover (another copy of this computer's own bridge, here or on a cloned machine;
+  another computer never causes it), login, start failure and crash-give-up
   recovery lives in the sidebar footer. Long repair guidance scrolls within a
   bounded card whose icon sits centred on the message's first line, with its
   extra-small buttons below: Take over for takeover, Start bridge for login,
@@ -347,6 +356,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Modal tab/entry selection, keyboard entry, route/element/draft preservation, nested Back/Close,
   text-edit/dialog Escape order, logout failure/late completion/auth rejection, every tab and Close at minimum size
   with 100%/200%/250% text. Use packaged fonts for geometry checks; preserve the requested text scaler.
+- Home computer header shown, hidden for a lone local computer, and switching from its menu; disconnected home
+  for a remote target (offline body, other computers, no Start) versus this computer (supervised Start); the
+  desktop target following a new or changed supervised bridge id unless a computer was picked since start-up.
 - Root-popup activity visibility across nested navigators; notification popup dismissal,
   same-page/Back preservation, different-session replacement, readiness and logged-failure ordering.
 - Popover scope/contextual actions, locks/live updates, explicit Stop intent, expanded/compact anchoring,
@@ -417,6 +429,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   and helper inheritance.
 - Settings entries/tabs, native startup preference, dialog keyboard/backdrop/accessibility and retained composer.
 - Popover Start/Stop/Retry, Take Over versus Stop, logs and Settings.
+- Viewing a remote computer from the home header while the local bridge keeps serving a phone, and the remote
+  offline body when that computer's bridge stops.
 - Relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows.
 - The floating panel in light and dark: rounded corners, border and shadow with no hard edge against the page.
 - The unified macOS title bar: the traffic lights on the expanded panel above New session and above the
@@ -452,7 +466,9 @@ Unicode, window sizes, theme, and sidebar width; preserve any already-running
 bridge during UI-only checks.
 
 On home, watch for a session starting in a project other than the one picked, a draft following a project
-reorder or surviving a new pick, a running or waiting session under Recent, and an empty section heading.
+reorder or surviving a new pick, a running or waiting session under Recent, and an empty section heading, a Start button
+offered for another computer, a header that pops in on each load, or the desktop jumping back to this computer
+after the user picked another one.
 
 ## Maintenance Sources
 

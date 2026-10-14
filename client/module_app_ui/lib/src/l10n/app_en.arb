@@ -113,8 +113,8 @@
   "@desktopSidebarRefreshSuccess": {"description": "Confirmation after both desktop sidebar inventories refresh."},
   "desktopSidebarRefreshFailed": "Could not refresh projects and sessions",
   "@desktopSidebarRefreshFailed": {"description": "Failure notice when either desktop sidebar inventory could not refresh."},
-  "desktopBridgeTakenOver": "Another bridge currently owns this account connection.",
-  "@desktopBridgeTakenOver": {"description": "Sidebar recovery notice when bridge ownership can be reclaimed."},
+  "desktopBridgeTakenOver": "Another copy of this computer's bridge is running, here or on a cloned machine.",
+  "@desktopBridgeTakenOver": {"description": "Sidebar recovery notice when another copy of this computer's own bridge (a second bridge process here, or a machine cloned from this one sharing its bridge id) holds its connection and can be taken over. Other computers never cause it."},
   "desktopBridgeTakeOver": "Take over",
   "@desktopBridgeTakeOver": {"description": "Action to reclaim local or relay bridge ownership."},
   "desktopBridgeLoginRequired": "Your Sesori account is required before the local bridge can start.",
@@ -344,6 +344,23 @@
   "projectsDesktopStartBridgeInfo": "Start the local bridge to load your projects and sessions in Sesori.",
   "@projectsDesktopStartBridgeInfo": {
     "description": "Desktop-only explanation shown while the local supervised bridge is unavailable."
+  },
+  "projectsDesktopRemoteOfflineInfo": "Start the bridge on that computer to load its projects and sessions here.",
+  "@projectsDesktopRemoteOfflineInfo": {
+    "description": "Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer, not this one."
+  },
+  "desktopViewingComputer": "Viewing: {name}",
+  "@desktopViewingComputer": {
+    "description": "Desktop home header naming the other computer whose projects are shown; opens the computer menu.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopViewingThisComputer": "Viewing: This computer",
+  "@desktopViewingThisComputer": {
+    "description": "Desktop home header when the projects shown are this computer's own; opens the computer menu."
   },
   "connectionLostTitle": "Connection lost",
   "connectionLostReconnect": "Reconnect",

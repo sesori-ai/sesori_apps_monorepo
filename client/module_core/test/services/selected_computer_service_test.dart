@@ -37,9 +37,14 @@ void main() {
     );
   }
 
-  ProductAnalyticsEvent reportedEvent() => verify(
-    () => analytics.logEvent(event: captureAny(named: "event"), occurredAtUtc: any(named: "occurredAtUtc")),
-  ).captured.single as ProductAnalyticsEvent;
+  ProductAnalyticsEvent reportedEvent() =>
+      verify(
+            () => analytics.logEvent(
+              event: captureAny(named: "event"),
+              occurredAtUtc: any(named: "occurredAtUtc"),
+            ),
+          ).captured.single
+          as ProductAnalyticsEvent;
 
   test("select reports the switch with its source and the target's state, then retargets", () async {
     registeredBridges.emitBridges(
@@ -84,6 +89,21 @@ void main() {
     await build(stored: null, local: null).ensureInitialTarget();
 
     verifyNever(() => connection.retarget(bridgeId: any(named: "bridgeId")));
+  });
+
+  test("a new local computer id becomes the target", () async {
+    await build(stored: "relay-default", local: null).followLocalComputer(bridgeId: "local");
+
+    verify(() => connection.retarget(bridgeId: "local")).called(1);
+  });
+
+  test("a computer picked since start-up is never replaced by the local one", () async {
+    final service = build(stored: null, local: null);
+    await service.select(bridgeId: "remote", source: ComputerSwitchSource.menu);
+
+    await service.followLocalComputer(bridgeId: "local");
+
+    verifyNever(() => connection.retarget(bridgeId: "local"));
   });
 
   test("the target is the live connection's, else the stored one", () async {

@@ -257,7 +257,8 @@ state.
   online". An account with only the offline computer shows no card. The card grows into place when the list
   arrives instead of pushing the start command down in one frame. A switch from the card or its menu lands on the
   new computer's Projects root as a menu switch does and reports `computer_switched` with source
-  `offline_screen`. "Need help?" sits at the bottom of a short page and right after the last control of a
+  `offline_screen`. The desktop home shows the same heading, last-seen line and card when it views another
+  computer (see `desktop-cockpit-shell.md`). "Need help?" sits at the bottom of a short page and right after the last control of a
   taller one, scrolling with it, so it never covers a control.
 - File Changes with more than one file opens with a list of every file: its A, D or M status, name, folder and
   nonzero +/− counts. A tap scrolls that file's diff to the top, reopening it if it was collapsed, however far

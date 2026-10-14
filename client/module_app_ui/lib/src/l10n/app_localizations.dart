@@ -385,10 +385,10 @@ abstract class AppLocalizations {
   /// **'Could not refresh projects and sessions'**
   String get desktopSidebarRefreshFailed;
 
-  /// Sidebar recovery notice when bridge ownership can be reclaimed.
+  /// Sidebar recovery notice when another copy of this computer's own bridge (a second bridge process here, or a machine cloned from this one sharing its bridge id) holds its connection and can be taken over. Other computers never cause it.
   ///
   /// In en, this message translates to:
-  /// **'Another bridge currently owns this account connection.'**
+  /// **'Another copy of this computer\'s bridge is running, here or on a cloned machine.'**
   String get desktopBridgeTakenOver;
 
   /// Action to reclaim local or relay bridge ownership.
@@ -774,6 +774,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start the local bridge to load your projects and sessions in Sesori.'**
   String get projectsDesktopStartBridgeInfo;
+
+  /// Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer, not this one.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the bridge on that computer to load its projects and sessions here.'**
+  String get projectsDesktopRemoteOfflineInfo;
+
+  /// Desktop home header naming the other computer whose projects are shown; opens the computer menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewing: {name}'**
+  String desktopViewingComputer(String name);
+
+  /// Desktop home header when the projects shown are this computer's own; opens the computer menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewing: This computer'**
+  String get desktopViewingThisComputer;
 
   /// No description provided for @connectionLostTitle.
   ///

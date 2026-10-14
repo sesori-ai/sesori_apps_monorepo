@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/multi-computer-plan` from `origin/main` `6a4a42e7a5`, in the provided `brown-dingo` worktree.
-- Current step: 10/15 in PR.
+- Current step: 11/15 in PR.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-14 over two review rounds.
 - Plan PR: #1959, merged 2026-10-14.
 - Architecture plan review: rejected on 2026-10-14 (17 findings); all applied in the same revision. Per `AGENTS.md`
@@ -25,8 +25,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 7/15 | monorepo | Target owner in the connection; resets on retarget | Done | #1965 (merged 2026-10-14) |
 | 8/15 | monorepo | Computer menu, switch dispatcher, and flow on Projects | Done | #1967 (merged 2026-10-14) |
 | 9/15 | monorepo | Offline screen lists other online computers (shared body) | Done | #1968 (merged 2026-10-14) |
-| 10/15 | monorepo | Settings restructured around the computer entry | In PR | — |
-| 11/15 | monorepo | Desktop views a remote computer | Not started | — |
+| 10/15 | monorepo | Settings restructured around the computer entry | Done | #1970 (merged 2026-10-14) |
+| 11/15 | monorepo | Desktop views a remote computer | In PR | — |
 | 12/15 | monorepo | Presence handling and linked-computer alert | Not started | — |
 | 13/15 | monorepo | Computer id in session pushes; tap opens the right computer | Not started | — |
 | 14/15 | monorepo | Reconcile regression documents | Not started | — |
@@ -70,6 +70,14 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   branch, and the desktop offers no switch before step 11). An account with a single
   computer shows no card (D6's "No other computers online" applies when other computers exist but none is online).
   Picks from the "+ n others" menu report `offline_screen`, where the switch started.
+- 2026-10-14, step 11: `DesktopComputerTargetOrchestrator` (module_desktop_core, Layer 4) replaces the direct
+  `ensureInitialTarget` call at desktop start-up and follows the supervised bridge id when it appears or changes;
+  `SelectedComputerService.select` sets the only new state, a "picked since start-up" flag that makes
+  `followLocalComputer` a no-op. Accepted: the flag lives for the process, so a pick before a logout still holds
+  after the next login in the same run; and a stored remote pick from an earlier run gives way to this computer
+  only when the local id itself changes. The home header is hidden while the account's only computer is this
+  one. The desktop remote-offline body reuses the phone's heading strings and `OtherComputersCard`, but not the
+  phone's CLI command box (app-shell widgets); a line asks to start the bridge on that computer instead.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record
