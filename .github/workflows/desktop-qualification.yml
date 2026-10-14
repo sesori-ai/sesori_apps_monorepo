@@ -104,13 +104,122 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  macos-gui:
+    needs: tooling
+    if: >-
+      github.event_name != 'workflow_dispatch' || inputs.mode == 'native-builds' || inputs.mode == 'macos-packaging'
+    runs-on: xcode-27
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+    env:
+      CI: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+      PUB_CACHE: ${{ github.workspace }}/../desktop-qualification-pub-cache
+      SOURCE_SHA: ${{ inputs.mode == 'macos-packaging' && inputs.source_sha || github.sha }}
+      BUILD_NUMBER: ${{ inputs.mode == 'macos-packaging' && inputs.build_number || github.run_number }}
+      CHANNEL: ${{ inputs.mode == 'macos-packaging' && inputs.channel || 'stable' }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require trusted committed product source for packaging
+        if: inputs.mode == 'macos-packaging'
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == refs/heads/main && "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$(git rev-parse HEAD)" == "$SOURCE_SHA" ]]
+          git merge-base --is-ancestor HEAD origin/main
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-workflow
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: arm64
+      - name: Set up ARM Xcode
+        uses: ./.ci-workflow/.github/actions/setup-xcode
+      - name: Bootstrap pinned ARM SDK
+        env:
+          SDK_DIR: ${{ runner.temp }}/desktop-qualification-flutter
+        run: |
+          set -euo pipefail
+          mkdir -p build/desktop-qualification
+          python .github/scripts/qualify_desktop.py bootstrap --arch arm64 --sdk-dir "$SDK_DIR" \
+            2>&1 | tee build/desktop-qualification/bootstrap.log
+      - name: Resolve locked client workspace
+        run: |
+          set -euo pipefail
+          printf '%s\n' '/.ci-workflow/' >> "$(git rev-parse --git-path info/exclude)"
+          (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+      - name: Compile target GUI on ARM
+        run: |
+          set -euo pipefail
+          dart --packages="$GITHUB_WORKSPACE/client/.dart_tool/package_config.json" \
+            .ci-workflow/client/desktop/tool/stage_desktop_bundle.dart \
+            --source-root "$GITHUB_WORKSPACE" --mode gui --architecture '${{ matrix.arch }}' \
+            --build-number "$BUILD_NUMBER" --channel "$CHANNEL" --output build/desktop-macos-gui/product \
+            2>&1 | tee build/desktop-qualification/gui-build.log
+          test ! -s build/desktop-macos-gui/product/build-source-changes.patch
+      - name: Compile separate target platform probe on ARM
+        run: |
+          set -euo pipefail
+          dart --packages="$GITHUB_WORKSPACE/client/.dart_tool/package_config.json" \
+            .ci-workflow/client/desktop/tool/stage_desktop_bundle.dart \
+            --source-root "$GITHUB_WORKSPACE" --mode probe --architecture '${{ matrix.arch }}' \
+            --build-number "$BUILD_NUMBER" --channel "$CHANNEL" --output build/desktop-macos-gui/probe \
+            2>&1 | tee build/desktop-qualification/platform-probe-build.log
+          test ! -s build/desktop-macos-gui/probe/build-source-changes.patch
+      - name: Inspect target headers and archive both GUI payloads
+        run: |
+          set -euo pipefail
+          for component in product probe; do
+            python .ci-workflow/.github/scripts/qualify_desktop.py inspect-gui --arch '${{ matrix.arch }}' \
+              --source-root "$GITHUB_WORKSPACE" \
+              --bundle-dir "$GITHUB_WORKSPACE/build/desktop-macos-gui/$component/Sesori.app"
+          done
+          cp build/desktop-qualification/sdk.json build/desktop-macos-gui/gui-sdk.json
+          tar -czf 'build/macos-gui-${{ matrix.arch }}.tar.gz' -C build desktop-macos-gui
+      - name: Upload same-run GUI handoff without signing credentials
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-gui-${{ matrix.arch }}
+          path: build/macos-gui-${{ matrix.arch }}.tar.gz
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain ARM compiler evidence, including partial failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-gui-evidence-${{ matrix.arch }}
+          path: |
+            build/desktop-qualification/*.json
+            build/desktop-qualification/*.log
+            build/desktop-macos-gui/**/gui-inventory.json
+            build/desktop-macos-gui/**/dart-defines.env
+            build/desktop-macos-gui/**/build-source-changes.patch
+          if-no-files-found: warn
+          retention-days: 14
+
   macos-distribution:
     # Automatic signing is separate from any future human-gated publication job.
     environment: macos-signing
-    needs: tooling
+    needs: [tooling, macos-gui]
     if: >-
-      github.event_name == 'workflow_dispatch' &&
-      (inputs.mode == 'macos-signing-preflight' || inputs.mode == 'macos-packaging' || inputs.mode == 'macos-gui-probe')
+      !cancelled() && needs.tooling.result == 'success' && github.event_name == 'workflow_dispatch' &&
+      (inputs.mode == 'macos-signing-preflight' || inputs.mode == 'macos-packaging' ||
+       inputs.mode == 'macos-gui-probe') &&
+      (inputs.mode != 'macos-packaging' || needs.macos-gui.result == 'success')
     permissions:
       contents: read
       actions: read
@@ -167,7 +276,7 @@ jobs:
           python .github/scripts/qualify_desktop.py bootstrap --arch '${{ matrix.arch }}' --sdk-dir "$SDK_DIR" \
             2>&1 | tee build/desktop-qualification/bootstrap.log
 
-      # GITHUB_PATH and the native FLUTTER_XCODE_ARCHS take effect after bootstrap.
+      # GITHUB_PATH takes effect after bootstrap; this host builds only the helper.
       - name: Resolve locked workspaces
         if: inputs.mode == 'macos-packaging'
         run: |
@@ -175,33 +284,34 @@ jobs:
           (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
           (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
 
-      - name: Build and stage native desktop bundle
+      - uses: actions/download-artifact@v4
+        if: inputs.mode == 'macos-packaging'
+        with:
+          name: desktop-macos-gui-${{ matrix.arch }}
+          path: build/macos-gui-input
+
+      - name: Build native helper and assemble the matching GUI
         if: inputs.mode == 'macos-packaging'
         env:
           BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
           CHANNEL: ${{ inputs.channel }}
         run: |
           set -euo pipefail
-          # The workflow-owned action checkout is not part of the committed product source.
           printf '%s\n' '/.ci-workflow/' >> "$(git rev-parse --git-path info/exclude)"
-          (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
-            --build-number "$BUILD_NUMBER" --channel "$CHANNEL" \
-            --output '${{ github.workspace }}/build/desktop-bundle') \
+          tar -xzf 'build/macos-gui-input/macos-gui-${{ matrix.arch }}.tar.gz' -C build
+          cp build/desktop-macos-gui/product/gui-inventory.json build/desktop-qualification/product-gui-inventory.json
+          cp build/desktop-macos-gui/probe/gui-inventory.json build/desktop-qualification/probe-gui-inventory.json
+          cp build/desktop-macos-gui/gui-sdk.json build/desktop-qualification/gui-sdk.json
+          dart --packages="$GITHUB_WORKSPACE/client/.dart_tool/package_config.json" \
+            .ci-workflow/client/desktop/tool/stage_desktop_bundle.dart \
+            --source-root "$GITHUB_WORKSPACE" --mode assemble --gui-input build/desktop-macos-gui/product \
+            --build-number "$BUILD_NUMBER" --channel "$CHANNEL" --output build/desktop-bundle \
             2>&1 | tee build/desktop-qualification/bundle-build.log
           if [[ -s build/desktop-bundle/build-source-changes.patch ]]; then
             echo 'Commit build-generated source changes before signing; see build-source-changes.patch.' >&2
             exit 1
           fi
-
-      - name: Build separate native platform probe
-        if: inputs.mode == 'macos-packaging'
-        run: |
-          set -euo pipefail
-          # Separate release fixture: never replace the staged product or upload this as a package.
-          (cd client/desktop && flutter build macos --release --no-pub \
-            --target test/native/packaged_platform_probe.dart) \
-            2>&1 | tee build/desktop-qualification/platform-probe-build.log
-          ditto client/desktop/build/macos/Build/Products/Release/Sesori.app build/desktop-platform-probe/Sesori.app
+          ditto build/desktop-macos-gui/probe/Sesori.app build/desktop-platform-probe/Sesori.app
 
       - name: Validate GUI-only artifact selection
         if: inputs.mode == 'macos-gui-probe'
@@ -912,6 +1022,120 @@ jobs:
             -e SESORI_LINUX_SIGNING_TEST_REQUIRED=1 sesori-linux-signing \
             python3 -m unittest discover -s .github/scripts -p 'test_sign_desktop_linux.py'
 
+  macos-native-build:
+    # Retain native check names while the GUI compiler runs in the ARM producer.
+    name: native-build (${{ matrix.runner }}, macos, ${{ matrix.arch }})
+    needs: [tooling, macos-gui]
+    if: github.event_name != 'workflow_dispatch' || inputs.mode == 'native-builds'
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-26-intel
+            arch: x64
+          - runner: xcode-27
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      CI: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+      PUB_CACHE: ${{ github.workspace }}/../desktop-qualification-pub-cache
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+          path: .ci-workflow
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.arch }}
+      - name: Set up native Xcode
+        uses: ./.ci-workflow/.github/actions/setup-xcode
+      - name: Verify native codesign requirement controls
+        run: python -m unittest discover -s .github/scripts -p test_macos_signing_workflows.py
+      - name: Bootstrap exact official native Flutter revision
+        env:
+          SDK_DIR: ${{ runner.temp }}/desktop-qualification-flutter
+        run: |
+          set -euo pipefail
+          mkdir -p build/desktop-qualification
+          python .github/scripts/qualify_desktop.py bootstrap --arch '${{ matrix.arch }}' --sdk-dir "$SDK_DIR" \
+            2>&1 | tee build/desktop-qualification/bootstrap.log
+      - name: Typecheck supported Sparkle lifecycle API
+        run: |
+          set -euo pipefail
+          cd build/desktop-qualification
+          curl --fail --location --output Sparkle.tar.xz \
+            https://github.com/sparkle-project/Sparkle/releases/download/2.10.0/Sparkle-2.10.0.tar.xz
+          echo 'c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c  Sparkle.tar.xz' |
+            shasum --algorithm 256 --check
+          mkdir sparkle
+          tar -xf Sparkle.tar.xz -C sparkle
+          xcrun swiftc -typecheck -F sparkle ../../.github/scripts/probe_sparkle.swift \
+            2>&1 | tee sparkle-api.log
+          echo 'Sparkle 2.10.0 public API typecheck passed; runtime update behavior remains unverified.' \
+            >> sparkle-api.log
+      - name: Resolve locked workspaces
+        run: |
+          set -euo pipefail
+          printf '%s\n' '/.ci-workflow/' >> "$(git rev-parse --git-path info/exclude)"
+          (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
+          (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop-macos-gui-${{ matrix.arch }}
+          path: build/macos-gui-input
+      - name: Assemble ARM-built GUI with native helper
+        run: |
+          set -euo pipefail
+          tar -xzf 'build/macos-gui-input/macos-gui-${{ matrix.arch }}.tar.gz' -C build
+          cp build/desktop-macos-gui/product/gui-inventory.json build/desktop-qualification/product-gui-inventory.json
+          cp build/desktop-macos-gui/probe/gui-inventory.json build/desktop-qualification/probe-gui-inventory.json
+          cp build/desktop-macos-gui/gui-sdk.json build/desktop-qualification/gui-sdk.json
+          dart --packages="$GITHUB_WORKSPACE/client/.dart_tool/package_config.json" \
+            .ci-workflow/client/desktop/tool/stage_desktop_bundle.dart \
+            --source-root "$GITHUB_WORKSPACE" --mode assemble --gui-input build/desktop-macos-gui/product \
+            --build-number '${{ github.run_number }}' --output build/desktop-qualification/staged \
+            2>&1 | tee build/desktop-qualification/bundle-build.log
+      - name: Inspect staged native assets and relocated helper
+        run: |
+          python .github/scripts/qualify_desktop.py inspect --arch '${{ matrix.arch }}' \
+            --bundle-dir build/desktop-qualification/staged/Sesori.app
+      - name: Exercise relocated helper with isolated local fakes
+        env:
+          SESORI_E2E_REQUIRED: '1'
+          SESORI_E2E_ARTIFACT_DIR: ${{ github.workspace }}/build/desktop-qualification/supervised-e2e
+        run: |
+          set -euo pipefail
+          (cd bridge/app && dart test test/integration/supervised_e2e_test.dart --reporter expanded) \
+            2>&1 | tee build/desktop-qualification/supervised-e2e.log
+      - name: Preserve source diagnostics when qualification fails
+        if: failure()
+        run: |
+          mkdir -p build/desktop-qualification
+          git diff HEAD > build/desktop-qualification/failed-source-changes.patch
+          git status --short > build/desktop-qualification/failed-source-status.log
+      - name: Upload qualification evidence, including partial failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-qualification-macos-${{ matrix.arch }}
+          path: |
+            build/desktop-qualification/*.json
+            build/desktop-qualification/*.log
+            build/desktop-qualification/*.patch
+            build/desktop-qualification/supervised-e2e/
+            build/desktop-qualification/staged/build-source-changes.patch
+            build/desktop-qualification/staged/**/desktop-bundle.json
+          if-no-files-found: warn
+          retention-days: 14
+
   native-build:
     needs: tooling
     if: github.event_name != 'workflow_dispatch' || inputs.mode == 'native-builds'
@@ -920,12 +1144,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-26-intel
-            target: macos
-            arch: x64
-          - runner: xcode-27
-            target: macos
-            arch: arm64
           - runner: windows-2025
             target: windows
             arch: x64
@@ -954,15 +1172,7 @@ jobs:
           python-version: '3.13'
           architecture: ${{ matrix.arch }}
 
-      - name: Set up native Xcode
-        if: matrix.target == 'macos'
-        uses: ./.github/actions/setup-xcode
-
-      - name: Verify native codesign requirement controls
-        if: matrix.target == 'macos'
-        run: python -m unittest discover -s .github/scripts -p test_macos_signing_workflows.py
-
-      # Official pinned framework source bootstraps native Dart on all six hosts.
+      # Official pinned framework source bootstraps native Dart on each host.
       # Windows/Linux ARM64 have no prepacked Flutter SDK for the current pin.
       # A missing native bootstrap or x64 fallback fails, rather than passing via emulation.
       - name: Bootstrap exact official Flutter revision
@@ -982,20 +1192,6 @@ jobs:
             clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
             libstdc++-12-dev libsecret-1-dev libx11-dev libxi-dev
 
-      - name: Typecheck supported Sparkle lifecycle API
-        if: matrix.target == 'macos'
-        run: |
-          set -euo pipefail
-          cd build/desktop-qualification
-          curl --fail --location --output Sparkle.tar.xz \
-            https://github.com/sparkle-project/Sparkle/releases/download/2.10.0/Sparkle-2.10.0.tar.xz
-          echo 'c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c  Sparkle.tar.xz' | shasum --algorithm 256 --check
-          mkdir sparkle
-          tar -xf Sparkle.tar.xz -C sparkle
-          xcrun swiftc -typecheck -F sparkle ../../.github/scripts/probe_sparkle.swift \
-            2>&1 | tee sparkle-api.log
-          echo 'Sparkle 2.10.0 public API typecheck passed; runtime update behavior remains unverified.' >> sparkle-api.log
-
       - name: Resolve locked workspaces
         run: |
           set -euo pipefail
@@ -1014,7 +1210,7 @@ jobs:
       - name: Inspect staged native assets and relocated helper
         run: |
           python .github/scripts/qualify_desktop.py inspect --arch '${{ matrix.arch }}' \
-            --bundle-dir 'build/desktop-qualification/staged/${{ matrix.target == 'macos' && 'Sesori.app' || 'bundle' }}'
+            --bundle-dir build/desktop-qualification/staged/bundle
 
       - name: Exercise relocated helper with isolated local fakes
         env:

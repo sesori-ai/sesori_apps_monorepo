@@ -125,12 +125,6 @@ def bootstrap(*, sdk: Path, target_os: str, arch: str) -> None:
     )
     with Path(os.environ["GITHUB_PATH"]).open("a", encoding="utf-8") as stream:
         stream.write(str(sdk / "bin") + "\n")
-    if target_os == "macos":
-        # Each package already has a native-only helper. Do not compile both GUI slices on both hosts.
-        # Flutter forwards FLUTTER_XCODE_* to xcodebuild; later steps include the separate platform probe.
-        xcode_arch = {"x64": "x86_64", "arm64": "arm64"}[arch]
-        with Path(os.environ["GITHUB_ENV"]).open("a", encoding="utf-8") as stream:
-            stream.write(f"FLUTTER_XCODE_ARCHS={xcode_arch}\n")
     print(f"Bootstrapped official Flutter {release['version']} at {revision}, native Dart {arch}")
 
 
@@ -141,6 +135,27 @@ def require_macos_build_architecture(*, gui: Path, arch: str) -> None:
         native = native_arch(path=binary)
         if native != ("Mach-O", [arch]):
             raise ValueError(f"Expected single-architecture macos/{arch} build at {binary}, found {native}")
+
+
+def inspect_gui(*, gui: Path, arch: str, source: Path) -> None:
+    """Inspect cross-compiled GUI/probe payloads without executing their target code."""
+    require_macos_build_architecture(gui=gui, arch=arch)
+    sdk = shutil.which("flutter")
+    if sdk is None:
+        raise ValueError("Pinned Flutter must be on PATH")
+    report = {
+        "sourceSha": run(command=["git", "rev-parse", "HEAD"], cwd=source).strip(),
+        "toolingSourceSha": run(command=["git", "rev-parse", "HEAD"]).strip(),
+        "targetOs": "macos", "targetCpu": arch,
+        "buildHostCpu": CPU_NAMES[platform.machine()],
+        "runnerImage": {key: os.environ.get(key) for key in ("ImageOS", "ImageVersion", "RUNNER_ARCH")},
+        "flutter": json.loads(run(command=[sdk, "--version", "--machine"])),
+        "xcode": run(command=["xcodebuild", "-version"]).strip(),
+        "binaries": inventory(root=gui, target_os="macos", arch=arch),
+        "proofBoundary": "Unsigned GUI compile and headers; not target execution, helper, signing or installed QA",
+    }
+    (gui.parent / "gui-inventory.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(f"GUI/probe macos/{arch} built on {report['buildHostCpu']}; native headers verified without execution")
 
 
 def inspect(*, target_os: str, arch: str, gui: Path) -> None:
@@ -208,12 +223,18 @@ def inspect(*, target_os: str, arch: str, gui: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("bootstrap", "inspect"))
+    parser.add_argument("operation", choices=("bootstrap", "inspect", "inspect-gui"))
     parser.add_argument("--arch", choices=("x64", "arm64"), required=True)
     parser.add_argument("--sdk-dir", type=Path)
     parser.add_argument("--bundle-dir", type=Path)
+    parser.add_argument("--source-root", type=Path, default=ROOT)
     args = parser.parse_args()
     target_os = OS_NAMES[sys.platform]
+    if args.operation == "inspect-gui":
+        if target_os != "macos" or args.bundle_dir is None:
+            parser.error("inspect-gui requires a macOS compiler host and --bundle-dir")
+        inspect_gui(gui=ROOT / args.bundle_dir, arch=args.arch, source=args.source_root)
+        return
     host_cpu = CPU_NAMES.get(os.environ.get("PROCESSOR_ARCHITEW6432", platform.machine()))
     if host_cpu != args.arch:
         raise ValueError(f"Native host required: expected {args.arch}, found {host_cpu}")
