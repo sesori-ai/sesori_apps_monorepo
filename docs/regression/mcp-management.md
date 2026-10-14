@@ -9,8 +9,8 @@ resident session. Phone and desktop expose a shared read-only inventory and
 server-details view backed by the typed loading lifecycle. `POST /mcp/entry/action`
 exposes explicit live-session Claude reconnect, enable and disable controls to
 headless consumers. Claude native plugin authentication is implemented for
-existing configured HTTP servers. Product action UI and headless authentication
-routes remain pending.
+existing configured HTTP servers. Headless read/start/continue/cancel routes are
+implemented; product action UI remains pending.
 Existing permission flows remain separate. Read-only inventory may inspect an
 archived session if its native process remains live; it grants no session mutation.
 
@@ -95,12 +95,13 @@ state and enum values degrade explicitly. Callback request presentation and
 malformed-body errors do not reflect credential input, while errors retain a
 typed original cause. Codec and privacy coverage lives in
 `shared/sesori_shared/test/models/mcp_authentication_test.dart`.
-This codec foundation adds no authentication routes or UI action.
+Headless read/start/continue/cancel routes use this contract. Client authentication
+actions remain pending.
 
 The optional plugin API can sign in to an existing live Claude session's
 native-configured HTTP server and clear its native credentials. This is a
-plugin-level boundary; headless authentication routes and client action UI
-remain pending.
+native plugin boundary used by the headless attempt owner. Client action UI
+remains pending.
 
 - Resolve the exact server and resident directory without starting a session.
   Dynamic/unknown configuration returns a handoff instead of addressing a
@@ -178,3 +179,41 @@ Automated adapter/route coverage:
 - `client/module_core/test/services/mcp_service_test.dart`
 - `client/module_core/test/repositories/mcp_repository_test.dart`
 - `client/module_app_ui/test/features/mcp/mcp_inventory_view_test.dart`
+
+### Headless attempt ownership
+
+- One attempt per bridge is reserved before native preparation. A competing start
+  returns busy and leaves its native process, target and challenge untouched.
+- Existing runtime generations stay leased through native stream settlement;
+  stopped integrations are not activated by authentication. Scope resolution
+  checks exact session ownership and canonical archive rejection before starting
+  or forwarding a callback. Cancellation remains available for cleanup after archive.
+- GET recovers only the current state across client reconnects. Challenge URLs
+  remain request-scoped; `mcp.authentication.changed` contains only its event type.
+- Authorization launch destinations must be absolute HTTPS with a nonempty host
+  and no user info. HTTP, relative, file, data, javascript and custom schemes are
+  rejected before any challenge reaches a client. Native callbacks are distinct
+  and validated by the owning plugin; they are never arbitrary HTTP forwarding.
+- A callback needs the active attempt ID and current challenge. Rejected native
+  callbacks preserve the challenge for retry. Unexpected native submission errors
+  retain settling because delivery may have occurred. Submitted callbacks enter settling;
+  a browser return alone does not complete authentication.
+- Read-only preparation can be cancelled without waiting for a stalled native
+  status request. A late prepared operation is discarded without subscribing,
+  and native effects start only after the owner knows cancellation availability.
+- Cancellation waits for native resource cleanup and releases the leased stream;
+  it does not depend on the native stream voluntarily emitting done. Duplicate
+  cancel requests return settling, while cancellation after callback submission
+  remains available when the native API supports it. An API
+  without cancellation returns an explicit unavailable result and retains the
+  attempt until native settlement; dismissing client UI does not cancel it.
+  Forced runtime/bridge teardown interrupts the owner before routed request drain,
+  resolves request waiters even on cleanup failure, and does not claim native
+  cancellation on such APIs.
+- Native completion invalidates the declared affected inventory. Harness-wide
+  credential changes refresh open session inventories for that plugin. Connection
+  and tool discovery remain separate native facts requiring refreshed inventory.
+- Route/ownership/privacy coverage is in
+  `bridge/app/test/bridge/routing/mcp_authentication_handler_test.dart`; active-only
+  lease coverage is in the runtime suite and harness-wide client invalidation is
+  covered by `client/module_core/test/services/mcp_service_test.dart`.

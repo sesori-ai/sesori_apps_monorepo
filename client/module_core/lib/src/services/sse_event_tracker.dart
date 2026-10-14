@@ -99,6 +99,7 @@ class SseEventTracker(
             SesoriGlobalDisposed() ||
             SesoriCatalogImportProgress() ||
             SesoriMcpInventoryChanged() ||
+            SesoriMcpAuthenticationChanged() ||
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||

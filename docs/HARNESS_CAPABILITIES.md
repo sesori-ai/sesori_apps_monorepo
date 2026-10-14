@@ -661,8 +661,8 @@ client invalidation. They change the live process only, with no persistent
 configuration write or implicit session launch. Archived mutations return the
 canonical structured 409 rejection before native access.
 Each declared control includes its effect scope. Claude native plugin HTTP
-authentication is implemented as described below. Headless authentication routes,
-client action UI and the other harness adapters remain **not implemented**.
+authentication and its headless read/start/continue/cancel routes are implemented
+as described below. Client action UI and the other harness adapters remain **not implemented**.
 Reads never start an integration or agent session.
 Connection, authorization and discovery state remain distinct; only a safe HTTP(S)
 endpoint origin crosses the wire. See
@@ -687,8 +687,8 @@ Plain-pipe login does not expose the
 no-browser URL/paste journey. Codex completion must be correlated by the
 adapter; a browser open does not confirm success. Claude live-session reconnect
 and enable/disable are **implemented** as Sesori management actions. Claude plugin
-HTTP authentication is also implemented. Headless authentication, elicitation and
-the remaining native-supported management rows are **not implemented**
+HTTP authentication and its headless attempt routes are implemented. Client authentication
+actions, elicitation and the remaining native-supported management rows are **not implemented**
 at this checkpoint.
 
 The Claude native plugin authentication API is **implemented** for an existing
@@ -696,8 +696,9 @@ resident's native-configured HTTP server: no-browser sign-in, matching callback,
 provider denial, bounded cancellation/expiry, and native credential clearing.
 Both pins passed isolated OAuth on macOS arm64, including reconnect/tools in the
 existing resident. Server definitions remain unchanged; the CLI may update its
-own credential and preference bookkeeping. Headless routes and client actions
-are **not implemented** at this checkpoint. Linux's terminal path is implemented
+own credential and preference bookkeeping. Headless read/start/continue/cancel
+routes are **implemented**, with one bridge-owned leased attempt and request-only
+URLs. Client authentication actions remain **not implemented** at this checkpoint. Linux's terminal path is implemented
 but unqualified; Windows integration and SSE authentication are **not implemented**.
 Dynamic/unknown session configuration cannot be safely addressed by named CLI
 credential operations and returns an explicit native-configuration handoff.

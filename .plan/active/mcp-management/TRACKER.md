@@ -3,8 +3,10 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-authentication-contracts`, `64617e92bb`, in the provided `copper-heron` worktree.
-- Current step: 10/18 authentication wire contracts are ready for PR;
+- Branch/base: `sesori/mcp-authentication-owner`, `8bfeda9416`, in the provided `copper-heron` worktree.
+- Current step: 11/21 is in [#1957][pr-1957];
+  local successor 12/21 scopes browser ownership;
+  authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
   Client loading merged as #1949; Claude inventory API merged as #1948. Execution authorized on 2026-10-13.
@@ -19,24 +21,27 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/18 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/18 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/18 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/18 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/18 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/18 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/18 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
-| 8/18 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
-| 9/18 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
-| 10/18 | Authentication wire (original 7.b.2.a) | Ready for PR | 12 codec tests, analyzer and architecture approval |
-| 11/18 | Headless authentication owner and routes (original 7.b.2.b) | Not started | — |
-| 12/18 | Shared authentication and external-action presentation | Not started | — |
-| 13/18 | Claude approvals and form/URL elicitation | Not started | — |
-| 14/18 | Codex inventory/actions/authentication | Not started | — |
-| 15/18 | Codex forms and offered connectors | Not started | — |
-| 16/18 | Secondary harness support and explicit gaps | Not started | — |
-| 17/18 | Reconcile regression/capability documents | Not started | — |
-| 18/18 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/21 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/21 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/21 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/21 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/21 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/21 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/21 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/21 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
+| 9/21 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
+| 10/21 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
+| 11/21 | Headless auth owner/routes | In review | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
+| 12/21 | Browser ownership (8.a) | In progress | Planning only: provider/MCP handles and busy behavior |
+| 13/21 | Shared client authentication lifecycle (8.b) | Not started | — |
+| 14/21 | Visible authentication and controls (8.c) | Not started | — |
+| 15/21 | Session external actions (8.d) | Not started | — |
+| 16/21 | Claude approvals and form/URL elicitation | Not started | — |
+| 17/21 | Codex inventory/actions/authentication | Not started | — |
+| 18/21 | Codex forms and offered connectors | Not started | — |
+| 19/21 | Secondary harness support and explicit gaps | Not started | — |
+| 20/21 | Reconcile regression/capability documents | Not started | — |
+| 21/21 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -595,3 +600,122 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   1,328 changed lines in nine files, including this tracker. Generated codec files
   contribute 900 lines; the remaining 428 are authored code, tests and docs.
   This measurement precedes the documentation-only review correction.
+
+[pr-1956]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1956
+
+- Wire PR documentation review corrected validation provenance, measured line
+  budget and submitted callback privacy in `3361d6b95f`; all four bot threads
+  were replied to and resolved. The contract files remain unchanged. The first
+  UI CI job failed before tests on a sqlite native-asset checksum mismatch and
+  was retried with the integrity check intact.
+
+- Local headless owner reserves one attempt before scope/native preparation,
+  holds an active-only runtime stream lease, validates HTTPS launch destinations,
+  exposes read/start/continue/cancel handlers, and publishes URL-free invalidation.
+  Completion waits for stream settlement and refreshes affected inventories;
+  OAuth completion does not assert a connection or discovered tools.
+- The first cold-stream preparation test exposed cancellation waiting for a native
+  event inside `await for`. Replacing that loop with cancellation-propagating
+  stream composition fixes the real bridge-shutdown flow. Fixture compile errors
+  and an unlistened fake-controller teardown were also corrected; the failing
+  exploratory runs are excluded from passing evidence.
+
+- Wire PR #1956 merged after the corrected head passed all checks, Cubic approval
+  and completed Codex review. The owner is next; no client auth UI is claimed.
+- Owner verification from the provided worktree with parent `3361d6b95f`:
+  19 route/authentication tests, 77 runtime tests, 17 client inventory tests and
+  56 shared SSE codec tests pass (169 total). The 15 existing inventory-handler
+  tests passed in the initial mixed run; that run's new auth fixture did not load
+  and is excluded from new-owner passing evidence. Tests used the pinned SDK
+  executable recorded above, from the owning package directories:
+
+  ```sh
+  # bridge/app
+  dart test test/bridge/routing/mcp_authentication_handler_test.dart --reporter expanded
+  dart test test/bridge/runtime/plugin_runtime_test.dart --reporter expanded
+  # client/module_core
+  dart test test/services/mcp_service_test.dart --reporter expanded
+  # shared/sesori_shared
+  dart test test/models/sesori_sse_event_test.dart --reporter expanded
+  # each owning package
+  dart analyze --fatal-infos
+  ```
+
+  Bridge, client core and shared analyzers pass. No native provider, packaged
+  client or relay E2E qualification is added by these unit/route tests. The final
+  plan matrix remains required. Native cancellation errors preserve a typed cause
+  and failure state rather than claiming successful cancellation.
+
+- The passing owner code/test snapshot is commit `e56fa43a4e` (recorded before
+  the clean rebase) and current immutable head `8613b4674dc0dd3644af0d424902db6ea1f01cfb`,
+  tree `67d97e44a27c3c77b1eea697c648ec3652ede9ef`. Source/test files are identical
+  across that rebase. Package working directories are the provided worktree's
+  `bridge/app`, `client/module_core` and `shared/sesori_shared`.
+- The production owner/repository/handlers plus native Claude service fixture
+  passed both exact pins on macOS arm64 from `8613b4674d`: live target binding,
+  request-only HTTPS challenge recovery, busy second start, matching callback,
+  native completion, harness invalidation, explicit cancellation and unchanged
+  server definitions after native logout. Each pin made one token request.
+  Native children disappeared within 103/104 ms in a bounded one-second
+  observation. The fixture used isolated native configuration and fixture
+  credentials, a local OAuth issuer advertising an HTTPS fixture destination,
+  and an in-memory catalog/runtime test adapter. Runtime lease semantics were
+  verified separately in the production runtime suite. This is not a real
+  provider/browser, relay, full running bridge or packaged-client qualification.
+  Early fixture failures assumed synchronous invalidation delivery and immediate
+  child disappearance; those overstrict assertions were corrected to await the
+  stream notification and use the existing bounded child observation.
+- Immutable pre-evidence-update line budget: `git diff --numstat 8bfeda9416 8613b4674d`
+  reports 1,084 additions and 16 deletions (1,100 changed lines, 27 files), including
+  the tracker. Generated SSE codec changes are 51 lines; authored churn is 1,049.
+
+- Owner architecture implementation review pass 1 approved the complete diff
+  against `8bfeda9416`, including client invalidation and shared SSE boundaries.
+
+- Owner PR review found preparation waiting on native readiness, late disposal
+  relative to routed drain, repeat cancellation, callback-outcome uncertainty,
+  and stale capability prose. The fixes cancel read-only preparation promptly,
+  activate native work after known cancellation capability, interrupt ownership
+  before route drain, memoize native cancellation and preserve uncertain callback
+  settlement. Explicit cancellation remains available after callback submission;
+  duplicate cancellation alone returns the existing settling state.
+- Twenty-seven owner route/lifecycle tests pass after the review corrections.
+  The unchanged runtime/client/shared suites retain their earlier evidence. The
+  final native owner fixture also passed both pins: a SIGSTOP-suspended resident's
+  read-only preparation cancelled in 2/1 ms, resumed status never started the
+  discarded login helper, and the full HTTPS fixture journey passed. Native
+  children disappeared within 123/124 ms in the bounded one-second observation.
+  This remains fixture/in-memory-adapter qualification, with the full final
+  provider/relay/client/platform matrix still required.
+[pr-1957]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1957
+
+- Client/external-action scope is split into ordinals 12–15: browser transport
+  ownership, shared authentication lifecycle, visible controls, and session URL
+  actions. Original step 8 maps to 8.a–8.d, with the existing feature scope and
+  final qualification matrix unchanged. Current series total is 21; published
+  titles are synchronized, and historical squash commit subjects are preserved.
+
+- Owner architecture implementation review pass 2/final approved commit
+  `76efbf4039` against `8bfeda9416`: read-only preparation, activation sequencing,
+  single native cancellation, callback settlement and disposal before route drain.
+  The reviewed immutable diff is 1,439 changed lines across 28 files, including
+  51 generated lines and 1,388 authored lines. Twenty-seven owner tests and the
+  owning analyzer pass. Together with the unchanged 77 runtime, 17 client and
+  56 shared tests, that review-corrected snapshot totals 177 focused tests. The final native fixture used the review-corrected source at
+  `76efbf4039` (only its subsequent lint brace adjustment was unrelated to behavior).
+
+- Owner review round 2: preparation cleanup failure now publishes native failure,
+  completes the original start, and releases the reservation while rethrowing the
+  typed cancellation cause with its stack trace. Its regression failed before
+  the fix; 28 owner tests now pass. Combined focused evidence is 178 tests
+  (28 owner + 77 runtime + 17 client inventory + 56 shared codec). The final
+  architecture approval remains for commit `76efbf4039`; this follow-up changes
+  local error handling, with no new ownership or architectural boundary.
+
+- Owner review round 3: failed native cancellation is visible through GET and
+  duplicate cancel while the stream remains owned; a second start remains busy
+  until native settlement. Its regression failed before the fix. The initial
+  start still waits for native context validation; GET exposes its reserved
+  starting attempt during read-only preparation, and explicit cancellation stays
+  prompt. The route recovery assertion covers that contract. Focused evidence
+  is now 179 tests: 29 owner + 77 runtime + 17 client inventory + 56 shared codec.

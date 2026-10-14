@@ -109,6 +109,7 @@ import "routing/get_catalog_import_statuses_handler.dart";
 import "routing/get_child_sessions_handler.dart";
 import "routing/get_commands_handler.dart";
 import "routing/get_current_project_handler.dart";
+import "routing/get_mcp_authentication_handler.dart";
 import "routing/get_plugin_management_handler.dart";
 import "routing/get_plugin_setup_handler.dart";
 import "routing/get_plugins_handler.dart";
@@ -137,6 +138,9 @@ import "routing/patch_bridge_settings_handler.dart";
 import "routing/patch_plugin_idle_timeout_handler.dart";
 import "routing/plugin_authentication_handlers.dart";
 import "routing/post_agents_handler.dart";
+import "routing/post_mcp_authentication_cancel_handler.dart";
+import "routing/post_mcp_authentication_continue_handler.dart";
+import "routing/post_mcp_authentication_handler.dart";
 import "routing/post_mcp_entry_action_handler.dart";
 import "routing/post_mcp_inventory_handler.dart";
 import "routing/post_plugin_lifecycle_command_handler.dart";
@@ -166,6 +170,7 @@ import "services/chat_history_reconcile_service.dart";
 import "services/chat_history_service.dart";
 import "services/current_project_service.dart";
 import "services/deleted_session_storage_cleanup_service.dart";
+import "services/mcp_authentication_service.dart";
 import "services/mcp_service.dart";
 import "services/pending_interaction_service.dart";
 import "services/permission_auto_approval_service.dart";
@@ -468,6 +473,7 @@ class Orchestrator({
       projectsDao: _database.projectsDao,
     );
     final mcpService = McpService(repository: mcpRepository);
+    final mcpAuthenticationService = McpAuthenticationService(repository: mcpRepository);
     final pendingInteractionSupport = PendingInteractionSupport(sessionDao: _database.sessionDao);
     final permissionRepository = PermissionRepository(
       runtime: _pluginRuntime,
@@ -695,6 +701,10 @@ class Orchestrator({
         ),
         PostMcpInventoryHandler(mcpRepository: mcpRepository),
         PostMcpEntryActionHandler(mcpService: mcpService),
+        GetMcpAuthenticationHandler(service: mcpAuthenticationService),
+        PostMcpAuthenticationHandler(service: mcpAuthenticationService),
+        PostMcpAuthenticationContinueHandler(service: mcpAuthenticationService),
+        PostMcpAuthenticationCancelHandler(service: mcpAuthenticationService),
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService, bridgeIdProvider: _bridgeRegistrationService),
@@ -804,6 +814,7 @@ class Orchestrator({
       pluginInstallProgress: _pluginLifecycleService.installProgress,
       pluginAuthenticationProgress: _pluginLifecycleService.authenticationProgress,
       mcpService: mcpService,
+      mcpAuthenticationService: mcpAuthenticationService,
       localWireEventsController: localWireEventsController,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
@@ -919,6 +930,7 @@ class OrchestratorSession._({
   required final SessionContinuationService _sessionContinuationService,
   required final SessionContinuationTimerListener _sessionContinuationTimer,
   required final McpService _mcpService,
+  required final McpAuthenticationService _mcpAuthenticationService,
   required Stream<CatalogImportProgress> catalogImportProgress,
   required Stream<SessionOptionsCacheUpdate> sessionOptionsCacheUpdates,
   required Stream<String> pluginManagementSnapshotTokens,
@@ -992,6 +1004,15 @@ class OrchestratorSession._({
               );
           }
         })
+        .addTo(_subscriptions);
+    _mcpAuthenticationService.changes
+        .listen((_) => _enqueueWireEvent(const SesoriSseEvent.mcpAuthenticationChanged()))
+        .addTo(_subscriptions);
+    _mcpAuthenticationService.inventoryChanges
+        .listen(
+          (change) =>
+              _enqueueWireEvent(SesoriSseEvent.mcpInventoryChanged(pluginId: change.pluginId, scope: change.scope)),
+        )
         .addTo(_subscriptions);
     _mcpService.inventoryChanges
         .listen((change) {
@@ -1287,6 +1308,7 @@ class OrchestratorSession._({
     );
     await Future.wait([
       attempt(_subscriptions.cancel),
+      attempt(_mcpAuthenticationService.dispose),
       attempt(_pluginEventListener.dispose),
       attempt(_sessionContinuationTimer.dispose),
       attempt(_sessionBindingCommitListener.dispose),

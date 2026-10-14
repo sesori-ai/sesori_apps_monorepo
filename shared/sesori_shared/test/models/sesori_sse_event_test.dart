@@ -3,6 +3,12 @@ import 'package:sesori_shared/sesori_shared.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('MCP authentication change carries only invalidation', () {
+    const event = SesoriSseEvent.mcpAuthenticationChanged();
+    expect(event.toJson(), {'type': 'mcp.authentication.changed'});
+    expect(SesoriSseEvent.fromJson(event.toJson()), event);
+  });
+
   test('plugin management change round-trips its snapshot token', () {
     const event = SesoriSseEvent.pluginManagementChanged(snapshotToken: 'snapshot-token');
 
