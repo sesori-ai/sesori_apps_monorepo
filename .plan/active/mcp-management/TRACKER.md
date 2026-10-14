@@ -901,3 +901,6 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Step-15 architecture implementation review pass 1 **approved** the 20 staged paths against `235ff86970`,
   applying Client rules. No findings; the existing view service owns action state/disposal and the new Cubit
   observes it without duplicating lifecycle. The deferred controls draft is outside this foundation review.
+- Step-15 tested source is captured in `91b9c1b240` against `235ff86970`: 509 additions and 93 deletions
+  (602 changed) across 20 files, all authored, below the soft cap. No generated output or visible
+  product layout changed; the separate UI draft remains preserved for the next presentation PR.
