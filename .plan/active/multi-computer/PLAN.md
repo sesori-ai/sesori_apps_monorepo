@@ -371,7 +371,9 @@ This document and `TRACKER.md`. Verification: Markdown only.
 ### Step 11 — Let the desktop view a remote computer (⚙️, monorepo)
 
 - Files: the desktop projects pane header (`desktop_home_pane.dart`), `SelectedComputerService.ensureInitialTarget`
-  wiring at desktop start-up, the recovery view branching (phone-style offline body for a remote target, supervised
+  wiring at desktop start-up (landed in step 7) plus a retarget to the local computer when the supervised bridge id
+  appears or changes (fresh install, a new login, or a re-registration: the connection otherwise adopts the relay's
+  default or keeps a stale id), skipped when the user has picked a computer since start-up, the recovery view branching (phone-style offline body for a remote target, supervised
   start only for the local one), the `desktopBridgeTakenOver` copy (“Another bridge currently owns this account
   connection.” now only happens for the same bridge id, e.g. a cloned machine), tests;
   `docs/regression/desktop-cockpit-shell.md`.

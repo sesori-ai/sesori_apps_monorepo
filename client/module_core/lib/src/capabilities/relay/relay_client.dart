@@ -35,6 +35,7 @@ class RelayClient._({
     required final RelayCryptoService _cryptoService,
     required final RoomKeyStorage _roomKeyStorage,
     required final String? authToken,
+    required final String? bridgeId,
     required final WebSocketChannel Function(Uri uri) _channelConnector,
     required final BoundedJsonEncoder _boundedJsonEncoder,
     required final int _maxPlaintextMessageBytes,
@@ -48,6 +49,7 @@ class RelayClient._({
   Completer<Uint8List>? _firstBinaryMessage;
   List<int>? _pendingHandshakeFrame;
   BridgeStatus? _lastBridgeStatus;
+  String? _reportedBridgeId;
 
   final StreamController<BridgeStatus> _bridgeStatusController = StreamController<BridgeStatus>.broadcast();
   final StreamController<void> _socketClosedController = StreamController<void>.broadcast();
@@ -75,11 +77,13 @@ class RelayClient._({
     required RelayCryptoService cryptoService,
     required RoomKeyStorage roomKeyStorage,
     required String? authToken,
+    required String? bridgeId,
   }) : this._(
          relayHost: relayHost,
          cryptoService: cryptoService,
          roomKeyStorage: roomKeyStorage,
          authToken: authToken,
+         bridgeId: bridgeId,
          channelConnector: _connectWithPingInterval,
          boundedJsonEncoder: BoundedJsonEncoder(
            chunkSize: BoundedJsonEncoder.defaultChunkSize,
@@ -94,6 +98,7 @@ class RelayClient._({
     required RelayCryptoService cryptoService,
     required RoomKeyStorage roomKeyStorage,
     required String? authToken,
+    required String? bridgeId,
     required WebSocketChannel Function(Uri uri) channelConnector,
     required BoundedJsonEncoder? boundedJsonEncoder,
     required int maxPlaintextMessageBytes,
@@ -102,6 +107,7 @@ class RelayClient._({
           cryptoService: cryptoService,
           roomKeyStorage: roomKeyStorage,
           authToken: authToken,
+          bridgeId: bridgeId,
           channelConnector: channelConnector,
           boundedJsonEncoder:
               boundedJsonEncoder ??
@@ -123,6 +129,11 @@ class RelayClient._({
   /// (e.g. RelayHttpApiClient) must not route requests through it.
   bool get isConnected => _connectionState == RelayClientConnectionState.connected && _sessionEncryptor != null;
   bool get didResume => _didResume;
+
+  /// The bridge id carried by the relay's latest `bridge_connected` notice on
+  /// this socket: the bridge the relay routes this phone to. `null` until a
+  /// bridge is announced.
+  String? get reportedBridgeId => _reportedBridgeId;
   @visibleForTesting
   int get pendingRequestCount => _pendingRequests.length;
 
@@ -157,6 +168,7 @@ class RelayClient._({
     _lastCloseCode = null;
     _pendingHandshakeFrame = null;
     _lastBridgeStatus = null;
+    _reportedBridgeId = null;
     final uri = Uri.parse("wss://$relayHost/ws");
 
     try {
@@ -206,12 +218,12 @@ class RelayClient._({
       // is provided by WSS (TLS). The relay cannot read E2EE application data.
       final token = authToken;
       if (token != null && token.isNotEmpty) {
-        // Phones never register as bridges, so the bridgeId is always null
-        // for role "phone".
+        // For a phone, bridgeId names the computer to reach; null follows the
+        // account's most recently connected bridge.
         final authMessage = RelayMessage.auth(
           token: token,
           role: RelayProtocol.rolePhone,
-          bridgeId: null,
+          bridgeId: bridgeId,
           connectionNotificationPolicy: null,
         );
         channel.sink.add(jsonEncode(authMessage.toJson()));
@@ -782,8 +794,9 @@ class RelayClient._({
     try {
       final decoded = jsonDecodeMap(message);
       switch (RelayNoticeMessage.fromJson(decoded)) {
-        case BridgeConnectedMessage():
-          logd("Relay: bridge came online");
+        case BridgeConnectedMessage(:final bridgeId):
+          logd("Relay: bridge $bridgeId came online");
+          _reportedBridgeId = bridgeId;
           // The first status describes the bridge present when this phone
           // joined. A later online status is a new bridge relay connection, so
           // replay any handshake frame that the prior connection may have lost.

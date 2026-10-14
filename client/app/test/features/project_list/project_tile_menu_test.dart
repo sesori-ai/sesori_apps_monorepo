@@ -20,7 +20,7 @@ import "../../helpers/test_helpers.dart";
 /// path — the `InkWell` rows of [PregoAnchorMenu]'s flat panel — and neither
 /// raises a [PregoBottomSheet].
 void main() {
-  const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
+  const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token", bridgeId: null);
   const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
   const connected = ConnectionStatus.connected(config: config, health: health);
 

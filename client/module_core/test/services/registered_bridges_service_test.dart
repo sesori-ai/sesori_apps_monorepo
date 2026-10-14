@@ -13,7 +13,7 @@ import "../helpers/test_helpers.dart";
 
 class _MockAuthSession() extends Mock implements AuthSession;
 
-const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
+const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token", bridgeId: null);
 const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _config, health: _health);
 const _bridgeOffline = ConnectionStatus.bridgeOffline(config: _config, health: _health);

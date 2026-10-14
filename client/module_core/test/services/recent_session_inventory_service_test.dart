@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -15,6 +16,7 @@ void main() {
   late FakeSessionUnseenTracker unseen;
   late FakeCatalogRescanService catalog;
   late StreamController<SseEvent> events;
+  late BehaviorSubject<ConnectionStatus> status;
   late ProjectListService projectListService;
   late RecentSessionInventoryService inventory;
   const projectId = "project-1";
@@ -28,6 +30,9 @@ void main() {
     catalog = FakeCatalogRescanService();
     events = StreamController.broadcast(sync: true);
     when(() => connection.events).thenAnswer((_) => events.stream);
+    status = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
+    when(() => connection.status).thenAnswer((_) => status.stream);
+    when(() => connection.currentStatus).thenAnswer((_) => status.value);
     when(() => repository.listSessions(projectId: any(named: "projectId"), waitForPrData: false))
         .thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
     projectListService = ProjectListService(
@@ -50,6 +55,7 @@ void main() {
     await inventory.dispose();
     await projectListService.dispose();
     await events.close();
+    await status.close();
     await activity.onDispose();
     await unseen.onDispose();
     await catalog.onDispose();
@@ -77,6 +83,38 @@ void main() {
 
     verify(() => repository.listSessions(projectId: "project-1", waitForPrData: false)).called(1);
     verify(() => repository.listSessions(projectId: "project-2", waitForPrData: false)).called(1);
+  });
+
+  test("switching computers clears the inventory and drops a late read from the previous one", () async {
+    const health = HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: false);
+    ServerConnectionConfig config({required String bridgeId}) =>
+        ServerConnectionConfig(relayHost: "relay", authToken: "t", bridgeId: bridgeId);
+    status.add(
+      ConnectionStatus.connected(
+        config: config(bridgeId: "a"),
+        health: health,
+      ),
+    );
+    final lateSessions = Completer<ApiResponse<SessionListResponse>>();
+    when(() => repository.listProjects()).thenAnswer(
+      (_) async => ApiResponse.success(
+        const Projects(
+          data: [ProjectSummary(id: projectId, name: "One", path: "/one", time: null)],
+        ),
+      ),
+    );
+    when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+        .thenAnswer((_) => lateSessions.future);
+    await projectListService.listProjects();
+    if (inventory.state.value.isEmpty) await inventory.state.firstWhere((state) => state.isNotEmpty);
+
+    status.add(ConnectionStatus.reconnecting(config: config(bridgeId: "b")));
+    await Future<void>.delayed(Duration.zero);
+    expect(inventory.state.value, isEmpty);
+
+    lateSessions.complete(ApiResponse.success(SessionListResponse(items: [testSession(id: "old", updatedAt: 1)])));
+    await Future<void>.delayed(Duration.zero);
+    expect(inventory.state.value, isEmpty);
   });
 
   test("winning snapshots remove absent projects and fence their pending reads", () async {

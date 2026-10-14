@@ -114,7 +114,7 @@ void main() {
     mockFailureReporter = MockFailureReporter();
     statusController = BehaviorSubject<ConnectionStatus>.seeded(
       const ConnectionStatus.connected(
-        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
         health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
       ),
     );
@@ -123,7 +123,7 @@ void main() {
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenReturn(
       const ConnectionStatus.connected(
-        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
         health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
       ),
     );

@@ -15,7 +15,10 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$ServerConnectionConfig {
 
- String get relayHost; String? get authToken;
+ String get relayHost; String? get authToken;/// The computer (bridge id) this connection targets. `null` lets the relay
+/// route to the account's most recently connected bridge; the id it
+/// reports is then adopted here once the connection is established.
+ String? get bridgeId;
 /// Create a copy of ServerConnectionConfig
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -27,20 +30,20 @@ $ServerConnectionConfigCopyWith<ServerConnectionConfig> get copyWith => _$Server
 @override
 bool operator ==(Object other) {
   final _this = this as ServerConnectionConfig;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ServerConnectionConfig&&(identical(other.relayHost, _this.relayHost) || other.relayHost == _this.relayHost)&&(identical(other.authToken, _this.authToken) || other.authToken == _this.authToken));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ServerConnectionConfig&&(identical(other.relayHost, _this.relayHost) || other.relayHost == _this.relayHost)&&(identical(other.authToken, _this.authToken) || other.authToken == _this.authToken)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId));
 }
 
 
 @override
 int get hashCode {
   final _this = this as ServerConnectionConfig;
-  return Object.hash(runtimeType,_this.relayHost,_this.authToken);
+  return Object.hash(runtimeType,_this.relayHost,_this.authToken,_this.bridgeId);
 }
 
 @override
 String toString() {
   final _this = this as ServerConnectionConfig;
-  return 'ServerConnectionConfig(relayHost: ${_this.relayHost}, authToken: ${_this.authToken})';
+  return 'ServerConnectionConfig(relayHost: ${_this.relayHost}, authToken: ${_this.authToken}, bridgeId: ${_this.bridgeId})';
 }
 
 
@@ -51,7 +54,7 @@ abstract mixin class $ServerConnectionConfigCopyWith<$Res>  {
   factory $ServerConnectionConfigCopyWith(ServerConnectionConfig value, $Res Function(ServerConnectionConfig) _then) = _$ServerConnectionConfigCopyWithImpl;
 @useResult
 $Res call({
- String relayHost, String? authToken
+ String relayHost, String? authToken, String? bridgeId
 });
 
 
@@ -68,10 +71,11 @@ class _$ServerConnectionConfigCopyWithImpl<$Res>
 
 /// Create a copy of ServerConnectionConfig
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? relayHost = null,Object? authToken = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? relayHost = null,Object? authToken = freezed,Object? bridgeId = freezed,}) {
   return _then(ServerConnectionConfig(
 relayHost: null == relayHost ? _self.relayHost : relayHost // ignore: cast_nullable_to_non_nullable
 as String,authToken: freezed == authToken ? _self.authToken : authToken // ignore: cast_nullable_to_non_nullable
+as String?,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -84,11 +88,15 @@ as String?,
 
 
 class _ServerConnectionConfig implements ServerConnectionConfig {
-  const _ServerConnectionConfig({required this.relayHost, required this.authToken});
+  const _ServerConnectionConfig({required this.relayHost, required this.authToken, required this.bridgeId});
   
 
 @override final  String relayHost;
 @override final  String? authToken;
+/// The computer (bridge id) this connection targets. `null` lets the relay
+/// route to the account's most recently connected bridge; the id it
+/// reports is then adopted here once the connection is established.
+@override final  String? bridgeId;
 
 /// Create a copy of ServerConnectionConfig
 /// with the given fields replaced by the non-null parameter values.
@@ -100,18 +108,18 @@ _$ServerConnectionConfigCopyWith<_ServerConnectionConfig> get copyWith => __$Ser
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ServerConnectionConfig&&(identical(other.relayHost, relayHost) || other.relayHost == relayHost)&&(identical(other.authToken, authToken) || other.authToken == authToken));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ServerConnectionConfig&&(identical(other.relayHost, relayHost) || other.relayHost == relayHost)&&(identical(other.authToken, authToken) || other.authToken == authToken)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,relayHost,authToken);
+    return Object.hash(runtimeType,relayHost,authToken,bridgeId);
 }
 
 @override
 String toString() {
-    return 'ServerConnectionConfig(relayHost: $relayHost, authToken: $authToken)';
+    return 'ServerConnectionConfig(relayHost: $relayHost, authToken: $authToken, bridgeId: $bridgeId)';
 }
 
 
@@ -122,7 +130,7 @@ abstract mixin class _$ServerConnectionConfigCopyWith<$Res> implements $ServerCo
   factory _$ServerConnectionConfigCopyWith(_ServerConnectionConfig value, $Res Function(_ServerConnectionConfig) _then) = __$ServerConnectionConfigCopyWithImpl;
 @override @useResult
 $Res call({
- String relayHost, String? authToken
+ String relayHost, String? authToken, String? bridgeId
 });
 
 
@@ -139,10 +147,11 @@ class __$ServerConnectionConfigCopyWithImpl<$Res>
 
 /// Create a copy of ServerConnectionConfig
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? relayHost = null,Object? authToken = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? relayHost = null,Object? authToken = freezed,Object? bridgeId = freezed,}) {
   return _then(_ServerConnectionConfig(
 relayHost: null == relayHost ? _self.relayHost : relayHost // ignore: cast_nullable_to_non_nullable
 as String,authToken: freezed == authToken ? _self.authToken : authToken // ignore: cast_nullable_to_non_nullable
+as String?,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

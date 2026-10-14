@@ -47,6 +47,7 @@ const AuthUser _user = AuthUser(
 const ServerConnectionConfig _connectionConfig = ServerConnectionConfig(
   relayHost: "relay.example.com",
   authToken: null,
+  bridgeId: null,
 );
 const HealthResponse _health = HealthResponse(
   healthy: true,

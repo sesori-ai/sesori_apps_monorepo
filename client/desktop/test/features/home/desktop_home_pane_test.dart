@@ -38,8 +38,10 @@ void main() {
     final statuses = BehaviorSubject<ConnectionStatus>.seeded(const ConnectionStatus.disconnected());
     addTearDown(statuses.close);
     when(() => connection.status).thenAnswer((_) => statuses);
+    when(() => connection.currentStatus).thenAnswer((_) => statuses.value);
     getIt.registerSingleton<RegisteredBridgesService>(bridges);
     getIt.registerSingleton<ConnectionService>(connection);
+    getIt.registerSingleton<SelectedComputerService>(FakeSelectedComputerService());
     final voice = MockVoiceTranscriptionService();
     stubVoiceTranscriptionService(service: voice);
     getIt.registerSingleton<VoiceTranscriptionService>(voice);

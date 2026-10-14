@@ -26,6 +26,7 @@ import "../../helpers/test_helpers.dart";
 const _connectionConfig = ServerConnectionConfig(
   relayHost: "relay.example.com",
   authToken: "test-token",
+  bridgeId: null,
 );
 const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(

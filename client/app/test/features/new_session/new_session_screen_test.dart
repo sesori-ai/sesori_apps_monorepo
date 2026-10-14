@@ -272,7 +272,7 @@ void main() {
     connectionService = MockConnectionService();
     connectionStatus = BehaviorSubject.seeded(
       const ConnectionStatus.connected(
-        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
         health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
       ),
     );
@@ -1285,7 +1285,7 @@ void main() {
       ..add(const ConnectionStatus.disconnected())
       ..add(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
           health: HealthResponse(
             healthy: true,
             version: "test",
@@ -1365,7 +1365,7 @@ void main() {
       ..add(const ConnectionStatus.disconnected())
       ..add(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
           health: HealthResponse(
             healthy: true,
             version: "test",
@@ -1501,7 +1501,7 @@ void main() {
       ..add(const ConnectionStatus.disconnected())
       ..add(
         const ConnectionStatus.connected(
-          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
           health: HealthResponse(
             healthy: true,
             version: "test",

@@ -51,6 +51,7 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
             create: (_) => BridgeIdentityCubit(
               registeredBridgesService: getIt<RegisteredBridgesService>(),
               connectionService: getIt<ConnectionService>(),
+              selectedComputerService: getIt<SelectedComputerService>(),
             ),
           ),
         ],

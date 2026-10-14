@@ -30,6 +30,7 @@ class _TestRelayClientFactory({required final RelayClient _client}) extends Rela
     required RelayCryptoService cryptoService,
     required RoomKeyStorage roomKeyStorage,
     required String? authToken,
+    required String? bridgeId,
   }) => _client;
 }
 
@@ -61,6 +62,7 @@ void main() {
     const config = ServerConnectionConfig(
       relayHost: "relay.example.com",
       authToken: "token",
+      bridgeId: null,
     );
 
     const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
@@ -91,6 +93,7 @@ void main() {
       service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -293,6 +296,7 @@ void main() {
       final staleService = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,

@@ -40,6 +40,7 @@ class _TestRelayClientFactory(
     required RelayCryptoService cryptoService,
     required RoomKeyStorage roomKeyStorage,
     required String? authToken,
+    required String? bridgeId,
   }) {
     callCount++;
     return _factory(
@@ -83,6 +84,7 @@ void main() {
     const config = ServerConnectionConfig(
       relayHost: "relay.example.com",
       authToken: "token",
+      bridgeId: null,
     );
 
     const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
@@ -115,6 +117,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -137,6 +140,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -156,6 +160,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -187,6 +192,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -226,6 +232,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -285,6 +292,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -339,6 +347,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -402,6 +411,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -485,6 +495,7 @@ void main() {
         final service = ConnectionService(
           cryptoService,
           roomKeyStorage,
+          FakeTargetBridgeStorage(),
           authTokenProvider,
           authSession,
           lifecycleSource,
@@ -566,6 +577,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -621,6 +633,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -677,6 +690,7 @@ void main() {
         final service = ConnectionService(
           cryptoService,
           roomKeyStorage,
+          FakeTargetBridgeStorage(),
           authTokenProvider,
           authSession,
           lifecycleSource,
@@ -757,6 +771,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -809,6 +824,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -869,6 +885,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -954,6 +971,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -1040,6 +1058,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -1098,6 +1117,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -1166,6 +1186,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -1235,6 +1256,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -1304,6 +1326,7 @@ void main() {
       final service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,

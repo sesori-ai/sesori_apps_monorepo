@@ -40,6 +40,7 @@ final projectC = testProjectSummary(id: "C", path: "/home/user/C");
 const _connectionConfig = ServerConnectionConfig(
   relayHost: "relay.example.com",
   authToken: "test-token",
+  bridgeId: null,
 );
 const _connectionHealth = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 const _connectedStatus = ConnectionStatus.connected(
@@ -160,6 +161,46 @@ void main() {
       expect(second.state, same(inventory.state));
       await second.close();
       verify(mockProjectRepository.listProjects).called(1);
+    });
+
+    test("switching computers reloads the list and drops a late answer from the previous one", () async {
+      ServerConnectionConfig config({required String bridgeId}) =>
+          ServerConnectionConfig(relayHost: "relay", authToken: "t", bridgeId: bridgeId);
+      statusController.add(
+        ConnectionStatus.connected(
+          config: config(bridgeId: "a"),
+          health: _connectionHealth,
+        ),
+      );
+      final lateAnswer = Completer<ApiResponse<Projects>>();
+      final replies = [
+        Future.value(ApiResponse.success(Projects(data: [projectA]))),
+        lateAnswer.future,
+        Future.value(ApiResponse.success(Projects(data: [projectB]))),
+      ];
+      var reads = 0;
+      when(mockProjectRepository.listProjects).thenAnswer((_) => replies[reads++]);
+      final inventory = buildInventory();
+      await inventory.stateStream.firstWhere((state) => state is ProjectListLoaded);
+      final refresh = inventory.refreshProjects();
+      await Future<void>.delayed(Duration.zero);
+
+      statusController.add(ConnectionStatus.reconnecting(config: config(bridgeId: "b")));
+      await Future<void>.delayed(Duration.zero);
+      expect(inventory.state, isA<ProjectListLoading>());
+
+      statusController.add(
+        ConnectionStatus.connected(
+          config: config(bridgeId: "b"),
+          health: _connectionHealth,
+        ),
+      );
+      await inventory.stateStream.firstWhere((state) => state is ProjectListLoaded);
+      lateAnswer.complete(ApiResponse.success(Projects(data: [projectA])));
+      await refresh;
+      await Future<void>.delayed(Duration.zero);
+
+      expect((inventory.state as ProjectListLoaded).projects, [projectB]);
     });
 
     for (final succeeds in [true, false]) {
@@ -2249,6 +2290,7 @@ void main() {
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
           authToken: "test-token",
+          bridgeId: null,
         );
         const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
@@ -2279,6 +2321,7 @@ void main() {
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
           authToken: "test-token",
+          bridgeId: null,
         );
         const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
@@ -2319,6 +2362,7 @@ void main() {
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
           authToken: "test-token",
+          bridgeId: null,
         );
         const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         const connected = ConnectionStatus.connected(config: config, health: health);
@@ -2353,6 +2397,7 @@ void main() {
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
           authToken: "test-token",
+          bridgeId: null,
         );
         const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
@@ -2384,6 +2429,7 @@ void main() {
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
           authToken: "test-token",
+          bridgeId: null,
         );
         when(() => mockConnectionService.currentStatus).thenReturn(
           const ConnectionStatus.connectionLost(config: config),
@@ -2429,6 +2475,7 @@ void main() {
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
           authToken: "test-token",
+          bridgeId: null,
         );
         const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         when(() => mockConnectionService.currentStatus).thenReturn(
@@ -2546,6 +2593,7 @@ void main() {
           const config = ServerConnectionConfig(
             relayHost: "relay.example.com",
             authToken: "test-token",
+            bridgeId: null,
           );
           const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
           statusController.add(

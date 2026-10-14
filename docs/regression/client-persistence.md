@@ -33,6 +33,9 @@ desktop do not resolve it. No coding plugin participates.
   native master item. Database registration/resolution is lazy; first SQL use
   opens the connection, and graph disposal closes it. Development and production
   use separate files/items and authenticate separate cipher scopes.
+- The connection's target computer id is a plaintext string preference
+  (`target_bridge_id_v1`). Logout deletes it together with the relay room key;
+  an unreadable value is logged and treated as no target.
 
 ## Deprecated Mobile Import
 

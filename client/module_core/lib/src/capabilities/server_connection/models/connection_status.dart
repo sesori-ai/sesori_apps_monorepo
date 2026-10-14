@@ -38,3 +38,16 @@ sealed class ConnectionStatus with _$ConnectionStatus {
     required HealthResponse health,
   }) = ConnectionBridgeOffline;
 }
+
+extension ConnectionStatusTarget on ConnectionStatus {
+  /// The computer this connection targets: the pinned bridge id, or the one
+  /// the relay routed an unpinned connection to. `null` while disconnected or
+  /// before an unpinned connection has reached a bridge.
+  String? get targetBridgeId => switch (this) {
+    ConnectionDisconnected() => null,
+    ConnectionConnected(:final config) ||
+    ConnectionReconnecting(:final config) ||
+    ConnectionLost(:final config) ||
+    ConnectionBridgeOffline(:final config) => config.bridgeId,
+  };
+}

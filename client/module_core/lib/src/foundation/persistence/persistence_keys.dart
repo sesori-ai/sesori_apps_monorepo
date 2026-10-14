@@ -9,6 +9,7 @@ enum StringPreferenceKey({@override required final String storageKey}) implement
   chatInputMode(storageKey: "chat_input_mode"),
   feedbackPrompt(storageKey: "feedback_prompt_v1"),
   notificationPreferencesDeviceId(storageKey: "notification_preferences_device_id_v1"),
+  targetBridgeId(storageKey: "target_bridge_id_v1"),
 }
 
 enum BoolPreferenceKey({@override required final String storageKey}) implements BoolPersistenceKey {

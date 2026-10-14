@@ -47,7 +47,7 @@ class _MockAppReviewClient() extends Mock implements AppReviewClient;
 
 class _MockFeedbackRepository() extends Mock implements FeedbackRepository;
 
-const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null);
+const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null);
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _connectionConfig, health: _health);
 

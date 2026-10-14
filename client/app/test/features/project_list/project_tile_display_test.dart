@@ -18,7 +18,7 @@ import "../../helpers/test_helpers.dart";
 /// fallback name from it) while still NAVIGATING with the id — that handle is
 /// what every bridge API call is keyed on.
 void main() {
-  const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
+  const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token", bridgeId: null);
   const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
   const connected = ConnectionStatus.connected(config: config, health: health);
 

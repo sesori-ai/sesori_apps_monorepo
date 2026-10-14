@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/multi-computer-plan` from `origin/main` `6a4a42e7a5`, in the provided `brown-dingo` worktree.
-- Current step: 6/15 in PR; 3/15 in PR (relay).
+- Current step: 7/15 in PR.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-14 over two review rounds.
 - Plan PR: #1959, merged 2026-10-14.
 - Architecture plan review: rejected on 2026-10-14 (17 findings); all applied in the same revision. Per `AGENTS.md`
@@ -18,11 +18,11 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 |---|---|---|---|---|
 | 1/15 | monorepo | Publish reviewed plan | Done | #1959 (merged 2026-10-14) |
 | 2/15 | relay | Phones routed to a named bridge | Done | sesori_relay_server#12 (merged 2026-10-14) |
-| 3/15 | relay | Presence fan-out; ids in connect notices | In PR | sesori_relay_server#13 |
+| 3/15 | relay | Presence fan-out; ids in connect notices | Done | sesori_relay_server#13 (merged 2026-10-14) |
 | 4/15 | auth | Status in summaries; host-key matching; named status pushes | Done | sesori_auth_server#95 (merged 2026-10-14) |
 | 5/15 | monorepo | Bridge sends a stable host key | Done | #1961 (merged 2026-10-14) |
-| 6/15 | monorepo | Shared contracts: registration status, platform, presence; list stream | In PR | — |
-| 7/15 | monorepo | Target owner in the connection; resets on retarget | Not started | — |
+| 6/15 | monorepo | Shared contracts: registration status, platform, presence; list stream | Done | #1963 (merged 2026-10-14) |
+| 7/15 | monorepo | Target owner in the connection; resets on retarget | In PR | — |
 | 8/15 | monorepo | Computer menu, switch dispatcher, and flow on Projects | Not started | — |
 | 9/15 | monorepo | Offline screen lists other online computers (shared body) | Not started | — |
 | 10/15 | monorepo | Settings restructured around the computer entry | Not started | — |
@@ -45,6 +45,9 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   bridges change at the same instant; the bridge only logs `phone_connected` (accepted). A phone’s
   `bridge_connection_observed` racing a default change can be attributed to the new default (declined: worst case is
   one skipped online push to an open app).
+- 2026-10-14, step 3: offline presence is sent only when the closing connection is still current and no same-id
+  bridge is live; overlapping target announcements can still reorder (Codex P2, declined as the accepted step 2
+  ordering window).
 - 2026-10-14, step 4: the FCM `collapseKey` stays shared (`connection_status`; FCM stores at most four collapse keys
   per offline device); only the tray replacement is per computer through the Android notification tag and the APNs
   collapse id `connection_status:<bridgeId>`. A rename inside the offline debounce keeps the old name in that push
@@ -53,6 +56,15 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   `bridge_replace_prompt.dart` (a local-process prompt, already correct). `MachineIdApi` has no unsupported variant
   because `PlatformOs` covers only macOS, Linux, and Windows. The desktop string `desktopBridgeTakenOver` has the same
   wording problem and moves to step 11.
+- 2026-10-14, step 7: `select` arrives in step 8 with its `source` and analytics event. A fresh desktop install or a
+  new login connects before the supervised bridge registers, so it adopts the relay's default computer; step 11
+  retargets to the local computer when the supervised id appears or changes. A `retarget` during the very first
+  connect only stores the id (adoption no longer overwrites it), so that connect still lands on the relay's pick and
+  the switch takes effect on the next connect (accepted: switching is offered only once connected). Late answers
+  and mutations from the previous computer are fenced by detaching its socket, which fails its pending requests
+  locally (a mutation already sent may still apply on that computer, which is correct for its own state);
+  a failed local read of the stored target falls back to unpinned (declined: local preference reads do not fail in
+  practice).
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record
