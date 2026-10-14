@@ -105,11 +105,39 @@ archived session if its native process remains live; it grants no session mutati
 - Connection, authentication, configuration origin/access, and tools are shown
   separately. Endpoint origins are plain text, not browser-launch actions.
 
+## Connection controls and sign-in presentation
+
+- Mutable inventory views open “Manage connection” as a separate modal layer.
+  Inventory and server details keep their scroll position beneath it. Read-only,
+  audit, child and archived session surfaces retain inspection only.
+- Only declared native capabilities expose sign-in, reconnect, enable/disable or
+  credential forgetting. Every action explains its native effect scope. Unknown
+  or unavailable capabilities show the corresponding handoff or limitation.
+- Sign-in does not open a browser automatically. A matching native challenge
+  exposes an explicit Open browser action; a busy or failed launch retains the
+  challenge for retry. Private callback destinations and attempt IDs are absent
+  from the presentation. A provider-owned browser is never cancelled by MCP.
+- Native observation, request uncertainty and browser state remain independent.
+  Native completion remains primary after a lost request response. Fixed status
+  slots and reduced-motion-aware text transitions leave controls in place.
+- Cancel sign-in targets the observed attempt and respects native-settlement-only
+  cancellation. Check sign-in performs an explicit read. Closing a layer or the
+  inventory stops observing without cancelling the shared authentication owner;
+  reopening reads its current state.
+- Credential forgetting requires confirmation explaining native effect scope,
+  preserved server definitions and the possibility of an existing live connection.
+  Cancelling the confirmation dispatches nothing. Pending native work disables
+  repeated management requests, including observed busy authentication operations.
+- An action result retains its server target and is not presented as another
+  server's outcome. Large text on a phone-sized surface remains scrollable.
+- Focused widget coverage: `mcp_inventory_view_test.dart` and
+  `mcp_server_controls_view_test.dart` in the shared UI MCP feature tests.
+
 ## Native authentication boundary
 
 The shared client entry-action API/repository and per-view owner expose native
-server controls and credential forgetting without visible controls yet. Shell
-composition supplies the read-only posture. Pending actions retain inventory;
+server controls and credential forgetting. Shell composition supplies the
+read-only posture. Pending actions retain inventory;
 completed results apply the native read and supersede earlier inventory requests.
 Staleness received during an action still requires a fresh read. API failure
 retains the original cause and requires a fresh inventory read, including when an

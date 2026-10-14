@@ -3,10 +3,10 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-client-actions`, `235ff86970`, in the provided `copper-heron` worktree.
+- Branch/base: `sesori/mcp-visible-controls`, `c3716bfce5`, in the provided `copper-heron` worktree.
 - Current step: 11/23 merged as [#1957][pr-1957];
   steps 12/23 and 13/23 merged as [#1962][pr-1962] and [#1964][pr-1964];
-  step 14/23 merged as [#1966][pr-1966]; step 15/23 is in review as [#1969][pr-1969];
+  step 14/23 merged as [#1966][pr-1966]; step 15/23 merged as [#1969][pr-1969]; Step 16/23 continues locally;
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -36,8 +36,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 12/23 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
 | 13/23 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
 | 14/23 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
-| 15/23 | Shared action lifecycle (8.c.2.a) | In review | [#1969][pr-1969]; focused tests, architecture approval |
-| 16/23 | Visible authentication and controls (8.c.2.b) | Deferred draft | Resume after Step 15 publication |
+| 15/23 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
+| 16/23 | Visible auth and controls (8.c.2.b) | In progress | Shared layers and native fixture |
 | 17/23 | Session external actions (8.d) | Not started | — |
 | 18/23 | Claude approvals and form/URL elicitation | Not started | — |
 | 19/23 | Codex inventory/actions/authentication | Not started | — |
@@ -915,3 +915,25 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Four failure probes failed before these fixes and pass afterward; 33 focused
   cases pass (27 service, five repository, one slow-action API case). Core/mobile
   analyzers pass. Earlier shared UI/desktop analyzer evidence is unchanged.
+
+- Step 15 merged: accepted head `3a0a7de296`, squash `c3716bfce5`. All ten
+  round-one review findings were addressed with prefixed replies; no unresolved
+  threads remain. Cubic approved the accepted head with zero issues across its
+  eight follow-up files. Codex review quota prevented a new review. The monitor
+  reported 20/20 checks passing before merge; its terminal report had a newly
+  running post-merge check, so it is not recorded as 21 passing checks.
+- Step 16 local qualification: eight controls and nine inventory widget cases
+  pass; shared UI/mobile/desktop analyzers pass before parent synchronization.
+  Architecture implementation pass 1 approved the staged presentation against
+  `3a0a7de296` (B-Client; no shared/bridge production change). A private synthetic
+  macOS fixture builds, but CUA returns `cgWindowNotFound` for fixture and Finder,
+  including after session reset. Read-only Peekaboo reports granted permissions
+  and a Stage Manager thumbnail. Native interactions and public motion/screenshot
+  evidence remain pending; no provider/relay/packaged qualification is claimed.
+
+- Step 16 parent synchronization: the unpublished branch moved onto Step 15's
+  squash `c3716bfce5` without rewriting published history. Localization was
+  regenerated from source after the settings-parent merge. All 17 MCP widget
+  cases and shared UI/desktop analyzers pass on this parent. Native qualification
+  still awaits a usable CUA window; the fixture artifact has an isolated bundle
+  ID and app name and uses no account, bridge, browser or native credentials.

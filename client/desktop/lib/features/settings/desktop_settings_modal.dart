@@ -421,6 +421,7 @@ class _DesktopHarnessSettingsPageState() extends State<_DesktopHarnessSettingsPa
                   context: context,
                   request: McpInventoryRequest(pluginId: pluginId, scope: const McpHarnessScope()),
                   createService: getIt.call<McpService>,
+                  authenticationService: getIt.call<McpAuthenticationService>,
                   mutationsAllowed: true,
                 ),
                 chrome: HarnessSettingsChrome.window,

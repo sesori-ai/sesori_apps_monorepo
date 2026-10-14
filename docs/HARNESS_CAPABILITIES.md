@@ -646,7 +646,7 @@ can initiate login, and managed installation does **not** authenticate a harness
 
 Read-only MCP inventory and server details are **implemented** in the shared
 phone/desktop UI, opened from session menus and harness settings. Connection
-action UI and authentication UI remain **not implemented**.
+action and authentication UI are **implemented** as a separate shared modal layer.
 
 Backend-neutral authentication attempt/request/response codecs are implemented,
 including explicit native cancellation availability and private callback
@@ -654,13 +654,16 @@ presentation. Claude's headless authentication routes and the shared client
 API/repository/connection-fenced lifecycle are implemented. The observing Cubit
 does not cancel on view closure. Request-scoped recovery never auto-launches a
 browser; busy retains the challenge, and reconnect fences callbacks to the old
-bridge. Visible client controls and other native adapters remain **not implemented**.
+bridge. Visible client controls use declared capabilities; other native adapters
+remain **not implemented**.
 The shared entry-action API/repository, per-view request owner and observing Cubit
 are implemented for reconnect, enable/disable and credential forgetting. Shells
 provide the read-only posture; pending requests retain readable inventory, late
 responses are connection-fenced, and native completion supplies inventory truth.
 API failures retain their causes and trigger a read rather than an automatic
-action retry. Visible management controls remain the next presentation step.
+action retry. Mutable surfaces expose declared controls; read-only surfaces retain
+inspection. Sign-in needs explicit browser intent, and credential forgetting
+requires scope confirmation. Closing a layer does not cancel authentication.
 The backend-neutral inventory wire models and optional plugin read interface
 are implemented. Claude implements session inventory through its resident
 process status control request, exposed headlessly by `POST /mcp/inventory`.
@@ -679,7 +682,8 @@ availability, including native effect scopes and explicit configuration/platform
 Headless credential forgetting is **implemented** through `POST /mcp/entry/action`;
 it shares the native authentication owner, preserves server definitions, and refreshes
 inventory without claiming that an existing resident connection has disconnected.
-Client action UI and the other harness adapters remain **not implemented**.
+Shared client action UI is **implemented**; other harness adapters remain
+**not implemented**.
 Reads never start an integration or agent session.
 Connection, authorization and discovery state remain distinct; only a safe HTTP(S)
 endpoint origin crosses the wire. See
