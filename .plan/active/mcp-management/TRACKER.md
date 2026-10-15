@@ -86,6 +86,13 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   preserve original causes and distinguish integration absence from attempt
   removal. Both native production-owner probes pass after this correction.
   Evidence uses `step33-review1-{tests,analyze,native}` private logs.
+  Final architecture implementation review approved (pass 2). There are 105
+  unique affected passing cases across the 76 lifecycle/inventory/activity/write,
+  36 authentication/raw-HTTP, 39 authentication/API and two targeted runtime
+  retirement runs. The added retirement cases cover both cleanup success and
+  failure, retaining interrupted status and rejecting further callbacks.
+  Parent squash integration preserves the entire tested successor diff exactly
+  (SHA-256 `78b3d83043a87a538b9091a92c6e684ed82772ea8fa563cb0666493137c96546`).
 
 - Step-33 architecture plan review approved the precise repository/domain/service
   ownership. Existing general service resolves scope; existing repository maps

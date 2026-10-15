@@ -142,6 +142,27 @@ class _Observation({required final PluginMcpCancelableAuthentication operation})
 }
 
 void main() {
+  for (final cleanupFails in [false, true]) {
+    test("runtime retirement stops callback access and records cleanup outcome: $cleanupFails", () async {
+      final fixture = _Fixture(
+        override: (request) => cleanupFails && request.method == "DELETE"
+            ? Future.value(http.Response("Fixture cleanup unavailable", 503))
+            : null,
+      );
+      final operation = await fixture.begin();
+      final observation = _Observation(operation: operation);
+      await observation.challenge.future;
+      await fixture.service.dispose();
+      expect(await observation.terminal.future, isA<PluginMcpAuthenticationFailed>());
+      await observation.done.future;
+      expect(fixture.removed, !cleanupFails);
+      await expectLater(
+        operation.submitCallback(callbackUri: _callback),
+        throwsA(isA<PluginMcpAuthenticationCallbackRejectedException>()),
+      );
+    });
+  }
+
   for (final methods in <List<Map<String, Object>>>[
     [],
     [
