@@ -14,10 +14,10 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 4.a | 5 | Package and notarize native macOS builds | done |
 | 4.b | 6 | Keep desktop startup independent of native notifications | done |
 | 5 | 7 | Offer manual macOS updates through official downloads | done |
-| 6 | 8 | macOS internal packages and website live; stable production pending | in-progress |
+| 6 | 8 | macOS stable/internal packages and website live | done |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
-| 9 | 11 | Linux internal previews and website live; stable/repositories gated | blocked |
+| 9 | 11 | Linux previews live; signed repositories and stable completion approved | in-progress |
 | 10 | 12 | Shipped-download onboarding requires genuine public releases | blocked |
 | 11 | 13 | Reconcile private distribution coverage; public closeout remains gated | in-progress |
 | 12 | 14 | Verify six-target releases and retire distribution plan | blocked |
@@ -25,6 +25,27 @@ its completed step; this table tracks implementation, not transient PR reviews.
 Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
 Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
 remain checkpoints within original steps 6, 8 and 9, not additional PRs.
+
+## Linux completion continuation (approved 2026-10-14)
+
+D13 authorizes public GCS package hosting and narrowly scoped GitHub publishing IAM
+in `sesori-ai`, then completion through stable Linux publication before Windows.
+Interactive GCP reauthentication restored read-only access. Existing Cloud Run source
+storage and Firebase federation remain outside the new package publisher's authority.
+No resources have been provisioned by 11.g; it adds offline signed repository generation.
+
+Continue original step 9/ordinal 11: metadata and real-tool fixtures (11.g), preview
+hosting/publication (11.h), native desktop and genuine app upgrades (11.i), truthful
+website repository/stable discovery support (11.j), then qualified shared stable
+publication (11.k). Keep one series PR open and at most one successor local. Neither
+inert package upgrades nor earlier preview waivers establish native desktop readiness.
+
+MacOS step 6 is delivered: public `v1.9.1` release `412515090`, build `1017`, product
+`8bfeda9416c96ea5de70ffc701a36b738f24eff7`, packaging run `38537594836`.
+Both CPU DMG URLs appeared on the live website and returned HTTP 200 on 2026-10-14.
+This is a public production compatibility baseline. Gate C remains retired; the prior
+native/authenticated evidence retains its original scope. No new Mac qualification is
+required for this Linux continuation.
 
 ## Completed Linux internal-preview continuation (2026-10-13)
 
@@ -49,8 +70,8 @@ shared release sequence. CLI archive signatures (11.c) and aligned desktop inter
 (11.d) are public and independently verified; website tracking/spacing (11.e) is live. The user authorized
 Linux internal desktop previews with the GUI/login/keyring/N→N+1 gaps stated, and
 OpenPGP signatures for the existing Linux Bridge CLI archives. D11–D12 in `PLAN.md`
-record that limited authorization, not permission for stable Linux or signed repositories.
-Those remaining gates still require separate admission; cloud resources are not authorized.
+record that earlier limited authorization. D13 subsequently approved hosting and stable
+completion; native qualification and repository trust still precede stable admission.
 Build 147 itself remains private. That earlier qualification created no public
 release/repository, cloud resource or store upload.
 
@@ -145,8 +166,8 @@ schema/Windows/repository gates stayed intact. Both crawler files matched merged
 This is live website acceptance, not another package installation or GUI/upgrade test.
 
 The bounded documentation record is step 11.f/14. Approved CLI/internal-preview/website
-work is complete. Remaining step 9 work needs separate stable/repository admission and
-cloud authorization; Windows remains a separate gated continuation.
+work is complete. D13 now authorizes the remaining step 9 hosting and stable work;
+repository trust and native qualification remain required. Windows stays separate.
 
 ## Completed macOS website continuation (2026-09-26)
 

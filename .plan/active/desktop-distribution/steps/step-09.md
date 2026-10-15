@@ -1,12 +1,39 @@
-# Step 9 — Linux package qualification and internal previews
+# Step 9 — Linux packages, signed repositories and publication
 
-Ordinal 11/14. The user now prioritizes Linux before Windows (D10). Windows signing
-and winget remain separate; they no longer block Linux. Private package mechanics
-below are already merged. The user requested key-generation commands and a signed
-Linux-build PR; cloud resources and public repository publication are not part of it.
-The approved CLI signatures, public internal previews and website continuation are now
-complete. Remaining stable Linux/repository work is blocked on separate admission;
-accepted internal-preview gaps do not qualify those remaining gates.
+Ordinal 11/14. Linux remains ahead of Windows (D10/D13). CLI signatures, public
+internal previews and their website discovery are complete. On 2026-10-14 the user
+approved public GCS package hosting/scoped GitHub publishing IAM in `sesori-ai`, then
+requested finishing Linux including stable publication. That direction authorizes the
+remaining implementation/publication work, not a waiver of repository trust, native
+GUI/account/keyring/tray or genuine upgrade qualification. Preserve ordinary production
+approvals and the existing release cycle. Windows and new release backends stay separate.
+
+## Repository continuation — 11.g/14
+
+`build_linux_repository.py` consumes the existing prepared desktop release. It checks
+both CPUs/formats, package hashes and signed checksum inventories against the known
+primary key, then checks DEB/RPM headers and native RPM signatures. It preserves
+package bytes and delegates index generation to `apt-ftparchive` and `createrepo_c`.
+The existing temporary signing owner signs APT `Release`/`InRelease` and each RPM
+`repomd.xml`, verifies with public material and cleans private state before recording
+completion. Tools install before secrets; tests use disposable keys only.
+
+APT suites/pools and RPM CPU roots separate `internal` and `stable`; tooling support
+for both channels does not admit stable product publication. APT indexes include
+SHA-256 by-hash objects; RPM indexes use checksum filenames. The publisher continuation
+must retain old referenced content and upload payloads/indexes before signed entrypoints.
+No GCS resources, IAM, public repository or release changes are made by this builder.
+
+Real-tool fixtures cover signed indexes, both architecture headers, unchanged package
+bytes, channel/signer/input refusal and isolated APT/DNF install/upgrade/remove with
+inert payloads. This is repository mechanics, not native application upgrade or account
+proof. Next slices are hosting/publication (11.h), native desktop qualification (11.i),
+website discovery/instructions (11.j), and qualified stable publication (11.k), as
+specified in [the plan](../PLAN.md). No new application state or updater is introduced.
+Existing manual preview downloads remain supported; no application mechanism becomes
+obsolete. Repository-only dependencies extend the signer in a separate image rather
+than burdening ordinary package/CLI signing. Stale hosting/stable-scope wording is
+replaced by D13, not retained as a contradictory gate.
 
 ## Signing continuation — 11.a/14 (merged)
 

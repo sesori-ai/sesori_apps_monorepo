@@ -132,6 +132,29 @@ checksum signatures matched. This establishes real credential access and signed
 package mechanics, not public repositories, GUI/account behavior or N→N+1 updates.
 The manual workflow's build number is not the shared release sequence.
 
+## Signed Linux repository preparation
+
+`build_linux_repository.py` consumes a prepared desktop release, not unqualified build
+outputs. It authenticates both signed checksum inventories against the separately
+pinned primary, verifies all four package digests and DEB/RPM identity headers, and
+requires native RPM signatures. Repository generation never modifies package bytes.
+`apt-ftparchive` supplies both CPU indexes and `createrepo_c` supplies each RPM index;
+internal/stable roots stay separate. The existing temporary signing owner creates
+APT `Release.gpg`/`InRelease` and RPM `repomd.xml.asc`, verifies with public material,
+and removes private state before writing the completed inventory.
+
+APT advertises only SHA-256 by-hash indexes. RPM metadata filenames contain checksums.
+Publishing must retain old referenced objects and place payloads/indexes before signed
+entrypoints; RPM's separate XML/signature update can safely refuse a concurrent refresh
+rather than install unauthenticated data. This tooling does not publish, approve a
+stable channel, or replace compiled-identity/native qualification in release preparation.
+
+Disposable-key APT/DNF fixtures exercise repository trust and inert package installation,
+version upgrade and removal inside fresh roots, with unrelated state preserved.
+Channel mismatch, absent CPUs, wrong signer, altered packages/checksums/signatures and
+unverifiable metadata refuse completion. These fixtures do not establish native GUI,
+account/keyring, tray, login-launch, real application upgrades or public HTTPS delivery.
+
 ## Linux internal-preview publication
 
 The shared internal cycle builds both native Linux CPUs with its source/build number
