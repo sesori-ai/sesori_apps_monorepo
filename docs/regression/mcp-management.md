@@ -342,9 +342,24 @@ Destinations must be absolute HTTPS with a host and no user information before
 snapshot exposure or acceptance. Decline and cancel remain usable for an unsafe
 destination. URLs never enter question broadcasts, replay or persistence. Legacy
 question replies accept only Cancel or rejection and send native `action: cancel`.
-Current clients preserve the interaction marker through cold loading and show an
-honest cancel-only handoff with no ordinary answer controls. Closing the layer
-does not cancel the request. Browser/consent presentation follows separately.
+Current clients preserve the interaction marker through cold loading and open a
+typed modal above the transcript. Browser launch requires an explicit tap and
+displays only the HTTPS destination origin. Browser launch and native acceptance
+are separate outcomes; neither confirms OAuth completion. Only declared known
+choices are offered, with distinct accept, decline and cancel semantics. Unknown
+purpose or unsafe destination cannot be opened or accepted. Form/unknown markers
+retain an explicit cancel-only handoff rather than ordinary scalar controls.
+
+Closing the layer only disposes its observer. Reopening reads the current native
+request. A disconnect or bridge replacement retires that modal's controls and
+fences late reads, launches and reply results, even after reconnection. Native
+settlement dismisses the layer through the existing pending-request owner; late
+results cannot repopulate the list. A failed read retains an explicit legacy
+cancel path. A failed browser launch retains its request for retry and original
+cause/stack. Submission failure does not imply cancellation or trigger automatic
+resubmission. Status space stays fixed during changes; large text scrolls and
+transitions respect reduced motion. Native presentation recording is deferred
+at the user's request and remains part of final qualification.
 Unsupported native forms receive a decline attempt and a session-attributed
 warning through the existing desktop/mobile toast presenter. A successful native
 write settles the request. A failed write is logged with the native request and
@@ -355,5 +370,8 @@ Coverage: `shared/sesori_shared/test/models/pending_external_action_test.dart`,
 `shared/sesori_shared/test/models/sesori_sse_event_test.dart`,
 `bridge/app/test/bridge/repositories/external_action_repository_test.dart`, the
 Claude registry/stream-client/plugin tests, the core session-detail permission
-tests and shared UI question-modal tests. Native and mixed-peer qualification
+tests, `client/module_core/test/api/session_external_actions_api_test.dart`,
+`client/module_core/test/services/session_external_action_service_test.dart`,
+`client/module_core/test/cubits/session_detail/session_external_action_cubit_test.dart`
+and shared UI question/external-action modal tests. Native and mixed-peer qualification
 remain in the active plan.

@@ -231,6 +231,8 @@ import 'package:sesori_dart_core/src/services/session_cleanup_service.dart'
     as _i692;
 import 'package:sesori_dart_core/src/services/session_detail_load_service.dart'
     as _i709;
+import 'package:sesori_dart_core/src/services/session_external_action_service.dart'
+    as _i883;
 import 'package:sesori_dart_core/src/services/session_interaction_calculator.dart'
     as _i414;
 import 'package:sesori_dart_core/src/services/session_launch_service.dart'
@@ -689,6 +691,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i692.SessionCleanupService>(
       () =>
           _i692.SessionCleanupService(repository: gh<_i7.SessionRepository>()),
+    );
+    gh.lazySingleton<_i883.SessionExternalActionService>(
+      () => _i883.SessionExternalActionService(
+        repository: gh<_i7.SessionRepository>(),
+      ),
     );
     gh.lazySingleton<_i18.SessionViewingService>(
       () => _i18.SessionViewingService(

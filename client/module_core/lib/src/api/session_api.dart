@@ -515,6 +515,24 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<PendingExternalActionsResponse>> getPendingExternalActions({required String sessionId}) {
+    return _client.post(
+      "/session/external-actions",
+      fromJson: PendingExternalActionsResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
+    );
+  }
+
+  Future<ApiResponse<ExternalActionReplyResult>> replyToExternalAction({
+    required ReplyToExternalActionRequest request,
+  }) {
+    return _client.post(
+      "/external-action/reply",
+      fromJson: ExternalActionReplyResult.fromJson,
+      body: request,
+    );
+  }
+
   Future<ApiResponse<PendingPermissionResponse>> getPendingPermissions({required String sessionId}) {
     return _client.post(
       "/session/permissions",

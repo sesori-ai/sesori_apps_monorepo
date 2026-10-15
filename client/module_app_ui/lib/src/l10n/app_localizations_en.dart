@@ -3295,6 +3295,54 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpCancelRequest => 'Cancel request';
 
   @override
+  String get mcpExternalLoading => 'Reading the pending MCP request…';
+
+  @override
+  String get mcpExternalDisconnected => 'The connection changed. Close this request and reopen it after reconnecting.';
+
+  @override
+  String get mcpExternalReady => 'Open the browser if needed, then choose how to respond.';
+
+  @override
+  String get mcpExternalBrowserOpening => 'Opening the browser…';
+
+  @override
+  String get mcpExternalBrowserOpened => 'Browser opened. This does not confirm authorization. Return here to respond.';
+
+  @override
+  String get mcpExternalBrowserFailed => 'The browser could not open. You can try again or cancel the request.';
+
+  @override
+  String get mcpExternalSubmitting => 'Sending your response to the coding agent…';
+
+  @override
+  String get mcpExternalReplySent => 'The coding agent accepted your response. Authorization may still be in progress.';
+
+  @override
+  String get mcpExternalSettled => 'This request is no longer pending.';
+
+  @override
+  String get mcpExternalReplyFailed =>
+      'The response could not be confirmed. The request may have settled in the coding agent.';
+
+  @override
+  String get mcpExternalDestinationUnavailable =>
+      'This request has an unsupported destination or purpose. You can decline or cancel it.';
+
+  @override
+  String get mcpExternalReplyExplanation =>
+      'Continue sends acceptance to the coding agent. Decline refuses the request. Cancel stops this request. Closing this window leaves it pending.';
+
+  @override
+  String get mcpExternalContinue => 'Continue in coding agent';
+
+  @override
+  String get mcpExternalAcceptConsent => 'Accept connection request';
+
+  @override
+  String get mcpExternalDecline => 'Decline request';
+
+  @override
   String get mcpReconnect => 'Reconnect';
 
   @override

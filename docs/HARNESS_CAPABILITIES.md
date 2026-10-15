@@ -712,8 +712,10 @@ HTTP authentication, its headless attempt routes and shared client controls are
 implemented. Claude session URL elicitation has **implemented** headless snapshot
 and accept/decline/cancel routes, using the original native request owner. URL
 support requires Claude 2.1.291; 2.1.221 rejects it before forwarding. Current
-clients show an explicit cancel-only handoff until the planned browser/consent UI
-lands. Form elicitation is **not implemented**: it is declined with an in-session
+clients have **implemented** explicit browser opening and declared native
+accept/decline/cancel controls, with original-owner routing and connection fencing.
+Dismissal leaves the request pending; browser opening and native reply acceptance
+do not claim authorization completion. Form elicitation is **not implemented**: it is declined with an in-session
 warning. Codex elicitation and the remaining native-supported management rows are
 **not implemented**.
 

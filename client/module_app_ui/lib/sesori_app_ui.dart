@@ -33,6 +33,7 @@ export "src/features/session_detail/widgets/command_picker.dart";
 export "src/features/session_detail/widgets/composer_options_accordion.dart";
 export "src/features/session_detail/widgets/composer_surface_style.dart";
 export "src/features/session_detail/widgets/error_message_card.dart";
+export "src/features/session_detail/widgets/external_action_modal.dart";
 export "src/features/session_detail/widgets/file_part_widget.dart";
 export "src/features/session_detail/widgets/follow_detach_scrollable.dart";
 export "src/features/session_detail/widgets/image_attachment_viewer.dart";

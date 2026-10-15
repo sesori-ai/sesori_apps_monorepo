@@ -3,8 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-native-session-actions`, `cfecaf9494`, in the provided `copper-heron` worktree.
-- Current step: 18/25 is in review as [#1984][pr-1984]; latest merged step: 17/25 as [#1981][pr-1981].
+- Branch/base: `sesori/mcp-external-action-controls`, `e6162c78b9`, in the provided `copper-heron` worktree.
+- Current step: 18/25 is in review as [#1984][pr-1984]; 19/25 is in progress locally.
+  Latest merged step: 17/25 as [#1981][pr-1981].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
@@ -39,7 +40,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 16/25 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
 | 17/25 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
 | 18/25 | Native external-action routing (8.d.2.a) | In review | [#1984][pr-1984] |
-| 19/25 | External-action client presentation (8.d.2.b) | Not started | — |
+| 19/25 | External-action client presentation (8.d.2.b) | In progress | Local typed client controls |
 | 20/25 | Claude approvals and form/URL elicitation | Not started | — |
 | 21/25 | Codex inventory/actions/authentication | Not started | — |
 | 22/25 | Codex forms and offered connectors | Not started | — |
@@ -1115,3 +1116,25 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   four-file bridge command above now passes 47 cases; `bridge/app` analyzer is clean.
   Verified source tree: `32764caae11fb0f193e26d2c0ce8fc1660e3feaf`; subsequent
   edits add only this evidence reference, with production and tests unchanged.
+
+- Step 19 implements shared typed external-action controls through the existing
+  SessionApi/Repository layers, a stateless service and a per-modal Cubit. The
+  existing pending-request list remains authoritative. Both shells supply the
+  typed factory; shared presentation resolves no service locator. Explicit
+  browser intent, declared native choices, dismissal-only close, read-failure
+  legacy cancellation and connection fencing are covered locally.
+- Focused Step 19 checks: 19 core API/service/lifecycle cases, 29 shared modal
+  widgets, 207 mobile session-body/navigation cases and 13 desktop session-view
+  cases. Core, shared UI, mobile and desktop analyzers are clean. DI and
+  localization outputs are generated from source. Native presentation recording
+  remains deferred; local widgets do not establish packaged/native qualification.
+- The analytics checklist was applied: browser opening and native response
+  acceptance cannot prove authorization completion. No new event is added
+  without an honest product outcome/reporting contract. Architecture plan review
+  approved the concrete client-only flow after its file/layer map was clarified.
+- Step 19 architecture implementation review approved without findings. The two
+  final targeted cases retain a thrown browser error and stack without URL
+  presentation, and acknowledge/dismiss a request already settled while closed.
+  Their commands are the corresponding test files with `--plain-name 'thrown
+  browser failures retain'` and `--plain-name 'a request settled while closed'`;
+  they pass in addition to the preceding 18 core and 28 shared UI cases.

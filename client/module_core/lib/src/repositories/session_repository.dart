@@ -193,6 +193,16 @@ class SessionRepository({
     return _api.getPendingQuestions(sessionId: sessionId);
   }
 
+  Future<ApiResponse<PendingExternalActionsResponse>> getPendingExternalActions({required String sessionId}) {
+    return _api.getPendingExternalActions(sessionId: sessionId);
+  }
+
+  Future<ApiResponse<ExternalActionReplyResult>> replyToExternalAction({
+    required ReplyToExternalActionRequest request,
+  }) {
+    return _api.replyToExternalAction(request: request);
+  }
+
   Future<ApiResponse<PendingPermissionResponse>> getPendingPermissions({required String sessionId}) {
     return _api.getPendingPermissions(sessionId: sessionId);
   }

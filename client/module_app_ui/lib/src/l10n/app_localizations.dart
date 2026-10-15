@@ -5779,6 +5779,96 @@ abstract class AppLocalizations {
   /// **'Cancel request'**
   String get mcpCancelRequest;
 
+  /// No description provided for @mcpExternalLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading the pending MCP request…'**
+  String get mcpExternalLoading;
+
+  /// No description provided for @mcpExternalDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'The connection changed. Close this request and reopen it after reconnecting.'**
+  String get mcpExternalDisconnected;
+
+  /// No description provided for @mcpExternalReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the browser if needed, then choose how to respond.'**
+  String get mcpExternalReady;
+
+  /// No description provided for @mcpExternalBrowserOpening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening the browser…'**
+  String get mcpExternalBrowserOpening;
+
+  /// No description provided for @mcpExternalBrowserOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'Browser opened. This does not confirm authorization. Return here to respond.'**
+  String get mcpExternalBrowserOpened;
+
+  /// No description provided for @mcpExternalBrowserFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser could not open. You can try again or cancel the request.'**
+  String get mcpExternalBrowserFailed;
+
+  /// No description provided for @mcpExternalSubmitting.
+  ///
+  /// In en, this message translates to:
+  /// **'Sending your response to the coding agent…'**
+  String get mcpExternalSubmitting;
+
+  /// No description provided for @mcpExternalReplySent.
+  ///
+  /// In en, this message translates to:
+  /// **'The coding agent accepted your response. Authorization may still be in progress.'**
+  String get mcpExternalReplySent;
+
+  /// No description provided for @mcpExternalSettled.
+  ///
+  /// In en, this message translates to:
+  /// **'This request is no longer pending.'**
+  String get mcpExternalSettled;
+
+  /// No description provided for @mcpExternalReplyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The response could not be confirmed. The request may have settled in the coding agent.'**
+  String get mcpExternalReplyFailed;
+
+  /// No description provided for @mcpExternalDestinationUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This request has an unsupported destination or purpose. You can decline or cancel it.'**
+  String get mcpExternalDestinationUnavailable;
+
+  /// No description provided for @mcpExternalReplyExplanation.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue sends acceptance to the coding agent. Decline refuses the request. Cancel stops this request. Closing this window leaves it pending.'**
+  String get mcpExternalReplyExplanation;
+
+  /// No description provided for @mcpExternalContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue in coding agent'**
+  String get mcpExternalContinue;
+
+  /// No description provided for @mcpExternalAcceptConsent.
+  ///
+  /// In en, this message translates to:
+  /// **'Accept connection request'**
+  String get mcpExternalAcceptConsent;
+
+  /// No description provided for @mcpExternalDecline.
+  ///
+  /// In en, this message translates to:
+  /// **'Decline request'**
+  String get mcpExternalDecline;
+
   /// No description provided for @mcpReconnect.
   ///
   /// In en, this message translates to:
