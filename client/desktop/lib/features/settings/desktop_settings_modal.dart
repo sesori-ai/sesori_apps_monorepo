@@ -115,9 +115,9 @@ class const _DesktopSettingsModal({
 class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
   late DesktopSettingsTab _tab = widget.initialTab;
 
-  /// Whether the Bridge tab opens on its Computers page; only until the user
-  /// picks a tab.
-  late bool _opensComputers = widget.opensComputers;
+  /// Whether the Bridge tab shows its Computers page. Picking any tab,
+  /// including the Bridge tab again, leaves it.
+  late bool _showsComputers = widget.opensComputers;
 
   @override
   Widget build(BuildContext context) {
@@ -188,7 +188,7 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
                                       selected: tab == _tab,
                                       onPressed: () => setState(() {
                                         _tab = tab;
-                                        _opensComputers = false;
+                                        _showsComputers = false;
                                       }),
                                     ),
                                 ],
@@ -261,7 +261,11 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
           ),
         ),
       ],
-      child: _DesktopBridgeSettingsTab(onClose: widget.onClose, opensComputers: _opensComputers),
+      child: _DesktopBridgeSettingsTab(
+        onClose: widget.onClose,
+        showsComputers: _showsComputers,
+        onShowComputers: ({required shows}) => setState(() => _showsComputers = shows),
+      ),
     ),
     DesktopSettingsTab.notifications => BlocProvider(
       create: (_) => DesktopAttentionPreferenceCubit(service: getIt<DesktopAttentionService>()),
@@ -332,21 +336,15 @@ class const _SettingsTabRow({
 /// from the computer entry's menu.
 class const _DesktopBridgeSettingsTab({
   required final VoidCallback onClose,
-  required final bool opensComputers,
-}) extends StatefulWidget {
-  @override
-  State<_DesktopBridgeSettingsTab> createState() => _DesktopBridgeSettingsTabState();
-}
-
-class _DesktopBridgeSettingsTabState() extends State<_DesktopBridgeSettingsTab> {
+  required final bool showsComputers,
+  required final void Function({required bool shows}) onShowComputers,
+}) extends StatelessWidget {
   static const _computersPageKey = ValueKey("desktop-settings-computers");
-
-  late bool _showsComputers = widget.opensComputers;
 
   /// A switch lands on the new computer's Projects root, so the window steps
   /// aside for it.
   void _switchComputer({required String bridgeId, required ComputerSwitchSource source}) {
-    widget.onClose();
+    onClose();
     unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
   }
 
@@ -354,22 +352,22 @@ class _DesktopBridgeSettingsTabState() extends State<_DesktopBridgeSettingsTab> 
   Widget build(BuildContext context) => _FadeThroughPages(
     child: Navigator(
       onDidRemovePage: (page) {
-        if (page.key == _computersPageKey) setState(() => _showsComputers = false);
+        if (page.key == _computersPageKey) onShowComputers(shows: false);
       },
       pages: [
         MaterialPage<void>(
           child: _DesktopBridgeSettingsPage(
             onSwitchComputer: _switchComputer,
-            onManageComputers: () => setState(() => _showsComputers = true),
+            onManageComputers: () => onShowComputers(shows: true),
           ),
         ),
-        if (_showsComputers)
+        if (showsComputers)
           MaterialPage<void>(
             key: _computersPageKey,
             child: ComputersView(
               chrome: SettingsPageInWindowSubpage(
                 title: context.loc.computersTitle,
-                onBack: () => setState(() => _showsComputers = false),
+                onBack: () => onShowComputers(shows: false),
               ),
               onSwitchComputer: _switchComputer,
               localBridgeTurnOffActionBuilder: (_) => const _TurnOffLocalBridgeAction(),
