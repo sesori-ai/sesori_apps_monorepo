@@ -15,32 +15,51 @@ import "widgets/settings_window_page.dart";
 /// Vertical inset between the nav bar and the list.
 const double _contentTopPadding = 10.0;
 
-/// Wide enough for the longest action without the menu covering its row.
-const double _menuWidth = 200;
+/// Wide enough for the longest action and the hint under a disabled Remove…
+/// without the menu covering its row.
+const double _menuWidth = 300;
 
 /// Every computer on the account, in the computer menu's order, each with its
 /// actions behind a "⋯" button or a secondary click on its row.
 ///
-/// Reads the rows from [ComputerSwitcherCubit] and runs renames through
-/// [ComputersCubit], both provided by the product shell. A rename reaches the
-/// rows through the account's shared list, so a row changes in place.
+/// Reads the rows from [ComputerSwitcherCubit] and runs renames and removals
+/// through [ComputersCubit], both provided by the product shell. A change
+/// reaches the rows through the account's shared list, so a renamed row
+/// changes in place and a removed one closes.
 class const ComputersView({
   super.key,
   required final SettingsPageChrome chrome,
 
-  /// Switches to a computer picked from its row's menu.
+  /// Switches to a computer picked from its row's menu, and away from the
+  /// computer the app works on once it is removed.
   required final ComputerSwitchCallback onSwitchComputer,
+
+  /// Builds the action that turns off this computer's own bridge, shown in
+  /// the dialog that explains why this computer cannot be removed. It builds
+  /// nothing while the bridge is off. `null` on a surface without a bridge of
+  /// its own (the phone).
+  required final WidgetBuilder? localBridgeTurnOffActionBuilder,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<ComputerSwitcherCubit>().state;
-    final action = context.watch<ComputersCubit>().state;
+    final busyId = switch (context.watch<ComputersCubit>().state) {
+      ComputersRenaming(:final bridgeId) || ComputersRemoving(:final bridgeId) => bridgeId,
+      ComputersIdle() || ComputersRenameFailed() || ComputersRemoveFailed() => null,
+    };
     return BlocListener<ComputersCubit, ComputersState>(
-      listenWhen: (_, state) => state is ComputersRenameFailed,
-      listener: (context, _) => PregoPopupAlertPresenter.of(context).show(
-        title: context.loc.computersRenameFailed,
-        variant: PregoPopupAlertsNotificationsVariant.error,
-      ),
+      listener: (context, state) {
+        final failure = switch (state) {
+          ComputersRenameFailed() => context.loc.computersRenameFailed,
+          ComputersRemoveFailed() => context.loc.computersRemoveFailed,
+          ComputersIdle() || ComputersRenaming() || ComputersRemoving() => null,
+        };
+        if (failure == null) return;
+        PregoPopupAlertPresenter.of(context).show(
+          title: failure,
+          variant: PregoPopupAlertsNotificationsVariant.error,
+        );
+      },
       child: SettingsChromePage(
         chrome: chrome,
         slivers: [
@@ -54,16 +73,28 @@ class const ComputersView({
             sliver: SliverToBoxAdapter(
               child: PregoGroupedRows(
                 children: [
-                  for (final computer in state.computers)
-                    _ComputerRow(
-                      key: ValueKey("computers-row-${computer.id}"),
-                      computer: computer,
-                      isCurrent: computer.id == state.currentId,
-                      isThisComputer: state.isThisComputer(bridgeId: computer.id),
-                      isRenaming: action is ComputersRenaming && action.bridgeId == computer.id,
-                      onSwitch: () =>
-                          onSwitchComputer(bridgeId: computer.id, source: ComputerSwitchSource.computersPage),
+                  // A removed row closes while the rows below it rise into its
+                  // place; the rows above it stay still.
+                  PregoAnimatedList<BridgeSummary>(
+                    items: state.computers,
+                    itemKey: (computer) => ValueKey(computer.id),
+                    itemBuilder: (context, index, computer) => PregoGroupedRowPosition(
+                      isLast: index == state.computers.length - 1,
+                      child: _ComputerRow(
+                        key: ValueKey("computers-row-${computer.id}"),
+                        computer: computer,
+                        isCurrent: computer.id == state.currentId,
+                        isThisComputer: state.isThisComputer(bridgeId: computer.id),
+                        canRemove: state.canRemove(bridgeId: computer.id),
+                        isBusy: computer.id == busyId,
+                        isActionRunning: busyId != null,
+                        localBridgeTurnOffActionBuilder: localBridgeTurnOffActionBuilder,
+                        onSwitch: () =>
+                            onSwitchComputer(bridgeId: computer.id, source: ComputerSwitchSource.computersPage),
+                        onRemove: () => unawaited(_remove(context: context, bridgeId: computer.id)),
+                      ),
                     ),
+                  ),
                 ],
               ),
             ),
@@ -71,6 +102,20 @@ class const ComputersView({
         ],
       ),
     );
+  }
+
+  /// Removes [bridgeId], then moves the app to another computer when it was
+  /// working on that one, as a switch from this page would.
+  Future<void> _remove({required BuildContext context, required String bridgeId}) async {
+    final computers = context.read<ComputerSwitcherCubit>().state;
+    // It may have come online while the user confirmed.
+    if (!computers.canRemove(bridgeId: bridgeId)) return;
+    final replacement = await context.read<ComputersCubit>().remove(
+      bridgeId: bridgeId,
+      isCurrent: bridgeId == computers.currentId,
+    );
+    if (replacement == null) return;
+    onSwitchComputer(bridgeId: replacement, source: ComputerSwitchSource.computersPage);
   }
 }
 
@@ -81,8 +126,19 @@ class const _ComputerRow({
   required final BridgeSummary computer,
   required final bool isCurrent,
   required final bool isThisComputer,
-  required final bool isRenaming,
+  required final bool canRemove,
+
+  /// Whether an action on this computer is running; its "⋯" waits for it.
+  required final bool isBusy,
+
+  /// Whether an action on any computer is running; Rename and Remove wait
+  /// for it, so one action runs at a time.
+  required final bool isActionRunning,
+  required final WidgetBuilder? localBridgeTurnOffActionBuilder,
   required final VoidCallback onSwitch,
+
+  /// Removes the computer once the user has confirmed it.
+  required final VoidCallback onRemove,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -112,12 +168,26 @@ class const _ComputerRow({
           leadingIcon: TablerRegular.pencil,
           isSelected: false,
           shortcutLabel: null,
+          isEnabled: !isActionRunning,
           // The menu has closed by now; the row it hung off is still here.
           onTap: () => unawaited(_rename(context: context)),
         ),
+        PregoMenuItem(
+          key: ValueKey("computers-remove-${computer.id}"),
+          title: loc.computersRemove,
+          // Only an online computer other than this one waits, and says why.
+          subtitle: isThisComputer || canRemove ? null : loc.computersRemoveOnlineHint(computer.name),
+          leadingIcon: TablerRegular.trash,
+          isSelected: false,
+          shortcutLabel: null,
+          isEnabled: isThisComputer || (canRemove && !isActionRunning),
+          isDestructive: canRemove,
+          onTap: () =>
+              unawaited(isThisComputer ? _explainThisComputer(context: context) : _confirmRemove(context: context)),
+        ),
       ],
       triggerBuilder: (context, openMenu) => GestureDetector(
-        onSecondaryTap: isRenaming ? null : openMenu,
+        onSecondaryTap: isBusy ? null : openMenu,
         child: PregoGroupedRow(
           icon: ComputerMenu.platformIcon(platform: computer.platform),
           title: Row(
@@ -158,8 +228,8 @@ class const _ComputerRow({
                     hierarchy: PregoButtonsSolidHierarchy.tertiary,
                     size: PregoButtonsSolidSize.sm,
                     // The spinner takes the button's place, so the row keeps its size.
-                    isLoading: isRenaming,
-                    onPressed: isRenaming ? null : openMenu,
+                    isLoading: isBusy,
+                    onPressed: isBusy ? null : openMenu,
                   ),
                 ),
               ),
@@ -169,6 +239,21 @@ class const _ComputerRow({
       ),
     );
   }
+
+  Future<void> _confirmRemove({required BuildContext context}) async {
+    final confirmed = await showPregoModal<bool>(
+      context: context,
+      title: context.loc.computersRemoveTitle(computer.name),
+      builder: (_) => const _RemoveConfirmation(),
+    );
+    if (confirmed ?? false) onRemove();
+  }
+
+  Future<void> _explainThisComputer({required BuildContext context}) => showPregoModal<void>(
+    context: context,
+    title: context.loc.computersThisComputerTitle,
+    builder: (_) => _ThisComputerExplanation(turnOffActionBuilder: localBridgeTurnOffActionBuilder),
+  );
 
   Future<void> _rename({required BuildContext context}) {
     final cubit = context.read<ComputersCubit>();
@@ -252,6 +337,90 @@ class _RenameComputerSheetState() extends State<_RenameComputerSheet> {
             )
           else
             save,
+        ],
+      ),
+    );
+  }
+}
+
+/// The remove question's body: what removing means, then Cancel and a
+/// destructive Remove that answers `true`.
+class const _RemoveConfirmation() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final prego = context.prego;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            loc.computersRemoveMessage,
+            style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+          ),
+          const SizedBox(height: PregoSpacing.x2l),
+          PregoSheetActions(
+            secondary: PregoButtonsSolid(
+              key: const Key("computers-remove-cancel"),
+              label: loc.computersRemoveCancel,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => context.pop(),
+            ),
+            primary: PregoButtonsSolid(
+              key: const Key("computers-remove-confirm"),
+              label: loc.computersRemoveConfirm,
+              hierarchy: PregoButtonsSolidHierarchy.primary,
+              type: PregoButtonsSolidType.destructive,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: () => context.pop(true),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Why the computer in use cannot be removed, with the shell's action that
+/// turns off its bridge above Close. That action builds nothing while the
+/// bridge is off, and the dialog eases into the space it leaves.
+class const _ThisComputerExplanation({required final WidgetBuilder? turnOffActionBuilder}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final prego = context.prego;
+    final turnOffActionBuilder = this.turnOffActionBuilder;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            loc.computersThisComputerMessage,
+            style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+          ),
+          const SizedBox(height: PregoSpacing.x2l),
+          if (turnOffActionBuilder != null)
+            AnimatedSize(
+              duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              alignment: AlignmentDirectional.topCenter,
+              child: Builder(builder: turnOffActionBuilder),
+            ),
+          PregoButtonsSolid(
+            key: const Key("computers-this-computer-close"),
+            label: loc.computersThisComputerClose,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.lg,
+            fullWidth: true,
+            onPressed: () => context.pop(),
+          ),
         ],
       ),
     );

@@ -22,7 +22,10 @@ class const ComputersScreen({super.key}) extends StatelessWidget {
           ),
         ),
         BlocProvider(
-          create: (_) => ComputersCubit(registeredBridgesService: getIt<RegisteredBridgesService>()),
+          create: (_) => ComputersCubit(
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            selectedComputerService: getIt<SelectedComputerService>(),
+          ),
         ),
       ],
       child: Builder(
@@ -35,6 +38,8 @@ class const ComputersScreen({super.key}) extends StatelessWidget {
           // replaces this page.
           onSwitchComputer: ({required bridgeId, required source}) =>
               unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source)),
+          // The phone runs no bridge of its own.
+          localBridgeTurnOffActionBuilder: null,
         ),
       ),
     );
