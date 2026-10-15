@@ -18,6 +18,12 @@ class BridgeRepository({required final BridgeApi _api}) {
     };
   }
 
+  /// Sets one bridge's nickname, or clears it with `null`, returning the
+  /// updated summary.
+  Future<ApiResponse<BridgeSummary>> renameBridge({required String bridgeId, required String? nickname}) {
+    return _api.renameBridge(bridgeId: bridgeId, nickname: nickname);
+  }
+
   /// Revokes one bridge registration. The server's 404 means the registration
   /// is already absent, which is the desired end state for device logout.
   Future<ApiResponse<void>> deleteBridge({required String bridgeId}) async {

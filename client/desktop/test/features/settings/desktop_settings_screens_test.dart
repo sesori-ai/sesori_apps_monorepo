@@ -469,6 +469,7 @@ void main() {
         BridgeSummary(
           id: "a",
           name: "studio-mac",
+          hostname: "studio-mac",
           platform: BridgePlatform.macos,
           status: BridgeRegistrationStatus.active,
           addedAt: DateTime.utc(2026),
@@ -477,6 +478,7 @@ void main() {
         BridgeSummary(
           id: "b",
           name: "build-box",
+          hostname: "build-box",
           platform: BridgePlatform.linux,
           status: BridgeRegistrationStatus.inactive,
           addedAt: DateTime.utc(2026),

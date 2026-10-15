@@ -46,6 +46,7 @@ BridgeSummary _bridge({
   return BridgeSummary(
     id: id,
     name: name,
+    hostname: name,
     platform: platform,
     status: status,
     addedAt: DateTime.utc(2026, 1, 1),

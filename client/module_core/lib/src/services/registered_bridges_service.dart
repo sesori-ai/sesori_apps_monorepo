@@ -7,9 +7,12 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
+import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../logging/logging.dart";
 import "../repositories/bridge_repository.dart";
+import "../repositories/models/analytics_delivery_result.dart";
 import "../repositories/registered_bridges_store.dart";
+import "product_analytics_service.dart";
 
 /// Reactive owner of the "this account has at least one registered bridge"
 /// signal, shared by the connection overlay (to decide whether a bridge-offline
@@ -39,7 +42,8 @@ import "../repositories/registered_bridges_store.dart";
 /// connection marks it stale without emitting, so the next
 /// [getRegisteredBridges] refetches while consumers keep the last list. The
 /// relay's presence notices update a listed bridge's status in place, and a
-/// notice for a bridge the list does not know refetches it.
+/// notice for a bridge the list does not know refetches it. [rename] and
+/// [remove] apply a confirmed change to the published list in place.
 ///
 /// [RegisteredBridgesStore] is the Layer-2 persistence/cache repository (a
 /// data-access role); this service is the Layer-3 orchestrator that adds the network tier,
@@ -49,6 +53,7 @@ import "../repositories/registered_bridges_store.dart";
 @lazySingleton
 class RegisteredBridgesService({
   required final BridgeRepository _bridgeRepository,
+  required final ProductAnalyticsService _productAnalyticsService,
   required RegisteredBridgesStore registeredBridgesStore,
   required ConnectionService connectionService,
   required AuthSession authSession,
@@ -199,6 +204,49 @@ class RegisteredBridgesService({
       logw("Failed to fetch registered bridges (unexpected error)", error, stackTrace);
       return const [];
     }
+  }
+
+  /// Sets the nickname of the bridge [bridgeId], or clears it with `null`, and
+  /// replaces its entry in [bridges] with the server's updated summary. A
+  /// failure leaves the list unchanged and is returned to the caller.
+  Future<ApiResponse<BridgeSummary>> rename({required String bridgeId, required String? nickname}) async {
+    final response = await _bridgeRepository.renameBridge(bridgeId: bridgeId, nickname: nickname);
+    if (response case SuccessResponse(:final data)) {
+      _emitBridges(
+        bridges: _withPresence(bridges: [for (final bridge in _bridges.value) bridge.id == bridgeId ? data : bridge]),
+      );
+      _reportManaged(action: ComputerManageAction.renamed);
+    }
+    return response;
+  }
+
+  /// Revokes the bridge [bridgeId] and drops it from [bridges]. A bridge the
+  /// server no longer knows counts as removed. A failure leaves the list
+  /// unchanged and is returned to the caller.
+  Future<ApiResponse<void>> remove({required String bridgeId}) async {
+    final response = await _bridgeRepository.deleteBridge(bridgeId: bridgeId);
+    if (response is SuccessResponse) {
+      _emitBridges(
+        bridges: List<BridgeSummary>.unmodifiable(_bridges.value.where((bridge) => bridge.id != bridgeId)),
+      );
+      _reportManaged(action: ComputerManageAction.removed);
+    }
+    return response;
+  }
+
+  void _reportManaged({required ComputerManageAction action}) {
+    unawaited(
+      _productAnalyticsService
+          .logEvent(
+            event: ProductAnalyticsEvent.computerManaged(action: action),
+            occurredAtUtc: DateTime.now().toUtc(),
+          )
+          .then<void>((result) {
+            if (result == AnalyticsDeliveryResult.failed && _productAnalyticsService.state.isActive) {
+              logw("Failed to deliver computer management analytics event");
+            }
+          }),
+    );
   }
 
   /// Most recently seen bridge first; never-seen bridges sort after seen ones,

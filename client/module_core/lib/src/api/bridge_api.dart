@@ -23,6 +23,16 @@ class BridgeApi({required final AuthenticatedHttpApiClient _client}) {
     );
   }
 
+  /// Sets or clears (`null`) one bridge's nickname and returns its updated
+  /// summary (`PATCH /auth/bridges/:bridgeId`).
+  Future<ApiResponse<BridgeSummary>> renameBridge({required String bridgeId, required String? nickname}) {
+    return _client.patch(
+      Uri.parse("$authBaseUrl/auth/bridges/${Uri.encodeComponent(bridgeId)}"),
+      body: {"nickname": nickname},
+      fromJson: _parseBridge,
+    );
+  }
+
   // ignore: no_slop_linter/prefer_specific_type, JSON parser callback signature requires dynamic input
   static BridgesListResponse _parseBridges(dynamic json) {
     // ignore: no_slop_linter/prefer_specific_type, JSON parsing requires dynamic
@@ -30,5 +40,14 @@ class BridgeApi({required final AuthenticatedHttpApiClient _client}) {
       return BridgesListResponse.fromJson(json);
     }
     throw const FormatException("Unexpected /auth/bridges response shape");
+  }
+
+  // ignore: no_slop_linter/prefer_specific_type, JSON parser callback signature requires dynamic input
+  static BridgeSummary _parseBridge(dynamic json) {
+    // ignore: no_slop_linter/prefer_specific_type, JSON parsing requires dynamic
+    if (json is Map<String, dynamic>) {
+      return BridgeSummary.fromJson(json);
+    }
+    throw const FormatException("Unexpected /auth/bridges/:bridgeId response shape");
   }
 }

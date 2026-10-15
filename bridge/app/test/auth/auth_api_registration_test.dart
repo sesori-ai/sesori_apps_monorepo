@@ -171,6 +171,7 @@ class _BridgesTestServer._(final HttpServer _server, final int _statusCode) {
         jsonEncode({
           "id": "br_server001",
           "name": requested["name"],
+          "hostname": requested["name"],
           "platform": requested["platform"],
           "status": "inactive",
           "addedAt": "2026-06-01T00:00:00.000Z",

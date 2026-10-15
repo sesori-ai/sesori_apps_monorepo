@@ -592,6 +592,7 @@ class _FakeAuthServer() {
           body: BridgeSummary(
             id: _bridgeId,
             name: body.name,
+            hostname: body.name,
             platform: BridgePlatform.macos,
             status: BridgeRegistrationStatus.inactive,
             addedAt: DateTime.utc(2026, 8, 30),

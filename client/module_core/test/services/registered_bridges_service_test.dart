@@ -5,6 +5,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/services/registered_bridges_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -26,14 +27,18 @@ Future<void> _settle() async {
 
 void main() {
   late MockBridgeRepository bridgeRepository;
+  late MockProductAnalyticsService analytics;
   late MockRegisteredBridgesStore store;
   late MockConnectionService connectionService;
   late _MockAuthSession authSession;
   late BehaviorSubject<ConnectionStatus> statusSubject;
   late BehaviorSubject<AuthState> authSubject;
 
+  setUpAll(registerAllFallbackValues);
+
   setUp(() {
     bridgeRepository = MockBridgeRepository();
+    analytics = stubbedProductAnalyticsService();
     store = MockRegisteredBridgesStore();
     connectionService = MockConnectionService();
     authSession = _MockAuthSession();
@@ -60,6 +65,7 @@ void main() {
   RegisteredBridgesService build() {
     final service = RegisteredBridgesService(
       bridgeRepository: bridgeRepository,
+      productAnalyticsService: analytics,
       registeredBridgesStore: store,
       connectionService: connectionService,
       authSession: authSession,
@@ -456,6 +462,86 @@ void main() {
       await service.getRegisteredBridges();
 
       expect(statusOf(service: service, id: "a"), BridgeRegistrationStatus.active);
+    });
+  });
+
+  group("rename and remove", () {
+    final laptop = testBridgeSummary(id: "a", name: "laptop", hostname: "laptop");
+    final desktop = testBridgeSummary(id: "b", name: "desktop", hostname: "desktop");
+
+    Future<RegisteredBridgesService> buildListed() async {
+      when(() => bridgeRepository.getRegisteredBridges())
+          .thenAnswer((_) async => ApiResponse.success([laptop, desktop]));
+      final service = build();
+      await service.getRegisteredBridges();
+      return service;
+    }
+
+    List<Object?> reportedEvents() => verify(
+      () => analytics.logEvent(
+        event: captureAny(named: "event"),
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
+    ).captured;
+
+    test("rename replaces the entry with the returned summary and reports it", () async {
+      final renamed = testBridgeSummary(id: "a", name: "Studio", hostname: "laptop");
+      when(
+        () => bridgeRepository.renameBridge(bridgeId: "a", nickname: "Studio"),
+      ).thenAnswer((_) async => ApiResponse.success(renamed));
+      final service = await buildListed();
+
+      final response = await service.rename(bridgeId: "a", nickname: "Studio");
+
+      expect(response, isA<SuccessResponse<BridgeSummary>>());
+      expect(service.bridges.value, [renamed, desktop]);
+      expect(reportedEvents(), [const ProductAnalyticsEvent.computerManaged(action: ComputerManageAction.renamed)]);
+    });
+
+    test("rename keeps a presence notice over the returned status", () async {
+      when(
+        () => bridgeRepository.renameBridge(bridgeId: "a", nickname: null),
+      ).thenAnswer((_) async => ApiResponse.success(laptop));
+      final service = await buildListed();
+      connectionService.emitBridgePresence(bridgeId: "a", online: false);
+      await _settle();
+
+      await service.rename(bridgeId: "a", nickname: null);
+
+      expect(service.bridges.value.first.status, BridgeRegistrationStatus.inactive);
+    });
+
+    test("remove drops the entry and reports it", () async {
+      when(() => bridgeRepository.deleteBridge(bridgeId: "a")).thenAnswer((_) async => ApiResponse.success(null));
+      final service = await buildListed();
+
+      final response = await service.remove(bridgeId: "a");
+
+      expect(response, isA<SuccessResponse<void>>());
+      expect(service.bridges.value, [desktop]);
+      expect(reportedEvents(), [const ProductAnalyticsEvent.computerManaged(action: ComputerManageAction.removed)]);
+    });
+
+    test("a failure leaves the list unchanged, is returned, and reports nothing", () async {
+      final failure = ApiError.nonSuccessCode(errorCode: 503, rawErrorString: "offline");
+      when(
+        () => bridgeRepository.renameBridge(bridgeId: "a", nickname: "Studio"),
+      ).thenAnswer((_) async => ApiResponse.error(failure));
+      when(() => bridgeRepository.deleteBridge(bridgeId: "a")).thenAnswer((_) async => ApiResponse.error(failure));
+      final service = await buildListed();
+
+      final renameResponse = await service.rename(bridgeId: "a", nickname: "Studio");
+      final removeResponse = await service.remove(bridgeId: "a");
+
+      expect(renameResponse, isA<ErrorResponse<BridgeSummary>>());
+      expect(removeResponse, isA<ErrorResponse<void>>());
+      expect(service.bridges.value, [laptop, desktop]);
+      verifyNever(
+        () => analytics.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
     });
   });
 

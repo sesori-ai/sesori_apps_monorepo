@@ -191,6 +191,7 @@ void main() {
         (ComputerSwitchSource.settings, "settings"),
         (ComputerSwitchSource.alert, "alert"),
         (ComputerSwitchSource.notification, "notification"),
+        (ComputerSwitchSource.computersPage, "computers_page"),
       ])
         (
           ProductAnalyticsEvent.computerSwitched(source: source, targetOnline: true),
@@ -202,6 +203,15 @@ void main() {
         "computer_switched",
         const {"source": "menu", "target_online": "false"},
       ),
+      for (final (action, wireValue) in [
+        (ComputerManageAction.renamed, "renamed"),
+        (ComputerManageAction.removed, "removed"),
+      ])
+        (
+          ProductAnalyticsEvent.computerManaged(action: action),
+          "computer_managed",
+          {"action": wireValue},
+        ),
     ];
 
     for (final (event, expectedName, expectedParameters) in cases) {

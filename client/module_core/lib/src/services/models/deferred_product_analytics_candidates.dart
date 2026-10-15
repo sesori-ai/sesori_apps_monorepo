@@ -70,7 +70,8 @@ final class DeferredProductAnalyticsCandidates {
     RunCommandCopiedEvent() ||
     RunCommandSharedEvent() ||
     ProductScreenViewedEvent() ||
-    ComputerSwitchedEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
+    ComputerSwitchedEvent() ||
+    ComputerManagedEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
   };
 
   DeferredProductAnalyticsDrain drainNext() {

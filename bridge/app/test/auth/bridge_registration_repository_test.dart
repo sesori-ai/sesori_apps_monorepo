@@ -76,7 +76,7 @@ BridgeRegistrationRepository _repository({
           }) async {
             bodies.add(body);
             return http.Response(
-              '{"id":"br_server001","name":"dev","platform":"linux","status":"active","addedAt":"2026-06-01T00:00:00.000Z"}',
+              '{"id":"br_server001","name":"dev","hostname":"dev","platform":"linux","status":"active","addedAt":"2026-06-01T00:00:00.000Z"}',
               HttpStatus.ok,
             );
           },

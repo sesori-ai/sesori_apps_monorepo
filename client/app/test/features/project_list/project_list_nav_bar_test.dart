@@ -125,6 +125,7 @@ void main() {
         BridgeSummary(
           id: "a",
           name: "Macbook-Pro.local",
+          hostname: "Macbook-Pro.local",
           platform: BridgePlatform.macos,
           status: BridgeRegistrationStatus.active,
           addedAt: DateTime.utc(2026),
@@ -160,6 +161,7 @@ void main() {
       BridgeSummary(
         id: "a",
         name: "Macbook-Pro.local",
+        hostname: "Macbook-Pro.local",
         platform: BridgePlatform.macos,
         status: BridgeRegistrationStatus.active,
         addedAt: DateTime.utc(2026),
@@ -168,6 +170,7 @@ void main() {
       BridgeSummary(
         id: "b",
         name: "work-desktop",
+        hostname: "work-desktop",
         platform: BridgePlatform.linux,
         status: BridgeRegistrationStatus.inactive,
         addedAt: DateTime.utc(2026),
@@ -243,6 +246,7 @@ void main() {
     final macbook = BridgeSummary(
       id: "a",
       name: "Macbook-Pro.local",
+      hostname: "Macbook-Pro.local",
       platform: BridgePlatform.macos,
       status: BridgeRegistrationStatus.active,
       addedAt: DateTime.utc(2026),

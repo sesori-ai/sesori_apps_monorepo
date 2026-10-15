@@ -9,6 +9,7 @@ part of 'bridge_summary.dart';
 _BridgeSummary _$BridgeSummaryFromJson(Map json) => _BridgeSummary(
   id: json['id'] as String,
   name: json['name'] as String,
+  hostname: json['hostname'] as String,
   platform: $enumDecode(
     _$BridgePlatformEnumMap,
     json['platform'],
@@ -25,6 +26,7 @@ Map<String, dynamic> _$BridgeSummaryToJson(_BridgeSummary instance) =>
     <String, dynamic>{
       'id': instance.id,
       'name': instance.name,
+      'hostname': instance.hostname,
       'platform': _$BridgePlatformEnumMap[instance.platform]!,
       'status': _$BridgeRegistrationStatusEnumMap[instance.status]!,
       'addedAt': instance.addedAt.toIso8601String(),

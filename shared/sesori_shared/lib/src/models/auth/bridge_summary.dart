@@ -9,7 +9,12 @@ part "bridge_summary.g.dart";
 sealed class BridgeSummary with _$BridgeSummary {
   const factory({
     required String id,
+
+    /// The display name: the user's nickname when set, otherwise [hostname].
     required String name,
+
+    /// The name the computer registered with.
+    required String hostname,
     @JsonKey(unknownEnumValue: BridgePlatform.unknown) required BridgePlatform platform,
     required BridgeRegistrationStatus status,
     required DateTime addedAt,

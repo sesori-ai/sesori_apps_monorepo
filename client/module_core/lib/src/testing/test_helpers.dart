@@ -773,6 +773,7 @@ BridgeKindCubit testBridgeKindCubit({required BridgeKind? kind}) {
 BridgeSummary testBridgeSummary({
   String? id = _noString,
   String? name = _noString,
+  String hostname = "test-macbook",
   DateTime? addedAt = _noDateTime,
   DateTime? lastSeenAt = _noDateTime,
   BridgeRegistrationStatus status = BridgeRegistrationStatus.active,
@@ -780,6 +781,7 @@ BridgeSummary testBridgeSummary({
   return BridgeSummary(
     id: id ?? "br_test1234",
     name: name ?? "test-macbook",
+    hostname: hostname,
     platform: BridgePlatform.macos,
     status: status,
     addedAt: addedAt ?? DateTime.utc(2026, 1, 1),
@@ -861,6 +863,9 @@ class FakeSelectedComputerService() implements SelectedComputerService {
 
   @override
   Future<void> select({required String bridgeId, required ComputerSwitchSource source}) async {}
+
+  @override
+  String? replacementAfterRemoving({required String bridgeId}) => null;
 }
 
 /// [ActiveBridgeLocality] of a surface that supervises no bridge.

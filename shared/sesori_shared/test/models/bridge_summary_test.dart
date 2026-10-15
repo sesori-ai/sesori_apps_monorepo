@@ -3,7 +3,8 @@ import "package:test/test.dart";
 
 Map<String, Object?> _summaryJson({required String platform, required String status}) => {
   "id": "br_abc12345",
-  "name": "alex-macbook",
+  "name": "Studio",
+  "hostname": "alex-macbook",
   "platform": platform,
   "status": status,
   "addedAt": "2026-06-01T12:00:00.000Z",
@@ -15,7 +16,8 @@ void main() {
     test("round-trips through JSON", () {
       final original = BridgeSummary(
         id: "br_abc12345",
-        name: "alex-macbook",
+        name: "Studio",
+        hostname: "alex-macbook",
         platform: BridgePlatform.macos,
         status: BridgeRegistrationStatus.active,
         addedAt: DateTime.utc(2026, 6, 1, 12),
@@ -25,9 +27,24 @@ void main() {
       final json = original.toJson();
       final restored = BridgeSummary.fromJson(json);
 
+      expect(json["name"], equals("Studio"));
+      expect(json["hostname"], equals("alex-macbook"));
       expect(json["platform"], equals("macos"));
       expect(json["status"], equals("active"));
       expect(restored, equals(original));
+    });
+
+    test("parses the display name and the hostname", () {
+      final restored = BridgeSummary.fromJson(_summaryJson(platform: "macos", status: "active"));
+
+      expect(restored.name, equals("Studio"));
+      expect(restored.hostname, equals("alex-macbook"));
+    });
+
+    test("throws when the hostname is absent", () {
+      final json = _summaryJson(platform: "macos", status: "active")..remove("hostname");
+
+      expect(() => BridgeSummary.fromJson(json), throwsA(isA<TypeError>()));
     });
 
     test("parses null lastSeenAt", () {
@@ -77,6 +94,7 @@ void main() {
           {
             "id": "br_abc12345",
             "name": "alex-macbook",
+            "hostname": "alex-macbook",
             "platform": "macos",
             "status": "active",
             "addedAt": "2026-06-01T12:00:00.000Z",
@@ -136,6 +154,7 @@ void main() {
           {
             "id": "br_abc12345",
             "name": "alex-macbook",
+            "hostname": "alex-macbook",
             "platform": "macos",
             "status": "active",
             "addedAt": "2026-06-01T12:00:00.000Z",

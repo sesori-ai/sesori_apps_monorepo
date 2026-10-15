@@ -441,15 +441,6 @@ extension GetItInjectableX on _i174.GetIt {
         failureReporter: gh<_i553.FailureReporter>(),
       ),
     );
-    gh.lazySingleton<_i699.RegisteredBridgesService>(
-      () => _i699.RegisteredBridgesService(
-        bridgeRepository: gh<_i205.BridgeRepository>(),
-        registeredBridgesStore: gh<_i217.RegisteredBridgesStore>(),
-        connectionService: gh<_i369.ConnectionService>(),
-        authSession: gh<_i442.AuthSession>(),
-      ),
-      dispose: (i) => i.dispose(),
-    );
     gh.lazySingleton<_i933.LegalRepository>(
       () => _i933.LegalRepository(api: gh<_i835.LegalApi>()),
     );
@@ -621,6 +612,16 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i905.FeedbackPromptService(
         connectionService: gh<_i369.ConnectionService>(),
         repository: gh<_i723.FeedbackPromptRepository>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i699.RegisteredBridgesService>(
+      () => _i699.RegisteredBridgesService(
+        bridgeRepository: gh<_i205.BridgeRepository>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+        registeredBridgesStore: gh<_i217.RegisteredBridgesStore>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        authSession: gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
     );
