@@ -505,6 +505,62 @@ void main() {
     expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
   });
 
+  testWidgets("Manage computers pushes Computers inside the Bridge tab, and a switch there closes the window", (
+    tester,
+  ) async {
+    registeredBridges.emitBridges(
+      bridges: [
+        BridgeSummary(
+          id: "a",
+          name: "Studio",
+          hostname: "studio-mac.local",
+          platform: BridgePlatform.macos,
+          status: BridgeRegistrationStatus.active,
+          addedAt: DateTime.utc(2026),
+          lastSeenAt: DateTime.utc(2026, 7),
+        ),
+        BridgeSummary(
+          id: "b",
+          name: "build-box",
+          hostname: "build-box",
+          platform: BridgePlatform.linux,
+          status: BridgeRegistrationStatus.inactive,
+          addedAt: DateTime.utc(2026),
+          lastSeenAt: null,
+        ),
+      ],
+    );
+    await open(tester: tester, tab: DesktopSettingsTab.bridge);
+
+    Future<void> manageComputers() async {
+      await tester.tap(find.byKey(const Key("computer_settings_entry")));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey("computer-menu-manage")));
+      await tester.pumpAndSettle();
+    }
+
+    await manageComputers();
+    expect(find.text("Computers"), findsOneWidget);
+    expect(find.text("studio-mac.local"), findsOneWidget);
+    expect(find.text("YOLO mode"), findsNothing);
+
+    // Back stays inside the window, on the Bridge tab.
+    await tester.tap(find.text("Back"));
+    await tester.pumpAndSettle();
+    expect(find.text("YOLO mode"), findsOneWidget);
+    expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
+
+    await manageComputers();
+    await tester.tap(find.byKey(const ValueKey("computers-actions-b")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey("computers-switch-b")));
+    await tester.pumpAndSettle();
+    verify(
+      () => computerSwitchDispatcher.switchTo(bridgeId: "b", source: ComputerSwitchSource.computersPage),
+    ).called(1);
+    expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
+  });
+
   testWidgets("Notifications uses desktop attention and Account retains supervised logout", (tester) async {
     await open(tester: tester, tab: DesktopSettingsTab.notifications);
     expect(find.text("AI interactions"), findsOneWidget);

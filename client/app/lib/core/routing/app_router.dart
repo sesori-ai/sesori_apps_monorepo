@@ -13,6 +13,7 @@ import "../../features/session_diffs/session_diffs_screen.dart";
 import "../../features/session_list/archived_sessions_artwork.dart";
 import "../../features/session_list/session_list_cubit_provider.dart";
 import "../../features/session_list/session_list_screen.dart";
+import "../../features/settings/computers_screen.dart";
 import "../../features/settings/default_input_settings_screen.dart";
 import "../../features/settings/harnesses_settings_screen.dart";
 import "../../features/settings/notification_settings_screen.dart";
@@ -36,6 +37,7 @@ const _sessionDiffsRouteSegment = "diffs";
 const _settingsDefaultInputRouteSegment = "default-input";
 const _settingsNotificationsRouteSegment = "notifications";
 const _settingsProfileRouteSegment = "profile";
+const _settingsComputersRouteSegment = "computers";
 
 extension AppRouteToGoRoute on AppRouteDef {
   /// Returns the [GoRoute] for this route definition with an exhaustive
@@ -108,6 +110,7 @@ extension on AppRoute {
       AppRouteSettingsHarnesses() ||
       AppRouteSettingsHarnessDetail() => throw StateError("Harness pages belong to their flow shell"),
       AppRouteSettingsProfile() => const ProfileScreen(),
+      AppRouteSettingsComputers() => const ComputersScreen(),
       AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
         projectId: projectId,
         projectName: projectName,
@@ -415,6 +418,10 @@ List<RouteBase> _buildAppRoutes({
         GoRoute(
           path: _settingsProfileRouteSegment,
           builder: (context, state) => AppRouteDef.settingsProfile._buildScreen(context: context, state: state),
+        ),
+        GoRoute(
+          path: _settingsComputersRouteSegment,
+          builder: (context, state) => AppRouteDef.settingsComputers._buildScreen(context: context, state: state),
         ),
       ],
     ),

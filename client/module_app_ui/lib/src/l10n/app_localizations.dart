@@ -763,6 +763,60 @@ abstract class AppLocalizations {
   /// **'Switch computer'**
   String get computerMenuSwitchHint;
 
+  /// Last item of the computer menu, below a divider. Opens the Computers page, where the user can switch to and rename the account's computers.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage computers…'**
+  String get computerMenuManage;
+
+  /// Title of the page that lists every computer on the account, opened from 'Manage computers…'.
+  ///
+  /// In en, this message translates to:
+  /// **'Computers'**
+  String get computersTitle;
+
+  /// Accessibility label of the '⋯' button on a row of the Computers page, which opens that computer's actions. The name is the computer's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions for {name}'**
+  String computersActions(String name);
+
+  /// Item of a computer's '⋯' menu on the Computers page that switches the app to that computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get computersSwitch;
+
+  /// Item of a computer's '⋯' menu on the Computers page that opens the rename dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename…'**
+  String get computersRename;
+
+  /// Title of the dialog that gives a computer a name of its own on every device.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename computer'**
+  String get computersRenameTitle;
+
+  /// Label of the name field in the rename-computer dialog. Leaving it empty names the computer by its hostname again.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer name'**
+  String get computersRenameLabel;
+
+  /// Button in the rename-computer dialog, shown only for a computer with a name of its own, that drops that name so the computer is named by its hostname again.
+  ///
+  /// In en, this message translates to:
+  /// **'Use hostname'**
+  String get computersRenameUseHostname;
+
+  /// Error alert shown when renaming a computer fails; the computer keeps its previous name.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to rename computer'**
+  String get computersRenameFailed;
+
   /// Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands.
   ///
   /// In en, this message translates to:

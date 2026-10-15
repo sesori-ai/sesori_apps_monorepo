@@ -1,4 +1,5 @@
 import "package:material_ui/material_ui.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 /// Who draws a settings page's title and its way out.
@@ -14,6 +15,13 @@ final class SettingsPageOwnBar({
 /// The desktop settings window hosts the page: its sidebar names the page and
 /// it owns the close button, so the page draws no bar.
 final class SettingsPageInWindow() implements SettingsPageChrome;
+
+/// A page the desktop settings window pushed over a tab's own page. The
+/// sidebar still names the tab, so the page names itself under its way back.
+final class SettingsPageInWindowSubpage({
+  required final String title,
+  required final VoidCallback onBack,
+}) implements SettingsPageChrome;
 
 /// Renders [slivers] under [chrome]: a glass-bar page of its own, or a bare
 /// scrolling page inside the desktop settings window.
@@ -31,6 +39,38 @@ class const SettingsChromePage({
       slivers: slivers,
     ),
     SettingsPageInWindow() => SettingsWindowPage(onRefresh: null, slivers: slivers),
+    SettingsPageInWindowSubpage(:final title, :final onBack) => SettingsWindowPage(
+      onRefresh: null,
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.md, 0, PregoSpacing.xl, PregoSpacing.sm),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: PregoSpacing.sm,
+              children: [
+                PregoButtonsSolid(
+                  label: MaterialLocalizations.of(context).backButtonTooltip,
+                  leadingIcon: TablerRegular.chevron_left,
+                  hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                  size: PregoButtonsSolidSize.sm,
+                  onPressed: onBack,
+                ),
+                Padding(
+                  // Lines the title up with the page content below it.
+                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xl - PregoSpacing.md),
+                  child: Semantics(
+                    header: true,
+                    child: Text(title, style: context.prego.textTheme.textLg.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        ...slivers,
+      ],
+    ),
   };
 }
 

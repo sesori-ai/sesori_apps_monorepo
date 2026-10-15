@@ -33,6 +33,29 @@ Future<void> showDesktopSettingsModal({
   required BuildContext context,
   required DesktopSettingsTab initialTab,
   required VoidCallback onLogoutCompleted,
+}) => _showDesktopSettings(
+  context: context,
+  initialTab: initialTab,
+  opensComputers: false,
+  onLogoutCompleted: onLogoutCompleted,
+);
+
+/// The settings window on its Bridge tab with the Computers page already open.
+Future<void> showDesktopComputersSettings({
+  required BuildContext context,
+  required VoidCallback onLogoutCompleted,
+}) => _showDesktopSettings(
+  context: context,
+  initialTab: DesktopSettingsTab.bridge,
+  opensComputers: true,
+  onLogoutCompleted: onLogoutCompleted,
+);
+
+Future<void> _showDesktopSettings({
+  required BuildContext context,
+  required DesktopSettingsTab initialTab,
+  required bool opensComputers,
+  required VoidCallback onLogoutCompleted,
 }) async {
   final authGate = context.read<AuthGateCubit>();
   final reducedMotion = prefersReducedMotion(context) || GlassAccessibilityData.of(context).reduceMotion;
@@ -66,6 +89,7 @@ Future<void> showDesktopSettingsModal({
           listener: (_, _) => close(),
           child: _DesktopSettingsModal(
             initialTab: initialTab,
+            opensComputers: opensComputers,
             onClose: close,
             onLogoutCompleted: () {
               close();
@@ -80,6 +104,7 @@ Future<void> showDesktopSettingsModal({
 
 class const _DesktopSettingsModal({
   required final DesktopSettingsTab initialTab,
+  required final bool opensComputers,
   required final VoidCallback onClose,
   required final VoidCallback onLogoutCompleted,
 }) extends StatefulWidget {
@@ -89,6 +114,10 @@ class const _DesktopSettingsModal({
 
 class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
   late DesktopSettingsTab _tab = widget.initialTab;
+
+  /// Whether the Bridge tab opens on its Computers page; only until the user
+  /// picks a tab.
+  late bool _opensComputers = widget.opensComputers;
 
   @override
   Widget build(BuildContext context) {
@@ -157,7 +186,10 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
                                       icon: _tabIcon(tab: tab),
                                       label: _tabLabel(context: context, tab: tab),
                                       selected: tab == _tab,
-                                      onPressed: () => setState(() => _tab = tab),
+                                      onPressed: () => setState(() {
+                                        _tab = tab;
+                                        _opensComputers = false;
+                                      }),
                                     ),
                                 ],
                               ),
@@ -222,8 +254,11 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
             activeBridgeLocality: getIt<ActiveBridgeLocality>(),
           ),
         ),
+        BlocProvider(
+          create: (_) => ComputersCubit(registeredBridgesService: getIt<RegisteredBridgesService>()),
+        ),
       ],
-      child: _DesktopBridgeSettingsPage(onClose: widget.onClose),
+      child: _DesktopBridgeSettingsTab(onClose: widget.onClose, opensComputers: _opensComputers),
     ),
     DesktopSettingsTab.notifications => BlocProvider(
       create: (_) => DesktopAttentionPreferenceCubit(service: getIt<DesktopAttentionService>()),
@@ -290,7 +325,61 @@ class const _SettingsTabRow({
   }
 }
 
-class const _DesktopBridgeSettingsPage({required final VoidCallback onClose}) extends StatelessWidget {
+/// The Bridge tab: its settings page, with the Computers page pushed over it
+/// from the computer entry's menu.
+class const _DesktopBridgeSettingsTab({
+  required final VoidCallback onClose,
+  required final bool opensComputers,
+}) extends StatefulWidget {
+  @override
+  State<_DesktopBridgeSettingsTab> createState() => _DesktopBridgeSettingsTabState();
+}
+
+class _DesktopBridgeSettingsTabState() extends State<_DesktopBridgeSettingsTab> {
+  static const _computersPageKey = ValueKey("desktop-settings-computers");
+
+  late bool _showsComputers = widget.opensComputers;
+
+  /// A switch lands on the new computer's Projects root, so the window steps
+  /// aside for it.
+  void _switchComputer({required String bridgeId, required ComputerSwitchSource source}) {
+    widget.onClose();
+    unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
+  }
+
+  @override
+  Widget build(BuildContext context) => _FadeThroughPages(
+    child: Navigator(
+      onDidRemovePage: (page) {
+        if (page.key == _computersPageKey) setState(() => _showsComputers = false);
+      },
+      pages: [
+        MaterialPage<void>(
+          child: _DesktopBridgeSettingsPage(
+            onSwitchComputer: _switchComputer,
+            onManageComputers: () => setState(() => _showsComputers = true),
+          ),
+        ),
+        if (_showsComputers)
+          MaterialPage<void>(
+            key: _computersPageKey,
+            child: ComputersView(
+              chrome: SettingsPageInWindowSubpage(
+                title: context.loc.computersTitle,
+                onBack: () => setState(() => _showsComputers = false),
+              ),
+              onSwitchComputer: _switchComputer,
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+class const _DesktopBridgeSettingsPage({
+  required final ComputerSwitchCallback onSwitchComputer,
+  required final VoidCallback onManageComputers,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -311,12 +400,8 @@ class const _DesktopBridgeSettingsPage({required final VoidCallback onClose}) ex
                   description: loc.desktopSettingsConnectedBridgeDescription,
                   // Harnesses has a tab of its own.
                   onOpenHarnesses: null,
-                  // A switch lands on the new computer's Projects root, so the
-                  // window steps aside for it.
-                  onSwitchComputer: ({required bridgeId, required source}) {
-                    onClose();
-                    unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
-                  },
+                  onSwitchComputer: onSwitchComputer,
+                  onManageComputers: onManageComputers,
                 ),
                 SettingsSection(
                   title: loc.desktopSettingsThisComputer,
@@ -382,21 +467,7 @@ class _DesktopHarnessSettingsPageState() extends State<_DesktopHarnessSettingsPa
 
   @override
   Widget build(BuildContext context) => DesktopHarnessesSettingsScreen(
-    // The pages have no background of their own, so a slide or cross-fade
-    // would show both at once; the old page fades out before the new one fades in.
-    child: Theme(
-      data: Theme.of(context).copyWith(
-        pageTransitionsTheme: PageTransitionsTheme(
-          builders: {
-            for (final platform in TargetPlatform.values)
-              platform: _FadeThrough(
-                transitionDuration: prefersReducedMotion(context) || GlassAccessibilityData.of(context).reduceMotion
-                    ? Duration.zero
-                    : const Duration(milliseconds: 200),
-              ),
-          },
-        ),
-      ),
+    child: _FadeThroughPages(
       child: Navigator(
         onDidRemovePage: (page) {
           if (page.key case ValueKey<String>(:final value) when value == _pluginId) {
@@ -433,6 +504,28 @@ class _DesktopHarnessSettingsPageState() extends State<_DesktopHarnessSettingsPa
         ],
       ),
     ),
+  );
+}
+
+/// Pages pushed inside a settings tab have no background of their own, so a
+/// slide or cross-fade would show both at once; the old page fades out before
+/// the new one fades in.
+class const _FadeThroughPages({required final Widget child}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Theme(
+    data: Theme.of(context).copyWith(
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          for (final platform in TargetPlatform.values)
+            platform: _FadeThrough(
+              transitionDuration: prefersReducedMotion(context) || GlassAccessibilityData.of(context).reduceMotion
+                  ? Duration.zero
+                  : const Duration(milliseconds: 200),
+            ),
+        },
+      ),
+    ),
+    child: child,
   );
 }
 

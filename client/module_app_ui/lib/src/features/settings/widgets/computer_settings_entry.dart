@@ -12,13 +12,15 @@ const double _entryGap = PregoSpacing.lg;
 /// The computer the bridge settings below it apply to, as a flat row on the
 /// page background: platform, name, and whether it is online. It lines up with
 /// the section caption above it. Tapping it opens the computer menu; picking
-/// another computer switches with the Settings source.
+/// another computer switches with the Settings source, and the menu's footer
+/// opens the Computers page.
 ///
 /// Renders nothing until the account's list names the current computer, and
 /// grows into place when it does instead of pushing the settings down at once.
 class const ComputerSettingsEntry({
   super.key,
   required final ComputerSwitchCallback onSwitchComputer,
+  required final VoidCallback onManageComputers,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -37,6 +39,7 @@ class const ComputerSettingsEntry({
               child: ComputerMenu(
                 onSelect: ({required bridgeId}) =>
                     onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.settings),
+                onManageComputers: onManageComputers,
                 triggerBuilder: (context, toggle) => Semantics(
                   hint: context.loc.computerMenuSwitchHint,
                   child: Material(

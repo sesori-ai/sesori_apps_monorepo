@@ -25,4 +25,8 @@ final class const ComputerSwitcherState({
   /// Whether the app works on a computer other than this surface's own. A
   /// missing target counts as this computer.
   bool get viewsAnotherComputer => targetId != null && targetId != localId;
+
+  /// Whether [bridgeId] is the computer this surface runs on. Never true on a
+  /// surface without a computer of its own (the phone).
+  bool isThisComputer({required String bridgeId}) => bridgeId == localId;
 }

@@ -19,11 +19,16 @@ class const ComputerMenu({
   super.key,
   required final PregoMenuTriggerBuilder triggerBuilder,
   required final void Function({required String bridgeId}) onSelect,
+
+  /// Opens the Computers page from a "Manage computers…" item below the
+  /// computers, or null where the menu offers no way there.
+  required final VoidCallback? onManageComputers,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<ComputerSwitcherCubit>().state;
     final currentId = state.currentId;
+    final onManageComputers = this.onManageComputers;
     return PregoAnchorMenu(
       // The trigger is a flat text row, which a glass popup would not match.
       flat: true,
@@ -43,6 +48,18 @@ class const ComputerMenu({
               if (computer.id != currentId) onSelect(bridgeId: computer.id);
             },
           ),
+        if (onManageComputers != null) ...[
+          const PregoMenuDivider(),
+          PregoMenuItem(
+            key: const ValueKey("computer-menu-manage"),
+            title: context.loc.computerMenuManage,
+            subtitle: null,
+            leadingIcon: TablerRegular.settings,
+            isSelected: false,
+            shortcutLabel: null,
+            onTap: onManageComputers,
+          ),
+        ],
       ],
     );
   }

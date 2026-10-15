@@ -22,11 +22,22 @@ area documents linked below own the detail.
   previous computer's socket is detached first, its late answers are dropped, and its bridge-scoped caches reset. The
   list shows the existing shimmer loading state under the new name and fades in as a first load does, with no rows
   from the previous computer. Each switch reports `computer_switched` with its `source` (`menu`, `offline_screen`,
-  `settings`, `alert`, `notification`) and whether the target was online, never a name or id
+  `settings`, `computers_page`, `alert`, `notification`) and whether the target was online, never a name or id
   ([analytics](analytics.md)). Picking the current computer in a menu only closes the menu.
 - **Computer menu.** The Projects status row names the target computer, ends in a chevron, and opens an anchored
   menu listing every computer of the account, most recently seen first, with platform icon, name, online or
-  last-seen state, and a check on the current one ([projects and sessions](projects-and-sessions.md)).
+  last-seen state, and a check on the current one ([projects and sessions](projects-and-sessions.md)). From
+  Projects, the Settings entry and the desktop header, the menu ends in "Manage computers…" after a divider, which
+  closes the menu and opens the Computers page; the offline card's menu has no such footer.
+- **Computers page.** Lists every computer in menu order: platform icon, name, the hostname under a name of the
+  user's own, presence, a check on the current one, and "This computer" on the desktop's own. Each row's "⋯" (or a
+  desktop secondary click on the row) opens Switch, absent on the current computer, and Rename…. Switch goes through
+  the dispatcher with source `computers_page`; on desktop the Settings window closes first. Rename… prefills the
+  name; a blank field, exactly the hostname, or "Use hostname" (offered only under a name of the user's own) clears
+  it. The row shows a spinner in place of its "⋯" while the rename runs and changes in place; a failure shows a
+  short error alert and leaves the row as it was. On the phone the page sits under Settings (from Projects, Settings
+  is pushed under it, so Back lands there); on desktop it is pushed inside the Settings Bridge tab, with a Back
+  button that stays in the window.
 - **Offline view.** With the target offline, the screen names it ("<name> is offline", last seen), then an "Other
   computers" card with up to two online computers as one-tap switches, a "+ n others" row that opens the menu, or
   "No other computers online"; an account with one computer shows no card. The start command and help keep their
@@ -102,8 +113,8 @@ and another while a phone works on the local bridge.
 
 ## Known Limitations
 
-- One computer at a time per app; there is no merged cross-computer list. Removing and renaming computers, and
-  approving new ones from the phone, are not part of this capability yet.
+- One computer at a time per app; there is no merged cross-computer list. Removing computers and approving new ones
+  from the phone are not part of this capability yet.
 - Online status comes from the auth server's last stored report plus the relay's presence notices. After a relay
   crash a computer can show online until its bridge reconnects, and an offline notice does not update "last seen"
   until the next fetch.
@@ -122,8 +133,9 @@ and another while a phone works on the local bridge.
   `capabilities/relay/target_bridge_storage.dart`, `services/selected_computer_service.dart`,
   `services/registered_bridges_service.dart`, `routing/computer_switch_dispatcher.dart`,
   `routing/notification_open_dispatcher.dart`, `cubits/computer_switcher/`, `cubits/bridge_identity/`,
-  `cubits/linked_computer_alert/`; `client/module_app_ui/lib/src/widgets/computer_menu.dart`,
-  `other_computers_card.dart`, `linked_computer_alerts.dart`, `features/settings/widgets/computer_settings_entry.dart`;
+  `cubits/linked_computer_alert/`, `cubits/computers/`; `client/module_app_ui/lib/src/widgets/computer_menu.dart`,
+  `other_computers_card.dart`, `linked_computer_alerts.dart`, `features/settings/widgets/computer_settings_entry.dart`,
+  `features/settings/computers_view.dart`; `client/desktop/lib/features/settings/desktop_settings_modal.dart`;
   `client/module_desktop_core/lib/src/orchestration/desktop_computer_target_orchestrator.dart`;
   `client/desktop/lib/features/home/desktop_home_pane.dart`; and their tests.
 - Bridge: `bridge/app/lib/src/auth/machine_id_api.dart`, `bridge_registration_repository.dart`, and the push
