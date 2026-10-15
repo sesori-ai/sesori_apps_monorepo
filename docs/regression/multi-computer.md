@@ -168,4 +168,4 @@ and another while a phone works on the local bridge.
 - Relay (`sesori_relay_server`): `internal/relay/account_group.go`, `handler.go`, and their tests. Auth server
   (`sesori_auth_server`): `src/services/bridge-service.ts`, `src/services/bridge-state-tracker.ts`, and their tests.
 - Plan: `.plan/completed/multi-computer/PLAN.md` (decisions D1–D16 and the regression matrix);
-  `.plan/active/computer-management/PLAN.md` (rename and remove, decisions D1–D9).
+  `.plan/completed/computer-management/PLAN.md` (rename and remove, decisions D1–D9).
