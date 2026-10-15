@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-form-controls`, `9c4b5341d6`, in the provided `copper-heron` worktree.
-- Current step: 24/29 is verified locally; latest merged step: 23/29 as [#1993][pr-1993].
+- Current step: 24/29 is in review as [#1995][pr-1995]; latest merged step: 23/29 as [#1993][pr-1993].
   Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
@@ -48,7 +48,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 21/29 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
 | 22/29 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992] |
 | 23/29 | Client typed draft lifecycle (9.c.1) | Merged | [#1993][pr-1993] |
-| 24/29 | Shared typed form controls (9.c.2) | Verified locally | Shared widgets, both shells, 23 cases and analysis |
+| 24/29 | Shared typed form controls (9.c.2) | In review | [#1995][pr-1995] |
 | 25/29 | Codex inventory/actions/authentication | Not started | — |
 | 26/29 | Codex forms and offered connectors | Not started | — |
 | 27/29 | Secondary harness support and explicit gaps | Not started | — |
@@ -1298,6 +1298,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 [pr-1991]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1991
 [pr-1992]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1992
 [pr-1993]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1993
+[pr-1995]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1995
 
 - Step 20's later terminal monitor snapshot records 33 passing checks; the 32
   above is the earlier pre-merge snapshot. Step 21 was
@@ -1407,3 +1408,11 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   scheduler and 13 desktop composition cases passed before the caption-only change.
   Inspected fixture images contain synthetic data only; native motion recording
   and the real provider/relay/package matrix remain deferred qualification work.
+- Step-24 review source `3654f20c9b` reserves the keyboard inset, using bottom
+  safe-area padding only when no software keyboard is present. The phone case
+  failed before the fix: viewport bottom 704 exceeded keyboard boundary 524.
+  All ten form widget cases and client-root analysis now pass, with no missed-tap
+  warnings. New UI-to-repository coverage preserves explicit empty text/arrays
+  separately from omission; Clear answer remains the omission action. Native
+  motion qualification is explicitly pending. Keyboard-closed screenshot inputs
+  are unchanged; no unchanged passing scheduler/desktop suite was repeated.
