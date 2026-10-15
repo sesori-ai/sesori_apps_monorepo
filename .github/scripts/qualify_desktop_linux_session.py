@@ -107,8 +107,7 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
             require(process.poll() is None, f"Application exited early: {process.returncode}")
             if desktop == Desktop.GNOME:
                 return shell_eval(script=f"global.get_window_actors().filter(a => a.meta_window.get_pid() === "
-                                  f"{process.pid}).map(a => {{ const r=a.meta_window.get_frame_rect(); "
-                                  "return [r.x,r.y,r.width,r.height]; })")
+                                  f"{process.pid}).map(a => a.meta_window.get_stable_sequence())")
             rows = run(arguments=["wmctrl", "-lp"], env=env).splitlines()
             return [row.split()[0] for row in rows if len(row.split()) > 3 and row.split()[2] == str(process.pid)]
 
@@ -218,7 +217,10 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
                     capture = dbus.Interface(
                         bus.get_object("org.gnome.Shell.Screenshot", "/org/gnome/Shell/Screenshot"),
                         "org.gnome.Shell.Screenshot")
-                    success, _ = capture.ScreenshotArea(*bounds[0], False, str(screenshot))
+                    shell_eval(script=f"global.get_window_actors().filter(a => a.meta_window.get_pid() === "
+                               f"{process.pid}).forEach(a => a.meta_window.activate(global.get_current_time())); true")
+                    # Capture the focused native window, not an early or off-screen frame rectangle.
+                    success, _ = capture.ScreenshotWindow(True, False, False, str(screenshot))
                     require(bool(success), "GNOME application capture failed")
                     shell_eval(script=f"global.get_window_actors().filter(a => a.meta_window.get_pid() === "
                                f"{process.pid}).forEach(a => a.meta_window.delete(global.get_current_time())); true")
